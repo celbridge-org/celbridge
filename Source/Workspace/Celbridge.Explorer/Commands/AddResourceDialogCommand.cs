@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Logging;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -14,11 +15,16 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     private const string DefaultFileNameKey = "ResourceTree_DefaultFileName";
     private const string AddButtonKey = "DialogButton_Add";
 
+    // Caps the default-name search so a policy that rejects every candidate
+    // cannot hang the dialog.
+    private const int MaxDefaultNameAttempts = 500;
+
     public override CommandFlags CommandFlags => CommandFlags.None;
 
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestFolderResource { get; set; }
 
+    private readonly ILogger<AddResourceDialogCommand> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
@@ -26,12 +32,14 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public AddResourceDialogCommand(
+        ILogger<AddResourceDialogCommand> logger,
         IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
+        _logger = logger;
         _serviceProvider = serviceProvider;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
@@ -192,10 +200,15 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFolderName = string.Empty;
-        int folderNumber = 1;
-        while (true)
+        string firstCandidateName = string.Empty;
+        for (int folderNumber = 1; folderNumber <= MaxDefaultNameAttempts; folderNumber++)
         {
             var candidateName = _stringLocalizer.GetString(DefaultFolderNameKey, folderNumber).ToString();
+
+            if (folderNumber == 1)
+            {
+                firstCandidateName = candidateName;
+            }
 
             var candidateKey = parentFolderKey.Combine(candidateName);
             var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
@@ -205,7 +218,15 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
                 defaultFolderName = candidateName;
                 break;
             }
-            folderNumber++;
+        }
+
+        // Every probe was rejected by the resource policy. Fall back to the
+        // first candidate so the dialog still opens.
+        if (string.IsNullOrEmpty(defaultFolderName))
+        {
+            _logger.LogWarning(
+                $"Default folder name search exhausted {MaxDefaultNameAttempts} candidates in '{DestFolderResource}'. Falling back to '{firstCandidateName}'.");
+            defaultFolderName = firstCandidateName;
         }
 
         return Result<string>.Ok(defaultFolderName);
@@ -232,13 +253,18 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFileName = string.Empty;
-        int fileNumber = 1;
-        while (true)
+        string firstCandidateName = string.Empty;
+        for (int fileNumber = 1; fileNumber <= MaxDefaultNameAttempts; fileNumber++)
         {
             var candidateName = _stringLocalizer.GetString(DefaultFileNameKey, fileNumber).ToString();
 
             // Replace the default extension with the preferred extension
             candidateName = Path.ChangeExtension(candidateName, extension);
+
+            if (fileNumber == 1)
+            {
+                firstCandidateName = candidateName;
+            }
 
             var candidateKey = parentFolderKey.Combine(candidateName);
             var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
@@ -248,7 +274,15 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
                 defaultFileName = candidateName;
                 break;
             }
-            fileNumber++;
+        }
+
+        // Every probe was rejected by the resource policy. Fall back to the
+        // first candidate so the dialog still opens.
+        if (string.IsNullOrEmpty(defaultFileName))
+        {
+            _logger.LogWarning(
+                $"Default file name search exhausted {MaxDefaultNameAttempts} candidates in '{DestFolderResource}' with extension '{extension}'. Falling back to '{firstCandidateName}'.");
+            defaultFileName = firstCandidateName;
         }
 
         return Result<string>.Ok(defaultFileName);
