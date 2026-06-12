@@ -27,5 +27,13 @@
       <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>
 

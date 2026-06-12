@@ -13,7 +13,7 @@ public static class FeatureFlagConstants
 
     /// <summary>
     /// MCP tool system and cel Python API. When disabled, the MCP server does not start
-    /// and the Python terminal is not launched.
+    /// and the Python terminal launches without the cel proxy.
     /// </summary>
     public const string McpTools = "mcp-tools";
 

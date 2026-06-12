@@ -1,3 +1,4 @@
+using Celbridge.Credentials;
 using Celbridge.Settings.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,6 +14,8 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IEditorSettings, EditorSettings>();
         services.AddSingleton<IFeatureFlags, FeatureFlags>();
+        services.AddSingleton<ICredentialProtector, DpapiCredentialProtector>();
+        services.AddSingleton<ICredentialService, CredentialService>();
 
         if (IsStorageAPIAvailable)
         {
