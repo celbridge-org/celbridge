@@ -1,3 +1,5 @@
+using Celbridge.Packages;
+
 namespace Celbridge.Projects;
 
 /// <summary>
@@ -19,6 +21,11 @@ public interface IProjectLoadReporter
     /// Records the project load outcome.
     /// </summary>
     void RecordLoadOutcome(bool loadSucceeded, Result? loadResult);
+
+    /// <summary>
+    /// Records the package discovery outcome, including any load failures.
+    /// </summary>
+    void RecordPackageReport(PackageDiscoveryReport report);
 
     /// <summary>
     /// Records the consistency-check findings.

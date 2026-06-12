@@ -11,42 +11,15 @@ public record class PackageInstallResult(string PackageName, int Entries, string
 
 public partial class PackageTools
 {
-    /// <summary>Install a package from the remote registry into packages/{packageName}/.</summary>
+    /// <summary>Install the latest version of a workshop package into packages/{packageName}/.</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
     [RelatedGuides("packages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Install(string packageName, bool confirmWithUser = true)
     {
-        if (!IsValidPackageName(packageName))
+        if (!PackageName.IsValid(packageName))
         {
-            return ToolResponse.Error(
-                $"Invalid package name: '{packageName}'. " +
-                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
-        }
-
-        // Find the package in the remote registry
-        var packageApiClient = GetRequiredService<IPackageApiClient>();
-        var listResult = await packageApiClient.ListPackagesAsync();
-
-        if (listResult.IsFailure)
-        {
-            return ToolResponse.Error(listResult);
-        }
-
-        var expectedFileName = $"{packageName}.zip";
-        PackageApiEntry? matchingEntry = null;
-        foreach (var entry in listResult.Value)
-        {
-            if (string.Equals(entry.FileName, expectedFileName, StringComparison.OrdinalIgnoreCase))
-            {
-                matchingEntry = entry;
-                break;
-            }
-        }
-
-        if (matchingEntry is null)
-        {
-            return ToolResponse.Error($"Package not found in registry: '{packageName}'");
+            return ToolResponse.Error(InvalidPackageNameError(packageName));
         }
 
         if (confirmWithUser)
@@ -62,8 +35,8 @@ public partial class PackageTools
             }
         }
 
-        // Download the package zip
-        var downloadResult = await packageApiClient.DownloadPackageAsync(matchingEntry.Id);
+        var packageApiClient = GetRequiredService<IPackageApiClient>();
+        var downloadResult = await packageApiClient.DownloadLatestAsync(packageName);
         if (downloadResult.IsFailure)
         {
             return ToolResponse.Error(downloadResult);
@@ -82,7 +55,7 @@ public partial class PackageTools
             return ToolResponse.Error($"Failed to write downloaded package: {writeArchiveResult.FirstErrorMessage}");
         }
 
-        var destinationResource = ResourceKey.Create($"packages/{packageName}");
+        var destinationResource = ResourceKey.Create($"{PackageConstants.DefaultPackagesFolder}/{packageName}");
 
         try
         {

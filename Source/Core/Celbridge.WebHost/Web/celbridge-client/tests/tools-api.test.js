@@ -415,9 +415,9 @@ describe('Celbridge.tools integration', () => {
         expect(client.secrets).toEqual({});
     });
 
-    it('reads allowedTools from constructor context', () => {
+    it('reads permittedTools from constructor context', () => {
         const { client } = createTestClient({
-            context: { allowedTools: ['app.get_state'], secrets: {} }
+            context: { permittedTools: ['app.get_state'], secrets: {} }
         });
         expect(client.tools.allowedPatterns).toEqual(['app.get_state']);
     });
@@ -425,21 +425,21 @@ describe('Celbridge.tools integration', () => {
     it('reads and exposes secrets', () => {
         const secrets = { spreadjs_license: 'abc123' };
         const { client } = createTestClient({
-            context: { allowedTools: [], secrets }
+            context: { permittedTools: [], secrets }
         });
         expect(client.secrets.spreadjs_license).toBe('abc123');
     });
 
     it('cel accessor throws before initialize() completes', () => {
         const { client } = createTestClient({
-            context: { allowedTools: ['*'], secrets: {} }
+            context: { permittedTools: ['*'], secrets: {} }
         });
         expect(() => client.cel).toThrow(/not initialized/);
     });
 
     it('cel proxy dispatches via tools/call with positional arguments after initialize()', async () => {
         const { client, sentMessages, simulateResponse } = createTestClient({
-            context: { allowedTools: ['app.get_state'], secrets: {} }
+            context: { permittedTools: ['app.get_state'], secrets: {} }
         });
 
         // Kick off initialize() — it sends document/initialize, then tools/list,
@@ -480,7 +480,7 @@ describe('Celbridge.tools integration', () => {
 
     it('denied tool calls reject without hitting the transport', async () => {
         const { client, sentMessages } = createTestClient({
-            context: { allowedTools: ['app.*'], secrets: {} }
+            context: { permittedTools: ['app.*'], secrets: {} }
         });
 
         await expect(client.tools.call('file.read', {})).rejects.toMatchObject({
@@ -497,7 +497,7 @@ describe('cel globalThis exposure', () => {
         delete globalThis.cel;
 
         const { client, sentMessages, simulateResponse } = createTestClient({
-            context: { allowedTools: ['app.get_state'], secrets: {} }
+            context: { permittedTools: ['app.get_state'], secrets: {} }
         });
 
         const initPromise = client.initialize();
@@ -527,7 +527,7 @@ describe('cel globalThis exposure', () => {
     it('accessing cel global before initialize() throws via client.cel', () => {
         delete globalThis.cel;
         const { client } = createTestClient({
-            context: { allowedTools: ['*'], secrets: {} }
+            context: { permittedTools: ['*'], secrets: {} }
         });
 
         expect(() => client.cel).toThrow(/not initialized/);
@@ -544,7 +544,7 @@ describe('cel globalThis exposure', () => {
             onMessage: (handler) => { messageHandler = handler; },
             timeout: 1000,
             exposeCelGlobal: false,
-            context: { allowedTools: [], secrets: {} }
+            context: { permittedTools: [], secrets: {} }
         });
 
         const initPromise = client.initialize();
@@ -557,7 +557,7 @@ describe('cel globalThis exposure', () => {
 
         await initPromise;
 
-        // With allowedTools=[], no tools/list is sent, so init completes with only the one message.
+        // With permittedTools=[], no tools/list is sent, so init completes with only the one message.
         expect(globalThis.cel).toBeUndefined();
         expect(client.tools.isReady).toBe(true);
     });
@@ -566,7 +566,7 @@ describe('cel globalThis exposure', () => {
 describe('Celbridge global context scrubbing', () => {
     it('reads globalThis.__celbridgeContext and deletes it', () => {
         globalThis.__celbridgeContext = {
-            allowedTools: ['app.*'],
+            permittedTools: ['app.*'],
             secrets: { key: 'value' }
         };
 

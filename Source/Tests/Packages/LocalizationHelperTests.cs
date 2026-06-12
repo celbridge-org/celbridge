@@ -29,8 +29,8 @@ public class PackageLocalizationServiceTests
 
         _bundledPackage = new PackageInfo
         {
-            Id = "test.package",
-            Name = "Test Package",
+            Name = "test.package",
+            Title = "Test Package",
             PackageFolder = _tempFolder,
             Origin = PackageOrigin.Bundled
         };

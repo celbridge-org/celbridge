@@ -8,15 +8,14 @@ A package contribution that takes over a file extension in the documents panel. 
 
 ```toml
 [package]
-id = "my-editor"
-name = "My Editor"
-version = "1.0.0"
+name = "my-editor"
+title = "My Editor"
 
 [contributes]
 document_editors = ["my-editor.document.toml"]
 
-[mod]
-requires_tools = ["document.*", "file.*"]
+[permissions]
+tools = ["document.*", "file.*"]
 ```
 
 `packages/my-editor/my-editor.document.toml`:
@@ -130,7 +129,7 @@ Apply at every framework-driven `setContent` site.
 
 - **Localization** — `t('MyEditor_Editor_Name')` after `await client.initialize()`; strings live in `localization/<locale>.json` next to `index.html`.
 - **Secrets** — bundled-package descriptors can inject `client.secrets.<name>`. Non-bundled packages see an empty map.
-- **`requires_tools`** — every `cel.*` call must be declared under `[mod].requires_tools` in alias form (`"document.save"`). See `agent_instructions`.
+- **`[permissions] tools`** — every `cel.*` call must be declared under `[permissions].tools` in alias form (`"document.save"`). See `agent_instructions`.
 
 ## Reference contributions
 

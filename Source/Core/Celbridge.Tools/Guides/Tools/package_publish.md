@@ -1,8 +1,8 @@
 # package_publish
 
-Zips the contents of `packages/{packageName}/` and uploads the result to the remote package registry as `{packageName}.zip`. Validates the package layout and manifest before uploading; an existing entry with the same name on the registry is overwritten by the upload.
+Zips the contents of `packages/{packageName}/` and publishes the result to the workshop as a new version of the package. Versions are immutable and numbered by the workshop in publish order; publishing never overwrites an earlier version. The first publish of a new name registers the package on the workshop.
 
-By default surfaces a confirmation dialog before publishing; pass `confirmWithUser: false` only when the user has explicitly asked for unattended operation.
+Validates the package layout and manifest before uploading. By default surfaces a confirmation dialog before publishing; pass `confirmWithUser: false` only when the user has explicitly asked for unattended operation.
 
 ## Parameters
 
@@ -12,7 +12,7 @@ Resource key of the package folder. Must start with `packages/` and the folder n
 
 ### packageName
 
-Lowercase alphanumeric and hyphens, 1-214 characters. Must match the folder name segment of `resource`.
+Lowercase alphanumeric with single hyphen separators, 1-64 characters. Must match the folder name segment of `resource` and the manifest's `name` field.
 
 ### confirmWithUser
 
@@ -25,7 +25,7 @@ Before uploading, the tool verifies that:
 - `resource` is inside `packages/` and the folder segment equals `packageName`.
 - The folder exists on disk.
 - A `package.toml` file is present at the folder root.
-- The manifest is valid TOML and contains a `[package]` section with non-empty `id` and `name` fields.
+- The manifest is valid TOML and contains a `[package]` section whose `name` field equals `packageName`.
 
 If any check fails, no upload is attempted.
 
@@ -34,10 +34,11 @@ If any check fails, no upload is attempted.
 A JSON object:
 
 - `packageName` (string) — echoed package name.
+- `version` (int) — the version number the workshop assigned to this publish.
 - `entries` (int) — number of files included in the uploaded zip.
 - `size` (long) — uploaded zip size in bytes.
 
 ## Gotchas
 
 - Symlinks and other reparse points inside the package folder are skipped, not followed.
-- Publishing replaces any existing registry entry with the same file name; there is no version check on the registry side.
+- Publishing always creates a new version; there is no way to replace or delete an existing version through the tools.

@@ -13,7 +13,7 @@ public static class PackageManifestLoader
 {
     private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
-    private const string ModSection = "mod";
+    private const string PermissionsSection = "permissions";
     private const string DocumentSection = "document";
     private const string DocumentEditorsKey = "document_editors";
     private const string DocumentFileTypesSection = "document_file_types";
@@ -21,10 +21,12 @@ public static class PackageManifestLoader
     private const string CodeEditorSection = "code_editor";
     private const string CodePreviewSection = "code_preview";
     private const string OptionsSection = "options";
-    private const string RequiresToolsKey = "requires_tools";
+    private const string ToolsKey = "tools";
 
     private const string IdKey = "id";
     private const string NameKey = "name";
+    private const string AuthorKey = "author";
+    private const string TitleKey = "title";
     private const string FeatureFlagKey = "feature_flag";
     private const string TypeKey = "type";
     private const string PriorityKey = "priority";
@@ -51,7 +53,7 @@ public static class PackageManifestLoader
 
     /// <summary>
     /// Loads a package from a package.toml file, including all referenced document editor contributions.
-    /// hostNameOverride, when non-null, replaces the default package-id-derived virtual host name.
+    /// hostNameOverride, when non-null, replaces the default package-name-derived virtual host name.
     /// secrets, when non-empty, populates PackageInfo.Secrets for WebView injection.
     /// devToolsBlocked, when true, permanently disables DevTools on WebViews hosting this package.
     /// origin tags the resulting PackageInfo so downstream read sites can pick the right IO path.
@@ -94,21 +96,26 @@ public static class PackageManifestLoader
                 return Result.Fail($"Missing [{PackageSection}] section: {packageTomlPath}");
             }
 
-            var packageId = GetString(packageTable, IdKey);
-            if (string.IsNullOrEmpty(packageId))
-            {
-                return Result.Fail($"Package missing required '{IdKey}' field: {packageTomlPath}");
-            }
-
-            if (!PackageId.IsValid(packageId))
-            {
-                return Result.Fail($"Package has invalid '{IdKey}' value '{packageId}': {packageTomlPath}. Package ids must use only lowercase ASCII letters, digits, dots, and hyphens, with no leading, trailing, or consecutive dots.");
-            }
-
             var packageName = GetString(packageTable, NameKey);
+            if (string.IsNullOrEmpty(packageName))
+            {
+                return Result.Fail($"Package missing required '{NameKey}' field: {packageTomlPath}");
+            }
+
+            // Bundled first-party packages use dotted names (e.g. "celbridge.notes"),
+            // so structural validation accepts the dotted form for every origin.
+            // Project discovery rejects dotted names downstream with a specific
+            // failure reason.
+            if (!PackageName.IsValidBundledName(packageName))
+            {
+                return Result.Fail($"Package has invalid '{NameKey}' value '{packageName}': {packageTomlPath}. Package names must be lowercase ASCII letters and digits with single interior hyphens, at most {PackageConstants.MaxNameLength} characters.");
+            }
+
+            var packageAuthor = GetString(packageTable, AuthorKey);
+            var packageTitle = GetString(packageTable, TitleKey);
             var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
-            var safeName = packageId.Replace('.', '-').ToLowerInvariant();
+            var safeName = packageName.Replace('.', '-');
             var defaultHostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
 
             // Bundled packages may pin the virtual host name via the C#-side
@@ -117,23 +124,24 @@ public static class PackageManifestLoader
             // packages cannot impersonate a bundled host.
             var hostName = !string.IsNullOrEmpty(hostNameOverride) ? hostNameOverride : defaultHostName;
 
-            var requiresTools = Array.Empty<string>() as IReadOnlyList<string>;
-            if (root.TryGetValue(ModSection, out var modObject) &&
-                modObject is TomlTable modTable)
+            var permittedTools = Array.Empty<string>() as IReadOnlyList<string>;
+            if (root.TryGetValue(PermissionsSection, out var permissionsObject) &&
+                permissionsObject is TomlTable permissionsTable)
             {
-                requiresTools = GetStringArray(modTable, RequiresToolsKey);
+                permittedTools = GetStringArray(permissionsTable, ToolsKey);
             }
 
             var packageSecrets = secrets ?? EmptySecrets;
 
             var packageInfo = new PackageInfo
             {
-                Id = packageId,
                 Name = packageName,
+                Author = packageAuthor,
+                Title = packageTitle,
                 FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,
                 HostName = hostName,
-                RequiresTools = requiresTools,
+                PermittedTools = permittedTools,
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,
                 Origin = origin
@@ -313,18 +321,18 @@ public static class PackageManifestLoader
                     $"Templates cannot be used with external content.");
             }
 
-            // Custom contributions have their editor id composed as "{packageId}.{documentId}" at
+            // Custom contributions have their editor id composed as "{packageName}.{documentId}" at
             // factory-construction time. Validate the composed id here so plugin authors fail fast
             // at manifest parse with a clear message, rather than hitting a DocumentEditorId
             // constructor throw later when someone tries to open a file of this type.
             if (documentType != CodeDocumentType)
             {
-                var composedEditorId = $"{packageInfo.Id}.{documentId}";
+                var composedEditorId = $"{packageInfo.Name}.{documentId}";
                 if (!DocumentEditorId.IsValid(composedEditorId))
                 {
                     return Result.Fail(
                         $"Invalid document editor id '{composedEditorId}' in manifest: {documentTomlPath}. " +
-                        $"Package id and document id must combine to form a DocumentEditorId using only lowercase letters, digits, dots, and hyphens.");
+                        $"Package name and document id must combine to form a DocumentEditorId using only lowercase letters, digits, dots, and hyphens.");
                 }
             }
 

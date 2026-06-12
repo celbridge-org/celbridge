@@ -62,7 +62,7 @@ public class WebViewService : IWebViewService
         if (contributingPackage is not null && contributingPackage.Info.DevToolsBlocked)
         {
             return NotSupported(
-                $"Resource '{resource}' is open with the '{match.EditorId}' editor, but the contributing package '{contributingPackage.Info.Id}' has set DevToolsBlocked = true. The webview_* tools are not available for this editor by package policy.");
+                $"Resource '{resource}' is open with the '{match.EditorId}' editor, but the contributing package '{contributingPackage.Info.Name}' has set DevToolsBlocked = true. The webview_* tools are not available for this editor by package policy.");
         }
 
         return Supported;

@@ -3,235 +3,435 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Celbridge.Credentials;
 
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Communicates with the Django-based package registry REST API.
-/// Credentials are read from the PackageApiCredentials partial class.
+/// Communicates with the workshop server's package REST API. The Workshop URL
+/// and Application Key are read from the credential store on every request, so
+/// a connection change in Settings takes effect without a restart. The key is
+/// never included in results or error messages.
 /// </summary>
-public class PackageApiClient : IPackageApiClient
+public class PackageApiClient : IPackageApiClient, IDisposable
 {
-    private HttpClient? _httpClient;
-    private CookieContainer? _cookieContainer;
+    private const string ApiKeyScheme = "Api-Key";
 
-    public async Task<Result<List<PackageApiEntry>>> ListPackagesAsync()
+    private readonly ICredentialService _credentialService;
+    private readonly HttpClient _httpClient;
+
+    public PackageApiClient(ICredentialService credentialService)
+        : this(credentialService, new HttpClientHandler())
     {
-        var loginResult = await EnsureLoggedInAsync();
-        if (loginResult.IsFailure)
-        {
-            return Result<List<PackageApiEntry>>.Fail(loginResult.DiagnosticReport);
-        }
-
-        try
-        {
-            var response = await _httpClient!.GetAsync("api/files/");
-            if (!response.IsSuccessStatusCode)
-            {
-                return Result<List<PackageApiEntry>>.Fail(
-                    $"Failed to list packages (HTTP {(int)response.StatusCode})");
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var entries = JsonSerializer.Deserialize<List<ApiFileEntry>>(json, JsonOptions);
-            if (entries is null)
-            {
-                return Result<List<PackageApiEntry>>.Fail("Failed to parse package list response");
-            }
-
-            var packages = new List<PackageApiEntry>();
-            foreach (var entry in entries)
-            {
-                var fileName = Path.GetFileName(entry.File);
-                packages.Add(new PackageApiEntry(entry.FileId, fileName, entry.FileSize, entry.UploadedAt));
-            }
-
-            return Result<List<PackageApiEntry>>.Ok(packages);
-        }
-        catch (HttpRequestException exception)
-        {
-            return Result<List<PackageApiEntry>>.Fail($"Network error listing packages: {exception.Message}");
-        }
     }
 
-    public async Task<Result<byte[]>> DownloadPackageAsync(int fileId)
+    /// <summary>
+    /// Creates a client over an explicit message handler so tests can serve
+    /// canned responses without a network.
+    /// </summary>
+    public PackageApiClient(ICredentialService credentialService, HttpMessageHandler messageHandler)
     {
-        var loginResult = await EnsureLoggedInAsync();
-        if (loginResult.IsFailure)
-        {
-            return Result<byte[]>.Fail(loginResult.DiagnosticReport);
-        }
-
-        try
-        {
-            var response = await _httpClient!.GetAsync($"api/files/{fileId}/");
-            if (!response.IsSuccessStatusCode)
-            {
-                return Result<byte[]>.Fail(
-                    $"Failed to download package (HTTP {(int)response.StatusCode})");
-            }
-
-            var data = await response.Content.ReadAsByteArrayAsync();
-            return Result<byte[]>.Ok(data);
-        }
-        catch (HttpRequestException exception)
-        {
-            return Result<byte[]>.Fail($"Network error downloading package: {exception.Message}");
-        }
+        _credentialService = credentialService;
+        _httpClient = new HttpClient(messageHandler);
     }
 
-    public async Task<Result> UploadPackageAsync(string fileName, byte[] zipData)
+    public async Task<Result<IReadOnlyList<RemotePackageSummary>>> ListPackagesAsync()
     {
-        var loginResult = await EnsureLoggedInAsync();
-        if (loginResult.IsFailure)
+        var sendResult = await SendAsync(HttpMethod.Get, "api/packages/");
+        if (sendResult.IsFailure)
         {
-            return Result.Fail(loginResult);
+            return Result.Fail("Failed to list workshop packages").WithErrors(sendResult);
         }
 
-        try
+        using var response = sendResult.Value;
+        if (!response.IsSuccessStatusCode)
         {
-            var csrfToken = GetCsrfToken();
+            return Result.Fail($"Failed to list workshop packages (HTTP {(int)response.StatusCode})");
+        }
 
-            using var content = new MultipartFormDataContent();
-            var fileContent = new ByteArrayContent(zipData);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            content.Add(fileContent, "file", fileName);
+        var parseResult = await ParseJsonAsync<List<PackageSummaryDto>>(response, "package list");
+        if (parseResult.IsFailure)
+        {
+            return Result.Fail(parseResult);
+        }
+        var entries = parseResult.Value;
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "api/upload/");
+        var summaries = new List<RemotePackageSummary>(entries.Count);
+        foreach (var entry in entries)
+        {
+            summaries.Add(ToPackageSummary(entry));
+        }
+
+        return summaries.OkResult<IReadOnlyList<RemotePackageSummary>>();
+    }
+
+    public async Task<Result<RemotePackageDetails>> GetPackageAsync(string packageName)
+    {
+        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/");
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to get workshop package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return Result.Fail($"Package '{packageName}' was not found on the workshop.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to get workshop package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        var parseResult = await ParseJsonAsync<PackageDetailsDto>(response, "package metadata");
+        if (parseResult.IsFailure)
+        {
+            return Result.Fail(parseResult);
+        }
+        var details = parseResult.Value;
+
+        var versions = new List<RemotePackageVersion>();
+        foreach (var version in details.Versions ?? [])
+        {
+            versions.Add(new RemotePackageVersion(
+                version.Version,
+                version.Author ?? string.Empty,
+                version.Date,
+                version.Tombstoned,
+                version.ContentHash ?? string.Empty,
+                version.Summary ?? string.Empty));
+        }
+
+        var aliases = new List<RemotePackageAlias>();
+        foreach (var alias in details.Aliases ?? [])
+        {
+            aliases.Add(new RemotePackageAlias(alias.Alias ?? string.Empty, alias.Version));
+        }
+
+        return new RemotePackageDetails(
+            details.Name ?? packageName,
+            details.CreatedAt,
+            versions.AsReadOnly(),
+            aliases.AsReadOnly());
+    }
+
+    public async Task<Result<RemotePublishReceipt>> PublishVersionAsync(string packageName, byte[] zipData, string? summary = null)
+    {
+        using var content = new MultipartFormDataContent();
+
+        var fileContent = new ByteArrayContent(zipData);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+        content.Add(fileContent, "file", $"{packageName}.zip");
+
+        if (!string.IsNullOrEmpty(summary))
+        {
+            content.Add(new StringContent(summary, Encoding.UTF8), "summary");
+        }
+
+        var sendResult = await SendAsync(HttpMethod.Post, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/", content);
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to publish package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (!response.IsSuccessStatusCode)
+        {
+            // The error body carries the server's validation message (e.g. a bad
+            // bundle); it never contains credential material.
+            var errorBody = await response.Content.ReadAsStringAsync();
+            return Result.Fail($"Failed to publish package '{packageName}' (HTTP {(int)response.StatusCode}): {errorBody}");
+        }
+
+        var parseResult = await ParseJsonAsync<PublishReceiptDto>(response, "publish receipt");
+        if (parseResult.IsFailure)
+        {
+            return Result.Fail(parseResult);
+        }
+        var receipt = parseResult.Value;
+
+        return new RemotePublishReceipt(
+            receipt.Package ?? packageName,
+            receipt.Version,
+            receipt.Author ?? string.Empty,
+            receipt.ContentHash ?? string.Empty);
+    }
+
+    public async Task<Result<byte[]>> DownloadVersionAsync(string packageName, int version)
+    {
+        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/download/");
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to download version {version} of package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.Gone)
+        {
+            return Result.Fail($"Version {version} of package '{packageName}' has been tombstoned and can no longer be downloaded.");
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return Result.Fail($"Version {version} of package '{packageName}' was not found on the workshop.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to download version {version} of package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        var data = await response.Content.ReadAsByteArrayAsync();
+        return data;
+    }
+
+    public async Task<Result<byte[]>> DownloadLatestAsync(string packageName)
+    {
+        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/latest/");
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to download the latest version of package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return Result.Fail($"Package '{packageName}' has no live version to download. It may not exist on the workshop, or every version may have been tombstoned.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to download the latest version of package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        var data = await response.Content.ReadAsByteArrayAsync();
+        return data;
+    }
+
+    public async Task<Result> SetAliasAsync(string packageName, string alias, int version)
+    {
+        var body = JsonSerializer.Serialize(new AliasVersionBodyDto(version));
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        var sendResult = await SendAsync(HttpMethod.Put, $"api/packages/{Uri.EscapeDataString(packageName)}/aliases/{Uri.EscapeDataString(alias)}/", content);
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to set alias '{alias}' on package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to set alias '{alias}' to version {version} of package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> RemoveAliasAsync(string packageName, string alias)
+    {
+        var sendResult = await SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/aliases/{Uri.EscapeDataString(alias)}/");
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to remove alias '{alias}' from package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return Result.Fail($"Alias '{alias}' was not found on package '{packageName}'.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to remove alias '{alias}' from package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result<string>> GetVersionHistoryAsync(string packageName, int version)
+    {
+        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/history/");
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to get the history of package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to get the history of package '{packageName}' as of version {version} (HTTP {(int)response.StatusCode})");
+        }
+
+        var history = await response.Content.ReadAsStringAsync();
+        return history;
+    }
+
+    // Builds and sends one authenticated request. Fails without sending when no
+    // connection is stored or the stored URL is unusable, and maps 401 to a
+    // single actionable message here so no call site can leak the key.
+    private async Task<Result<HttpResponseMessage>> SendAsync(HttpMethod method, string relativePath, HttpContent? content = null)
+    {
+        var connectionResult = await _credentialService.GetWorkshopConnectionAsync();
+        if (connectionResult.IsFailure)
+        {
+            return Result.Fail("Failed to read the Workshop connection from the credential store")
+                .WithErrors(connectionResult);
+        }
+        var connection = connectionResult.Value;
+
+        var baseUriResult = ValidateWorkshopUrl(connection.WorkshopUrl);
+        if (baseUriResult.IsFailure)
+        {
+            return Result.Fail(baseUriResult);
+        }
+        var baseUri = baseUriResult.Value;
+
+        var request = new HttpRequestMessage(method, new Uri(baseUri, relativePath));
+        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, connection.ApplicationKey);
+        if (content is not null)
+        {
             request.Content = content;
-            if (!string.IsNullOrEmpty(csrfToken))
-            {
-                request.Headers.Add("X-CSRFToken", csrfToken);
-            }
-
-            var response = await _httpClient!.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorBody = await response.Content.ReadAsStringAsync();
-                return Result.Fail(
-                    $"Failed to upload package (HTTP {(int)response.StatusCode}): {errorBody}");
-            }
-
-            return Result.Ok();
-        }
-        catch (HttpRequestException exception)
-        {
-            return Result.Fail($"Network error uploading package: {exception.Message}");
-        }
-    }
-
-    private async Task<Result> EnsureLoggedInAsync()
-    {
-        if (_httpClient is not null)
-        {
-            return Result.Ok();
-        }
-
-        var baseUrl = PackageApiCredentials.BaseUrl;
-        var username = PackageApiCredentials.Username;
-        var password = PackageApiCredentials.Password;
-
-        if (string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-        {
-            return Result.Fail(
-                "Package API credentials are not configured. " +
-                "Add a PackageApiCredentials.private.cs file with the BaseUrl, Username, and Password values.");
-        }
-
-        if (!baseUrl.EndsWith('/'))
-        {
-            baseUrl += '/';
         }
 
         try
         {
-            _cookieContainer = new CookieContainer();
-            var handler = new HttpClientHandler
+            var response = await _httpClient.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                CookieContainer = _cookieContainer,
-                UseCookies = true
-            };
-
-            var httpClient = new HttpClient(handler)
-            {
-                BaseAddress = new Uri(baseUrl)
-            };
-
-            // Set Basic Auth on all requests, matching the Django API's authentication
-            var basicAuthValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Basic", basicAuthValue);
-
-            // GET the login page to obtain the CSRF token
-            var loginPageResponse = await httpClient.GetAsync("admin/login/");
-            loginPageResponse.EnsureSuccessStatusCode();
-
-            var csrfToken = GetCsrfTokenFromContainer(baseUrl);
-
-            // POST credentials with the CSRF token
-            var loginContent = new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["username"] = username,
-                ["password"] = password,
-                ["csrfmiddlewaretoken"] = csrfToken ?? "",
-                ["next"] = "/admin/"
-            });
-
-            var loginResponse = await httpClient.PostAsync("admin/login/", loginContent);
-            var loginBody = await loginResponse.Content.ReadAsStringAsync();
-
-            if (loginBody.Contains("Log in"))
-            {
-                return Result.Fail("Package API login failed. Check credentials in PackageApiCredentials.private.cs.");
+                response.Dispose();
+                return Result.Fail(
+                    "The workshop rejected the stored Application Key (HTTP 401). " +
+                    "The key may be invalid, revoked, or no longer linked to the workshop. " +
+                    "Update the Workshop connection on the Settings page.");
             }
 
-            _httpClient = httpClient;
-            return Result.Ok();
+            return response;
         }
         catch (HttpRequestException exception)
         {
-            _cookieContainer = null;
-            return Result.Fail($"Failed to connect to package API: {exception.Message}");
+            return Result.Fail("A network error occurred while contacting the workshop")
+                .WithException(exception);
         }
-    }
-
-    private string? GetCsrfToken()
-    {
-        if (_cookieContainer is null || _httpClient?.BaseAddress is null)
+        catch (TaskCanceledException exception)
         {
-            return null;
+            return Result.Fail("The workshop request timed out")
+                .WithException(exception);
         }
-
-        return GetCsrfTokenFromContainer(_httpClient.BaseAddress.ToString());
     }
 
-    private string? GetCsrfTokenFromContainer(string baseUrl)
+    // The Application Key is a bearer credential, so sending it over plain HTTP
+    // would fully compromise it to any network observer. Loopback hosts are
+    // exempt to support local development servers.
+    private static Result<Uri> ValidateWorkshopUrl(string workshopUrl)
     {
-        if (_cookieContainer is null)
+        var urlText = workshopUrl.Trim();
+        if (!urlText.EndsWith('/'))
         {
-            return null;
+            // Ensure the trailing path segment is kept when combining with
+            // relative endpoint paths.
+            urlText += '/';
         }
 
-        var cookies = _cookieContainer.GetCookies(new Uri(baseUrl));
-        var csrfCookie = cookies["csrftoken"];
-        return csrfCookie?.Value;
+        if (!Uri.TryCreate(urlText, UriKind.Absolute, out var uri))
+        {
+            return Result.Fail("The stored Workshop URL is not a valid absolute URL. Update the Workshop connection on the Settings page.");
+        }
+
+        if (uri.Scheme == Uri.UriSchemeHttps)
+        {
+            return uri;
+        }
+
+        if (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)
+        {
+            return uri;
+        }
+
+        return Result.Fail("The Workshop URL must use HTTPS. Plain HTTP would expose the Application Key to network observers and is only permitted for localhost development servers.");
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static async Task<Result<T>> ParseJsonAsync<T>(HttpResponseMessage response, string payloadDescription) where T : notnull
     {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-    };
+        try
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            var parsed = JsonSerializer.Deserialize<T>(json);
+            if (parsed is null)
+            {
+                return Result.Fail($"Failed to parse the workshop {payloadDescription} response");
+            }
 
-    private record ApiFileEntry(
-        [property: JsonPropertyName("id")] int FileId,
-        [property: JsonPropertyName("file")] string File,
-        [property: JsonPropertyName("file_size")] long FileSize,
-        [property: JsonPropertyName("uploaded_at")] DateTime UploadedAt);
+            return parsed;
+        }
+        catch (JsonException exception)
+        {
+            return Result<T>.Fail($"Failed to parse the workshop {payloadDescription} response")
+                .WithException(exception);
+        }
+    }
+
+    private static RemotePackageSummary ToPackageSummary(PackageSummaryDto entry)
+    {
+        RemoteVersionSummary? latestVersion = null;
+        if (entry.LatestVersion is not null)
+        {
+            latestVersion = new RemoteVersionSummary(
+                entry.LatestVersion.Version,
+                entry.LatestVersion.Author ?? string.Empty,
+                entry.LatestVersion.Date);
+        }
+
+        return new RemotePackageSummary(
+            entry.Name ?? string.Empty,
+            entry.CreatedAt,
+            latestVersion,
+            entry.VersionsCount);
+    }
+
+    private record VersionSummaryDto(
+        [property: JsonPropertyName("version")] int Version,
+        [property: JsonPropertyName("author")] string? Author,
+        [property: JsonPropertyName("date")] DateTime Date);
+
+    private record PackageSummaryDto(
+        [property: JsonPropertyName("name")] string? Name,
+        [property: JsonPropertyName("created_at")] DateTime CreatedAt,
+        [property: JsonPropertyName("latest_version")] VersionSummaryDto? LatestVersion,
+        [property: JsonPropertyName("versions_count")] int VersionsCount);
+
+    private record VersionDetailDto(
+        [property: JsonPropertyName("version")] int Version,
+        [property: JsonPropertyName("author")] string? Author,
+        [property: JsonPropertyName("date")] DateTime Date,
+        [property: JsonPropertyName("tombstoned")] bool Tombstoned,
+        [property: JsonPropertyName("content_hash")] string? ContentHash,
+        [property: JsonPropertyName("summary")] string? Summary);
+
+    private record AliasDto(
+        [property: JsonPropertyName("alias")] string? Alias,
+        [property: JsonPropertyName("version")] int Version);
+
+    private record PackageDetailsDto(
+        [property: JsonPropertyName("name")] string? Name,
+        [property: JsonPropertyName("created_at")] DateTime CreatedAt,
+        [property: JsonPropertyName("versions")] List<VersionDetailDto>? Versions,
+        [property: JsonPropertyName("aliases")] List<AliasDto>? Aliases);
+
+    private record PublishReceiptDto(
+        [property: JsonPropertyName("package")] string? Package,
+        [property: JsonPropertyName("version")] int Version,
+        [property: JsonPropertyName("author")] string? Author,
+        [property: JsonPropertyName("download_url")] string? DownloadUrl,
+        [property: JsonPropertyName("content_hash")] string? ContentHash);
+
+    private record AliasVersionBodyDto(
+        [property: JsonPropertyName("version")] int Version);
 
     public void Dispose()
     {
-        _httpClient?.Dispose();
-        _httpClient = null;
-        _cookieContainer = null;
+        _httpClient.Dispose();
     }
 }

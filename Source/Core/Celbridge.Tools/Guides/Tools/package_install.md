@@ -1,6 +1,6 @@
 # package_install
 
-Downloads a package from the remote registry and extracts it into `packages/{packageName}/`. The package must already exist on the registry — use `package_list` to discover what is published. By default surfaces a confirmation dialog before installing; pass `confirmWithUser: false` only when the user has explicitly asked for unattended operation.
+Downloads the latest version of a package from the workshop and extracts it into `packages/{packageName}/`. The package must already exist on the workshop — use `package_list` to discover what is published. By default surfaces a confirmation dialog before installing; pass `confirmWithUser: false` only when the user has explicitly asked for unattended operation.
 
 If a package folder of the same name already exists, the install fails (the underlying unarchive runs with `overwrite: false`). Remove or rename the existing folder first if you intend to replace it.
 
@@ -8,7 +8,7 @@ If a package folder of the same name already exists, the install fails (the unde
 
 ### packageName
 
-The name as published on the registry (lowercase alphanumeric and hyphens, 1-214 characters). The corresponding registry file is `{packageName}.zip`.
+The name as published on the workshop (lowercase alphanumeric with single hyphen separators, 1-64 characters).
 
 ### confirmWithUser
 
@@ -26,3 +26,4 @@ A JSON object:
 
 - The downloaded zip is staged briefly under `temp:` and removed after extraction. A failure mid-extract still cleans up the temp file.
 - An existing `packages/{packageName}` folder causes the call to fail — decide whether to remove it explicitly rather than relying on a flag.
+- A package whose versions have all been tombstoned has no live version and cannot be installed.

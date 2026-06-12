@@ -28,9 +28,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.my-editor"
-            name = "My Editor"
-            version = "1.0.0"
+            name = "test.my-editor"
+            title = "My Editor"
 
             [contributes]
             document_editors = ["editor.document.toml"]
@@ -53,7 +52,7 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
 
         var package = result.Value;
-        package.Info.Name.Should().Be("My Editor");
+        package.Info.Title.Should().Be("My Editor");
         package.Info.PackageFolder.Should().Be(_tempFolder);
         package.Info.HostName.Should().Be("pkg-test-my-editor.celbridge");
         package.DocumentEditors.Should().ContainSingle();
@@ -68,13 +67,50 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_NameAuthorAndTitle_PopulateInfo()
+    {
+        WritePackageToml("""
+            [package]
+            name = "my-widget"
+            author = "Acme"
+            title = "My Widget"
+
+            [contributes]
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.Name.Should().Be("my-widget");
+        result.Value.Info.Author.Should().Be("Acme");
+        result.Value.Info.Title.Should().Be("My Widget");
+    }
+
+    [Test]
+    public void LoadPackage_AuthorAndTitleOmitted_DefaultToEmpty()
+    {
+        WritePackageToml("""
+            [package]
+            name = "my-widget"
+
+            [contributes]
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.Name.Should().Be("my-widget");
+        result.Value.Info.Author.Should().BeEmpty();
+        result.Value.Info.Title.Should().BeEmpty();
+    }
+
+    [Test]
     public void LoadPackage_ValidCodeDocument_WithPreview_ReturnsContribution()
     {
         WritePackageToml("""
             [package]
-            id = "test.code-preview"
-            name = "Code Preview"
-            version = "1.0.0"
+            name = "test.code-preview"
+            title = "Code Preview"
 
             [contributes]
             document_editors = ["cpv.document.toml"]
@@ -115,9 +151,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.my-editor"
-            name = "My Editor"
-            version = "1.0.0"
+            name = "test.my-editor"
+            title = "My Editor"
 
             [contributes]
             document_editors = ["editor.document.toml"]
@@ -144,12 +179,11 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_MissingPackageId_ReturnsFailure()
+    public void LoadPackage_MissingPackageName_ReturnsFailure()
     {
         WritePackageToml("""
             [package]
-            name = "No Id"
-            version = "1.0.0"
+            title = "No Name"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -168,13 +202,34 @@ public class ManifestTests
     [TestCase("trailing-dot.", Description = "trailing dot rejected")]
     [TestCase("double..dot", Description = "consecutive dots rejected")]
     [TestCase(".", Description = "bare dot rejected")]
-    public void LoadPackage_InvalidIdFormat_ReturnsFailure(string invalidId)
+    [TestCase("-leading-hyphen", Description = "leading hyphen rejected")]
+    [TestCase("trailing-hyphen-", Description = "trailing hyphen rejected")]
+    [TestCase("double--hyphen", Description = "consecutive hyphens rejected")]
+    public void LoadPackage_InvalidNameFormat_ReturnsFailure(string invalidName)
     {
         WritePackageToml($"""
             [package]
-            id = "{invalidId}"
-            name = "Test"
-            version = "1.0.0"
+            name = "{invalidName}"
+            title = "Test"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("invalid");
+    }
+
+    [Test]
+    public void LoadPackage_NameOverMaxLength_ReturnsFailure()
+    {
+        var overLongName = new string('a', PackageConstants.MaxNameLength + 1);
+        WritePackageToml($"""
+            [package]
+            name = "{overLongName}"
+            title = "Test"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -192,16 +247,15 @@ public class ManifestTests
     [TestCase("a.b.c.d", Description = "deeply nested")]
     [TestCase("digits123.allowed", Description = "digits in namespace")]
     [TestCase("hyphens-are-fine.here", Description = "hyphens in namespace")]
-    [TestCase("flat-name", Description = "flat global namespace id")]
-    [TestCase("simple", Description = "single-word flat id")]
+    [TestCase("flat-name", Description = "flat global namespace name")]
+    [TestCase("simple", Description = "single-word flat name")]
     [TestCase("a", Description = "single character")]
-    public void LoadPackage_ValidIdFormats_Accepted(string validId)
+    public void LoadPackage_ValidNameFormats_Accepted(string validName)
     {
         WritePackageToml($"""
             [package]
-            id = "{validId}"
-            name = "Test"
-            version = "1.0.0"
+            name = "{validName}"
+            title = "Test"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -241,9 +295,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.empty"
-            name = "Empty"
-            version = "1.0.0"
+            name = "test.empty"
+            title = "Empty"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -268,9 +321,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.no-file-type-display"
-            name = "NoFileTypeDisplay"
-            version = "1.0.0"
+            name = "test.no-file-type-display"
+            title = "NoFileTypeDisplay"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -319,9 +371,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.basic"
-            name = "Basic"
-            version = "1.0.0"
+            name = "test.basic"
+            title = "Basic"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -349,9 +400,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.priority"
-            name = "Priority"
-            version = "1.0.0"
+            name = "test.priority"
+            title = "Priority"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -380,9 +430,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.flagged"
-            name = "Flagged"
-            version = "1.0.0"
+            name = "test.flagged"
+            title = "Flagged"
             feature_flag = "my-feature"
 
             [contributes]
@@ -412,9 +461,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.noflag"
-            name = "NoFlag"
-            version = "1.0.0"
+            name = "test.noflag"
+            title = "NoFlag"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -443,9 +491,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.templated"
-            name = "Templated"
-            version = "1.0.0"
+            name = "test.templated"
+            title = "Templated"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -495,9 +542,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.notemplates"
-            name = "NoTemplates"
-            version = "1.0.0"
+            name = "test.notemplates"
+            title = "NoTemplates"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -525,9 +571,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.full-editor"
-            name = "Full Editor"
-            version = "2.0.0"
+            name = "test.full-editor"
+            title = "Full Editor"
             feature_flag = "full-pkg"
 
             [contributes]
@@ -558,7 +603,7 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
 
         var package = result.Value;
-        package.Info.Name.Should().Be("Full Editor");
+        package.Info.Title.Should().Be("Full Editor");
         package.Info.FeatureFlag.Should().Be("full-pkg");
 
         var contribution = package.DocumentEditors[0];
@@ -575,9 +620,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.multi"
-            name = "Multi"
-            version = "1.0.0"
+            name = "test.multi"
+            title = "Multi"
 
             [contributes]
             document_editors = ["a.document.toml", "b.document.toml"]
@@ -620,9 +664,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.code-editor"
-            name = "CodeEditor"
-            version = "1.0.0"
+            name = "test.code-editor"
+            title = "CodeEditor"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -662,9 +705,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.missing-doc"
-            name = "MissingDoc"
-            version = "1.0.0"
+            name = "test.missing-doc"
+            title = "MissingDoc"
 
             [contributes]
             document_editors = ["nonexistent.document.toml"]
@@ -681,9 +723,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.shared"
-            name = "Shared"
-            version = "1.0.0"
+            name = "test.shared"
+            title = "Shared"
             feature_flag = "shared-flag"
 
             [contributes]
@@ -718,10 +759,10 @@ public class ManifestTests
         result.Value.DocumentEditors.Should().HaveCount(2);
 
         // Both contributions share the same PackageInfo
-        result.Value.Info.Name.Should().Be("Shared");
+        result.Value.Info.Title.Should().Be("Shared");
         result.Value.Info.FeatureFlag.Should().Be("shared-flag");
-        result.Value.DocumentEditors[0].Package.Name.Should().Be("Shared");
-        result.Value.DocumentEditors[1].Package.Name.Should().Be("Shared");
+        result.Value.DocumentEditors[0].Package.Title.Should().Be("Shared");
+        result.Value.DocumentEditors[1].Package.Title.Should().Be("Shared");
     }
 
     [Test]
@@ -729,9 +770,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.no-entry"
-            name = "NoEntry"
-            version = "1.0.0"
+            name = "test.no-entry"
+            title = "NoEntry"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -757,16 +797,15 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_WithModSection_ParsesRequiresTools()
+    public void LoadPackage_WithPermissionsSection_ParsesPermittedTools()
     {
         WritePackageToml("""
             [package]
-            id = "test.mod-section"
-            name = "ModSection"
-            version = "1.0.0"
+            name = "test.permissions-section"
+            title = "PermissionsSection"
 
-            [mod]
-            requires_tools = ["app.*", "document.open"]
+            [permissions]
+            tools = ["app.*", "document.open"]
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -774,7 +813,7 @@ public class ManifestTests
 
         WriteDocumentToml("doc.document.toml", """
             [document]
-            id = "mod-section-doc"
+            id = "permissions-section-doc"
             type = "custom"
             display_name = "TestEditor"
 
@@ -787,7 +826,7 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         var info = result.Value.Info;
-        info.RequiresTools.Should().Equal("app.*", "document.open");
+        info.PermittedTools.Should().Equal("app.*", "document.open");
     }
 
     [Test]
@@ -795,9 +834,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.secrets"
-            name = "WithSecrets"
-            version = "1.0.0"
+            name = "test.secrets"
+            title = "WithSecrets"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -836,9 +874,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.no-secrets"
-            name = "NoSecrets"
-            version = "1.0.0"
+            name = "test.no-secrets"
+            title = "NoSecrets"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -862,13 +899,12 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_WithoutModSection_DefaultsToEmptyRequirements()
+    public void LoadPackage_WithoutPermissionsSection_DefaultsToEmpty()
     {
         WritePackageToml("""
             [package]
-            id = "test.no-mod"
-            name = "NoMod"
-            version = "1.0.0"
+            name = "test.no-permissions"
+            title = "NoPermissions"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -876,7 +912,7 @@ public class ManifestTests
 
         WriteDocumentToml("doc.document.toml", """
             [document]
-            id = "no-mod-doc"
+            id = "no-permissions-doc"
             type = "custom"
             display_name = "TestEditor"
 
@@ -888,20 +924,19 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Info.RequiresTools.Should().BeEmpty();
+        result.Value.Info.PermittedTools.Should().BeEmpty();
     }
 
     [Test]
-    public void LoadPackage_ModSectionWithNonStringEntries_SkipsInvalid()
+    public void LoadPackage_PermissionsSectionWithNonStringEntries_SkipsInvalid()
     {
         WritePackageToml("""
             [package]
-            id = "test.mixed"
-            name = "Mixed"
-            version = "1.0.0"
+            name = "test.mixed"
+            title = "Mixed"
 
-            [mod]
-            requires_tools = ["app.*", 42, "", "file.read"]
+            [permissions]
+            tools = ["app.*", 42, "", "file.read"]
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -921,7 +956,7 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Info.RequiresTools.Should().Equal("app.*", "file.read");
+        result.Value.Info.PermittedTools.Should().Equal("app.*", "file.read");
     }
 
     [Test]
@@ -929,9 +964,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.code"
-            name = "Code"
-            version = "1.0.0"
+            name = "test.code"
+            title = "Code"
 
             [contributes]
             document_editors = ["code.document.toml"]
@@ -967,9 +1001,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.missing-ext"
-            name = "Missing"
-            version = "1.0.0"
+            name = "test.missing-ext"
+            title = "Missing"
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -999,9 +1032,8 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            id = "test.conflict"
-            name = "Conflict"
-            version = "1.0.0"
+            name = "test.conflict"
+            title = "Conflict"
 
             [contributes]
             document_editors = ["doc.document.toml"]

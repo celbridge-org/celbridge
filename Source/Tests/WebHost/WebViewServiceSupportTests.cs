@@ -56,7 +56,7 @@ public class WebViewServiceSupportTests
         {
             Info = new PackageInfo
             {
-                Id = "celbridge.spreadsheet",
+                Name = "celbridge.spreadsheet",
                 DevToolsBlocked = true
             }
         };
@@ -95,7 +95,7 @@ public class WebViewServiceSupportTests
         {
             Info = new PackageInfo
             {
-                Id = "celbridge.notes",
+                Name = "celbridge.notes",
                 DevToolsBlocked = false
             }
         };

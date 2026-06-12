@@ -11,10 +11,6 @@ namespace Celbridge.Packages;
 /// </summary>
 public class PackageRegistry
 {
-    private const string PackagesFolderName = "packages";
-    private const string ManifestFileName = "package.toml";
-    private const string ReservedIdPrefix = "celbridge.";
-
     // Editors like the code editor can handle 150+ extensions; listing them all
     // makes the discovery log unreadable. Above this count we elide to a count.
     private const int MaxInlineExtensionsInLog = 20;
@@ -96,22 +92,22 @@ public class PackageRegistry
 
     public Package? GetContributingPackage(DocumentEditorId editorId)
     {
-        // Custom contribution editor IDs are formatted as "{packageId}.{contributionId}"
-        // by CustomDocumentViewFactory. Package IDs themselves contain dots
-        // (e.g. "celbridge.notes"), so match by full-id prefix rather than
+        // Custom contribution editor IDs are formatted as "{packageName}.{contributionId}"
+        // by CustomDocumentViewFactory. Bundled package names themselves contain
+        // dots (e.g. "celbridge.notes"), so match by full-name prefix rather than
         // splitting on the first separator.
         var editorIdString = editorId.ToString();
         foreach (var package in GetAllPackages())
         {
-            var packageId = package.Info.Id;
-            if (packageId.Length == 0)
+            var packageName = package.Info.Name;
+            if (packageName.Length == 0)
             {
                 continue;
             }
 
-            if (editorIdString.Length > packageId.Length
-                && editorIdString.StartsWith(packageId, StringComparison.Ordinal)
-                && editorIdString[packageId.Length] == '.')
+            if (editorIdString.Length > packageName.Length
+                && editorIdString.StartsWith(packageName, StringComparison.Ordinal)
+                && editorIdString[packageName.Length] == '.')
             {
                 return package;
             }
@@ -223,7 +219,7 @@ public class PackageRegistry
                 if (sidecarService.IsSidecarFileName(fileType.FileExtension))
                 {
                     return Result.Fail(
-                        $"Package '{package.Info.Id}' declares document-file-type extension '{fileType.FileExtension}'. "
+                        $"Package '{package.Info.Name}' declares document-file-type extension '{fileType.FileExtension}'. "
                         + $"The .cel namespace is reserved for project metadata sidecars.");
                 }
             }
@@ -256,7 +252,7 @@ public class PackageRegistry
 
         foreach (var descriptor in descriptors)
         {
-            var manifestPath = Path.Combine(descriptor.Folder, ManifestFileName);
+            var manifestPath = Path.Combine(descriptor.Folder, PackageConstants.ManifestFileName);
             if (!_bundledReader.Exists(manifestPath))
             {
                 // A bundled package with no manifest is a build-time error.
@@ -266,8 +262,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
-                    PackageId = null,
-                    Reason = PackageLoadFailureReason.InvalidManifest
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = $"The package manifest file is missing: {manifestPath}"
                 });
                 continue;
             }
@@ -285,8 +282,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
-                    PackageId = null,
-                    Reason = PackageLoadFailureReason.InvalidManifest
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = loadResult.FirstErrorMessage
                 });
                 continue;
             }
@@ -300,8 +298,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.ReservedExtension
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.ReservedExtension,
+                    Detail = reservedExtensionCheck.FirstErrorMessage
                 });
                 continue;
             }
@@ -309,23 +308,23 @@ public class PackageRegistry
             candidates.Add(package);
         }
 
-        // Any group of bundled packages that share an id is a first-party build bug.
+        // Any group of bundled packages that share a name is a first-party build bug.
         // Skip every colliding package so the conflict is visible rather than silently
         // picking a winner, and log at Error level so CI and developers notice.
-        foreach (var group in candidates.GroupBy(p => p.Info.Id, StringComparer.Ordinal))
+        foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
             if (members.Count > 1)
             {
                 _logger.LogError(
-                    $"Multiple bundled packages declare id '{group.Key}'. All {members.Count} instances skipped.");
+                    $"Multiple bundled packages declare name '{group.Key}'. All {members.Count} instances skipped.");
                 foreach (var member in members)
                 {
                     failures.Add(new PackageLoadFailure
                     {
                         Folder = member.Info.PackageFolder,
-                        PackageId = group.Key,
-                        Reason = PackageLoadFailureReason.DuplicateId
+                        PackageName = group.Key,
+                        Reason = PackageLoadFailureReason.DuplicateName
                     });
                 }
                 continue;
@@ -346,7 +345,7 @@ public class PackageRegistry
             return failures;
         }
 
-        var packagesResource = new ResourceKey(PackagesFolderName);
+        var packagesResource = new ResourceKey(PackageConstants.DefaultPackagesFolder);
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var packagesInfoResult = await resourceFileSystem.GetInfoAsync(packagesResource);
@@ -373,7 +372,7 @@ public class PackageRegistry
                 continue;
             }
 
-            var manifestResource = item.Resource.Combine(ManifestFileName);
+            var manifestResource = item.Resource.Combine(PackageConstants.ManifestFileName);
             var manifestInfoResult = await resourceFileSystem.GetInfoAsync(manifestResource);
             if (manifestInfoResult.IsFailure
                 || manifestInfoResult.Value.Kind != StorageItemKind.File)
@@ -403,8 +402,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = null,
-                    Reason = PackageLoadFailureReason.InvalidManifest
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = loadResult.FirstErrorMessage
                 });
                 continue;
             }
@@ -418,56 +418,57 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.ReservedExtension
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.ReservedExtension,
+                    Detail = reservedExtensionCheck.FirstErrorMessage
                 });
                 continue;
             }
 
-            // The "celbridge." id namespace is reserved for first-party packages
+            // The "celbridge." name namespace is reserved for first-party packages
             // shipped inside Celbridge module DLLs. Project packages that try to
-            // claim a reserved id are rejected so they cannot impersonate a
+            // claim a reserved name are rejected so they cannot impersonate a
             // bundled package in logs, diagnostics, or resource lookups.
-            if (package.Info.Id.StartsWith(ReservedIdPrefix, StringComparison.Ordinal))
+            if (package.Info.Name.StartsWith(PackageConstants.ReservedNamePrefix, StringComparison.Ordinal))
             {
                 _logger.LogWarning(
-                    $"Skipping project package with reserved '{ReservedIdPrefix}' id prefix: {package.Info.Id}");
+                    $"Skipping project package with reserved '{PackageConstants.ReservedNamePrefix}' name prefix: {package.Info.Name}");
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.ReservedIdPrefix
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.ReservedNamePrefix
                 });
                 continue;
             }
 
-            // Any other dotted id claims a namespace whose ownership a registry
+            // Any other dotted name claims a namespace whose ownership a registry
             // would need to validate. Until such a registry exists, project
-            // packages must use flat global-namespace ids. Allowing arbitrary
-            // dotted ids now would let them collide with future registered
+            // packages must use flat global-namespace names. Allowing arbitrary
+            // dotted names now would let them collide with future registered
             // namespaces once the registry is introduced.
-            if (package.Info.Id.Contains('.'))
+            if (package.Info.Name.Contains('.'))
             {
                 _logger.LogWarning(
-                    $"Skipping project package '{package.Info.Id}' with dotted id: no namespace registry is available to validate the prefix.");
+                    $"Skipping project package '{package.Info.Name}' with dotted name: no namespace registry is available to validate the prefix.");
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
+                    PackageName = package.Info.Name,
                     Reason = PackageLoadFailureReason.UnregisteredNamespace
                 });
                 continue;
             }
 
-            if (_bundledPackages.Any(b => b.Info.Id.Equals(package.Info.Id, StringComparison.Ordinal)))
+            if (_bundledPackages.Any(b => b.Info.Name.Equals(package.Info.Name, StringComparison.Ordinal)))
             {
                 _logger.LogWarning(
-                    $"Skipping project package '{package.Info.Id}' because its id conflicts with a bundled package.");
+                    $"Skipping project package '{package.Info.Name}' because its name conflicts with a bundled package.");
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.DuplicateId
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.DuplicateName
                 });
                 continue;
             }
@@ -475,24 +476,24 @@ public class PackageRegistry
             candidates.Add(package);
         }
 
-        // When two project packages share an id we cannot tell the legitimate
+        // When two project packages share a name we cannot tell the legitimate
         // one from an impostor, so skip every colliding package rather than pick
         // a winner based on filesystem ordering. The user sees a missing editor,
         // investigates, and resolves the conflict.
-        foreach (var group in candidates.GroupBy(p => p.Info.Id, StringComparer.Ordinal))
+        foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
             if (members.Count > 1)
             {
                 _logger.LogWarning(
-                    $"Multiple project packages declare id '{group.Key}'. All {members.Count} instances skipped to avoid ambiguity.");
+                    $"Multiple project packages declare name '{group.Key}'. All {members.Count} instances skipped to avoid ambiguity.");
                 foreach (var member in members)
                 {
                     failures.Add(new PackageLoadFailure
                     {
                         Folder = member.Info.PackageFolder,
-                        PackageId = group.Key,
-                        Reason = PackageLoadFailureReason.DuplicateId
+                        PackageName = group.Key,
+                        Reason = PackageLoadFailureReason.DuplicateName
                     });
                 }
                 continue;
@@ -529,7 +530,7 @@ public class PackageRegistry
         if (editorCount == 0)
         {
             _logger.LogInformation(
-                $"Discovered {source} package '{package.Info.Id}' (no document editors)");
+                $"Discovered {source} package '{package.Info.Name}' (no document editors)");
             return;
         }
 
@@ -553,6 +554,6 @@ public class PackageRegistry
         var editorList = string.Join("; ", editorDescriptions);
 
         _logger.LogInformation(
-            $"Discovered {source} package '{package.Info.Id}' ({editorCount} {editorLabel}: {editorList})");
+            $"Discovered {source} package '{package.Info.Name}' ({editorCount} {editorLabel}: {editorList})");
     }
 }

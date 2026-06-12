@@ -1,7 +1,6 @@
 [package]
-id = "celbridge.notes"
-name = "Extension_Notes_Name"
-version = "1.0.0"
+name = "celbridge.notes"
+title = "Extension_Notes_Name"
 feature_flag = "note-editor"
 
 [contributes]

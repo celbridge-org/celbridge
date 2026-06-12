@@ -1,18 +1,18 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// A package entry in the package_list result.
+/// A package entry in the package_list result. LatestVersion and PublishedAt
+/// are null when the package has no live versions.
 /// </summary>
-public record class PackageListEntry(string PackageName, long Size, DateTime UploadedAt);
+public record class PackageListEntry(string PackageName, int? LatestVersion, DateTime? PublishedAt, int VersionsCount);
 
 public partial class PackageTools
 {
-    /// <summary>List all packages available in the remote package registry.</summary>
+    /// <summary>List all packages available in the connected workshop.</summary>
     [McpServerTool(Name = "package_list", ReadOnly = true)]
     [ToolAlias("package.list")]
     [RelatedGuides("packages_overview")]
@@ -27,16 +27,14 @@ public partial class PackageTools
         }
 
         var packages = new List<PackageListEntry>();
-        foreach (var entry in listResult.Value)
+        foreach (var package in listResult.Value)
         {
-            if (entry.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-            {
-                var packageName = Path.GetFileNameWithoutExtension(entry.FileName);
-                if (IsValidPackageName(packageName))
-                {
-                    packages.Add(new PackageListEntry(packageName, entry.FileSize, entry.UploadedAt));
-                }
-            }
+            var entry = new PackageListEntry(
+                package.Name,
+                package.LatestVersion?.Version,
+                package.LatestVersion?.Date,
+                package.VersionsCount);
+            packages.Add(entry);
         }
 
         var json = JsonSerializer.Serialize(packages, JsonOptions);

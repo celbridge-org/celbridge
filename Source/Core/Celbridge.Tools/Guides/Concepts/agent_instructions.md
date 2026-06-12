@@ -42,7 +42,7 @@ A single tool method is exposed under three names — the MCP form, the Python f
 | MCP tool name (in `tools/list`) | `<namespace>_<snake_method>` | `file_replace` |
 | Python REPL proxy (`cel.*`) | `cel.<namespace>.<snake_method>(...)` | `cel.file.replace(...)` |
 | JavaScript call site (in a package) | `cel.<namespace>.<camelMethod>(...)` | `cel.file.replace(...)` |
-| `requires_tools` manifest entry | `<namespace>.<snake_method>` | `"file.replace"` |
+| `[permissions] tools` manifest entry | `<namespace>.<snake_method>` | `"file.replace"` |
 
 The dot-form alias used in manifests matches the MCP tool name after swapping the first underscore for a dot. The JavaScript proxy converts the method portion to camelCase at the call site automatically; the manifest does **not**.
 
@@ -69,11 +69,11 @@ Type `help(cel)` to list the namespaces, or `help(cel.file)` to see the methods 
 
 ## JavaScript proxy conventions
 
-Package extensions run inside a WebView hosted by a document editor contribution (declared in `package.toml` under `[contributes].document_editors`). Before writing any JS that calls `cel.*`, declare the tools your package needs in `package.toml` under `[mod].requires_tools`:
+Package extensions run inside a WebView hosted by a document editor contribution (declared in `package.toml` under `[contributes].document_editors`). Before writing any JS that calls `cel.*`, declare the tools your package needs in `package.toml` under `[permissions].tools`:
 
 ```toml
-[mod]
-requires_tools = ["document.*", "file.*", "app.get_state"]
+[permissions]
+tools = ["document.*", "file.*", "app.get_state"]
 ```
 
 The manifest uses the **alias form** — `namespace.snake_case_method`. The JS proxy converts the method portion to camelCase at the call site; the manifest does **not**.
@@ -86,7 +86,7 @@ const tree = await cel.file.getTree("");
 
 - **Arguments are positional and camelCase.** Extra arguments throw `CEL_TOOL_INVALID_ARGS`.
 - **Errors throw `CelToolError`** with `{ code, tool, message }`.
-- **Calling a namespace not covered by `requires_tools`** throws `TypeError: Cannot read properties of undefined`. Fix the manifest, not the call site.
+- **Calling a namespace not covered by `[permissions] tools`** throws `TypeError: Cannot read properties of undefined`. Fix the manifest, not the call site.
 
 ## Domain prep — namespace guides
 

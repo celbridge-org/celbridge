@@ -639,7 +639,7 @@ Do you wish to continue?</value>
     <value>Package Load Error</value>
   </data>
   <data name="ConsolePanel_PackageLoadErrorMessage" xml:space="preserve">
-    <value>One or more packages failed to load. See the log for details.</value>
+    <value>One or more packages failed to load. See the project load report for details.</value>
   </data>
   <data name="ConsolePanel_ProjectCheckFindingsTitle" xml:space="preserve">
     <value>Project Check Findings</value>

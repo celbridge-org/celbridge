@@ -12,19 +12,19 @@ using Path = System.IO.Path;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by package_publish with the published package details.
+/// Result returned by package_publish with the published package details,
+/// including the version number assigned by the workshop.
 /// </summary>
-public record class PackagePublishResult(string PackageName, int Entries, long Size);
+public record class PackagePublishResult(string PackageName, int Version, int Entries, long Size);
 
 public partial class PackageTools
 {
-    private const string PackagesFolderPrefix = "packages/";
-    private const string ManifestFileName = "package.toml";
+    private const string PackagesFolderPrefix = $"{PackageConstants.DefaultPackagesFolder}/";
 
-    /// <summary>Publish packages/{packageName}/ to the remote registry (visible to other users).</summary>
+    /// <summary>Publish packages/{packageName}/ to the workshop as a new package version.</summary>
     [McpServerTool(Name = "package_publish", Destructive = true)]
     [ToolAlias("package.publish")]
-    [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive")]
+    [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive", "document_editor_contributions")]
     [AllowDirectFileSystemAccess]
     public async partial Task<CallToolResult> Publish(string resource, string packageName, bool confirmWithUser = true)
     {
@@ -33,11 +33,9 @@ public partial class PackageTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        if (!IsValidPackageName(packageName))
+        if (!PackageName.IsValid(packageName))
         {
-            return ToolResponse.Error(
-                $"Invalid package name: '{packageName}'. " +
-                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
+            return ToolResponse.Error(InvalidPackageNameError(packageName));
         }
 
         // Validate the resource is inside the packages folder
@@ -77,8 +75,8 @@ public partial class PackageTools
         }
 
         // Validate that the package manifest exists and is valid
-        var manifestPath = Path.Combine(sourcePath, ManifestFileName);
-        var validateResult = await ValidatePackageManifestAsync(fileSystem, manifestPath);
+        var manifestPath = Path.Combine(sourcePath, PackageConstants.ManifestFileName);
+        var validateResult = await ValidatePackageManifestAsync(fileSystem, manifestPath, packageName);
         if (validateResult.IsFailure)
         {
             return ToolResponse.Error(validateResult);
@@ -149,27 +147,27 @@ public partial class PackageTools
         }
 
         var packageApiClient = GetRequiredService<IPackageApiClient>();
-        var fileName = $"{packageName}.zip";
-        var uploadResult = await packageApiClient.UploadPackageAsync(fileName, zipData);
+        var publishResult = await packageApiClient.PublishVersionAsync(packageName, zipData);
 
-        if (uploadResult.IsFailure)
+        if (publishResult.IsFailure)
         {
-            return ToolResponse.Error(uploadResult);
+            return ToolResponse.Error(publishResult);
         }
+        var receipt = publishResult.Value;
 
-        var result = new PackagePublishResult(packageName, entryCount, zipData.Length);
+        var result = new PackagePublishResult(packageName, receipt.Version, entryCount, zipData.Length);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
     }
 
-    private static async Task<Result> ValidatePackageManifestAsync(ILocalFileSystem fileSystem, string manifestPath)
+    private static async Task<Result> ValidatePackageManifestAsync(ILocalFileSystem fileSystem, string manifestPath, string packageName)
     {
         var manifestInfoResult = await fileSystem.GetInfoAsync(manifestPath);
         if (manifestInfoResult.IsFailure
             || manifestInfoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail(
-                $"Package manifest not found. Expected '{ManifestFileName}' in the package folder.");
+                $"Package manifest not found. Expected '{PackageConstants.ManifestFileName}' in the package folder.");
         }
 
         var readResult = await fileSystem.ReadAllTextAsync(manifestPath);
@@ -195,18 +193,20 @@ public partial class PackageTools
             return Result.Fail("Package manifest is missing the required [package] section.");
         }
 
-        if (!packageTable.TryGetValue("id", out var idValue) ||
-            idValue is not string idString ||
-            string.IsNullOrWhiteSpace(idString))
-        {
-            return Result.Fail("Package manifest is missing a required 'id' field in the [package] section.");
-        }
-
         if (!packageTable.TryGetValue("name", out var nameValue) ||
             nameValue is not string nameString ||
             string.IsNullOrWhiteSpace(nameString))
         {
             return Result.Fail("Package manifest is missing a required 'name' field in the [package] section.");
+        }
+
+        // The workshop registers the package under the published name, so a
+        // manifest that declares a different name would install under an
+        // identity that disagrees with its own metadata.
+        if (!string.Equals(nameString, packageName, StringComparison.Ordinal))
+        {
+            return Result.Fail(
+                $"Manifest 'name' value '{nameString}' does not match the package name '{packageName}'.");
         }
 
         return Result.Ok();

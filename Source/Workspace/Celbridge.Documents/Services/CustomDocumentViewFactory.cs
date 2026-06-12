@@ -15,7 +15,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     private readonly IFeatureFlags _featureFlags;
     private readonly string _resolvedDisplayName;
 
-    public override DocumentEditorId EditorId => new($"{_contribution.Package.Id}.{_contribution.Id}");
+    public override DocumentEditorId EditorId => new($"{_contribution.Package.Name}.{_contribution.Id}");
 
     public override string DisplayName => _resolvedDisplayName;
 

@@ -1,7 +1,7 @@
 namespace Celbridge.Host;
 
 /// <summary>
-/// Matches tool aliases against requires_tools glob patterns.
+/// Matches tool aliases against [permissions] tools glob patterns.
 /// Supports literal aliases, namespace wildcards ("foo.*"), and "*".
 /// </summary>
 public static class ToolAllowlist
