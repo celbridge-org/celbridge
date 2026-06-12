@@ -218,6 +218,26 @@ public class CredentialServiceTests
     }
 
     [Test]
+    public async Task Get_NewerStoreVersion_FailsCleanly()
+    {
+        var documentText = """
+            {
+              "Version": 2,
+              "WorkshopConnection": {
+                "ProtectedData": "AAAA",
+                "KeyHint": ""
+              }
+            }
+            """;
+        _fileSystem.SeedFile(CredentialsFilePath, documentText);
+
+        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+
+        getResult.IsFailure.Should().BeTrue();
+        getResult.FirstErrorMessage.Should().Contain("newer version");
+    }
+
+    [Test]
     public async Task Get_UnprotectFailure_FailsWithoutEchoingValues()
     {
         var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);

@@ -8,7 +8,12 @@ namespace Celbridge.Settings.Services;
 
 /// <summary>
 /// On-disk shape of the credential store file: a version number and one
-/// protected entry per credential.
+/// protected entry per credential. New credential types are added as nullable
+/// entry properties without a version bump; a missing property deserializes as
+/// null and reports as not configured. Adding a second entry requires changing
+/// Set and Clear from whole-file rewrite and delete to read-modify-write.
+/// Version increments only when the document is reshaped, paired with a
+/// read-side migration.
 /// </summary>
 internal sealed record CredentialStoreDocument(int Version, WorkshopConnectionEntry? WorkshopConnection);
 
@@ -31,6 +36,7 @@ internal sealed class CredentialService : ICredentialService
     private const string UnavailableMessage = "Credential storage is not available on this platform";
     private const string NotConfiguredMessage = "No Workshop connection is configured. Enter the Workshop URL and Application Key on the Settings page.";
     private const string CorruptStoreMessage = "The stored Workshop connection could not be read. Enter the Workshop URL and Application Key again on the Settings page.";
+    private const string NewerStoreVersionMessage = "The credential store was written by a newer version of Celbridge and cannot be read by this version.";
 
     private static readonly JsonSerializerOptions DocumentJsonOptions = new()
     {
@@ -99,6 +105,11 @@ internal sealed class CredentialService : ICredentialService
             if (document is null)
             {
                 return Result.Fail(CorruptStoreMessage);
+            }
+
+            if (document.Version > StoreVersion)
+            {
+                return Result.Fail(NewerStoreVersionMessage);
             }
 
             var entry = document.WorkshopConnection;
