@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Credentials;
 using Celbridge.Settings.Services;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Settings;
 
@@ -44,30 +45,6 @@ public sealed class FakeCredentialProtector : ICredentialProtector
 [TestFixture]
 public class CredentialServiceTests
 {
-    // Hand-rolled stub because Castle DynamicProxy cannot generate a proxy
-    // for ILogger of the internal CredentialService type without an
-    // InternalsVisibleTo("DynamicProxyGenAssembly2") entry on Celbridge.Settings.
-    private sealed class NullLogger<T> : ILogger<T>
-    {
-        public void LogDebug(Exception? exception, string? message, params object?[] args) {}
-        public void LogDebug(string? message, params object?[] args) {}
-        public void LogTrace(Exception? exception, string? message, params object?[] args) {}
-        public void LogTrace(string? message, params object?[] args) {}
-        public void LogInformation(Exception? exception, string? message, params object?[] args) {}
-        public void LogInformation(string? message, params object?[] args) {}
-        public void LogWarning(Exception? exception, string? message, params object?[] args) {}
-        public void LogWarning(string? message, params object?[] args) {}
-        public void LogWarning(Result result, string? message, params object?[] args) {}
-        public void LogError(Exception? exception, string? message, params object?[] args) {}
-        public void LogError(string? message, params object?[] args) {}
-        public void LogError(Result result, string? message, params object?[] args) {}
-        public void LogCritical(Exception? exception, string? message, params object?[] args) {}
-        public void LogCritical(string? message, params object?[] args) {}
-        public void LogCritical(Result result, string? message, params object?[] args) {}
-        public IDisposable? BeginScope(string messageFormat, params object?[] args) => null;
-        public void Shutdown() {}
-    }
-
     private const string CredentialsFilePath = @"C:\AppData\Celbridge\credentials.json";
     private const string WorkshopUrl = "https://workshop.celbridge.org";
     private const string ApplicationKey = "kpf_abc123_supersecretvalue";
@@ -104,13 +81,56 @@ public class CredentialServiceTests
         _protector.Available = false;
         var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
 
+        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
         var getResult = await _credentialService.GetWorkshopConnectionAsync();
         var setResult = await _credentialService.SetWorkshopConnectionAsync(connection);
         var clearResult = await _credentialService.ClearWorkshopConnectionAsync();
 
+        summaryResult.IsFailure.Should().BeTrue();
         getResult.IsFailure.Should().BeTrue();
         setResult.IsFailure.Should().BeTrue();
         clearResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task GetSummary_NothingStored_ReportsNotStored()
+    {
+        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
+
+        summaryResult.IsSuccess.Should().BeTrue();
+
+        var summary = summaryResult.Value;
+        summary.IsStored.Should().BeFalse();
+        summary.KeyHint.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetSummary_StoredConnection_ReportsKeyHint()
+    {
+        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
+        await _credentialService.SetWorkshopConnectionAsync(connection);
+
+        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
+
+        summaryResult.IsSuccess.Should().BeTrue();
+
+        var summary = summaryResult.Value;
+        summary.IsStored.Should().BeTrue();
+        summary.KeyHint.Should().Be("kpf_abc123");
+    }
+
+    [Test]
+    public async Task GetSummary_CorruptDocument_ReportsStoredWithoutHint()
+    {
+        _fileSystem.SeedFile(CredentialsFilePath, "this is not json");
+
+        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
+
+        summaryResult.IsSuccess.Should().BeTrue();
+
+        var summary = summaryResult.Value;
+        summary.IsStored.Should().BeTrue();
+        summary.KeyHint.Should().BeEmpty();
     }
 
     [Test]

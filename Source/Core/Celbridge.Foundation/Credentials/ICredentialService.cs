@@ -8,6 +8,13 @@ namespace Celbridge.Credentials;
 public record WorkshopConnection(string WorkshopUrl, string ApplicationKey);
 
 /// <summary>
+/// Summary of the stored Workshop connection, readable without decrypting it.
+/// KeyHint is the identifying prefix of the stored Application Key, or empty
+/// when the key has no recognisable prefix or the stored entry is unreadable.
+/// </summary>
+public record WorkshopConnectionSummary(bool IsStored, string KeyHint);
+
+/// <summary>
 /// Application-scoped store for sensitive credentials, encrypted at rest.
 /// Stored values are retrievable only by host-side services through this typed
 /// API and must never appear on agent-readable surfaces such as tool results,
@@ -21,6 +28,13 @@ public interface ICredentialService
     /// features should degrade with a clear message.
     /// </summary>
     bool IsAvailable { get; }
+
+    /// <summary>
+    /// Gets a summary of the stored Workshop connection without decrypting it,
+    /// so display surfaces can identify the stored key. Reports a stored entry
+    /// even when it is corrupt, so callers can offer clear and replace.
+    /// </summary>
+    Task<Result<WorkshopConnectionSummary>> GetWorkshopConnectionSummaryAsync();
 
     /// <summary>
     /// Gets the stored Workshop connection. Fails with an actionable message

@@ -31,7 +31,6 @@ internal sealed record WorkshopConnectionEntry(string ProtectedData, string KeyH
 internal sealed class CredentialService : ICredentialService
 {
     private const int StoreVersion = 1;
-    private const string ApplicationKeyPrefix = "kpf_";
 
     private const string UnavailableMessage = "Credential storage is not available on this platform";
     private const string NotConfiguredMessage = "No Workshop connection is configured. Enter the Workshop URL and Application Key on the Settings page.";
@@ -69,6 +68,60 @@ internal sealed class CredentialService : ICredentialService
     }
 
     public bool IsAvailable => _protector.IsAvailable;
+
+    public async Task<Result<WorkshopConnectionSummary>> GetWorkshopConnectionSummaryAsync()
+    {
+        if (!IsAvailable)
+        {
+            return Result.Fail(UnavailableMessage);
+        }
+
+        await _storeSemaphore.WaitAsync();
+        try
+        {
+            var infoResult = await _fileSystem.GetInfoAsync(_credentialsFilePath);
+            if (infoResult.IsFailure)
+            {
+                return Result<WorkshopConnectionSummary>.Fail("Failed to query the credential store file")
+                    .WithErrors(infoResult);
+            }
+
+            var storeInfo = infoResult.Value;
+            if (storeInfo.Kind != StorageItemKind.File)
+            {
+                return new WorkshopConnectionSummary(false, string.Empty);
+            }
+
+            var readResult = await _fileSystem.ReadAllTextAsync(_credentialsFilePath);
+            if (readResult.IsFailure)
+            {
+                return Result<WorkshopConnectionSummary>.Fail("Failed to read the credential store file")
+                    .WithErrors(readResult);
+            }
+
+            var documentText = readResult.Value;
+            var document = ParseDocument(documentText);
+            if (document is null)
+            {
+                // An unparseable store still counts as a stored entry so that
+                // display surfaces can offer clear and replace as recovery.
+                return new WorkshopConnectionSummary(true, string.Empty);
+            }
+
+            var entry = document.WorkshopConnection;
+            if (entry is null ||
+                string.IsNullOrEmpty(entry.ProtectedData))
+            {
+                return new WorkshopConnectionSummary(false, string.Empty);
+            }
+
+            return new WorkshopConnectionSummary(true, entry.KeyHint ?? string.Empty);
+        }
+        finally
+        {
+            _storeSemaphore.Release();
+        }
+    }
 
     public async Task<Result<WorkshopConnection>> GetWorkshopConnectionAsync()
     {
@@ -310,12 +363,12 @@ internal sealed class CredentialService : ICredentialService
     /// </summary>
     private static string GetKeyDisplayHint(string applicationKey)
     {
-        if (!applicationKey.StartsWith(ApplicationKeyPrefix, StringComparison.Ordinal))
+        if (!applicationKey.StartsWith(CredentialConstants.ApplicationKeyPrefix, StringComparison.Ordinal))
         {
             return string.Empty;
         }
 
-        var separatorIndex = applicationKey.IndexOf('_', ApplicationKeyPrefix.Length);
+        var separatorIndex = applicationKey.IndexOf('_', CredentialConstants.ApplicationKeyPrefix.Length);
         if (separatorIndex < 0)
         {
             return string.Empty;
