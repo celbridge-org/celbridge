@@ -349,6 +349,11 @@ public sealed class LocalFileSystem : ILocalFileSystem
             portable |= FileSystemAttributes.ReadOnly;
         }
 
+        if ((native & System.IO.FileAttributes.ReparsePoint) != 0)
+        {
+            portable |= FileSystemAttributes.ReparsePoint;
+        }
+
         return portable;
     }
 }

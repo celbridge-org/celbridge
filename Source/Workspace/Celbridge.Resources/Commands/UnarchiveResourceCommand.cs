@@ -148,7 +148,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
                 if (!Overwrite)
                 {
-                    var entryResource = DestinationResource.Combine(entryName);
+                    // Combine segment by segment: entry names like "audio/music.mp3"
+                    // are multi-segment relative paths, which Combine alone rejects.
+                    var entryResource = DestinationResource.CombinePath(entryName);
                     var existingInfoResult = await resourceFileSystem.GetInfoAsync(entryResource);
                     if (existingInfoResult.IsSuccess
                         && existingInfoResult.Value.Kind == StorageItemKind.File)
@@ -252,7 +254,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             // Extract files
             foreach (var entry in validEntries)
             {
-                var entryResource = DestinationResource.Combine(entry.FullName);
+                var entryResource = DestinationResource.CombinePath(entry.FullName);
 
                 // If overwriting, delete existing file first so it's preserved in trash for undo
                 if (Overwrite)

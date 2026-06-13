@@ -179,6 +179,33 @@ public class ResourceKeyTests
     }
 
     [Test]
+    public void CombinePathAppendsMultipleSegments()
+    {
+        var baseKey = new ResourceKey("packages/king-fury");
+
+        // A multi-segment entry path (the king-fury install regression) combines
+        // segment by segment rather than being rejected as one bad segment.
+        baseKey.CombinePath("audio/music.mp3").ToString()
+            .Should().Be("project:packages/king-fury/audio/music.mp3");
+
+        // A single segment behaves like Combine.
+        baseKey.CombinePath("index.html").ToString()
+            .Should().Be("project:packages/king-fury/index.html");
+
+        // The root is preserved, and a root-only base key works.
+        new ResourceKey("temp:").CombinePath("a/b/c.txt").ToString()
+            .Should().Be("temp:a/b/c.txt");
+
+        // An invalid segment anywhere in the path is rejected, as Combine rejects it.
+        var act1 = () => baseKey.CombinePath("audio/bad\0file");
+        act1.Should().Throw<ArgumentException>();
+
+        // An empty path throws.
+        var act2 = () => baseKey.CombinePath("");
+        act2.Should().Throw<ArgumentException>();
+    }
+
+    [Test]
     public void EmptyKeyIsValid()
     {
         var emptyKey = ResourceKey.Empty;

@@ -1023,13 +1023,22 @@ Do you wish to continue?</value>
     <value>Publish Package</value>
   </data>
   <data name="Package_PublishConfirm_Message" xml:space="preserve">
-    <value>Publish package '{0}' to the remote registry?</value>
+    <value>Publish package '{0}' to the workshop as a new version?</value>
   </data>
   <data name="Package_InstallConfirm_Title" xml:space="preserve">
     <value>Install Package</value>
   </data>
   <data name="Package_InstallConfirm_Message" xml:space="preserve">
-    <value>Install package '{0}' from the remote registry?</value>
+    <value>Install package '{0}' version {1} into '{2}'?</value>
+  </data>
+  <data name="Package_ReplaceConfirm_Title" xml:space="preserve">
+    <value>Replace Package</value>
+  </data>
+  <data name="Package_ReplaceConfirm_Message" xml:space="preserve">
+    <value>The folder '{0}' already contains package '{1}' (version {2}). Installing version {3} will replace its contents and discard any local changes. The replaced files are moved to the trash. Continue?</value>
+  </data>
+  <data name="Package_ReplaceConfirm_MessageUnknownVersion" xml:space="preserve">
+    <value>The folder '{0}' already contains package '{1}'. Installing version {2} will replace its contents and discard any local changes. The replaced files are moved to the trash. Continue?</value>
   </data>
   <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
     <value>Spreadsheet Editor</value>

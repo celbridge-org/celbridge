@@ -17,6 +17,12 @@ public enum FileSystemAttributes
     /// backends, derived from write-access permission.
     /// </summary>
     ReadOnly = 1 << 0,
+
+    /// <summary>
+    /// The item is a reparse point: a symbolic link or junction rather than a
+    /// regular file or folder.
+    /// </summary>
+    ReparsePoint = 1 << 1,
 }
 
 /// <summary>
