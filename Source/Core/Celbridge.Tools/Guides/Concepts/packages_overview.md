@@ -32,6 +32,18 @@ A version can be **deleted** (`package_delete`), which removes its content bytes
 
 When you install a package, its workshop history is written to a generated `HISTORY.md` beside the manifest (newest first); `package_publish` writes the same file for the version it assigns. This is metadata about the workshop, not package content — it is excluded from uploads, and the workshop stays authoritative for publish history. The installed (or last-published) version is recorded in `HISTORY.md`, which is where `package_status` reads it from.
 
+Each entry is shaped for grep/fragment reasoning:
+
+```
+# my-widget@5
+
+[time: 2026-06-13T15:14:50Z, author: Acme, hash: eb1ddd1ce6a9]
+
+Merge the credits change into the rolled-back content.
+```
+
+The header is a `name@version` token (so a quoted entry is self-describing), followed by one compact bracketed metadata line — `time` (full UTC timestamp), `author`, and a 12-character `hash` fingerprint — then the free-text summary. A deleted version adds `deleted: true` to the line and renders `[package_deleted]` as its body. The full content hash stays authoritative in `package_info`; the short `hash` is for cheap reasoning and cross-checking a summary's claims against the actual bytes.
+
 ## Workshop workflow
 
 | Tool | What it does |

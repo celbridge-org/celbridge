@@ -5,6 +5,12 @@ using System.Text;
 namespace Celbridge.Tools;
 
 /// <summary>
+/// The package and version named by the newest HISTORY.md entry, parsed from
+/// its "name@version" heading.
+/// </summary>
+public sealed record InstalledPackageReference(string Name, int Version);
+
+/// <summary>
 /// Formats and parses the generated HISTORY.md changelog written beside a package manifest.
 /// </summary>
 internal static class PackageHistoryFile
@@ -12,11 +18,15 @@ internal static class PackageHistoryFile
     // Marker text rendered in place of a deleted version's summary.
     private const string DeletedVersionSummary = "[package_deleted]";
 
+    // Length of the truncated content fingerprint, matching the git short-hash
+    // convention. The full hash stays authoritative in package_info.
+    private const int ShortHashLength = 12;
+
     /// <summary>
     /// Builds the HISTORY.md changelog from the package's versions, covering
     /// every version up to and including the installed one, newest first.
     /// </summary>
-    public static string Format(IReadOnlyList<RemotePackageVersion> versions, int installedVersion)
+    public static string Format(string packageName, IReadOnlyList<RemotePackageVersion> versions, int installedVersion)
     {
         var orderedVersions = versions
             .Where(packageVersion => packageVersion.Version <= installedVersion)
@@ -31,63 +41,122 @@ internal static class PackageHistoryFile
                 builder.Append("\r\n");
             }
 
+            // The header carries the name@version token so a single entry is
+            // self-describing and survives a rename when read standalone.
             builder.Append("# ");
+            builder.Append(packageName);
+            builder.Append('@');
             builder.Append(packageVersion.Version.ToString(CultureInfo.InvariantCulture));
             builder.Append("\r\n\r\n");
 
-            var date = packageVersion.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-            var author = packageVersion.Author?.Trim() ?? string.Empty;
-            if (author.Length > 0)
-            {
-                builder.Append($"Published by {author} on {date}.\r\n");
-            }
-            else
-            {
-                builder.Append($"Published on {date}.\r\n");
-            }
+            AppendMetadataLine(builder, packageVersion);
 
-            // The content hash fingerprints the published version, letting a
-            // vendored copy be verified against the workshop's record. It is
-            // self-describing, so it stands alone without a label.
-            var contentHash = packageVersion.ContentHash?.Trim() ?? string.Empty;
-            if (contentHash.Length > 0)
-            {
-                builder.Append(contentHash);
-                builder.Append("\r\n");
-            }
-
+            // The body is the free-text summary, or the deleted marker. A deleted
+            // version keeps its heading and metadata but loses the summary, so the
+            // version reads as removed rather than as a gap in the numbering.
+            string body;
             if (packageVersion.Deleted)
             {
-                // A deleted version has lost its bytes and publisher summary, so
-                // the marker stands in for the summary. Its heading, date, and
-                // content hash (emitted above) remain, so the version reads as
-                // removed rather than as a gap in the numbering.
-                builder.Append("\r\n");
-                builder.Append(DeletedVersionSummary);
-                builder.Append("\r\n");
+                body = DeletedVersionSummary;
             }
             else
             {
                 var summary = packageVersion.Summary?.Trim() ?? string.Empty;
-                if (summary.Length > 0)
-                {
-                    var normalizedSummary = summary.Replace("\r\n", "\n").Replace("\n", "\r\n");
-                    builder.Append("\r\n");
-                    builder.Append(normalizedSummary);
-                    builder.Append("\r\n");
-                }
+                body = summary.Replace("\r\n", "\n").Replace("\n", "\r\n");
+            }
+
+            if (body.Length > 0)
+            {
+                builder.Append("\r\n");
+                builder.Append(body);
+                builder.Append("\r\n");
             }
         }
 
         return builder.ToString();
     }
 
+    // One compact bracketed line carrying the entry's fixed metadata fields, so a
+    // grep hit or a quoted fragment returns the whole record in a single match.
+    private static void AppendMetadataLine(StringBuilder builder, RemotePackageVersion packageVersion)
+    {
+        var fields = new List<string>();
+        fields.Add($"time: {FormatTimestamp(packageVersion.Date)}");
+
+        var author = packageVersion.Author?.Trim() ?? string.Empty;
+        if (author.Length > 0)
+        {
+            fields.Add($"author: {author}");
+        }
+
+        var hash = TruncateHash(packageVersion.ContentHash);
+        if (hash.Length > 0)
+        {
+            fields.Add($"hash: {hash}");
+        }
+
+        if (packageVersion.Deleted)
+        {
+            fields.Add("deleted: true");
+        }
+
+        builder.Append('[');
+        builder.Append(string.Join(", ", fields));
+        builder.Append("]\r\n");
+    }
+
+    // Renders the publish time as RFC 3339 / ISO 8601 in UTC with a Z suffix.
+    // Date-only would not distinguish versions published minutes apart on the
+    // same day, which must stay ordered. The workshop sends UTC timestamps, so
+    // an unspecified kind is taken as UTC rather than shifted as local.
+    private static string FormatTimestamp(DateTime date)
+    {
+        DateTime utc = date.Kind switch
+        {
+            DateTimeKind.Utc => date,
+            DateTimeKind.Local => date.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(date, DateTimeKind.Utc)
+        };
+
+        return utc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+    }
+
+    // Truncates the content hash to a short fingerprint, dropping any algorithm
+    // prefix such as "sha256:". The short form is for cheap reasoning. The full
+    // hash stays authoritative in package_info.
+    private static string TruncateHash(string? contentHash)
+    {
+        var hash = contentHash?.Trim() ?? string.Empty;
+        if (hash.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var colonIndex = hash.LastIndexOf(':');
+        if (colonIndex >= 0
+            && colonIndex + 1 < hash.Length)
+        {
+            hash = hash.Substring(colonIndex + 1);
+        }
+
+        return hash.Length <= ShortHashLength ? hash : hash.Substring(0, ShortHashLength);
+    }
+
     /// <summary>
-    /// Reads the installed version from a HISTORY.md body: the first non-empty
-    /// line is the newest version's heading ("# 23"). Returns null when the
+    /// Reads the installed version from a HISTORY.md body. Returns null when the
     /// file has no parseable version heading (e.g. a hand-authored file).
     /// </summary>
     public static int? TryReadInstalledVersion(string historyMarkdown)
+    {
+        return TryReadInstalledReference(historyMarkdown)?.Version;
+    }
+
+    /// <summary>
+    /// Reads the package and version named by the newest HISTORY.md entry, parsed
+    /// from its "name@version" heading on the first non-empty line. Returns null
+    /// when there is no parseable heading.
+    /// </summary>
+    public static InstalledPackageReference? TryReadInstalledReference(string historyMarkdown)
     {
         if (string.IsNullOrEmpty(historyMarkdown))
         {
@@ -104,25 +173,58 @@ internal static class PackageHistoryFile
                 continue;
             }
 
-            // The first non-empty line must be the newest version's heading.
+            // The first non-empty line must be the newest entry's "name@version" heading.
             var headingText = trimmed.TrimStart('#').Trim();
 
-            // Drop any trailing note after the version number.
+            // Drop any trailing note after the token.
             var spaceIndex = headingText.IndexOf(' ');
             if (spaceIndex > 0)
             {
                 headingText = headingText.Substring(0, spaceIndex);
             }
 
-            if (int.TryParse(headingText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version)
+            var atIndex = headingText.LastIndexOf('@');
+            if (atIndex <= 0
+                || atIndex + 1 >= headingText.Length)
+            {
+                return null;
+            }
+
+            var name = headingText.Substring(0, atIndex);
+            var versionText = headingText.Substring(atIndex + 1);
+
+            if (int.TryParse(versionText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version)
                 && version > 0)
             {
-                return version;
+                return new InstalledPackageReference(name, version);
             }
 
             return null;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Returns true when the source folder's install record is a stale base for
+    /// publishing: a same-package version older than the workshop's latest live
+    /// version, signalling another publish landed since this folder was installed.
+    /// </summary>
+    public static bool IsStaleBase(InstalledPackageReference? installed, string packageName, int latestLiveVersion)
+    {
+        if (installed is null)
+        {
+            return false;
+        }
+
+        // Only same-package iteration is a lost-update risk. A different recorded
+        // name is a rename or fork, not a stale base.
+        var samePackage = string.Equals(installed.Name, packageName, StringComparison.Ordinal);
+        if (!samePackage)
+        {
+            return false;
+        }
+
+        return installed.Version < latestLiveVersion;
     }
 }

@@ -169,7 +169,7 @@ public partial class PackageTools
         }
 
         var historyFile = packageFolder.Combine(PackageConstants.HistoryFileName);
-        var historyMarkdown = PackageHistoryFile.Format(packageDetails.Versions, resolvedVersion);
+        var historyMarkdown = PackageHistoryFile.Format(packageName, packageDetails.Versions, resolvedVersion);
         var writeHistoryResult = await resourceFileSystem.WriteAllTextAsync(historyFile, historyMarkdown);
         if (writeHistoryResult.IsFailure)
         {
@@ -241,6 +241,14 @@ public partial class PackageTools
         IResourceFileSystem resourceFileSystem,
         ResourceKey packageFolder)
     {
+        var reference = await TryReadInstalledReferenceAsync(resourceFileSystem, packageFolder);
+        return reference?.Version;
+    }
+
+    private static async Task<InstalledPackageReference?> TryReadInstalledReferenceAsync(
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey packageFolder)
+    {
         var historyFile = packageFolder.Combine(PackageConstants.HistoryFileName);
         var infoResult = await resourceFileSystem.GetInfoAsync(historyFile);
         if (infoResult.IsFailure
@@ -255,7 +263,7 @@ public partial class PackageTools
             return null;
         }
 
-        return PackageHistoryFile.TryReadInstalledVersion(readResult.Value);
+        return PackageHistoryFile.TryReadInstalledReference(readResult.Value);
     }
 
     private async Task<bool> ConfirmInstallAsync(

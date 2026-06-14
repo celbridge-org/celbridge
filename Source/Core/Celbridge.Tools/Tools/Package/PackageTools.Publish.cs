@@ -11,9 +11,10 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// Result returned by package_publish with the published package details,
-/// including the version number assigned by the workshop.
+/// including the version number assigned by the workshop. Warning carries an
+/// advisory note (e.g. a stale-base concurrent-publish warning) or is null.
 /// </summary>
-public record class PackagePublishResult(string PackageName, int Version, int Entries, long Size);
+public record class PackagePublishResult(string PackageName, int Version, int Entries, long Size, string? Warning = null);
 
 public partial class PackageTools
 {
@@ -66,17 +67,35 @@ public partial class PackageTools
         }
         var packageName = nameResult.Value;
 
+        var packageApiClient = GetRequiredService<IPackageApiClient>();
+
+        // Guardrail against the concurrent-publish footgun: if this folder was
+        // installed from a version older than the workshop's current latest,
+        // another publish landed in between and this one may overwrite or diverge
+        // from it. The confirmation spells out the risk so the user gives informed
+        // consent. Publishing is append-only (the sibling version still exists),
+        // so an agent run (confirmWithUser false) proceeds with the warning in the
+        // result rather than being blocked. A present-but-unreadable install
+        // record is surfaced the same way, since the check could not run.
+        var baseCheck = await CheckBaseAsync(
+            packageApiClient,
+            resourceService.FileSystem,
+            packageSource.FolderResource,
+            packageName);
+
         if (confirmWithUser)
         {
-            var localizerService = GetRequiredService<Celbridge.Localization.ILocalizerService>();
-            var title = localizerService.GetString("Package_PublishConfirm_Title");
-            var message = localizerService.GetString("Package_PublishConfirm_Message", packageName);
-
-            var confirmed = await ConfirmActionAsync(title, message);
+            var confirmed = await ConfirmPublishAsync(packageName, baseCheck);
             if (!confirmed)
             {
                 return ToolResponse.Error("Publish cancelled by user.");
             }
+        }
+
+        var publishWarning = BuildPublishWarning(packageName, baseCheck);
+        if (publishWarning is not null)
+        {
+            Logger.LogWarning(publishWarning);
         }
 
         var buildResult = await BuildPackageArchiveAsync(fileSystem, packageSource.FolderPath);
@@ -86,7 +105,6 @@ public partial class PackageTools
         }
         var archive = buildResult.Value;
 
-        var packageApiClient = GetRequiredService<IPackageApiClient>();
         var publishSummary = string.IsNullOrEmpty(summary) ? null : summary;
         var publishResult = await packageApiClient.PublishVersionAsync(packageName, archive.ZipData, publishSummary);
         if (publishResult.IsFailure)
@@ -105,10 +123,113 @@ public partial class PackageTools
             packageName,
             receipt.Version);
 
-        var result = new PackagePublishResult(packageName, receipt.Version, archive.EntryCount, archive.ZipData.Length);
+        var result = new PackagePublishResult(packageName, receipt.Version, archive.EntryCount, archive.ZipData.Length, publishWarning);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
     }
+
+    private async Task<bool> ConfirmPublishAsync(string packageName, PublishBaseCheck baseCheck)
+    {
+        var localizerService = GetRequiredService<Celbridge.Localization.ILocalizerService>();
+        var title = localizerService.GetString("Package_PublishConfirm_Title");
+
+        string message = baseCheck.Concern switch
+        {
+            PublishBaseConcern.Stale => localizerService.GetString(
+                "Package_PublishStaleConfirm_Message", packageName, baseCheck.InstalledVersion, baseCheck.LatestVersion),
+            PublishBaseConcern.RecordUnreadable => localizerService.GetString(
+                "Package_PublishUnreadableRecordConfirm_Message", packageName),
+            _ => localizerService.GetString("Package_PublishConfirm_Message", packageName)
+        };
+
+        return await ConfirmActionAsync(title, message);
+    }
+
+    private static string? BuildPublishWarning(string packageName, PublishBaseCheck baseCheck)
+    {
+        switch (baseCheck.Concern)
+        {
+            case PublishBaseConcern.Stale:
+                return $"This folder was installed from {packageName}@{baseCheck.InstalledVersion}, " +
+                    $"but the workshop's latest version is now {baseCheck.LatestVersion}. Another version was " +
+                    "published after this folder was installed, so publishing may overwrite or diverge " +
+                    "from that work. To build on the latest, reinstall it and re-apply your changes.";
+
+            case PublishBaseConcern.RecordUnreadable:
+                return $"The install record ({PackageConstants.HistoryFileName}) for this folder could not be read, " +
+                    "so the stale-base check was skipped. If this folder was installed from the workshop, verify it " +
+                    "is not based on a superseded version before relying on this publish.";
+
+            default:
+                return null;
+        }
+    }
+
+    // Inspects the source folder's install record to decide whether publishing is
+    // building on an out-of-date base. The record is read here (rather than via
+    // the shared helper) so a present-but-unreadable record is told apart from an
+    // absent one: an absent record is the legitimate authored-in-place case, while
+    // an unreadable one means the check could not run and is surfaced as such.
+    private async Task<PublishBaseCheck> CheckBaseAsync(
+        IPackageApiClient packageApiClient,
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey folderResource,
+        string packageName)
+    {
+        var historyFile = folderResource.Combine(PackageConstants.HistoryFileName);
+        var infoResult = await resourceFileSystem.GetInfoAsync(historyFile);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
+        {
+            // No record: authored in place, or never installed. Nothing to check.
+            return new PublishBaseCheck(PublishBaseConcern.None);
+        }
+
+        var readResult = await resourceFileSystem.ReadAllTextAsync(historyFile);
+        if (readResult.IsFailure)
+        {
+            return new PublishBaseCheck(PublishBaseConcern.RecordUnreadable);
+        }
+
+        var installedReference = PackageHistoryFile.TryReadInstalledReference(readResult.Value);
+        if (installedReference is null)
+        {
+            // Present but no parseable heading: the base cannot be determined.
+            return new PublishBaseCheck(PublishBaseConcern.RecordUnreadable);
+        }
+
+        var detailsResult = await packageApiClient.GetPackageAsync(packageName);
+        if (detailsResult.IsFailure)
+        {
+            // A brand-new package or an unreachable workshop has nothing to compare.
+            return new PublishBaseCheck(PublishBaseConcern.None);
+        }
+
+        var liveVersions = detailsResult.Value.Versions
+            .Where(packageVersion => !packageVersion.Deleted)
+            .ToList();
+        if (liveVersions.Count == 0)
+        {
+            return new PublishBaseCheck(PublishBaseConcern.None);
+        }
+        var latestLiveVersion = liveVersions.Max(packageVersion => packageVersion.Version);
+
+        if (!PackageHistoryFile.IsStaleBase(installedReference, packageName, latestLiveVersion))
+        {
+            return new PublishBaseCheck(PublishBaseConcern.None);
+        }
+
+        return new PublishBaseCheck(PublishBaseConcern.Stale, installedReference.Version, latestLiveVersion);
+    }
+
+    private enum PublishBaseConcern
+    {
+        None,
+        Stale,
+        RecordUnreadable
+    }
+
+    private sealed record PublishBaseCheck(PublishBaseConcern Concern, int InstalledVersion = 0, int LatestVersion = 0);
 
     private async Task RefreshPublishedHistoryAsync(
         IPackageApiClient packageApiClient,
@@ -126,7 +247,7 @@ public partial class PackageTools
         }
 
         var historyFile = folderResource.Combine(PackageConstants.HistoryFileName);
-        var historyMarkdown = PackageHistoryFile.Format(detailsResult.Value.Versions, publishedVersion);
+        var historyMarkdown = PackageHistoryFile.Format(packageName, detailsResult.Value.Versions, publishedVersion);
         var writeResult = await resourceFileSystem.WriteAllTextAsync(historyFile, historyMarkdown);
         if (writeResult.IsFailure)
         {
