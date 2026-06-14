@@ -149,6 +149,20 @@ public class CredentialServiceTests
     }
 
     [Test]
+    public async Task SetThenGet_RoundTripsAuthor()
+    {
+        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey, "Ada Lovelace");
+
+        var setResult = await _credentialService.SetWorkshopConnectionAsync(connection);
+        setResult.IsSuccess.Should().BeTrue();
+
+        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        getResult.IsSuccess.Should().BeTrue();
+
+        getResult.Value.Author.Should().Be("Ada Lovelace");
+    }
+
+    [Test]
     public async Task Set_WritesNoPlaintextToDisk()
     {
         var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);

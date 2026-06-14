@@ -105,6 +105,34 @@ public class SettingsPageViewModelTests
     }
 
     [Test]
+    public async Task Save_NewConnection_StoresAuthor()
+    {
+        await _viewModel.InitializeAsync();
+        _viewModel.WorkshopUrl = WorkshopUrl;
+        _viewModel.ApplicationKey = ApplicationKey;
+        _viewModel.Author = "Ada Lovelace";
+
+        await _viewModel.SaveWorkshopConnectionCommand.ExecuteAsync(null);
+
+        _viewModel.IsErrorVisible.Should().BeFalse();
+
+        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        getResult.IsSuccess.Should().BeTrue();
+        getResult.Value.Author.Should().Be("Ada Lovelace");
+    }
+
+    [Test]
+    public async Task Initialize_StoredConnection_PopulatesAuthor()
+    {
+        await _credentialService.SetWorkshopConnectionAsync(
+            new WorkshopConnection(WorkshopUrl, ApplicationKey, "Ada Lovelace"));
+
+        await _viewModel.InitializeAsync();
+
+        _viewModel.Author.Should().Be("Ada Lovelace");
+    }
+
+    [Test]
     public async Task Save_InvalidUrl_ShowsErrorAndStoresNothing()
     {
         await _viewModel.InitializeAsync();

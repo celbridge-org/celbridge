@@ -205,6 +205,14 @@ internal sealed class CredentialService : ICredentialService
                 return Result.Fail(CorruptStoreMessage);
             }
 
+            // Connections saved before the Author field was added have no value
+            // for it; normalize the missing case to empty so callers gate on it
+            // uniformly rather than guarding against null.
+            if (connection.Author is null)
+            {
+                connection = connection with { Author = string.Empty };
+            }
+
             return connection;
         }
         finally

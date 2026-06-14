@@ -73,9 +73,11 @@ public interface IPackageApiClient
 
     /// <summary>
     /// Publishes a new package version from ZIP data, with an optional change
-    /// summary. The first publish of a new name registers the package implicitly.
+    /// summary and the publishing author. The first publish of a new name
+    /// registers the package implicitly. The author is recorded by the workshop
+    /// as the version's publisher.
     /// </summary>
-    Task<Result<RemotePublishReceipt>> PublishVersionAsync(string packageName, byte[] zipData, string? summary = null);
+    Task<Result<RemotePublishReceipt>> PublishVersionAsync(string packageName, byte[] zipData, string? summary = null, string? author = null);
 
     /// <summary>
     /// Downloads the ZIP data for a specific package version.

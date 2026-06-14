@@ -14,6 +14,9 @@ public partial class SettingsPageViewModel : ObservableObject
     private string _workshopUrl = string.Empty;
 
     [ObservableProperty]
+    private string _author = string.Empty;
+
+    [ObservableProperty]
     private string _applicationKey = string.Empty;
 
     [ObservableProperty]
@@ -93,6 +96,7 @@ public partial class SettingsPageViewModel : ObservableObject
             {
                 var connection = getResult.Value;
                 WorkshopUrl = connection.WorkshopUrl;
+                Author = connection.Author;
             }
             else
             {
@@ -145,7 +149,7 @@ public partial class SettingsPageViewModel : ObservableObject
             applicationKey = storedConnection.ApplicationKey;
         }
 
-        var connection = new WorkshopConnection(workshopUrl, applicationKey);
+        var connection = new WorkshopConnection(workshopUrl, applicationKey, Author.Trim());
         var setResult = await _credentialService.SetWorkshopConnectionAsync(connection);
         if (setResult.IsFailure)
         {
@@ -191,6 +195,7 @@ public partial class SettingsPageViewModel : ObservableObject
         _isConnectionStored = false;
         _isReplacingKey = false;
         WorkshopUrl = string.Empty;
+        Author = string.Empty;
         ApplicationKey = string.Empty;
         StoredKeyDisplay = string.Empty;
 

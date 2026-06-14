@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using Celbridge.Credentials;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Tomlyn;
@@ -41,6 +42,15 @@ public partial class PackageTools
         {
             return ToolResponse.Error("No project is loaded. Open a project before publishing a package.");
         }
+
+        // Every published version records its publisher, so a non-empty Author
+        // must be configured before any upload work begins.
+        var authorResult = await ResolvePublishAuthorAsync(confirmWithUser);
+        if (authorResult.IsFailure)
+        {
+            return ToolResponse.Error(authorResult);
+        }
+        var author = authorResult.Value;
 
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
@@ -106,7 +116,7 @@ public partial class PackageTools
         var archive = buildResult.Value;
 
         var publishSummary = string.IsNullOrEmpty(summary) ? null : summary;
-        var publishResult = await packageApiClient.PublishVersionAsync(packageName, archive.ZipData, publishSummary);
+        var publishResult = await packageApiClient.PublishVersionAsync(packageName, archive.ZipData, publishSummary, author);
         if (publishResult.IsFailure)
         {
             return ToolResponse.Error(publishResult);

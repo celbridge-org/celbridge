@@ -36,12 +36,6 @@ public partial record PackageInfo
     public string Name { get; init; } = string.Empty;
 
     /// <summary>
-    /// Optional author of the package (from the manifest's 'author' key). The
-    /// workshop server reads this when a version is published.
-    /// </summary>
-    public string Author { get; init; } = string.Empty;
-
-    /// <summary>
     /// Optional display name of the package (from the manifest's 'title' key).
     /// </summary>
     public string Title { get; init; } = string.Empty;

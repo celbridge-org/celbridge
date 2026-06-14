@@ -67,8 +67,11 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_NameAuthorAndTitle_PopulateInfo()
+    public void LoadPackage_NameAndTitle_PopulateInfo_StrayAuthorIgnored()
     {
+        // 'author' is no longer a manifest field (the publisher comes from
+        // Workshop settings), but a legacy manifest that still carries it must
+        // load fine with the key simply ignored.
         WritePackageToml("""
             [package]
             name = "my-widget"
@@ -82,12 +85,11 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.Name.Should().Be("my-widget");
-        result.Value.Info.Author.Should().Be("Acme");
         result.Value.Info.Title.Should().Be("My Widget");
     }
 
     [Test]
-    public void LoadPackage_AuthorAndTitleOmitted_DefaultToEmpty()
+    public void LoadPackage_TitleOmitted_DefaultsToEmpty()
     {
         WritePackageToml("""
             [package]
@@ -100,7 +102,6 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.Name.Should().Be("my-widget");
-        result.Value.Info.Author.Should().BeEmpty();
         result.Value.Info.Title.Should().BeEmpty();
     }
 

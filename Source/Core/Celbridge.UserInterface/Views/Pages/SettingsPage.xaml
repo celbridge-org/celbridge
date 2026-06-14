@@ -44,6 +44,7 @@
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="160"/>
@@ -56,7 +57,8 @@
         <TextBox Grid.Column="1"
                  Text="{x:Bind ViewModel.WorkshopUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  IsSpellCheckEnabled="False"
-                 PlaceholderText="https://"/>
+                 PlaceholderText="https://"
+                 ToolTipService.ToolTip="{x:Bind WorkshopUrlTooltipString}"/>
 
         <TextBlock Grid.Row="1"
                    Text="{x:Bind ApplicationKeyString}"
@@ -65,7 +67,8 @@
         <Grid Grid.Row="1"
               Grid.Column="1">
           <PasswordBox Password="{x:Bind ViewModel.ApplicationKey, Mode=TwoWay}"
-                       Visibility="{x:Bind ViewModel.IsKeyEntryVisible, Mode=OneWay}"/>
+                       Visibility="{x:Bind ViewModel.IsKeyEntryVisible, Mode=OneWay}"
+                       ToolTipService.ToolTip="{x:Bind ApplicationKeyTooltipString}"/>
 
           <StackPanel Orientation="Horizontal"
                       Spacing="12"
@@ -77,7 +80,18 @@
           </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="2"
+        <TextBlock Grid.Row="2"
+                   Text="{x:Bind AuthorString}"
+                   VerticalAlignment="Center"/>
+
+        <TextBox Grid.Row="2"
+                 Grid.Column="1"
+                 Text="{x:Bind ViewModel.Author, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 IsSpellCheckEnabled="False"
+                 PlaceholderText="{x:Bind AuthorPlaceholderString}"
+                 ToolTipService.ToolTip="{x:Bind AuthorTooltipString}"/>
+
+        <StackPanel Grid.Row="3"
                     Grid.Column="1"
                     Orientation="Horizontal"
                     Spacing="12">

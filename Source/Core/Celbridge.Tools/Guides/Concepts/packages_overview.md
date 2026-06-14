@@ -13,14 +13,15 @@ Every package folder must contain a `package.toml` at its root with at minimum a
 ```toml
 [package]
 name = "my-widget"        # identifier; matches the workshop's package name
-author = "Acme"           # read by the workshop when a version is published
 title = "My Widget"       # display name
 
 [contributes]
 document_editors = ["my-editor.document.toml"]
 ```
 
-**Required:** `name`. **Optional:** `author`, `title`, `feature_flag`. The `[contributes]` section lists document editor manifests provided by the package. If your package contributes a document editor, also read `document_editor_contributions` for the manifest, handler, and read-only contract.
+**Required:** `name`. **Optional:** `title`, `feature_flag`. The `[contributes]` section lists document editor manifests provided by the package. If your package contributes a document editor, also read `document_editor_contributions` for the manifest, handler, and read-only contract.
+
+The manifest carries no author: the publisher recorded on each version is the **Author** set once in Workshop settings (Settings page), not a per-package field. `package_publish` fails if no Author is configured.
 
 A package name is lowercase ASCII alphanumeric with single interior hyphens as the only separator, 1-64 characters. There is no version field in the manifest: version numbers are assigned by the workshop when a version is published.
 

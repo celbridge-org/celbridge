@@ -22,6 +22,7 @@ When `true` (default), shows a confirmation dialog before uploading. Leave at th
 
 Before uploading, the tool verifies that:
 
+- An **Author** is set in Workshop settings (it is recorded as the version's publisher).
 - `resource` resolves to a `package.toml` manifest (or a folder containing one).
 - The manifest is valid TOML with a `[package]` section whose `name` is a valid package name.
 - The `summary`, if given, is within the 512-character cap.
@@ -57,4 +58,4 @@ The check needs the install record (`HISTORY.md`) to read which version the fold
 
 - Symlinks and other reparse points inside the package folder are skipped, not followed.
 - Publishing always creates a new version and never overwrites an earlier one. To remove a version, use `package_delete`; to remove a whole package, `package_unpublish`.
-- The workshop reads the publisher from the manifest's `author` field, so set it before the first publish.
+- The publisher recorded on the version is the **Author** set in Workshop settings (Settings page), not a manifest field. Publishing fails with a clear message (and an alert, when interactive) if no Author is configured.

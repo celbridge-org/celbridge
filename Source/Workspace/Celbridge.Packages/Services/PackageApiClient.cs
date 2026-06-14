@@ -15,10 +15,7 @@ namespace Celbridge.Packages;
 /// </summary>
 public class PackageApiClient : IPackageApiClient, IDisposable
 {
-    private const string ApiKeyScheme = "Api-Key";
-
-    private readonly ICredentialService _credentialService;
-    private readonly HttpClient _httpClient;
+    private readonly WorkshopApiSender _sender;
 
     public PackageApiClient(ICredentialService credentialService)
         : this(credentialService, new HttpClientHandler())
@@ -31,13 +28,12 @@ public class PackageApiClient : IPackageApiClient, IDisposable
     /// </summary>
     public PackageApiClient(ICredentialService credentialService, HttpMessageHandler messageHandler)
     {
-        _credentialService = credentialService;
-        _httpClient = new HttpClient(messageHandler);
+        _sender = new WorkshopApiSender(credentialService, messageHandler);
     }
 
     public async Task<Result<IReadOnlyList<RemotePackageSummary>>> ListPackagesAsync()
     {
-        var sendResult = await SendAsync(HttpMethod.Get, "api/packages/");
+        var sendResult = await _sender.SendAsync(HttpMethod.Get, "api/packages/");
         if (sendResult.IsFailure)
         {
             return Result.Fail("Failed to list workshop packages").WithErrors(sendResult);
@@ -49,7 +45,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
             return Result.Fail($"Failed to list workshop packages (HTTP {(int)response.StatusCode})");
         }
 
-        var parseResult = await ParseJsonAsync<List<PackageSummaryDto>>(response, "package list");
+        var parseResult = await WorkshopApiSender.ParseJsonAsync<List<PackageSummaryDto>>(response, "package list");
         if (parseResult.IsFailure)
         {
             return Result.Fail(parseResult);
@@ -67,7 +63,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     public async Task<Result<RemotePackageDetails>> GetPackageAsync(string packageName)
     {
-        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/");
+        var sendResult = await _sender.SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/");
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to get workshop package '{packageName}'").WithErrors(sendResult);
@@ -84,7 +80,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
             return Result.Fail($"Failed to get workshop package '{packageName}' (HTTP {(int)response.StatusCode})");
         }
 
-        var parseResult = await ParseJsonAsync<PackageDetailsDto>(response, "package metadata");
+        var parseResult = await WorkshopApiSender.ParseJsonAsync<PackageDetailsDto>(response, "package metadata");
         if (parseResult.IsFailure)
         {
             return Result.Fail(parseResult);
@@ -116,7 +112,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
             aliases.AsReadOnly());
     }
 
-    public async Task<Result<RemotePublishReceipt>> PublishVersionAsync(string packageName, byte[] zipData, string? summary = null)
+    public async Task<Result<RemotePublishReceipt>> PublishVersionAsync(string packageName, byte[] zipData, string? summary = null, string? author = null)
     {
         using var content = new MultipartFormDataContent();
 
@@ -129,7 +125,12 @@ public class PackageApiClient : IPackageApiClient, IDisposable
             content.Add(new StringContent(summary, Encoding.UTF8), "summary");
         }
 
-        var sendResult = await SendAsync(HttpMethod.Post, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/", content);
+        if (!string.IsNullOrEmpty(author))
+        {
+            content.Add(new StringContent(author, Encoding.UTF8), "author");
+        }
+
+        var sendResult = await _sender.SendAsync(HttpMethod.Post, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/", content);
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to publish package '{packageName}'").WithErrors(sendResult);
@@ -144,7 +145,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
             return Result.Fail($"Failed to publish package '{packageName}' (HTTP {(int)response.StatusCode}): {errorBody}");
         }
 
-        var parseResult = await ParseJsonAsync<PublishReceiptDto>(response, "publish receipt");
+        var parseResult = await WorkshopApiSender.ParseJsonAsync<PublishReceiptDto>(response, "publish receipt");
         if (parseResult.IsFailure)
         {
             return Result.Fail(parseResult);
@@ -160,7 +161,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     public async Task<Result<byte[]>> DownloadVersionAsync(string packageName, int version)
     {
-        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/download/");
+        var sendResult = await _sender.SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/download/");
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to download version {version} of package '{packageName}'").WithErrors(sendResult);
@@ -188,7 +189,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     public async Task<Result<byte[]>> DownloadLatestAsync(string packageName)
     {
-        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/latest/");
+        var sendResult = await _sender.SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/latest/");
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to download the latest version of package '{packageName}'").WithErrors(sendResult);
@@ -214,7 +215,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         var body = JsonSerializer.Serialize(new AliasVersionBodyDto(version));
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
 
-        var sendResult = await SendAsync(HttpMethod.Put, $"api/packages/{Uri.EscapeDataString(packageName)}/aliases/{Uri.EscapeDataString(alias)}/", content);
+        var sendResult = await _sender.SendAsync(HttpMethod.Put, $"api/packages/{Uri.EscapeDataString(packageName)}/aliases/{Uri.EscapeDataString(alias)}/", content);
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to set alias '{alias}' on package '{packageName}'").WithErrors(sendResult);
@@ -231,7 +232,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     public async Task<Result> RemoveAliasAsync(string packageName, string alias)
     {
-        var sendResult = await SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/aliases/{Uri.EscapeDataString(alias)}/");
+        var sendResult = await _sender.SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/aliases/{Uri.EscapeDataString(alias)}/");
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to remove alias '{alias}' from package '{packageName}'").WithErrors(sendResult);
@@ -255,7 +256,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
     {
         using var content = BuildDeleteReasonContent();
 
-        var sendResult = await SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/", content);
+        var sendResult = await _sender.SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/", content);
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to delete version {version} of package '{packageName}'").WithErrors(sendResult);
@@ -284,7 +285,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
     {
         using var content = BuildDeleteReasonContent();
 
-        var sendResult = await SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/", content);
+        var sendResult = await _sender.SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/", content);
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to delete package '{packageName}'").WithErrors(sendResult);
@@ -314,7 +315,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     public async Task<Result<string>> GetVersionHistoryAsync(string packageName, int version)
     {
-        var sendResult = await SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/history/");
+        var sendResult = await _sender.SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/history/");
         if (sendResult.IsFailure)
         {
             return Result.Fail($"Failed to get the history of package '{packageName}'").WithErrors(sendResult);
@@ -328,110 +329,6 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
         var history = await response.Content.ReadAsStringAsync();
         return history;
-    }
-
-    // Builds and sends one authenticated request. Fails without sending when no
-    // connection is stored or the stored URL is unusable, and maps 401 to a
-    // single actionable message here so no call site can leak the key.
-    private async Task<Result<HttpResponseMessage>> SendAsync(HttpMethod method, string relativePath, HttpContent? content = null)
-    {
-        var connectionResult = await _credentialService.GetWorkshopConnectionAsync();
-        if (connectionResult.IsFailure)
-        {
-            return Result.Fail("Failed to read the Workshop connection from the credential store")
-                .WithErrors(connectionResult);
-        }
-        var connection = connectionResult.Value;
-
-        var baseUriResult = ValidateWorkshopUrl(connection.WorkshopUrl);
-        if (baseUriResult.IsFailure)
-        {
-            return Result.Fail(baseUriResult);
-        }
-        var baseUri = baseUriResult.Value;
-
-        var request = new HttpRequestMessage(method, new Uri(baseUri, relativePath));
-        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, connection.ApplicationKey);
-        if (content is not null)
-        {
-            request.Content = content;
-        }
-
-        try
-        {
-            var response = await _httpClient.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                response.Dispose();
-                return Result.Fail(
-                    "The workshop rejected the stored Application Key (HTTP 401). " +
-                    "The key may be invalid, revoked, or no longer linked to the workshop. " +
-                    "Update the Workshop connection on the Settings page.");
-            }
-
-            return response;
-        }
-        catch (HttpRequestException exception)
-        {
-            return Result.Fail("A network error occurred while contacting the workshop")
-                .WithException(exception);
-        }
-        catch (TaskCanceledException exception)
-        {
-            return Result.Fail("The workshop request timed out")
-                .WithException(exception);
-        }
-    }
-
-    // The Application Key is a bearer credential, so sending it over plain HTTP
-    // would fully compromise it to any network observer. Loopback hosts are
-    // exempt to support local development servers.
-    private static Result<Uri> ValidateWorkshopUrl(string workshopUrl)
-    {
-        var urlText = workshopUrl.Trim();
-        if (!urlText.EndsWith('/'))
-        {
-            // Ensure the trailing path segment is kept when combining with
-            // relative endpoint paths.
-            urlText += '/';
-        }
-
-        if (!Uri.TryCreate(urlText, UriKind.Absolute, out var uri))
-        {
-            return Result.Fail("The stored Workshop URL is not a valid absolute URL. Update the Workshop connection on the Settings page.");
-        }
-
-        if (uri.Scheme == Uri.UriSchemeHttps)
-        {
-            return uri;
-        }
-
-        if (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)
-        {
-            return uri;
-        }
-
-        return Result.Fail("The Workshop URL must use HTTPS. Plain HTTP would expose the Application Key to network observers and is only permitted for localhost development servers.");
-    }
-
-    private static async Task<Result<T>> ParseJsonAsync<T>(HttpResponseMessage response, string payloadDescription) where T : notnull
-    {
-        try
-        {
-            var json = await response.Content.ReadAsStringAsync();
-            var parsed = JsonSerializer.Deserialize<T>(json);
-            if (parsed is null)
-            {
-                return Result.Fail($"Failed to parse the workshop {payloadDescription} response");
-            }
-
-            return parsed;
-        }
-        catch (JsonException exception)
-        {
-            return Result<T>.Fail($"Failed to parse the workshop {payloadDescription} response")
-                .WithException(exception);
-        }
     }
 
     private static RemotePackageSummary ToPackageSummary(PackageSummaryDto entry)
@@ -498,6 +395,6 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     public void Dispose()
     {
-        _httpClient.Dispose();
+        _sender.Dispose();
     }
 }

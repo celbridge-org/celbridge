@@ -1,11 +1,10 @@
 namespace Celbridge.Credentials;
 
 /// <summary>
-/// A Workshop server URL paired with the Application Key issued by that server.
-/// The two values are stored and retrieved together because a key is only
-/// meaningful against the server that issued it.
+/// A Workshop server URL, the Application Key issued by that server, and the
+/// Author name recorded as the publisher of packages and pages.
 /// </summary>
-public record WorkshopConnection(string WorkshopUrl, string ApplicationKey);
+public record WorkshopConnection(string WorkshopUrl, string ApplicationKey, string Author = "");
 
 /// <summary>
 /// Summary of the stored Workshop connection, readable without decrypting it.

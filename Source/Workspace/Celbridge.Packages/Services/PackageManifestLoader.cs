@@ -25,7 +25,6 @@ public static class PackageManifestLoader
 
     private const string IdKey = "id";
     private const string NameKey = "name";
-    private const string AuthorKey = "author";
     private const string TitleKey = "title";
     private const string FeatureFlagKey = "feature_flag";
     private const string TypeKey = "type";
@@ -111,7 +110,6 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package has invalid '{NameKey}' value '{packageName}': {packageTomlPath}. Package names must be lowercase ASCII letters and digits with single interior hyphens, at most {PackageConstants.MaxNameLength} characters.");
             }
 
-            var packageAuthor = GetString(packageTable, AuthorKey);
             var packageTitle = GetString(packageTable, TitleKey);
             var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
@@ -136,7 +134,6 @@ public static class PackageManifestLoader
             var packageInfo = new PackageInfo
             {
                 Name = packageName,
-                Author = packageAuthor,
                 Title = packageTitle,
                 FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,

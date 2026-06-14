@@ -417,8 +417,23 @@
   <data name="SettingsPage_WorkshopUrl" xml:space="preserve">
     <value>Workshop URL</value>
   </data>
+  <data name="SettingsPage_WorkshopUrlTooltip" xml:space="preserve">
+    <value>The web address of your Workshop server, where packages and pages are published.</value>
+  </data>
   <data name="SettingsPage_ApplicationKey" xml:space="preserve">
     <value>Application Key</value>
+  </data>
+  <data name="SettingsPage_ApplicationKeyTooltip" xml:space="preserve">
+    <value>The secret key issued by your Workshop. Keep it private; it authenticates your requests.</value>
+  </data>
+  <data name="SettingsPage_Author" xml:space="preserve">
+    <value>Author Name</value>
+  </data>
+  <data name="SettingsPage_AuthorTooltip" xml:space="preserve">
+    <value>Your name, recorded with the packages and pages you publish to the workshop.</value>
+  </data>
+  <data name="SettingsPage_AuthorPlaceholder" xml:space="preserve">
+    <value>Your name</value>
   </data>
   <data name="SettingsPage_SaveConnection" xml:space="preserve">
     <value>Save</value>
@@ -1060,6 +1075,21 @@ Do you wish to continue?</value>
   </data>
   <data name="Package_UnpublishConfirm_Message" xml:space="preserve">
     <value>Unpublish package '{0}' from the workshop? The package and all its versions are removed permanently and cannot be recovered.</value>
+  </data>
+  <data name="Page_PublishConfirm_Title" xml:space="preserve">
+    <value>Publish Page</value>
+  </data>
+  <data name="Page_PublishConfirm_Message" xml:space="preserve">
+    <value>Publish this folder as a page at '{0}'? It will be served publicly on the workshop.</value>
+  </data>
+  <data name="Page_UnpublishConfirm_Title" xml:space="preserve">
+    <value>Unpublish Page</value>
+  </data>
+  <data name="Page_UnpublishConfirm_Message" xml:space="preserve">
+    <value>Unpublish the page at '{0}' from the workshop? It will no longer be served.</value>
+  </data>
+  <data name="Workshop_PublishBlocked_Title" xml:space="preserve">
+    <value>Cannot Publish</value>
   </data>
   <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
     <value>Spreadsheet Editor</value>

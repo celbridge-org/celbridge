@@ -135,7 +135,7 @@ public class PackageApiClientTests
             """, HttpStatusCode.Created);
 
         var zipData = new byte[] { 0x50, 0x4B, 0x03, 0x04 };
-        var result = await _client.PublishVersionAsync("my-widget", zipData, "Fixed the frobnicator");
+        var result = await _client.PublishVersionAsync("my-widget", zipData, "Fixed the frobnicator", "alice");
 
         result.IsSuccess.Should().BeTrue();
 
@@ -149,6 +149,8 @@ public class PackageApiClientTests
         requestBody.Should().Contain("name=file; filename=my-widget.zip");
         requestBody.Should().Contain("name=summary");
         requestBody.Should().Contain("Fixed the frobnicator");
+        requestBody.Should().Contain("name=author");
+        requestBody.Should().Contain("alice");
 
         var receipt = result.Value;
         receipt.PackageName.Should().Be("my-widget");
@@ -167,7 +169,9 @@ public class PackageApiClientTests
         var result = await _client.PublishVersionAsync("my-widget", [0x50]);
 
         result.IsSuccess.Should().BeTrue();
-        _messageHandler.RequestBodies.Single().Replace("\"", "").Should().NotContain("name=summary");
+        var requestBody = _messageHandler.RequestBodies.Single().Replace("\"", "");
+        requestBody.Should().NotContain("name=summary");
+        requestBody.Should().NotContain("name=author");
     }
 
     [Test]

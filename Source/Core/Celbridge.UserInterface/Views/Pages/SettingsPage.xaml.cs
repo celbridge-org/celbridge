@@ -18,7 +18,12 @@ public sealed partial class SettingsPage : Page
     private string ApplicationThemeString => _stringLocalizer.GetString("SettingsPage_ApplicationTheme");
     private string WorkshopSectionString => _stringLocalizer.GetString("SettingsPage_WorkshopSection");
     private string WorkshopUrlString => _stringLocalizer.GetString("SettingsPage_WorkshopUrl");
+    private string WorkshopUrlTooltipString => _stringLocalizer.GetString("SettingsPage_WorkshopUrlTooltip");
     private string ApplicationKeyString => _stringLocalizer.GetString("SettingsPage_ApplicationKey");
+    private string ApplicationKeyTooltipString => _stringLocalizer.GetString("SettingsPage_ApplicationKeyTooltip");
+    private string AuthorString => _stringLocalizer.GetString("SettingsPage_Author");
+    private string AuthorTooltipString => _stringLocalizer.GetString("SettingsPage_AuthorTooltip");
+    private string AuthorPlaceholderString => _stringLocalizer.GetString("SettingsPage_AuthorPlaceholder");
     private string SaveConnectionString => _stringLocalizer.GetString("SettingsPage_SaveConnection");
     private string ClearConnectionString => _stringLocalizer.GetString("SettingsPage_ClearConnection");
     private string ReplaceKeyString => _stringLocalizer.GetString("SettingsPage_ReplaceKey");
