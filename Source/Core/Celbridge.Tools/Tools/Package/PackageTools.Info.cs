@@ -11,7 +11,7 @@ public record class PackageVersionEntry(
     int Version,
     string Author,
     DateTime Date,
-    bool Tombstoned,
+    bool Deleted,
     string ContentHash,
     string Summary);
 
@@ -57,7 +57,7 @@ public partial class PackageTools
                 packageVersion.Version,
                 packageVersion.Author,
                 packageVersion.Date,
-                packageVersion.Tombstoned,
+                packageVersion.Deleted,
                 packageVersion.ContentHash,
                 packageVersion.Summary);
             versions.Add(entry);

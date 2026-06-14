@@ -46,6 +46,13 @@ public class PackageServiceDocumentTypeTests
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
         });
+        // The package walk enumerates the project tree through the gateway, which
+        // resolves with validateCase:false; stub the two-argument overload too.
+        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
+        {
+            var key = callInfo.Arg<ResourceKey>();
+            return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
         resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
         {
             var path = callInfo.Arg<string>();

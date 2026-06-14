@@ -17,13 +17,15 @@ public record RemotePackageSummary(
 
 /// <summary>
 /// A single immutable version of a workshop package. Version numbers are
-/// assigned by the server in publish order.
+/// assigned by the server in publish order. Deleted is true once the version's
+/// bytes have been removed; the version record, number, and content hash are
+/// retained so vendored copies stay verifiable.
 /// </summary>
 public record RemotePackageVersion(
     int Version,
     string Author,
     DateTime Date,
-    bool Tombstoned,
+    bool Deleted,
     string ContentHash,
     string Summary);
 
@@ -54,8 +56,8 @@ public record RemotePublishReceipt(
 /// Client for the workshop server's package REST API. The Workshop URL and
 /// Application Key are read from the credential store at request time;
 /// credential values never appear in parameters, results, or error messages.
-/// Destructive administrative operations (tombstoning a version, deleting a
-/// package) are deliberately not part of this surface.
+/// Destructive operations (deleting a version, deleting a package) remove
+/// content outright; Celbridge does not model the server's tombstone state.
 /// </summary>
 public interface IPackageApiClient
 {
@@ -94,6 +96,19 @@ public interface IPackageApiClient
     /// Removes an alias. The version the alias pointed at is unaffected.
     /// </summary>
     Task<Result> RemoveAliasAsync(string packageName, string alias);
+
+    /// <summary>
+    /// Deletes a published version, removing its bytes. The version record and
+    /// content hash are retained so the number is never reused and vendored
+    /// copies stay verifiable. Irreversible from the client.
+    /// </summary>
+    Task<Result> DeleteVersionAsync(string packageName, int version);
+
+    /// <summary>
+    /// Deletes a whole package and all its versions from the workshop.
+    /// Irreversible from the client.
+    /// </summary>
+    Task<Result> DeletePackageAsync(string packageName);
 
     /// <summary>
     /// Gets the plain text publish history of a package as of the given version.

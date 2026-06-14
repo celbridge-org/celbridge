@@ -18,7 +18,7 @@ public partial class PackageTools
     [RelatedGuides("packages_overview", "resource_keys", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Install(
         string packageName,
-        string version = "latest",
+        string version = PackageConstants.LatestAlias,
         string destination = "",
         bool confirmWithUser = true)
     {
@@ -84,8 +84,8 @@ public partial class PackageTools
         }
         var packageDetails = detailsResult.Value;
 
-        var requestedVersion = string.IsNullOrWhiteSpace(version) ? "latest" : version.Trim();
-        var resolveVersionResult = ResolveInstallVersion(packageDetails, requestedVersion);
+        var requestedVersion = string.IsNullOrWhiteSpace(version) ? PackageConstants.LatestAlias : version.Trim();
+        var resolveVersionResult = PackageVersionResolver.ResolveForInstall(packageDetails, requestedVersion);
         if (resolveVersionResult.IsFailure)
         {
             return ToolResponse.Error(resolveVersionResult);
@@ -179,59 +179,6 @@ public partial class PackageTools
         var result = new PackageInstallResult(packageName, resolvedVersion, extractedEntries, packageFolder.ToString());
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
-    }
-
-    // Resolves the requested version string to a concrete live version number.
-    // "latest" selects the highest non-tombstoned version; a numeric string
-    // selects that exact version; anything else is treated as an alias name.
-    private static Result<int> ResolveInstallVersion(RemotePackageDetails details, string requestedVersion)
-    {
-        if (string.Equals(requestedVersion, "latest", StringComparison.OrdinalIgnoreCase))
-        {
-            var liveVersions = details.Versions
-                .Where(packageVersion => !packageVersion.Tombstoned)
-                .ToList();
-            if (liveVersions.Count == 0)
-            {
-                return Result.Fail($"Package '{details.Name}' has no live version to install.");
-            }
-
-            return liveVersions.Max(packageVersion => packageVersion.Version);
-        }
-
-        if (int.TryParse(requestedVersion, out var explicitVersion))
-        {
-            var match = details.Versions.FirstOrDefault(packageVersion => packageVersion.Version == explicitVersion);
-            if (match is null)
-            {
-                return Result.Fail($"Version {explicitVersion} not found for package '{details.Name}'.");
-            }
-            if (match.Tombstoned)
-            {
-                return Result.Fail($"Version {explicitVersion} of package '{details.Name}' has been tombstoned and cannot be installed.");
-            }
-
-            return explicitVersion;
-        }
-
-        var alias = details.Aliases.FirstOrDefault(packageAlias =>
-            string.Equals(packageAlias.Alias, requestedVersion, StringComparison.Ordinal));
-        if (alias is null)
-        {
-            return Result.Fail($"'{requestedVersion}' is not a version number or a known alias for package '{details.Name}'.");
-        }
-
-        var aliasTarget = details.Versions.FirstOrDefault(packageVersion => packageVersion.Version == alias.Version);
-        if (aliasTarget is null)
-        {
-            return Result.Fail($"Alias '{requestedVersion}' points at version {alias.Version}, which does not exist.");
-        }
-        if (aliasTarget.Tombstoned)
-        {
-            return Result.Fail($"Alias '{requestedVersion}' points at version {alias.Version}, which has been tombstoned.");
-        }
-
-        return alias.Version;
     }
 
     private static Result CheckForDuplicateProjectPackage(

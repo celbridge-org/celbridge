@@ -35,6 +35,8 @@ Wraps the search term in `\b` boundaries. Ignored when `useRegex` is true — wr
 
 A folder resource key. Only files within this folder (and its descendants) are searched. Empty string searches the whole project.
 
+A scope under a non-default root (e.g. `temp:staging/my-pkg`, `logs:`) is searched too — the tool walks that root's tree directly. This is what makes a staging-folder comparison work (install a package version to `temp:` and grep it against the local copy). `include`/`exclude` still apply. Note that non-default roots are not part of the loading project, so they are not covered by an empty-scope whole-project search; name the root explicitly to search it.
+
 ### include / exclude
 
 Comma-separated glob lists matched against file names: `"*.cs,*.xaml"`, `"*.generated.cs,*.g.cs"`. `exclude` wins when a file matches both. Globs follow the project-wide convention — see `file_search` for `**` semantics.

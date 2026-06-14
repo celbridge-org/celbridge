@@ -24,7 +24,7 @@ public partial class PackageTools : AgentToolBase
     // or remove it. Other aliases follow the conservative package-name rule.
     private static Result ValidateAlias(string alias)
     {
-        if (string.Equals(alias, "latest", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(alias, PackageConstants.LatestAlias, StringComparison.OrdinalIgnoreCase))
         {
             return Result.Fail("The 'latest' alias is managed by the workshop and cannot be set or removed manually.");
         }

@@ -9,6 +9,9 @@ namespace Celbridge.Tools;
 /// </summary>
 internal static class PackageHistoryFile
 {
+    // Marker text rendered in place of a deleted version's summary.
+    private const string DeletedVersionSummary = "[package_deleted]";
+
     /// <summary>
     /// Builds the HISTORY.md changelog from the package's versions, covering
     /// every version up to and including the installed one, newest first.
@@ -30,10 +33,6 @@ internal static class PackageHistoryFile
 
             builder.Append("# ");
             builder.Append(packageVersion.Version.ToString(CultureInfo.InvariantCulture));
-            if (packageVersion.Tombstoned)
-            {
-                builder.Append(" (tombstoned)");
-            }
             builder.Append("\r\n\r\n");
 
             var date = packageVersion.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -57,13 +56,26 @@ internal static class PackageHistoryFile
                 builder.Append("\r\n");
             }
 
-            var summary = packageVersion.Summary?.Trim() ?? string.Empty;
-            if (summary.Length > 0)
+            if (packageVersion.Deleted)
             {
-                var normalizedSummary = summary.Replace("\r\n", "\n").Replace("\n", "\r\n");
+                // A deleted version has lost its bytes and publisher summary, so
+                // the marker stands in for the summary. Its heading, date, and
+                // content hash (emitted above) remain, so the version reads as
+                // removed rather than as a gap in the numbering.
                 builder.Append("\r\n");
-                builder.Append(normalizedSummary);
+                builder.Append(DeletedVersionSummary);
                 builder.Append("\r\n");
+            }
+            else
+            {
+                var summary = packageVersion.Summary?.Trim() ?? string.Empty;
+                if (summary.Length > 0)
+                {
+                    var normalizedSummary = summary.Replace("\r\n", "\n").Replace("\n", "\r\n");
+                    builder.Append("\r\n");
+                    builder.Append(normalizedSummary);
+                    builder.Append("\r\n");
+                }
             }
         }
 
@@ -95,7 +107,7 @@ internal static class PackageHistoryFile
             // The first non-empty line must be the newest version's heading.
             var headingText = trimmed.TrimStart('#').Trim();
 
-            // Drop any trailing note such as "(tombstoned)".
+            // Drop any trailing note after the version number.
             var spaceIndex = headingText.IndexOf(' ');
             if (spaceIndex > 0)
             {

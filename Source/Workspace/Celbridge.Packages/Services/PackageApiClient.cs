@@ -98,7 +98,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
                 version.Version,
                 version.Author ?? string.Empty,
                 version.Date,
-                version.Tombstoned,
+                version.Deleted,
                 version.ContentHash ?? string.Empty,
                 version.Summary ?? string.Empty));
         }
@@ -169,7 +169,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         using var response = sendResult.Value;
         if (response.StatusCode == HttpStatusCode.Gone)
         {
-            return Result.Fail($"Version {version} of package '{packageName}' has been tombstoned and can no longer be downloaded.");
+            return Result.Fail($"Version {version} of package '{packageName}' has been deleted and can no longer be downloaded.");
         }
 
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -197,7 +197,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         using var response = sendResult.Value;
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return Result.Fail($"Package '{packageName}' has no live version to download. It may not exist on the workshop, or every version may have been tombstoned.");
+            return Result.Fail($"Package '{packageName}' has no live version to download. It may not exist on the workshop, or every version may have been deleted.");
         }
 
         if (!response.IsSuccessStatusCode)
@@ -249,6 +249,67 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         }
 
         return Result.Ok();
+    }
+
+    public async Task<Result> DeleteVersionAsync(string packageName, int version)
+    {
+        using var content = BuildDeleteReasonContent();
+
+        var sendResult = await SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/versions/{version}/", content);
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to delete version {version} of package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return Result.Fail($"Version {version} of package '{packageName}' was not found on the workshop.");
+        }
+
+        if (response.StatusCode == HttpStatusCode.Gone)
+        {
+            return Result.Fail($"Version {version} of package '{packageName}' has already been deleted.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to delete version {version} of package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> DeletePackageAsync(string packageName)
+    {
+        using var content = BuildDeleteReasonContent();
+
+        var sendResult = await SendAsync(HttpMethod.Delete, $"api/packages/{Uri.EscapeDataString(packageName)}/", content);
+        if (sendResult.IsFailure)
+        {
+            return Result.Fail($"Failed to delete package '{packageName}'").WithErrors(sendResult);
+        }
+
+        using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return Result.Fail($"Package '{packageName}' was not found on the workshop.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Result.Fail($"Failed to delete package '{packageName}' (HTTP {(int)response.StatusCode})");
+        }
+
+        return Result.Ok();
+    }
+
+    // The delete endpoints accept a {reason} audit note. The tools do not collect
+    // one, so a fixed note is sent. A server that ignores the field is unaffected.
+    private static StringContent BuildDeleteReasonContent()
+    {
+        var body = JsonSerializer.Serialize(new DeleteReasonBodyDto("Deleted via Celbridge."));
+        return new StringContent(body, Encoding.UTF8, "application/json");
     }
 
     public async Task<Result<string>> GetVersionHistoryAsync(string packageName, int version)
@@ -402,11 +463,13 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         [property: JsonPropertyName("latest_version")] VersionSummaryDto? LatestVersion,
         [property: JsonPropertyName("versions_count")] int VersionsCount);
 
+    // The server's wire field is still "tombstoned". The client maps it to a
+    // Deleted flag because Celbridge does not model a dead-but-retained state.
     private record VersionDetailDto(
         [property: JsonPropertyName("version")] int Version,
         [property: JsonPropertyName("author")] string? Author,
         [property: JsonPropertyName("date")] DateTime Date,
-        [property: JsonPropertyName("tombstoned")] bool Tombstoned,
+        [property: JsonPropertyName("tombstoned")] bool Deleted,
         [property: JsonPropertyName("content_hash")] string? ContentHash,
         [property: JsonPropertyName("summary")] string? Summary);
 
@@ -429,6 +492,9 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     private record AliasVersionBodyDto(
         [property: JsonPropertyName("version")] int Version);
+
+    private record DeleteReasonBodyDto(
+        [property: JsonPropertyName("reason")] string Reason);
 
     public void Dispose()
     {

@@ -1,6 +1,7 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -24,6 +25,10 @@ public class PackageRegistry
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
+
+    // Failures from the most recent discovery pass, retained so package_status
+    // can report them after load (the error banner only fires once).
+    private IReadOnlyList<PackageLoadFailure> _lastFailures = Array.Empty<PackageLoadFailure>();
 
     // Bundled packages live outside any IResourceRegistry root so their reads
     // stay on direct File.* IO via the gateway. One reader is reused across
@@ -66,6 +71,8 @@ public class PackageRegistry
             Failures = failures.AsReadOnly()
         };
 
+        _lastFailures = report.Failures;
+
         LogDiscoveredPackages();
 
         _logger.LogInformation(
@@ -80,6 +87,11 @@ public class PackageRegistry
         combined.AddRange(_bundledPackages);
         combined.AddRange(_projectPackages);
         return combined.AsReadOnly();
+    }
+
+    public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
+    {
+        return _lastFailures;
     }
 
     public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
@@ -345,43 +357,23 @@ public class PackageRegistry
             return failures;
         }
 
-        var packagesResource = new ResourceKey(PackageConstants.DefaultPackagesFolder);
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-
-        var packagesInfoResult = await resourceFileSystem.GetInfoAsync(packagesResource);
-        if (packagesInfoResult.IsFailure
-            || packagesInfoResult.Value.Kind != StorageItemKind.Folder)
-        {
-            return failures;
-        }
-
-        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(packagesResource);
-        if (enumerateResult.IsFailure)
-        {
-            return failures;
-        }
-
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
+
+        // Walk the project's visible resource set for package.toml manifests. A
+        // manifest is a package wherever it lives under the project root. The
+        // file-system gateway applies the project's ignore rules, so excluded
+        // content (vendored assets, build output) is never scanned. Descent stops
+        // at each package root so a package's own content is not searched for
+        // nested manifests.
+        var manifestResources = new List<ResourceKey>();
+        await CollectProjectManifestsAsync(resourceFileSystem, ResourceKey.Empty, manifestResources);
+
         var candidates = new List<Package>();
 
-        foreach (var item in enumerateResult.Value)
+        foreach (var manifestResource in manifestResources)
         {
-            if (!item.IsFolder)
-            {
-                continue;
-            }
-
-            var manifestResource = item.Resource.Combine(PackageConstants.ManifestFileName);
-            var manifestInfoResult = await resourceFileSystem.GetInfoAsync(manifestResource);
-            if (manifestInfoResult.IsFailure
-                || manifestInfoResult.Value.Kind != StorageItemKind.File)
-            {
-                // A folder under packages/ with no manifest is not a package.
-                // Silently skip rather than report as a failure.
-                continue;
-            }
-
             var resolveResult = resourceRegistry.ResolveResourcePath(manifestResource);
             if (resolveResult.IsFailure)
             {
@@ -503,6 +495,42 @@ public class PackageRegistry
         }
 
         return failures;
+    }
+
+    // Recursively collects every package.toml manifest in the project's visible
+    // resource set. Enumeration goes through the file-system gateway, which
+    // honours the project's ignore rules, so excluded content is never visited.
+    // A folder that directly holds a manifest is a package root: its manifest is
+    // recorded and the walk does not descend into it, so a package's own files
+    // (which may legitimately vendor another package's folder) are not scanned.
+    private async Task CollectProjectManifestsAsync(
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey folderResource,
+        List<ResourceKey> manifestResources)
+    {
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderResource);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+        var items = enumerateResult.Value;
+
+        var manifestItem = items.FirstOrDefault(item =>
+            !item.IsFolder
+            && string.Equals(item.Resource.ResourceName, PackageConstants.ManifestFileName, StringComparison.OrdinalIgnoreCase));
+        if (manifestItem is not null)
+        {
+            manifestResources.Add(manifestItem.Resource);
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            if (item.IsFolder)
+            {
+                await CollectProjectManifestsAsync(resourceFileSystem, item.Resource, manifestResources);
+            }
+        }
     }
 
     // Runs after dedup so that duplicate-id packages rejected by the group

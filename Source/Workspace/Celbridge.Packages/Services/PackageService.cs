@@ -50,6 +50,11 @@ public class PackageService : IPackageService
         return _registry.GetAllPackages();
     }
 
+    public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
+    {
+        return _registry.GetLoadFailures();
+    }
+
     public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
     {
         return _registry.GetAllDocumentEditors();

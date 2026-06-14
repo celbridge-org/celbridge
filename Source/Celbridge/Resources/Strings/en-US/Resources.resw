@@ -1035,10 +1035,25 @@ Do you wish to continue?</value>
     <value>Replace Package</value>
   </data>
   <data name="Package_ReplaceConfirm_Message" xml:space="preserve">
-    <value>The folder '{0}' already contains package '{1}' (version {2}). Installing version {3} will replace its contents and discard any local changes. The replaced files are moved to the trash. Continue?</value>
+    <value>'{0}' already contains package '{1}' (version {2}). Installing version {3} replaces its contents, moving the current files to the trash. Continue?</value>
   </data>
   <data name="Package_ReplaceConfirm_MessageUnknownVersion" xml:space="preserve">
-    <value>The folder '{0}' already contains package '{1}'. Installing version {2} will replace its contents and discard any local changes. The replaced files are moved to the trash. Continue?</value>
+    <value>'{0}' already contains package '{1}'. Installing version {2} replaces its contents, moving the current files to the trash. Continue?</value>
+  </data>
+  <data name="Package_DeleteConfirm_Title" xml:space="preserve">
+    <value>Delete Package Version</value>
+  </data>
+  <data name="Package_DeleteConfirm_Message" xml:space="preserve">
+    <value>Delete version {0} of package '{1}' from the workshop? Its content is removed permanently and cannot be recovered.</value>
+  </data>
+  <data name="Package_DeleteConfirm_MessageWithAliases" xml:space="preserve">
+    <value>Delete version {0} of package '{1}' from the workshop? Its content is removed permanently and cannot be recovered. Aliases pointing at it will be left dangling or repointed: {2}.</value>
+  </data>
+  <data name="Package_UnpublishConfirm_Title" xml:space="preserve">
+    <value>Unpublish Package</value>
+  </data>
+  <data name="Package_UnpublishConfirm_Message" xml:space="preserve">
+    <value>Unpublish package '{0}' from the workshop? The package and all its versions are removed permanently and cannot be recovered.</value>
   </data>
   <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
     <value>Spreadsheet Editor</value>

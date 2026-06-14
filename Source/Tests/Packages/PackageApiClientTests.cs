@@ -100,7 +100,7 @@ public class PackageApiClientTests
         details.Name.Should().Be("my-widget");
         details.Versions.Should().HaveCount(2);
         details.Versions[0].Version.Should().Be(1);
-        details.Versions[0].Tombstoned.Should().BeTrue();
+        details.Versions[0].Deleted.Should().BeTrue();
         details.Versions[0].Summary.Should().Be("Initial release");
         details.Versions[1].Author.Should().Be("bob");
         details.Versions[1].ContentHash.Should().Be("bbb222");
@@ -189,14 +189,14 @@ public class PackageApiClientTests
     }
 
     [Test]
-    public async Task DownloadVersion_TombstonedVersion_Fails()
+    public async Task DownloadVersion_DeletedVersion_Fails()
     {
         _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.Gone);
 
         var result = await _client.DownloadVersionAsync("my-widget", 1);
 
         result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("tombstoned");
+        result.MessageChain.Should().Contain("deleted");
     }
 
     [Test]
@@ -240,6 +240,68 @@ public class PackageApiClientTests
         var request = _messageHandler.Requests.Single();
         request.Method.Should().Be(HttpMethod.Delete);
         request.RequestUri.Should().Be(new Uri("https://workshop.example.com/api/packages/my-widget/aliases/stable/"));
+    }
+
+    [Test]
+    public async Task DeleteVersion_SendsDeleteToVersionEndpoint()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        var result = await _client.DeleteVersionAsync("my-widget", 2);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var request = _messageHandler.Requests.Single();
+        request.Method.Should().Be(HttpMethod.Delete);
+        request.RequestUri.Should().Be(new Uri("https://workshop.example.com/api/packages/my-widget/versions/2/"));
+    }
+
+    [Test]
+    public async Task DeleteVersion_NotFound_Fails()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
+
+        var result = await _client.DeleteVersionAsync("my-widget", 9);
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("not found");
+    }
+
+    [Test]
+    public async Task DeleteVersion_AlreadyDeleted_Fails()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.Gone);
+
+        var result = await _client.DeleteVersionAsync("my-widget", 1);
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("already been deleted");
+    }
+
+    [Test]
+    public async Task DeletePackage_SendsDeleteToPackageEndpoint()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        var result = await _client.DeletePackageAsync("my-widget");
+
+        result.IsSuccess.Should().BeTrue();
+
+        var request = _messageHandler.Requests.Single();
+        request.Method.Should().Be(HttpMethod.Delete);
+        request.RequestUri.Should().Be(new Uri("https://workshop.example.com/api/packages/my-widget/"));
+    }
+
+    [Test]
+    public async Task DeletePackage_NotFound_Fails()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
+
+        var result = await _client.DeletePackageAsync("missing-package");
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("missing-package");
+        result.MessageChain.Should().Contain("not found");
     }
 
     [Test]

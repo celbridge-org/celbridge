@@ -32,6 +32,13 @@ public interface IPackageService
     IReadOnlyList<Package> GetAllPackages();
 
     /// <summary>
+    /// Returns the package load failures from the most recent discovery pass,
+    /// so a status query can surface them after the load-time error banner has
+    /// fired. Empty before the first discovery.
+    /// </summary>
+    IReadOnlyList<PackageLoadFailure> GetLoadFailures();
+
+    /// <summary>
     /// Returns all document editor contributions from all discovered packages.
     /// </summary>
     IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors();

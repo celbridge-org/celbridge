@@ -371,6 +371,49 @@ public class PackageServiceTests
     }
 
     [Test]
+    public async Task GetLoadFailures_AfterDuplicateName_ReportsCollidingPackages()
+    {
+        // package_status reads load failures from here after the load-time error
+        // banner has already fired, so the failures must be retained.
+        CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
+        CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var duplicateFailures = _service.GetLoadFailures()
+            .Where(failure => failure.Reason == PackageLoadFailureReason.DuplicateName)
+            .ToList();
+        duplicateFailures.Should().HaveCount(2);
+        duplicateFailures.Should().OnlyContain(failure => failure.PackageName == "dup-tool");
+    }
+
+    [Test]
+    public async Task GetLoadFailures_AllValid_IsEmpty()
+    {
+        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetLoadFailures().Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task RegisterPackages_NestedManifest_DiscoveredOutsidePackagesFolder()
+    {
+        // Discovery is no longer tied to packages/: a manifest anywhere under the
+        // project root is found, honouring the gateway's visibility rules.
+        var toolsDir = Path.Combine(_tempProjectFolder, "tools", "my-editor");
+        Directory.CreateDirectory(toolsDir);
+        WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", "custom", ".nst");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var contributions = _service.GetAllDocumentEditors();
+        contributions.Should().HaveCount(1);
+        contributions[0].Package.Name.Should().Be("nested-tool");
+    }
+
+    [Test]
     public async Task RegisterPackages_LoadFailures_SendPackageLoadErrorMessage()
     {
         CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");

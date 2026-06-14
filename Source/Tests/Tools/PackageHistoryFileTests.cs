@@ -15,10 +15,11 @@ public class PackageHistoryFileTests
         int version,
         string author = "Acme",
         string contentHash = "sha256:abc",
-        string summary = "Change summary.")
+        string summary = "Change summary.",
+        bool deleted = false)
     {
         var date = new DateTime(2026, 6, 13, 0, 0, 0, DateTimeKind.Utc);
-        return new RemotePackageVersion(version, author, date, Tombstoned: false, contentHash, summary);
+        return new RemotePackageVersion(version, author, date, deleted, contentHash, summary);
     }
 
     [Test]
@@ -82,6 +83,42 @@ public class PackageHistoryFileTests
 
         markdown.Should().Contain("Published by Acme on 2026-06-13.");
         markdown.Should().NotContain("sha256");
+    }
+
+    [Test]
+    public void Format_DeletedVersion_RendersSentinelInPlaceOfSummary_AndKeepsMetadata()
+    {
+        var versions = new List<RemotePackageVersion>
+        {
+            MakeVersion(1, contentHash: "sha256:keep", summary: "Original summary.", deleted: true),
+            MakeVersion(2, summary: "Live summary."),
+        };
+
+        var markdown = PackageHistoryFile.Format(versions, installedVersion: 2);
+
+        // The deleted version keeps its heading and content hash for provenance,
+        // but its publisher summary is replaced by the sentinel.
+        markdown.Should().Contain("# 1");
+        markdown.Should().Contain("sha256:keep");
+        markdown.Should().Contain("[package_deleted]");
+        markdown.Should().NotContain("Original summary.");
+        // The live version still renders its real summary.
+        markdown.Should().Contain("Live summary.");
+    }
+
+    [Test]
+    public void Format_DeletedVersion_HeadingHasNoSuffix()
+    {
+        var versions = new List<RemotePackageVersion>
+        {
+            MakeVersion(5, deleted: true),
+        };
+
+        var markdown = PackageHistoryFile.Format(versions, installedVersion: 5);
+
+        markdown.Should().StartWith("# 5\r\n");
+        markdown.Should().NotContain("tombstoned");
+        PackageHistoryFile.TryReadInstalledVersion(markdown).Should().Be(5);
     }
 
     [Test]
