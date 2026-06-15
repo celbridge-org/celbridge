@@ -14,3 +14,4 @@ To find which flags are currently on, call `app_get_state` and read the `feature
 - **`webview-dev-tools-eval`** is a separate, narrower flag that gates only `webview_eval` because arbitrary JavaScript evaluation is the riskiest webview surface.
 - **`mcp-tools`** gates the broker itself; if it is off, you would not see this error from a tool call (the MCP server would not be running).
 - **`console-panel`** gates the console UI feature; tools may reference it for layout reporting.
+- **`answer-dialog`** gates the `app_answer_dialog` MCP tool, which lets a script answer a modal dialog without a human present. The tool itself only ships in debug builds, so setting the flag in a release build has no effect — `app_answer_dialog` does not appear in `tools/list` regardless. To enable in a debug build, set `answer-dialog = true` in the user-level `.celbridge`.

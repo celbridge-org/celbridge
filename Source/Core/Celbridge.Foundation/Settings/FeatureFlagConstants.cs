@@ -29,4 +29,11 @@ public static class FeatureFlagConstants
     /// webview_* namespace.
     /// </summary>
     public const string WebViewDevToolsEval = "webview-dev-tools-eval";
+
+    /// <summary>
+    /// Enables the app_answer_dialog MCP tool that lets a script answer a
+    /// modal dialog without a human present. The tool only ships in debug
+    /// builds, so the flag has no effect in release even when set.
+    /// </summary>
+    public const string AnswerDialog = "answer-dialog";
 }

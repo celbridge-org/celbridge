@@ -4,6 +4,16 @@ using Celbridge.Validators;
 namespace Celbridge.Dialog;
 
 /// <summary>
+/// Identifies the dialog kinds that support automated answers through
+/// IDialogService.ScheduleAnswer.
+/// </summary>
+public enum DialogKind
+{
+    Confirmation,
+    InputText,
+}
+
+/// <summary>
 /// Manages the display of modal dialogs to the user.
 /// </summary>
 public interface IDialogService
@@ -56,5 +66,13 @@ public interface IDialogService
     /// Returns the selected index and checkbox state, or fails if the user cancels.
     /// </summary>
     Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null);
+
+    /// <summary>
+    /// Schedule an automated answer for the next modal dialog of the named
+    /// kind. The delay timer begins when that dialog is displayed; if a dialog
+    /// of a different kind appears first, the schedule stays pending. A
+    /// subsequent call overwrites the schedule.
+    /// </summary>
+    void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250);
 }
 
