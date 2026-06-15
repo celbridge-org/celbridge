@@ -41,6 +41,19 @@ public class DialogServiceAnswerTests
             Arg.Any<Range>(),
             Arg.Any<IValidator>(),
             Arg.Any<string?>()).Returns(fakeInputText);
+
+        var fakeAlert = Substitute.For<IAlertDialog>();
+        fakeAlert.ShowDialogAsync().Returns(Task.CompletedTask);
+        _dialogFactory.CreateAlertDialog(Arg.Any<string>(), Arg.Any<string>()).Returns(fakeAlert);
+
+        // The ResourcePicker happy path requires a loaded workspace; the
+        // dialog itself is a substitute that completes immediately so the
+        // schedule-fires-broadcast contract is what we test here.
+        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        var fakeResourcePicker = Substitute.For<IResourcePickerDialog>();
+        fakeResourcePicker.ShowDialogAsync().Returns(Task.FromResult(Result<ResourceKey>.Fail("cancelled")));
+        _dialogFactory.CreateResourcePickerDialog(
+            Arg.Any<IReadOnlyList<string>>(), Arg.Any<string?>(), Arg.Any<bool>()).Returns(fakeResourcePicker);
     }
 
     [Test]
@@ -141,6 +154,32 @@ public class DialogServiceAnswerTests
         await Task.Delay(50);
 
         _messengerService.Sent<DialogAnswerMessage>().Should().HaveCount(1);
+    }
+
+    [Test]
+    public async Task ShowingAlertDialog_FiresScheduledAnswer()
+    {
+        _dialogService.ScheduleAnswer(DialogKind.Alert, payload: "", delayMs: 0);
+
+        await _dialogService.ShowAlertDialogAsync("Title", "Message");
+        await WaitForBroadcast<DialogAnswerMessage>();
+
+        var sent = _messengerService.Sent<DialogAnswerMessage>();
+        sent.Should().HaveCount(1);
+        sent[0].Payload.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ShowingResourcePickerDialog_FiresScheduledAnswerWithPayload()
+    {
+        _dialogService.ScheduleAnswer(DialogKind.ResourcePicker, payload: "Folder/picked.txt", delayMs: 0);
+
+        await _dialogService.ShowResourcePickerDialogAsync(new List<string> { "txt" });
+        await WaitForBroadcast<DialogAnswerMessage>();
+
+        var sent = _messengerService.Sent<DialogAnswerMessage>();
+        sent.Should().HaveCount(1);
+        sent[0].Payload.Should().Be("Folder/picked.txt");
     }
 
     [Test]

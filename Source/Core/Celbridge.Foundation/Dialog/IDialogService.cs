@@ -9,8 +9,10 @@ namespace Celbridge.Dialog;
 /// </summary>
 public enum DialogKind
 {
+    Alert,
     Confirmation,
     InputText,
+    ResourcePicker,
 }
 
 /// <summary>

@@ -34,6 +34,7 @@ public class DialogService : IDialogService
     public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
+        _answerScheduler.OnDialogShown(DialogKind.Alert);
         await ShowDialogAsync(async () =>
         {
             await dialog.ShowDialogAsync();
@@ -155,6 +156,7 @@ public class DialogService : IDialogService
         }
 
         var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
+        _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 

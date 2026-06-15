@@ -18,11 +18,15 @@ The delay timer starts when the matching dialog is displayed, not when this call
 ## Parameters
 
 - `dialogKind` (required string) — identifies which dialog kind the answer is for. The schedule only fires when a dialog of this kind appears; if a different dialog appears first, the schedule stays pending and the unexpected dialog blocks on the user. Valid values:
+  - `"Alert"` — info-only OK prompts (e.g. an error notice surfaced after a failed operation).
   - `"Confirmation"` — yes/no prompts (e.g. `package_delete`).
   - `"InputText"` — single-string text-entry prompts (e.g. `explorer_rename`).
+  - `"ResourcePicker"` — file-resource pickers (e.g. JS contribution `PickFile` / `PickImage`).
 - `payload` (optional string, default `""`) — the content the dialog should receive:
+  - **Alert dialogs**: payload is ignored; the dialog closes unconditionally.
   - **Confirmation dialogs**: payload is ignored; the dialog OKs unconditionally.
   - **Input-text dialogs**: payload is the text to enter. Empty payload enters an empty string.
+  - **Resource-picker dialogs**: payload is the resource key to select (e.g. `"Folder/picked.txt"` or `"root:path/inside.bin"`). The key must match an item currently visible in the picker (i.e. matching the picker's extension filter); a non-matching or malformed key logs a warning and closes the dialog without confirming, so the picker call returns `Result.Fail` and the test fails loudly.
 - `delayMs` (optional int, default `250`) — milliseconds to wait *after the dialog is displayed* before broadcasting the answer. Tune up for dialogs with slow initialization; tune down for tight test loops.
 
 Only one schedule is held at a time. A subsequent call overwrites; the schedule is cleared on workspace teardown.
@@ -46,6 +50,14 @@ package.unpublish("test-integration-pkg")
 cel.app.answer_dialog("InputText", "Renamed.txt")
 cel.explorer.rename("/Folder/Old.txt")
 
+# Close the next alert (e.g. one raised by a failed operation).
+cel.app.answer_dialog("Alert")
+do_something_that_triggers_alert()
+
+# Pick a specific resource in the next resource-picker dialog.
+cel.app.answer_dialog("ResourcePicker", "Folder/picked.txt")
+trigger_resource_pick()
+
 # Give a slow-loading dialog more headroom.
 cel.app.answer_dialog("Confirmation", delayMs=500)
 package.delete("heavy-package")
@@ -54,8 +66,10 @@ package.delete("heavy-package")
 ### JavaScript
 
 ```javascript
+await app.answerDialog("Alert");                              // close info alert
 await app.answerDialog("Confirmation");                       // confirm
 await app.answerDialog("InputText", "Renamed.txt");           // rename
+await app.answerDialog("ResourcePicker", "docs/photo.png");   // pick a file
 await app.answerDialog("Confirmation", "", 500);              // longer delay
 ```
 

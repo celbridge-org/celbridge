@@ -2,6 +2,14 @@
 
 Skipped (whole class) when the build is release or the user has not set
 `answer-dialog = true` in their .celbridge.
+
+Coverage boundary: Confirmation and InputText are exercised here because
+`explorer.delete(showDialog=True)` and `explorer.rename` reliably surface
+those dialogs through MCP. Alert and ResourcePicker have no clean MCP
+trigger (Alert is reached only via error paths like rename-on-readonly;
+ResourcePicker fires only from JS contribution `PickFile`/`PickImage`
+calls), so their schedule-to-broadcast contract is covered by C# unit
+tests in DialogServiceAnswerTests rather than here.
 """
 import pytest
 

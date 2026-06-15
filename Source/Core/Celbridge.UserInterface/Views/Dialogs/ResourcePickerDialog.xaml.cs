@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Logging;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
@@ -6,6 +7,8 @@ namespace Celbridge.UserInterface.Views;
 public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePickerDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ILogger<ResourcePickerDialog> _logger;
+    private readonly IMessengerService _messengerService;
     private bool _confirmed;
     private string? _customTitle;
 
@@ -19,6 +22,8 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     public ResourcePickerDialog()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _logger = ServiceLocator.AcquireService<ILogger<ResourcePickerDialog>>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
@@ -86,16 +91,49 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     public async Task<Result<ResourceKey>> ShowDialogAsync()
     {
         _confirmed = false;
-        var contentDialogResult = await ShowAsync();
-
-        if (contentDialogResult == ContentDialogResult.Primary || _confirmed)
+        _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
+        try
         {
-            if (ViewModel.SelectedItem is { } selected)
+            var contentDialogResult = await ShowAsync();
+
+            if (contentDialogResult == ContentDialogResult.Primary || _confirmed)
             {
-                return Result<ResourceKey>.Ok(selected.ResourceKey);
+                if (ViewModel.SelectedItem is { } selected)
+                {
+                    return Result<ResourceKey>.Ok(selected.ResourceKey);
+                }
             }
+
+            return Result<ResourceKey>.Fail("Resource picker was cancelled");
+        }
+        finally
+        {
+            _messengerService.UnregisterAll(this);
+        }
+    }
+
+    private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
+    {
+        if (!ResourceKey.TryCreate(message.Payload, out var targetKey))
+        {
+            _logger.LogWarning(
+                $"Resource picker auto-answer failed: payload '{message.Payload}' is not a valid resource key.");
+            Hide();
+            return;
         }
 
-        return Result<ResourceKey>.Fail("Resource picker was cancelled");
+        var match = ViewModel.FilteredItems.FirstOrDefault(item => item.ResourceKey.Equals(targetKey));
+        if (match is null)
+        {
+            _logger.LogWarning(
+                $"Resource picker auto-answer failed: no filtered item matches resource key '{targetKey}'.");
+            Hide();
+            return;
+        }
+
+        ViewModel.SelectedItem = match;
+        _confirmed = true;
+        _logger.LogInformation($"Resource picker answered automatically with '{targetKey}'.");
+        Hide();
     }
 }
