@@ -26,7 +26,7 @@ The `file` namespace operates on the contents of files in the project tree: read
 - `file_read_many` — read many files in one call (cheaper than N calls when scanning).
 - `file_read_binary` — read raw bytes as base64.
 - `file_read_image` — read an image inline as a vision content block.
-- `file_get_info` — file metadata (size, mtime, hash) without reading content.
+- `file_get_info` — file metadata (size, mtime; optional SHA-256 content hash via `computeHash: true`) without otherwise reading the file.
 - `file_get_tree` — directory tree under a resource.
 - `file_list_contents` — direct children of a folder.
 

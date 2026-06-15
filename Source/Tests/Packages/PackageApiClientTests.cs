@@ -110,6 +110,34 @@ public class PackageApiClientTests
     }
 
     [Test]
+    public async Task GetPackage_AliasesKeyedAsName_ArePopulated()
+    {
+        // The live workshop returns the alias label under the "name" key, not
+        // "alias". The DTO accepts both so install-by-alias works either way.
+        _messageHandler.Responder = _ => JsonResponse("""
+            {
+              "name": "my-widget",
+              "created_at": "2026-01-10T12:00:00Z",
+              "versions": [
+                { "version": 1, "author": "alice", "date": "2026-01-10T12:00:00Z", "tombstoned": false, "content_hash": "aaa111", "summary": "" }
+              ],
+              "aliases": [
+                { "name": "latest", "version": 1 },
+                { "name": "stable", "version": 1 }
+              ]
+            }
+            """);
+
+        var result = await _client.GetPackageAsync("my-widget");
+
+        result.IsSuccess.Should().BeTrue();
+        var details = result.Value;
+        details.Aliases.Should().HaveCount(2);
+        details.Aliases[0].Alias.Should().Be("latest");
+        details.Aliases[1].Alias.Should().Be("stable");
+    }
+
+    [Test]
     public async Task GetPackage_UnknownPackage_Fails()
     {
         _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -230,6 +258,19 @@ public class PackageApiClientTests
         request.Method.Should().Be(HttpMethod.Put);
         request.RequestUri.Should().Be(new Uri("https://workshop.example.com/api/packages/my-widget/aliases/stable/"));
         _messageHandler.RequestBodies.Single().Should().Be("""{"version":2}""");
+    }
+
+    [Test]
+    public async Task SetAlias_NonexistentVersion_NamesTheVersion()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
+
+        var result = await _client.SetAliasAsync("my-widget", "stable", 9999);
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("9999");
+        result.MessageChain.Should().Contain("my-widget");
+        result.MessageChain.Should().NotContain("HTTP 404");
     }
 
     [Test]

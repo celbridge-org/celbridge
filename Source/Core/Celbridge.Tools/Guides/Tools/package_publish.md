@@ -37,7 +37,7 @@ A JSON object:
 - `version` (int) — the version number the workshop assigned to this publish.
 - `entries` (int) — number of files included in the uploaded zip.
 - `size` (long) — uploaded zip size in bytes.
-- `warning` (string or null) — an advisory note, or `null`. Currently set when this folder was published from a stale base (see Concurrent publishing).
+- `warning` (string) — an advisory note, or the empty string when there is none. Currently populated when this folder was published from a stale base (see Concurrent publishing); branch on a non-empty value rather than on key presence.
 
 ## HISTORY.md
 

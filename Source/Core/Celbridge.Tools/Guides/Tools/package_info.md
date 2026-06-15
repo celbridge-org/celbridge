@@ -18,12 +18,13 @@ A JSON object:
   - `version` (int) — the version number.
   - `author` (string) — who published it.
   - `date` (datetime) — when it was published.
-  - `tombstoned` (bool) — true if the version's content has been removed; it cannot be installed.
-  - `contentHash` (string) — the uploaded content's hash.
-  - `summary` (string) — the publisher's change summary.
+  - `deleted` (bool) — true if the version's content has been removed; it cannot be installed. (The server's wire field is still `tombstoned`; the client maps it to `deleted` because Celbridge does not model a dead-but-retained state.)
+  - `contentHash` (string) — the uploaded content's hash; retained even when `deleted` is true so vendored copies stay verifiable.
+  - `summary` (string) — the publisher's change summary; emptied on delete so the renderer shows the `[package_deleted]` sentinel.
 - `aliases` (array) — one object per alias, each with `alias` (string) and `version` (int). `latest` is managed by the workshop; others such as `stable` are publisher-defined.
 
 ## Gotchas
 
 - A `404` from the workshop (no such package) surfaces as an error; check the name with `package_list`.
-- Tombstoned versions still appear in the list with `tombstoned: true` so history reads correctly; filter them out when choosing what to install.
+- Deleted versions still appear in the list with `deleted: true` so the history numbering stays intact and `HISTORY.md` can render the gap. Filter on `!deleted` when choosing what to install.
+- The version flag is `deleted` (not `tombstoned`) on the client side — an agent that filters on `tombstoned` will silently include deleted versions as live.

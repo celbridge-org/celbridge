@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Packages;
+using Celbridge.Projects;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -32,7 +33,7 @@ public partial class PackageTools
     [McpServerTool(Name = "package_status", ReadOnly = true)]
     [ToolAlias("package.status")]
     [RelatedGuides("packages_overview")]
-    public async partial Task<CallToolResult> Status()
+    public async partial Task<CallToolResult> Status(bool refresh = false)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
@@ -43,6 +44,20 @@ public partial class PackageTools
         var workspaceService = workspaceWrapper.WorkspaceService;
         var packageService = workspaceService.PackageService;
         var resourceService = workspaceService.ResourceService;
+
+        // The registry only re-scans on workspace load by default, so a tool
+        // call that installed or removed a manifest in this session would
+        // otherwise read stale state. The opt-in refresh re-runs discovery
+        // without firing PackagesInitializedMessage.
+        if (refresh)
+        {
+            var projectService = GetRequiredService<IProjectService>();
+            var currentProject = projectService.CurrentProject;
+            if (currentProject is not null)
+            {
+                await packageService.RescanProjectPackagesAsync(currentProject.ProjectFolderPath);
+            }
+        }
         var resourceRegistry = resourceService.Registry;
         var resourceFileSystem = resourceService.FileSystem;
 

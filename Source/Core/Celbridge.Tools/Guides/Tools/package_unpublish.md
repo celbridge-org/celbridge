@@ -1,8 +1,8 @@
 # package_unpublish
 
-Removes a whole package and all its versions from the workshop, permanently. This is the package counterpart of `page_unpublish`: where `package_delete` removes one version, `package_unpublish` removes the package itself and every version it holds.
+Removes a whole package and all its versions from the workshop. This is the package counterpart of `page_unpublish`: where `package_delete` removes one version, `package_unpublish` removes the package itself and every version it holds.
 
-This is destructive administration and **always prompts for confirmation**: there is no `confirmWithUser` opt-out. The content bytes are not recoverable through the workshop afterward.
+This is destructive administration and **always prompts for confirmation**: there is no `confirmWithUser` opt-out. Version content is not recoverable through the workshop afterward.
 
 ## Parameters
 

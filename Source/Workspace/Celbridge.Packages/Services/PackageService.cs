@@ -45,6 +45,26 @@ public class PackageService : IPackageService
         _messengerService.Send(new PackagesInitializedMessage());
     }
 
+    public async Task RescanProjectPackagesAsync(string projectFolderPath)
+    {
+        // A rescan re-runs discovery and refreshes the load report but skips
+        // PackagesInitializedMessage. Editor contributions are registered
+        // once at workspace load and re-firing the message would replay every
+        // factory registration, which is not idempotent and would surprise
+        // unrelated subscribers expecting one-shot initialization.
+        var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
+
+        _loadReporter.RecordPackageReport(report);
+        await _loadReporter.FlushAsync();
+
+        if (report.Failures.Count > 0)
+        {
+            var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
+            var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
+            _messengerService.Send(message);
+        }
+    }
+
     public IReadOnlyList<Package> GetAllPackages()
     {
         return _registry.GetAllPackages();

@@ -102,7 +102,13 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         var aliases = new List<RemotePackageAlias>();
         foreach (var alias in details.Aliases ?? [])
         {
-            aliases.Add(new RemotePackageAlias(alias.Alias ?? string.Empty, alias.Version));
+            // The live workshop returns the alias name under "name", while
+            // earlier drafts of the wire contract (and our canned test
+            // payloads) used "alias". The DTO carries both, and we pick
+            // whichever the server populated so install-by-alias works
+            // either way until the wire contract is settled.
+            var aliasName = alias.Name ?? alias.Alias ?? string.Empty;
+            aliases.Add(new RemotePackageAlias(aliasName, alias.Version));
         }
 
         return new RemotePackageDetails(
@@ -222,6 +228,14 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         }
 
         using var response = sendResult.Value;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            // The server returns 404 for both "package not found" and "version
+            // does not exist on this package"; the more common scripting
+            // mistake is the version target, so name it first.
+            return Result.Fail($"Cannot point alias '{alias}' at version {version}: version {version} does not exist on package '{packageName}' (or the package itself was not found).");
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             return Result.Fail($"Failed to set alias '{alias}' to version {version} of package '{packageName}' (HTTP {(int)response.StatusCode})");
@@ -372,6 +386,7 @@ public class PackageApiClient : IPackageApiClient, IDisposable
 
     private record AliasDto(
         [property: JsonPropertyName("alias")] string? Alias,
+        [property: JsonPropertyName("name")] string? Name,
         [property: JsonPropertyName("version")] int Version);
 
     private record PackageDetailsDto(

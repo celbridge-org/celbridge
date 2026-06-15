@@ -13,9 +13,16 @@ namespace Celbridge.Tools;
 /// <summary>
 /// Result returned by package_publish with the published package details,
 /// including the version number assigned by the workshop. Warning carries an
-/// advisory note (e.g. a stale-base concurrent-publish warning) or is null.
+/// advisory note (e.g. a stale-base concurrent-publish warning) or is the
+/// empty string when there is no advisory; callers branch on the value, not
+/// on whether the key is present.
 /// </summary>
-public record class PackagePublishResult(string PackageName, int Version, int Entries, long Size, string? Warning = null);
+public record class PackagePublishResult(
+    string PackageName,
+    int Version,
+    int Entries,
+    long Size,
+    string Warning = "");
 
 public partial class PackageTools
 {
@@ -103,7 +110,7 @@ public partial class PackageTools
         }
 
         var publishWarning = BuildPublishWarning(packageName, baseCheck);
-        if (publishWarning is not null)
+        if (publishWarning.Length > 0)
         {
             Logger.LogWarning(publishWarning);
         }
@@ -155,7 +162,7 @@ public partial class PackageTools
         return await ConfirmActionAsync(title, message);
     }
 
-    private static string? BuildPublishWarning(string packageName, PublishBaseCheck baseCheck)
+    private static string BuildPublishWarning(string packageName, PublishBaseCheck baseCheck)
     {
         switch (baseCheck.Concern)
         {
@@ -171,7 +178,7 @@ public partial class PackageTools
                     "is not based on a superseded version before relying on this publish.";
 
             default:
-                return null;
+                return string.Empty;
         }
     }
 
