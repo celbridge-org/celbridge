@@ -29,4 +29,9 @@ public static class FeatureFlagConstants
     /// webview_* namespace.
     /// </summary>
     public const string WebViewDevToolsEval = "webview-dev-tools-eval";
+
+    /// <summary>
+    /// Enables the built-in WebFetch and WebSearch tools for coding agents.
+    /// </summary>
+    public const string WebAccessTools = "web-access-tools";
 }
