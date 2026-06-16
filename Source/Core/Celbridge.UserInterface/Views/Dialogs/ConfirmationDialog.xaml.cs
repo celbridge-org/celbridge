@@ -63,6 +63,11 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
 
     private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
     {
+        if (message.Kind != DialogKind.Confirmation)
+        {
+            return;
+        }
+
         _autoAnswered = true;
         _logger.LogInformation("Confirmation dialog answered automatically.");
         Hide();

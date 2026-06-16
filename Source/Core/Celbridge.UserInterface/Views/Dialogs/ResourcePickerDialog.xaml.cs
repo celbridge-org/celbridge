@@ -114,6 +114,11 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
 
     private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
     {
+        if (message.Kind != DialogKind.ResourcePicker)
+        {
+            return;
+        }
+
         if (!ResourceKey.TryCreate(message.Payload, out var targetKey))
         {
             _logger.LogWarning(

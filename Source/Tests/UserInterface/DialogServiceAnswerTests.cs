@@ -75,6 +75,7 @@ public class DialogServiceAnswerTests
 
         var sent = _messengerService.Sent<DialogAnswerMessage>();
         sent.Should().HaveCount(1);
+        sent[0].Kind.Should().Be(DialogKind.Confirmation);
         sent[0].Payload.Should().BeEmpty();
     }
 
@@ -89,6 +90,7 @@ public class DialogServiceAnswerTests
 
         var sent = _messengerService.Sent<DialogAnswerMessage>();
         sent.Should().HaveCount(1);
+        sent[0].Kind.Should().Be(DialogKind.InputText);
         sent[0].Payload.Should().Be("Renamed.txt");
     }
 

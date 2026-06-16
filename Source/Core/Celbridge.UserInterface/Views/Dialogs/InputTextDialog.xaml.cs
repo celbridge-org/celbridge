@@ -109,6 +109,11 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 
     private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
     {
+        if (message.Kind != DialogKind.InputText)
+        {
+            return;
+        }
+
         _autoAnswered = true;
         ViewModel.InputText = message.Payload;
         _logger.LogInformation($"Input-text dialog answered automatically with '{message.Payload}'.");

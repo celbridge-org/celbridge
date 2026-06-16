@@ -1,11 +1,9 @@
 namespace Celbridge.Dialog;
 
 /// <summary>
-/// Broadcast by IDialogService to answer the currently-displayed modal dialog
-/// on behalf of an automated test. The payload is interpreted by whichever
-/// dialog is listening: an empty payload answers a confirmation dialog
-/// affirmatively; a non-empty string is the text for an input-text dialog.
-/// A dialog that receives a payload incompatible with its own contract logs
-/// a warning and continues to block on the user.
+/// Broadcast by IDialogService to deliver a scheduled automated answer to the
+/// open modal dialog of the named kind. Kind identifies the target dialog;
+/// Payload carries the answer data for that dialog. Used only by the debug-only
+/// dialog test automation.
 /// </summary>
-public record DialogAnswerMessage(string Payload);
+public record DialogAnswerMessage(DialogKind Kind, string Payload);

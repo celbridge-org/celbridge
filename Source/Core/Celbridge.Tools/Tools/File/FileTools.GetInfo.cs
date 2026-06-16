@@ -10,8 +10,10 @@ namespace Celbridge.Tools;
 /// Absence is signalled by sidecar_status = "none" with sidecar = null.
 /// IsReadOnly reflects the filesystem read-only attribute — a true value
 /// means write operations will fail until the attribute is cleared with
-/// file_set_writeable. Hash is the uppercase-hex SHA-256 of the file's
-/// bytes when computeHash was set; null otherwise.
+/// file_set_writeable. Hash is the lowercase-hex SHA-256 of the file's
+/// bytes when computeHash was set; null otherwise. Lowercase matches the
+/// git / sha256sum / workshop content_hash convention, so the value compares
+/// directly with those surfaces.
 /// </summary>
 public record class FileInfoResult(
     string Type,
@@ -113,6 +115,16 @@ public partial class FileTools
         }
 
         var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        return await resourceFileSystem.ComputeHashAsync(resourceKey);
+        var hashResult = await resourceFileSystem.ComputeHashAsync(resourceKey);
+        if (hashResult.IsFailure)
+        {
+            return hashResult;
+        }
+        var hash = hashResult.Value;
+
+        // Convert.ToHexString (the gateway's hash) is uppercase; lower it so the
+        // value matches the git / sha256sum / workshop content_hash convention an
+        // agent compares against.
+        return hash.ToLowerInvariant();
     }
 }

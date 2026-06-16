@@ -47,22 +47,12 @@ public class PackageService : IPackageService
 
     public async Task RescanProjectPackagesAsync(string projectFolderPath)
     {
-        // A rescan re-runs discovery and refreshes the load report but skips
-        // PackagesInitializedMessage. Editor contributions are registered
-        // once at workspace load and re-firing the message would replay every
-        // factory registration, which is not idempotent and would surprise
-        // unrelated subscribers expecting one-shot initialization.
-        var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
-
-        _loadReporter.RecordPackageReport(report);
-        await _loadReporter.FlushAsync();
-
-        if (report.Failures.Count > 0)
-        {
-            var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
-            var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
-            _messengerService.Send(message);
-        }
+        // Refreshes the registry mid-session (e.g. after a tool installs a
+        // package). Unlike RegisterPackagesAsync this is discovery only: it does
+        // not fire PackagesInitializedMessage (editor registration is one-shot at
+        // load), nor rewrite project-load.md or raise the error banner (those
+        // reflect the last actual load, not a tool-initiated rescan).
+        await _registry.DiscoverPackagesAsync(projectFolderPath);
     }
 
     public IReadOnlyList<Package> GetAllPackages()

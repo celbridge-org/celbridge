@@ -56,6 +56,11 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
 
     private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
     {
+        if (message.Kind != DialogKind.Alert)
+        {
+            return;
+        }
+
         _logger.LogInformation("Alert dialog answered automatically.");
         Hide();
     }

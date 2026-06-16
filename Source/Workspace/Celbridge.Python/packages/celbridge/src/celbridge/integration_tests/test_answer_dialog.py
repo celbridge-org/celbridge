@@ -71,11 +71,10 @@ class TestAnswerDialog:
         assert "second.txt" in names
         assert "first.txt" not in names
 
-    def test_flag_off_raises(self, app):
-        # When answer-dialog is on (the autouse fixture above checks this),
-        # we cannot easily flip it off mid-session to assert the disabled path.
-        # The disabled case is covered indirectly: the autouse fixture skips
-        # the whole class when the tool is absent or the flag is off, so by
-        # reaching this test we know the happy path works. The C# unit tests
-        # cover the flag-off failure path.
-        pass
+    def test_invalid_dialog_kind_raises(self, app):
+        # The tool validates dialogKind against the DialogKind enum and returns
+        # an error for an unknown value. This is the tool-level failure path
+        # reachable while the feature is on; the flag-off path is gated out by
+        # the autouse fixture here and covered by C# unit tests instead.
+        with pytest.raises(CelError):
+            app.answer_dialog("NotARealDialogKind")

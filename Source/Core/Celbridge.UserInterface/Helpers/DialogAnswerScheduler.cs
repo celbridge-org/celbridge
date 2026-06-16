@@ -81,10 +81,10 @@ internal sealed class DialogAnswerScheduler
             _delayMs = 0;
         }
 
-        _ = DelayThenBroadcastAsync(payload, delayMs);
+        _ = DelayThenBroadcastAsync(dialogKind, payload, delayMs);
     }
 
-    private async Task DelayThenBroadcastAsync(string payload, int delayMs)
+    private async Task DelayThenBroadcastAsync(DialogKind dialogKind, string payload, int delayMs)
     {
         // The await captures the calling SynchronizationContext (the UI thread
         // when OnDialogShown is invoked from a Show* method), so the broadcast
@@ -92,11 +92,16 @@ internal sealed class DialogAnswerScheduler
         // thread without explicit marshalling.
         try
         {
+            // Yield unconditionally before broadcasting. OnDialogShown runs
+            // before the dialog's Show* method registers its handler, so a
+            // delayMs of 0 would otherwise Send synchronously here, before any
+            // dialog is listening, and the answer would be lost.
+            await Task.Yield();
             if (delayMs > 0)
             {
                 await Task.Delay(delayMs);
             }
-            _messengerService.Send(new DialogAnswerMessage(payload));
+            _messengerService.Send(new DialogAnswerMessage(dialogKind, payload));
         }
         catch (Exception ex)
         {

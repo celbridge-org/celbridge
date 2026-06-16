@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Projects;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Path = System.IO.Path;
@@ -64,6 +65,16 @@ public partial class PackageTools
         // copies. Refuse before downloading and name the existing location.
         if (packageFolder.Root == ResourceKey.DefaultRoot)
         {
+            // The registry is only populated at workspace load, so without a
+            // rescan a package installed earlier in this session would not be
+            // seen by the duplicate check below.
+            var projectService = GetRequiredService<IProjectService>();
+            var currentProject = projectService.CurrentProject;
+            if (currentProject is not null)
+            {
+                await workspaceService.PackageService.RescanProjectPackagesAsync(currentProject.ProjectFolderPath);
+            }
+
             var duplicateCheck = CheckForDuplicateProjectPackage(
                 workspaceService.PackageService,
                 resourceRegistry,
