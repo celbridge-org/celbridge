@@ -190,6 +190,7 @@ public class PythonService : IPythonService, IDisposable
                 ["CELBRIDGE_RPC_PORT"] = rpcPort.ToString(),
                 ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
                 ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
+                ["CELBRIDGE_WEB_ACCESS_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.WebAccessTools) ? "1" : "0",
                 ["CELBRIDGE_PROJECT_FOLDER"] = project.ProjectFolderPath,
                 ["CELBRIDGE_VERSION"] = celbridgeVersion,
                 ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,

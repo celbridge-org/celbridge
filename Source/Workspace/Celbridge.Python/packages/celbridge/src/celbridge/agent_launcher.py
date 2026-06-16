@@ -73,10 +73,13 @@ def launch_claude() -> None:
 
     Writes the .mcp.json config file and starts Claude in the current terminal.
     Claude will only have access to Celbridge MCP tools, with no file editing,
-    bash access, or other built-in tools. A bootstrap system prompt explains
-    the auto-attached state snapshots and orientation guide that arrive on
-    the first tool call; tool guides arrive automatically on first use of
-    each tool through the auto-attach response filter.
+    bash access, or other built-in tools. When the 'web-access-tools' feature
+    flag is enabled (CELBRIDGE_WEB_ACCESS_TOOLS=1), the built-in WebFetch and
+    WebSearch tools are also made available; everything else stays disabled. A
+    bootstrap system
+    prompt explains the auto-attached state snapshots and orientation guide that
+    arrive on the first tool call; tool guides arrive automatically on first use
+    of each tool through the auto-attach response filter.
     """
     if not shutil.which("claude"):
         print(
@@ -88,14 +91,27 @@ def launch_claude() -> None:
     project_folder = _get_project_folder()
     _write_mcp_config(project_folder)
 
+    # The 'web-access-tools' feature flag gates the built-in WebFetch and
+    # WebSearch tools. --tools governs built-in availability only (MCP tools
+    # arrive via --mcp-config regardless); an empty value disables every
+    # built-in tool.
+    web_access_enabled = os.environ.get("CELBRIDGE_WEB_ACCESS_TOOLS") == "1"
+    built_in_tools = "WebFetch,WebSearch" if web_access_enabled else ""
+    allowed_tools = "mcp__celbridge__*"
+    if web_access_enabled:
+        allowed_tools += ",WebFetch,WebSearch"
+
     launch_command = [
         "claude",
         "--strict-mcp-config",
         "--mcp-config", ".mcp.json",
-        "--tools", "mcp__celbridge__*",
-        "--allowedTools", "mcp__celbridge__*",
+        "--tools", built_in_tools,
+        "--allowedTools", allowed_tools,
         "--append-system-prompt", _BOOTSTRAP_PROMPT,
     ]
 
-    print("Launching restricted Claude Code CLI with Celbridge tools.")
+    if web_access_enabled:
+        print("Launching restricted Claude Code CLI with Celbridge tools and web access tools.")
+    else:
+        print("Launching restricted Claude Code CLI with Celbridge tools.")
     subprocess.run(launch_command, cwd=project_folder)
