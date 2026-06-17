@@ -83,3 +83,47 @@ def test_launch_claude_skips_when_claude_cli_missing(monkeypatch, tmp_path, caps
     assert run_called == []
     captured = capsys.readouterr()
     assert "not found" in captured.err
+
+
+def _capture_launch_command(monkeypatch, tmp_path):
+    """Run launch_claude with the CLI present and return the command list
+    passed to subprocess.run."""
+    monkeypatch.setenv("CELBRIDGE_PROJECT_FOLDER", str(tmp_path))
+    monkeypatch.setattr(agent_launcher.shutil, "which", lambda _name: "claude")
+
+    captured_command = []
+    monkeypatch.setattr(
+        agent_launcher.subprocess,
+        "run",
+        lambda command, **_kwargs: captured_command.append(command))
+
+    agent_launcher.launch_claude()
+
+    assert len(captured_command) == 1
+    return captured_command[0]
+
+
+def test_launch_claude_excludes_web_access_by_default(monkeypatch, tmp_path):
+    """With the web-access-tools flag off, no built-in tools are enabled and
+    only the Celbridge MCP tools are allowed."""
+    monkeypatch.delenv("CELBRIDGE_WEB_ACCESS_TOOLS", raising=False)
+
+    command = _capture_launch_command(monkeypatch, tmp_path)
+
+    tools_value = command[command.index("--tools") + 1]
+    allowed_value = command[command.index("--allowedTools") + 1]
+    assert tools_value == ""
+    assert allowed_value == "mcp__celbridge__*"
+
+
+def test_launch_claude_includes_web_access_when_flag_enabled(monkeypatch, tmp_path):
+    """With CELBRIDGE_WEB_ACCESS_TOOLS=1, WebFetch and WebSearch are added to both
+    the available built-in tools and the allowlist; nothing else is enabled."""
+    monkeypatch.setenv("CELBRIDGE_WEB_ACCESS_TOOLS", "1")
+
+    command = _capture_launch_command(monkeypatch, tmp_path)
+
+    tools_value = command[command.index("--tools") + 1]
+    allowed_value = command[command.index("--allowedTools") + 1]
+    assert tools_value == "WebFetch,WebSearch"
+    assert allowed_value == "mcp__celbridge__*,WebFetch,WebSearch"

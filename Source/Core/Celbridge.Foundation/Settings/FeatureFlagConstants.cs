@@ -36,4 +36,9 @@ public static class FeatureFlagConstants
     /// builds, so the flag has no effect in release even when set.
     /// </summary>
     public const string AnswerDialog = "answer-dialog";
+
+    /// <summary>
+    /// Enables the built-in WebFetch and WebSearch tools for coding agents.
+    /// </summary>
+    public const string WebAccessTools = "web-access-tools";
 }
