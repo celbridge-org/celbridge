@@ -28,12 +28,12 @@ public static class WorkshopConnectionValidation
     }
 
     /// <summary>
-    /// Returns true when the key starts with the expected Application Key
+    /// Returns true when the key starts with the expected Workshop Key
     /// prefix. A typo guard for display, not a gate: keys without the prefix
     /// are still accepted.
     /// </summary>
-    public static bool HasExpectedKeyPrefix(string applicationKey)
+    public static bool HasExpectedKeyPrefix(string workshopKey)
     {
-        return applicationKey.StartsWith(CredentialConstants.ApplicationKeyPrefix, StringComparison.Ordinal);
+        return workshopKey.StartsWith(CredentialConstants.WorkshopKeyPrefix, StringComparison.Ordinal);
     }
 }

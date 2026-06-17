@@ -18,6 +18,6 @@ The array is in the order returned by the workshop; it is not sorted alphabetica
 Until the server delete-contract alignment lands (tracked in the migration follow-ups), `latestVersion` is **not** filtered to live versions:
 
 - After `package_delete` removes the highest version, the server may still report it under `latestVersion` until the next publish.
-- After `package_unpublish` removes every version, every entry's `latestVersion` is non-null but installing that version returns "has been deleted and cannot be installed."
+- After `package_unpublish` removes every version, every entry's `latestVersion` is non-null but installing that version fails because its content has been deleted.
 
 When you need certainty, call `package_info(packageName)` and select the highest `version` whose `deleted` is false. The version resolver inside `package_install` already does this for `latest`, so resolving `latest` continues to work correctly — only consumers reading `package_list` directly need the caveat.

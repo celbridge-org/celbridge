@@ -1,0 +1,107 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.WorkshopSettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:Celbridge.UserInterface.Converters"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    HorizontalAlignment="Left">
+
+  <UserControl.Resources>
+    <converters:StatusSeverityConverter x:Key="StatusSeverityConverter"/>
+  </UserControl.Resources>
+
+  <StackPanel Spacing="24"
+              HorizontalAlignment="Left">
+
+    <StackPanel Spacing="4">
+      <TextBlock FontSize="24"
+                 FontWeight="SemiBold"
+                 Text="{x:Bind WorkshopSectionString}"/>
+      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                 TextWrapping="Wrap"
+                 MaxWidth="784"
+                 Text="{x:Bind WorkshopDescriptionString}"/>
+    </StackPanel>
+
+    <ContentControl IsEnabled="{x:Bind ViewModel.IsStoreAvailable, Mode=OneWay}"
+                    IsTabStop="False">
+      <Grid ColumnSpacing="24"
+            RowSpacing="16">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="160"/>
+          <ColumnDefinition Width="600"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Text="{x:Bind AuthorString}"
+                   VerticalAlignment="Center"/>
+
+        <TextBox x:Name="AuthorTextBox"
+                 Grid.Column="1"
+                 Text="{x:Bind ViewModel.Author, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 IsSpellCheckEnabled="False"
+                 PlaceholderText="{x:Bind AuthorPlaceholderString}"
+                 ToolTipService.ToolTip="{x:Bind AuthorTooltipString}"/>
+
+        <TextBlock Grid.Row="1"
+                   Text="{x:Bind WorkshopUrlString}"
+                   VerticalAlignment="Center"/>
+
+        <TextBox x:Name="WorkshopUrlTextBox"
+                 Grid.Row="1"
+                 Grid.Column="1"
+                 Text="{x:Bind ViewModel.WorkshopUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 IsSpellCheckEnabled="False"
+                 PlaceholderText="https://"
+                 ToolTipService.ToolTip="{x:Bind WorkshopUrlTooltipString}"/>
+
+        <TextBlock Grid.Row="2"
+                   Text="{x:Bind WorkshopKeyString}"
+                   VerticalAlignment="Center"/>
+
+        <Grid Grid.Row="2"
+              Grid.Column="1">
+          <Grid Visibility="{x:Bind ViewModel.IsKeyEntryVisible, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <PasswordBox x:Name="WorkshopKeyPasswordBox"
+                         Password="{x:Bind ViewModel.WorkshopKey, Mode=TwoWay}"
+                         ToolTipService.ToolTip="{x:Bind WorkshopKeyTooltipString}"/>
+
+            <Button Grid.Column="1"
+                    Margin="12,0,0,0"
+                    Content="{x:Bind CancelReplaceKeyString}"
+                    Visibility="{x:Bind ViewModel.IsCancelReplaceVisible, Mode=OneWay}"
+                    Command="{x:Bind ViewModel.CancelReplaceWorkshopKeyCommand}"/>
+          </Grid>
+
+          <StackPanel Orientation="Horizontal"
+                      Spacing="12"
+                      Visibility="{x:Bind ViewModel.IsStoredKeyVisible, Mode=OneWay}">
+            <TextBlock Text="{x:Bind ViewModel.StoredKeyDisplay, Mode=OneWay}"
+                       VerticalAlignment="Center"/>
+            <Button Content="{x:Bind ReplaceKeyString}"
+                    Command="{x:Bind ViewModel.ReplaceWorkshopKeyCommand}"/>
+            <Button Content="{x:Bind ClearWorkshopKeyString}"
+                    Command="{x:Bind ViewModel.ClearWorkshopKeyCommand}"/>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </ContentControl>
+
+    <InfoBar IsOpen="{x:Bind ViewModel.IsStatusVisible, Mode=OneWay}"
+             Severity="{x:Bind ViewModel.StatusSeverity, Mode=OneWay, Converter={StaticResource StatusSeverityConverter}}"
+             Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+             IsClosable="False"
+             MaxWidth="784"
+             HorizontalAlignment="Left"/>
+
+  </StackPanel>
+</UserControl>

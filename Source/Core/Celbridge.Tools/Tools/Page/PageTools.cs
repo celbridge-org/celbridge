@@ -1,4 +1,4 @@
-using Celbridge.Credentials;
+using Celbridge.Settings;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
@@ -33,20 +33,21 @@ public partial class PageTools : AgentToolBase
     // returned to the agent.
     private async Task<Result<string>> ResolvePublishAuthorAsync(bool confirmWithUser)
     {
-        var credentialService = GetRequiredService<ICredentialService>();
-        var authorResult = await PublishAuthor.ResolveAsync(credentialService);
-        if (authorResult.IsFailure)
+        var editorSettings = GetRequiredService<IEditorSettings>();
+        var author = editorSettings.WorkshopAuthor.Trim();
+        if (author.Length > 0)
         {
-            if (confirmWithUser)
-            {
-                var localizerService = GetRequiredService<Celbridge.Localization.ILocalizerService>();
-                var title = localizerService.GetString("Workshop_PublishBlocked_Title");
-                await ShowAlertAsync(title, authorResult.FirstErrorMessage);
-            }
-
-            return authorResult;
+            return author;
         }
 
-        return authorResult.Value;
+        var localizerService = GetRequiredService<Celbridge.Localization.ILocalizerService>();
+        var message = localizerService.GetString("Workshop_PublishBlocked_Message");
+        if (confirmWithUser)
+        {
+            var title = localizerService.GetString("Workshop_PublishBlocked_Title");
+            await ShowAlertAsync(title, message);
+        }
+
+        return Result<string>.Fail(message);
     }
 }

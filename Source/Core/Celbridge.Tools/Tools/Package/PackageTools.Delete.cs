@@ -36,7 +36,7 @@ public partial class PackageTools
         }
         var packageDetails = detailsResult.Value;
 
-        var resolveResult = PackageVersionResolver.ResolveForDelete(packageDetails, version.Trim());
+        var resolveResult = PackageVersionResolver.Resolve(packageDetails, version.Trim());
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);

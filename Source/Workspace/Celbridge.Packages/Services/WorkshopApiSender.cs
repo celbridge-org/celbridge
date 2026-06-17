@@ -2,41 +2,46 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Celbridge.Credentials;
+using Celbridge.Settings;
 
 namespace Celbridge.Packages;
 
 /// <summary>
 /// Sends authenticated requests to the workshop server's REST API. Shared by the
 /// package and page API clients so the connection and auth handling lives in one
-/// place rather than being duplicated per client.
+/// place rather than being duplicated per client. The Workshop URL is read from
+/// settings and the Workshop Key from the credential store, both at request
+/// time.
 /// </summary>
 internal sealed class WorkshopApiSender : IDisposable
 {
     private const string ApiKeyScheme = "Api-Key";
 
     private readonly ICredentialService _credentialService;
+    private readonly IEditorSettings _editorSettings;
     private readonly HttpClient _httpClient;
 
-    public WorkshopApiSender(ICredentialService credentialService, HttpMessageHandler messageHandler)
+    public WorkshopApiSender(ICredentialService credentialService, IEditorSettings editorSettings, HttpMessageHandler messageHandler)
     {
         _credentialService = credentialService;
+        _editorSettings = editorSettings;
         _httpClient = new HttpClient(messageHandler);
     }
 
     // Builds and sends one authenticated request. Fails without sending when no
-    // connection is stored or the stored URL is unusable, and maps 401 to a
-    // single actionable message here so no call site can leak the key.
+    // key is stored or the configured URL is unusable, and maps 401 to a single
+    // actionable message here so no call site can leak the key.
     public async Task<Result<HttpResponseMessage>> SendAsync(HttpMethod method, string relativePath, HttpContent? content = null)
     {
-        var connectionResult = await _credentialService.GetWorkshopConnectionAsync();
-        if (connectionResult.IsFailure)
+        var keyResult = await _credentialService.GetWorkshopKeyAsync();
+        if (keyResult.IsFailure)
         {
-            return Result.Fail("Failed to read the Workshop connection from the credential store")
-                .WithErrors(connectionResult);
+            return Result.Fail("Failed to read the Workshop Key from the credential store")
+                .WithErrors(keyResult);
         }
-        var connection = connectionResult.Value;
+        var workshopKey = keyResult.Value;
 
-        var baseUriResult = ValidateWorkshopUrl(connection.WorkshopUrl);
+        var baseUriResult = ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
         if (baseUriResult.IsFailure)
         {
             return Result.Fail(baseUriResult);
@@ -44,7 +49,7 @@ internal sealed class WorkshopApiSender : IDisposable
         var baseUri = baseUriResult.Value;
 
         var request = new HttpRequestMessage(method, new Uri(baseUri, relativePath));
-        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, connection.ApplicationKey);
+        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, workshopKey);
         if (content is not null)
         {
             request.Content = content;
@@ -57,7 +62,7 @@ internal sealed class WorkshopApiSender : IDisposable
             {
                 response.Dispose();
                 return Result.Fail(
-                    "The workshop rejected the stored Application Key (HTTP 401). " +
+                    "The workshop rejected the stored Workshop Key (HTTP 401). " +
                     "The key may be invalid, revoked, or no longer linked to the workshop. " +
                     "Update the Workshop connection on the Settings page.");
             }
@@ -80,17 +85,11 @@ internal sealed class WorkshopApiSender : IDisposable
     // server-returned relative URL (e.g. a page's served path) to an absolute one.
     public async Task<Result<Uri>> GetBaseUriAsync()
     {
-        var connectionResult = await _credentialService.GetWorkshopConnectionAsync();
-        if (connectionResult.IsFailure)
-        {
-            return Result.Fail("Failed to read the Workshop connection from the credential store")
-                .WithErrors(connectionResult);
-        }
-
-        return ValidateWorkshopUrl(connectionResult.Value.WorkshopUrl);
+        await Task.CompletedTask;
+        return ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
     }
 
-    // The Application Key is a bearer credential, so sending it over plain HTTP
+    // The Workshop Key is a bearer credential, so sending it over plain HTTP
     // would fully compromise it to any network observer. Loopback hosts are
     // exempt to support local development servers.
     private static Result<Uri> ValidateWorkshopUrl(string workshopUrl)
@@ -118,7 +117,7 @@ internal sealed class WorkshopApiSender : IDisposable
             return uri;
         }
 
-        return Result.Fail("The Workshop URL must use HTTPS. Plain HTTP would expose the Application Key to network observers and is only permitted for localhost development servers.");
+        return Result.Fail("The Workshop URL must use HTTPS. Plain HTTP would expose the Workshop Key to network observers and is only permitted for localhost development servers.");
     }
 
     public static async Task<Result<T>> ParseJsonAsync<T>(HttpResponseMessage response, string payloadDescription) where T : notnull

@@ -2,16 +2,18 @@ using System.Net;
 using System.Text;
 using Celbridge.Credentials;
 using Celbridge.Packages;
+using Celbridge.Settings;
 
 namespace Celbridge.Tests.Packages;
 
 [TestFixture]
 public class PackageApiClientTests
 {
-    private const string TestApplicationKey = "kpf_testkey_supersecret";
+    private const string TestWorkshopKey = "kpf_testkey_supersecret";
 
     private StubMessageHandler _messageHandler = null!;
     private ICredentialService _credentialService = null!;
+    private IEditorSettings _editorSettings = null!;
     private PackageApiClient _client = null!;
 
     [SetUp]
@@ -19,8 +21,9 @@ public class PackageApiClientTests
     {
         _messageHandler = new StubMessageHandler();
         _credentialService = Substitute.For<ICredentialService>();
-        SetStoredConnection("https://workshop.example.com", TestApplicationKey);
-        _client = new PackageApiClient(_credentialService, _messageHandler);
+        _editorSettings = Substitute.For<IEditorSettings>();
+        SetStoredConnection("https://workshop.example.com", TestWorkshopKey);
+        _client = new PackageApiClient(_credentialService, _editorSettings, _messageHandler);
     }
 
     [TearDown]
@@ -58,7 +61,7 @@ public class PackageApiClientTests
         request.RequestUri.Should().Be(new Uri("https://workshop.example.com/api/packages/"));
         request.Headers.Authorization.Should().NotBeNull();
         request.Headers.Authorization!.Scheme.Should().Be("Api-Key");
-        request.Headers.Authorization.Parameter.Should().Be(TestApplicationKey);
+        request.Headers.Authorization.Parameter.Should().Be(TestWorkshopKey);
 
         var packages = result.Value;
         packages.Should().HaveCount(2);
@@ -374,29 +377,29 @@ public class PackageApiClientTests
         var result = await _client.ListPackagesAsync();
 
         result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("Application Key");
+        result.MessageChain.Should().Contain("Workshop Key");
         result.MessageChain.Should().Contain("Settings");
-        result.MessageChain.Should().NotContain(TestApplicationKey);
-        result.DiagnosticReport.Should().NotContain(TestApplicationKey);
+        result.MessageChain.Should().NotContain(TestWorkshopKey);
+        result.DiagnosticReport.Should().NotContain(TestWorkshopKey);
     }
 
     [Test]
     public async Task HttpUrl_NonLoopbackHost_RejectedBeforeSending()
     {
-        SetStoredConnection("http://workshop.example.com", TestApplicationKey);
+        SetStoredConnection("http://workshop.example.com", TestWorkshopKey);
 
         var result = await _client.ListPackagesAsync();
 
         result.IsFailure.Should().BeTrue();
         result.MessageChain.Should().Contain("HTTPS");
-        result.MessageChain.Should().NotContain(TestApplicationKey);
+        result.MessageChain.Should().NotContain(TestWorkshopKey);
         _messageHandler.Requests.Should().BeEmpty();
     }
 
     [Test]
     public async Task HttpUrl_Localhost_Allowed()
     {
-        SetStoredConnection("http://localhost:8000", TestApplicationKey);
+        SetStoredConnection("http://localhost:8000", TestWorkshopKey);
         _messageHandler.Responder = _ => JsonResponse("[]");
 
         var result = await _client.ListPackagesAsync();
@@ -409,7 +412,7 @@ public class PackageApiClientTests
     [Test]
     public async Task BaseUrlWithPathSegment_KeepsThePathWhenBuildingEndpoints()
     {
-        SetStoredConnection("https://example.com/workshop", TestApplicationKey);
+        SetStoredConnection("https://example.com/workshop", TestWorkshopKey);
         _messageHandler.Responder = _ => JsonResponse("[]");
 
         var result = await _client.ListPackagesAsync();
@@ -420,23 +423,26 @@ public class PackageApiClientTests
     }
 
     [Test]
-    public async Task NoStoredConnection_FailsWithCredentialError()
+    public async Task NoStoredKey_FailsWithCredentialError()
     {
-        _credentialService.GetWorkshopConnectionAsync()
-            .Returns(Result<WorkshopConnection>.Fail("No Workshop connection is stored"));
+        _editorSettings.WorkshopUrl.Returns("https://workshop.example.com");
+        _credentialService.GetWorkshopKeyAsync()
+            .Returns(Result<string>.Fail("No Workshop Key is configured"));
 
         var result = await _client.ListPackagesAsync();
 
         result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("No Workshop connection is stored");
+        result.MessageChain.Should().Contain("No Workshop Key is configured");
         _messageHandler.Requests.Should().BeEmpty();
     }
 
-    private void SetStoredConnection(string workshopUrl, string applicationKey)
+    // The Workshop URL is a non-secret setting; the Workshop Key is the only
+    // value held in the credential store.
+    private void SetStoredConnection(string workshopUrl, string workshopKey)
     {
-        var connection = new WorkshopConnection(workshopUrl, applicationKey);
-        _credentialService.GetWorkshopConnectionAsync()
-            .Returns(Result<WorkshopConnection>.Ok(connection));
+        _editorSettings.WorkshopUrl.Returns(workshopUrl);
+        _credentialService.GetWorkshopKeyAsync()
+            .Returns(Result<string>.Ok(workshopKey));
     }
 
     private static HttpResponseMessage JsonResponse(string json, HttpStatusCode statusCode = HttpStatusCode.OK)

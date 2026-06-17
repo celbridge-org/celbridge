@@ -21,7 +21,7 @@ A JSON object echoing `packageName`, the resolved `version`, and `deleted: true`
 ## Gotchas
 
 - **No default target.** Calling without a version is an error; name the number or alias explicitly.
-- **Aliases that point at the deleted version are surfaced in the confirmation.** `latest` is server-managed and repoints to the highest remaining version; whether a publisher alias such as `stable` is detached or repointed is a server behaviour. The prompt lists the affected aliases so the consequence is clear before you confirm.
+- **Aliases that point at the deleted version are surfaced in the confirmation.** Aliases are static pointers: deleting a version leaves any alias still pointing at it, so installing through that alias afterwards resolves to the deleted version and then fails at download. `latest` is the exception — it is resolved client-side to the highest live version, so it always skips deleted ones. The prompt lists the affected aliases so the consequence is clear before you confirm.
 - **Deleting an already-deleted version reports that state** rather than failing silently.
 - **Durability is the consumer's responsibility.** The workshop does not promise eternal availability; a consumer who needs a version permanently should vendor it. See `packages_overview`.
 - To remove the entire package and every version at once, use `package_unpublish`.

@@ -5,7 +5,9 @@ namespace Celbridge.Tests.Tools;
 
 /// <summary>
 /// Tests for PackageVersionResolver — the version-or-alias selection shared by
-/// package_install (rejects deleted targets) and package_delete (allows them).
+/// package_install and package_delete. 'latest' selects the highest live
+/// version; a number or alias dereferences to its target regardless of deletion,
+/// leaving the download or delete to surface a deleted target.
 /// </summary>
 [TestFixture]
 public class PackageVersionResolverTests
@@ -25,7 +27,7 @@ public class PackageVersionResolverTests
     }
 
     [Test]
-    public void ResolveForInstall_Latest_SelectsHighestNonDeletedVersion()
+    public void Resolve_Latest_SelectsHighestNonDeletedVersion()
     {
         var details = Details(new List<RemotePackageVersion>
         {
@@ -34,94 +36,90 @@ public class PackageVersionResolverTests
             Version(3, deleted: true),
         });
 
-        var result = PackageVersionResolver.ResolveForInstall(details, "latest");
+        var result = PackageVersionResolver.Resolve(details, "latest");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(2);
     }
 
     [Test]
-    public void ResolveForInstall_ExplicitDeletedVersion_Fails()
+    public void Resolve_LatestWithAllVersionsDeleted_Fails()
     {
+        var details = Details(new List<RemotePackageVersion>
+        {
+            Version(1, deleted: true),
+            Version(2, deleted: true),
+        });
+
+        var result = PackageVersionResolver.Resolve(details, "latest");
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("no live version");
+    }
+
+    [Test]
+    public void Resolve_ExplicitDeletedVersion_ResolvesToTarget()
+    {
+        // Resolution does not consider liveness; the download surfaces the deletion.
         var details = Details(new List<RemotePackageVersion>
         {
             Version(1, deleted: true),
             Version(2),
         });
 
-        var result = PackageVersionResolver.ResolveForInstall(details, "1");
-
-        result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("deleted");
-    }
-
-    [Test]
-    public void ResolveForInstall_AliasToDeletedVersion_Fails()
-    {
-        var details = Details(
-            new List<RemotePackageVersion> { Version(1, deleted: true), Version(2) },
-            new List<RemotePackageAlias> { new("stable", 1) });
-
-        var result = PackageVersionResolver.ResolveForInstall(details, "stable");
-
-        result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("deleted");
-    }
-
-    [Test]
-    public void ResolveForInstall_UnknownSelector_Fails()
-    {
-        var details = Details(new List<RemotePackageVersion> { Version(1) });
-
-        var result = PackageVersionResolver.ResolveForInstall(details, "nope");
-
-        result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("not a version number or a known alias");
-    }
-
-    [Test]
-    public void ResolveForDelete_Alias_ResolvesToTargetVersion()
-    {
-        var details = Details(
-            new List<RemotePackageVersion> { Version(1), Version(2) },
-            new List<RemotePackageAlias> { new("stable", 2) });
-
-        var result = PackageVersionResolver.ResolveForDelete(details, "stable");
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(2);
-    }
-
-    [Test]
-    public void ResolveForDelete_ExplicitDeletedVersion_ResolvesCleanly()
-    {
-        // Delete does not pre-reject a deleted target; the client reports the
-        // already-deleted state instead.
-        var details = Details(new List<RemotePackageVersion>
-        {
-            Version(1, deleted: true),
-            Version(2),
-        });
-
-        var result = PackageVersionResolver.ResolveForDelete(details, "1");
+        var result = PackageVersionResolver.Resolve(details, "1");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(1);
     }
 
     [Test]
-    public void ResolveForDelete_Latest_SelectsHighestNonDeletedVersion()
+    public void Resolve_AliasToDeletedVersion_ResolvesToTarget()
     {
-        var details = Details(new List<RemotePackageVersion>
-        {
-            Version(1),
-            Version(2),
-            Version(3, deleted: true),
-        });
+        var details = Details(
+            new List<RemotePackageVersion> { Version(1, deleted: true), Version(2) },
+            new List<RemotePackageAlias> { new("stable", 1) });
 
-        var result = PackageVersionResolver.ResolveForDelete(details, "latest");
+        var result = PackageVersionResolver.Resolve(details, "stable");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(1);
+    }
+
+    [Test]
+    public void Resolve_AliasToLiveVersion_ResolvesToTarget()
+    {
+        var details = Details(
+            new List<RemotePackageVersion> { Version(1), Version(2) },
+            new List<RemotePackageAlias> { new("stable", 2) });
+
+        var result = PackageVersionResolver.Resolve(details, "stable");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(2);
+    }
+
+    [Test]
+    public void Resolve_AliasToNonexistentVersion_Fails()
+    {
+        var details = Details(
+            new List<RemotePackageVersion> { Version(1) },
+            new List<RemotePackageAlias> { new("stable", 9) });
+
+        var result = PackageVersionResolver.Resolve(details, "stable");
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("does not exist");
+    }
+
+    [Test]
+    public void Resolve_UnknownSelector_Fails()
+    {
+        var details = Details(new List<RemotePackageVersion> { Version(1) });
+
+        var result = PackageVersionResolver.Resolve(details, "nope");
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("not a version number or a known alias");
     }
 }

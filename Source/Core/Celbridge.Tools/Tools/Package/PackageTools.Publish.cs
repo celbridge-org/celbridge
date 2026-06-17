@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Text.Json;
-using Celbridge.Credentials;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Tomlyn;

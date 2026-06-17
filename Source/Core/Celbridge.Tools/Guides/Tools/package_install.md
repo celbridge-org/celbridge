@@ -10,7 +10,7 @@ The name as published on the workshop (lowercase alphanumeric with single hyphen
 
 ### version
 
-Which version to install. Accepts a version number (e.g. `3`), an alias name (e.g. `stable`), or `latest` (the default), which selects the highest live version. A tombstoned version cannot be installed.
+Which version to install. Accepts a version number (e.g. `3`), an alias name (e.g. `stable`), or `latest` (the default), which selects the highest live version. A deleted version cannot be installed: a number or alias resolves to its target, but the download then reports that the version has been deleted. `latest` always skips deleted versions.
 
 ### destination
 
@@ -37,5 +37,5 @@ Installing over an existing package folder completely replaces its contents — 
 
 - Installing into `project:` fails before downloading if another manifest already claims the same package name at a *different* path — move, rename, or remove it first, or reinstall over the existing folder to replace it. Use `package_status` to see what is installed where. Copies under non-loading roots (e.g. `temp:`) are exempt because they never load.
 - The downloaded zip is staged briefly under `temp:` and removed after extraction, even if the extract fails partway.
-- A package whose versions have all been tombstoned has no live version and cannot be installed.
+- A package whose versions have all been deleted has no live version, so `latest` cannot resolve and the install fails.
 - `HISTORY.md` is generated metadata, not package content; `package_publish` never uploads it.

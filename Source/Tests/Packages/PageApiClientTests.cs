@@ -2,16 +2,18 @@ using System.Net;
 using System.Text;
 using Celbridge.Credentials;
 using Celbridge.Packages;
+using Celbridge.Settings;
 
 namespace Celbridge.Tests.Packages;
 
 [TestFixture]
 public class PageApiClientTests
 {
-    private const string TestApplicationKey = "kpf_testkey_supersecret";
+    private const string TestWorkshopKey = "kpf_testkey_supersecret";
 
     private StubMessageHandler _messageHandler = null!;
     private ICredentialService _credentialService = null!;
+    private IEditorSettings _editorSettings = null!;
     private PageApiClient _client = null!;
 
     [SetUp]
@@ -19,8 +21,9 @@ public class PageApiClientTests
     {
         _messageHandler = new StubMessageHandler();
         _credentialService = Substitute.For<ICredentialService>();
-        SetStoredConnection("https://workshop.example.com", TestApplicationKey);
-        _client = new PageApiClient(_credentialService, _messageHandler);
+        _editorSettings = Substitute.For<IEditorSettings>();
+        SetStoredConnection("https://workshop.example.com", TestWorkshopKey);
+        _client = new PageApiClient(_credentialService, _editorSettings, _messageHandler);
     }
 
     [TearDown]
@@ -60,7 +63,7 @@ public class PageApiClientTests
         request.RequestUri.Should().Be(new Uri("https://workshop.example.com/api/pages"));
         request.Headers.Authorization.Should().NotBeNull();
         request.Headers.Authorization!.Scheme.Should().Be("Api-Key");
-        request.Headers.Authorization.Parameter.Should().Be(TestApplicationKey);
+        request.Headers.Authorization.Parameter.Should().Be(TestWorkshopKey);
 
         var pages = result.Value;
         pages.Should().HaveCount(2);
@@ -222,15 +225,15 @@ public class PageApiClientTests
         var result = await _client.ListPagesAsync();
 
         result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("Application Key");
-        result.MessageChain.Should().NotContain(TestApplicationKey);
-        result.DiagnosticReport.Should().NotContain(TestApplicationKey);
+        result.MessageChain.Should().Contain("Workshop Key");
+        result.MessageChain.Should().NotContain(TestWorkshopKey);
+        result.DiagnosticReport.Should().NotContain(TestWorkshopKey);
     }
 
     [Test]
     public async Task HttpUrl_NonLoopbackHost_RejectedBeforeSending()
     {
-        SetStoredConnection("http://workshop.example.com", TestApplicationKey);
+        SetStoredConnection("http://workshop.example.com", TestWorkshopKey);
 
         var result = await _client.ListPagesAsync();
 
@@ -239,11 +242,13 @@ public class PageApiClientTests
         _messageHandler.Requests.Should().BeEmpty();
     }
 
-    private void SetStoredConnection(string workshopUrl, string applicationKey)
+    // The Workshop URL is a non-secret setting; the Workshop Key is the only
+    // value held in the credential store.
+    private void SetStoredConnection(string workshopUrl, string workshopKey)
     {
-        var connection = new WorkshopConnection(workshopUrl, applicationKey);
-        _credentialService.GetWorkshopConnectionAsync()
-            .Returns(Result<WorkshopConnection>.Ok(connection));
+        _editorSettings.WorkshopUrl.Returns(workshopUrl);
+        _credentialService.GetWorkshopKeyAsync()
+            .Returns(Result<string>.Ok(workshopKey));
     }
 
     private static HttpResponseMessage JsonResponse(string json, HttpStatusCode statusCode = HttpStatusCode.OK)

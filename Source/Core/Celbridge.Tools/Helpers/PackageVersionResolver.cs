@@ -10,25 +10,12 @@ namespace Celbridge.Tools;
 internal static class PackageVersionResolver
 {
     /// <summary>
-    /// Resolves a version for install. A deleted version cannot be downloaded,
-    /// so a deleted target is rejected with a clear error rather than resolved.
+    /// Resolves a requested version string to a concrete version number. 'latest'
+    /// selects the highest live version; a version number or alias dereferences to
+    /// its target whether or not that version is deleted, leaving the download or
+    /// delete as the single authority on liveness.
     /// </summary>
-    public static Result<int> ResolveForInstall(RemotePackageDetails details, string requestedVersion)
-    {
-        return Resolve(details, requestedVersion, rejectDeleted: true);
-    }
-
-    /// <summary>
-    /// Resolves a version for delete. A deleted target is not pre-rejected here.
-    /// The client reports the already-deleted state instead. The latest alias
-    /// still selects the highest live version, never a dead one.
-    /// </summary>
-    public static Result<int> ResolveForDelete(RemotePackageDetails details, string requestedVersion)
-    {
-        return Resolve(details, requestedVersion, rejectDeleted: false);
-    }
-
-    private static Result<int> Resolve(RemotePackageDetails details, string requestedVersion, bool rejectDeleted)
+    public static Result<int> Resolve(RemotePackageDetails details, string requestedVersion)
     {
         if (string.Equals(requestedVersion, PackageConstants.LatestAlias, StringComparison.OrdinalIgnoreCase))
         {
@@ -50,11 +37,6 @@ internal static class PackageVersionResolver
             {
                 return Result.Fail($"Version {explicitVersion} not found for package '{details.Name}'.");
             }
-            if (rejectDeleted
-                && match.Deleted)
-            {
-                return Result.Fail($"Version {explicitVersion} of package '{details.Name}' has been deleted and cannot be installed.");
-            }
 
             return explicitVersion;
         }
@@ -70,11 +52,6 @@ internal static class PackageVersionResolver
         if (aliasTarget is null)
         {
             return Result.Fail($"Alias '{requestedVersion}' points at version {alias.Version}, which does not exist.");
-        }
-        if (rejectDeleted
-            && aliasTarget.Deleted)
-        {
-            return Result.Fail($"Alias '{requestedVersion}' points at version {alias.Version}, which has been deleted.");
         }
 
         return alias.Version;

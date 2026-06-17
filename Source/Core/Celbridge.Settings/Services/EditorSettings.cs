@@ -116,6 +116,30 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(Theme), value);
     }
 
+    public string WorkshopUrl
+    {
+        get => GetValue<string>(nameof(WorkshopUrl), string.Empty);
+        set => SetValue(nameof(WorkshopUrl), value);
+    }
+
+    public string WorkshopAuthor
+    {
+        get => GetValue<string>(nameof(WorkshopAuthor), string.Empty);
+        set => SetValue(nameof(WorkshopAuthor), value);
+    }
+
+    public string WorkshopKeyProtected
+    {
+        get => GetValue<string>(nameof(WorkshopKeyProtected), string.Empty);
+        set => SetValue(nameof(WorkshopKeyProtected), value);
+    }
+
+    public string WorkshopKeyHint
+    {
+        get => GetValue<string>(nameof(WorkshopKeyHint), string.Empty);
+        set => SetValue(nameof(WorkshopKeyHint), value);
+    }
+
     public bool SearchMatchCase
     {
         get => GetValue<bool>(nameof(SearchMatchCase), false);

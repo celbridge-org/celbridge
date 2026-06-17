@@ -1,10 +1,11 @@
 using Celbridge.Settings;
-using Celbridge.UserInterface.ViewModels.Pages;
 
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The Settings Page for configuring application preferences.
+/// The Settings Page for configuring application preferences. Sections are
+/// composed from self-contained controls (e.g. WorkshopSettingsView); the
+/// page itself only hosts the application-wide options such as the theme.
 /// </summary>
 public sealed partial class SettingsPage : Page
 {
@@ -16,27 +17,12 @@ public sealed partial class SettingsPage : Page
 
     private string TitleString => _stringLocalizer.GetString("SettingsPage_Title");
     private string ApplicationThemeString => _stringLocalizer.GetString("SettingsPage_ApplicationTheme");
-    private string WorkshopSectionString => _stringLocalizer.GetString("SettingsPage_WorkshopSection");
-    private string WorkshopUrlString => _stringLocalizer.GetString("SettingsPage_WorkshopUrl");
-    private string WorkshopUrlTooltipString => _stringLocalizer.GetString("SettingsPage_WorkshopUrlTooltip");
-    private string ApplicationKeyString => _stringLocalizer.GetString("SettingsPage_ApplicationKey");
-    private string ApplicationKeyTooltipString => _stringLocalizer.GetString("SettingsPage_ApplicationKeyTooltip");
-    private string AuthorString => _stringLocalizer.GetString("SettingsPage_Author");
-    private string AuthorTooltipString => _stringLocalizer.GetString("SettingsPage_AuthorTooltip");
-    private string AuthorPlaceholderString => _stringLocalizer.GetString("SettingsPage_AuthorPlaceholder");
-    private string SaveConnectionString => _stringLocalizer.GetString("SettingsPage_SaveConnection");
-    private string ClearConnectionString => _stringLocalizer.GetString("SettingsPage_ClearConnection");
-    private string ReplaceKeyString => _stringLocalizer.GetString("SettingsPage_ReplaceKey");
-    private string CancelReplaceKeyString => _stringLocalizer.GetString("SettingsPage_CancelReplaceKey");
-
-    public SettingsPageViewModel ViewModel { get; }
 
     public SettingsPage()
     {
         _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        ViewModel = ServiceLocator.AcquireService<SettingsPageViewModel>();
 
         // Initialise our Theme lookup Dictionary.
         var ThemeValues = Enum.GetValues(typeof(ApplicationColorTheme));
@@ -61,20 +47,13 @@ public sealed partial class SettingsPage : Page
         ApplicationThemeComboBox.Loaded += ApplicationThemeComboBox_Loaded;
         ApplicationThemeComboBox.SelectionChanged += ApplicationThemeComboBox_SelectionChanged;
 
-        Loaded += SettingsPage_Loaded;
         Unloaded += SettingsPage_Unloaded;
-    }
-
-    private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
-    {
-        await ViewModel.InitializeAsync();
     }
 
     private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
         ApplicationThemeComboBox.Loaded -= ApplicationThemeComboBox_Loaded;
         ApplicationThemeComboBox.SelectionChanged -= ApplicationThemeComboBox_SelectionChanged;
-        Loaded -= SettingsPage_Loaded;
         Unloaded -= SettingsPage_Unloaded;
     }
 

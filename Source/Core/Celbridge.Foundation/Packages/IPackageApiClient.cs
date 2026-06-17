@@ -53,8 +53,8 @@ public record RemotePublishReceipt(
     string ContentHash);
 
 /// <summary>
-/// Client for the workshop server's package REST API. The Workshop URL and
-/// Application Key are read from the credential store at request time;
+/// Client for the workshop server's package REST API. The Workshop URL is read
+/// from settings and the Workshop Key from the credential store at request time;
 /// credential values never appear in parameters, results, or error messages.
 /// Destructive operations (deleting a version, deleting a package) remove
 /// content outright; Celbridge does not model the server's tombstone state.

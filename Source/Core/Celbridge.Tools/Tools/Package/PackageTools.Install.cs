@@ -96,7 +96,7 @@ public partial class PackageTools
         var packageDetails = detailsResult.Value;
 
         var requestedVersion = string.IsNullOrWhiteSpace(version) ? PackageConstants.LatestAlias : version.Trim();
-        var resolveVersionResult = PackageVersionResolver.ResolveForInstall(packageDetails, requestedVersion);
+        var resolveVersionResult = PackageVersionResolver.Resolve(packageDetails, requestedVersion);
         if (resolveVersionResult.IsFailure)
         {
             return ToolResponse.Error(resolveVersionResult);
