@@ -70,6 +70,22 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
+    public ISecretInputDialog CreateSecretInputDialog(string titleText, string headerText, string? submitButtonKey = null)
+    {
+        var dialog = new SecretInputDialog
+        {
+            TitleText = titleText,
+            HeaderText = headerText,
+        };
+
+        if (submitButtonKey is not null)
+        {
+            dialog.SubmitButtonKey = submitButtonKey;
+        }
+
+        return dialog;
+    }
+
     public IAddFileDialog CreateAddFileDialog(string defaultFileName, Range selectionRange, IValidator validator)
     {
         var dialog = new AddFileDialog();

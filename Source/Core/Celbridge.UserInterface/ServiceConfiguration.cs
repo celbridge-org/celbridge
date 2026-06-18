@@ -70,6 +70,7 @@ public static class ServiceConfiguration
         services.AddTransient<ProgressDialogViewModel>();
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
+        services.AddTransient<SecretInputDialogViewModel>();
         services.AddTransient<AddFileDialogViewModel>();
         services.AddTransient<ResourcePickerDialogViewModel>();
         services.AddTransient<StackPanelElement>();

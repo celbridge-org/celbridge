@@ -142,6 +142,13 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
+    public async Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null)
+    {
+        var dialog = _dialogFactory.CreateSecretInputDialog(titleText, headerText, submitButtonKey);
+        _answerScheduler.OnDialogShown(DialogKind.SecretInput);
+        return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
+
     public async Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
         var dialog = _dialogFactory.CreateAddFileDialog(defaultFileName, selectionRange, validator);

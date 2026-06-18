@@ -65,32 +65,19 @@
 
         <Grid Grid.Row="2"
               Grid.Column="1">
-          <Grid Visibility="{x:Bind ViewModel.IsKeyEntryVisible, Mode=OneWay}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <PasswordBox x:Name="WorkshopKeyPasswordBox"
-                         Password="{x:Bind ViewModel.WorkshopKey, Mode=TwoWay}"
-                         ToolTipService.ToolTip="{x:Bind WorkshopKeyTooltipString}"/>
-
-            <Button Grid.Column="1"
-                    Margin="12,0,0,0"
-                    Content="{x:Bind CancelReplaceKeyString}"
-                    Visibility="{x:Bind ViewModel.IsCancelReplaceVisible, Mode=OneWay}"
-                    Command="{x:Bind ViewModel.CancelReplaceWorkshopKeyCommand}"/>
-          </Grid>
+          <Button Content="{x:Bind SetWorkshopKeyString}"
+                  Visibility="{x:Bind ViewModel.IsSetKeyVisible, Mode=OneWay}"
+                  Command="{x:Bind ViewModel.ChangeWorkshopKeyCommand}"/>
 
           <StackPanel Orientation="Horizontal"
                       Spacing="12"
                       Visibility="{x:Bind ViewModel.IsStoredKeyVisible, Mode=OneWay}">
             <TextBlock Text="{x:Bind ViewModel.StoredKeyDisplay, Mode=OneWay}"
                        VerticalAlignment="Center"/>
-            <Button Content="{x:Bind ReplaceKeyString}"
-                    Command="{x:Bind ViewModel.ReplaceWorkshopKeyCommand}"/>
-            <Button Content="{x:Bind ClearWorkshopKeyString}"
-                    Command="{x:Bind ViewModel.ClearWorkshopKeyCommand}"/>
+            <Button Content="{x:Bind ChangeKeyString}"
+                    Command="{x:Bind ViewModel.ChangeWorkshopKeyCommand}"/>
+            <Button Content="{x:Bind RemoveKeyString}"
+                    Command="{x:Bind ViewModel.RemoveWorkshopKeyCommand}"/>
           </StackPanel>
         </Grid>
       </Grid>

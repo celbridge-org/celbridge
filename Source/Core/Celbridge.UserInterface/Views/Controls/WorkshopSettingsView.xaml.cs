@@ -21,13 +21,12 @@ public sealed partial class WorkshopSettingsView : UserControl
     private string WorkshopUrlString => _stringLocalizer.GetString("SettingsPage_WorkshopUrl");
     private string WorkshopUrlTooltipString => _stringLocalizer.GetString("SettingsPage_WorkshopUrlTooltip");
     private string WorkshopKeyString => _stringLocalizer.GetString("SettingsPage_WorkshopKey");
-    private string WorkshopKeyTooltipString => _stringLocalizer.GetString("SettingsPage_WorkshopKeyTooltip");
     private string AuthorString => _stringLocalizer.GetString("SettingsPage_Author");
     private string AuthorTooltipString => _stringLocalizer.GetString("SettingsPage_AuthorTooltip");
     private string AuthorPlaceholderString => _stringLocalizer.GetString("SettingsPage_AuthorPlaceholder");
-    private string ClearWorkshopKeyString => _stringLocalizer.GetString("SettingsPage_ClearWorkshopKey");
-    private string ReplaceKeyString => _stringLocalizer.GetString("SettingsPage_ReplaceKey");
-    private string CancelReplaceKeyString => _stringLocalizer.GetString("SettingsPage_CancelReplaceKey");
+    private string SetWorkshopKeyString => _stringLocalizer.GetString("SettingsPage_SetWorkshopKey");
+    private string ChangeKeyString => _stringLocalizer.GetString("SettingsPage_ChangeKey");
+    private string RemoveKeyString => _stringLocalizer.GetString("SettingsPage_RemoveKey");
 
     public WorkshopSettingsViewModel ViewModel { get; }
 
@@ -57,7 +56,6 @@ public sealed partial class WorkshopSettingsView : UserControl
         }
 
         WorkshopUrlTextBox.TextChanged += WorkshopUrlField_Changed;
-        WorkshopKeyPasswordBox.PasswordChanged += WorkshopKeyField_Changed;
         AuthorTextBox.TextChanged += AuthorField_Changed;
     }
 
@@ -67,7 +65,6 @@ public sealed partial class WorkshopSettingsView : UserControl
         Unloaded -= OnUnloaded;
 
         WorkshopUrlTextBox.TextChanged -= WorkshopUrlField_Changed;
-        WorkshopKeyPasswordBox.PasswordChanged -= WorkshopKeyField_Changed;
         AuthorTextBox.TextChanged -= AuthorField_Changed;
 
         if (_autoSaveTimer is not null)
@@ -87,11 +84,6 @@ public sealed partial class WorkshopSettingsView : UserControl
     }
 
     private void WorkshopUrlField_Changed(object sender, TextChangedEventArgs e)
-    {
-        OnConnectionFieldEdited();
-    }
-
-    private void WorkshopKeyField_Changed(object sender, RoutedEventArgs e)
     {
         OnConnectionFieldEdited();
     }

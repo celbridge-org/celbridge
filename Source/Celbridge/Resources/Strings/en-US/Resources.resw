@@ -438,14 +438,29 @@
   <data name="SettingsPage_AuthorPlaceholder" xml:space="preserve">
     <value>Your name</value>
   </data>
-  <data name="SettingsPage_ClearWorkshopKey" xml:space="preserve">
-    <value>Clear</value>
+  <data name="SettingsPage_SetWorkshopKey" xml:space="preserve">
+    <value>Set Workshop Key</value>
   </data>
-  <data name="SettingsPage_ReplaceKey" xml:space="preserve">
-    <value>Replace</value>
+  <data name="SettingsPage_ChangeKey" xml:space="preserve">
+    <value>Change</value>
   </data>
-  <data name="SettingsPage_CancelReplaceKey" xml:space="preserve">
-    <value>Cancel</value>
+  <data name="SettingsPage_RemoveKey" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="SettingsPage_SetWorkshopKeyDialogTitle" xml:space="preserve">
+    <value>Set Workshop Key</value>
+  </data>
+  <data name="SettingsPage_ChangeWorkshopKeyDialogTitle" xml:space="preserve">
+    <value>Change Workshop Key</value>
+  </data>
+  <data name="SettingsPage_SaveKeyButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SettingsPage_RemoveWorkshopKeyTitle" xml:space="preserve">
+    <value>Remove Workshop Key</value>
+  </data>
+  <data name="SettingsPage_RemoveWorkshopKeyMessage" xml:space="preserve">
+    <value>Remove the stored Workshop Key? You will need to enter it again to reconnect to the workshop.</value>
   </data>
   <data name="SettingsPage_CredentialStoreUnavailable" xml:space="preserve">
     <value>Credential storage is not available on this platform. The Workshop connection cannot be configured.</value>
@@ -468,14 +483,14 @@
   <data name="SettingsPage_SaveConnectionFailed" xml:space="preserve">
     <value>Failed to save the Workshop connection.</value>
   </data>
-  <data name="SettingsPage_ClearWorkshopKeyFailed" xml:space="preserve">
-    <value>Failed to clear the Workshop Key.</value>
+  <data name="SettingsPage_RemoveWorkshopKeyFailed" xml:space="preserve">
+    <value>Failed to remove the Workshop Key.</value>
   </data>
   <data name="SettingsPage_ConnectionSaved" xml:space="preserve">
     <value>Workshop connection saved.</value>
   </data>
-  <data name="SettingsPage_WorkshopKeyCleared" xml:space="preserve">
-    <value>Workshop Key cleared. Enter a new key to reconnect.</value>
+  <data name="SettingsPage_WorkshopKeyRemoved" xml:space="preserve">
+    <value>Workshop Key removed. Set a new key to reconnect.</value>
   </data>
   <data name="SettingsPage_CheckingConnection" xml:space="preserve">
     <value>Checking connection to the workshop...</value>
