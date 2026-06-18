@@ -21,6 +21,15 @@ public interface IPackageService
     Task RegisterPackagesAsync(string projectFolderPath);
 
     /// <summary>
+    /// Re-runs project-package discovery against the on-disk state and refreshes
+    /// the load report, without firing PackagesInitializedMessage. Lets a
+    /// session-mid caller (such as package_status) see packages added or
+    /// removed after the workspace loaded. Editor-contribution registration is
+    /// workspace-load-scoped and is not refreshed by this call.
+    /// </summary>
+    Task RescanProjectPackagesAsync(string projectFolderPath);
+
+    /// <summary>
     /// Gets document type entries from discovered packages that declare templates.
     /// Packages with a disabled feature flag are excluded from the results.
     /// </summary>
@@ -30,6 +39,13 @@ public interface IPackageService
     /// Returns all discovered packages from both bundled and project sources.
     /// </summary>
     IReadOnlyList<Package> GetAllPackages();
+
+    /// <summary>
+    /// Returns the package load failures from the most recent discovery pass,
+    /// so a status query can surface them after the load-time error banner has
+    /// fired. Empty before the first discovery.
+    /// </summary>
+    IReadOnlyList<PackageLoadFailure> GetLoadFailures();
 
     /// <summary>
     /// Returns all document editor contributions from all discovered packages.

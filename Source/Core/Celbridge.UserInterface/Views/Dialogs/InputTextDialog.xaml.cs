@@ -1,12 +1,16 @@
 using Celbridge.Dialog;
+using Celbridge.Logging;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 {
+    private readonly ILogger<InputTextDialog> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private string _submitButtonKey = "DialogButton_Ok";
+    private bool _autoAnswered;
 
     public InputTextDialogViewModel ViewModel { get; }
 
@@ -39,6 +43,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
     public InputTextDialog()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _logger = ServiceLocator.AcquireService<ILogger<InputTextDialog>>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
@@ -69,13 +75,25 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 
     public async Task<Result<string>> ShowDialogAsync()
     {
-        var contentDialogResult = await ShowAsync();
-        if (contentDialogResult == ContentDialogResult.Primary || _pressedEnter)
+        _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
+        try
         {
-            return Result<string>.Ok(ViewModel.InputText);
-        }
+            var contentDialogResult = await ShowAsync();
+            if (_autoAnswered)
+            {
+                return Result<string>.Ok(ViewModel.InputText);
+            }
+            if (contentDialogResult == ContentDialogResult.Primary || _pressedEnter)
+            {
+                return Result<string>.Ok(ViewModel.InputText);
+            }
 
-        return Result<string>.Fail("Failed to input text");
+            return Result<string>.Fail("Failed to input text");
+        }
+        finally
+        {
+            _messengerService.UnregisterAll(this);
+        }
     }
 
     public void SetDefaultText(string defaultText, Range selectionRange)
@@ -87,5 +105,18 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 
         var (offset, length) = selectionRange.GetOffsetAndLength(defaultText.Length);
         InputTextBox.Select(offset, length);
+    }
+
+    private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
+    {
+        if (message.Kind != DialogKind.InputText)
+        {
+            return;
+        }
+
+        _autoAnswered = true;
+        ViewModel.InputText = message.Payload;
+        _logger.LogInformation($"Input-text dialog answered automatically with '{message.Payload}'.");
+        Hide();
     }
 }

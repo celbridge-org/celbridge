@@ -1,14 +1,13 @@
-using System.Text.Json;
-using Celbridge.Credentials;
+using Celbridge.Settings;
 using Celbridge.Settings.Services;
-using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// In-memory protector that reverses the payload bytes, so protected data
-/// never matches the plaintext but round-trips exactly.
+/// never matches the plaintext but round-trips exactly. Entropy is ignored;
+/// production DPAPI enforces the binding, the fake does not.
 /// </summary>
 public sealed class FakeCredentialProtector : ICredentialProtector
 {
@@ -18,14 +17,14 @@ public sealed class FakeCredentialProtector : ICredentialProtector
 
     public bool IsAvailable => Available;
 
-    public Result<byte[]> Protect(byte[] plainData)
+    public Result<byte[]> Protect(byte[] plainData, byte[] entropy)
     {
         var protectedData = plainData.Reverse().ToArray();
 
         return protectedData;
     }
 
-    public Result<byte[]> Unprotect(byte[] protectedData)
+    public Result<byte[]> Unprotect(byte[] protectedData, byte[] entropy)
     {
         if (FailUnprotect)
         {
@@ -39,30 +38,34 @@ public sealed class FakeCredentialProtector : ICredentialProtector
 }
 
 /// <summary>
-/// Unit tests for CredentialService covering the Workshop connection
-/// round-trip, clearing, missing and corrupted store files, and availability.
+/// Unit tests for CredentialService covering the Workshop Key round-trip,
+/// clearing, missing and corrupted entries, and availability. The service is
+/// backed by a substitute IEditorSettings, since storage now lives in settings.
 /// </summary>
 [TestFixture]
 public class CredentialServiceTests
 {
-    private const string CredentialsFilePath = @"C:\AppData\Celbridge\credentials.json";
-    private const string WorkshopUrl = "https://workshop.celbridge.org";
-    private const string ApplicationKey = "kpf_abc123_supersecretvalue";
+    private const string TestWorkshopKey = "kpf_abc123_supersecretvalue";
 
-    private FakeFileSystem _fileSystem = null!;
+    private IEditorSettings _editorSettings = null!;
     private FakeCredentialProtector _protector = null!;
     private CredentialService _credentialService = null!;
 
     [SetUp]
     public void Setup()
     {
-        _fileSystem = new FakeFileSystem();
+        _editorSettings = Substitute.For<IEditorSettings>();
+        // Initialize to empty so unseeded reads return "" rather than the
+        // substitute's null default. The real EditorSettings returns "" too.
+        _editorSettings.WorkshopKeyProtected = string.Empty;
+        _editorSettings.WorkshopKeyHint = string.Empty;
+
         _protector = new FakeCredentialProtector();
+
         _credentialService = new CredentialService(
             new NullLogger<CredentialService>(),
-            _fileSystem,
             _protector,
-            CredentialsFilePath);
+            _editorSettings);
     }
 
     [Test]
@@ -79,12 +82,11 @@ public class CredentialServiceTests
     public async Task AllOperations_FailWhenStoreIsUnavailable()
     {
         _protector.Available = false;
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
 
-        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
-        var setResult = await _credentialService.SetWorkshopConnectionAsync(connection);
-        var clearResult = await _credentialService.ClearWorkshopConnectionAsync();
+        var summaryResult = await _credentialService.GetWorkshopKeySummaryAsync();
+        var getResult = await _credentialService.GetWorkshopKeyAsync();
+        var setResult = await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
+        var clearResult = await _credentialService.ClearWorkshopKeyAsync();
 
         summaryResult.IsFailure.Should().BeTrue();
         getResult.IsFailure.Should().BeTrue();
@@ -95,7 +97,7 @@ public class CredentialServiceTests
     [Test]
     public async Task GetSummary_NothingStored_ReportsNotStored()
     {
-        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
+        var summaryResult = await _credentialService.GetWorkshopKeySummaryAsync();
 
         summaryResult.IsSuccess.Should().BeTrue();
 
@@ -105,12 +107,11 @@ public class CredentialServiceTests
     }
 
     [Test]
-    public async Task GetSummary_StoredConnection_ReportsKeyHint()
+    public async Task GetSummary_StoredKey_ReportsKeyHint()
     {
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
-        await _credentialService.SetWorkshopConnectionAsync(connection);
+        await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
 
-        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
+        var summaryResult = await _credentialService.GetWorkshopKeySummaryAsync();
 
         summaryResult.IsSuccess.Should().BeTrue();
 
@@ -120,206 +121,103 @@ public class CredentialServiceTests
     }
 
     [Test]
-    public async Task GetSummary_CorruptDocument_ReportsStoredWithoutHint()
+    public async Task SetThenGet_RoundTripsKey()
     {
-        _fileSystem.SeedFile(CredentialsFilePath, "this is not json");
-
-        var summaryResult = await _credentialService.GetWorkshopConnectionSummaryAsync();
-
-        summaryResult.IsSuccess.Should().BeTrue();
-
-        var summary = summaryResult.Value;
-        summary.IsStored.Should().BeTrue();
-        summary.KeyHint.Should().BeEmpty();
-    }
-
-    [Test]
-    public async Task SetThenGet_RoundTripsConnection()
-    {
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
-
-        var setResult = await _credentialService.SetWorkshopConnectionAsync(connection);
+        var setResult = await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
         setResult.IsSuccess.Should().BeTrue();
 
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        var getResult = await _credentialService.GetWorkshopKeyAsync();
         getResult.IsSuccess.Should().BeTrue();
 
-        var storedConnection = getResult.Value;
-        storedConnection.Should().Be(connection);
+        getResult.Value.Should().Be(TestWorkshopKey);
     }
 
     [Test]
-    public async Task Set_WritesNoPlaintextToDisk()
+    public async Task Set_WritesNoKeyPlaintextToSettings()
     {
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
+        await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
 
-        await _credentialService.SetWorkshopConnectionAsync(connection);
-
-        var readResult = await _fileSystem.ReadAllTextAsync(CredentialsFilePath);
-        var documentText = readResult.Value;
-        documentText.Should().NotContain(WorkshopUrl);
-        documentText.Should().NotContain(ApplicationKey);
+        _editorSettings.WorkshopKeyProtected.Should().NotContain(TestWorkshopKey);
     }
 
     [Test]
     public async Task Set_StoresKeyDisplayHint()
     {
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
+        await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
 
-        await _credentialService.SetWorkshopConnectionAsync(connection);
-
-        var entry = await ReadStoredEntryAsync();
-        entry.KeyHint.Should().Be("kpf_abc123");
+        _editorSettings.WorkshopKeyHint.Should().Be("kpf_abc123");
     }
 
     [Test]
     public async Task Set_KeyWithUnexpectedShape_StoresEmptyHint()
     {
-        var connection = new WorkshopConnection(WorkshopUrl, "not-a-kpf-shaped-key");
+        await _credentialService.SetWorkshopKeyAsync("not-a-kpf-shaped-key");
 
-        await _credentialService.SetWorkshopConnectionAsync(connection);
-
-        var entry = await ReadStoredEntryAsync();
-        entry.KeyHint.Should().BeEmpty();
+        _editorSettings.WorkshopKeyHint.Should().BeEmpty();
     }
 
     [Test]
-    public async Task Set_EmptyValues_Fail()
+    public async Task Set_EmptyKey_Fails()
     {
-        var emptyUrl = new WorkshopConnection(string.Empty, ApplicationKey);
-        var emptyKey = new WorkshopConnection(WorkshopUrl, string.Empty);
+        var emptyKeyResult = await _credentialService.SetWorkshopKeyAsync(string.Empty);
 
-        var emptyUrlResult = await _credentialService.SetWorkshopConnectionAsync(emptyUrl);
-        var emptyKeyResult = await _credentialService.SetWorkshopConnectionAsync(emptyKey);
-
-        emptyUrlResult.IsFailure.Should().BeTrue();
         emptyKeyResult.IsFailure.Should().BeTrue();
     }
 
     [Test]
-    public async Task Get_MissingFile_FailsWithActionableMessage()
+    public async Task Get_NothingStored_FailsWithActionableMessage()
     {
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        var getResult = await _credentialService.GetWorkshopKeyAsync();
 
         getResult.IsFailure.Should().BeTrue();
-        getResult.FirstErrorMessage.Should().Contain("No Workshop connection is configured");
+        getResult.FirstErrorMessage.Should().Contain("No Workshop Key is configured");
         getResult.FirstErrorMessage.Should().Contain("Settings page");
     }
 
     [Test]
-    public async Task Get_CorruptDocument_FailsCleanly()
+    public async Task Get_InvalidBase64_FailsCleanly()
     {
-        _fileSystem.SeedFile(CredentialsFilePath, "this is not json");
+        _editorSettings.WorkshopKeyProtected = "@@not-valid-base64@@";
 
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        var getResult = await _credentialService.GetWorkshopKeyAsync();
 
         getResult.IsFailure.Should().BeTrue();
         getResult.FirstErrorMessage.Should().Contain("could not be read");
     }
 
     [Test]
-    public async Task Get_CorruptProtectedBlob_FailsCleanly()
+    public async Task Get_UnprotectFailure_FailsWithoutEchoingKey()
     {
-        var documentText = """
-            {
-              "Version": 1,
-              "WorkshopConnection": {
-                "ProtectedData": "@@not-valid-base64@@",
-                "KeyHint": "kpf_abc123"
-              }
-            }
-            """;
-        _fileSystem.SeedFile(CredentialsFilePath, documentText);
-
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
-
-        getResult.IsFailure.Should().BeTrue();
-        getResult.FirstErrorMessage.Should().Contain("could not be read");
-    }
-
-    [Test]
-    public async Task Get_NewerStoreVersion_FailsCleanly()
-    {
-        var documentText = """
-            {
-              "Version": 2,
-              "WorkshopConnection": {
-                "ProtectedData": "AAAA",
-                "KeyHint": ""
-              }
-            }
-            """;
-        _fileSystem.SeedFile(CredentialsFilePath, documentText);
-
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
-
-        getResult.IsFailure.Should().BeTrue();
-        getResult.FirstErrorMessage.Should().Contain("newer version");
-    }
-
-    [Test]
-    public async Task Get_UnprotectFailure_FailsWithoutEchoingValues()
-    {
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
-        await _credentialService.SetWorkshopConnectionAsync(connection);
+        await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
         _protector.FailUnprotect = true;
 
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        var getResult = await _credentialService.GetWorkshopKeyAsync();
 
         getResult.IsFailure.Should().BeTrue();
-        getResult.MessageChain.Should().NotContain(WorkshopUrl);
-        getResult.MessageChain.Should().NotContain(ApplicationKey);
+        getResult.MessageChain.Should().NotContain(TestWorkshopKey);
     }
 
     [Test]
-    public async Task Get_TamperedPayload_FailsCleanly()
+    public async Task Clear_RemovesStoredKey()
     {
-        var garbagePayload = "garbage payload"u8.ToArray();
-        var protectResult = _protector.Protect(garbagePayload);
-        var protectedData = protectResult.Value;
+        await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
 
-        var entry = new WorkshopConnectionEntry(Convert.ToBase64String(protectedData), string.Empty);
-        var document = new CredentialStoreDocument(1, entry);
-        _fileSystem.SeedFile(CredentialsFilePath, JsonSerializer.Serialize(document));
-
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
-
-        getResult.IsFailure.Should().BeTrue();
-        getResult.FirstErrorMessage.Should().Contain("could not be read");
-    }
-
-    [Test]
-    public async Task Clear_RemovesStoredConnection()
-    {
-        var connection = new WorkshopConnection(WorkshopUrl, ApplicationKey);
-        await _credentialService.SetWorkshopConnectionAsync(connection);
-
-        var clearResult = await _credentialService.ClearWorkshopConnectionAsync();
+        var clearResult = await _credentialService.ClearWorkshopKeyAsync();
         clearResult.IsSuccess.Should().BeTrue();
 
-        _fileSystem.Files.Should().NotContainKey(CredentialsFilePath);
+        _editorSettings.WorkshopKeyProtected.Should().BeEmpty();
+        _editorSettings.WorkshopKeyHint.Should().BeEmpty();
 
-        var getResult = await _credentialService.GetWorkshopConnectionAsync();
+        var getResult = await _credentialService.GetWorkshopKeyAsync();
         getResult.IsFailure.Should().BeTrue();
-        getResult.FirstErrorMessage.Should().Contain("No Workshop connection is configured");
+        getResult.FirstErrorMessage.Should().Contain("No Workshop Key is configured");
     }
 
     [Test]
     public async Task Clear_WhenNothingStored_Succeeds()
     {
-        var clearResult = await _credentialService.ClearWorkshopConnectionAsync();
+        var clearResult = await _credentialService.ClearWorkshopKeyAsync();
 
         clearResult.IsSuccess.Should().BeTrue();
-    }
-
-    private async Task<WorkshopConnectionEntry> ReadStoredEntryAsync()
-    {
-        var readResult = await _fileSystem.ReadAllTextAsync(CredentialsFilePath);
-        var documentText = readResult.Value;
-        var document = JsonSerializer.Deserialize<CredentialStoreDocument>(documentText);
-        document.Should().NotBeNull();
-        document!.WorkshopConnection.Should().NotBeNull();
-
-        return document.WorkshopConnection!;
     }
 }

@@ -418,9 +418,6 @@ solution-config.props
 **/Celbridge.Spreadsheet/Package/lib/
 **/SpreadsheetLicenseKeys.private.cs
 
-# Package API credentials
-**/PackageApiCredentials.private.cs
-
 # Celbridge ephemeral data
 .cache/
 .trash/

@@ -1,4 +1,5 @@
 using Celbridge.FileSystem.Services;
+using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Resources;
@@ -205,6 +206,74 @@ public class ProjectLoadReporterTests
     }
 
     [Test]
+    public async Task FlushAsync_AfterRecordPackageReport_IncludesPackagesSection()
+    {
+        // Mirrors the runtime flow: PackageService records the discovery
+        // outcome during workspace load, after the load section is written.
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = new PackageDiscoveryReport
+        {
+            BundledPackageCount = 5,
+            ProjectPackageCount = 1,
+            Failures = new[]
+            {
+                new PackageLoadFailure
+                {
+                    Folder = @"C:\projects\demo\packages\excel-art",
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = "Package has invalid 'name' value 'Excel Art'"
+                },
+                new PackageLoadFailure
+                {
+                    Folder = @"C:\projects\demo\packages\impostor",
+                    PackageName = "celbridge.notes",
+                    Reason = PackageLoadFailureReason.ReservedNamePrefix
+                }
+            }
+        };
+        _reporter.RecordPackageReport(report);
+
+        var reportPath = await _reporter.FlushAsync();
+
+        reportPath.Should().NotBeNull();
+        var content = await File.ReadAllTextAsync(reportPath!);
+
+        content.Should().Contain("## Packages");
+        content.Should().Contain("- Bundled packages loaded: 5");
+        content.Should().Contain("- Project packages loaded: 1");
+        content.Should().Contain("### Load failures (2)");
+        content.Should().Contain(@"- `C:\projects\demo\packages\excel-art`: `InvalidManifest`");
+        content.Should().Contain("Package has invalid 'name' value 'Excel Art'");
+        content.Should().Contain(@"- `celbridge.notes` in `C:\projects\demo\packages\impostor`: `ReservedNamePrefix`");
+    }
+
+    [Test]
+    public async Task FlushAsync_CleanPackageDiscovery_ReportsNoLoadFailures()
+    {
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = new PackageDiscoveryReport
+        {
+            BundledPackageCount = 5,
+            ProjectPackageCount = 2,
+            Failures = Array.Empty<PackageLoadFailure>()
+        };
+        _reporter.RecordPackageReport(report);
+
+        var reportPath = await _reporter.FlushAsync();
+
+        reportPath.Should().NotBeNull();
+        var content = await File.ReadAllTextAsync(reportPath!);
+        content.Should().Contain("## Packages");
+        content.Should().Contain("No load failures");
+        content.Should().NotContain("### Load failures");
+    }
+
+    [Test]
     public async Task BeginLoad_ClearsPriorCheckSection()
     {
         // A new project load invalidates the previous run's check state. The
@@ -216,11 +285,17 @@ public class ProjectLoadReporterTests
             BrokenReferences: Array.Empty<BrokenReference>(),
             OrphanCelFiles: new[] { new ResourceKey("stale.png.cel") },
             BrokenCelFiles: Array.Empty<ResourceKey>()));
+        _reporter.RecordPackageReport(new PackageDiscoveryReport
+        {
+            BundledPackageCount = 5,
+            ProjectPackageCount = 0,
+            Failures = Array.Empty<PackageLoadFailure>()
+        });
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
         await _reporter.FlushAsync();
 
         // Second load picks up where the first left off — the prior check
-        // findings should not bleed through.
+        // and package findings should not bleed through.
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordMigrationResult(
             MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "1.0.0", "1.0.0"),
@@ -234,6 +309,7 @@ public class ProjectLoadReporterTests
         var content = await File.ReadAllTextAsync(reportPath!);
         content.Should().NotContain("## Consistency check");
         content.Should().NotContain("stale.png.cel");
+        content.Should().NotContain("## Packages");
     }
 
     [Test]

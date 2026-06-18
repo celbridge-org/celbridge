@@ -8,5 +8,6 @@ public static class ServiceConfiguration
         services.AddTransient<PackageRegistry>();
         services.AddTransient<IPackageService, PackageService>();
         services.AddSingleton<IPackageApiClient, PackageApiClient>();
+        services.AddSingleton<IPageApiClient, PageApiClient>();
     }
 }

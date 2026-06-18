@@ -790,6 +790,78 @@ public class FileToolTests
         dispatched.Should().BeTrue();
     }
 
+    [Test]
+    public async Task Grep_NonDefaultRootScope_WalksGatewayAndFindsMatches()
+    {
+        // Regression: a temp:-scoped project-walk returned a silent empty result
+        // because the search index covers only the project tree. The scope now
+        // descends the named root through the gateway and finds the matches.
+        var stagingDir = Path.Combine(_tempFolder, "staging", "sample-package", "src");
+        Directory.CreateDirectory(stagingDir);
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
+
+        StubResolveAllKeysToTempFolder();
+        RegisterNonDefaultRoot("temp");
+
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(searchTerm: "alpha|beta", useRegex: true, resource: "temp:staging/sample-package");
+
+        result.IsError.Should().NotBe(true);
+        var root = ParseResult(result);
+        root.GetProperty("totalMatches").GetInt32().Should().Be(2);
+        root.GetProperty("totalFiles").GetInt32().Should().Be(1);
+        root.GetProperty("files")[0].GetProperty("resource").GetString()
+            .Should().Be("temp:staging/sample-package/src/app.js");
+    }
+
+    [Test]
+    public async Task Grep_NonDefaultRootScope_HonoursIncludeFilter()
+    {
+        var stagingDir = Path.Combine(_tempFolder, "staging", "sample-package", "src");
+        Directory.CreateDirectory(stagingDir);
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
+
+        StubResolveAllKeysToTempFolder();
+        RegisterNonDefaultRoot("temp");
+
+        var tools = new FileTools(_services);
+        // The only matching file is a .js, so an include of *.css must exclude it.
+        var result = await tools.Grep(searchTerm: "alpha", resource: "temp:staging/sample-package", include: "*.css");
+
+        result.IsError.Should().NotBe(true);
+        var root = ParseResult(result);
+        root.GetProperty("totalMatches").GetInt32().Should().Be(0);
+        root.GetProperty("totalFiles").GetInt32().Should().Be(0);
+    }
+
+    private string KeyToTempPath(ResourceKey key)
+    {
+        return Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    // This harness treats every root as the same on-disk temp tree, so map any
+    // resource key to a path under the temp folder for both resolve overloads
+    // (the gateway enumerates with validateCase:false).
+    private void StubResolveAllKeysToTempFolder()
+    {
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(callInfo => Result<string>.Ok(KeyToTempPath(callInfo.Arg<ResourceKey>())));
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
+            .Returns(callInfo => Result<string>.Ok(KeyToTempPath(callInfo.Arg<ResourceKey>())));
+    }
+
+    private void RegisterNonDefaultRoot(string root)
+    {
+        var resourceService = _services.GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService;
+        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
+        var handlers = new Dictionary<string, IResourceRootHandler>
+        {
+            [root] = Substitute.For<IResourceRootHandler>()
+        };
+        rootHandlerRegistry.RootHandlers.Returns(handlers);
+        resourceService.RootHandlers.Returns(rootHandlerRegistry);
+    }
+
     private static JsonElement ParseResult(CallToolResult result)
     {
         var json = result.Content.OfType<TextContentBlock>().Single().Text;

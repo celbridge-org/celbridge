@@ -45,11 +45,12 @@ public class CopyPathMenuOption : IMenuOption<ExplorerMenuContext>
         var target = context.ClickedResource ?? context.ProjectFolder;
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(target);
-        // Use .Path (the path portion only) for filesystem-path construction;
-        // ToString() now emits the canonical "project:" prefix that does not
-        // belong in a filesystem path.
-        var filePath = Path.Combine(resourceRegistry.ProjectFolderPath, resourceKey.Path);
+        var resolveResult = resourceRegistry.ResolveResourcePath(target);
+        if (resolveResult.IsFailure)
+        {
+            return;
+        }
+        var filePath = resolveResult.Value;
 
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {

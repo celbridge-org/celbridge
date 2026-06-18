@@ -4,6 +4,19 @@ using Celbridge.Validators;
 namespace Celbridge.Dialog;
 
 /// <summary>
+/// Identifies the dialog kinds that support automated answers through
+/// IDialogService.ScheduleAnswer.
+/// </summary>
+public enum DialogKind
+{
+    Alert,
+    Confirmation,
+    InputText,
+    SecretInput,
+    ResourcePicker,
+}
+
+/// <summary>
 /// Manages the display of modal dialogs to the user.
 /// </summary>
 public interface IDialogService
@@ -38,6 +51,12 @@ public interface IDialogService
     Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null);
 
     /// <summary>
+    /// Display a Secret Input Dialog that masks the entered value, for secrets
+    /// such as an API key. Returns the entered secret, or fails when cancelled.
+    /// </summary>
+    Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null);
+
+    /// <summary>
     /// Display an Add File Dialog with file type selection.
     /// </summary>
     Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
@@ -56,5 +75,13 @@ public interface IDialogService
     /// Returns the selected index and checkbox state, or fails if the user cancels.
     /// </summary>
     Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null);
+
+    /// <summary>
+    /// Schedule an automated answer for the next modal dialog of the named
+    /// kind. The delay timer begins when that dialog is displayed; if a dialog
+    /// of a different kind appears first, the schedule stays pending. A
+    /// subsequent call overwrites the schedule.
+    /// </summary>
+    void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250);
 }
 

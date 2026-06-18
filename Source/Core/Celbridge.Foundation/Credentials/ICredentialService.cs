@@ -1,24 +1,19 @@
 namespace Celbridge.Credentials;
 
 /// <summary>
-/// A Workshop server URL paired with the Application Key issued by that server.
-/// The two values are stored and retrieved together because a key is only
-/// meaningful against the server that issued it.
+/// Summary of the stored Workshop Key, readable without decrypting it.
+/// KeyHint is the identifying prefix of the stored key, or empty when the key
+/// has no recognisable prefix or the stored entry is unreadable.
 /// </summary>
-public record WorkshopConnection(string WorkshopUrl, string ApplicationKey);
+public record WorkshopKeySummary(bool IsStored, string KeyHint);
 
 /// <summary>
-/// Summary of the stored Workshop connection, readable without decrypting it.
-/// KeyHint is the identifying prefix of the stored Application Key, or empty
-/// when the key has no recognisable prefix or the stored entry is unreadable.
-/// </summary>
-public record WorkshopConnectionSummary(bool IsStored, string KeyHint);
-
-/// <summary>
-/// Application-scoped store for sensitive credentials, encrypted at rest.
-/// Stored values are retrievable only by host-side services through this typed
-/// API and must never appear on agent-readable surfaces such as tool results,
-/// log messages, the WebView, scripting APIs, or subprocess environments.
+/// Application-scoped store for secret credentials, encrypted at rest. The store
+/// is general purpose, with one typed accessor per credential. Stored values are
+/// retrievable only by host-side services through this typed API and must never
+/// appear on agent-readable surfaces such as tool results, log messages, the
+/// WebView, scripting APIs, or subprocess environments. Only secrets belong here;
+/// non-secret configuration belongs in settings.
 /// </summary>
 public interface ICredentialService
 {
@@ -30,25 +25,25 @@ public interface ICredentialService
     bool IsAvailable { get; }
 
     /// <summary>
-    /// Gets a summary of the stored Workshop connection without decrypting it,
-    /// so display surfaces can identify the stored key. Reports a stored entry
-    /// even when it is corrupt, so callers can offer clear and replace.
+    /// Gets a summary of the stored Workshop Key without decrypting it, so
+    /// display surfaces can identify the stored key. Reports a stored entry even
+    /// when it is corrupt, so callers can offer clear and replace.
     /// </summary>
-    Task<Result<WorkshopConnectionSummary>> GetWorkshopConnectionSummaryAsync();
+    Task<Result<WorkshopKeySummary>> GetWorkshopKeySummaryAsync();
 
     /// <summary>
-    /// Gets the stored Workshop connection. Fails with an actionable message
-    /// when no connection is stored or the stored entry cannot be read.
+    /// Gets the stored Workshop Key. Fails with an actionable message when no
+    /// key is stored or the stored entry cannot be read.
     /// </summary>
-    Task<Result<WorkshopConnection>> GetWorkshopConnectionAsync();
+    Task<Result<string>> GetWorkshopKeyAsync();
 
     /// <summary>
-    /// Stores the Workshop connection, replacing any existing one.
+    /// Stores the Workshop Key, replacing any existing one.
     /// </summary>
-    Task<Result> SetWorkshopConnectionAsync(WorkshopConnection connection);
+    Task<Result> SetWorkshopKeyAsync(string workshopKey);
 
     /// <summary>
-    /// Removes the stored Workshop connection. Succeeds when no connection is stored.
+    /// Removes the stored Workshop Key. Succeeds when none is stored.
     /// </summary>
-    Task<Result> ClearWorkshopConnectionAsync();
+    Task<Result> ClearWorkshopKeyAsync();
 }

@@ -240,7 +240,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
-    /// Returns a new ResourceKey that is the combination of the current key and the specified segment.
+    /// Returns a new ResourceKey that is the combination of the current key and exactly one segment.
     /// The root is preserved; the segment is appended to the path.
     /// </summary>
     public ResourceKey Combine(string segment)
@@ -259,6 +259,25 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
         var combinedPath = string.IsNullOrEmpty(_path) ? segment : _path + "/" + segment;
         return new ResourceKey(_root, combinedPath);
+    }
+
+    /// <summary>
+    /// Returns a new ResourceKey formed by appending a relative path to the current key.
+    /// The path is forward-slash separated and may span multiple segments, each validated
+    /// as Combine validates a single segment. The root is preserved.
+    /// </summary>
+    public ResourceKey CombinePath(string relativePath)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(relativePath);
+
+        var key = this;
+        var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var segment in segments)
+        {
+            key = key.Combine(segment);
+        }
+
+        return key;
     }
 
     /// <summary>

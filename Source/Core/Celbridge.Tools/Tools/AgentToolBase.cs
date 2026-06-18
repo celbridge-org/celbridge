@@ -72,6 +72,20 @@ public abstract class AgentToolBase
         => JsonArgumentParser.Parse<T>(json, label, JsonOptions);
 
     /// <summary>
+    /// Shows a modal alert dialog so the human operating the app sees a message
+    /// that would otherwise only reach the agent through a tool error. Used when
+    /// a tool must communicate a setup problem the user has to fix.
+    /// </summary>
+    protected async Task ShowAlertAsync(string title, string message)
+    {
+        await ExecuteCommandAsync<IAlertCommand>(command =>
+        {
+            command.Title = title;
+            command.Message = message;
+        });
+    }
+
+    /// <summary>
     /// Loads an embedded resource from the Celbridge.Tools assembly as a string.
     /// Returns a placeholder string when the resource is missing (build-time invariant).
     /// </summary>

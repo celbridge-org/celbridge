@@ -126,6 +126,39 @@ public interface IEditorSettings : INotifyPropertyChanged
     ApplicationColorTheme Theme { get; set; }
 
     // ========================================
+    // Workshop Connection
+    // User-scoped: these belong to the user and their installation, never to
+    // a project, so they must not be moved to per-project storage.
+    // ========================================
+
+    /// <summary>
+    /// The Workshop server URL. Empty when no Workshop is configured.
+    /// </summary>
+    string WorkshopUrl { get; set; }
+
+    /// <summary>
+    /// The Author name recorded as the publisher of packages and pages. Empty
+    /// when none is set.
+    /// </summary>
+    string WorkshopAuthor { get; set; }
+
+    /// <summary>
+    /// The Workshop Key in encrypted form (base64 of the platform-protected
+    /// ciphertext). Empty when no key is stored. Managed by ICredentialService
+    /// and not intended for direct consumption: read and write the key through
+    /// the service so encryption stays the only path in and out.
+    /// </summary>
+    string WorkshopKeyProtected { get; set; }
+
+    /// <summary>
+    /// The non-secret display hint for the stored Workshop Key (the prefix of
+    /// the key up to the second underscore, e.g. "kpf_abc123"). Empty when no
+    /// hint can be derived. Managed by ICredentialService alongside
+    /// WorkshopKeyProtected.
+    /// </summary>
+    string WorkshopKeyHint { get; set; }
+
+    // ========================================
     // Search Panel Options
     // ========================================
 

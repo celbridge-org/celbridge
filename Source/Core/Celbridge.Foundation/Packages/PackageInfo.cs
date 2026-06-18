@@ -29,16 +29,16 @@ public enum PackageOrigin
 public partial record PackageInfo
 {
     /// <summary>
-    /// Unique identifier for the package (e.g., "celbridge.notes"). Ids that begin
+    /// Unique name identifying the package (e.g., "my-widget"). Names that begin
     /// with the "celbridge." prefix are reserved for first-party packages shipped
     /// inside Celbridge module DLLs.
     /// </summary>
-    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     /// <summary>
-    /// Display name of the package (from package.toml).
+    /// Optional display name of the package (from the manifest's 'title' key).
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
     /// <summary>
     /// Optional feature flag. When set, all contributions are disabled if this feature is off.
@@ -46,9 +46,9 @@ public partial record PackageInfo
     public string? FeatureFlag { get; init; }
 
     /// <summary>
-    /// Tool allowlist declared under [mod].requires_tools.
+    /// Tool allowlist declared under [permissions].tools.
     /// </summary>
-    public IReadOnlyList<string> RequiresTools { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> PermittedTools { get; init; } = Array.Empty<string>();
 
     /// <summary>
     /// Named secrets supplied by the module that bundles this package. Populated

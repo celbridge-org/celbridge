@@ -1,6 +1,7 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -11,10 +12,6 @@ namespace Celbridge.Packages;
 /// </summary>
 public class PackageRegistry
 {
-    private const string PackagesFolderName = "packages";
-    private const string ManifestFileName = "package.toml";
-    private const string ReservedIdPrefix = "celbridge.";
-
     // Editors like the code editor can handle 150+ extensions; listing them all
     // makes the discovery log unreadable. Above this count we elide to a count.
     private const int MaxInlineExtensionsInLog = 20;
@@ -28,6 +25,10 @@ public class PackageRegistry
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
+
+    // Failures from the most recent discovery pass, retained so package_status
+    // can report them after load (the error banner only fires once).
+    private IReadOnlyList<PackageLoadFailure> _lastFailures = Array.Empty<PackageLoadFailure>();
 
     // Bundled packages live outside any IResourceRegistry root so their reads
     // stay on direct File.* IO via the gateway. One reader is reused across
@@ -70,6 +71,8 @@ public class PackageRegistry
             Failures = failures.AsReadOnly()
         };
 
+        _lastFailures = report.Failures;
+
         LogDiscoveredPackages();
 
         _logger.LogInformation(
@@ -86,6 +89,11 @@ public class PackageRegistry
         return combined.AsReadOnly();
     }
 
+    public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
+    {
+        return _lastFailures;
+    }
+
     public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
     {
         return GetAllPackages()
@@ -96,22 +104,22 @@ public class PackageRegistry
 
     public Package? GetContributingPackage(DocumentEditorId editorId)
     {
-        // Custom contribution editor IDs are formatted as "{packageId}.{contributionId}"
-        // by CustomDocumentViewFactory. Package IDs themselves contain dots
-        // (e.g. "celbridge.notes"), so match by full-id prefix rather than
+        // Custom contribution editor IDs are formatted as "{packageName}.{contributionId}"
+        // by CustomDocumentViewFactory. Bundled package names themselves contain
+        // dots (e.g. "celbridge.notes"), so match by full-name prefix rather than
         // splitting on the first separator.
         var editorIdString = editorId.ToString();
         foreach (var package in GetAllPackages())
         {
-            var packageId = package.Info.Id;
-            if (packageId.Length == 0)
+            var packageName = package.Info.Name;
+            if (packageName.Length == 0)
             {
                 continue;
             }
 
-            if (editorIdString.Length > packageId.Length
-                && editorIdString.StartsWith(packageId, StringComparison.Ordinal)
-                && editorIdString[packageId.Length] == '.')
+            if (editorIdString.Length > packageName.Length
+                && editorIdString.StartsWith(packageName, StringComparison.Ordinal)
+                && editorIdString[packageName.Length] == '.')
             {
                 return package;
             }
@@ -223,7 +231,7 @@ public class PackageRegistry
                 if (sidecarService.IsSidecarFileName(fileType.FileExtension))
                 {
                     return Result.Fail(
-                        $"Package '{package.Info.Id}' declares document-file-type extension '{fileType.FileExtension}'. "
+                        $"Package '{package.Info.Name}' declares document-file-type extension '{fileType.FileExtension}'. "
                         + $"The .cel namespace is reserved for project metadata sidecars.");
                 }
             }
@@ -256,7 +264,7 @@ public class PackageRegistry
 
         foreach (var descriptor in descriptors)
         {
-            var manifestPath = Path.Combine(descriptor.Folder, ManifestFileName);
+            var manifestPath = Path.Combine(descriptor.Folder, PackageConstants.ManifestFileName);
             if (!_bundledReader.Exists(manifestPath))
             {
                 // A bundled package with no manifest is a build-time error.
@@ -266,8 +274,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
-                    PackageId = null,
-                    Reason = PackageLoadFailureReason.InvalidManifest
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = $"The package manifest file is missing: {manifestPath}"
                 });
                 continue;
             }
@@ -285,8 +294,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
-                    PackageId = null,
-                    Reason = PackageLoadFailureReason.InvalidManifest
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = loadResult.FirstErrorMessage
                 });
                 continue;
             }
@@ -300,8 +310,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.ReservedExtension
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.ReservedExtension,
+                    Detail = reservedExtensionCheck.FirstErrorMessage
                 });
                 continue;
             }
@@ -309,23 +320,23 @@ public class PackageRegistry
             candidates.Add(package);
         }
 
-        // Any group of bundled packages that share an id is a first-party build bug.
+        // Any group of bundled packages that share a name is a first-party build bug.
         // Skip every colliding package so the conflict is visible rather than silently
         // picking a winner, and log at Error level so CI and developers notice.
-        foreach (var group in candidates.GroupBy(p => p.Info.Id, StringComparer.Ordinal))
+        foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
             if (members.Count > 1)
             {
                 _logger.LogError(
-                    $"Multiple bundled packages declare id '{group.Key}'. All {members.Count} instances skipped.");
+                    $"Multiple bundled packages declare name '{group.Key}'. All {members.Count} instances skipped.");
                 foreach (var member in members)
                 {
                     failures.Add(new PackageLoadFailure
                     {
                         Folder = member.Info.PackageFolder,
-                        PackageId = group.Key,
-                        Reason = PackageLoadFailureReason.DuplicateId
+                        PackageName = group.Key,
+                        Reason = PackageLoadFailureReason.DuplicateName
                     });
                 }
                 continue;
@@ -346,43 +357,23 @@ public class PackageRegistry
             return failures;
         }
 
-        var packagesResource = new ResourceKey(PackagesFolderName);
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-
-        var packagesInfoResult = await resourceFileSystem.GetInfoAsync(packagesResource);
-        if (packagesInfoResult.IsFailure
-            || packagesInfoResult.Value.Kind != StorageItemKind.Folder)
-        {
-            return failures;
-        }
-
-        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(packagesResource);
-        if (enumerateResult.IsFailure)
-        {
-            return failures;
-        }
-
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
+
+        // Walk the project's visible resource set for package.toml manifests. A
+        // manifest is a package wherever it lives under the project root. The
+        // file-system gateway applies the project's ignore rules, so excluded
+        // content (vendored assets, build output) is never scanned. Descent stops
+        // at each package root so a package's own content is not searched for
+        // nested manifests.
+        var manifestResources = new List<ResourceKey>();
+        await CollectProjectManifestsAsync(resourceFileSystem, ResourceKey.Empty, manifestResources);
+
         var candidates = new List<Package>();
 
-        foreach (var item in enumerateResult.Value)
+        foreach (var manifestResource in manifestResources)
         {
-            if (!item.IsFolder)
-            {
-                continue;
-            }
-
-            var manifestResource = item.Resource.Combine(ManifestFileName);
-            var manifestInfoResult = await resourceFileSystem.GetInfoAsync(manifestResource);
-            if (manifestInfoResult.IsFailure
-                || manifestInfoResult.Value.Kind != StorageItemKind.File)
-            {
-                // A folder under packages/ with no manifest is not a package.
-                // Silently skip rather than report as a failure.
-                continue;
-            }
-
             var resolveResult = resourceRegistry.ResolveResourcePath(manifestResource);
             if (resolveResult.IsFailure)
             {
@@ -403,8 +394,9 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = null,
-                    Reason = PackageLoadFailureReason.InvalidManifest
+                    PackageName = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest,
+                    Detail = loadResult.FirstErrorMessage
                 });
                 continue;
             }
@@ -418,56 +410,57 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.ReservedExtension
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.ReservedExtension,
+                    Detail = reservedExtensionCheck.FirstErrorMessage
                 });
                 continue;
             }
 
-            // The "celbridge." id namespace is reserved for first-party packages
+            // The "celbridge." name namespace is reserved for first-party packages
             // shipped inside Celbridge module DLLs. Project packages that try to
-            // claim a reserved id are rejected so they cannot impersonate a
+            // claim a reserved name are rejected so they cannot impersonate a
             // bundled package in logs, diagnostics, or resource lookups.
-            if (package.Info.Id.StartsWith(ReservedIdPrefix, StringComparison.Ordinal))
+            if (package.Info.Name.StartsWith(PackageConstants.ReservedNamePrefix, StringComparison.Ordinal))
             {
                 _logger.LogWarning(
-                    $"Skipping project package with reserved '{ReservedIdPrefix}' id prefix: {package.Info.Id}");
+                    $"Skipping project package with reserved '{PackageConstants.ReservedNamePrefix}' name prefix: {package.Info.Name}");
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.ReservedIdPrefix
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.ReservedNamePrefix
                 });
                 continue;
             }
 
-            // Any other dotted id claims a namespace whose ownership a registry
+            // Any other dotted name claims a namespace whose ownership a registry
             // would need to validate. Until such a registry exists, project
-            // packages must use flat global-namespace ids. Allowing arbitrary
-            // dotted ids now would let them collide with future registered
+            // packages must use flat global-namespace names. Allowing arbitrary
+            // dotted names now would let them collide with future registered
             // namespaces once the registry is introduced.
-            if (package.Info.Id.Contains('.'))
+            if (package.Info.Name.Contains('.'))
             {
                 _logger.LogWarning(
-                    $"Skipping project package '{package.Info.Id}' with dotted id: no namespace registry is available to validate the prefix.");
+                    $"Skipping project package '{package.Info.Name}' with dotted name: no namespace registry is available to validate the prefix.");
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
+                    PackageName = package.Info.Name,
                     Reason = PackageLoadFailureReason.UnregisteredNamespace
                 });
                 continue;
             }
 
-            if (_bundledPackages.Any(b => b.Info.Id.Equals(package.Info.Id, StringComparison.Ordinal)))
+            if (_bundledPackages.Any(b => b.Info.Name.Equals(package.Info.Name, StringComparison.Ordinal)))
             {
                 _logger.LogWarning(
-                    $"Skipping project package '{package.Info.Id}' because its id conflicts with a bundled package.");
+                    $"Skipping project package '{package.Info.Name}' because its name conflicts with a bundled package.");
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
-                    PackageId = package.Info.Id,
-                    Reason = PackageLoadFailureReason.DuplicateId
+                    PackageName = package.Info.Name,
+                    Reason = PackageLoadFailureReason.DuplicateName
                 });
                 continue;
             }
@@ -475,24 +468,24 @@ public class PackageRegistry
             candidates.Add(package);
         }
 
-        // When two project packages share an id we cannot tell the legitimate
+        // When two project packages share a name we cannot tell the legitimate
         // one from an impostor, so skip every colliding package rather than pick
         // a winner based on filesystem ordering. The user sees a missing editor,
         // investigates, and resolves the conflict.
-        foreach (var group in candidates.GroupBy(p => p.Info.Id, StringComparer.Ordinal))
+        foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
             if (members.Count > 1)
             {
                 _logger.LogWarning(
-                    $"Multiple project packages declare id '{group.Key}'. All {members.Count} instances skipped to avoid ambiguity.");
+                    $"Multiple project packages declare name '{group.Key}'. All {members.Count} instances skipped to avoid ambiguity.");
                 foreach (var member in members)
                 {
                     failures.Add(new PackageLoadFailure
                     {
                         Folder = member.Info.PackageFolder,
-                        PackageId = group.Key,
-                        Reason = PackageLoadFailureReason.DuplicateId
+                        PackageName = group.Key,
+                        Reason = PackageLoadFailureReason.DuplicateName
                     });
                 }
                 continue;
@@ -502,6 +495,42 @@ public class PackageRegistry
         }
 
         return failures;
+    }
+
+    // Recursively collects every package.toml manifest in the project's visible
+    // resource set. Enumeration goes through the file-system gateway, which
+    // honours the project's ignore rules, so excluded content is never visited.
+    // A folder that directly holds a manifest is a package root: its manifest is
+    // recorded and the walk does not descend into it, so a package's own files
+    // (which may legitimately vendor another package's folder) are not scanned.
+    private async Task CollectProjectManifestsAsync(
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey folderResource,
+        List<ResourceKey> manifestResources)
+    {
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderResource);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+        var items = enumerateResult.Value;
+
+        var manifestItem = items.FirstOrDefault(item =>
+            !item.IsFolder
+            && string.Equals(item.Resource.ResourceName, PackageConstants.ManifestFileName, StringComparison.OrdinalIgnoreCase));
+        if (manifestItem is not null)
+        {
+            manifestResources.Add(manifestItem.Resource);
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            if (item.IsFolder)
+            {
+                await CollectProjectManifestsAsync(resourceFileSystem, item.Resource, manifestResources);
+            }
+        }
     }
 
     // Runs after dedup so that duplicate-id packages rejected by the group
@@ -529,7 +558,7 @@ public class PackageRegistry
         if (editorCount == 0)
         {
             _logger.LogInformation(
-                $"Discovered {source} package '{package.Info.Id}' (no document editors)");
+                $"Discovered {source} package '{package.Info.Name}' (no document editors)");
             return;
         }
 
@@ -553,6 +582,6 @@ public class PackageRegistry
         var editorList = string.Join("; ", editorDescriptions);
 
         _logger.LogInformation(
-            $"Discovered {source} package '{package.Info.Id}' ({editorCount} {editorLabel}: {editorList})");
+            $"Discovered {source} package '{package.Info.Name}' ({editorCount} {editorLabel}: {editorList})");
     }
 }

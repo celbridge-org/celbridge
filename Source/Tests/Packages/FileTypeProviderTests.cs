@@ -2,6 +2,7 @@ using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
 using Celbridge.Messaging;
 using Celbridge.Modules;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
@@ -45,6 +46,13 @@ public class PackageServiceDocumentTypeTests
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
         });
+        // The package walk enumerates the project tree through the gateway, which
+        // resolves with validateCase:false; stub the two-argument overload too.
+        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
+        {
+            var key = callInfo.Arg<ResourceKey>();
+            return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
         resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
         {
             var path = callInfo.Arg<string>();
@@ -80,7 +88,8 @@ public class PackageServiceDocumentTypeTests
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
         var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper, fileSystem);
-        _service = new PackageService(messengerService, registry);
+        var loadReporter = Substitute.For<IProjectLoadReporter>();
+        _service = new PackageService(messengerService, loadReporter, registry);
     }
 
     [TearDown]
@@ -319,15 +328,14 @@ public class PackageServiceDocumentTypeTests
         var packageDir = Path.Combine(_tempProjectFolder, "bundled", dirName);
         Directory.CreateDirectory(packageDir);
 
-        var packageId = $"test.{dirName}";
+        var bundledName = $"test.{dirName}";
         var featureFlagLine = featureFlag is not null ? $"\nfeature_flag = \"{featureFlag}\"" : "";
 
         // Write package.toml
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
-            id = "{packageId}"
-            name = "{packageName}"
-            version = "1.0.0"{featureFlagLine}
+            name = "{bundledName}"
+            title = "{packageName}"{featureFlagLine}
 
             [contributes]
             document_editors = ["editor.document.toml"]
@@ -353,7 +361,7 @@ public class PackageServiceDocumentTypeTests
 
         File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
             [document]
-            id = "{packageId}-doc"
+            id = "{bundledName}-doc"
             type = "custom"
             entry_point = "index.html"
             display_name = "{packageName}"

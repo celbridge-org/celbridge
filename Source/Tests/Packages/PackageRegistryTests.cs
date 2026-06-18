@@ -3,6 +3,7 @@ using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
@@ -19,6 +20,7 @@ public class PackageServiceTests
     private PackageService _service = null!;
     private IModuleService _moduleService = null!;
     private IMessengerService _messengerService = null!;
+    private IProjectLoadReporter _loadReporter = null!;
     private IResourceRegistry _resourceRegistry = null!;
 
     [SetUp]
@@ -88,7 +90,8 @@ public class PackageServiceTests
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
         var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper, fileSystem);
-        _service = new PackageService(_messengerService, registry);
+        _loadReporter = Substitute.For<IProjectLoadReporter>();
+        _service = new PackageService(_messengerService, _loadReporter, registry);
     }
 
     [TearDown]
@@ -127,7 +130,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("My Editor");
+        contributions[0].Package.Title.Should().Be("My Editor");
         contributions[0].Should().BeOfType<CustomDocumentEditorContribution>();
     }
 
@@ -141,7 +144,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(2);
-        var names = contributions.Select(m => m.Package.Name).ToList();
+        var names = contributions.Select(m => m.Package.Title).ToList();
         names.Should().Contain("Editor A");
         names.Should().Contain("Editor B");
     }
@@ -160,7 +163,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("Good");
+        contributions[0].Package.Title.Should().Be("Good");
     }
 
     [Test]
@@ -176,7 +179,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("Found");
+        contributions[0].Package.Title.Should().Be("Found");
     }
 
     [Test]
@@ -190,7 +193,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("Bundled");
+        contributions[0].Package.Title.Should().Be("Bundled");
     }
 
     [Test]
@@ -205,15 +208,15 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(2);
-        var names = contributions.Select(m => m.Package.Name).ToList();
+        var names = contributions.Select(m => m.Package.Title).ToList();
         names.Should().Contain("Project");
         names.Should().Contain("Bundled");
     }
 
     [Test]
-    public async Task RegisterPackages_ProjectPackageWithReservedIdPrefix_Skipped()
+    public async Task RegisterPackages_ProjectPackageWithReservedNamePrefix_Skipped()
     {
-        // Project packages may not claim an id under the reserved "celbridge." namespace.
+        // Project packages may not claim a name under the reserved "celbridge." namespace.
         CreateProjectPackage("impostor", "celbridge.notes", "Impostor Notes", "custom", ".imp");
         CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
 
@@ -221,13 +224,13 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Id.Should().Be("legit");
+        contributions[0].Package.Name.Should().Be("legit");
     }
 
     [Test]
-    public async Task RegisterPackages_ProjectPackageWithMixedCaseId_RejectedByFormatValidation()
+    public async Task RegisterPackages_ProjectPackageWithMixedCaseName_RejectedByFormatValidation()
     {
-        // Package ids are lowercase-only. A mixed-case id fails manifest validation
+        // Package names are lowercase-only. A mixed-case name fails manifest validation
         // before the reserved-prefix check runs, so "Celbridge.Something" cannot be
         // used as a workaround for the prefix block.
         CreateProjectPackage("mixed-case", "Celbridge.Something", "Mixed Case", "custom", ".mc");
@@ -238,11 +241,11 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task RegisterPackages_ProjectPackageWithDottedId_Skipped()
+    public async Task RegisterPackages_ProjectPackageWithDottedName_Skipped()
     {
         // Until a namespace registry exists, project packages cannot claim a
-        // dotted id because there is no way to validate namespace ownership.
-        // Only flat global-namespace ids are permitted for project packages.
+        // dotted name because there is no way to validate namespace ownership.
+        // Only flat global-namespace names are permitted for project packages.
         CreateProjectPackage("dotted", "acme.tool", "Dotted", "custom", ".dot");
         CreateProjectPackage("flat", "legit-tool", "Flat", "custom", ".flat");
 
@@ -250,7 +253,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Id.Should().Be("legit-tool");
+        contributions[0].Package.Name.Should().Be("legit-tool");
     }
 
     [TestCase(".cel")]
@@ -267,7 +270,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Id.Should().Be("legit");
+        contributions[0].Package.Name.Should().Be("legit");
     }
 
     [Test]
@@ -282,7 +285,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Id.Should().Be("mid-cel");
+        contributions[0].Package.Name.Should().Be("mid-cel");
     }
 
     [Test]
@@ -300,7 +303,7 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task RegisterPackages_BundledPackageWithReservedIdPrefix_Allowed()
+    public async Task RegisterPackages_BundledPackageWithReservedNamePrefix_Allowed()
     {
         // Bundled packages are the intended owners of the "celbridge." namespace.
         var bundledDir = CreateBundledPackage("bundled-official", "celbridge.notes", "Official Notes", "custom", ".note");
@@ -311,13 +314,13 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Id.Should().Be("celbridge.notes");
+        contributions[0].Package.Name.Should().Be("celbridge.notes");
     }
 
     [Test]
-    public async Task RegisterPackages_TwoBundledPackagesSameId_BothSkipped()
+    public async Task RegisterPackages_TwoBundledPackagesSameName_BothSkipped()
     {
-        // Two bundled packages with the same id is a first-party build bug.
+        // Two bundled packages with the same name is a first-party build bug.
         // Both are skipped rather than silently picking a winner.
         var dirA = CreateBundledPackage("bundled-a", "celbridge.conflict", "Conflict A", "custom", ".a");
         var dirB = CreateBundledPackage("bundled-b", "celbridge.conflict", "Conflict B", "custom", ".b");
@@ -336,7 +339,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_ProjectPackageConflictsWithBundled_ProjectSkipped()
     {
-        // Bundled wins over project when ids collide. Both use flat ids here
+        // Bundled wins over project when names collide. Both use flat names here
         // so the collision check is what rejects the project package, not the
         // reserved-prefix or unregistered-namespace rules.
         var bundledDir = CreateBundledPackage("bundled", "shared-id", "Bundled", "custom", ".bnd");
@@ -348,13 +351,13 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("Bundled");
+        contributions[0].Package.Title.Should().Be("Bundled");
     }
 
     [Test]
-    public async Task RegisterPackages_TwoProjectPackagesSameId_BothSkipped()
+    public async Task RegisterPackages_TwoProjectPackagesSameName_BothSkipped()
     {
-        // Two project packages with the same id cannot be distinguished so
+        // Two project packages with the same name cannot be distinguished so
         // both are skipped. A non-colliding sibling continues to load.
         CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
         CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
@@ -364,7 +367,50 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Id.Should().Be("other-tool");
+        contributions[0].Package.Name.Should().Be("other-tool");
+    }
+
+    [Test]
+    public async Task GetLoadFailures_AfterDuplicateName_ReportsCollidingPackages()
+    {
+        // package_status reads load failures from here after the load-time error
+        // banner has already fired, so the failures must be retained.
+        CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
+        CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var duplicateFailures = _service.GetLoadFailures()
+            .Where(failure => failure.Reason == PackageLoadFailureReason.DuplicateName)
+            .ToList();
+        duplicateFailures.Should().HaveCount(2);
+        duplicateFailures.Should().OnlyContain(failure => failure.PackageName == "dup-tool");
+    }
+
+    [Test]
+    public async Task GetLoadFailures_AllValid_IsEmpty()
+    {
+        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetLoadFailures().Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task RegisterPackages_NestedManifest_DiscoveredOutsidePackagesFolder()
+    {
+        // Discovery is no longer tied to packages/: a manifest anywhere under the
+        // project root is found, honouring the gateway's visibility rules.
+        var toolsDir = Path.Combine(_tempProjectFolder, "tools", "my-editor");
+        Directory.CreateDirectory(toolsDir);
+        WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", "custom", ".nst");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var contributions = _service.GetAllDocumentEditors();
+        contributions.Should().HaveCount(1);
+        contributions[0].Package.Name.Should().Be("nested-tool");
     }
 
     [Test]
@@ -376,6 +422,26 @@ public class PackageServiceTests
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         _messengerService.Received(1).Send(Arg.Is<ConsoleErrorMessage>(m => m.ErrorType == ConsoleErrorType.PackageLoadError));
+    }
+
+    [Test]
+    public async Task RegisterPackages_RecordsDiscoveryInProjectLoadReport()
+    {
+        // The error banner points users at the project load report, so the
+        // discovery outcome must be recorded and flushed during registration.
+        CreateProjectPackage("good", "good", "Good", "custom", ".good");
+        var badDir = Path.Combine(_tempProjectFolder, "packages", "bad");
+        Directory.CreateDirectory(badDir);
+        File.WriteAllText(Path.Combine(badDir, "package.toml"), "{ invalid toml }");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(r =>
+            r.ProjectPackageCount == 1 &&
+            r.Failures.Count == 1 &&
+            r.Failures[0].Reason == PackageLoadFailureReason.InvalidManifest &&
+            !string.IsNullOrEmpty(r.Failures[0].Detail)));
+        await _loadReporter.Received(1).FlushAsync();
     }
 
     [Test]
@@ -459,7 +525,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // CustomDocumentViewFactory builds editor IDs as "{packageId}.{contributionId}".
+        // CustomDocumentViewFactory builds editor IDs as "{packageName}.{contributionId}".
         // The contributionId comes from the [document] table key in package.toml,
         // which CreateBundledPackage sets to the docType argument.
         var editorId = new DocumentEditorId("celbridge.notes.custom");
@@ -467,7 +533,7 @@ public class PackageServiceTests
         var package = _service.GetContributingPackage(editorId);
 
         package.Should().NotBeNull();
-        package!.Info.Id.Should().Be("celbridge.notes");
+        package!.Info.Name.Should().Be("celbridge.notes");
     }
 
     [Test]
@@ -482,11 +548,11 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task GetContributingPackage_DistinguishesPackagesWithDottedIdPrefixes()
+    public async Task GetContributingPackage_DistinguishesPackagesWithDottedNamePrefixes()
     {
         // A naive split-on-first-dot would mismatch "celbridge.notes.custom" against
-        // a package whose id is just "celbridge". The lookup must match the longest
-        // package-id prefix, not split heuristically.
+        // a package whose name is just "celbridge". The lookup must match the longest
+        // package-name prefix, not split heuristically.
         var notesDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", "custom", ".note");
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = notesDir } });
 
@@ -495,38 +561,37 @@ public class PackageServiceTests
         var package = _service.GetContributingPackage(new DocumentEditorId("celbridge.notes.custom"));
 
         package.Should().NotBeNull();
-        package!.Info.Id.Should().Be("celbridge.notes");
+        package!.Info.Name.Should().Be("celbridge.notes");
     }
 
     /// <summary>
     /// Creates a package in the project's packages/ folder with a standard structure.
     /// </summary>
-    private string CreateProjectPackage(string dirName, string packageId, string packageName, string docType, string fileExt)
+    private string CreateProjectPackage(string dirName, string packageName, string packageTitle, string docType, string fileExt)
     {
         var packageDir = Path.Combine(_tempProjectFolder, "packages", dirName);
         Directory.CreateDirectory(packageDir);
-        WritePackageFiles(packageDir, packageId, packageName, docType, fileExt);
+        WritePackageFiles(packageDir, packageName, packageTitle, docType, fileExt);
         return packageDir;
     }
 
     /// <summary>
     /// Creates a bundled package in a standalone folder.
     /// </summary>
-    private string CreateBundledPackage(string dirName, string packageId, string packageName, string docType, string fileExt)
+    private string CreateBundledPackage(string dirName, string packageName, string packageTitle, string docType, string fileExt)
     {
         var packageDir = Path.Combine(_tempProjectFolder, dirName);
         Directory.CreateDirectory(packageDir);
-        WritePackageFiles(packageDir, packageId, packageName, docType, fileExt);
+        WritePackageFiles(packageDir, packageName, packageTitle, docType, fileExt);
         return packageDir;
     }
 
-    private static void WritePackageFiles(string packageDir, string packageId, string packageName, string docType, string fileExt)
+    private static void WritePackageFiles(string packageDir, string packageName, string packageTitle, string docType, string fileExt)
     {
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
-            id = "{packageId}"
             name = "{packageName}"
-            version = "1.0.0"
+            title = "{packageTitle}"
 
             [contributes]
             document_editors = ["editor.document.toml"]
@@ -534,7 +599,7 @@ public class PackageServiceTests
 
         File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
             [document]
-            id = "{packageId}-doc"
+            id = "{packageName}-doc"
             type = "{docType}"
             display_name = "TestEditor"
 

@@ -10,7 +10,7 @@ internal sealed class DpapiCredentialProtector : ICredentialProtector
 {
     public bool IsAvailable => OperatingSystem.IsWindows();
 
-    public Result<byte[]> Protect(byte[] plainData)
+    public Result<byte[]> Protect(byte[] plainData, byte[] entropy)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -19,7 +19,7 @@ internal sealed class DpapiCredentialProtector : ICredentialProtector
 
         try
         {
-            var protectedData = ProtectedData.Protect(plainData, optionalEntropy: null, DataProtectionScope.CurrentUser);
+            var protectedData = ProtectedData.Protect(plainData, entropy, DataProtectionScope.CurrentUser);
 
             return protectedData;
         }
@@ -30,7 +30,7 @@ internal sealed class DpapiCredentialProtector : ICredentialProtector
         }
     }
 
-    public Result<byte[]> Unprotect(byte[] protectedData)
+    public Result<byte[]> Unprotect(byte[] protectedData, byte[] entropy)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -39,7 +39,7 @@ internal sealed class DpapiCredentialProtector : ICredentialProtector
 
         try
         {
-            var plainData = ProtectedData.Unprotect(protectedData, optionalEntropy: null, DataProtectionScope.CurrentUser);
+            var plainData = ProtectedData.Unprotect(protectedData, entropy, DataProtectionScope.CurrentUser);
 
             return plainData;
         }

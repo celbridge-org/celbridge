@@ -131,14 +131,8 @@ public class SearchService : ISearchService, IDisposable
             }
         }
 
-        Regex? includeRegex = null;
-        if (!string.IsNullOrEmpty(include))
-        {
-            var patterns = include.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var regexPatterns = patterns.Select(GlobPatternToRegex);
-            var combined = string.Join("|", regexPatterns.Select(pattern => $"(?:{pattern})"));
-            includeRegex = new Regex(combined, RegexOptions.IgnoreCase);
-        }
+        var includeRegex = GlobHelper.BuildNameMatcher(include);
+        var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var searchState = new SearchState();
 
@@ -154,12 +148,8 @@ public class SearchService : ISearchService, IDisposable
                     .ToList();
             }
 
-            if (!string.IsNullOrEmpty(exclude))
+            if (excludeRegex != null)
             {
-                var excludePatterns = exclude.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                var excludeRegexPatterns = excludePatterns.Select(GlobPatternToRegex);
-                var excludeCombined = string.Join("|", excludeRegexPatterns.Select(pattern => $"(?:{pattern})"));
-                var excludeRegex = new Regex(excludeCombined, RegexOptions.IgnoreCase);
                 fileResources = fileResources
                     .Where(entry => !excludeRegex.IsMatch(Path.GetFileName(entry.Path)))
                     .ToList();
@@ -531,14 +521,6 @@ public class SearchService : ISearchService, IDisposable
         }
 
         return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, false);
-    }
-
-    private static string GlobPatternToRegex(string glob)
-    {
-        var escaped = Regex.Escape(glob)
-            .Replace("\\*", ".*")
-            .Replace("\\?", ".");
-        return $"^{escaped}$";
     }
 
     private const string SearchHistoryKey = "SearchHistory";

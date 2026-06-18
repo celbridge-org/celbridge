@@ -24,4 +24,4 @@ The JSON-serialised result of the expression. `null` is returned when the expres
 
 - The DevTools-only `getEventListeners()` helper does not exist in this context. Calling it raises a `ReferenceError`.
 - The expression body may contain sensitive output (cookies, storage values). The host logs only the resource and the expression length at info level. Treat the contents as you would any other arbitrary code execution path.
-- Only available from Python and from the MCP transport. The JavaScript proxy refuses `webview.*` calls from package code regardless of `requires_tools`. Do not declare `webview.*` in a package manifest.
+- Only available from Python and from the MCP transport. The JavaScript proxy refuses `webview.*` calls from package code regardless of `[permissions] tools`. Do not declare `webview.*` in a package manifest.

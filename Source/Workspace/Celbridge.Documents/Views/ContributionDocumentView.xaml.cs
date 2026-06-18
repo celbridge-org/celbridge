@@ -303,7 +303,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
             if (mcpToolBridge is not null)
             {
-                _toolsHandler = new ContributionToolsHandler(mcpToolBridge, Contribution.Package.RequiresTools);
+                _toolsHandler = new ContributionToolsHandler(mcpToolBridge, Contribution.Package.PermittedTools);
                 Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
             }
 
@@ -326,7 +326,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         {
             _logger.LogError(ex, $"Failed to initialize contribution view: {Contribution.Package.Name}");
             TeardownWebViewState();
-            var failure = Result.Fail($"Failed to initialize contribution view: {Contribution.Package.Id}")
+            var failure = Result.Fail($"Failed to initialize contribution view: {Contribution.Package.Name}")
                 .WithException(ex);
             _initTcs!.TrySetResult(failure);
         }
@@ -809,7 +809,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         PackageInfo package,
         IReadOnlyDictionary<string, string> options)
     {
-        var allowedTools = package.RequiresTools;
+        var permittedTools = package.PermittedTools;
         var secrets = package.Secrets;
 
         // An empty secret value almost certainly indicates a missing private license
@@ -820,13 +820,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             if (string.IsNullOrEmpty(pair.Value))
             {
                 _logger.LogWarning(
-                    "Secret '{SecretName}' for package '{PackageId}' is empty; the editor will likely fail to activate.",
-                    pair.Key, package.Id);
+                    "Secret '{SecretName}' for package '{PackageName}' is empty; the editor will likely fail to activate.",
+                    pair.Key, package.Name);
             }
         }
 
         var contextJson = JsonSerializer.Serialize(
-            new CelbridgeContext(allowedTools, secrets, options),
+            new CelbridgeContext(permittedTools, secrets, options),
             ContextSerializerOptions);
 
         var coreWebView2 = WebView?.CoreWebView2;
@@ -846,7 +846,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
     };
 
     private sealed record CelbridgeContext(
-        IReadOnlyList<string> AllowedTools,
+        IReadOnlyList<string> PermittedTools,
         IReadOnlyDictionary<string, string> Secrets,
         IReadOnlyDictionary<string, string> Options);
 }

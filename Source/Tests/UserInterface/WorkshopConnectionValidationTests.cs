@@ -27,12 +27,4 @@ public class WorkshopConnectionValidationTests
     {
         WorkshopConnectionValidation.IsValidWorkshopUrl(workshopUrl).Should().BeFalse();
     }
-
-    [Test]
-    public void HasExpectedKeyPrefix_ChecksKpfPrefix()
-    {
-        WorkshopConnectionValidation.HasExpectedKeyPrefix("kpf_abc123_secret").Should().BeTrue();
-        WorkshopConnectionValidation.HasExpectedKeyPrefix("apikey-12345").Should().BeFalse();
-        WorkshopConnectionValidation.HasExpectedKeyPrefix("").Should().BeFalse();
-    }
 }

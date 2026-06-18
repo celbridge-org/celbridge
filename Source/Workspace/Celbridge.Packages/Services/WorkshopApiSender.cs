@@ -1,0 +1,200 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using Celbridge.Credentials;
+using Celbridge.Settings;
+
+namespace Celbridge.Packages;
+
+/// <summary>
+/// Sends authenticated requests to the workshop server's REST API. Shared by the
+/// package and page API clients so the connection and auth handling lives in one
+/// place rather than being duplicated per client. The Workshop URL is read from
+/// settings and the Workshop Key from the credential store, both at request
+/// time.
+/// </summary>
+internal sealed class WorkshopApiSender : IDisposable
+{
+    private const string ApiKeyScheme = "Api-Key";
+
+    private readonly ICredentialService _credentialService;
+    private readonly IEditorSettings _editorSettings;
+    private readonly HttpClient _httpClient;
+
+    public WorkshopApiSender(ICredentialService credentialService, IEditorSettings editorSettings, HttpMessageHandler messageHandler)
+    {
+        _credentialService = credentialService;
+        _editorSettings = editorSettings;
+        _httpClient = new HttpClient(messageHandler);
+    }
+
+    // Builds and sends one authenticated request. Fails without sending when no
+    // key is stored or the configured URL is unusable, and maps 401 to a single
+    // actionable message here so no call site can leak the key.
+    public async Task<Result<HttpResponseMessage>> SendAsync(HttpMethod method, string relativePath, HttpContent? content = null)
+    {
+        var requestResult = await BuildRequestAsync(method, relativePath, content);
+        if (requestResult.IsFailure)
+        {
+            return Result.Fail(requestResult);
+        }
+        var request = requestResult.Value;
+
+        try
+        {
+            var response = await _httpClient.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                response.Dispose();
+                return Result.Fail(
+                    "The workshop rejected the stored Workshop Key (HTTP 401). " +
+                    "The key may be invalid, revoked, or no longer linked to the workshop. " +
+                    "Update the Workshop connection on the Settings page.");
+            }
+
+            return response;
+        }
+        catch (HttpRequestException exception)
+        {
+            return Result.Fail("A network error occurred while contacting the workshop")
+                .WithException(exception);
+        }
+        catch (TaskCanceledException exception)
+        {
+            return Result.Fail("The workshop request timed out")
+                .WithException(exception);
+        }
+    }
+
+    // Probes the workshop with one authenticated request and classifies the
+    // outcome, so the caller can tell a rejected key (401) from an unreachable
+    // workshop (offline, timeout, or server error). Never throws or fails: a
+    // request that could not be built or sent is reported as Unreachable.
+    public async Task<ConnectionCheckOutcome> CheckConnectionAsync(string relativePath)
+    {
+        var requestResult = await BuildRequestAsync(HttpMethod.Get, relativePath);
+        if (requestResult.IsFailure)
+        {
+            return ConnectionCheckOutcome.Unreachable;
+        }
+        using var request = requestResult.Value;
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return ConnectionCheckOutcome.Unauthorized;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                return ConnectionCheckOutcome.Connected;
+            }
+
+            // Reached the server but it returned an unexpected status, so the key
+            // could not be confirmed; treat it as unverified rather than rejected.
+            return ConnectionCheckOutcome.Unreachable;
+        }
+        catch (HttpRequestException)
+        {
+            return ConnectionCheckOutcome.Unreachable;
+        }
+        catch (TaskCanceledException)
+        {
+            return ConnectionCheckOutcome.Unreachable;
+        }
+    }
+
+    // Reads the key and validates the URL, then assembles the authenticated
+    // request shared by SendAsync and the connection probe.
+    private async Task<Result<HttpRequestMessage>> BuildRequestAsync(HttpMethod method, string relativePath, HttpContent? content = null)
+    {
+        var keyResult = await _credentialService.GetWorkshopKeyAsync();
+        if (keyResult.IsFailure)
+        {
+            return Result.Fail("Failed to read the Workshop Key from the credential store")
+                .WithErrors(keyResult);
+        }
+        var workshopKey = keyResult.Value;
+
+        var baseUriResult = ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
+        if (baseUriResult.IsFailure)
+        {
+            return Result.Fail(baseUriResult);
+        }
+        var baseUri = baseUriResult.Value;
+
+        var request = new HttpRequestMessage(method, new Uri(baseUri, relativePath));
+        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, workshopKey);
+        if (content is not null)
+        {
+            request.Content = content;
+        }
+
+        return request;
+    }
+
+    // The validated base URI of the configured workshop, so callers can resolve a
+    // server-returned relative URL (e.g. a page's served path) to an absolute one.
+    public async Task<Result<Uri>> GetBaseUriAsync()
+    {
+        await Task.CompletedTask;
+        return ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
+    }
+
+    // The Workshop Key is a bearer credential, so sending it over plain HTTP
+    // would fully compromise it to any network observer. Loopback hosts are
+    // exempt to support local development servers.
+    private static Result<Uri> ValidateWorkshopUrl(string workshopUrl)
+    {
+        var urlText = workshopUrl.Trim();
+        if (!urlText.EndsWith('/'))
+        {
+            // Ensure the trailing path segment is kept when combining with
+            // relative endpoint paths.
+            urlText += '/';
+        }
+
+        if (!Uri.TryCreate(urlText, UriKind.Absolute, out var uri))
+        {
+            return Result.Fail("The stored Workshop URL is not a valid absolute URL. Update the Workshop connection on the Settings page.");
+        }
+
+        if (uri.Scheme == Uri.UriSchemeHttps)
+        {
+            return uri;
+        }
+
+        if (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)
+        {
+            return uri;
+        }
+
+        return Result.Fail("The Workshop URL must use HTTPS. Plain HTTP would expose the Workshop Key to network observers and is only permitted for localhost development servers.");
+    }
+
+    public static async Task<Result<T>> ParseJsonAsync<T>(HttpResponseMessage response, string payloadDescription) where T : notnull
+    {
+        try
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            var parsed = JsonSerializer.Deserialize<T>(json);
+            if (parsed is null)
+            {
+                return Result.Fail($"Failed to parse the workshop {payloadDescription} response");
+            }
+
+            return parsed;
+        }
+        catch (JsonException exception)
+        {
+            return Result<T>.Fail($"Failed to parse the workshop {payloadDescription} response")
+                .WithException(exception);
+        }
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
+    }
+}

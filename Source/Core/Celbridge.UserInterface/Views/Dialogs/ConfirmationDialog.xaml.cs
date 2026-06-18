@@ -1,9 +1,14 @@
 using Celbridge.Dialog;
+using Celbridge.Logging;
 
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDialog
 {
+    private readonly ILogger<ConfirmationDialog> _logger;
+    private readonly IMessengerService _messengerService;
+    private bool _autoAnswered;
+
     public ConfirmationDialogViewModel ViewModel { get; }
 
     public string TitleText
@@ -24,6 +29,8 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
         ViewModel = ServiceLocator.AcquireService<ConfirmationDialogViewModel>();
+        _logger = ServiceLocator.AcquireService<ILogger<ConfirmationDialog>>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
         this.InitializeComponent();
 
@@ -38,7 +45,31 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
 
     public async Task<bool> ShowDialogAsync()
     {
-        var result = await ShowAsync();
-        return result == ContentDialogResult.Primary;
+        _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
+        try
+        {
+            var result = await ShowAsync();
+            if (_autoAnswered)
+            {
+                return true;
+            }
+            return result == ContentDialogResult.Primary;
+        }
+        finally
+        {
+            _messengerService.UnregisterAll(this);
+        }
+    }
+
+    private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
+    {
+        if (message.Kind != DialogKind.Confirmation)
+        {
+            return;
+        }
+
+        _autoAnswered = true;
+        _logger.LogInformation("Confirmation dialog answered automatically.");
+        Hide();
     }
 }

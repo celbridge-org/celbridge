@@ -1,7 +1,7 @@
 // Tools API: MCP tool dispatch wrapper and dynamic `cel.*` proxy for contribution editors.
 //
-// Contribution packages declare the tools they need via `requires_tools` in package.toml.
-// The host injects the resolved allowlist as `window.__celbridgeContext.allowedTools`
+// Contribution packages declare the tools they need via `[permissions] tools` in package.toml.
+// The host injects the resolved allowlist as `window.__celbridgeContext.permittedTools`
 // before navigation. This module builds a dynamic proxy that exposes only the allowed
 // tools as `celbridge.cel.<namespace>.<tool>(...)`.
 //
@@ -360,7 +360,7 @@ export class ToolsAPI {
      *
      * When the allowlist is empty the fetch is skipped — no tool can pass the
      * gate, so there is nothing to discover. Packages that do not declare
-     * `requires_tools` therefore pay no startup round-trip.
+     * `[permissions] tools` therefore pay no startup round-trip.
      *
      * @returns {Promise<void>}
      */
@@ -427,7 +427,7 @@ export class ToolsAPI {
             throw new CelToolError(
                 CelToolErrorCode.Denied,
                 alias,
-                `Tool '${alias}' is not in this package's requires_tools allowlist`
+                `Tool '${alias}' is not declared under [permissions] tools in the package manifest`
             );
         }
 

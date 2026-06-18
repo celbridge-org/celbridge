@@ -4,13 +4,10 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by file_get_info for file resources. Sidecar fields are
-/// populated when the file has a paired .cel sidecar; SidecarStatus is
-/// "healthy" when the sidecar's TOML parses cleanly, "broken" otherwise.
-/// Absence is signalled by sidecar_status = "none" with sidecar = null.
-/// IsReadOnly reflects the filesystem read-only attribute — a true value
-/// means write operations will fail until the attribute is cleared with
-/// file_set_writeable.
+/// Result returned by file_get_info for file resources. Carries size, modified
+/// time, extension, text/line metadata, read-only state, paired sidecar status,
+/// and an optional content hash. Per-field semantics are documented in the
+/// file_get_info tool guide.
 /// </summary>
 public record class FileInfoResult(
     string Type,
@@ -21,7 +18,8 @@ public record class FileInfoResult(
     int? LineCount,
     bool IsReadOnly,
     string? Sidecar,
-    string SidecarStatus);
+    string SidecarStatus,
+    string? Hash = null);
 
 /// <summary>
 /// Result returned by file_get_info for folder resources.
@@ -34,7 +32,7 @@ public partial class FileTools
     [McpServerTool(Name = "file_get_info", ReadOnly = true)]
     [ToolAlias("file.get_info")]
     [RelatedGuides("resource_keys")]
-    public async partial Task<CallToolResult> GetInfo(string resource)
+    public async partial Task<CallToolResult> GetInfo(string resource, bool computeHash = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
@@ -66,6 +64,17 @@ public partial class FileTools
                 _ => "none",
             };
 
+            string? hash = null;
+            if (computeHash)
+            {
+                var hashResult = await ComputeFileHashAsync(resourceKey);
+                if (hashResult.IsFailure)
+                {
+                    return ToolResponse.Error(hashResult);
+                }
+                hash = hashResult.Value;
+            }
+
             var fileResult = new FileInfoResult(
                 "file",
                 snapshot.Size,
@@ -75,7 +84,8 @@ public partial class FileTools
                 snapshot.LineCount,
                 snapshot.IsReadOnly,
                 snapshot.SidecarKey?.ToString(),
-                sidecarStatusText);
+                sidecarStatusText,
+                hash);
             return ToolResponse.Success(SerializeJson(fileResult));
         }
 
@@ -84,5 +94,31 @@ public partial class FileTools
             snapshot.ModifiedUtc.ToString("o"),
             snapshot.IsReadOnly);
         return ToolResponse.Success(SerializeJson(folderResult));
+    }
+
+    // The hash is read after the snapshot rather than inside the command, so a
+    // file changing in the microsecond gap could in principle disagree with the
+    // reported Size. For session-mid agent usage that is acceptable; callers
+    // needing strict consistency would have to add a hash to the snapshot itself.
+    private async Task<Result<string>> ComputeFileHashAsync(ResourceKey resourceKey)
+    {
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result.Fail("No project is loaded.");
+        }
+
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var hashResult = await resourceFileSystem.ComputeHashAsync(resourceKey);
+        if (hashResult.IsFailure)
+        {
+            return hashResult;
+        }
+        var hash = hashResult.Value;
+
+        // Convert.ToHexString (the gateway's hash) is uppercase; lower it so the
+        // value matches the git / sha256sum / workshop content_hash convention an
+        // agent compares against.
+        return hash.ToLowerInvariant();
     }
 }

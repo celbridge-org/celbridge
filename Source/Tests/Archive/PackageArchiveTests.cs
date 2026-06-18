@@ -590,7 +590,7 @@ public class PackageArchiveTests
     [Test]
     public void GlobToRegexMatchesWildcards()
     {
-        var regex = new System.Text.RegularExpressions.Regex(ArchiveHelper.GlobToRegex("*.py"));
+        var regex = new System.Text.RegularExpressions.Regex(GlobHelper.GlobToRegex("*.py"));
         regex.IsMatch("app.py").Should().BeTrue();
         regex.IsMatch("app.txt").Should().BeFalse();
     }
@@ -598,7 +598,7 @@ public class PackageArchiveTests
     [Test]
     public void GlobToRegexMatchesQuestionMark()
     {
-        var regex = new System.Text.RegularExpressions.Regex(ArchiveHelper.GlobToRegex("file?.txt"));
+        var regex = new System.Text.RegularExpressions.Regex(GlobHelper.GlobToRegex("file?.txt"));
         regex.IsMatch("file1.txt").Should().BeTrue();
         regex.IsMatch("fileA.txt").Should().BeTrue();
         regex.IsMatch("file12.txt").Should().BeFalse();
@@ -617,40 +617,6 @@ public class PackageArchiveTests
         foldersToCreate.Should().Contain(Path.GetFullPath(Path.Combine(destinationPath, "a")));
         foldersToCreate.Should().Contain(Path.GetFullPath(Path.Combine(destinationPath, "a", "b")));
         foldersToCreate.Should().Contain(Path.GetFullPath(Path.Combine(destinationPath, "a", "b", "c")));
-    }
-
-    [Test]
-    public void ValidPackageNamesAreAccepted()
-    {
-        ArchiveHelper.IsValidPackageName("my-widget").Should().BeTrue();
-        ArchiveHelper.IsValidPackageName("widget").Should().BeTrue();
-        ArchiveHelper.IsValidPackageName("a").Should().BeTrue();
-        ArchiveHelper.IsValidPackageName("my-cool-package").Should().BeTrue();
-        ArchiveHelper.IsValidPackageName("package123").Should().BeTrue();
-        ArchiveHelper.IsValidPackageName("123package").Should().BeTrue();
-        ArchiveHelper.IsValidPackageName("a1b2c3").Should().BeTrue();
-    }
-
-    [Test]
-    public void InvalidPackageNamesAreRejected()
-    {
-        ArchiveHelper.IsValidPackageName("").Should().BeFalse("empty name");
-        ArchiveHelper.IsValidPackageName("My-Widget").Should().BeFalse("uppercase letters");
-        ArchiveHelper.IsValidPackageName("-widget").Should().BeFalse("leading hyphen");
-        ArchiveHelper.IsValidPackageName("widget-").Should().BeFalse("trailing hyphen");
-        ArchiveHelper.IsValidPackageName("my--widget").Should().BeFalse("consecutive hyphens");
-        ArchiveHelper.IsValidPackageName("my widget").Should().BeFalse("spaces");
-        ArchiveHelper.IsValidPackageName("my_widget").Should().BeFalse("underscores");
-        ArchiveHelper.IsValidPackageName("my.widget").Should().BeFalse("dots");
-        ArchiveHelper.IsValidPackageName("my/widget").Should().BeFalse("slashes");
-        ArchiveHelper.IsValidPackageName(new string('a', 215)).Should().BeFalse("exceeds max length");
-    }
-
-    [Test]
-    public void PackageNameAtMaxLengthIsAccepted()
-    {
-        var maxName = new string('a', 214);
-        ArchiveHelper.IsValidPackageName(maxName).Should().BeTrue();
     }
 
     [Test]

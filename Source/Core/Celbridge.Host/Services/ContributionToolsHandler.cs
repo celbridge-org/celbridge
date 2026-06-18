@@ -23,7 +23,7 @@ public static class ToolRpcErrorCodes
 
 /// <summary>
 /// Per-WebView RPC target for tools/list and tools/call, gated by a package's
-/// requires_tools allowlist.
+/// [permissions] tools allowlist.
 /// </summary>
 public sealed class ContributionToolsHandler
 {
@@ -72,7 +72,7 @@ public sealed class ContributionToolsHandler
         }
 
         // The webview_* namespace is reserved for the MCP path. Blocking it here
-        // (regardless of the package's requires_tools entries) closes the
+        // (regardless of the package's permitted tools) closes the
         // cross-document attack vector where a contribution editor's JS could
         // call webview.eval against another open document.
         if (IsContributionRestricted(name))
@@ -85,7 +85,7 @@ public sealed class ContributionToolsHandler
 
         if (!ToolAllowlist.IsAllowed(name, _allowedPatterns))
         {
-            throw new LocalRpcException($"Tool '{name}' is not in this package's requires_tools allowlist")
+            throw new LocalRpcException($"Tool '{name}' is not declared under [permissions] tools in the package manifest")
             {
                 ErrorCode = ToolRpcErrorCodes.ToolDenied
             };

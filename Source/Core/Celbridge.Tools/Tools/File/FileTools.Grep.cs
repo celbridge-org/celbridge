@@ -62,11 +62,30 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
+        var resourceFileSystem = resourceService.FileSystem;
 
         if (!string.IsNullOrEmpty(files))
         {
             return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+        }
+
+        // File enumeration has two sources, picked by root. The project root has
+        // a pre-built registry index (already ignore-filtered and sorted, rebuilt
+        // on resource changes rather than per search), which SearchService walks
+        // below and the live Search panel shares. Other roots (temp:, logs:) are
+        // not indexed, so an explicitly-named non-default-root scope is walked
+        // live through the gateway here and matched the same way the files= path
+        // is. Bare and project: scopes fall through to the indexed walk.
+        var rootHandlerRegistry = resourceService.RootHandlers;
+        if (!string.IsNullOrEmpty(resource)
+            && ResourceKey.TryCreate(resource, out var scopeKey)
+            && scopeKey.Root != ResourceKey.DefaultRoot
+            && rootHandlerRegistry.RootHandlers.ContainsKey(scopeKey.Root))
+        {
+            return await GrepNonDefaultRootScopeAsync(
+                scopeKey, searchTerm, useRegex, matchCase, wholeWord, include, exclude,
+                maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
@@ -247,6 +266,85 @@ public partial class FileTools
             return ToolResponse.Error("No resource keys provided in files parameter.");
         }
 
+        // The result's Resource field echoes the caller's exact key string, so a
+        // round-trip through ResourceKey does not canonicalize what the agent passed.
+        var targets = new List<(ResourceKey Key, string Display)>();
+        foreach (var fileKeyString in fileKeyStrings)
+        {
+            if (ResourceKey.TryCreate(fileKeyString, out var fileResourceKey))
+            {
+                targets.Add((fileResourceKey, fileKeyString));
+            }
+        }
+
+        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+    }
+
+    // Enumerates a non-default root (temp:, logs:) live through the gateway,
+    // since only the project root carries the registry index SearchService uses.
+    // The files found are matched the same way the files= path matches, with
+    // include/exclude applied to the file name.
+    private async Task<CallToolResult> GrepNonDefaultRootScopeAsync(
+        ResourceKey scopeFolder,
+        string searchTerm,
+        bool useRegex,
+        bool matchCase,
+        bool wholeWord,
+        string include,
+        string exclude,
+        int maxResults,
+        int contextLines,
+        bool includeContent,
+        bool summaryOnly,
+        IResourceFileSystem resourceFileSystem)
+    {
+        var entries = new List<FolderItem>();
+        await CollectRecursiveAsync(resourceFileSystem, scopeFolder, entries);
+
+        var includeRegex = GlobHelper.BuildNameMatcher(include);
+        var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
+
+        var targets = new List<(ResourceKey Key, string Display)>();
+        foreach (var entry in entries)
+        {
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+
+            var fileName = entry.Resource.ResourceName;
+            if (includeRegex is not null
+                && !includeRegex.IsMatch(fileName))
+            {
+                continue;
+            }
+            if (excludeRegex is not null
+                && excludeRegex.IsMatch(fileName))
+            {
+                continue;
+            }
+
+            targets.Add((entry.Resource, entry.Resource.ToString()));
+        }
+
+        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+    }
+
+    // Greps an explicit list of files, accumulating matches up to maxResults.
+    // Shared by the targeted files= path and the non-default-root scope walk;
+    // each target carries the display string used for its result Resource field.
+    private async Task<CallToolResult> GrepFileListAsync(
+        List<(ResourceKey Key, string Display)> targets,
+        string searchTerm,
+        bool useRegex,
+        bool matchCase,
+        bool wholeWord,
+        int maxResults,
+        int contextLines,
+        bool includeContent,
+        bool summaryOnly,
+        IResourceFileSystem resourceFileSystem)
+    {
         var searchPattern = useRegex ? searchTerm : Regex.Escape(searchTerm);
         if (wholeWord && !useRegex)
         {
@@ -260,17 +358,14 @@ public partial class FileTools
         int totalMatches = 0;
         bool truncated = false;
 
-        foreach (var fileKeyString in fileKeyStrings)
+        foreach (var target in targets)
         {
             if (truncated)
             {
                 break;
             }
 
-            if (!ResourceKey.TryCreate(fileKeyString, out var fileResourceKey))
-            {
-                continue;
-            }
+            var fileResourceKey = target.Key;
 
             var infoResult = await resourceFileSystem.GetInfoAsync(fileResourceKey);
             if (infoResult.IsFailure
@@ -345,7 +440,7 @@ public partial class FileTools
                 }
 
                 fileResults.Add(new GrepFileResult(
-                    fileKeyString,
+                    target.Display,
                     fileResourceKey.ResourceName,
                     fileMatchCount,
                     matchList,
@@ -356,4 +451,5 @@ public partial class FileTools
         var grepResult = new GrepResult(totalMatches, fileResults.Count, truncated, fileResults);
         return BuildGrepResponse(grepResult);
     }
+
 }

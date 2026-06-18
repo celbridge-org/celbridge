@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -9,22 +10,31 @@ public class DialogService : IDialogService
 {
     private readonly IDialogFactory _dialogFactory;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IMessengerService _messengerService;
+    private readonly DialogAnswerScheduler _answerScheduler;
     private readonly object _tokenLock = new();
     private IProgressDialog? _progressDialog;
     private bool _suppressProgressDialog;
     private List<IProgressDialogToken> _progressDialogTokens = [];
 
     public DialogService(
+        ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IMessengerService messengerService)
     {
         _dialogFactory = dialogFactory;
         _workspaceWrapper = workspaceWrapper;
+        _messengerService = messengerService;
+        _answerScheduler = new DialogAnswerScheduler(logger, messengerService);
+
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
+        _answerScheduler.OnDialogShown(DialogKind.Alert);
         await ShowDialogAsync(async () =>
         {
             await dialog.ShowDialogAsync();
@@ -35,6 +45,7 @@ public class DialogService : IDialogService
     public async Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
         var dialog = _dialogFactory.CreateConfirmationDialog(titleText, messageText, primaryButtonText, secondaryButtonText);
+        _answerScheduler.OnDialogShown(DialogKind.Confirmation);
         var showResult = await ShowDialogAsync(dialog.ShowDialogAsync);
         return Result<bool>.Ok(showResult);
     }
@@ -127,6 +138,14 @@ public class DialogService : IDialogService
     public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null)
     {
         var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator, submitButtonKey);
+        _answerScheduler.OnDialogShown(DialogKind.InputText);
+        return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
+
+    public async Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null)
+    {
+        var dialog = _dialogFactory.CreateSecretInputDialog(titleText, headerText, submitButtonKey);
+        _answerScheduler.OnDialogShown(DialogKind.SecretInput);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
@@ -144,6 +163,7 @@ public class DialogService : IDialogService
         }
 
         var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
+        _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
@@ -151,5 +171,15 @@ public class DialogService : IDialogService
     {
         var dialog = _dialogFactory.CreateChoiceDialog(titleText, messageText, options, defaultIndex, checkbox, primaryButtonText, secondaryButtonText);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
+
+    public void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250)
+    {
+        _answerScheduler.Schedule(dialogKind, payload, delayMs);
+    }
+
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
+    {
+        _answerScheduler.Clear();
     }
 }

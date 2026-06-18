@@ -54,8 +54,8 @@ export class Celbridge {
 
     /**
      * Host capability proxy (`cel.*`) and raw tool dispatch (`list`, `call`).
-     * Populated from the package's `requires_tools` allowlist, which the host
-     * injects as `window.__celbridgeContext.allowedTools` before navigation.
+     * Populated from the package's `[permissions] tools` allowlist, which the
+     * host injects as `window.__celbridgeContext.permittedTools` before navigation.
      * @type {ToolsAPI}
      */
     tools;
@@ -108,7 +108,7 @@ export class Celbridge {
         this.input = new InputAPI(this.#transport);
         this.theme = new ThemeAPI();
         this.localization = new LocalizationAPI(this.#transport);
-        this.tools = new ToolsAPI(this.#transport, context.allowedTools);
+        this.tools = new ToolsAPI(this.#transport, context.permittedTools);
         this.secrets = context.secrets;
         this.options = context.options;
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
@@ -266,7 +266,7 @@ export class Celbridge {
  * Called once during Celbridge construction.
  *
  * Contract:
- * - `allowedTools` is an array of glob patterns from the package's `requires_tools`.
+ * - `permittedTools` is an array of glob patterns from the package's `[permissions] tools`.
  *   A missing or empty value means the editor gets no tool access (default-deny).
  * - `secrets` is a map of secret name to resolved value, supplied by the bundled
  *   package's C# descriptor.
@@ -274,7 +274,7 @@ export class Celbridge {
  *   Used by editors to configure themselves (e.g., which preview renderer to load).
  *
  * @param {Object} [providedContext] - Context passed via constructor options (testing).
- * @returns {{ allowedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
+ * @returns {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
  */
 function readAndScrubContext(providedContext) {
     const fromArg = providedContext ?? null;
@@ -290,15 +290,15 @@ function readAndScrubContext(providedContext) {
         }
     }
 
-    const allowedTools = Array.isArray(raw?.allowedTools)
-        ? Object.freeze([...raw.allowedTools])
+    const permittedTools = Array.isArray(raw?.permittedTools)
+        ? Object.freeze([...raw.permittedTools])
         : Object.freeze([]);
 
     const secrets = readStringMap(raw?.secrets);
     const options = readStringMap(raw?.options);
 
     return {
-        allowedTools,
+        permittedTools,
         secrets: Object.freeze(secrets),
         options: Object.freeze(options)
     };

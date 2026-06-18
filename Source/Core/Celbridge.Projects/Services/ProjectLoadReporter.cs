@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Resources;
 
 namespace Celbridge.Projects.Services;
@@ -24,6 +25,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     private bool _userCancelledUpgrade;
     private bool _loadSucceeded;
     private Result? _loadResult;
+    private PackageDiscoveryReport? _packageReport;
     private ProjectCheckReport? _checkReport;
     private DateTimeOffset? _checkCompletedAt;
 
@@ -45,6 +47,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _userCancelledUpgrade = false;
         _loadSucceeded = false;
         _loadResult = null;
+        _packageReport = null;
         _checkReport = null;
         _checkCompletedAt = null;
     }
@@ -61,6 +64,11 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _loadSucceeded = loadSucceeded;
         _loadResult = loadResult;
         _loadCompletedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void RecordPackageReport(PackageDiscoveryReport report)
+    {
+        _packageReport = report;
     }
 
     public void RecordCheckReport(ProjectCheckReport report)
@@ -137,6 +145,11 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         AppendLoadSection(builder);
 
+        if (_packageReport is not null)
+        {
+            AppendPackagesSection(builder);
+        }
+
         if (_checkReport is not null)
         {
             AppendCheckSection(builder);
@@ -185,6 +198,39 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             AppendErrorBlock(builder, "Load errors", loadResult);
         }
+    }
+
+    private void AppendPackagesSection(StringBuilder builder)
+    {
+        builder.AppendLine("## Packages");
+        builder.AppendLine();
+
+        var report = _packageReport!;
+        builder.AppendLine($"- Bundled packages loaded: {report.BundledPackageCount}");
+        builder.AppendLine($"- Project packages loaded: {report.ProjectPackageCount}");
+
+        if (report.Failures.Count == 0)
+        {
+            builder.AppendLine("- No load failures.");
+            builder.AppendLine();
+            return;
+        }
+
+        builder.AppendLine();
+        builder.AppendLine($"### Load failures ({report.Failures.Count})");
+        builder.AppendLine();
+        foreach (var failure in report.Failures)
+        {
+            var packageLabel = string.IsNullOrEmpty(failure.PackageName)
+                ? $"`{failure.Folder}`"
+                : $"`{failure.PackageName}` in `{failure.Folder}`";
+            builder.AppendLine($"- {packageLabel}: `{failure.Reason}`");
+            if (!string.IsNullOrEmpty(failure.Detail))
+            {
+                builder.AppendLine($"  - {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
+            }
+        }
+        builder.AppendLine();
     }
 
     private void AppendCheckSection(StringBuilder builder)

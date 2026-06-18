@@ -414,50 +414,95 @@
   <data name="SettingsPage_WorkshopSection" xml:space="preserve">
     <value>Workshop</value>
   </data>
+  <data name="SettingsPage_WorkshopDescription" xml:space="preserve">
+    <value>Connect to a Workshop to publish and install packages and pages.</value>
+  </data>
   <data name="SettingsPage_WorkshopUrl" xml:space="preserve">
     <value>Workshop URL</value>
   </data>
-  <data name="SettingsPage_ApplicationKey" xml:space="preserve">
-    <value>Application Key</value>
+  <data name="SettingsPage_WorkshopUrlTooltip" xml:space="preserve">
+    <value>The web address of your Workshop server, where packages and pages are published.</value>
   </data>
-  <data name="SettingsPage_SaveConnection" xml:space="preserve">
+  <data name="SettingsPage_WorkshopKey" xml:space="preserve">
+    <value>Workshop Key</value>
+  </data>
+  <data name="SettingsPage_WorkshopKeyTooltip" xml:space="preserve">
+    <value>The secret key issued by your Workshop. Keep it private; it authenticates your requests.</value>
+  </data>
+  <data name="SettingsPage_Author" xml:space="preserve">
+    <value>Author Name</value>
+  </data>
+  <data name="SettingsPage_AuthorTooltip" xml:space="preserve">
+    <value>Your name, recorded with the packages and pages you publish to the workshop.</value>
+  </data>
+  <data name="SettingsPage_AuthorPlaceholder" xml:space="preserve">
+    <value>Your name</value>
+  </data>
+  <data name="SettingsPage_SetWorkshopKey" xml:space="preserve">
+    <value>Set Workshop Key</value>
+  </data>
+  <data name="SettingsPage_ChangeKey" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="SettingsPage_RemoveKey" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="SettingsPage_SetWorkshopKeyDialogTitle" xml:space="preserve">
+    <value>Set Workshop Key</value>
+  </data>
+  <data name="SettingsPage_ChangeWorkshopKeyDialogTitle" xml:space="preserve">
+    <value>Change Workshop Key</value>
+  </data>
+  <data name="SettingsPage_SaveKeyButton" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="SettingsPage_ClearConnection" xml:space="preserve">
-    <value>Clear</value>
+  <data name="SettingsPage_RemoveWorkshopKeyTitle" xml:space="preserve">
+    <value>Remove Workshop Key</value>
   </data>
-  <data name="SettingsPage_ReplaceKey" xml:space="preserve">
-    <value>Replace</value>
-  </data>
-  <data name="SettingsPage_CancelReplaceKey" xml:space="preserve">
-    <value>Cancel</value>
+  <data name="SettingsPage_RemoveWorkshopKeyMessage" xml:space="preserve">
+    <value>Remove the stored Workshop Key? You will need to enter it again to reconnect to the workshop.</value>
   </data>
   <data name="SettingsPage_CredentialStoreUnavailable" xml:space="preserve">
     <value>Credential storage is not available on this platform. The Workshop connection cannot be configured.</value>
   </data>
   <data name="SettingsPage_StoredConnectionUnreadable" xml:space="preserve">
-    <value>The stored Workshop connection could not be read. Enter the Workshop URL and Application Key again, or clear the connection.</value>
+    <value>The stored Workshop connection could not be read. Enter the Workshop URL and Workshop Key again, or clear the stored key.</value>
   </data>
   <data name="SettingsPage_InvalidWorkshopUrl" xml:space="preserve">
     <value>The Workshop URL must be an https:// address. http:// is only allowed for localhost.</value>
   </data>
-  <data name="SettingsPage_EmptyApplicationKey" xml:space="preserve">
-    <value>Enter an Application Key.</value>
+  <data name="SettingsPage_EmptyWorkshopUrl" xml:space="preserve">
+    <value>Enter a valid Workshop URL.</value>
+  </data>
+  <data name="SettingsPage_EmptyWorkshopKey" xml:space="preserve">
+    <value>Enter a Workshop Key.</value>
+  </data>
+  <data name="SettingsPage_AuthorRequired" xml:space="preserve">
+    <value>Add an Author Name to publish packages and pages.</value>
   </data>
   <data name="SettingsPage_SaveConnectionFailed" xml:space="preserve">
     <value>Failed to save the Workshop connection.</value>
   </data>
-  <data name="SettingsPage_ClearConnectionFailed" xml:space="preserve">
-    <value>Failed to clear the Workshop connection.</value>
+  <data name="SettingsPage_RemoveWorkshopKeyFailed" xml:space="preserve">
+    <value>Failed to remove the Workshop Key.</value>
   </data>
   <data name="SettingsPage_ConnectionSaved" xml:space="preserve">
     <value>Workshop connection saved.</value>
   </data>
-  <data name="SettingsPage_ConnectionSavedPrefixWarning" xml:space="preserve">
-    <value>Workshop connection saved. The Application Key does not start with 'kpf_', so check that it was entered correctly.</value>
+  <data name="SettingsPage_WorkshopKeyRemoved" xml:space="preserve">
+    <value>Workshop Key removed. Set a new key to reconnect.</value>
   </data>
-  <data name="SettingsPage_ConnectionCleared" xml:space="preserve">
-    <value>Workshop connection cleared.</value>
+  <data name="SettingsPage_CheckingConnection" xml:space="preserve">
+    <value>Checking connection to the workshop...</value>
+  </data>
+  <data name="SettingsPage_ConnectionVerified" xml:space="preserve">
+    <value>Connected to the workshop.</value>
+  </data>
+  <data name="SettingsPage_WorkshopKeyRejected" xml:space="preserve">
+    <value>The workshop rejected this key. Check that you copied the whole key and that it is still valid.</value>
+  </data>
+  <data name="SettingsPage_ConnectionUnverified" xml:space="preserve">
+    <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
     <value>Create directory for project</value>
@@ -639,7 +684,7 @@ Do you wish to continue?</value>
     <value>Package Load Error</value>
   </data>
   <data name="ConsolePanel_PackageLoadErrorMessage" xml:space="preserve">
-    <value>One or more packages failed to load. See the log for details.</value>
+    <value>One or more packages failed to load. See the project load report for details.</value>
   </data>
   <data name="ConsolePanel_ProjectCheckFindingsTitle" xml:space="preserve">
     <value>Project Check Findings</value>
@@ -1023,13 +1068,61 @@ Do you wish to continue?</value>
     <value>Publish Package</value>
   </data>
   <data name="Package_PublishConfirm_Message" xml:space="preserve">
-    <value>Publish package '{0}' to the remote registry?</value>
+    <value>Publish package '{0}' to the workshop as a new version?</value>
+  </data>
+  <data name="Package_PublishStaleConfirm_Message" xml:space="preserve">
+    <value>Publish '{0}'? Version {1} is installed but the latest is now {2} — publishing may overwrite newer work.</value>
+  </data>
+  <data name="Package_PublishUnreadableRecordConfirm_Message" xml:space="preserve">
+    <value>Publish '{0}'? Its install record (HISTORY.md) can't be read, so it may be behind the latest version.</value>
   </data>
   <data name="Package_InstallConfirm_Title" xml:space="preserve">
     <value>Install Package</value>
   </data>
   <data name="Package_InstallConfirm_Message" xml:space="preserve">
-    <value>Install package '{0}' from the remote registry?</value>
+    <value>Install package '{0}' version {1} into '{2}'?</value>
+  </data>
+  <data name="Package_ReplaceConfirm_Title" xml:space="preserve">
+    <value>Replace Package</value>
+  </data>
+  <data name="Package_ReplaceConfirm_Message" xml:space="preserve">
+    <value>'{0}' already contains package '{1}' (version {2}). Installing version {3} replaces its contents, moving the current files to the trash. Continue?</value>
+  </data>
+  <data name="Package_ReplaceConfirm_MessageUnknownVersion" xml:space="preserve">
+    <value>'{0}' already contains package '{1}'. Installing version {2} replaces its contents, moving the current files to the trash. Continue?</value>
+  </data>
+  <data name="Package_DeleteConfirm_Title" xml:space="preserve">
+    <value>Delete Package Version</value>
+  </data>
+  <data name="Package_DeleteConfirm_Message" xml:space="preserve">
+    <value>Delete version {0} of package '{1}' from the workshop? Its content will be permanently removed and cannot be recovered.</value>
+  </data>
+  <data name="Package_DeleteConfirm_MessageWithAliases" xml:space="preserve">
+    <value>Delete version {0} of package '{1}' from the workshop? Its content will be permanently removed and cannot be recovered. These aliases will be left pointing at the deleted version: {2}.</value>
+  </data>
+  <data name="Package_UnpublishConfirm_Title" xml:space="preserve">
+    <value>Unpublish Package</value>
+  </data>
+  <data name="Package_UnpublishConfirm_Message" xml:space="preserve">
+    <value>Unpublish package '{0}' from the workshop? The package and all its versions will be permanently removed and cannot be recovered.</value>
+  </data>
+  <data name="Page_PublishConfirm_Title" xml:space="preserve">
+    <value>Publish Page</value>
+  </data>
+  <data name="Page_PublishConfirm_Message" xml:space="preserve">
+    <value>Publish this folder as a page at '{0}'? It will be served publicly on the workshop.</value>
+  </data>
+  <data name="Page_UnpublishConfirm_Title" xml:space="preserve">
+    <value>Unpublish Page</value>
+  </data>
+  <data name="Page_UnpublishConfirm_Message" xml:space="preserve">
+    <value>Unpublish the page at '{0}' from the workshop? It will no longer be served.</value>
+  </data>
+  <data name="Workshop_PublishBlocked_Title" xml:space="preserve">
+    <value>Cannot Publish</value>
+  </data>
+  <data name="Workshop_PublishBlocked_Message" xml:space="preserve">
+    <value>No Author is set. Add one on the Settings page, then try again.</value>
   </data>
   <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
     <value>Spreadsheet Editor</value>

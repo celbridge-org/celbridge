@@ -113,37 +113,11 @@ public static class ArchiveHelper
         var patternParts = patterns.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var pattern in patternParts)
         {
-            var regexPattern = GlobToRegex(pattern);
+            var regexPattern = GlobHelper.GlobToRegex(pattern);
             regexList.Add(new Regex(regexPattern, RegexOptions.IgnoreCase));
         }
 
         return regexList;
-    }
-
-    /// <summary>
-    /// Converts a simple glob pattern (supporting * and ?) to a regular expression.
-    /// </summary>
-    public static string GlobToRegex(string glob)
-    {
-        var regexPattern = Regex.Escape(glob)
-            .Replace("\\*", ".*")
-            .Replace("\\?", ".");
-        return $"^{regexPattern}$";
-    }
-
-    /// <summary>
-    /// Returns true if the name follows npm package naming conventions: lowercase alphanumeric
-    /// and hyphens, 1-214 characters, must start and end with a letter or digit, no consecutive hyphens.
-    /// </summary>
-    public static bool IsValidPackageName(string name)
-    {
-        if (string.IsNullOrEmpty(name) || name.Length > 214)
-        {
-            return false;
-        }
-
-        return Regex.IsMatch(name, @"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$") &&
-               !name.Contains("--");
     }
 
     /// <summary>

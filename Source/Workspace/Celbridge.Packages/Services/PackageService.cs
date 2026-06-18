@@ -1,6 +1,7 @@
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Messaging;
+using Celbridge.Projects;
 
 namespace Celbridge.Packages;
 
@@ -10,13 +11,16 @@ namespace Celbridge.Packages;
 public class PackageService : IPackageService
 {
     private readonly IMessengerService _messengerService;
+    private readonly IProjectLoadReporter _loadReporter;
     private readonly PackageRegistry _registry;
 
     public PackageService(
         IMessengerService messengerService,
+        IProjectLoadReporter loadReporter,
         PackageRegistry registry)
     {
         _messengerService = messengerService;
+        _loadReporter = loadReporter;
         _registry = registry;
     }
 
@@ -24,10 +28,15 @@ public class PackageService : IPackageService
     {
         var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
 
+        // Record the outcome in the project load report before raising the
+        // error banner, so the details the banner points at are already on
+        // disk when the user goes looking.
+        _loadReporter.RecordPackageReport(report);
+        await _loadReporter.FlushAsync();
+
         if (report.Failures.Count > 0)
         {
             // Surface the failures via the console panel error banner.
-            // Individual failures are already logged by the registry.
             var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
             var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
             _messengerService.Send(message);
@@ -36,9 +45,24 @@ public class PackageService : IPackageService
         _messengerService.Send(new PackagesInitializedMessage());
     }
 
+    public async Task RescanProjectPackagesAsync(string projectFolderPath)
+    {
+        // Refreshes the registry mid-session (e.g. after a tool installs a
+        // package). Unlike RegisterPackagesAsync this is discovery only: it does
+        // not fire PackagesInitializedMessage (editor registration is one-shot at
+        // load), nor rewrite project-load.md or raise the error banner (those
+        // reflect the last actual load, not a tool-initiated rescan).
+        await _registry.DiscoverPackagesAsync(projectFolderPath);
+    }
+
     public IReadOnlyList<Package> GetAllPackages()
     {
         return _registry.GetAllPackages();
+    }
+
+    public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
+    {
+        return _registry.GetLoadFailures();
     }
 
     public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
