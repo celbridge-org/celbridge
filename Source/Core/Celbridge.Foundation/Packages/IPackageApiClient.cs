@@ -17,9 +17,9 @@ public record RemotePackageSummary(
 
 /// <summary>
 /// A single immutable version of a workshop package. Version numbers are
-/// assigned by the server in publish order. Deleted is true once the version's
-/// bytes have been removed; the version record, number, and content hash are
-/// retained so vendored copies stay verifiable.
+/// assigned by the server in publish order. Deleted is true when the version's
+/// content has been removed; the version record, number, and content hash are
+/// retained so the record stays verifiable.
 /// </summary>
 public record RemotePackageVersion(
     int Version,
@@ -53,11 +53,10 @@ public record RemotePublishReceipt(
     string ContentHash);
 
 /// <summary>
-/// Client for the workshop server's package REST API. The Workshop URL is read
-/// from settings and the Workshop Key from the credential store at request time;
-/// credential values never appear in parameters, results, or error messages.
-/// Destructive operations (deleting a version, deleting a package) remove
-/// content outright; Celbridge does not model the server's tombstone state.
+/// Client for the workshop server's package REST API. Callers do not supply
+/// credentials; requests are authenticated from the ambient workshop
+/// configuration, and credential values never appear in this API's parameters,
+/// results, or error messages.
 /// </summary>
 public interface IPackageApiClient
 {
@@ -100,9 +99,9 @@ public interface IPackageApiClient
     Task<Result> RemoveAliasAsync(string packageName, string alias);
 
     /// <summary>
-    /// Deletes a published version, removing its bytes. The version record and
-    /// content hash are retained so the number is never reused and vendored
-    /// copies stay verifiable. Irreversible from the client.
+    /// Deletes a published version's content. Its version number and content hash
+    /// remain reserved, so the number is never reused and the record stays
+    /// verifiable. Irreversible from the client.
     /// </summary>
     Task<Result> DeleteVersionAsync(string packageName, int version);
 
