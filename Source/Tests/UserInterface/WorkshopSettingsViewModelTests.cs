@@ -48,7 +48,7 @@ public class WorkshopSettingsViewModelTests
             _editorSettings);
 
         _packageApiClient = Substitute.For<IPackageApiClient>();
-        SetConnectionCheckResult(success: true);
+        SetConnectionCheckOutcome(ConnectionCheckOutcome.Connected);
 
         _dialogService = Substitute.For<IDialogService>();
 
@@ -65,13 +65,10 @@ public class WorkshopSettingsViewModelTests
             stringLocalizer);
     }
 
-    // Stubs the lightweight list-packages probe the connection check uses.
-    private void SetConnectionCheckResult(bool success)
+    // Stubs the connection probe outcome the view model classifies.
+    private void SetConnectionCheckOutcome(ConnectionCheckOutcome outcome)
     {
-        var result = success
-            ? Result<IReadOnlyList<RemotePackageSummary>>.Ok(new List<RemotePackageSummary>())
-            : Result<IReadOnlyList<RemotePackageSummary>>.Fail("connection failed");
-        _packageApiClient.ListPackagesAsync().Returns(Task.FromResult(result));
+        _packageApiClient.CheckConnectionAsync().Returns(Task.FromResult(outcome));
     }
 
     // Stubs the masked key dialog to return the given key, as if the user entered
@@ -284,13 +281,13 @@ public class WorkshopSettingsViewModelTests
     }
 
     [Test]
-    public async Task CheckConnection_Success_ShowsConnected()
+    public async Task CheckConnection_Connected_ShowsConnected()
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
         _viewModel.Author = "Ada Lovelace";
         SetKeyDialogResult(TestWorkshopKey);
-        SetConnectionCheckResult(success: true);
+        SetConnectionCheckOutcome(ConnectionCheckOutcome.Connected);
 
         await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
 
@@ -299,33 +296,40 @@ public class WorkshopSettingsViewModelTests
     }
 
     [Test]
-    public async Task CheckConnection_FailureWithWellFormedKey_ShowsCheckFailed()
+    public async Task CheckConnection_Unauthorized_ReportsKeyRejected()
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
         SetKeyDialogResult(TestWorkshopKey);
-        SetConnectionCheckResult(success: false);
+        SetConnectionCheckOutcome(ConnectionCheckOutcome.Unauthorized);
 
         await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
         // The substitute localizer echoes the resource key as the message.
-        _viewModel.StatusMessage.Should().Be("SettingsPage_ConnectionCheckFailed");
+        _viewModel.StatusMessage.Should().Be("SettingsPage_WorkshopKeyRejected");
     }
 
     [Test]
-    public async Task CheckConnection_FailureWithMalformedKey_ReportsKeyInvalid()
+    public async Task CheckConnection_Unreachable_SavesKeyButWarnsUnverified()
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
-        SetKeyDialogResult("not-a-kpf-shaped-key");
-        SetConnectionCheckResult(success: false);
+        SetKeyDialogResult(TestWorkshopKey);
+        SetConnectionCheckOutcome(ConnectionCheckOutcome.Unreachable);
 
         await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
 
-        _viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
-        _viewModel.StatusMessage.Should().Be("SettingsPage_InvalidWorkshopKey");
+        // Offline must not be reported as a bad key: the key is saved, and the
+        // status is a soft warning rather than an error.
+        _viewModel.StatusSeverity.Should().Be(StatusSeverity.Warning);
+        _viewModel.StatusMessage.Should().Be("SettingsPage_ConnectionUnverified");
+        _viewModel.IsStoredKeyVisible.Should().BeTrue();
+
+        var keyResult = await _credentialService.GetWorkshopKeyAsync();
+        keyResult.IsSuccess.Should().BeTrue();
+        keyResult.Value.Should().Be(TestWorkshopKey);
     }
 
     [Test]

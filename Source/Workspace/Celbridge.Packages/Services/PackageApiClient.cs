@@ -62,6 +62,11 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         return summaries.OkResult<IReadOnlyList<RemotePackageSummary>>();
     }
 
+    public async Task<ConnectionCheckOutcome> CheckConnectionAsync()
+    {
+        return await _sender.CheckConnectionAsync("api/packages/");
+    }
+
     public async Task<Result<RemotePackageDetails>> GetPackageAsync(string packageName)
     {
         var sendResult = await _sender.SendAsync(HttpMethod.Get, $"api/packages/{Uri.EscapeDataString(packageName)}/");

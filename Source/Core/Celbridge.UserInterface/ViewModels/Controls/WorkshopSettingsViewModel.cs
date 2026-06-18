@@ -137,7 +137,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         _editorSettings.WorkshopUrl = WorkshopUrl.Trim();
         _editorSettings.WorkshopAuthor = Author.Trim();
 
-        await ReportConnectionStatusAsync(checkConnection, keyPrefixUnexpected: false);
+        await ReportConnectionStatusAsync(checkConnection);
     }
 
     [RelayCommand]
@@ -179,8 +179,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         await RefreshStoredKeyDisplayAsync();
         UpdateViewState();
 
-        var keyPrefixUnexpected = !WorkshopConnectionValidation.HasExpectedKeyPrefix(workshopKey);
-        await ReportConnectionStatusAsync(checkConnection: true, keyPrefixUnexpected);
+        await ReportConnectionStatusAsync(checkConnection: true);
     }
 
     [RelayCommand]
@@ -213,9 +212,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     }
 
     // Validates the URL and reports the connection status. When a key is stored
-    // and checkConnection is set, the connection is verified against the workshop;
-    // keyPrefixUnexpected sharpens the failure message after a key was just entered.
-    private async Task ReportConnectionStatusAsync(bool checkConnection, bool keyPrefixUnexpected)
+    // and checkConnection is set, the connection is verified against the workshop.
+    private async Task ReportConnectionStatusAsync(bool checkConnection)
     {
         var workshopUrl = WorkshopUrl.Trim();
         if (string.IsNullOrEmpty(workshopUrl))
@@ -237,7 +235,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
         if (checkConnection)
         {
-            await CheckConnectionAsync(keyPrefixUnexpected);
+            await CheckConnectionAsync();
         }
         else
         {
@@ -260,15 +258,15 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         }
     }
 
-    // Verifies the connection by making one authenticated request to the
-    // workshop. List-packages is reused as a lightweight probe until a dedicated
-    // health endpoint exists; only its success or failure is used.
-    private async Task CheckConnectionAsync(bool keyPrefixUnexpected)
+    // Classifies the workshop connection from a single authenticated probe and
+    // reports it: verified, key rejected, or saved-but-unverified when the
+    // workshop could not be reached.
+    private async Task CheckConnectionAsync()
     {
         var checkId = ++_connectionCheckId;
         ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("SettingsPage_CheckingConnection"));
 
-        var listResult = await _packageApiClient.ListPackagesAsync();
+        var outcome = await _packageApiClient.CheckConnectionAsync();
 
         // A newer save started its own check while this one was in flight; let
         // the newer one own the final status.
@@ -277,20 +275,23 @@ public partial class WorkshopSettingsViewModel : ObservableObject
             return;
         }
 
-        if (listResult.IsSuccess)
+        switch (outcome)
         {
-            ShowConnectionOkStatus("SettingsPage_ConnectionVerified");
-            return;
+            case ConnectionCheckOutcome.Connected:
+                ShowConnectionOkStatus("SettingsPage_ConnectionVerified");
+                break;
+
+            case ConnectionCheckOutcome.Unauthorized:
+                // The workshop definitively rejected the key, so name the key.
+                ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_WorkshopKeyRejected"));
+                break;
+
+            case ConnectionCheckOutcome.Unreachable:
+                // The key is stored; we just could not verify it right now, so
+                // report a warning rather than claiming the key is wrong.
+                ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("SettingsPage_ConnectionUnverified"));
+                break;
         }
-
-        // A malformed-looking key that the workshop also rejected is reported as
-        // invalid; a well-formed key that failed could be the wrong key or an
-        // unreachable server, so it points at both the URL and the key.
-        var messageKey = keyPrefixUnexpected
-            ? "SettingsPage_InvalidWorkshopKey"
-            : "SettingsPage_ConnectionCheckFailed";
-
-        ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString(messageKey));
     }
 
     private async Task RefreshStoredKeyDisplayAsync()

@@ -1,5 +1,3 @@
-using Celbridge.Credentials;
-
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
@@ -25,15 +23,5 @@ public static class WorkshopConnectionValidation
 
         return uri.Scheme == Uri.UriSchemeHttp &&
                uri.IsLoopback;
-    }
-
-    /// <summary>
-    /// Returns true when the key starts with the expected Workshop Key
-    /// prefix. A typo guard for display, not a gate: keys without the prefix
-    /// are still accepted.
-    /// </summary>
-    public static bool HasExpectedKeyPrefix(string workshopKey)
-    {
-        return workshopKey.StartsWith(CredentialConstants.WorkshopKeyPrefix, StringComparison.Ordinal);
     }
 }

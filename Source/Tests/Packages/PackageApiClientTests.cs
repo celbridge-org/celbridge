@@ -384,6 +384,48 @@ public class PackageApiClientTests
     }
 
     [Test]
+    public async Task CheckConnection_SuccessfulResponse_ReturnsConnected()
+    {
+        _messageHandler.Responder = _ => JsonResponse("[]");
+
+        var outcome = await _client.CheckConnectionAsync();
+
+        outcome.Should().Be(ConnectionCheckOutcome.Connected);
+        _messageHandler.Requests.Single().RequestUri
+            .Should().Be(new Uri("https://workshop.example.com/api/packages/"));
+    }
+
+    [Test]
+    public async Task CheckConnection_Unauthorized_ReturnsUnauthorized()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.Unauthorized);
+
+        var outcome = await _client.CheckConnectionAsync();
+
+        outcome.Should().Be(ConnectionCheckOutcome.Unauthorized);
+    }
+
+    [Test]
+    public async Task CheckConnection_NetworkError_ReturnsUnreachable()
+    {
+        _messageHandler.Responder = _ => throw new HttpRequestException("offline");
+
+        var outcome = await _client.CheckConnectionAsync();
+
+        outcome.Should().Be(ConnectionCheckOutcome.Unreachable);
+    }
+
+    [Test]
+    public async Task CheckConnection_ServerError_ReturnsUnreachable()
+    {
+        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.InternalServerError);
+
+        var outcome = await _client.CheckConnectionAsync();
+
+        outcome.Should().Be(ConnectionCheckOutcome.Unreachable);
+    }
+
+    [Test]
     public async Task HttpUrl_NonLoopbackHost_RejectedBeforeSending()
     {
         SetStoredConnection("http://workshop.example.com", TestWorkshopKey);

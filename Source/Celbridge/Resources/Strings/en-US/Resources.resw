@@ -498,11 +498,11 @@
   <data name="SettingsPage_ConnectionVerified" xml:space="preserve">
     <value>Connected to the workshop.</value>
   </data>
-  <data name="SettingsPage_ConnectionCheckFailed" xml:space="preserve">
-    <value>Couldn't reach the workshop. Check the Workshop URL and Workshop Key.</value>
+  <data name="SettingsPage_WorkshopKeyRejected" xml:space="preserve">
+    <value>The workshop rejected this key. Check that you copied the whole key and that it is still valid.</value>
   </data>
-  <data name="SettingsPage_InvalidWorkshopKey" xml:space="preserve">
-    <value>The Workshop Key is invalid.</value>
+  <data name="SettingsPage_ConnectionUnverified" xml:space="preserve">
+    <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
     <value>Create directory for project</value>

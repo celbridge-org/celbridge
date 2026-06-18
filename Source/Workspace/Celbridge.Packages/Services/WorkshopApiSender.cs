@@ -33,27 +33,12 @@ internal sealed class WorkshopApiSender : IDisposable
     // actionable message here so no call site can leak the key.
     public async Task<Result<HttpResponseMessage>> SendAsync(HttpMethod method, string relativePath, HttpContent? content = null)
     {
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        if (keyResult.IsFailure)
+        var requestResult = await BuildRequestAsync(method, relativePath, content);
+        if (requestResult.IsFailure)
         {
-            return Result.Fail("Failed to read the Workshop Key from the credential store")
-                .WithErrors(keyResult);
+            return Result.Fail(requestResult);
         }
-        var workshopKey = keyResult.Value;
-
-        var baseUriResult = ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
-        if (baseUriResult.IsFailure)
-        {
-            return Result.Fail(baseUriResult);
-        }
-        var baseUri = baseUriResult.Value;
-
-        var request = new HttpRequestMessage(method, new Uri(baseUri, relativePath));
-        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, workshopKey);
-        if (content is not null)
-        {
-            request.Content = content;
-        }
+        var request = requestResult.Value;
 
         try
         {
@@ -79,6 +64,74 @@ internal sealed class WorkshopApiSender : IDisposable
             return Result.Fail("The workshop request timed out")
                 .WithException(exception);
         }
+    }
+
+    // Probes the workshop with one authenticated request and classifies the
+    // outcome, so the caller can tell a rejected key (401) from an unreachable
+    // workshop (offline, timeout, or server error). Never throws or fails: a
+    // request that could not be built or sent is reported as Unreachable.
+    public async Task<ConnectionCheckOutcome> CheckConnectionAsync(string relativePath)
+    {
+        var requestResult = await BuildRequestAsync(HttpMethod.Get, relativePath);
+        if (requestResult.IsFailure)
+        {
+            return ConnectionCheckOutcome.Unreachable;
+        }
+        using var request = requestResult.Value;
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return ConnectionCheckOutcome.Unauthorized;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                return ConnectionCheckOutcome.Connected;
+            }
+
+            // Reached the server but it returned an unexpected status, so the key
+            // could not be confirmed; treat it as unverified rather than rejected.
+            return ConnectionCheckOutcome.Unreachable;
+        }
+        catch (HttpRequestException)
+        {
+            return ConnectionCheckOutcome.Unreachable;
+        }
+        catch (TaskCanceledException)
+        {
+            return ConnectionCheckOutcome.Unreachable;
+        }
+    }
+
+    // Reads the key and validates the URL, then assembles the authenticated
+    // request shared by SendAsync and the connection probe.
+    private async Task<Result<HttpRequestMessage>> BuildRequestAsync(HttpMethod method, string relativePath, HttpContent? content = null)
+    {
+        var keyResult = await _credentialService.GetWorkshopKeyAsync();
+        if (keyResult.IsFailure)
+        {
+            return Result.Fail("Failed to read the Workshop Key from the credential store")
+                .WithErrors(keyResult);
+        }
+        var workshopKey = keyResult.Value;
+
+        var baseUriResult = ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
+        if (baseUriResult.IsFailure)
+        {
+            return Result.Fail(baseUriResult);
+        }
+        var baseUri = baseUriResult.Value;
+
+        var request = new HttpRequestMessage(method, new Uri(baseUri, relativePath));
+        request.Headers.Authorization = new AuthenticationHeaderValue(ApiKeyScheme, workshopKey);
+        if (content is not null)
+        {
+            request.Content = content;
+        }
+
+        return request;
     }
 
     // The validated base URI of the configured workshop, so callers can resolve a

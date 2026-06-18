@@ -53,6 +53,28 @@ public record RemotePublishReceipt(
     string ContentHash);
 
 /// <summary>
+/// The result of probing the workshop connection.
+/// </summary>
+public enum ConnectionCheckOutcome
+{
+    /// <summary>
+    /// The workshop responded and accepted the stored key.
+    /// </summary>
+    Connected,
+
+    /// <summary>
+    /// The workshop was reached but rejected the stored key (HTTP 401).
+    /// </summary>
+    Unauthorized,
+
+    /// <summary>
+    /// The workshop could not be reached or did not return a usable response
+    /// (offline, timed out, or a server error), so the key could not be verified.
+    /// </summary>
+    Unreachable,
+}
+
+/// <summary>
 /// Client for the workshop server's package REST API. Callers do not supply
 /// credentials; requests are authenticated from the ambient workshop
 /// configuration, and credential values never appear in this API's parameters,
@@ -64,6 +86,13 @@ public interface IPackageApiClient
     /// Lists the packages available on the workshop.
     /// </summary>
     Task<Result<IReadOnlyList<RemotePackageSummary>>> ListPackagesAsync();
+
+    /// <summary>
+    /// Probes the workshop with one authenticated request and classifies the
+    /// outcome. Always resolves to a known outcome rather than throwing or
+    /// failing, so callers can tell a rejected key from an unreachable workshop.
+    /// </summary>
+    Task<ConnectionCheckOutcome> CheckConnectionAsync();
 
     /// <summary>
     /// Gets a package's full metadata, including its versions and aliases.
