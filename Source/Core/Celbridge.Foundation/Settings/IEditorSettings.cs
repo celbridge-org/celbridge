@@ -142,22 +142,6 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// </summary>
     string WorkshopAuthor { get; set; }
 
-    /// <summary>
-    /// The Workshop Key in encrypted form (base64 of the platform-protected
-    /// ciphertext). Empty when no key is stored. Managed by ICredentialService
-    /// and not intended for direct consumption: read and write the key through
-    /// the service so encryption stays the only path in and out.
-    /// </summary>
-    string WorkshopKeyProtected { get; set; }
-
-    /// <summary>
-    /// The non-secret display hint for the stored Workshop Key (the prefix of
-    /// the key up to the second underscore, e.g. "kpf_abc123"). Empty when no
-    /// hint can be derived. Managed by ICredentialService alongside
-    /// WorkshopKeyProtected.
-    /// </summary>
-    string WorkshopKeyHint { get; set; }
-
     // ========================================
     // Search Panel Options
     // ========================================

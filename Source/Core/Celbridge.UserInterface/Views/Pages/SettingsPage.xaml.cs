@@ -15,8 +15,8 @@ public sealed partial class SettingsPage : Page
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    private string TitleString => _stringLocalizer.GetString("SettingsPage_Title");
-    private string ApplicationThemeString => _stringLocalizer.GetString("SettingsPage_ApplicationTheme");
+    private string TitleString => _stringLocalizer.GetString("Settings_Page_Title");
+    private string ApplicationThemeString => _stringLocalizer.GetString("Settings_Application_Theme");
 
     public SettingsPage()
     {

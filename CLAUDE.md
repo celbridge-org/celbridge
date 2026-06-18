@@ -69,6 +69,7 @@ python run_tests.py
 - Do not use special characters like arrows or emojis in code comments
 - Use full stops rather than semicolons in comment and documentation prose. This applies to English text only, not C# statement terminators
 - Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
+- Localized strings for the Settings page follow `Settings_<Group>_<Element>`, mirroring the descriptor groups defined in `Setting.cs` (the `Setting` catalog class). Strings shown elsewhere keep their existing `Section_Element` conventions
 - Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
 - Place `Dispose` implementation at the end of a class; declare all private fields at the top
 - Split multi-condition `if` statements so each clause is on its own line, with the logical operator (`&&`, `||`) at the end of the preceding line

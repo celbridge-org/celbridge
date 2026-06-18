@@ -1,46 +1,53 @@
 using Celbridge.Settings;
 using Celbridge.Settings.Services;
+using Celbridge.Tests.Helpers;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests.Settings;
 
 [TestFixture]
 public class EditorSettingsTests
 {
-    private ServiceProvider? _serviceProvider;
+    private IEditorSettings _editorSettings = null!;
 
     [SetUp]
     public void Setup()
     {
-        var services = new ServiceCollection();
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
-        services.AddTransient<ISettingsGroup, TempSettingsGroup>();
-        services.AddSingleton<IEditorSettings, EditorSettings>();
+        var settingsService = new SettingsService(
+            new NullLogger<SettingsService>(),
+            new InMemorySettingsStore(),
+            new FakeCredentialProtector(),
+            workspaceWrapper);
 
-        _serviceProvider = services.BuildServiceProvider();
+        _editorSettings = new EditorSettings(settingsService);
     }
-
-    [TearDown]
-    public void TearDown()
-    { }
 
     [Test]
     public void ICanCanGetAndSetEditorSettings()
     {
-        Guard.IsNotNull(_serviceProvider);
-
-        var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
-
         // Check the default value system is working
-        editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
+        _editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
 
         // Set a property
-        editorSettings.PreferredRegionVisibility = LayoutRegion.Primary;
-        editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.Primary);
+        _editorSettings.PreferredRegionVisibility = LayoutRegion.Primary;
+        _editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.Primary);
 
         // Reset the property to default
-        editorSettings.Reset();
-        editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
+        _editorSettings.Reset();
+        _editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
+    }
+
+    [Test]
+    public void SettingChange_RaisesPropertyChanged()
+    {
+        var changedProperties = new List<string?>();
+        _editorSettings.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+
+        _editorSettings.PrimaryPanelWidth = 123f;
+
+        changedProperties.Should().Contain(nameof(IEditorSettings.PrimaryPanelWidth));
     }
 }

@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using Celbridge.Credentials;
 using Celbridge.Packages;
 using Celbridge.Settings;
 
@@ -12,18 +11,16 @@ public class PageApiClientTests
     private const string TestWorkshopKey = "kpf_testkey_supersecret";
 
     private StubMessageHandler _messageHandler = null!;
-    private ICredentialService _credentialService = null!;
-    private IEditorSettings _editorSettings = null!;
+    private ISettingsService _settingsService = null!;
     private PageApiClient _client = null!;
 
     [SetUp]
     public void Setup()
     {
         _messageHandler = new StubMessageHandler();
-        _credentialService = Substitute.For<ICredentialService>();
-        _editorSettings = Substitute.For<IEditorSettings>();
+        _settingsService = Substitute.For<ISettingsService>();
         SetStoredConnection("https://workshop.example.com", TestWorkshopKey);
-        _client = new PageApiClient(_credentialService, _editorSettings, _messageHandler);
+        _client = new PageApiClient(_settingsService, _messageHandler);
     }
 
     [TearDown]
@@ -243,11 +240,11 @@ public class PageApiClientTests
     }
 
     // The Workshop URL is a non-secret setting; the Workshop Key is the only
-    // value held in the credential store.
+    // value held in the Protected scope.
     private void SetStoredConnection(string workshopUrl, string workshopKey)
     {
-        _editorSettings.WorkshopUrl.Returns(workshopUrl);
-        _credentialService.GetWorkshopKeyAsync()
+        _settingsService.Get(Setting.Workshop.Url).Returns(workshopUrl);
+        _settingsService.TryGet(Setting.Workshop.Key)
             .Returns(Result<string>.Ok(workshopKey));
     }
 

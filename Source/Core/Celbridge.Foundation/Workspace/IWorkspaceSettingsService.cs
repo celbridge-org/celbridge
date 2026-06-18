@@ -9,30 +9,26 @@ public interface IWorkspaceSettingsService
     /// Returns the workspace settings for the current loaded project.
     /// </summary>
     IWorkspaceSettings? WorkspaceSettings { get; }
-    
+
     /// <summary>
-    /// Folder containing the workspace settings database
+    /// The synchronous key/value store backing Workspace-scope settings for the
+    /// current loaded project. Null when no workspace is loaded.
+    /// </summary>
+    IWorkspaceSettingsStore? WorkspaceSettingsStore { get; }
+
+    /// <summary>
+    /// Folder containing the workspace settings file.
     /// </summary>
     string? WorkspaceSettingsFolderPath { get; set; }
 
     /// <summary>
-    /// Loads the workspace settings database associated with the current loaded project.
-    /// Creates the workspace settings database if it doesn't exist.
+    /// Loads the workspace settings for the current loaded project, creating the
+    /// settings file if it does not exist and porting any legacy SQLite store.
     /// </summary>
     Task<Result> AcquireWorkspaceSettingsAsync();
 
     /// <summary>
-    /// Creates a workspace settings database at the specified path.
-    /// </summary>
-    Task<Result> CreateWorkspaceSettingsAsync(string databasePath);
-
-    /// <summary>
-    /// Load the workspace settings database at the specified path.
-    /// </summary>
-    Result LoadWorkspaceSettings(string databasePath);
-
-    /// <summary>
-    /// Unloads the currently loaded workspace settings database.
+    /// Unloads the currently loaded workspace settings.
     /// </summary>
     Result UnloadWorkspaceSettings();
 }

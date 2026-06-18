@@ -2,11 +2,15 @@ using Celbridge.Projects;
 
 namespace Celbridge.WorkspaceUI.Services;
 
-public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
+public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
 {
     private readonly ILocalFileSystem _fileSystem;
 
-    public IWorkspaceSettings? WorkspaceSettings { get; private set; }
+    private WorkspaceSettings? _workspaceSettings;
+
+    public IWorkspaceSettings? WorkspaceSettings => _workspaceSettings;
+
+    public IWorkspaceSettingsStore? WorkspaceSettingsStore => _workspaceSettings;
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
@@ -29,89 +33,46 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         {
             return Result.Fail("The workspace settings folder has not been set.");
         }
-        var databaseFilePath = Path.Combine(WorkspaceSettingsFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
-        //
-        // Create the workspace settings database if it doesn't exist yet
-        //
-
-        var infoResult = await _fileSystem.GetInfoAsync(databaseFilePath);
-        bool databaseExists = infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.File;
-
-        if (!databaseExists)
+        var createFolderResult = await EnsureSettingsFolderExistsAsync(WorkspaceSettingsFolderPath);
+        if (createFolderResult.IsFailure)
         {
-            var createResult = await CreateWorkspaceSettingsAsync(databaseFilePath);
-            if (createResult.IsFailure)
-            {
-                return createResult;
-            }
+            return createFolderResult;
         }
 
-        //
-        // Load the workspace settings database
-        //
+        var filePath = Path.Combine(WorkspaceSettingsFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
-        var loadResult = LoadWorkspaceSettings(databaseFilePath);
+        var loadResult = await Services.WorkspaceSettings.LoadAsync(_fileSystem, filePath);
         if (loadResult.IsFailure)
         {
-            return loadResult;
+            return Result.Fail($"Failed to load workspace settings file: {filePath}")
+                .WithErrors(loadResult);
         }
+
+        _workspaceSettings = loadResult.Value;
 
         return Result.Ok();
-    }
-
-    public async Task<Result> CreateWorkspaceSettingsAsync(string databasePath)
-    {
-        try
-        {
-            var createResult = await Services.WorkspaceSettings.CreateWorkspaceSettingsAsync(_fileSystem, databasePath);
-            return createResult;
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when creating the workspace settings database.")
-                .WithException(ex); ;
-        }
-    }
-
-    public Result LoadWorkspaceSettings(string databasePath)
-    {
-        try
-        {
-            var loadResult = Services.WorkspaceSettings.LoadWorkspaceSettings(databasePath);
-            if (loadResult.IsFailure)
-            {
-                return Result.Fail($"Failed to load workspace settings database: {databasePath}");
-            }
-
-            WorkspaceSettings = loadResult.Value;
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when loading the workspace settings database.")
-                .WithException(ex); ;
-        }
     }
 
     public Result UnloadWorkspaceSettings()
     {
-        if (WorkspaceSettings is null)
-        {
-            Guard.IsNull(WorkspaceSettings);
+        _workspaceSettings = null;
 
-            // Unloading a workspace that is not loaded is a no-op
+        return Result.Ok();
+    }
+
+    private async Task<Result> EnsureSettingsFolderExistsAsync(string folderPath)
+    {
+        var infoResult = await _fileSystem.GetInfoAsync(folderPath);
+        bool folderExists = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        if (folderExists)
+        {
             return Result.Ok();
         }
 
-        var disposable = WorkspaceSettings as IDisposable;
-        Guard.IsNotNull(disposable);
-        disposable.Dispose();
-        WorkspaceSettings = null;
-
-        return Result.Ok();
+        return await _fileSystem.CreateFolderAsync(folderPath);
     }
 
     private bool _disposed;
@@ -122,16 +83,13 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (!_disposed)
         {
             if (disposing)
             {
-                if (WorkspaceSettings is not null)
-                {
-                    UnloadWorkspaceSettings();
-                }
+                UnloadWorkspaceSettings();
             }
 
             _disposed = true;

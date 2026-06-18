@@ -1,4 +1,3 @@
-using Celbridge.Credentials;
 using Celbridge.Settings.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,19 +11,19 @@ public static class ServiceConfiguration
         // Register services
         //
 
-        services.AddSingleton<IEditorSettings, EditorSettings>();
-        services.AddSingleton<IFeatureFlags, FeatureFlags>();
-        services.AddSingleton<ICredentialProtector, DpapiCredentialProtector>();
-        services.AddSingleton<ICredentialService, CredentialService>();
-
         if (IsStorageAPIAvailable)
         {
-            services.AddTransient<ISettingsGroup, SettingsGroup>();
+            services.AddTransient<IApplicationSettingsStore, LocalSettingsStore>();
         }
         else
         {
-            services.AddTransient<ISettingsGroup, TempSettingsGroup>();
+            services.AddTransient<IApplicationSettingsStore, InMemorySettingsStore>();
         }
+
+        services.AddSingleton<ICredentialProtector, DpapiCredentialProtector>();
+        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IEditorSettings, EditorSettings>();
+        services.AddSingleton<IFeatureFlags, FeatureFlags>();
     }
 
     private static bool IsStorageAPIAvailable

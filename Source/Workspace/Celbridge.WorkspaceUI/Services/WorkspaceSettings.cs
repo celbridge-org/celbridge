@@ -1,29 +1,35 @@
-using Celbridge.WorkspaceUI.Models;
-using SQLite;
 using System.Text.Json;
+using Celbridge.Workspace;
 
 namespace Celbridge.WorkspaceUI.Services;
 
-public class WorkspaceSettings : IDisposable, IWorkspaceSettings
+/// <summary>
+/// Per-project settings stored as a JSON key/value file in the project folder,
+/// loaded into memory once. The async IWorkspaceSettings facade persists on each
+/// write; the synchronous IWorkspaceSettingsStore updates memory only and defers
+/// the disk write to FlushAsync.
+/// </summary>
+public sealed class WorkspaceSettings : IWorkspaceSettings, IWorkspaceSettingsStore
 {
     private const int DataVersion = 1;
     private const string DataVersionKey = nameof(DataVersion);
 
-    private SQLiteAsyncConnection _connection;
-
-    public string DatabasePath { get; init; }
-
-    private WorkspaceSettings(string databasePath)
+    private static readonly JsonSerializerOptions FileSerializerOptions = new()
     {
-        Guard.IsNotNullOrWhiteSpace(databasePath);
-        DatabasePath = databasePath;
+        WriteIndented = true,
+    };
 
-        _connection = new SQLiteAsyncConnection(databasePath);
-    }
+    private readonly ILocalFileSystem _fileSystem;
+    private readonly string _filePath;
+    private readonly Dictionary<string, string> _entries;
 
-    public async Task SetDataVersionAsync(int version)
+    private bool _isDirty;
+
+    private WorkspaceSettings(ILocalFileSystem fileSystem, string filePath, Dictionary<string, string> entries)
     {
-        await SetPropertyAsync(DataVersionKey, version);
+        _fileSystem = fileSystem;
+        _filePath = filePath;
+        _entries = entries;
     }
 
     public async Task<int> GetDataVersionAsync()
@@ -31,39 +37,37 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         return await GetPropertyAsync(DataVersionKey, 0);
     }
 
+    public async Task SetDataVersionAsync(int version)
+    {
+        await SetPropertyAsync(DataVersionKey, version);
+    }
+
     public async Task SetPropertyAsync<T>(string key, T value) where T : notnull
     {
         try
         {
-            var serializedValue = JsonSerializer.Serialize(value);
- 
-            var property = new WorkspaceProperty()
-            {
-                Key = key,
-                Value = serializedValue
-            };
-
-            var addedRows = await _connection.InsertOrReplaceAsync(property);
-            Guard.IsTrue(addedRows <= 1);
+            _entries[key] = JsonSerializer.Serialize(value);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException($"Failed to set workspace property for key {key}", ex);
         }
+
+        await PersistAsync();
     }
 
     public async Task<T?> GetPropertyAsync<T>(string key, T? defaultValue)
     {
+        await Task.CompletedTask;
+
         try
         {
-            var property = await _connection.Table<WorkspaceProperty>().FirstOrDefaultAsync(p => p.Key == key);
-
-            if (property == null)
+            if (!_entries.TryGetValue(key, out var json))
             {
                 return defaultValue;
             }
 
-            var value = JsonSerializer.Deserialize<T>(property.Value);
+            var value = JsonSerializer.Deserialize<T>(json);
             if (value is null)
             {
                 return defaultValue;
@@ -77,112 +81,154 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
     }
 
-    public async Task<bool> DeletePropertyAsync(string key)
-    {
-        try
-        {
-            var rowsDeleted = await _connection.DeleteAsync<WorkspaceProperty>(key);
-            if (rowsDeleted <= 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to delete workspace property for key {key}", ex);
-        }
-    }
-
     public async Task<T?> GetPropertyAsync<T>(string key)
     {
         var defaultValue = default(T);
         return await GetPropertyAsync<T>(key, defaultValue);
     }
 
-    public static Result<IWorkspaceSettings> LoadWorkspaceSettings(string databasePath)
+    public async Task<bool> DeletePropertyAsync(string key)
     {
-        Guard.IsNotNullOrWhiteSpace(databasePath);
+        if (!_entries.Remove(key))
+        {
+            return false;
+        }
+
+        await PersistAsync();
+
+        return true;
+    }
+
+    public bool TryGetValue<T>(string key, out T value) where T : notnull
+    {
+        value = default!;
+
+        if (!_entries.TryGetValue(key, out var json))
+        {
+            return false;
+        }
 
         try
         {
-            var workspaceSettings = new WorkspaceSettings(databasePath);
-            Guard.IsNotNull(workspaceSettings);
+            var deserialized = JsonSerializer.Deserialize<T>(json);
+            if (deserialized is null)
+            {
+                return false;
+            }
 
-            return Result<IWorkspaceSettings>.Ok(workspaceSettings);
+            value = deserialized;
+            return true;
         }
-        catch (Exception ex)
+        catch (JsonException)
         {
-            return Result<IWorkspaceSettings>.Fail($"An exception occurred when loading the workspace settings database.")
-                .WithException(ex); ;
+            return false;
         }
     }
 
-    public static async Task<Result> CreateWorkspaceSettingsAsync(ILocalFileSystem fileSystem, string databasePath)
+    public void SetValue<T>(string key, T value) where T : notnull
     {
-        Guard.IsNotNullOrWhiteSpace(databasePath);
+        _entries[key] = JsonSerializer.Serialize(value);
+        _isDirty = true;
+    }
 
+    public bool ContainsKey(string key)
+    {
+        return _entries.ContainsKey(key);
+    }
+
+    public void RemoveValue(string key)
+    {
+        if (_entries.Remove(key))
+        {
+            _isDirty = true;
+        }
+    }
+
+    public async Task FlushAsync()
+    {
+        if (!_isDirty)
+        {
+            return;
+        }
+
+        await PersistAsync();
+    }
+
+    // Overwrites the settings file with the full in-memory store. The data is
+    // regenerable UI state, so a write interrupted by a crash is acceptable: the
+    // next load discards an unreadable file and starts empty.
+    private async Task PersistAsync()
+    {
+        string json;
         try
         {
-            // Ensure parent folder exists
-            var parentFolder = Path.GetDirectoryName(databasePath);
-            Guard.IsNotNull(parentFolder);
+            json = JsonSerializer.Serialize(_entries, FileSerializerOptions);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to serialize workspace settings", ex);
+        }
 
-            var parentInfoResult = await fileSystem.GetInfoAsync(parentFolder);
-            bool parentExists = parentInfoResult.IsSuccess
-                && parentInfoResult.Value.Kind == StorageItemKind.Folder;
+        var writeResult = await _fileSystem.WriteAllTextAsync(_filePath, json);
+        if (writeResult.IsFailure)
+        {
+            throw new InvalidOperationException(
+                $"Failed to persist workspace settings: {writeResult.FirstErrorMessage}");
+        }
 
-            if (!parentExists)
+        _isDirty = false;
+    }
+
+    /// <summary>
+    /// Loads the workspace settings from the JSON file at the given path,
+    /// returning an empty store when the file is missing or unreadable. Ensures
+    /// the data version is recorded, creating the file on first load.
+    /// </summary>
+    public static async Task<Result<WorkspaceSettings>> LoadAsync(ILocalFileSystem fileSystem, string filePath)
+    {
+        Guard.IsNotNullOrWhiteSpace(filePath);
+
+        var entries = new Dictionary<string, string>();
+
+        var infoResult = await fileSystem.GetInfoAsync(filePath);
+        bool fileExists = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File;
+
+        if (fileExists)
+        {
+            var readResult = await fileSystem.ReadAllTextAsync(filePath);
+            if (readResult.IsFailure)
             {
-                var createFolderResult = await fileSystem.CreateFolderAsync(parentFolder);
-                if (createFolderResult.IsFailure)
+                return Result<WorkspaceSettings>.Fail($"Failed to read workspace settings file: {filePath}")
+                    .WithErrors(readResult);
+            }
+
+            var content = readResult.Value;
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                try
                 {
-                    return createFolderResult;
+                    var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(content);
+                    if (parsed is not null)
+                    {
+                        entries = parsed;
+                    }
+                }
+                catch (JsonException)
+                {
+                    // A corrupt store is treated as empty rather than failing the
+                    // workspace load; the data is regenerable UI state.
                 }
             }
-
-            // Create and initialize the workspace settings database
-            using (var workspaceSettings = new WorkspaceSettings(databasePath))
-            {
-                Guard.IsNotNull(workspaceSettings);
-
-                await workspaceSettings._connection.CreateTableAsync<WorkspaceProperty>();
-                await workspaceSettings.SetDataVersionAsync(DataVersion);
-            }
-
-            return Result.Ok();
         }
-        catch (Exception ex)
+
+        var workspaceSettings = new WorkspaceSettings(fileSystem, filePath, entries);
+
+        if (!workspaceSettings.ContainsKey(DataVersionKey))
         {
-            return Result.Fail("An exception occurred when creating the workspace settings database")
-                .WithException(ex); ;
+            await workspaceSettings.SetDataVersionAsync(DataVersion);
         }
-    }
 
-    private bool _disposed = false;
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed)
-        {
-            if (disposing)
-            {
-                _connection?.CloseAsync().Wait();
-            }
-
-            _disposed = true;
-        }
-    }
-
-    ~WorkspaceSettings()
-    {
-        Dispose(false);
+        return workspaceSettings;
     }
 }
