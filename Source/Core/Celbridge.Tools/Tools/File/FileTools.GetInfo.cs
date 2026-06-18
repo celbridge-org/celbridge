@@ -4,16 +4,10 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by file_get_info for file resources. Sidecar fields are
-/// populated when the file has a paired .cel sidecar; SidecarStatus is
-/// "healthy" when the sidecar's TOML parses cleanly, "broken" otherwise.
-/// Absence is signalled by sidecar_status = "none" with sidecar = null.
-/// IsReadOnly reflects the filesystem read-only attribute — a true value
-/// means write operations will fail until the attribute is cleared with
-/// file_set_writeable. Hash is the lowercase-hex SHA-256 of the file's
-/// bytes when computeHash was set; null otherwise. Lowercase matches the
-/// git / sha256sum / workshop content_hash convention, so the value compares
-/// directly with those surfaces.
+/// Result returned by file_get_info for file resources. Carries size, modified
+/// time, extension, text/line metadata, read-only state, paired sidecar status,
+/// and an optional content hash. Per-field semantics are documented in the
+/// file_get_info tool guide.
 /// </summary>
 public record class FileInfoResult(
     string Type,
