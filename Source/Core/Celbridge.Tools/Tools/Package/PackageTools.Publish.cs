@@ -207,7 +207,7 @@ public partial class PackageTools
             return new PublishBaseCheck(PublishBaseConcern.RecordUnreadable);
         }
 
-        var installedReference = PackageHistoryFile.TryReadInstalledReference(readResult.Value);
+        var installedReference = PackageHistoryHelper.TryReadInstalledReference(readResult.Value);
         if (installedReference is null)
         {
             // Present but no parseable heading: the base cannot be determined.
@@ -230,7 +230,7 @@ public partial class PackageTools
         }
         var latestLiveVersion = liveVersions.Max(packageVersion => packageVersion.Version);
 
-        if (!PackageHistoryFile.IsStaleBase(installedReference, packageName, latestLiveVersion))
+        if (!PackageHistoryHelper.IsStaleBase(installedReference, packageName, latestLiveVersion))
         {
             return new PublishBaseCheck(PublishBaseConcern.None);
         }
@@ -263,7 +263,15 @@ public partial class PackageTools
         }
 
         var historyFile = folderResource.Combine(PackageConstants.HistoryFileName);
-        var historyMarkdown = PackageHistoryFile.Format(packageName, detailsResult.Value.Versions, publishedVersion);
+        var formatResult = PackageHistoryHelper.Format(packageName, detailsResult.Value.Versions, publishedVersion);
+        if (formatResult.IsFailure)
+        {
+            Logger.LogWarning(formatResult,
+                $"Published '{packageName}' version {publishedVersion} but could not build {PackageConstants.HistoryFileName}");
+            return;
+        }
+
+        var historyMarkdown = formatResult.Value;
         var writeResult = await resourceFileSystem.WriteAllTextAsync(historyFile, historyMarkdown);
         if (writeResult.IsFailure)
         {

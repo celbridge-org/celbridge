@@ -1,3 +1,4 @@
+using Celbridge.Localization;
 using Celbridge.Settings;
 using ModelContextProtocol.Server;
 
@@ -40,7 +41,7 @@ public partial class PageTools : AgentToolBase
             return author;
         }
 
-        var localizerService = GetRequiredService<Celbridge.Localization.ILocalizerService>();
+        var localizerService = GetRequiredService<ILocalizerService>();
         var message = localizerService.GetString("Workshop_PublishBlocked_Message");
         if (confirmWithUser)
         {

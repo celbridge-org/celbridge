@@ -4,12 +4,12 @@ using Celbridge.Tools;
 namespace Celbridge.Tests.Tools;
 
 /// <summary>
-/// Tests for PackageHistoryFile — the HISTORY.md changelog rendered on install
+/// Tests for PackageHistoryHelper — the HISTORY.md changelog rendered on install
 /// and publish, the installed-reference read-back that package_status and the
 /// replace confirmation rely on, and the stale-base publish check.
 /// </summary>
 [TestFixture]
-public class PackageHistoryFileTests
+public class PackageHistoryHelperTests
 {
     private const string PackageName = "sample-package";
 
@@ -35,10 +35,10 @@ public class PackageHistoryFileTests
             MakeVersion(3),
         };
 
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 3);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 3).Value;
 
         markdown.Should().StartWith("# sample-package@3");
-        PackageHistoryFile.TryReadInstalledVersion(markdown).Should().Be(3);
+        PackageHistoryHelper.TryReadInstalledVersion(markdown).Should().Be(3);
     }
 
     [Test]
@@ -51,7 +51,7 @@ public class PackageHistoryFileTests
             MakeVersion(3),
         };
 
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 2);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 2).Value;
 
         markdown.Should().Contain("# sample-package@2");
         markdown.Should().Contain("# sample-package@1");
@@ -66,7 +66,7 @@ public class PackageHistoryFileTests
             MakeVersion(1, author: "Celbridge", contentHash: "eb1ddd1ce6a9bbbb", summary: "Initial release."),
         };
 
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 1);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 1).Value;
 
         // Full timestamp with a Z suffix, not date-only: versions published the
         // same day must stay distinguishable and ordered.
@@ -82,7 +82,7 @@ public class PackageHistoryFileTests
             MakeVersion(1, contentHash: "sha256:0123456789abcdef0123"),
         };
 
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 1);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 1).Value;
 
         markdown.Should().Contain("hash: 0123456789ab");
         markdown.Should().NotContain("sha256:");
@@ -96,7 +96,7 @@ public class PackageHistoryFileTests
             MakeVersion(1, contentHash: string.Empty),
         };
 
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 1);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 1).Value;
 
         markdown.Should().Contain("time: 2026-06-13T15:14:50Z");
         markdown.Should().NotContain("hash:");
@@ -111,7 +111,7 @@ public class PackageHistoryFileTests
             MakeVersion(2, summary: "Live summary."),
         };
 
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 2);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 2).Value;
 
         // The deleted version keeps its heading, time, and hash for provenance,
         // gains a deleted flag, and renders the sentinel instead of its summary.
@@ -124,12 +124,24 @@ public class PackageHistoryFileTests
     }
 
     [Test]
+    public void Format_NoVersionAtOrBelowInstalled_Fails()
+    {
+        // Only version 5 exists, but the install record names version 4, so the
+        // filtered list is empty and the changelog would carry no entries.
+        var versions = new List<RemotePackageVersion> { MakeVersion(5) };
+
+        var result = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 4);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public void TryReadInstalledReference_ParsesNameAndVersion()
     {
         var versions = new List<RemotePackageVersion> { MakeVersion(7) };
-        var markdown = PackageHistoryFile.Format(PackageName, versions, installedVersion: 7);
+        var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 7).Value;
 
-        var reference = PackageHistoryFile.TryReadInstalledReference(markdown);
+        var reference = PackageHistoryHelper.TryReadInstalledReference(markdown);
 
         reference.Should().NotBeNull();
         reference!.Name.Should().Be(PackageName);
@@ -140,19 +152,19 @@ public class PackageHistoryFileTests
     public void TryReadInstalledReference_VersionOnlyHeading_ReturnsNull()
     {
         // A bare "# version" heading is not a valid entry; only "name@version" is.
-        PackageHistoryFile.TryReadInstalledReference("# 5\r\n\r\nSome notes.\r\n").Should().BeNull();
+        PackageHistoryHelper.TryReadInstalledReference("# 5\r\n\r\nSome notes.\r\n").Should().BeNull();
     }
 
     [Test]
     public void TryReadInstalledVersion_ReturnsNull_WhenFirstLineIsNotAVersionHeading()
     {
-        PackageHistoryFile.TryReadInstalledVersion("Some hand-authored notes.\r\n").Should().BeNull();
+        PackageHistoryHelper.TryReadInstalledVersion("Some hand-authored notes.\r\n").Should().BeNull();
     }
 
     [Test]
     public void TryReadInstalledVersion_ReturnsNull_ForEmptyContent()
     {
-        PackageHistoryFile.TryReadInstalledVersion(string.Empty).Should().BeNull();
+        PackageHistoryHelper.TryReadInstalledVersion(string.Empty).Should().BeNull();
     }
 
     [Test]
@@ -160,7 +172,7 @@ public class PackageHistoryFileTests
     {
         var installed = new InstalledPackageReference(PackageName, 4);
 
-        PackageHistoryFile.IsStaleBase(installed, PackageName, latestLiveVersion: 6).Should().BeTrue();
+        PackageHistoryHelper.IsStaleBase(installed, PackageName, latestLiveVersion: 6).Should().BeTrue();
     }
 
     [Test]
@@ -168,7 +180,7 @@ public class PackageHistoryFileTests
     {
         var installed = new InstalledPackageReference(PackageName, 6);
 
-        PackageHistoryFile.IsStaleBase(installed, PackageName, latestLiveVersion: 6).Should().BeFalse();
+        PackageHistoryHelper.IsStaleBase(installed, PackageName, latestLiveVersion: 6).Should().BeFalse();
     }
 
     [Test]
@@ -177,12 +189,12 @@ public class PackageHistoryFileTests
         // A different recorded name is a rename or fork, not a lost-update race.
         var installed = new InstalledPackageReference("other-package", 1);
 
-        PackageHistoryFile.IsStaleBase(installed, PackageName, latestLiveVersion: 6).Should().BeFalse();
+        PackageHistoryHelper.IsStaleBase(installed, PackageName, latestLiveVersion: 6).Should().BeFalse();
     }
 
     [Test]
     public void IsStaleBase_NoInstallRecord_IsNotStale()
     {
-        PackageHistoryFile.IsStaleBase(null, PackageName, latestLiveVersion: 6).Should().BeFalse();
+        PackageHistoryHelper.IsStaleBase(null, PackageName, latestLiveVersion: 6).Should().BeFalse();
     }
 }

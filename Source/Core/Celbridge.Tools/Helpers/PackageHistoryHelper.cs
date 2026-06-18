@@ -13,7 +13,7 @@ public sealed record InstalledPackageReference(string Name, int Version);
 /// <summary>
 /// Formats and parses the generated HISTORY.md changelog written beside a package manifest.
 /// </summary>
-internal static class PackageHistoryFile
+internal static class PackageHistoryHelper
 {
     // Marker text rendered in place of a deleted version's summary.
     private const string DeletedVersionSummary = "[package_deleted]";
@@ -24,14 +24,21 @@ internal static class PackageHistoryFile
 
     /// <summary>
     /// Builds the HISTORY.md changelog from the package's versions, covering
-    /// every version up to and including the installed one, newest first.
+    /// every version up to and including the installed one, newest first. Fails
+    /// when no version is at or below the installed one, since an empty changelog
+    /// is not a meaningful install record.
     /// </summary>
-    public static string Format(string packageName, IReadOnlyList<RemotePackageVersion> versions, int installedVersion)
+    public static Result<string> Format(string packageName, IReadOnlyList<RemotePackageVersion> versions, int installedVersion)
     {
         var orderedVersions = versions
             .Where(packageVersion => packageVersion.Version <= installedVersion)
             .OrderByDescending(packageVersion => packageVersion.Version)
             .ToList();
+
+        if (orderedVersions.Count == 0)
+        {
+            return Result.Fail($"Cannot build history for package '{packageName}': no version at or below {installedVersion}.");
+        }
 
         var builder = new StringBuilder();
         foreach (var packageVersion in orderedVersions)
