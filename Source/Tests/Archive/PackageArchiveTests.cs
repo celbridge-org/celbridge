@@ -590,7 +590,7 @@ public class PackageArchiveTests
     [Test]
     public void GlobToRegexMatchesWildcards()
     {
-        var regex = new System.Text.RegularExpressions.Regex(ArchiveHelper.GlobToRegex("*.py"));
+        var regex = new System.Text.RegularExpressions.Regex(GlobHelper.GlobToRegex("*.py"));
         regex.IsMatch("app.py").Should().BeTrue();
         regex.IsMatch("app.txt").Should().BeFalse();
     }
@@ -598,7 +598,7 @@ public class PackageArchiveTests
     [Test]
     public void GlobToRegexMatchesQuestionMark()
     {
-        var regex = new System.Text.RegularExpressions.Regex(ArchiveHelper.GlobToRegex("file?.txt"));
+        var regex = new System.Text.RegularExpressions.Regex(GlobHelper.GlobToRegex("file?.txt"));
         regex.IsMatch("file1.txt").Should().BeTrue();
         regex.IsMatch("fileA.txt").Should().BeTrue();
         regex.IsMatch("file12.txt").Should().BeFalse();

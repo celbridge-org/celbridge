@@ -4,7 +4,7 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for package operations: archiving, unarchiving, and workshop package management.
+/// MCP tools for package operations.
 /// </summary>
 [McpServerToolType]
 public partial class PackageTools : AgentToolBase

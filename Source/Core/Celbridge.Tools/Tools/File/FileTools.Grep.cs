@@ -301,8 +301,8 @@ public partial class FileTools
         var entries = new List<FolderItem>();
         await CollectRecursiveAsync(resourceFileSystem, scopeFolder, entries);
 
-        var includeRegex = BuildFileNameGlobRegex(include);
-        var excludeRegex = BuildFileNameGlobRegex(exclude);
+        var includeRegex = GlobHelper.BuildNameMatcher(include);
+        var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var targets = new List<(ResourceKey Key, string Display)>();
         foreach (var entry in entries)
@@ -452,33 +452,4 @@ public partial class FileTools
         return BuildGrepResponse(grepResult);
     }
 
-    // Builds a case-insensitive regex from a comma-separated glob list matched
-    // against a file name (e.g. "*.js,*.css"), or null when the list is empty.
-    // Mirrors the project-walk's include/exclude semantics so scoped grep over a
-    // non-default root filters the same way.
-    private static Regex? BuildFileNameGlobRegex(string globList)
-    {
-        if (string.IsNullOrEmpty(globList))
-        {
-            return null;
-        }
-
-        var patterns = globList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (patterns.Length == 0)
-        {
-            return null;
-        }
-
-        var alternatives = new List<string>();
-        foreach (var pattern in patterns)
-        {
-            var escaped = Regex.Escape(pattern)
-                .Replace("\\*", ".*")
-                .Replace("\\?", ".");
-            alternatives.Add($"(?:^{escaped}$)");
-        }
-
-        var combined = string.Join("|", alternatives);
-        return new Regex(combined, RegexOptions.IgnoreCase);
-    }
 }

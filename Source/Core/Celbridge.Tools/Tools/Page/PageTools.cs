@@ -4,7 +4,7 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for workshop page operations: publishing, listing, inspecting, and unpublishing static pages.
+/// MCP tools for workshop page operations.
 /// </summary>
 [McpServerToolType]
 public partial class PageTools : AgentToolBase

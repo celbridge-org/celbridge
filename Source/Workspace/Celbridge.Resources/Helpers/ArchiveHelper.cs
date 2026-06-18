@@ -113,22 +113,11 @@ public static class ArchiveHelper
         var patternParts = patterns.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var pattern in patternParts)
         {
-            var regexPattern = GlobToRegex(pattern);
+            var regexPattern = GlobHelper.GlobToRegex(pattern);
             regexList.Add(new Regex(regexPattern, RegexOptions.IgnoreCase));
         }
 
         return regexList;
-    }
-
-    /// <summary>
-    /// Converts a simple glob pattern (supporting * and ?) to a regular expression.
-    /// </summary>
-    public static string GlobToRegex(string glob)
-    {
-        var regexPattern = Regex.Escape(glob)
-            .Replace("\\*", ".*")
-            .Replace("\\?", ".");
-        return $"^{regexPattern}$";
     }
 
     /// <summary>

@@ -46,4 +46,34 @@ public static class GlobHelper
             .Replace("\\?", "[^\\\\/]");
         return $"^{result}$";
     }
+
+    /// <summary>
+    /// Builds a case-insensitive regex that matches a single file or folder name
+    /// against a comma-separated list of name globs (e.g. "*.js,*.css"), or null
+    /// when the list is empty. Each glob is converted via GlobToRegex and the
+    /// results are combined as alternatives.
+    /// </summary>
+    public static Regex? BuildNameMatcher(string globList)
+    {
+        if (string.IsNullOrEmpty(globList))
+        {
+            return null;
+        }
+
+        var patterns = globList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (patterns.Length == 0)
+        {
+            return null;
+        }
+
+        var alternatives = new List<string>();
+        foreach (var pattern in patterns)
+        {
+            var regexPattern = GlobToRegex(pattern);
+            alternatives.Add($"(?:{regexPattern})");
+        }
+
+        var combined = string.Join("|", alternatives);
+        return new Regex(combined, RegexOptions.IgnoreCase);
+    }
 }
