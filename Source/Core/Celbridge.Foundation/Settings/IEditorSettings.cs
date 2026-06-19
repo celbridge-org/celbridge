@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Celbridge.Workspace;
 
 namespace Celbridge.Settings;
 
@@ -35,11 +34,6 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// The list of recently loaded project files.
     /// </summary>
     List<string> RecentProjects { get; set; }
-
-    /// <summary>
-    /// The file extension of the previously created file via the Add File dialog.
-    /// </summary>
-    string PreviousNewFileExtension { get; set; }
 
     /// <summary>
     /// The template name of the previously created project via the New Project dialog.
@@ -83,40 +77,6 @@ public interface IEditorSettings : INotifyPropertyChanged
     int PreferredWindowHeight { get; set; }
 
     // ========================================
-    // Panel State
-    // ========================================
-
-    /// <summary>
-    /// Preferred panel visibility.
-    /// </summary>
-    LayoutRegion PreferredRegionVisibility { get; set; }
-
-    /// <summary>
-    /// Width of the Primary panel.
-    /// </summary>
-    float PrimaryPanelWidth { get; set; }
-
-    /// <summary>
-    /// Width of the Secondary panel.
-    /// </summary>
-    float SecondaryPanelWidth { get; set; }
-
-    /// <summary>
-    /// Height of the Console panel.
-    /// </summary>
-    float ConsolePanelHeight { get; set; }
-
-    /// <summary>
-    /// Height of the detail panel.
-    /// </summary>
-    float DetailPanelHeight { get; set; }
-
-    /// <summary>
-    /// Whether the Console panel is maximized to fill the Documents area.
-    /// </summary>
-    bool IsConsoleMaximized { get; set; }
-
-    // ========================================
     // Settings Page Options
     // ========================================
 
@@ -127,8 +87,6 @@ public interface IEditorSettings : INotifyPropertyChanged
 
     // ========================================
     // Workshop Connection
-    // User-scoped: these belong to the user and their installation, never to
-    // a project, so they must not be moved to per-project storage.
     // ========================================
 
     /// <summary>
@@ -141,23 +99,4 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// when none is set.
     /// </summary>
     string WorkshopAuthor { get; set; }
-
-    // ========================================
-    // Search Panel Options
-    // ========================================
-
-    /// <summary>
-    /// Match case option for search panel.
-    /// </summary>
-    bool SearchMatchCase { get; set; }
-
-    /// <summary>
-    /// Match whole word option for search panel.
-    /// </summary>
-    bool SearchWholeWord { get; set; }
-
-    /// <summary>
-    /// Whether the replace mode is enabled in the search panel.
-    /// </summary>
-    bool ReplaceMode { get; set; }
 }

@@ -6,11 +6,11 @@ public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDispo
 {
     private readonly ILocalFileSystem _fileSystem;
 
-    private WorkspaceSettings? _workspaceSettings;
+    private JsonWorkspaceStore? _workspaceStore;
 
-    public IWorkspaceSettings? WorkspaceSettings => _workspaceSettings;
+    public IWorkspacePropertyBag? PropertyBag => _workspaceStore;
 
-    public IWorkspaceSettingsStore? WorkspaceSettingsStore => _workspaceSettings;
+    public IWorkspaceSettingsStore? WorkspaceSettingsStore => _workspaceStore;
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
@@ -29,6 +29,13 @@ public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDispo
 
     public async Task<Result> AcquireWorkspaceSettingsAsync()
     {
+        // Idempotent: called twice during load (page-load before the panels bind,
+        // then the workspace loader). Reloading would discard unflushed in-memory writes.
+        if (_workspaceStore is not null)
+        {
+            return Result.Ok();
+        }
+
         if (string.IsNullOrEmpty(WorkspaceSettingsFolderPath))
         {
             return Result.Fail("The workspace settings folder has not been set.");
@@ -42,21 +49,21 @@ public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDispo
 
         var filePath = Path.Combine(WorkspaceSettingsFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
-        var loadResult = await Services.WorkspaceSettings.LoadAsync(_fileSystem, filePath);
+        var loadResult = await JsonWorkspaceStore.LoadAsync(_fileSystem, filePath);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to load workspace settings file: {filePath}")
                 .WithErrors(loadResult);
         }
 
-        _workspaceSettings = loadResult.Value;
+        _workspaceStore = loadResult.Value;
 
         return Result.Ok();
     }
 
     public Result UnloadWorkspaceSettings()
     {
-        _workspaceSettings = null;
+        _workspaceStore = null;
 
         return Result.Ok();
     }

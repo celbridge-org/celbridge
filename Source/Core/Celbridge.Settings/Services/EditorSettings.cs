@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using Celbridge.Workspace;
 
 namespace Celbridge.Settings.Services;
 
@@ -53,12 +52,6 @@ public sealed class EditorSettings : IEditorSettings
         set => Set(Setting.Project.RecentProjects, value);
     }
 
-    public string PreviousNewFileExtension
-    {
-        get => Get(Setting.Editor.PreviousNewFileExtension);
-        set => Set(Setting.Editor.PreviousNewFileExtension, value);
-    }
-
     public string PreviousNewProjectTemplateName
     {
         get => Get(Setting.Project.PreviousNewProjectTemplateName);
@@ -101,42 +94,6 @@ public sealed class EditorSettings : IEditorSettings
         set => Set(Setting.Window.PreferredHeight, value);
     }
 
-    public LayoutRegion PreferredRegionVisibility
-    {
-        get => Get(Setting.Layout.PreferredRegionVisibility);
-        set => Set(Setting.Layout.PreferredRegionVisibility, value);
-    }
-
-    public float PrimaryPanelWidth
-    {
-        get => Get(Setting.Layout.PrimaryPanelWidth);
-        set => Set(Setting.Layout.PrimaryPanelWidth, value);
-    }
-
-    public float SecondaryPanelWidth
-    {
-        get => Get(Setting.Layout.SecondaryPanelWidth);
-        set => Set(Setting.Layout.SecondaryPanelWidth, value);
-    }
-
-    public float ConsolePanelHeight
-    {
-        get => Get(Setting.Layout.ConsolePanelHeight);
-        set => Set(Setting.Layout.ConsolePanelHeight, value);
-    }
-
-    public float DetailPanelHeight
-    {
-        get => Get(Setting.Layout.DetailPanelHeight);
-        set => Set(Setting.Layout.DetailPanelHeight, value);
-    }
-
-    public bool IsConsoleMaximized
-    {
-        get => Get(Setting.Layout.IsConsoleMaximized);
-        set => Set(Setting.Layout.IsConsoleMaximized, value);
-    }
-
     public ApplicationColorTheme Theme
     {
         get => Get(Setting.Application.Theme);
@@ -153,24 +110,6 @@ public sealed class EditorSettings : IEditorSettings
     {
         get => Get(Setting.Workshop.Author);
         set => Set(Setting.Workshop.Author, value);
-    }
-
-    public bool SearchMatchCase
-    {
-        get => Get(Setting.Search.MatchCase);
-        set => Set(Setting.Search.MatchCase, value);
-    }
-
-    public bool SearchWholeWord
-    {
-        get => Get(Setting.Search.WholeWord);
-        set => Set(Setting.Search.WholeWord, value);
-    }
-
-    public bool ReplaceMode
-    {
-        get => Get(Setting.Search.ReplaceMode);
-        set => Set(Setting.Search.ReplaceMode, value);
     }
 
     private T Get<T>(SettingDescriptor<T> descriptor) where T : notnull

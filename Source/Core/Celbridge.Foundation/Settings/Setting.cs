@@ -53,53 +53,55 @@ public static class Setting
     }
 
     /// <summary>
-    /// Panel and region layout state. Application-scoped today; Phase 2 of the
-    /// settings refactor flips these to Workspace scope.
+    /// Panel and region layout state. Workspace-scoped, so each project
+    /// remembers its own panel layout.
     /// </summary>
     public static class Layout
     {
         public static readonly SettingDescriptor<LayoutRegion> PreferredRegionVisibility =
-            new("Layout.PreferredRegionVisibility", SettingScope.Application, LayoutRegion.All);
+            new("Layout.PreferredRegionVisibility", SettingScope.Workspace, LayoutRegion.All);
 
         public static readonly SettingDescriptor<float> PrimaryPanelWidth =
-            new("Layout.PrimaryPanelWidth", SettingScope.Application, WorkspaceConstants.PrimaryPanelWidth);
+            new("Layout.PrimaryPanelWidth", SettingScope.Workspace, WorkspaceConstants.PrimaryPanelWidth);
 
         public static readonly SettingDescriptor<float> SecondaryPanelWidth =
-            new("Layout.SecondaryPanelWidth", SettingScope.Application, WorkspaceConstants.SecondaryPanelWidth);
+            new("Layout.SecondaryPanelWidth", SettingScope.Workspace, WorkspaceConstants.SecondaryPanelWidth);
 
         public static readonly SettingDescriptor<float> ConsolePanelHeight =
-            new("Layout.ConsolePanelHeight", SettingScope.Application, WorkspaceConstants.ConsolePanelHeight);
+            new("Layout.ConsolePanelHeight", SettingScope.Workspace, WorkspaceConstants.ConsolePanelHeight);
 
         public static readonly SettingDescriptor<float> DetailPanelHeight =
-            new("Layout.DetailPanelHeight", SettingScope.Application, WorkspaceConstants.DetailPanelHeight);
+            new("Layout.DetailPanelHeight", SettingScope.Workspace, WorkspaceConstants.DetailPanelHeight);
 
         public static readonly SettingDescriptor<bool> IsConsoleMaximized =
-            new("Layout.IsConsoleMaximized", SettingScope.Application, false);
+            new("Layout.IsConsoleMaximized", SettingScope.Workspace, false);
     }
 
     /// <summary>
-    /// Search panel options. Application-scoped today; Phase 2 flips these to
-    /// Workspace scope.
+    /// Search panel options. Workspace-scoped, so each project remembers its own
+    /// search panel state.
     /// </summary>
     public static class Search
     {
         public static readonly SettingDescriptor<bool> MatchCase =
-            new("Search.MatchCase", SettingScope.Application, false);
+            new("Search.MatchCase", SettingScope.Workspace, false);
 
         public static readonly SettingDescriptor<bool> WholeWord =
-            new("Search.WholeWord", SettingScope.Application, false);
+            new("Search.WholeWord", SettingScope.Workspace, false);
 
         public static readonly SettingDescriptor<bool> ReplaceMode =
-            new("Search.ReplaceMode", SettingScope.Application, false);
+            new("Search.ReplaceMode", SettingScope.Workspace, false);
     }
 
     /// <summary>
-    /// Document editor preferences and history.
+    /// Document editor preferences and history. The previous new-file extension
+    /// is Workspace-scoped, so each project remembers the last file type the
+    /// user created in it.
     /// </summary>
     public static class Editor
     {
         public static readonly SettingDescriptor<string> PreviousNewFileExtension =
-            new("Editor.PreviousNewFileExtension", SettingScope.Application, ".py");
+            new("Editor.PreviousNewFileExtension", SettingScope.Workspace, ".py");
     }
 
     /// <summary>

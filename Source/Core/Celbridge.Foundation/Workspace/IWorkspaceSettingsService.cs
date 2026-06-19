@@ -6,9 +6,9 @@ namespace Celbridge.Workspace;
 public interface IWorkspaceSettingsService
 {
     /// <summary>
-    /// Returns the workspace settings for the current loaded project.
+    /// Returns the dynamic workspace property bag for the current loaded project.
     /// </summary>
-    IWorkspaceSettings? WorkspaceSettings { get; }
+    IWorkspacePropertyBag? PropertyBag { get; }
 
     /// <summary>
     /// The synchronous key/value store backing Workspace-scope settings for the

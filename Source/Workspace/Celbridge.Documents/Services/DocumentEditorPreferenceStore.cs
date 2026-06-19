@@ -29,11 +29,11 @@ public class DocumentEditorPreferenceStore
     /// </summary>
     public async Task<DocumentEditorId> GetExtensionPreferenceAsync(string extension)
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        var preferredId = await workspaceSettings.GetPropertyAsync<string>(preferenceKey);
+        var preferredId = await propertyBag.GetPropertyAsync<string>(preferenceKey);
 
         // TryParse handles empty/null/malformed strings; callers are responsible
         // for checking whether the returned id still maps to a registered editor.
@@ -52,18 +52,18 @@ public class DocumentEditorPreferenceStore
     /// </summary>
     public async Task SetExtensionPreferenceAsync(string extension, DocumentEditorId editorId)
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
 
         if (editorId.IsEmpty)
         {
-            await workspaceSettings.DeletePropertyAsync(preferenceKey);
+            await propertyBag.DeletePropertyAsync(preferenceKey);
             return;
         }
 
-        await workspaceSettings.SetPropertyAsync(preferenceKey, editorId.ToString());
+        await propertyBag.SetPropertyAsync(preferenceKey, editorId.ToString());
     }
 
     /// <summary>

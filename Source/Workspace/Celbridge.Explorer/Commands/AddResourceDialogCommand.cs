@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -224,10 +223,9 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension
-        var extension = editorSettings.PreviousNewFileExtension;
+        var extension = _workspaceWrapper.WorkspaceService.Settings.PreviousNewFileExtension;
 
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 

@@ -50,7 +50,7 @@ public class EditorStatePersistenceTests
     [Test]
     public async Task EditorStateDictionary_RoundTripsThroughSettings()
     {
-        var settings = _workspaceSettingsService.WorkspaceSettings!;
+        var settings = _workspaceSettingsService.PropertyBag!;
         var editorStates = new Dictionary<string, string>
         {
             ["notes/readme.md"] = "{\"scrollPercentage\":0.42,\"viewMode\":\"Split\"}",
@@ -68,7 +68,7 @@ public class EditorStatePersistenceTests
     [Test]
     public async Task EditorStateDictionary_SurvivesUnloadAndReload()
     {
-        var settings = _workspaceSettingsService.WorkspaceSettings!;
+        var settings = _workspaceSettingsService.PropertyBag!;
         var editorStates = new Dictionary<string, string>
         {
             ["notes/readme.md"] = "{\"scrollPercentage\":0.5}",
@@ -82,7 +82,7 @@ public class EditorStatePersistenceTests
         var reloadResult = await _workspaceSettingsService.AcquireWorkspaceSettingsAsync();
         reloadResult.IsSuccess.Should().BeTrue();
 
-        var reloaded = _workspaceSettingsService.WorkspaceSettings!;
+        var reloaded = _workspaceSettingsService.PropertyBag!;
         var restored = await reloaded.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey);
 
         restored.Should().NotBeNull();
@@ -92,7 +92,7 @@ public class EditorStatePersistenceTests
     [Test]
     public async Task EditorStateDictionary_EmptyDictionaryRoundTripsAsEmpty()
     {
-        var settings = _workspaceSettingsService.WorkspaceSettings!;
+        var settings = _workspaceSettingsService.PropertyBag!;
         var emptyState = new Dictionary<string, string>();
 
         await settings.SetPropertyAsync(DocumentEditorStatesKey, emptyState);
@@ -109,7 +109,7 @@ public class EditorStatePersistenceTests
         // Locks in the storage shape used by DocumentEditorPreferenceStore. The key
         // format is a private detail of the store but the value contract (a string
         // editor id) needs to round-trip cleanly.
-        var settings = _workspaceSettingsService.WorkspaceSettings!;
+        var settings = _workspaceSettingsService.PropertyBag!;
         var preferenceKey = "DocumentEditorPreference:.md";
         var editorId = "celbridge.markdown-editor";
 

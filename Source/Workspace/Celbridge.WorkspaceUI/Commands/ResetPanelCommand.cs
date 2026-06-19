@@ -1,33 +1,35 @@
 using Celbridge.Commands;
-using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.WorkspaceUI.Commands;
 
 public class ResetPanelCommand : CommandBase, IResetPanelCommand
 {
-    private readonly IEditorSettings _editorSettings;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public LayoutRegion Region { get; set; }
 
-    public ResetPanelCommand(IEditorSettings editorSettings)
+    public ResetPanelCommand(IWorkspaceWrapper workspaceWrapper)
     {
-        _editorSettings = editorSettings;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.Settings;
+
         switch (Region)
         {
             case LayoutRegion.Primary:
-                _editorSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
+                workspaceSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
                 break;
 
             case LayoutRegion.Secondary:
-                _editorSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
+                workspaceSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
                 break;
 
             case LayoutRegion.Console:
-                _editorSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+                workspaceSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
                 break;
 
             default:

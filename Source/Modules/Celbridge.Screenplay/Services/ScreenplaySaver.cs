@@ -40,7 +40,7 @@ public class ScreenplaySaver
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IEntityService _entityService;
     private readonly IActivityService _activityService;
-    private readonly IWorkspaceSettings _workspaceSettings;
+    private readonly IWorkspacePropertyBag _propertyBag;
     private readonly ILocalFileSystem _fileSystem;
 
     private record SceneData(ResourceKey SceneResource, string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
@@ -55,7 +55,7 @@ public class ScreenplaySaver
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
-        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        _propertyBag = workspaceWrapper.WorkspaceService.PropertyBag;
         _fileSystem = fileSystem;
     }
 
@@ -486,7 +486,7 @@ public class ScreenplaySaver
     private async Task WriteModifiedScenes(IXLWorksheet scenesSheet)
     {
         // Get the list of modified scenes from the workspace settings
-        var modifiedScenes = await _workspaceSettings.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
+        var modifiedScenes = await _propertyBag.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
         if (modifiedScenes is null ||
             modifiedScenes.Count == 0)
         {

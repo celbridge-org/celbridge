@@ -5,7 +5,6 @@ using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Messaging;
 using Celbridge.Resources;
-using Celbridge.Settings;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -28,7 +27,6 @@ public partial class SearchPanelViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IEditorSettings _editorSettings;
     private readonly IDialogService _dialogService;
     private readonly DispatcherQueue _dispatcherQueue;
 
@@ -134,14 +132,12 @@ public partial class SearchPanelViewModel : ObservableObject
         ICommandService commandService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IEditorSettings editorSettings,
         IDialogService dialogService)
     {
         _searchService = searchService;
         _commandService = commandService;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
-        _editorSettings = editorSettings;
         _dialogService = dialogService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
@@ -166,10 +162,11 @@ public partial class SearchPanelViewModel : ObservableObject
         ReplaceInFileTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceInFileTooltip");
         ReplaceMatchTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceMatchTooltip");
 
-        // Load saved search options from editor settings
-        MatchCase = _editorSettings.SearchMatchCase;
-        WholeWord = _editorSettings.SearchWholeWord;
-        IsReplaceModeEnabled = _editorSettings.ReplaceMode;
+        // Load saved search options from the workspace settings
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.Settings;
+        MatchCase = workspaceSettings.SearchMatchCase;
+        WholeWord = workspaceSettings.SearchWholeWord;
+        IsReplaceModeEnabled = workspaceSettings.ReplaceMode;
 
         // Listen for workspace loaded to load search/replace history from workspace settings
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
@@ -260,8 +257,8 @@ public partial class SearchPanelViewModel : ObservableObject
 
     partial void OnMatchCaseChanged(bool value)
     {
-        // Save to editor settings
-        _editorSettings.SearchMatchCase = value;
+        // Save to the workspace settings
+        _workspaceWrapper.WorkspaceService.Settings.SearchMatchCase = value;
 
         if (!string.IsNullOrEmpty(SearchText))
         {
@@ -271,8 +268,8 @@ public partial class SearchPanelViewModel : ObservableObject
 
     partial void OnWholeWordChanged(bool value)
     {
-        // Save to editor settings
-        _editorSettings.SearchWholeWord = value;
+        // Save to the workspace settings
+        _workspaceWrapper.WorkspaceService.Settings.SearchWholeWord = value;
 
         if (!string.IsNullOrEmpty(SearchText))
         {
@@ -282,8 +279,8 @@ public partial class SearchPanelViewModel : ObservableObject
 
     partial void OnIsReplaceModeEnabledChanged(bool value)
     {
-        // Save to editor settings
-        _editorSettings.ReplaceMode = value;
+        // Save to the workspace settings
+        _workspaceWrapper.WorkspaceService.Settings.ReplaceMode = value;
     }
 
     [RelayCommand]

@@ -12,7 +12,7 @@ namespace Celbridge.Tests.Documents;
 public class DocumentEditorPreferenceStoreTests
 {
     private ISidecarService _sidecarService = null!;
-    private IWorkspaceSettings _workspaceSettings = null!;
+    private IWorkspacePropertyBag _propertyBag = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private DocumentEditorPreferenceStore _store = null!;
 
@@ -25,12 +25,12 @@ public class DocumentEditorPreferenceStoreTests
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
 
-        _workspaceSettings = Substitute.For<IWorkspaceSettings>();
-        _workspaceSettings.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
+        _propertyBag = Substitute.For<IWorkspacePropertyBag>();
+        _propertyBag.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
-        workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
+        workspaceService.PropertyBag.Returns(_propertyBag);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -76,7 +76,7 @@ public class DocumentEditorPreferenceStoreTests
         await _store.SetExtensionPreferenceAsync(".md", new DocumentEditorId("test.markdown-editor"));
 
         var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
-        await _workspaceSettings.Received(1).SetPropertyAsync(expectedKey, "test.markdown-editor");
+        await _propertyBag.Received(1).SetPropertyAsync(expectedKey, "test.markdown-editor");
     }
 
     [Test]
@@ -88,8 +88,8 @@ public class DocumentEditorPreferenceStoreTests
         await _store.SetExtensionPreferenceAsync(".md", DocumentEditorId.Empty);
 
         var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
-        await _workspaceSettings.Received(1).DeletePropertyAsync(expectedKey);
-        await _workspaceSettings.DidNotReceive().SetPropertyAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _propertyBag.Received(1).DeletePropertyAsync(expectedKey);
+        await _propertyBag.DidNotReceive().SetPropertyAsync(Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Test]
@@ -202,7 +202,7 @@ public class DocumentEditorPreferenceStoreTests
     private void StubExtensionPreference(string extension, string editorId)
     {
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        _workspaceSettings.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
+        _propertyBag.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
     }
 
     private void StubSidecarEditor(string editorId)

@@ -48,16 +48,16 @@ public class WorkspaceSettingsTests
         var acquireResult = await service.AcquireWorkspaceSettingsAsync();
         acquireResult.IsSuccess.Should().BeTrue();
 
-        var workspaceSettings = service.WorkspaceSettings;
-        workspaceSettings.Should().NotBeNull();
+        var propertyBag = service.PropertyBag;
+        propertyBag.Should().NotBeNull();
 
-        var dataVersion = await workspaceSettings!.GetDataVersionAsync();
+        var dataVersion = await propertyBag!.GetDataVersionAsync();
         dataVersion.Should().Be(1);
 
         var expandedFolders = new List<string> { "a", "b", "c" };
-        await workspaceSettings.SetPropertyAsync("ExpandedFolders", expandedFolders);
+        await propertyBag.SetPropertyAsync("ExpandedFolders", expandedFolders);
 
-        var roundTripped = await workspaceSettings.GetPropertyAsync<List<string>>("ExpandedFolders");
+        var roundTripped = await propertyBag.GetPropertyAsync<List<string>>("ExpandedFolders");
         roundTripped.Should().NotBeNull();
         roundTripped!.Should().Equal(expandedFolders);
 
@@ -66,22 +66,22 @@ public class WorkspaceSettingsTests
         File.Exists(filePath).Should().BeTrue();
 
         service.UnloadWorkspaceSettings();
-        service.WorkspaceSettings.Should().BeNull();
+        service.PropertyBag.Should().BeNull();
     }
 
     [Test]
-    public async Task WorkspaceSettings_SurviveUnloadAndReacquire()
+    public async Task PropertyBag_SurviveUnloadAndReacquire()
     {
         var folderPath = Path.Combine(_rootFolderPath, "projectA");
 
         var service = CreateService(folderPath);
         await service.AcquireWorkspaceSettingsAsync();
-        await service.WorkspaceSettings!.SetPropertyAsync("ExpandedFolders", new List<string> { "x" });
+        await service.PropertyBag!.SetPropertyAsync("ExpandedFolders", new List<string> { "x" });
 
         service.UnloadWorkspaceSettings();
 
         await service.AcquireWorkspaceSettingsAsync();
-        var reloaded = await service.WorkspaceSettings!.GetPropertyAsync<List<string>>("ExpandedFolders");
+        var reloaded = await service.PropertyBag!.GetPropertyAsync<List<string>>("ExpandedFolders");
 
         reloaded.Should().NotBeNull();
         reloaded!.Should().Equal("x");
@@ -95,12 +95,12 @@ public class WorkspaceSettingsTests
 
         var serviceA = CreateService(folderA);
         await serviceA.AcquireWorkspaceSettingsAsync();
-        await serviceA.WorkspaceSettings!.SetPropertyAsync("ExpandedFolders", new List<string> { "from-A" });
+        await serviceA.PropertyBag!.SetPropertyAsync("ExpandedFolders", new List<string> { "from-A" });
         serviceA.UnloadWorkspaceSettings();
 
         var serviceB = CreateService(folderB);
         await serviceB.AcquireWorkspaceSettingsAsync();
-        var valueFromB = await serviceB.WorkspaceSettings!.GetPropertyAsync<List<string>>("ExpandedFolders");
+        var valueFromB = await serviceB.PropertyBag!.GetPropertyAsync<List<string>>("ExpandedFolders");
 
         valueFromB.Should().BeNull();
     }
@@ -114,12 +114,33 @@ public class WorkspaceSettingsTests
         await service.AcquireWorkspaceSettingsAsync();
 
         // The async facade and the sync store are two views over the same data.
-        await service.WorkspaceSettings!.SetPropertyAsync("Number", 99);
+        await service.PropertyBag!.SetPropertyAsync("Number", 99);
 
         var store = service.WorkspaceSettingsStore;
         store.Should().NotBeNull();
         store!.TryGetValue<int>("Number", out var value).Should().BeTrue();
         value.Should().Be(99);
+    }
+
+    [Test]
+    public async Task AcquireWorkspaceSettings_WhenAlreadyLoaded_DoesNotReloadOrDiscardInMemoryChanges()
+    {
+        var folderPath = Path.Combine(_rootFolderPath, "projectA");
+
+        var service = CreateService(folderPath);
+        await service.AcquireWorkspaceSettingsAsync();
+
+        // Write to the deferred store without flushing.
+        service.WorkspaceSettingsStore!.SetValue("Count", 5);
+
+        // The store is acquired twice during load (the page-load path before the
+        // panels bind, then the workspace loader). The second acquire must be a
+        // no-op: reloading from disk would discard this unflushed in-memory write.
+        var reAcquireResult = await service.AcquireWorkspaceSettingsAsync();
+        reAcquireResult.IsSuccess.Should().BeTrue();
+
+        service.WorkspaceSettingsStore!.TryGetValue<int>("Count", out var value).Should().BeTrue();
+        value.Should().Be(5);
     }
 
     [Test]

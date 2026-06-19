@@ -19,7 +19,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private readonly IMessengerService _messengerService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
-    public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
+    public IWorkspaceSettings Settings { get; }
+    public IWorkspacePropertyBag PropertyBag => WorkspaceSettingsService.PropertyBag!;
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
     public IExplorerService ExplorerService { get; }
@@ -53,6 +54,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+        Settings = serviceProvider.GetRequiredService<IWorkspaceSettings>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
@@ -144,6 +146,24 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         {
             failed = true;
             _logger.LogError($"Failed to update inspector service. {inspectorResult.DiagnosticReport}");
+        }
+
+        // Flush any pending Workspace-scope setting writes (panel sizes, search
+        // options, last new-file extension). These are set on the UI thread but
+        // deferred, so the disk write happens here off the UI thread. FlushAsync
+        // is a no-op when nothing has changed since the last tick.
+        var workspaceSettingsStore = WorkspaceSettingsService.WorkspaceSettingsStore;
+        if (workspaceSettingsStore is not null)
+        {
+            try
+            {
+                await workspaceSettingsStore.FlushAsync();
+            }
+            catch (Exception ex)
+            {
+                failed = true;
+                _logger.LogError(ex, "Failed to flush workspace settings");
+            }
         }
 
         // Todo: Clear save icon on the status bar if there are no pending saves

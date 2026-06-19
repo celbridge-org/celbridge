@@ -1,234 +1,109 @@
-using System.Text.Json;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Per-project settings stored as a JSON key/value file in the project folder,
-/// loaded into memory once. The async IWorkspaceSettings facade persists on each
-/// write; the synchronous IWorkspaceSettingsStore updates memory only and defers
-/// the disk write to FlushAsync.
+/// Presentation facade over ISettingsService for the Workspace-scope setting
+/// descriptors: each property reads and writes its descriptor through the Get and
+/// Set helpers, which raise PropertyChanged for the calling property. The
+/// descriptors remain the source of truth; this type exists so views can bind to
+/// named per-project panel, search, and editor state. It is the workspace-scope
+/// peer of EditorSettings.
 /// </summary>
-public sealed class WorkspaceSettings : IWorkspaceSettings, IWorkspaceSettingsStore
+public sealed class WorkspaceSettings : IWorkspaceSettings
 {
-    private const int DataVersion = 1;
-    private const string DataVersionKey = nameof(DataVersion);
+    private readonly ISettingsService _settings;
 
-    private static readonly JsonSerializerOptions FileSerializerOptions = new()
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public WorkspaceSettings(ISettingsService settings)
     {
-        WriteIndented = true,
-    };
-
-    private readonly ILocalFileSystem _fileSystem;
-    private readonly string _filePath;
-    private readonly Dictionary<string, string> _entries;
-
-    private bool _isDirty;
-
-    private WorkspaceSettings(ILocalFileSystem fileSystem, string filePath, Dictionary<string, string> entries)
-    {
-        _fileSystem = fileSystem;
-        _filePath = filePath;
-        _entries = entries;
+        _settings = settings;
     }
 
-    public async Task<int> GetDataVersionAsync()
+    public LayoutRegion PreferredRegionVisibility
     {
-        return await GetPropertyAsync(DataVersionKey, 0);
+        get => Get(Setting.Layout.PreferredRegionVisibility);
+        set => Set(Setting.Layout.PreferredRegionVisibility, value);
     }
 
-    public async Task SetDataVersionAsync(int version)
+    public float PrimaryPanelWidth
     {
-        await SetPropertyAsync(DataVersionKey, version);
+        get => Get(Setting.Layout.PrimaryPanelWidth);
+        set => Set(Setting.Layout.PrimaryPanelWidth, value);
     }
 
-    public async Task SetPropertyAsync<T>(string key, T value) where T : notnull
+    public float SecondaryPanelWidth
     {
-        try
-        {
-            _entries[key] = JsonSerializer.Serialize(value);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to set workspace property for key {key}", ex);
-        }
-
-        await PersistAsync();
+        get => Get(Setting.Layout.SecondaryPanelWidth);
+        set => Set(Setting.Layout.SecondaryPanelWidth, value);
     }
 
-    public async Task<T?> GetPropertyAsync<T>(string key, T? defaultValue)
+    public float ConsolePanelHeight
     {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (!_entries.TryGetValue(key, out var json))
-            {
-                return defaultValue;
-            }
-
-            var value = JsonSerializer.Deserialize<T>(json);
-            if (value is null)
-            {
-                return defaultValue;
-            }
-
-            return value;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to get workspace property for key {key}", ex);
-        }
+        get => Get(Setting.Layout.ConsolePanelHeight);
+        set => Set(Setting.Layout.ConsolePanelHeight, value);
     }
 
-    public async Task<T?> GetPropertyAsync<T>(string key)
+    public float DetailPanelHeight
     {
-        var defaultValue = default(T);
-        return await GetPropertyAsync<T>(key, defaultValue);
+        get => Get(Setting.Layout.DetailPanelHeight);
+        set => Set(Setting.Layout.DetailPanelHeight, value);
     }
 
-    public async Task<bool> DeletePropertyAsync(string key)
+    public bool IsConsoleMaximized
     {
-        if (!_entries.Remove(key))
-        {
-            return false;
-        }
-
-        await PersistAsync();
-
-        return true;
+        get => Get(Setting.Layout.IsConsoleMaximized);
+        set => Set(Setting.Layout.IsConsoleMaximized, value);
     }
 
-    public bool TryGetValue<T>(string key, out T value) where T : notnull
+    public bool SearchMatchCase
     {
-        value = default!;
-
-        if (!_entries.TryGetValue(key, out var json))
-        {
-            return false;
-        }
-
-        try
-        {
-            var deserialized = JsonSerializer.Deserialize<T>(json);
-            if (deserialized is null)
-            {
-                return false;
-            }
-
-            value = deserialized;
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
+        get => Get(Setting.Search.MatchCase);
+        set => Set(Setting.Search.MatchCase, value);
     }
 
-    public void SetValue<T>(string key, T value) where T : notnull
+    public bool SearchWholeWord
     {
-        _entries[key] = JsonSerializer.Serialize(value);
-        _isDirty = true;
+        get => Get(Setting.Search.WholeWord);
+        set => Set(Setting.Search.WholeWord, value);
     }
 
-    public bool ContainsKey(string key)
+    public bool ReplaceMode
     {
-        return _entries.ContainsKey(key);
+        get => Get(Setting.Search.ReplaceMode);
+        set => Set(Setting.Search.ReplaceMode, value);
     }
 
-    public void RemoveValue(string key)
+    public string PreviousNewFileExtension
     {
-        if (_entries.Remove(key))
-        {
-            _isDirty = true;
-        }
+        get => Get(Setting.Editor.PreviousNewFileExtension);
+        set => Set(Setting.Editor.PreviousNewFileExtension, value);
     }
 
-    public async Task FlushAsync()
+    private T Get<T>(SettingDescriptor<T> descriptor) where T : notnull
     {
-        if (!_isDirty)
+        return _settings.Get(descriptor);
+    }
+
+    // [CallerMemberName] resolves to the property whose setter called this, so the
+    // change notification targets that property without a name lookup table.
+    private void Set<T>(SettingDescriptor<T> descriptor, T value, [CallerMemberName] string? propertyName = null) where T : notnull
+    {
+        // The store is brought online before the panels bind (see
+        // WorkspacePage.WorkspacePage_Loaded), so during an active project a write
+        // always has a store. This guard is the boundary backstop: panel
+        // SizeChanged can still fire on teardown after the store is unloaded, where
+        // dropping the transient layout value is correct rather than throwing.
+        if (!_settings.IsScopeAvailable(SettingScope.Workspace))
         {
             return;
         }
 
-        await PersistAsync();
-    }
-
-    // Overwrites the settings file with the full in-memory store. The data is
-    // regenerable UI state, so a write interrupted by a crash is acceptable: the
-    // next load discards an unreadable file and starts empty.
-    private async Task PersistAsync()
-    {
-        string json;
-        try
-        {
-            json = JsonSerializer.Serialize(_entries, FileSerializerOptions);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException("Failed to serialize workspace settings", ex);
-        }
-
-        var writeResult = await _fileSystem.WriteAllTextAsync(_filePath, json);
-        if (writeResult.IsFailure)
-        {
-            throw new InvalidOperationException(
-                $"Failed to persist workspace settings: {writeResult.FirstErrorMessage}");
-        }
-
-        _isDirty = false;
-    }
-
-    /// <summary>
-    /// Loads the workspace settings from the JSON file at the given path,
-    /// returning an empty store when the file is missing or unreadable. Ensures
-    /// the data version is recorded, creating the file on first load.
-    /// </summary>
-    public static async Task<Result<WorkspaceSettings>> LoadAsync(ILocalFileSystem fileSystem, string filePath)
-    {
-        Guard.IsNotNullOrWhiteSpace(filePath);
-
-        var entries = new Dictionary<string, string>();
-
-        var infoResult = await fileSystem.GetInfoAsync(filePath);
-        bool fileExists = infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.File;
-
-        if (fileExists)
-        {
-            var readResult = await fileSystem.ReadAllTextAsync(filePath);
-            if (readResult.IsFailure)
-            {
-                return Result<WorkspaceSettings>.Fail($"Failed to read workspace settings file: {filePath}")
-                    .WithErrors(readResult);
-            }
-
-            var content = readResult.Value;
-            if (!string.IsNullOrWhiteSpace(content))
-            {
-                try
-                {
-                    var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(content);
-                    if (parsed is not null)
-                    {
-                        entries = parsed;
-                    }
-                }
-                catch (JsonException)
-                {
-                    // A corrupt store is treated as empty rather than failing the
-                    // workspace load; the data is regenerable UI state.
-                }
-            }
-        }
-
-        var workspaceSettings = new WorkspaceSettings(fileSystem, filePath, entries);
-
-        if (!workspaceSettings.ContainsKey(DataVersionKey))
-        {
-            await workspaceSettings.SetDataVersionAsync(DataVersion);
-        }
-
-        return workspaceSettings;
+        _settings.Set(descriptor, value);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

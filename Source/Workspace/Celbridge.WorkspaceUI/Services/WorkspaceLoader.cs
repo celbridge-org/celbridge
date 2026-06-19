@@ -86,8 +86,8 @@ public class WorkspaceLoader
                 .WithErrors(acquireResult);
         }
 
-        var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = workspaceSettingsService.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         //
         // Initialize the entity service.

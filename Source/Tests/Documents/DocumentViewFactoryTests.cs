@@ -15,7 +15,7 @@ public class DocumentViewFactoryTests
 {
     private DocumentEditorRegistry _registry = null!;
     private ISidecarService _sidecarService = null!;
-    private IWorkspaceSettings _workspaceSettings = null!;
+    private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ITextBinarySniffer _textBinarySniffer = null!;
@@ -35,8 +35,8 @@ public class DocumentViewFactoryTests
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
 
-        _workspaceSettings = Substitute.For<IWorkspaceSettings>();
-        _workspaceSettings.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
+        _propertyBag = Substitute.For<IWorkspacePropertyBag>();
+        _propertyBag.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
@@ -47,7 +47,7 @@ public class DocumentViewFactoryTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         resourceService.Sidecars.Returns(_sidecarService);
-        workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
+        workspaceService.PropertyBag.Returns(_propertyBag);
         workspaceService.ResourceService.Returns(resourceService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -364,7 +364,7 @@ public class DocumentViewFactoryTests
     private void StubExtensionPreference(string extension, string editorId)
     {
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        _workspaceSettings.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
+        _propertyBag.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
     }
 
     private static IDocumentEditorFactory CreateFakeFactory(

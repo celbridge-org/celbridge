@@ -26,6 +26,7 @@ public sealed partial class WorkspacePage : Page
     private const double MaxRestoredConsoleHeightFraction = 0.7;
 
     private readonly ICommandService _commandService;
+    private readonly Logging.ILogger<WorkspacePage> _logger;
 
     public WorkspacePageViewModel ViewModel { get; }
 
@@ -43,6 +44,7 @@ public sealed partial class WorkspacePage : Page
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _logger = ServiceLocator.AcquireService<Logging.ILogger<WorkspacePage>>();
         _featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
 
         DataContext = ViewModel;
@@ -54,20 +56,32 @@ public sealed partial class WorkspacePage : Page
         Unloaded += WorkspacePage_Unloaded;
     }
 
-    private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
+    private async void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
         // Only execute initialization if this is the first load or if we're rebuilding after cache clear
-        if (!_initialized || NavigationCacheMode == NavigationCacheMode.Disabled)
+        if (_initialized && NavigationCacheMode != NavigationCacheMode.Disabled)
         {
-            // Read the navigation parameter passed via Page.Tag by the navigation system
-            ViewModel.LoadProjectCancellationToken = Tag as CancellationTokenSource;
-
-            InitializeWorkspace();
-            _initialized = true;
-
-            // Re-enable caching after initialization
-            NavigationCacheMode = NavigationCacheMode.Required;
+            return;
         }
+
+        // Mark initialized and restore caching up front so a second Loaded event
+        // raised during the awaited settings load cannot start a duplicate
+        // initialization.
+        _initialized = true;
+        NavigationCacheMode = NavigationCacheMode.Required;
+
+        // Read the navigation parameter passed via Page.Tag by the navigation system
+        ViewModel.LoadProjectCancellationToken = Tag as CancellationTokenSource;
+
+        // Bring the per-project store online before the panels bind, so they restore
+        // this project's panel sizes instead of racing the asynchronous workspace load.
+        var acquireResult = await ViewModel.AcquireWorkspaceSettingsAsync();
+        if (acquireResult.IsFailure)
+        {
+            _logger.LogWarning(acquireResult, "Failed to acquire workspace settings before initializing panels");
+        }
+
+        InitializeWorkspace();
     }
 
     private void InitializeWorkspace()

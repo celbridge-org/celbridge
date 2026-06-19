@@ -29,15 +29,15 @@ public class EditorSettingsTests
     public void ICanCanGetAndSetEditorSettings()
     {
         // Check the default value system is working
-        _editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
+        _editorSettings.Theme.Should().Be(ApplicationColorTheme.System);
 
         // Set a property
-        _editorSettings.PreferredRegionVisibility = LayoutRegion.Primary;
-        _editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.Primary);
+        _editorSettings.Theme = ApplicationColorTheme.Dark;
+        _editorSettings.Theme.Should().Be(ApplicationColorTheme.Dark);
 
         // Reset the property to default
         _editorSettings.Reset();
-        _editorSettings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
+        _editorSettings.Theme.Should().Be(ApplicationColorTheme.System);
     }
 
     [Test]
@@ -46,8 +46,8 @@ public class EditorSettingsTests
         var changedProperties = new List<string?>();
         _editorSettings.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
 
-        _editorSettings.PrimaryPanelWidth = 123f;
+        _editorSettings.PreferredWindowWidth = 123;
 
-        changedProperties.Should().Contain(nameof(IEditorSettings.PrimaryPanelWidth));
+        changedProperties.Should().Contain(nameof(IEditorSettings.PreferredWindowWidth));
     }
 }

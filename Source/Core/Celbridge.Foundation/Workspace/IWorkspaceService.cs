@@ -31,9 +31,14 @@ public interface IWorkspaceService
     IWorkspaceSettingsService WorkspaceSettingsService { get; }
 
     /// <summary>
-    /// Returns the Workspace Settings associated with the workspace.
+    /// Returns the typed Workspace Settings facade for the current project.
     /// </summary>
-    IWorkspaceSettings WorkspaceSettings { get; }
+    IWorkspaceSettings Settings { get; }
+
+    /// <summary>
+    /// Returns the dynamic Workspace property bag for the current project.
+    /// </summary>
+    IWorkspacePropertyBag PropertyBag { get; }
 
     /// <summary>
     /// Returns the Package Service associated with the workspace.

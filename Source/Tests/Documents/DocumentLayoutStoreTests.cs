@@ -16,7 +16,7 @@ namespace Celbridge.Tests.Documents;
 [TestFixture]
 public class DocumentLayoutStoreTests
 {
-    private IWorkspaceSettings _workspaceSettings = null!;
+    private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IDocumentsPanel _documentsPanel = null!;
     private ICommandService _commandService = null!;
@@ -33,7 +33,7 @@ public class DocumentLayoutStoreTests
         _accessibleFilePath = Path.Combine(_tempFolder, "accessible.md");
         File.WriteAllText(_accessibleFilePath, string.Empty);
 
-        _workspaceSettings = Substitute.For<IWorkspaceSettings>();
+        _propertyBag = Substitute.For<IWorkspacePropertyBag>();
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
         _documentsPanel = Substitute.For<IDocumentsPanel>();
@@ -55,7 +55,7 @@ public class DocumentLayoutStoreTests
         resourceService.Registry.Returns(_resourceRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
+        workspaceService.PropertyBag.Returns(_propertyBag);
         workspaceService.ResourceService.Returns(resourceService);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
@@ -127,7 +127,7 @@ public class DocumentLayoutStoreTests
     {
         // Old format / corrupted settings: GetPropertyAsync throws inside the
         // store, which catches and treats the layout as empty.
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns<Task<List<DocumentLayoutStore.StoredDocumentAddress>?>>(_ => throw new InvalidOperationException("bad json"));
         _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
             .Returns(Result<ResourceKey>.Fail("not found"));
@@ -146,7 +146,7 @@ public class DocumentLayoutStoreTests
         {
             new("notes/readme.md", WindowIndex: 0, SectionIndex: 0, TabOrder: 2),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
         await _store.RestorePanelStateAsync();
@@ -170,7 +170,7 @@ public class DocumentLayoutStoreTests
             new("///invalid///", 0, 0, 0),
             new("notes/readme.md", 0, 0, 1),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
         await _store.RestorePanelStateAsync();
@@ -192,7 +192,7 @@ public class DocumentLayoutStoreTests
         {
             new("notes/readme.md", 0, 0, 0),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
         await _store.RestorePanelStateAsync();
@@ -212,7 +212,7 @@ public class DocumentLayoutStoreTests
         {
             new("notes/readme.md", 0, 0, 0),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
         await _store.RestorePanelStateAsync();
@@ -231,7 +231,7 @@ public class DocumentLayoutStoreTests
         {
             new("notes/readme.md", WindowIndex: 0, SectionIndex: 2, TabOrder: 0),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
         await _store.RestorePanelStateAsync();
@@ -251,9 +251,9 @@ public class DocumentLayoutStoreTests
         {
             new("notes/readme.md", 0, 0, 0),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
-        _workspaceSettings.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
+        _propertyBag.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
             .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
             {
                 [new ResourceKey("notes/readme.md").ToString()] = "{\"scroll\":0.5}",
@@ -274,9 +274,9 @@ public class DocumentLayoutStoreTests
         {
             new("notes/readme.md", 0, 0, 0),
         };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
-        _workspaceSettings.GetPropertyAsync<string>("ActiveDocument")
+        _propertyBag.GetPropertyAsync<string>("ActiveDocument")
             .Returns(Task.FromResult<string?>("notes/readme.md"));
 
         await _store.RestorePanelStateAsync();
@@ -288,7 +288,7 @@ public class DocumentLayoutStoreTests
     public async Task RestorePanelStateAsync_AppliesSectionRatiosWhenValid()
     {
         var ratios = new List<double> { 0.3, 0.7 };
-        _workspaceSettings.GetPropertyAsync<List<double>>("SectionRatios")
+        _propertyBag.GetPropertyAsync<List<double>>("SectionRatios")
             .Returns(Task.FromResult<List<double>?>(ratios));
         _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
             .Returns(Result<ResourceKey>.Fail("not found"));
@@ -308,7 +308,7 @@ public class DocumentLayoutStoreTests
 
         // ResourceKey.ToString prefixes the default root, so the persisted
         // value is "project:notes/readme.md" rather than the bare path.
-        await _workspaceSettings.Received(1).SetPropertyAsync("ActiveDocument", resource.ToString());
+        await _propertyBag.Received(1).SetPropertyAsync("ActiveDocument", resource.ToString());
     }
 
     [Test]
@@ -318,7 +318,7 @@ public class DocumentLayoutStoreTests
 
         await _store.StoreSectionRatiosAsync(ratios);
 
-        await _workspaceSettings.Received(1).SetPropertyAsync("SectionRatios", ratios);
+        await _propertyBag.Received(1).SetPropertyAsync("SectionRatios", ratios);
     }
 
     [Test]
@@ -326,7 +326,7 @@ public class DocumentLayoutStoreTests
     {
         var targetResource = new ResourceKey("notes/readme.md");
         var otherResource = new ResourceKey("other/file.md");
-        _workspaceSettings.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
+        _propertyBag.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
             .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
             {
                 [otherResource.ToString()] = "{\"scroll\":1.0}",
@@ -334,7 +334,7 @@ public class DocumentLayoutStoreTests
 
         await _store.StoreDocumentEditorStateAsync(targetResource, "{\"scroll\":0.5}");
 
-        await _workspaceSettings.Received(1).SetPropertyAsync(
+        await _propertyBag.Received(1).SetPropertyAsync(
             "DocumentEditorStates",
             Arg.Is<Dictionary<string, string>>(d =>
                 d[targetResource.ToString()] == "{\"scroll\":0.5}"
@@ -346,7 +346,7 @@ public class DocumentLayoutStoreTests
     {
         var targetResource = new ResourceKey("notes/readme.md");
         var otherResource = new ResourceKey("other/file.md");
-        _workspaceSettings.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
+        _propertyBag.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
             .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
             {
                 [targetResource.ToString()] = "{\"scroll\":0.5}",
@@ -355,7 +355,7 @@ public class DocumentLayoutStoreTests
 
         await _store.StoreDocumentEditorStateAsync(targetResource, null);
 
-        await _workspaceSettings.Received(1).SetPropertyAsync(
+        await _propertyBag.Received(1).SetPropertyAsync(
             "DocumentEditorStates",
             Arg.Is<Dictionary<string, string>>(d =>
                 !d.ContainsKey(targetResource.ToString())

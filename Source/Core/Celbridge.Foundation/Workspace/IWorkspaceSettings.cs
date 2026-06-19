@@ -1,40 +1,63 @@
+using System.ComponentModel;
+
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages the workspace settings associated with the current loaded project.
+/// Typed, bindable facade over the Workspace-scope setting descriptors for the
+/// current loaded project. Each property reads and writes its descriptor through
+/// the settings service and raises PropertyChanged from its setter, so views can
+/// bind to named panel, search, and editor state that persists per project.
+/// Distinct from IWorkspacePropertyBag, the dynamic key/value bag.
 /// </summary>
-public interface IWorkspaceSettings
+public interface IWorkspaceSettings : INotifyPropertyChanged
 {
     /// <summary>
-    /// Gets the data version for the workspace settings.
+    /// Preferred visibility of the workspace panel regions.
     /// </summary>
-    Task<int> GetDataVersionAsync();
+    LayoutRegion PreferredRegionVisibility { get; set; }
 
     /// <summary>
-    /// Sets the data version for the workspace settings.
+    /// Width of the Primary panel.
     /// </summary>
-    Task SetDataVersionAsync(int version);
+    float PrimaryPanelWidth { get; set; }
 
     /// <summary>
-    /// Sets a property of type T with the specified key.
+    /// Width of the Secondary panel.
     /// </summary>
-    Task SetPropertyAsync<T>(string key, T value) where T : notnull;
+    float SecondaryPanelWidth { get; set; }
 
     /// <summary>
-    /// Gets the specified property as an object of type T.
-    /// Returns defaultValue if the key was not found or if the property could not be deserialized to type T.
+    /// Height of the Console panel.
     /// </summary>
-    Task<T?> GetPropertyAsync<T>(string key, T? defaultValue);
+    float ConsolePanelHeight { get; set; }
 
     /// <summary>
-    /// Gets the specified property as an object of type T.
-    /// Returns default(T) if the key was not found or if the property could not be deserialized to type T.
+    /// Height of the Detail panel.
     /// </summary>
-    Task<T?> GetPropertyAsync<T>(string key);
+    float DetailPanelHeight { get; set; }
 
     /// <summary>
-    /// Deletes the specified property.
-    /// Returns true if the property existed prior to deletion.
+    /// Whether the Console panel is maximized to fill the Documents area.
     /// </summary>
-    Task<bool> DeletePropertyAsync(string key);
+    bool IsConsoleMaximized { get; set; }
+
+    /// <summary>
+    /// Match case option for the search panel.
+    /// </summary>
+    bool SearchMatchCase { get; set; }
+
+    /// <summary>
+    /// Match whole word option for the search panel.
+    /// </summary>
+    bool SearchWholeWord { get; set; }
+
+    /// <summary>
+    /// Whether replace mode is enabled in the search panel.
+    /// </summary>
+    bool ReplaceMode { get; set; }
+
+    /// <summary>
+    /// The file extension of the previously created file via the Add File dialog.
+    /// </summary>
+    string PreviousNewFileExtension { get; set; }
 }

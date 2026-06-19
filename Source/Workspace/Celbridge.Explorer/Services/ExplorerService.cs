@@ -86,21 +86,21 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task StoreSelectedResources()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         // Store all selected resources as a JSON array
         var resourceStrings = SelectedResources.Select(r => r.ToString()).ToList();
         var json = JsonSerializer.Serialize(resourceStrings);
-        await workspaceSettings.SetPropertyAsync(PreviousSelectedResourcesKey, json);
+        await propertyBag.SetPropertyAsync(PreviousSelectedResourcesKey, json);
     }
 
     public async Task RestorePanelState()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
-        var json = await workspaceSettings.GetPropertyAsync<string>(PreviousSelectedResourcesKey);
+        var json = await propertyBag.GetPropertyAsync<string>(PreviousSelectedResourcesKey);
         if (string.IsNullOrEmpty(json))
         {
             return;
