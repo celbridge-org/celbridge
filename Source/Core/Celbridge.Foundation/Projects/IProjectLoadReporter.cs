@@ -1,5 +1,3 @@
-using Celbridge.Packages;
-
 namespace Celbridge.Projects;
 
 /// <summary>

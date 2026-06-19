@@ -1,4 +1,3 @@
-using Celbridge.Credentials;
 using Celbridge.Dialog;
 using Celbridge.Packages;
 using Celbridge.Settings;
@@ -10,8 +9,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     private const string MaskedKeyDisplay = "********";
 
     private readonly Logging.ILogger<WorkshopSettingsViewModel> _logger;
-    private readonly IEditorSettings _editorSettings;
-    private readonly ICredentialService _credentialService;
+    private readonly ISettingsService _settingsService;
     private readonly IPackageApiClient _packageApiClient;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -58,15 +56,13 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
     public WorkshopSettingsViewModel(
         Logging.ILogger<WorkshopSettingsViewModel> logger,
-        IEditorSettings editorSettings,
-        ICredentialService credentialService,
+        ISettingsService settingsService,
         IPackageApiClient packageApiClient,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _logger = logger;
-        _editorSettings = editorSettings;
-        _credentialService = credentialService;
+        _settingsService = settingsService;
         _packageApiClient = packageApiClient;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
@@ -74,37 +70,30 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
     public async Task InitializeAsync()
     {
-        IsStoreAvailable = _credentialService.IsAvailable;
+        await Task.CompletedTask;
+
+        IsStoreAvailable = _settingsService.IsScopeAvailable(SettingScope.Protected);
 
         // URL and Author are ordinary settings, independent of the key store, so
         // they load (and the section displays them) even when no key is stored.
         ApplyProgrammatic(() =>
         {
-            WorkshopUrl = _editorSettings.WorkshopUrl;
-            Author = _editorSettings.WorkshopAuthor;
+            WorkshopUrl = _settingsService.Get(SettingCatalog.Workshop.Url);
+            Author = _settingsService.Get(SettingCatalog.Workshop.Author);
         });
 
         if (!IsStoreAvailable)
         {
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_CredentialStoreUnavailable"));
+            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Workshop_StoreUnavailable"));
             UpdateViewState();
             return;
         }
 
-        var summaryResult = await _credentialService.GetWorkshopKeySummaryAsync();
-        if (summaryResult.IsFailure)
-        {
-            _logger.LogError(summaryResult, "Failed to read the Workshop Key summary");
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_StoredConnectionUnreadable"));
-            UpdateViewState();
-            return;
-        }
-
-        var summary = summaryResult.Value;
-        _isKeyStored = summary.IsStored;
+        // Read the stored state and display hint without decrypting the key.
+        _isKeyStored = _settingsService.IsConfigured(SettingCatalog.Workshop.Key);
         if (_isKeyStored)
         {
-            StoredKeyDisplay = FormatStoredKeyDisplay(summary.KeyHint);
+            StoredKeyDisplay = FormatStoredKeyDisplay(_settingsService.Get(SettingCatalog.Workshop.KeyHint));
         }
 
         UpdateViewState();
@@ -114,7 +103,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         if (_isKeyStored
             && string.IsNullOrWhiteSpace(Author))
         {
-            ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("SettingsPage_AuthorRequired"));
+            ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("Settings_Workshop_AuthorRequired"));
         }
     }
 
@@ -134,8 +123,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
         // The URL and Author are non-secret; persist them as settings on every
         // commit, so they are never coupled to the presence of a key.
-        _editorSettings.WorkshopUrl = WorkshopUrl.Trim();
-        _editorSettings.WorkshopAuthor = Author.Trim();
+        _settingsService.Set(SettingCatalog.Workshop.Url, WorkshopUrl.Trim());
+        _settingsService.Set(SettingCatalog.Workshop.Author, Author.Trim());
 
         await ReportConnectionStatusAsync(checkConnection);
     }
@@ -149,12 +138,12 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         }
 
         var titleKey = _isKeyStored
-            ? "SettingsPage_ChangeWorkshopKeyDialogTitle"
-            : "SettingsPage_SetWorkshopKeyDialogTitle";
+            ? "Settings_Workshop_KeyChangeDialogTitle"
+            : "Settings_Workshop_KeySetDialogTitle";
         var title = _stringLocalizer.GetString(titleKey);
-        var header = _stringLocalizer.GetString("SettingsPage_WorkshopKeyTooltip");
+        var header = _stringLocalizer.GetString("Settings_Workshop_KeyTooltip");
 
-        var inputResult = await _dialogService.ShowSecretInputDialogAsync(title, header, "SettingsPage_SaveKeyButton");
+        var inputResult = await _dialogService.ShowSecretInputDialogAsync(title, header, "Settings_Workshop_KeySaveButton");
         if (inputResult.IsFailure)
         {
             // The user cancelled the dialog; leave any stored key untouched.
@@ -167,16 +156,16 @@ public partial class WorkshopSettingsViewModel : ObservableObject
             return;
         }
 
-        var setResult = await _credentialService.SetWorkshopKeyAsync(workshopKey);
+        var setResult = StoreWorkshopKey(workshopKey);
         if (setResult.IsFailure)
         {
             _logger.LogError(setResult, "Failed to store the Workshop Key");
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_SaveConnectionFailed"));
+            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Workshop_ConnectionSaveFailed"));
             return;
         }
 
         _isKeyStored = true;
-        await RefreshStoredKeyDisplayAsync();
+        RefreshStoredKeyDisplay();
         UpdateViewState();
 
         await ReportConnectionStatusAsync(checkConnection: true);
@@ -185,8 +174,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task RemoveWorkshopKeyAsync()
     {
-        var title = _stringLocalizer.GetString("SettingsPage_RemoveWorkshopKeyTitle");
-        var message = _stringLocalizer.GetString("SettingsPage_RemoveWorkshopKeyMessage");
+        var title = _stringLocalizer.GetString("Settings_Workshop_KeyRemoveTitle");
+        var message = _stringLocalizer.GetString("Settings_Workshop_KeyRemoveMessage");
         var confirmResult = await _dialogService.ShowConfirmationDialogAsync(title, message);
         if (confirmResult.IsFailure
             || !confirmResult.Value)
@@ -194,20 +183,14 @@ public partial class WorkshopSettingsViewModel : ObservableObject
             return;
         }
 
-        var clearResult = await _credentialService.ClearWorkshopKeyAsync();
-        if (clearResult.IsFailure)
-        {
-            _logger.LogError(clearResult, "Failed to remove the Workshop Key");
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_RemoveWorkshopKeyFailed"));
-            return;
-        }
+        ClearWorkshopKey();
 
         // Only the secret is removed; the URL and Author stay as settings so a new
         // key can be entered without retyping them.
         _isKeyStored = false;
         StoredKeyDisplay = string.Empty;
 
-        ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("SettingsPage_WorkshopKeyRemoved"));
+        ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Workshop_KeyRemoved"));
         UpdateViewState();
     }
 
@@ -218,18 +201,18 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         var workshopUrl = WorkshopUrl.Trim();
         if (string.IsNullOrEmpty(workshopUrl))
         {
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_EmptyWorkshopUrl"));
+            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Workshop_UrlEmpty"));
             return;
         }
         if (!WorkshopConnectionValidation.IsValidWorkshopUrl(workshopUrl))
         {
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_InvalidWorkshopUrl"));
+            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Workshop_UrlInvalid"));
             return;
         }
 
         if (!_isKeyStored)
         {
-            ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("SettingsPage_EmptyWorkshopKey"));
+            ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Workshop_KeyEmpty"));
             return;
         }
 
@@ -239,7 +222,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         }
         else
         {
-            ShowConnectionOkStatus("SettingsPage_ConnectionSaved");
+            ShowConnectionOkStatus("Settings_Workshop_ConnectionSaved");
         }
     }
 
@@ -250,7 +233,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(Author))
         {
-            ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("SettingsPage_AuthorRequired"));
+            ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("Settings_Workshop_AuthorRequired"));
         }
         else
         {
@@ -264,7 +247,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     private async Task CheckConnectionAsync()
     {
         var checkId = ++_connectionCheckId;
-        ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("SettingsPage_CheckingConnection"));
+        ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Workshop_ConnectionChecking"));
 
         var outcome = await _packageApiClient.CheckConnectionAsync();
 
@@ -278,30 +261,49 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         switch (outcome)
         {
             case ConnectionCheckOutcome.Connected:
-                ShowConnectionOkStatus("SettingsPage_ConnectionVerified");
+                ShowConnectionOkStatus("Settings_Workshop_ConnectionVerified");
                 break;
 
             case ConnectionCheckOutcome.Unauthorized:
                 // The workshop definitively rejected the key, so name the key.
-                ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("SettingsPage_WorkshopKeyRejected"));
+                ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Workshop_KeyRejected"));
                 break;
 
             case ConnectionCheckOutcome.Unreachable:
                 // The key is stored; we just could not verify it right now, so
                 // report a warning rather than claiming the key is wrong.
-                ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("SettingsPage_ConnectionUnverified"));
+                ShowStatus(StatusSeverity.Warning, _stringLocalizer.GetString("Settings_Workshop_ConnectionUnverified"));
                 break;
         }
     }
 
-    private async Task RefreshStoredKeyDisplayAsync()
+    private void RefreshStoredKeyDisplay()
     {
-        var summaryResult = await _credentialService.GetWorkshopKeySummaryAsync();
-        if (summaryResult.IsSuccess)
+        StoredKeyDisplay = FormatStoredKeyDisplay(_settingsService.Get(SettingCatalog.Workshop.KeyHint));
+    }
+
+    // Encrypts and stores the Workshop Key, and records its non-secret display
+    // hint alongside. The key is written before the hint, so a failure between
+    // the two leaves a usable key with a stale hint rather than a hint with no key.
+    private Result StoreWorkshopKey(string workshopKey)
+    {
+        try
         {
-            var summary = summaryResult.Value;
-            StoredKeyDisplay = FormatStoredKeyDisplay(summary.KeyHint);
+            _settingsService.Set(SettingCatalog.Workshop.Key, workshopKey);
+            _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKeyHelper.GetDisplayHint(workshopKey));
         }
+        catch (InvalidOperationException ex)
+        {
+            return Result.Fail("Failed to store the Workshop Key").WithException(ex);
+        }
+
+        return Result.Ok();
+    }
+
+    private void ClearWorkshopKey()
+    {
+        _settingsService.Reset(SettingCatalog.Workshop.Key);
+        _settingsService.Reset(SettingCatalog.Workshop.KeyHint);
     }
 
     private void UpdateViewState()

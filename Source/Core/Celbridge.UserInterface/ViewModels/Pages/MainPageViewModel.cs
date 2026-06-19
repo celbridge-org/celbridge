@@ -11,7 +11,7 @@ public partial class MainPageViewModel : ObservableObject
     private readonly Logging.ILogger<MainPageViewModel> _logger;
     private readonly INavigationService _navigationService;
     private readonly ICommandService _commandService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IUndoService _undoService;
     private readonly ILocalFileSystem _fileSystem;
 
@@ -20,7 +20,7 @@ public partial class MainPageViewModel : ObservableObject
         IMessengerService messengerService,
         INavigationService navigationService,
         ICommandService commandService,
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
         IUndoService undoService,
         ILocalFileSystem fileSystem)
     {
@@ -28,7 +28,7 @@ public partial class MainPageViewModel : ObservableObject
         _messengerService = messengerService;
         _navigationService = navigationService;
         _commandService = commandService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _undoService = undoService;
         _fileSystem = fileSystem;
 
@@ -40,7 +40,7 @@ public partial class MainPageViewModel : ObservableObject
     public async Task OnMainPage_LoadedAsync()
     {
         // Open the previous project if one was loaded last time we ran the application.
-        var previousProjectFile = _editorSettings.PreviousProject;
+        var previousProjectFile = _settingsService.Get(SettingCatalog.Project.PreviousProject);
         bool previousProjectExists = false;
         if (!string.IsNullOrEmpty(previousProjectFile))
         {

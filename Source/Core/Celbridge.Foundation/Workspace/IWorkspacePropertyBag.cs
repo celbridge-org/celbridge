@@ -1,17 +1,18 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages the workspace settings associated with the current loaded project.
+/// Async, dynamically-keyed store for per-project data that does not fit a static
+/// setting descriptor. Values are persisted with the project.
 /// </summary>
-public interface IWorkspaceSettings
+public interface IWorkspacePropertyBag
 {
     /// <summary>
-    /// Gets the data version for the workspace settings.
+    /// Gets the data version for the workspace property bag.
     /// </summary>
     Task<int> GetDataVersionAsync();
 
     /// <summary>
-    /// Sets the data version for the workspace settings.
+    /// Sets the data version for the workspace property bag.
     /// </summary>
     Task SetDataVersionAsync(int version);
 

@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Logging.Services;
 using Celbridge.Messaging.Services;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,6 +80,12 @@ public class CommandTests
         services.AddSingleton<IMessengerService, MessengerService>();
         services.AddSingleton<ICommandService, CommandService>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
+
+        // The command loop flushes application settings each tick; a substitute is
+        // enough since these tests do not exercise settings persistence.
+        var settingsService = Substitute.For<ISettingsService>();
+        settingsService.FlushAsync().Returns(Task.FromResult(Result.Ok()));
+        services.AddSingleton(settingsService);
         services.AddTransient<TestCommand>();
         services.AddTransient<ThrowingTestCommand>();
         services.AddTransient<SuppressLogTestCommand>();

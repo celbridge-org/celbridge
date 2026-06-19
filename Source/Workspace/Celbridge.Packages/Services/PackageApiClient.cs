@@ -3,23 +3,22 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Celbridge.Credentials;
 using Celbridge.Settings;
 
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Communicates with the workshop server's package REST API. The Workshop URL is
-/// read from settings and the Workshop Key from the credential store on every
-/// request, so a connection change in Settings takes effect without a restart.
-/// The key is never included in results or error messages.
+/// Communicates with the workshop server's package REST API. The Workshop URL and
+/// Workshop Key are read from settings on every request, so a connection change
+/// in Settings takes effect without a restart. The key is never included in
+/// results or error messages.
 /// </summary>
 public class PackageApiClient : IPackageApiClient, IDisposable
 {
     private readonly WorkshopApiSender _sender;
 
-    public PackageApiClient(ICredentialService credentialService, IEditorSettings editorSettings)
-        : this(credentialService, editorSettings, new HttpClientHandler())
+    public PackageApiClient(ISettingsService settingsService)
+        : this(settingsService, new HttpClientHandler())
     {
     }
 
@@ -27,9 +26,9 @@ public class PackageApiClient : IPackageApiClient, IDisposable
     /// Creates a client over an explicit message handler so tests can serve
     /// canned responses without a network.
     /// </summary>
-    public PackageApiClient(ICredentialService credentialService, IEditorSettings editorSettings, HttpMessageHandler messageHandler)
+    public PackageApiClient(ISettingsService settingsService, HttpMessageHandler messageHandler)
     {
-        _sender = new WorkshopApiSender(credentialService, editorSettings, messageHandler);
+        _sender = new WorkshopApiSender(settingsService, messageHandler);
     }
 
     public async Task<Result<IReadOnlyList<RemotePackageSummary>>> ListPackagesAsync()

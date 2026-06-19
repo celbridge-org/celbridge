@@ -32,7 +32,7 @@ public class LineEditor : ComponentEditorBase
     private readonly ILogger<LineEditor> _logger;
     private readonly IEntityService _entityService;
     private readonly IActivityService _activityService;
-    private readonly IWorkspaceSettings _workspaceSettings;
+    private readonly IWorkspacePropertyBag _propertyBag;
 
     public LineEditor(
         ILogger<LineEditor> logger,
@@ -41,7 +41,7 @@ public class LineEditor : ComponentEditorBase
         _logger = logger;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
-        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        _propertyBag = workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
     }
 
     public override string GetComponentConfig()
@@ -293,7 +293,7 @@ public class LineEditor : ComponentEditorBase
     /// </summary>
     private async Task RecordModifiedScene()
     {
-        var modifiedScenes = await _workspaceSettings.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
+        var modifiedScenes = await _propertyBag.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
         if (modifiedScenes is null)
         {
             modifiedScenes = new HashSet<string>();
@@ -313,7 +313,7 @@ public class LineEditor : ComponentEditorBase
         }
 
         modifiedScenes.Add(@namespace);
-        await _workspaceSettings.SetPropertyAsync(ScreenplayConstants.ModifiedScenesKey, modifiedScenes);
+        await _propertyBag.SetPropertyAsync(ScreenplayConstants.ModifiedScenesKey, modifiedScenes);
     }
 
     private Result<List<string>> GetSpeakingToCharacterIds()

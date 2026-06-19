@@ -17,7 +17,6 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IWorkspaceLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IEditorSettings _editorSettings;
     private readonly IWindowModeService _windowModeService;
     private readonly ILayoutService _layoutService;
     private readonly IFeatureFlags _featureFlags;
@@ -31,20 +30,20 @@ public partial class WorkspacePageViewModel : ObservableObject
     // Panel width/height properties now use Primary/Secondary naming
     public float PrimaryPanelWidth
     {
-        get => _editorSettings.PrimaryPanelWidth;
-        set => _editorSettings.PrimaryPanelWidth = value;
+        get => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth;
+        set => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth = value;
     }
 
     public float SecondaryPanelWidth
     {
-        get => _editorSettings.SecondaryPanelWidth;
-        set => _editorSettings.SecondaryPanelWidth = value;
+        get => _workspaceService.BindableWorkspaceSettings.SecondaryPanelWidth;
+        set => _workspaceService.BindableWorkspaceSettings.SecondaryPanelWidth = value;
     }
 
     public float ConsolePanelHeight
     {
-        get => _editorSettings.ConsolePanelHeight;
-        set => _editorSettings.ConsolePanelHeight = value;
+        get => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight;
+        set => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight = value;
     }
 
     public bool IsFullScreen => _windowModeService.IsFullScreen;
@@ -63,7 +62,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
-        IEditorSettings editorSettings,
         IWindowModeService windowModeService,
         ILayoutService layoutService,
         IFeatureFlags featureFlags,
@@ -74,7 +72,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         _logger = logger;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
-        _editorSettings = editorSettings;
         _windowModeService = windowModeService;
         _layoutService = layoutService;
         _featureFlags = featureFlags;
@@ -82,8 +79,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         _projectService = projectService;
         _workspaceLoader = workspaceLoader;
 
-        _editorSettings.PropertyChanged += OnEditorSettings_PropertyChanged;
-        
         // Listen for layout manager state changes via messages
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
@@ -94,11 +89,15 @@ public partial class WorkspacePageViewModel : ObservableObject
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
         _workspaceLoader = workspaceLoader;
+
+        // Forward panel-size change notifications from the workspace settings so the
+        // bound panel columns update when the layout is reset or restored.
+        _workspaceService.BindableWorkspaceSettings.PropertyChanged += OnWorkspaceSettings_PropertyChanged;
     }
 
-    private void OnEditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnWorkspaceSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Forward property change notifications from editor settings
+        // Forward property change notifications from the workspace settings facade
         OnPropertyChanged(e);
     }
 
@@ -124,7 +123,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public void OnWorkspacePageUnloaded()
     {
-        _editorSettings.PropertyChanged -= OnEditorSettings_PropertyChanged;
+        _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
 
         // Unregister message handlers
         _messengerService.Unregister<WindowModeChangedMessage>(this);
@@ -146,6 +145,11 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Notify listeners that the workspace has been unloaded.
         var message = new WorkspaceUnloadedMessage();
         _messengerService.Send(message);
+    }
+
+    public async Task<Result> AcquireWorkspaceSettingsAsync()
+    {
+        return await _workspaceService.WorkspaceSettings.AcquireWorkspaceSettingsAsync();
     }
 
     public async Task LoadWorkspaceAsync()

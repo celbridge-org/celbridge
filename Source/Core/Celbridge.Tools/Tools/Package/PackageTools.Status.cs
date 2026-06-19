@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Packages;
 using Celbridge.Projects;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;

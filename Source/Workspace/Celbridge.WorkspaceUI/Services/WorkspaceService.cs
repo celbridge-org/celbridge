@@ -18,8 +18,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IMessengerService _messengerService;
 
-    public IWorkspaceSettingsService WorkspaceSettingsService { get; }
-    public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
+    public IWorkspaceSettingsService WorkspaceSettings { get; }
+    public IBindableWorkspaceSettings BindableWorkspaceSettings { get; }
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
     public IExplorerService ExplorerService { get; }
@@ -52,7 +52,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Create instances of the required sub-services
 
-        WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+        WorkspaceSettings = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+        BindableWorkspaceSettings = serviceProvider.GetRequiredService<IBindableWorkspaceSettings>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
@@ -78,7 +79,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
 
         // The folder itself is created on demand by AcquireWorkspaceSettingsAsync.
-        WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
+        WorkspaceSettings.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
     }
@@ -146,6 +147,21 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             _logger.LogError($"Failed to update inspector service. {inspectorResult.DiagnosticReport}");
         }
 
+        // Flush any pending Workspace-scope setting writes (panel sizes, search
+        // options, last new-file extension). These are set on the UI thread but
+        // deferred, so the disk write happens here off the UI thread. FlushAsync
+        // is a no-op when nothing has changed since the last tick.
+        var workspaceSettingsStore = WorkspaceSettings.WorkspaceSettingsStore;
+        if (workspaceSettingsStore is not null)
+        {
+            var flushResult = await workspaceSettingsStore.FlushAsync();
+            if (flushResult.IsFailure)
+            {
+                failed = true;
+                _logger.LogError($"Failed to flush workspace settings. {flushResult.DiagnosticReport}");
+            }
+        }
+
         // Todo: Clear save icon on the status bar if there are no pending saves
 
         if (failed)
@@ -186,7 +202,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();
-                (WorkspaceSettingsService as IDisposable)!.Dispose();
+                (WorkspaceSettings as IDisposable)!.Dispose();
                 (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();

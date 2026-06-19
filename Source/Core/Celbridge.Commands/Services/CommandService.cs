@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.Commands.Services;
@@ -15,6 +16,7 @@ public class CommandService : ICommandService
     private readonly ICommandLogger _logger;
     private readonly ILogSerializer _logSerializer;
     private readonly IMessengerService _messengerService;
+    private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private record QueuedCommand(IExecutableCommand Command);
@@ -33,12 +35,14 @@ public class CommandService : ICommandService
         ICommandLogger logger,
         ILogSerializer logSerializer,
         IMessengerService messengerService,
+        ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _logSerializer = logSerializer;
         _messengerService = messengerService;
+        _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -182,12 +186,12 @@ public class CommandService : ICommandService
                 break;
             }
 
-            // To avoid race conditions, the workspace state is updated while there are no executing commands.
-            // This ensures that no commands are executed until resource and entity saving completes.
-            var updateWorkspaceResult = await UpdateWorkspaceAsync();
-            if (updateWorkspaceResult.IsFailure)
+            // To avoid race conditions, application and workspace state is updated while there are no
+            // executing commands. This ensures that no commands run until pending saves complete.
+            var updateResult = await UpdateApplicationAsync();
+            if (updateResult.IsFailure)
             {
-                _logger.LogError(updateWorkspaceResult, "Failed to update workspace");
+                _logger.LogError(updateResult, "Failed to update application");
             }
 
             // Find the first command that is ready to execute
@@ -312,31 +316,50 @@ public class CommandService : ICommandService
     }
 
     /// <summary>
-    /// Flush any pending save operations before the next command executes.
+    /// Flushes pending saves between commands, so a save never races a command.
     /// </summary>
-    private async Task<Result> UpdateWorkspaceAsync()
+    private async Task<Result> UpdateApplicationAsync()
     {
-        var now = _stopwatch.Elapsed.TotalSeconds;
+        bool failed = false;
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded ||
-            _lastWorkspaceUpdateTime == 0)
+        // Application-scope settings (theme, window geometry, Workshop config) are
+        // written on the UI thread but deferred, so the disk write happens here, off
+        // the UI thread. FlushAsync is a no-op when nothing changed since the last tick.
+        var flushResult = await _settingsService.FlushAsync();
+        if (flushResult.IsFailure)
+        {
+            failed = true;
+            _logger.LogError(flushResult, "Failed to flush application settings");
+        }
+
+        // Updating the workspace systems is a subset of the application update that
+        // runs only when a workspace is loaded.
+        var now = _stopwatch.Elapsed.TotalSeconds;
+        if (_workspaceWrapper.IsWorkspacePageLoaded &&
+            _lastWorkspaceUpdateTime != 0)
+        {
+            var deltaTime = now - _lastWorkspaceUpdateTime;
+
+            var updateResult = await _workspaceWrapper.WorkspaceService.UpdateWorkspaceAsync(deltaTime);
+            if (updateResult.IsFailure)
+            {
+                // The workspace service logs the specific failures it encountered.
+                failed = true;
+            }
+
+            // Use the latest reported time to account for any time spent saving.
+            _lastWorkspaceUpdateTime = _stopwatch.Elapsed.TotalSeconds;
+        }
+        else
         {
             // No workspace is loaded, or this is the first call so we can't calculate a delta time.
             _lastWorkspaceUpdateTime = now;
-            return Result.Ok();
         }
 
-        var deltaTime = now - _lastWorkspaceUpdateTime;
-
-        var updateResult = await _workspaceWrapper.WorkspaceService.UpdateWorkspaceAsync(deltaTime);
-        if (updateResult.IsFailure)
+        if (failed)
         {
-            return Result.Fail($"Failed to update workspace state")
-                .WithErrors(updateResult);
+            return Result.Fail("Failed to update application");
         }
-
-        // Use the latest reported time to account for any time spent saving
-        _lastWorkspaceUpdateTime = _stopwatch.Elapsed.TotalSeconds;
 
         return Result.Ok();
     }

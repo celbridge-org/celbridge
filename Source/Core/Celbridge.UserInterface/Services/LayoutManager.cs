@@ -12,7 +12,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
 {
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFeatureFlags _featureFlags;
 
     private WindowMode _windowMode = WindowMode.Windowed;
@@ -21,20 +22,51 @@ public class LayoutManager : IWindowModeService, ILayoutService
     public LayoutManager(
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
+        IWorkspaceWrapper workspaceWrapper,
         IFeatureFlags featureFlags)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
+        _workspaceWrapper = workspaceWrapper;
         _featureFlags = featureFlags;
 
-        // Initialize from persisted preferences
-        _regionVisibility = _editorSettings.PreferredRegionVisibility;
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
         _messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
+    }
+
+    // The typed workspace settings facade, or null when no workspace is loaded.
+    // Panel layout is Workspace-scoped, so it has no meaning outside a project.
+    private IBindableWorkspaceSettings? WorkspaceSettings =>
+        _workspaceWrapper.IsWorkspacePageLoaded
+            ? _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings
+            : null;
+
+    // The project's preferred region visibility, falling back to all regions
+    // when no workspace is loaded.
+    private LayoutRegion PreferredRegionVisibility =>
+        WorkspaceSettings?.PreferredRegionVisibility ?? LayoutRegion.All;
+
+    // Persists the preferred region visibility for the current project. A no-op
+    // when no workspace is loaded.
+    private void PersistPreferredRegionVisibility(LayoutRegion visibility)
+    {
+        var workspaceSettings = WorkspaceSettings;
+        if (workspaceSettings is not null)
+        {
+            workspaceSettings.PreferredRegionVisibility = visibility;
+        }
+    }
+
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
+    {
+        // The workspace settings are now loaded, so apply this project's preferred
+        // region visibility. No need to persist, we are restoring the saved state.
+        UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
     }
 
     public WindowMode WindowMode
@@ -130,11 +162,11 @@ public class LayoutManager : IWindowModeService, ILayoutService
         SetRegionVisibility(region, !isCurrentlyVisible);
     }
 
-    public bool IsConsoleMaximized => _editorSettings.IsConsoleMaximized;
+    public bool IsConsoleMaximized => WorkspaceSettings?.IsConsoleMaximized ?? false;
 
     public void SetConsoleMaximized(bool isMaximized)
     {
-        if (_editorSettings.IsConsoleMaximized == isMaximized)
+        if (IsConsoleMaximized == isMaximized)
         {
             return;
         }
@@ -145,7 +177,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
             return;
         }
 
-        _editorSettings.IsConsoleMaximized = isMaximized;
+        var workspaceSettings = WorkspaceSettings;
+        if (workspaceSettings is null)
+        {
+            return;
+        }
+
+        workspaceSettings.IsConsoleMaximized = isMaximized;
 
         // Broadcast the change
         var message = new ConsoleMaximizedChangedMessage(isMaximized);
@@ -217,7 +255,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
             _logger.LogDebug("Detected fullscreen exit via drag, transitioning to Windowed mode");
 
             // Restore the preferred panel visibility configuration
-            UpdateRegionVisibility(_editorSettings.PreferredRegionVisibility, shouldPersist: false);
+            UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
 
             // Update internal state without sending another WindowModeChangedMessage
             // since the window is already in the correct state
@@ -238,7 +276,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
         // Restore the preferred panel visibility configuration.
         // No need to persist this change, we're just restoring the saved state.
-        UpdateRegionVisibility(_editorSettings.PreferredRegionVisibility, shouldPersist: false);
+        UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
         SetWindowModeInternal(WindowMode.Windowed);
 
         return Result.Ok();
@@ -253,7 +291,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
         // Restore the preferred panel visibility configuration.
         // No need to persist this change, we're just restoring the saved state.
-        UpdateRegionVisibility(_editorSettings.PreferredRegionVisibility, shouldPersist: false);
+        UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
         SetWindowModeInternal(WindowMode.FullScreen);
 
         return Result.Ok();
@@ -324,17 +362,21 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
 
         // Reset panel sizes
-        _editorSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
-        _editorSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
-        _editorSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+        var workspaceSettings = WorkspaceSettings;
+        if (workspaceSettings is not null)
+        {
+            workspaceSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
+            workspaceSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
+            workspaceSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+        }
 
         // Reset preferred window geometry
-        _editorSettings.UsePreferredWindowGeometry = false;
-        _editorSettings.PreferredWindowX = 0;
-        _editorSettings.PreferredWindowY = 0;
-        _editorSettings.PreferredWindowWidth = 0;
-        _editorSettings.PreferredWindowHeight = 0;
-        _editorSettings.IsWindowMaximized = false;
+        _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, false);
+        _settingsService.Set(SettingCatalog.Window.PreferredX, 0);
+        _settingsService.Set(SettingCatalog.Window.PreferredY, 0);
+        _settingsService.Set(SettingCatalog.Window.PreferredWidth, 0);
+        _settingsService.Set(SettingCatalog.Window.PreferredHeight, 0);
+        _settingsService.Set(SettingCatalog.Window.IsMaximized, false);
 
         // Reset preferred visibility to all regions, but exclude Console if feature is disabled
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
@@ -343,7 +385,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
             : (LayoutRegion.Primary | LayoutRegion.Secondary);
 
         UpdateRegionVisibility(targetVisibility, shouldPersist: true);
-        _editorSettings.PreferredRegionVisibility = targetVisibility;
+        PersistPreferredRegionVisibility(targetVisibility);
 
         // Return to Windowed mode if in fullscreen
         if (WindowMode != WindowMode.Windowed)
@@ -377,7 +419,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // and not in Presenter mode (temporary presentation state)
         if (shouldPersist && WindowMode != WindowMode.Presenter)
         {
-            _editorSettings.PreferredRegionVisibility = newVisibility;
+            PersistPreferredRegionVisibility(newVisibility);
         }
 
         // Broadcast the change

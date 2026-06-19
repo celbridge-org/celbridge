@@ -16,17 +16,17 @@ public sealed partial class WorkshopSettingsView : UserControl
     private DispatcherQueueTimer? _autoSaveTimer;
     private bool _connectionFieldDirty;
 
-    private string WorkshopSectionString => _stringLocalizer.GetString("SettingsPage_WorkshopSection");
-    private string WorkshopDescriptionString => _stringLocalizer.GetString("SettingsPage_WorkshopDescription");
-    private string WorkshopUrlString => _stringLocalizer.GetString("SettingsPage_WorkshopUrl");
-    private string WorkshopUrlTooltipString => _stringLocalizer.GetString("SettingsPage_WorkshopUrlTooltip");
-    private string WorkshopKeyString => _stringLocalizer.GetString("SettingsPage_WorkshopKey");
-    private string AuthorString => _stringLocalizer.GetString("SettingsPage_Author");
-    private string AuthorTooltipString => _stringLocalizer.GetString("SettingsPage_AuthorTooltip");
-    private string AuthorPlaceholderString => _stringLocalizer.GetString("SettingsPage_AuthorPlaceholder");
-    private string SetWorkshopKeyString => _stringLocalizer.GetString("SettingsPage_SetWorkshopKey");
-    private string ChangeKeyString => _stringLocalizer.GetString("SettingsPage_ChangeKey");
-    private string RemoveKeyString => _stringLocalizer.GetString("SettingsPage_RemoveKey");
+    private string WorkshopSectionString => _stringLocalizer.GetString("Settings_Workshop_SectionHeader");
+    private string WorkshopDescriptionString => _stringLocalizer.GetString("Settings_Workshop_Description");
+    private string WorkshopUrlString => _stringLocalizer.GetString("Settings_Workshop_Url");
+    private string WorkshopUrlTooltipString => _stringLocalizer.GetString("Settings_Workshop_UrlTooltip");
+    private string WorkshopKeyString => _stringLocalizer.GetString("Settings_Workshop_Key");
+    private string AuthorString => _stringLocalizer.GetString("Settings_Workshop_Author");
+    private string AuthorTooltipString => _stringLocalizer.GetString("Settings_Workshop_AuthorTooltip");
+    private string AuthorPlaceholderString => _stringLocalizer.GetString("Settings_Workshop_AuthorPlaceholder");
+    private string SetWorkshopKeyString => _stringLocalizer.GetString("Settings_Workshop_KeySet");
+    private string ChangeKeyString => _stringLocalizer.GetString("Settings_Workshop_KeyChange");
+    private string RemoveKeyString => _stringLocalizer.GetString("Settings_Workshop_KeyRemove");
 
     public WorkshopSettingsViewModel ViewModel { get; }
 

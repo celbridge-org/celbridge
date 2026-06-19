@@ -13,7 +13,7 @@ public static class ProjectConstants
     /// <summary>
     /// File containing the workspace settings data.
     /// </summary>
-    public const string WorkspaceSettingsFile = "workspace_settings.db";
+    public const string WorkspaceSettingsFile = "workspace_settings.json";
 
     /// <summary>
     /// Hidden folder for Celbridge-internal storage.

@@ -13,7 +13,8 @@ public class LayoutManagerTests
 {
     private ServiceProvider? _serviceProvider;
     private IMessengerService _messengerService = null!;
-    private IEditorSettings _editorSettings = null!;
+    private ISettingsService _settingsService = null!;
+    private IBindableWorkspaceSettings _workspaceSettings = null!;
     private LayoutManager _layoutManager = null!;
 
     [SetUp]
@@ -27,10 +28,21 @@ public class LayoutManagerTests
         _serviceProvider = services.BuildServiceProvider();
 
         _messengerService = _serviceProvider.GetRequiredService<IMessengerService>();
-        _editorSettings = Substitute.For<IEditorSettings>();
+        _settingsService = Substitute.For<ISettingsService>();
 
-        // Default to all panels visible
-        _editorSettings.PreferredRegionVisibility.Returns(LayoutRegion.All);
+        // Panel layout is Workspace-scoped, so it is read from and written to the
+        // workspace settings facade reached through the workspace wrapper.
+        _workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
+
+        // Default to all panels visible. Set the value (rather than stubbing the
+        // getter) so writes by the layout manager are reflected on subsequent reads.
+        _workspaceSettings.PreferredRegionVisibility = LayoutRegion.All;
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+        workspaceService.BindableWorkspaceSettings.Returns(_workspaceSettings);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
         var featureFlags = Substitute.For<IFeatureFlags>();
@@ -38,7 +50,7 @@ public class LayoutManagerTests
         // Default to console panel feature enabled for tests
         featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel).Returns(true);
 
-        _layoutManager = new LayoutManager(logger, _messengerService, _editorSettings, featureFlags);
+        _layoutManager = new LayoutManager(logger, _messengerService, _settingsService, workspaceWrapper, featureFlags);
     }
 
     [TearDown]
@@ -62,7 +74,7 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void InitialState_RegionVisibilityMatchesEditorSettings()
+    public void InitialState_RegionVisibilityIsAllByDefault()
     {
         _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
@@ -306,21 +318,21 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ResetLayout_ResetsPanelSizesInEditorSettings()
+    public void ResetLayout_ResetsPanelSizesInWorkspaceSettings()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
-        _editorSettings.Received(1).PrimaryPanelWidth = 300f;
-        _editorSettings.Received(1).SecondaryPanelWidth = 300f;
-        _editorSettings.Received(1).ConsolePanelHeight = 350f;
+        _workspaceSettings.Received(1).PrimaryPanelWidth = 300f;
+        _workspaceSettings.Received(1).SecondaryPanelWidth = 300f;
+        _workspaceSettings.Received(1).ConsolePanelHeight = 350f;
     }
 
     [Test]
-    public void ResetLayout_ResetsPreferredRegionVisibilityInEditorSettings()
+    public void ResetLayout_ResetsPreferredRegionVisibilityInWorkspaceSettings()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
-        _editorSettings.Received().PreferredRegionVisibility = LayoutRegion.All;
+        _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.All;
     }
 
     #endregion
@@ -363,37 +375,37 @@ public class LayoutManagerTests
         _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
 
         var expectedVisibility = LayoutRegion.Secondary | LayoutRegion.Console;
-        _editorSettings.Received().PreferredRegionVisibility = expectedVisibility;
+        _workspaceSettings.Received().PreferredRegionVisibility = expectedVisibility;
     }
 
     [Test]
     public void SetRegionVisibility_InFullScreenMode_UpdatesPreferredRegionVisibility()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
-        _editorSettings.ClearReceivedCalls();
+        _workspaceSettings.ClearReceivedCalls();
 
         _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
 
         var expectedVisibility = LayoutRegion.Primary | LayoutRegion.Console;
-        _editorSettings.Received().PreferredRegionVisibility = expectedVisibility;
+        _workspaceSettings.Received().PreferredRegionVisibility = expectedVisibility;
     }
 
     [Test]
     public void SetRegionVisibility_ToNone_UpdatesPreferredRegionVisibility()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
-        _editorSettings.ClearReceivedCalls();
+        _workspaceSettings.ClearReceivedCalls();
 
         // Hide all panels
         _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
         _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
-        _editorSettings.ClearReceivedCalls();
+        _workspaceSettings.ClearReceivedCalls();
 
         // The last panel being hidden SHOULD persist None as preference
         // because the user explicitly chose to hide all panels
         _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
 
-        _editorSettings.Received().PreferredRegionVisibility = LayoutRegion.None;
+        _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.None;
     }
 
     #endregion

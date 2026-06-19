@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using Celbridge.Credentials;
 using Celbridge.Settings;
 
 namespace Celbridge.Packages;
@@ -9,22 +8,20 @@ namespace Celbridge.Packages;
 /// <summary>
 /// Sends authenticated requests to the workshop server's REST API. Shared by the
 /// package and page API clients so the connection and auth handling lives in one
-/// place rather than being duplicated per client. The Workshop URL is read from
-/// settings and the Workshop Key from the credential store, both at request
-/// time.
+/// place rather than being duplicated per client. The Workshop URL and the
+/// Workshop Key are both read from settings at request time, the key from its
+/// Protected scope.
 /// </summary>
 internal sealed class WorkshopApiSender : IDisposable
 {
     private const string ApiKeyScheme = "Api-Key";
 
-    private readonly ICredentialService _credentialService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly HttpClient _httpClient;
 
-    public WorkshopApiSender(ICredentialService credentialService, IEditorSettings editorSettings, HttpMessageHandler messageHandler)
+    public WorkshopApiSender(ISettingsService settingsService, HttpMessageHandler messageHandler)
     {
-        _credentialService = credentialService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _httpClient = new HttpClient(messageHandler);
     }
 
@@ -109,7 +106,9 @@ internal sealed class WorkshopApiSender : IDisposable
     // request shared by SendAsync and the connection probe.
     private async Task<Result<HttpRequestMessage>> BuildRequestAsync(HttpMethod method, string relativePath, HttpContent? content = null)
     {
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
+        await Task.CompletedTask;
+
+        var keyResult = _settingsService.TryGet(SettingCatalog.Workshop.Key);
         if (keyResult.IsFailure)
         {
             return Result.Fail("Failed to read the Workshop Key from the credential store")
@@ -117,7 +116,7 @@ internal sealed class WorkshopApiSender : IDisposable
         }
         var workshopKey = keyResult.Value;
 
-        var baseUriResult = ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
+        var baseUriResult = ValidateWorkshopUrl(_settingsService.Get(SettingCatalog.Workshop.Url));
         if (baseUriResult.IsFailure)
         {
             return Result.Fail(baseUriResult);
@@ -139,7 +138,7 @@ internal sealed class WorkshopApiSender : IDisposable
     public async Task<Result<Uri>> GetBaseUriAsync()
     {
         await Task.CompletedTask;
-        return ValidateWorkshopUrl(_editorSettings.WorkshopUrl);
+        return ValidateWorkshopUrl(_settingsService.Get(SettingCatalog.Workshop.Url));
     }
 
     // The Workshop Key is a bearer credential, so sending it over plain HTTP

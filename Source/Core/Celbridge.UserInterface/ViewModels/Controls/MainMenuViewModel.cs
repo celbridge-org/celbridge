@@ -15,7 +15,7 @@ public partial class MainMenuViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly INavigationService _navigationService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
@@ -28,7 +28,7 @@ public partial class MainMenuViewModel : ObservableObject
         IMessengerService messengerService,
         ICommandService commandService,
         INavigationService navigationService,
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         ILocalFileSystem fileSystem,
@@ -37,7 +37,7 @@ public partial class MainMenuViewModel : ObservableObject
         _messengerService = messengerService;
         _commandService = commandService;
         _navigationService = navigationService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _fileSystem = fileSystem;
@@ -111,7 +111,7 @@ public partial class MainMenuViewModel : ObservableObject
         await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
 
         // Clear the previous project setting so it won't auto-load next time
-        _editorSettings.PreviousProject = string.Empty;
+        _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
 
         // Navigate to home page
         _navigationService.NavigateToPage(NavigationConstants.HomeTag);

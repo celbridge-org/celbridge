@@ -78,7 +78,7 @@ public class WorkspaceLoader
         //
         // Acquire the workspace settings
         //
-        var workspaceSettingsService = workspaceService.WorkspaceSettingsService;
+        var workspaceSettingsService = workspaceService.WorkspaceSettings;
         var acquireResult = await workspaceSettingsService.AcquireWorkspaceSettingsAsync();
         if (acquireResult.IsFailure)
         {
@@ -86,8 +86,8 @@ public class WorkspaceLoader
                 .WithErrors(acquireResult);
         }
 
-        var workspaceSettings = workspaceSettingsService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = workspaceSettingsService.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         //
         // Initialize the entity service.

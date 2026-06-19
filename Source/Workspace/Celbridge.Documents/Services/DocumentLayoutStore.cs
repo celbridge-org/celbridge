@@ -44,8 +44,8 @@ public class DocumentLayoutStore
 
     public async Task StoreDocumentLayoutAsync()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         var storedAddresses = DocumentsPanel.GetOpenDocuments()
             .Select(document => new StoredDocumentAddress(
@@ -58,34 +58,34 @@ public class DocumentLayoutStore
             .ThenBy(address => address.TabOrder)
             .ToList();
 
-        await workspaceSettings.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
+        await propertyBag.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
     }
 
     public async Task StoreActiveDocumentAsync(ResourceKey activeDocument)
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         var fileResource = activeDocument.ToString();
-        await workspaceSettings.SetPropertyAsync(ActiveDocumentKey, fileResource);
+        await propertyBag.SetPropertyAsync(ActiveDocumentKey, fileResource);
     }
 
     public async Task StoreSectionRatiosAsync(List<double> ratios)
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
-        await workspaceSettings.SetPropertyAsync(SectionRatiosKey, ratios);
+        await propertyBag.SetPropertyAsync(SectionRatiosKey, ratios);
     }
 
     public async Task StoreDocumentEditorStatesAsync()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         // Start with existing saved states so that editors that aren't ready yet
         // (e.g., WebView still loading) preserve their previously saved state.
-        var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+        var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
             ?? new Dictionary<string, string>();
 
         var openDocumentKeys = new HashSet<string>();
@@ -127,17 +127,17 @@ public class DocumentLayoutStore
             editorStates.Remove(staleKey);
         }
 
-        await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
+        await propertyBag.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
     }
 
     public async Task StoreDocumentEditorStateAsync(ResourceKey fileResource, string? state)
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
         try
         {
-            var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+            var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
                 ?? new Dictionary<string, string>();
 
             var resourceKey = fileResource.ToString();
@@ -150,7 +150,7 @@ public class DocumentLayoutStore
                 editorStates.Remove(resourceKey);
             }
 
-            await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
+            await propertyBag.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
         }
         catch (Exception ex)
         {
@@ -190,16 +190,16 @@ public class DocumentLayoutStore
 
     private async Task<StoredLayout> LoadStoredLayoutAsync()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
-        var sectionRatios = await workspaceSettings.GetPropertyAsync<List<double>>(SectionRatiosKey);
+        var sectionRatios = await propertyBag.GetPropertyAsync<List<double>>(SectionRatiosKey);
 
         // Try to load document addresses - if format is incompatible, just start fresh
         List<StoredDocumentAddress>? storedAddresses = null;
         try
         {
-            storedAddresses = await workspaceSettings.GetPropertyAsync<List<StoredDocumentAddress>>(DocumentLayoutKey);
+            storedAddresses = await propertyBag.GetPropertyAsync<List<StoredDocumentAddress>>(DocumentLayoutKey);
         }
         catch
         {
@@ -211,7 +211,7 @@ public class DocumentLayoutStore
         Dictionary<string, string>? editorStates = null;
         try
         {
-            editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey);
+            editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey);
         }
         catch
         {
@@ -287,10 +287,10 @@ public class DocumentLayoutStore
 
     private async Task RestoreActiveDocumentAsync()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        Guard.IsNotNull(workspaceSettings);
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
 
-        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(ActiveDocumentKey);
+        var selectedDocument = await propertyBag.GetPropertyAsync<string>(ActiveDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
             return;

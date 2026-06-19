@@ -29,7 +29,7 @@ public class SearchService : ISearchService, IDisposable
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-    private IWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+    private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
 
     public SearchService(
         ILogger<SearchService> logger,
@@ -539,7 +539,7 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            var history = await WorkspaceSettings.GetPropertyAsync<SearchHistory>(SearchHistoryKey);
+            var history = await PropertyBag.GetPropertyAsync<SearchHistory>(SearchHistoryKey);
 
             if (history is null)
             {
@@ -552,7 +552,7 @@ public class SearchService : ISearchService, IDisposable
         {
             // Handle corrupted or old-format data by clearing it and returning empty history
             _logger.LogWarning(ex, "Failed to deserialize search history, clearing corrupted data");
-            await WorkspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+            await PropertyBag.DeletePropertyAsync(SearchHistoryKey);
             return emptyHistory;
         }
     }
@@ -585,7 +585,7 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var updatedHistory = new SearchHistory(searchTerms, history.ReplaceTerms.ToList());
-        await WorkspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
+        await PropertyBag.SetPropertyAsync(SearchHistoryKey, updatedHistory);
     }
 
     public async Task AddReplaceTermToHistoryAsync(string term)
@@ -616,7 +616,7 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var updatedHistory = new SearchHistory(history.SearchTerms.ToList(), replaceTerms);
-        await WorkspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
+        await PropertyBag.SetPropertyAsync(SearchHistoryKey, updatedHistory);
     }
 
     public async Task ClearHistoryAsync()
@@ -626,7 +626,7 @@ public class SearchService : ISearchService, IDisposable
             return;
         }
 
-        await WorkspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+        await PropertyBag.DeletePropertyAsync(SearchHistoryKey);
     }
 
     public void Dispose()

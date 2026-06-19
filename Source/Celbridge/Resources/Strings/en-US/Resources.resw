@@ -294,7 +294,7 @@
   <data name="ResourceTree_EnterExtractFolderName" xml:space="preserve">
     <value>Enter a name for the destination folder:</value>
   </data>
-  <data name="SettingsPage_Title" xml:space="preserve">
+  <data name="Settings_Page_Title" xml:space="preserve">
     <value>Settings</value>
   </data>
   <data name="ResourceTree_EnterNewName" xml:space="preserve">
@@ -408,100 +408,100 @@
   <data name="HomePage_Recent" xml:space="preserve">
     <value>Recent</value>
   </data>
-  <data name="SettingsPage_ApplicationTheme" xml:space="preserve">
+  <data name="Settings_Application_Theme" xml:space="preserve">
     <value>Application Theme</value>
   </data>
-  <data name="SettingsPage_WorkshopSection" xml:space="preserve">
+  <data name="Settings_Workshop_SectionHeader" xml:space="preserve">
     <value>Workshop</value>
   </data>
-  <data name="SettingsPage_WorkshopDescription" xml:space="preserve">
+  <data name="Settings_Workshop_Description" xml:space="preserve">
     <value>Connect to a Workshop to publish and install packages and pages.</value>
   </data>
-  <data name="SettingsPage_WorkshopUrl" xml:space="preserve">
+  <data name="Settings_Workshop_Url" xml:space="preserve">
     <value>Workshop URL</value>
   </data>
-  <data name="SettingsPage_WorkshopUrlTooltip" xml:space="preserve">
+  <data name="Settings_Workshop_UrlTooltip" xml:space="preserve">
     <value>The web address of your Workshop server, where packages and pages are published.</value>
   </data>
-  <data name="SettingsPage_WorkshopKey" xml:space="preserve">
+  <data name="Settings_Workshop_Key" xml:space="preserve">
     <value>Workshop Key</value>
   </data>
-  <data name="SettingsPage_WorkshopKeyTooltip" xml:space="preserve">
+  <data name="Settings_Workshop_KeyTooltip" xml:space="preserve">
     <value>The secret key issued by your Workshop. Keep it private; it authenticates your requests.</value>
   </data>
-  <data name="SettingsPage_Author" xml:space="preserve">
+  <data name="Settings_Workshop_Author" xml:space="preserve">
     <value>Author Name</value>
   </data>
-  <data name="SettingsPage_AuthorTooltip" xml:space="preserve">
+  <data name="Settings_Workshop_AuthorTooltip" xml:space="preserve">
     <value>Your name, recorded with the packages and pages you publish to the workshop.</value>
   </data>
-  <data name="SettingsPage_AuthorPlaceholder" xml:space="preserve">
+  <data name="Settings_Workshop_AuthorPlaceholder" xml:space="preserve">
     <value>Your name</value>
   </data>
-  <data name="SettingsPage_SetWorkshopKey" xml:space="preserve">
+  <data name="Settings_Workshop_KeySet" xml:space="preserve">
     <value>Set Workshop Key</value>
   </data>
-  <data name="SettingsPage_ChangeKey" xml:space="preserve">
+  <data name="Settings_Workshop_KeyChange" xml:space="preserve">
     <value>Change</value>
   </data>
-  <data name="SettingsPage_RemoveKey" xml:space="preserve">
+  <data name="Settings_Workshop_KeyRemove" xml:space="preserve">
     <value>Remove</value>
   </data>
-  <data name="SettingsPage_SetWorkshopKeyDialogTitle" xml:space="preserve">
+  <data name="Settings_Workshop_KeySetDialogTitle" xml:space="preserve">
     <value>Set Workshop Key</value>
   </data>
-  <data name="SettingsPage_ChangeWorkshopKeyDialogTitle" xml:space="preserve">
+  <data name="Settings_Workshop_KeyChangeDialogTitle" xml:space="preserve">
     <value>Change Workshop Key</value>
   </data>
-  <data name="SettingsPage_SaveKeyButton" xml:space="preserve">
+  <data name="Settings_Workshop_KeySaveButton" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="SettingsPage_RemoveWorkshopKeyTitle" xml:space="preserve">
+  <data name="Settings_Workshop_KeyRemoveTitle" xml:space="preserve">
     <value>Remove Workshop Key</value>
   </data>
-  <data name="SettingsPage_RemoveWorkshopKeyMessage" xml:space="preserve">
+  <data name="Settings_Workshop_KeyRemoveMessage" xml:space="preserve">
     <value>Remove the stored Workshop Key? You will need to enter it again to reconnect to the workshop.</value>
   </data>
-  <data name="SettingsPage_CredentialStoreUnavailable" xml:space="preserve">
+  <data name="Settings_Workshop_StoreUnavailable" xml:space="preserve">
     <value>Credential storage is not available on this platform. The Workshop connection cannot be configured.</value>
   </data>
-  <data name="SettingsPage_StoredConnectionUnreadable" xml:space="preserve">
+  <data name="Settings_Workshop_ConnectionUnreadable" xml:space="preserve">
     <value>The stored Workshop connection could not be read. Enter the Workshop URL and Workshop Key again, or clear the stored key.</value>
   </data>
-  <data name="SettingsPage_InvalidWorkshopUrl" xml:space="preserve">
+  <data name="Settings_Workshop_UrlInvalid" xml:space="preserve">
     <value>The Workshop URL must be an https:// address. http:// is only allowed for localhost.</value>
   </data>
-  <data name="SettingsPage_EmptyWorkshopUrl" xml:space="preserve">
+  <data name="Settings_Workshop_UrlEmpty" xml:space="preserve">
     <value>Enter a valid Workshop URL.</value>
   </data>
-  <data name="SettingsPage_EmptyWorkshopKey" xml:space="preserve">
+  <data name="Settings_Workshop_KeyEmpty" xml:space="preserve">
     <value>Enter a Workshop Key.</value>
   </data>
-  <data name="SettingsPage_AuthorRequired" xml:space="preserve">
+  <data name="Settings_Workshop_AuthorRequired" xml:space="preserve">
     <value>Add an Author Name to publish packages and pages.</value>
   </data>
-  <data name="SettingsPage_SaveConnectionFailed" xml:space="preserve">
+  <data name="Settings_Workshop_ConnectionSaveFailed" xml:space="preserve">
     <value>Failed to save the Workshop connection.</value>
   </data>
-  <data name="SettingsPage_RemoveWorkshopKeyFailed" xml:space="preserve">
+  <data name="Settings_Workshop_KeyRemoveFailed" xml:space="preserve">
     <value>Failed to remove the Workshop Key.</value>
   </data>
-  <data name="SettingsPage_ConnectionSaved" xml:space="preserve">
+  <data name="Settings_Workshop_ConnectionSaved" xml:space="preserve">
     <value>Workshop connection saved.</value>
   </data>
-  <data name="SettingsPage_WorkshopKeyRemoved" xml:space="preserve">
+  <data name="Settings_Workshop_KeyRemoved" xml:space="preserve">
     <value>Workshop Key removed. Set a new key to reconnect.</value>
   </data>
-  <data name="SettingsPage_CheckingConnection" xml:space="preserve">
+  <data name="Settings_Workshop_ConnectionChecking" xml:space="preserve">
     <value>Checking connection to the workshop...</value>
   </data>
-  <data name="SettingsPage_ConnectionVerified" xml:space="preserve">
+  <data name="Settings_Workshop_ConnectionVerified" xml:space="preserve">
     <value>Connected to the workshop.</value>
   </data>
-  <data name="SettingsPage_WorkshopKeyRejected" xml:space="preserve">
+  <data name="Settings_Workshop_KeyRejected" xml:space="preserve">
     <value>The workshop rejected this key. Check that you copied the whole key and that it is still valid.</value>
   </data>
-  <data name="SettingsPage_ConnectionUnverified" xml:space="preserve">
+  <data name="Settings_Workshop_ConnectionUnverified" xml:space="preserve">
     <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">

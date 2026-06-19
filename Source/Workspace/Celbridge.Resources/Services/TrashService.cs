@@ -1,7 +1,6 @@
 using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;

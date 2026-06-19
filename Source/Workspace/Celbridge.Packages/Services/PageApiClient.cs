@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization;
-using Celbridge.Credentials;
 using Celbridge.Settings;
 
 namespace Celbridge.Packages;
@@ -15,8 +14,8 @@ public class PageApiClient : IPageApiClient, IDisposable
 {
     private readonly WorkshopApiSender _sender;
 
-    public PageApiClient(ICredentialService credentialService, IEditorSettings editorSettings)
-        : this(credentialService, editorSettings, new HttpClientHandler())
+    public PageApiClient(ISettingsService settingsService)
+        : this(settingsService, new HttpClientHandler())
     {
     }
 
@@ -24,9 +23,9 @@ public class PageApiClient : IPageApiClient, IDisposable
     /// Creates a client over an explicit message handler so tests can serve
     /// canned responses without a network.
     /// </summary>
-    public PageApiClient(ICredentialService credentialService, IEditorSettings editorSettings, HttpMessageHandler messageHandler)
+    public PageApiClient(ISettingsService settingsService, HttpMessageHandler messageHandler)
     {
-        _sender = new WorkshopApiSender(credentialService, editorSettings, messageHandler);
+        _sender = new WorkshopApiSender(settingsService, messageHandler);
     }
 
     public async Task<Result<RemotePage>> PublishPageAsync(byte[] zipData, string path, string? author = null)

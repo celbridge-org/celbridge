@@ -5,17 +5,19 @@ using Celbridge.Settings.Services;
 using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Settings;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// Unit tests for the WorkshopSettingsView view model. The Workshop Key
-/// round-trips through the real CredentialService over fakes; the secret is
-/// entered through a substitute IDialogService standing in for the masked
-/// input dialog. The non-secret URL and Author are ordinary settings, here a
-/// substitute IEditorSettings that records set values.
+/// round-trips through the real SettingsService over a reversing protector fake;
+/// the secret is entered through a substitute IDialogService standing in for the
+/// masked input dialog. The non-secret URL and Author are ordinary settings, read
+/// back through the same service.
 /// </summary>
 [TestFixture]
 public class WorkshopSettingsViewModelTests
@@ -23,9 +25,9 @@ public class WorkshopSettingsViewModelTests
     private const string WorkshopUrl = "https://workshop.celbridge.org";
     private const string TestWorkshopKey = "kpf_abc123_supersecretvalue";
 
+    private FakeSettingsStore _settingsStore = null!;
     private FakeCredentialProtector _protector = null!;
-    private CredentialService _credentialService = null!;
-    private IEditorSettings _editorSettings = null!;
+    private SettingsService _settingsService = null!;
     private IPackageApiClient _packageApiClient = null!;
     private IDialogService _dialogService = null!;
     private WorkshopSettingsViewModel _viewModel = null!;
@@ -33,19 +35,17 @@ public class WorkshopSettingsViewModelTests
     [SetUp]
     public void Setup()
     {
-        _editorSettings = Substitute.For<IEditorSettings>();
-        // Initialize to empty so unseeded reads return "" rather than the
-        // substitute's null default. The real EditorSettings returns "" too.
-        _editorSettings.WorkshopUrl = string.Empty;
-        _editorSettings.WorkshopAuthor = string.Empty;
-        _editorSettings.WorkshopKeyProtected = string.Empty;
-        _editorSettings.WorkshopKeyHint = string.Empty;
-
+        _settingsStore = new FakeSettingsStore();
         _protector = new FakeCredentialProtector();
-        _credentialService = new CredentialService(
-            new NullLogger<CredentialService>(),
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+
+        _settingsService = new SettingsService(
+            new NullLogger<SettingsService>(),
+            _settingsStore,
             _protector,
-            _editorSettings);
+            workspaceWrapper);
 
         _packageApiClient = Substitute.For<IPackageApiClient>();
         SetConnectionCheckOutcome(ConnectionCheckOutcome.Connected);
@@ -58,8 +58,7 @@ public class WorkshopSettingsViewModelTests
 
         _viewModel = new WorkshopSettingsViewModel(
             Substitute.For<ILogger<WorkshopSettingsViewModel>>(),
-            _editorSettings,
-            _credentialService,
+            _settingsService,
             _packageApiClient,
             _dialogService,
             stringLocalizer);
@@ -93,13 +92,27 @@ public class WorkshopSettingsViewModelTests
             .Returns(Task.FromResult(Result<bool>.Ok(confirmed)));
     }
 
-    // Seeds a stored key (credential store) plus the non-secret URL and Author
-    // (settings), as a configured connection would appear at startup.
-    private async Task SeedStoredConnectionAsync(string author = "")
+    // Seeds a stored key (Protected scope) plus the non-secret URL and Author, as
+    // a configured connection would appear at startup.
+    private void SeedStoredConnection(string author = "")
     {
-        await _credentialService.SetWorkshopKeyAsync(TestWorkshopKey);
-        _editorSettings.WorkshopUrl = WorkshopUrl;
-        _editorSettings.WorkshopAuthor = author;
+        _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
+        _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKeyHelper.GetDisplayHint(TestWorkshopKey));
+        _settingsService.Set(SettingCatalog.Workshop.Url, WorkshopUrl);
+        _settingsService.Set(SettingCatalog.Workshop.Author, author);
+    }
+
+    private bool IsKeyStored()
+    {
+        return _settingsService.IsConfigured(SettingCatalog.Workshop.Key);
+    }
+
+    private string GetStoredKey()
+    {
+        var result = _settingsService.TryGet(SettingCatalog.Workshop.Key);
+        result.IsSuccess.Should().BeTrue();
+
+        return result.Value;
     }
 
     [Test]
@@ -128,7 +141,7 @@ public class WorkshopSettingsViewModelTests
     [Test]
     public async Task Initialize_StoredKey_ShowsUrlAndKeyPrefix()
     {
-        await SeedStoredConnectionAsync();
+        SeedStoredConnection();
 
         await _viewModel.InitializeAsync();
 
@@ -141,7 +154,7 @@ public class WorkshopSettingsViewModelTests
     [Test]
     public async Task Initialize_StoredKey_PopulatesAuthorFromSettings()
     {
-        await SeedStoredConnectionAsync(author: "Ada Lovelace");
+        SeedStoredConnection(author: "Ada Lovelace");
 
         await _viewModel.InitializeAsync();
 
@@ -151,7 +164,7 @@ public class WorkshopSettingsViewModelTests
     [Test]
     public async Task Initialize_StoredKeyMissingAuthor_ShowsWarning()
     {
-        await SeedStoredConnectionAsync();
+        SeedStoredConnection();
 
         await _viewModel.InitializeAsync();
 
@@ -170,9 +183,9 @@ public class WorkshopSettingsViewModelTests
         await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
 
         // URL and Author persist as settings, independently of any stored key.
-        _editorSettings.WorkshopUrl.Should().Be(WorkshopUrl);
-        _editorSettings.WorkshopAuthor.Should().Be("Ada Lovelace");
-        _editorSettings.WorkshopKeyProtected.Should().BeEmpty();
+        _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(WorkshopUrl);
+        _settingsService.Get(SettingCatalog.Workshop.Author).Should().Be("Ada Lovelace");
+        IsKeyStored().Should().BeFalse();
     }
 
     [Test]
@@ -189,25 +202,20 @@ public class WorkshopSettingsViewModelTests
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
         _viewModel.StoredKeyDisplay.Should().Be("kpf_abc123_...");
 
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
-        keyResult.Value.Should().Be(TestWorkshopKey);
+        GetStoredKey().Should().Be(TestWorkshopKey);
     }
 
     [Test]
     public async Task ChangeKey_Cancelled_LeavesStoredKeyUntouched()
     {
-        await SeedStoredConnectionAsync();
+        SeedStoredConnection();
         await _viewModel.InitializeAsync();
         SetKeyDialogCancelled();
 
         await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
-
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
-        keyResult.Value.Should().Be(TestWorkshopKey);
+        GetStoredKey().Should().Be(TestWorkshopKey);
     }
 
     [Test]
@@ -221,8 +229,7 @@ public class WorkshopSettingsViewModelTests
 
         _viewModel.StatusSeverity.Should().NotBe(StatusSeverity.Error, "the prefix check is a typo guard, not a gate");
 
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
+        IsKeyStored().Should().BeTrue();
     }
 
     [Test]
@@ -236,7 +243,7 @@ public class WorkshopSettingsViewModelTests
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Informational);
-        _editorSettings.WorkshopKeyProtected.Should().BeEmpty();
+        IsKeyStored().Should().BeFalse();
     }
 
     [Test]
@@ -276,8 +283,7 @@ public class WorkshopSettingsViewModelTests
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Warning);
 
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
+        IsKeyStored().Should().BeTrue();
     }
 
     [Test]
@@ -308,7 +314,7 @@ public class WorkshopSettingsViewModelTests
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
         // The substitute localizer echoes the resource key as the message.
-        _viewModel.StatusMessage.Should().Be("SettingsPage_WorkshopKeyRejected");
+        _viewModel.StatusMessage.Should().Be("Settings_Workshop_KeyRejected");
     }
 
     [Test]
@@ -324,18 +330,16 @@ public class WorkshopSettingsViewModelTests
         // Offline must not be reported as a bad key: the key is saved, and the
         // status is a soft warning rather than an error.
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Warning);
-        _viewModel.StatusMessage.Should().Be("SettingsPage_ConnectionUnverified");
+        _viewModel.StatusMessage.Should().Be("Settings_Workshop_ConnectionUnverified");
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
 
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
-        keyResult.Value.Should().Be(TestWorkshopKey);
+        GetStoredKey().Should().Be(TestWorkshopKey);
     }
 
     [Test]
     public async Task Save_UrlChange_PersistsToSettingsAndKeepsKey()
     {
-        await SeedStoredConnectionAsync(author: "Ada Lovelace");
+        SeedStoredConnection(author: "Ada Lovelace");
         await _viewModel.InitializeAsync();
 
         var updatedUrl = "https://other.celbridge.org";
@@ -344,24 +348,22 @@ public class WorkshopSettingsViewModelTests
         await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
 
         _viewModel.StatusSeverity.Should().NotBe(StatusSeverity.Error);
-        _editorSettings.WorkshopUrl.Should().Be(updatedUrl);
+        _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(updatedUrl);
 
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
-        keyResult.Value.Should().Be(TestWorkshopKey);
+        GetStoredKey().Should().Be(TestWorkshopKey);
     }
 
     [Test]
     public async Task Remove_Confirmed_RemovesStoredKeyButKeepsUrlAndAuthor()
     {
-        await SeedStoredConnectionAsync(author: "Ada Lovelace");
+        SeedStoredConnection(author: "Ada Lovelace");
         await _viewModel.InitializeAsync();
         SetRemoveConfirmationResult(confirmed: true);
 
         await _viewModel.RemoveWorkshopKeyCommand.ExecuteAsync(null);
 
         // Only the secret is removed.
-        _editorSettings.WorkshopKeyProtected.Should().BeEmpty();
+        IsKeyStored().Should().BeFalse();
         _viewModel.StoredKeyDisplay.Should().BeEmpty();
         _viewModel.IsSetKeyVisible.Should().BeTrue();
         _viewModel.IsStoredKeyVisible.Should().BeFalse();
@@ -369,23 +371,20 @@ public class WorkshopSettingsViewModelTests
         // The non-secret URL and Author are untouched, in the form and in settings.
         _viewModel.WorkshopUrl.Should().Be(WorkshopUrl);
         _viewModel.Author.Should().Be("Ada Lovelace");
-        _editorSettings.WorkshopUrl.Should().Be(WorkshopUrl);
-        _editorSettings.WorkshopAuthor.Should().Be("Ada Lovelace");
+        _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(WorkshopUrl);
+        _settingsService.Get(SettingCatalog.Workshop.Author).Should().Be("Ada Lovelace");
     }
 
     [Test]
     public async Task Remove_Cancelled_KeepsStoredKey()
     {
-        await SeedStoredConnectionAsync();
+        SeedStoredConnection();
         await _viewModel.InitializeAsync();
         SetRemoveConfirmationResult(confirmed: false);
 
         await _viewModel.RemoveWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
-
-        var keyResult = await _credentialService.GetWorkshopKeyAsync();
-        keyResult.IsSuccess.Should().BeTrue();
-        keyResult.Value.Should().Be(TestWorkshopKey);
+        GetStoredKey().Should().Be(TestWorkshopKey);
     }
 }

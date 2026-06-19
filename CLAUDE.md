@@ -69,6 +69,7 @@ python run_tests.py
 - Do not use special characters like arrows or emojis in code comments
 - Use full stops rather than semicolons in comment and documentation prose. This applies to English text only, not C# statement terminators
 - Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
+- Localized strings for the Settings page follow `Settings_<Group>_<Element>`, mirroring the descriptor groups defined in `SettingCatalog.cs` (the `SettingCatalog` catalog class). Strings shown elsewhere keep their existing `Section_Element` conventions
 - Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
 - Place `Dispose` implementation at the end of a class; declare all private fields at the top
 - Split multi-condition `if` statements so each clause is on its own line, with the logical operator (`&&`, `||`) at the end of the preceding line
@@ -88,7 +89,7 @@ python run_tests.py
 ## Architecture
 
 - Workspace-scoped services are transient and must NOT be injected via constructor DI. Access them through `_workspaceWrapper.WorkspaceService`:
-  - Directly on the workspace service: IWorkspaceSettingsService, IWorkspaceSettings, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
+  - Directly on the workspace service: IWorkspaceSettingsService, IBindableWorkspaceSettings, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
   - The resource-domain services live under `WorkspaceService.ResourceService`: Registry, RootHandlers, Monitor, Transfers, Operations, FileSystem, Policy, Trash, Scanner, Sidecars (e.g. `_workspaceWrapper.WorkspaceService.ResourceService.FileSystem`)
 - Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
 - The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations

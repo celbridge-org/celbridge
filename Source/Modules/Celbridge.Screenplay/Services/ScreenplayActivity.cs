@@ -18,7 +18,7 @@ public class ScreenplayActivity : IActivity
     private readonly ILocalizerService _localizerService;
     private readonly IDialogService _dialogService;
     private readonly IEntityService _entityService;
-    private readonly IWorkspaceSettings _workspaceSettings;
+    private readonly IWorkspacePropertyBag _propertyBag;
     private readonly IResourceRegistry _resourceRegistry;
 
     public ScreenplayActivity(
@@ -33,7 +33,7 @@ public class ScreenplayActivity : IActivity
         _localizerService = localizerService;
         _dialogService = dialogService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        _propertyBag = workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 
@@ -444,7 +444,7 @@ public class ScreenplayActivity : IActivity
         }
 
         // Reset list of modified scenes
-        await _workspaceSettings.DeletePropertyAsync(ScreenplayConstants.ModifiedScenesKey);
+        await _propertyBag.DeletePropertyAsync(ScreenplayConstants.ModifiedScenesKey);
 
         return Result.Ok();
     }
@@ -485,7 +485,7 @@ public class ScreenplayActivity : IActivity
         }
 
         // All modified scenes have now been saved, so reset the modified scenes list
-        await _workspaceSettings.DeletePropertyAsync(ScreenplayConstants.ModifiedScenesKey);
+        await _propertyBag.DeletePropertyAsync(ScreenplayConstants.ModifiedScenesKey);
 
         return Result.Ok();
     }
@@ -604,7 +604,7 @@ public class ScreenplayActivity : IActivity
     private async Task<bool> ConfirmLoadScreenplay()
     {
         // Get the list of modified scenes from the workspace settings
-        var modifiedScenes = await _workspaceSettings.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
+        var modifiedScenes = await _propertyBag.GetPropertyAsync<HashSet<string>>(ScreenplayConstants.ModifiedScenesKey);
         if (modifiedScenes is null ||
             modifiedScenes.Count == 0)
         {

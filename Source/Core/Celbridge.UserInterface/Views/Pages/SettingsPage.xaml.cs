@@ -11,16 +11,16 @@ public sealed partial class SettingsPage : Page
 {
     private readonly Dictionary<ApplicationColorTheme, string> _themeToNameLookupDictionary = new();
 
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    private string TitleString => _stringLocalizer.GetString("SettingsPage_Title");
-    private string ApplicationThemeString => _stringLocalizer.GetString("SettingsPage_ApplicationTheme");
+    private string TitleString => _stringLocalizer.GetString("Settings_Page_Title");
+    private string ApplicationThemeString => _stringLocalizer.GetString("Settings_Application_Theme");
 
     public SettingsPage()
     {
-        _editorSettings = ServiceLocator.AcquireService<IEditorSettings>();
+        _settingsService = ServiceLocator.AcquireService<ISettingsService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
@@ -63,7 +63,7 @@ public sealed partial class SettingsPage : Page
         if (comboBox != null && comboBox.SelectedValue != null)
         {
             ApplicationColorTheme theme = (ApplicationColorTheme)comboBox.SelectedValue;
-            _editorSettings.Theme = theme;
+            _settingsService.Set(SettingCatalog.Application.Theme, theme);
             _userInterfaceService.ApplyCurrentTheme();
         }
     }
@@ -75,7 +75,7 @@ public sealed partial class SettingsPage : Page
         int index = 0;
         foreach (KeyValuePair<ApplicationColorTheme, string> themeEntry in _themeToNameLookupDictionary)
         {
-            if (themeEntry.Key == _editorSettings.Theme)
+            if (themeEntry.Key == _settingsService.Get(SettingCatalog.Application.Theme))
             {
                 ApplicationThemeComboBox.SelectedIndex = index;
                 return;
