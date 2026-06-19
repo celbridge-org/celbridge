@@ -40,9 +40,16 @@ public interface ISettingsService
     Result<T> TryGet<T>(SettingDescriptor<T> setting) where T : notnull;
 
     /// <summary>
-    /// Resets the setting to its default by removing the stored value. Takes the
-    /// non-generic descriptor so callers can reset a heterogeneous set of settings
-    /// in a loop; reset needs only the key and scope.
+    /// Resets the setting to its default by removing its stored value. Takes the
+    /// non-generic descriptor, since a reset needs only the key and scope.
     /// </summary>
     void Reset(ISettingDescriptor setting);
+
+    /// <summary>
+    /// Persists any pending Application-scope writes (which are deferred from their
+    /// call site), reporting a failed Result if the write fails. Workspace-scope
+    /// writes are flushed through the workspace's own save path. A no-op when
+    /// nothing has changed.
+    /// </summary>
+    Task<Result> FlushAsync();
 }

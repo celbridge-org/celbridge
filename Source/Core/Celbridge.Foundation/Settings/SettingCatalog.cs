@@ -1,24 +1,14 @@
-using System.Reflection;
 using Celbridge.Workspace;
 
 namespace Celbridge.Settings;
 
 /// <summary>
-/// The declarations of every setting in the application, grouped by domain. This
-/// is the source of truth for what settings exist; typed view facades such as
-/// IEditorSettings are presentation layers over these descriptors. A descriptor's
-/// scope is the only thing that decides where its value is stored, so moving a
-/// setting between scopes is a one-line change here.
+/// The catalog of every setting in the application, declared once and grouped by
+/// domain. The source of truth for what settings exist; each descriptor carries
+/// the setting's key, scope, and default.
 /// </summary>
-public static class Setting
+public static class SettingCatalog
 {
-    /// <summary>
-    /// Every declared setting descriptor, discovered from the grouped declarations
-    /// below. Lets callers enumerate all settings (e.g. to reset them) without a
-    /// hand-maintained list.
-    /// </summary>
-    public static IReadOnlyList<ISettingDescriptor> All { get; } = DiscoverAll();
-
     /// <summary>
     /// Application-wide options surfaced on the Settings page.
     /// </summary>
@@ -144,24 +134,5 @@ public static class Setting
 
         public static readonly SettingDescriptor<string> KeyHint =
             new("Workshop.KeyHint", SettingScope.Application, "");
-    }
-
-    private static IReadOnlyList<ISettingDescriptor> DiscoverAll()
-    {
-        var descriptors = new List<ISettingDescriptor>();
-
-        foreach (var groupType in typeof(Setting).GetNestedTypes())
-        {
-            var fields = groupType.GetFields(BindingFlags.Public | BindingFlags.Static);
-            foreach (var field in fields)
-            {
-                if (field.GetValue(null) is ISettingDescriptor descriptor)
-                {
-                    descriptors.Add(descriptor);
-                }
-            }
-        }
-
-        return descriptors;
     }
 }

@@ -464,8 +464,8 @@ public class PackageApiClientTests
     [Test]
     public async Task NoStoredKey_FailsWithCredentialError()
     {
-        _settingsService.Get(Setting.Workshop.Url).Returns("https://workshop.example.com");
-        _settingsService.TryGet(Setting.Workshop.Key)
+        _settingsService.Get(SettingCatalog.Workshop.Url).Returns("https://workshop.example.com");
+        _settingsService.TryGet(SettingCatalog.Workshop.Key)
             .Returns(Result<string>.Fail("No Workshop Key is configured"));
 
         var result = await _client.ListPackagesAsync();
@@ -479,8 +479,8 @@ public class PackageApiClientTests
     // value held in the Protected scope.
     private void SetStoredConnection(string workshopUrl, string workshopKey)
     {
-        _settingsService.Get(Setting.Workshop.Url).Returns(workshopUrl);
-        _settingsService.TryGet(Setting.Workshop.Key)
+        _settingsService.Get(SettingCatalog.Workshop.Url).Returns(workshopUrl);
+        _settingsService.TryGet(SettingCatalog.Workshop.Key)
             .Returns(Result<string>.Ok(workshopKey));
     }
 

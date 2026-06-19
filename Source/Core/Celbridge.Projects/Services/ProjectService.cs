@@ -6,7 +6,7 @@ public class ProjectService : IProjectService
 {
     private const int RecentProjectsMax = 10;
 
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
     private readonly ILocalFileSystem _fileSystem;
@@ -14,12 +14,12 @@ public class ProjectService : IProjectService
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
         ProjectFactory projectFactory,
         IProjectTemplateService projectTemplateService,
         ILocalFileSystem fileSystem)
     {
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _projectFactory = projectFactory;
         _projectTemplateService = projectTemplateService;
         _fileSystem = fileSystem;
@@ -93,15 +93,16 @@ public class ProjectService : IProjectService
             // Project has successfully loaded, so we can now populate the member variables
             CurrentProject = loadResult.Value;
 
-            // Update the recent projects list in editor settings
-            var recentProjects = _editorSettings.RecentProjects;
+            // Update the recent projects list. Copy before mutating: an unconfigured
+            // read returns the descriptor's shared default list instance.
+            var recentProjects = new List<string>(_settingsService.Get(SettingCatalog.Project.RecentProjects));
             recentProjects.Remove(projectFilePath);
             recentProjects.Insert(0, projectFilePath);
             while (recentProjects.Count > RecentProjectsMax)
             {
                 recentProjects.RemoveAt(recentProjects.Count - 1);
             }
-            _editorSettings.RecentProjects = recentProjects;
+            _settingsService.Set(SettingCatalog.Project.RecentProjects, recentProjects);
 
             return Result<IProject>.Ok(CurrentProject);
         }
@@ -122,7 +123,7 @@ public class ProjectService : IProjectService
         var currentProjectPath = CurrentProject?.ProjectFilePath;
         var recentProjects = new List<RecentProject>();
 
-        foreach (var projectFilePath in _editorSettings.RecentProjects)
+        foreach (var projectFilePath in _settingsService.Get(SettingCatalog.Project.RecentProjects))
         {
             // Bridge the async gateway to the sync caller. GetInfoAsync is
             // a single stat with no continuation work.
@@ -152,12 +153,12 @@ public class ProjectService : IProjectService
         if (currentProjectPath != null)
         {
             // Keep only the currently opened project in the list
-            _editorSettings.RecentProjects = new List<string> { currentProjectPath };
+            _settingsService.Set(SettingCatalog.Project.RecentProjects, new List<string> { currentProjectPath });
         }
         else
         {
             // No project is open, clear everything
-            _editorSettings.RecentProjects = new List<string>();
+            _settingsService.Set(SettingCatalog.Project.RecentProjects, new List<string>());
         }
     }
 }

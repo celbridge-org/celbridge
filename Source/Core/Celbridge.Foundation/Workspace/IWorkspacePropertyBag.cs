@@ -1,11 +1,8 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Dynamic key/value property bag for per-project data that does not fit a static
-/// setting descriptor, such as per-extension editor preferences, per-resource
-/// screenplay keys, document layout, and search history. Persisted alongside the
-/// project files. Distinct from IWorkspaceSettings, the typed facade over the
-/// Workspace-scope setting descriptors.
+/// Async, dynamically-keyed store for per-project data that does not fit a static
+/// setting descriptor. Values are persisted with the project.
 /// </summary>
 public interface IWorkspacePropertyBag
 {

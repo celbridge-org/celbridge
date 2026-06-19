@@ -39,7 +39,7 @@ public class WorkspaceSettingsFacadeTests
     }
 
     private sealed record WorkspaceFixture(
-        IWorkspaceSettings Settings,
+        IBindableWorkspaceSettings Settings,
         IWorkspaceWrapper WorkspaceWrapper,
         WorkspaceSettingsService WorkspaceSettingsService);
 
@@ -64,11 +64,11 @@ public class WorkspaceSettingsFacadeTests
 
         var settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
-            new InMemorySettingsStore(),
+            new FakeSettingsStore(),
             new FakeCredentialProtector(),
             workspaceWrapper);
 
-        var facade = new WorkspaceSettings(settingsService);
+        var facade = new BindableWorkspaceSettings(settingsService);
 
         // The facade is what consumers reach through WorkspaceService.Settings.
         workspaceService.Settings.Returns(facade);
@@ -135,11 +135,11 @@ public class WorkspaceSettingsFacadeTests
 
         var settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
-            new InMemorySettingsStore(),
+            new FakeSettingsStore(),
             new FakeCredentialProtector(),
             workspaceWrapper);
 
-        var facade = new WorkspaceSettings(settingsService);
+        var facade = new BindableWorkspaceSettings(settingsService);
 
         Action write = () => facade.ConsolePanelHeight = 999f;
 

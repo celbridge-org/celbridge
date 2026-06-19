@@ -164,8 +164,8 @@ public partial class App : Application
                     if (projectFileInfo.IsSuccess
                         && projectFileInfo.Value.Kind == StorageItemKind.File)
                     {
-                        var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
-                        editorSettings.PreviousProject = projectFile;
+                        var settingsService = Host.Services.GetRequiredService<ISettingsService>();
+                        settingsService.Set(SettingCatalog.Project.PreviousProject, projectFile);
                     }
                 }
             }

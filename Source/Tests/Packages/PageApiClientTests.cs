@@ -243,8 +243,8 @@ public class PageApiClientTests
     // value held in the Protected scope.
     private void SetStoredConnection(string workshopUrl, string workshopKey)
     {
-        _settingsService.Get(Setting.Workshop.Url).Returns(workshopUrl);
-        _settingsService.TryGet(Setting.Workshop.Key)
+        _settingsService.Get(SettingCatalog.Workshop.Url).Returns(workshopUrl);
+        _settingsService.TryGet(SettingCatalog.Workshop.Key)
             .Returns(Result<string>.Ok(workshopKey));
     }
 

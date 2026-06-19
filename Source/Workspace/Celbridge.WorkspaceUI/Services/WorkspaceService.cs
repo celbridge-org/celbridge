@@ -19,7 +19,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private readonly IMessengerService _messengerService;
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
-    public IWorkspaceSettings Settings { get; }
+    public IBindableWorkspaceSettings Settings { get; }
     public IWorkspacePropertyBag PropertyBag => WorkspaceSettingsService.PropertyBag!;
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
@@ -54,7 +54,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
-        Settings = serviceProvider.GetRequiredService<IWorkspaceSettings>();
+        Settings = serviceProvider.GetRequiredService<IBindableWorkspaceSettings>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
@@ -155,14 +155,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var workspaceSettingsStore = WorkspaceSettingsService.WorkspaceSettingsStore;
         if (workspaceSettingsStore is not null)
         {
-            try
-            {
-                await workspaceSettingsStore.FlushAsync();
-            }
-            catch (Exception ex)
+            var flushResult = await workspaceSettingsStore.FlushAsync();
+            if (flushResult.IsFailure)
             {
                 failed = true;
-                _logger.LogError(ex, "Failed to flush workspace settings");
+                _logger.LogError($"Failed to flush workspace settings. {flushResult.DiagnosticReport}");
             }
         }
 

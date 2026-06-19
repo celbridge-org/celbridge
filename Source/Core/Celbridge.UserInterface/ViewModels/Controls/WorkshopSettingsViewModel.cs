@@ -78,8 +78,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         // they load (and the section displays them) even when no key is stored.
         ApplyProgrammatic(() =>
         {
-            WorkshopUrl = _settingsService.Get(Setting.Workshop.Url);
-            Author = _settingsService.Get(Setting.Workshop.Author);
+            WorkshopUrl = _settingsService.Get(SettingCatalog.Workshop.Url);
+            Author = _settingsService.Get(SettingCatalog.Workshop.Author);
         });
 
         if (!IsStoreAvailable)
@@ -90,10 +90,10 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         }
 
         // Read the stored state and display hint without decrypting the key.
-        _isKeyStored = _settingsService.IsConfigured(Setting.Workshop.Key);
+        _isKeyStored = _settingsService.IsConfigured(SettingCatalog.Workshop.Key);
         if (_isKeyStored)
         {
-            StoredKeyDisplay = FormatStoredKeyDisplay(_settingsService.Get(Setting.Workshop.KeyHint));
+            StoredKeyDisplay = FormatStoredKeyDisplay(_settingsService.Get(SettingCatalog.Workshop.KeyHint));
         }
 
         UpdateViewState();
@@ -123,8 +123,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
         // The URL and Author are non-secret; persist them as settings on every
         // commit, so they are never coupled to the presence of a key.
-        _settingsService.Set(Setting.Workshop.Url, WorkshopUrl.Trim());
-        _settingsService.Set(Setting.Workshop.Author, Author.Trim());
+        _settingsService.Set(SettingCatalog.Workshop.Url, WorkshopUrl.Trim());
+        _settingsService.Set(SettingCatalog.Workshop.Author, Author.Trim());
 
         await ReportConnectionStatusAsync(checkConnection);
     }
@@ -279,7 +279,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
     private void RefreshStoredKeyDisplay()
     {
-        StoredKeyDisplay = FormatStoredKeyDisplay(_settingsService.Get(Setting.Workshop.KeyHint));
+        StoredKeyDisplay = FormatStoredKeyDisplay(_settingsService.Get(SettingCatalog.Workshop.KeyHint));
     }
 
     // Encrypts and stores the Workshop Key, and records its non-secret display
@@ -289,8 +289,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     {
         try
         {
-            _settingsService.Set(Setting.Workshop.Key, workshopKey);
-            _settingsService.Set(Setting.Workshop.KeyHint, WorkshopKey.GetDisplayHint(workshopKey));
+            _settingsService.Set(SettingCatalog.Workshop.Key, workshopKey);
+            _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKey.GetDisplayHint(workshopKey));
         }
         catch (InvalidOperationException ex)
         {
@@ -302,8 +302,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
     private void ClearWorkshopKey()
     {
-        _settingsService.Reset(Setting.Workshop.Key);
-        _settingsService.Reset(Setting.Workshop.KeyHint);
+        _settingsService.Reset(SettingCatalog.Workshop.Key);
+        _settingsService.Reset(SettingCatalog.Workshop.KeyHint);
     }
 
     private void UpdateViewState()

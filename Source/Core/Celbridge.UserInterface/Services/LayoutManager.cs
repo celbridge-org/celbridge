@@ -12,7 +12,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 {
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFeatureFlags _featureFlags;
 
@@ -22,13 +22,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
     public LayoutManager(
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IFeatureFlags featureFlags)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _featureFlags = featureFlags;
 
@@ -43,7 +43,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     // The typed workspace settings facade, or null when no workspace is loaded.
     // Panel layout is Workspace-scoped, so it has no meaning outside a project.
-    private IWorkspaceSettings? WorkspaceSettings =>
+    private IBindableWorkspaceSettings? WorkspaceSettings =>
         _workspaceWrapper.IsWorkspacePageLoaded
             ? _workspaceWrapper.WorkspaceService.Settings
             : null;
@@ -373,12 +373,12 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
 
         // Reset preferred window geometry
-        _editorSettings.UsePreferredWindowGeometry = false;
-        _editorSettings.PreferredWindowX = 0;
-        _editorSettings.PreferredWindowY = 0;
-        _editorSettings.PreferredWindowWidth = 0;
-        _editorSettings.PreferredWindowHeight = 0;
-        _editorSettings.IsWindowMaximized = false;
+        _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, false);
+        _settingsService.Set(SettingCatalog.Window.PreferredX, 0);
+        _settingsService.Set(SettingCatalog.Window.PreferredY, 0);
+        _settingsService.Set(SettingCatalog.Window.PreferredWidth, 0);
+        _settingsService.Set(SettingCatalog.Window.PreferredHeight, 0);
+        _settingsService.Set(SettingCatalog.Window.IsMaximized, false);
 
         // Reset preferred visibility to all regions, but exclude Console if feature is disabled
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);

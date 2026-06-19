@@ -25,7 +25,7 @@ public class WorkshopSettingsViewModelTests
     private const string WorkshopUrl = "https://workshop.celbridge.org";
     private const string TestWorkshopKey = "kpf_abc123_supersecretvalue";
 
-    private InMemorySettingsStore _settingsStore = null!;
+    private FakeSettingsStore _settingsStore = null!;
     private FakeCredentialProtector _protector = null!;
     private SettingsService _settingsService = null!;
     private IPackageApiClient _packageApiClient = null!;
@@ -35,7 +35,7 @@ public class WorkshopSettingsViewModelTests
     [SetUp]
     public void Setup()
     {
-        _settingsStore = new InMemorySettingsStore();
+        _settingsStore = new FakeSettingsStore();
         _protector = new FakeCredentialProtector();
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -96,20 +96,20 @@ public class WorkshopSettingsViewModelTests
     // a configured connection would appear at startup.
     private void SeedStoredConnection(string author = "")
     {
-        _settingsService.Set(Setting.Workshop.Key, TestWorkshopKey);
-        _settingsService.Set(Setting.Workshop.KeyHint, WorkshopKey.GetDisplayHint(TestWorkshopKey));
-        _settingsService.Set(Setting.Workshop.Url, WorkshopUrl);
-        _settingsService.Set(Setting.Workshop.Author, author);
+        _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
+        _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKey.GetDisplayHint(TestWorkshopKey));
+        _settingsService.Set(SettingCatalog.Workshop.Url, WorkshopUrl);
+        _settingsService.Set(SettingCatalog.Workshop.Author, author);
     }
 
     private bool IsKeyStored()
     {
-        return _settingsService.IsConfigured(Setting.Workshop.Key);
+        return _settingsService.IsConfigured(SettingCatalog.Workshop.Key);
     }
 
     private string GetStoredKey()
     {
-        var result = _settingsService.TryGet(Setting.Workshop.Key);
+        var result = _settingsService.TryGet(SettingCatalog.Workshop.Key);
         result.IsSuccess.Should().BeTrue();
 
         return result.Value;
@@ -183,8 +183,8 @@ public class WorkshopSettingsViewModelTests
         await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
 
         // URL and Author persist as settings, independently of any stored key.
-        _settingsService.Get(Setting.Workshop.Url).Should().Be(WorkshopUrl);
-        _settingsService.Get(Setting.Workshop.Author).Should().Be("Ada Lovelace");
+        _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(WorkshopUrl);
+        _settingsService.Get(SettingCatalog.Workshop.Author).Should().Be("Ada Lovelace");
         IsKeyStored().Should().BeFalse();
     }
 
@@ -348,7 +348,7 @@ public class WorkshopSettingsViewModelTests
         await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
 
         _viewModel.StatusSeverity.Should().NotBe(StatusSeverity.Error);
-        _settingsService.Get(Setting.Workshop.Url).Should().Be(updatedUrl);
+        _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(updatedUrl);
 
         GetStoredKey().Should().Be(TestWorkshopKey);
     }
@@ -371,8 +371,8 @@ public class WorkshopSettingsViewModelTests
         // The non-secret URL and Author are untouched, in the form and in settings.
         _viewModel.WorkshopUrl.Should().Be(WorkshopUrl);
         _viewModel.Author.Should().Be("Ada Lovelace");
-        _settingsService.Get(Setting.Workshop.Url).Should().Be(WorkshopUrl);
-        _settingsService.Get(Setting.Workshop.Author).Should().Be("Ada Lovelace");
+        _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(WorkshopUrl);
+        _settingsService.Get(SettingCatalog.Workshop.Author).Should().Be("Ada Lovelace");
     }
 
     [Test]

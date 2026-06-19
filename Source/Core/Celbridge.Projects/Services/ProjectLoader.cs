@@ -19,7 +19,7 @@ public class ProjectLoader : IProjectLoader
     private readonly IProjectService _projectService;
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -31,7 +31,7 @@ public class ProjectLoader : IProjectLoader
         IProjectService projectService,
         IDialogService dialogService,
         INavigationService navigationService,
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
@@ -42,7 +42,7 @@ public class ProjectLoader : IProjectLoader
         _projectService = projectService;
         _dialogService = dialogService;
         _navigationService = navigationService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
@@ -122,7 +122,7 @@ public class ProjectLoader : IProjectLoader
             {
                 // Project was created with a newer version of Celbridge - cannot load
                 _logger.LogError($"Cannot load project '{projectName}' - created with newer Celbridge version");
-                _editorSettings.PreviousProject = string.Empty;
+                _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
 
                 _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: false);
                 _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
@@ -154,7 +154,7 @@ public class ProjectLoader : IProjectLoader
 
         if (loadResult.IsFailure)
         {
-            _editorSettings.PreviousProject = string.Empty;
+            _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
 
             await ShowLoadFailedAlertAsync(projectFilePath);
             _navigationService.NavigateToPage(NavigationConstants.HomeTag);
@@ -163,7 +163,7 @@ public class ProjectLoader : IProjectLoader
                 .WithErrors(loadResult);
         }
 
-        _editorSettings.PreviousProject = projectFilePath;
+        _settingsService.Set(SettingCatalog.Project.PreviousProject, projectFilePath);
 
         return Result.Ok();
     }

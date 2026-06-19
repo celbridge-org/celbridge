@@ -10,7 +10,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private const int MaxLocationLength = 80;
     private const int ValidationDebounceMilliseconds = 200;
 
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
     private readonly IProjectTemplateService _templateService;
@@ -51,13 +51,13 @@ public partial class NewProjectDialogViewModel : ObservableObject
     public NewProjectConfig? NewProjectConfig { get; private set; }
 
     public NewProjectDialogViewModel(
-        IEditorSettings editorSettings,
+        ISettingsService settingsService,
         IProjectService projectService,
         IFilePickerService filePickerService,
         IProjectTemplateService templateService,
         ILocalFileSystem fileSystem)
     {
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
         _projectService = projectService;
         _filePickerService = filePickerService;
         _templateService = templateService;
@@ -67,9 +67,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
         _templates = _templateService.GetTemplates();
 
         // Try to restore the previously selected template
-        if (!string.IsNullOrEmpty(_editorSettings.PreviousNewProjectTemplateName))
+        var previousTemplateName = _settingsService.Get(SettingCatalog.Project.PreviousNewProjectTemplateName);
+        if (!string.IsNullOrEmpty(previousTemplateName))
         {
-            _selectedTemplate = _templates.FirstOrDefault(t => t.Name == _editorSettings.PreviousNewProjectTemplateName);
+            _selectedTemplate = _templates.FirstOrDefault(t => t.Name == previousTemplateName);
         }
 
         // Fall back to default template if persisted template doesn't exist
@@ -87,7 +88,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         // 1. Previous project folder, if it exists.
         // 2. The user's Documents folder, if it exists.
         // 3. The previous path as-is, which may be invalid (validation disables Create).
-        var previousFolder = _editorSettings.PreviousNewProjectFolderPath;
+        var previousFolder = _settingsService.Get(SettingCatalog.Project.PreviousNewProjectFolderPath);
         if (!string.IsNullOrEmpty(previousFolder)
             && await FolderExistsAsync(previousFolder))
         {
@@ -111,7 +112,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         {
             // Remember the newly selected destination folder
             var trimmedPath = DestFolderPath.TrimEnd('/').TrimEnd('\\');
-           _editorSettings.PreviousNewProjectFolderPath = trimmedPath;
+            _settingsService.Set(SettingCatalog.Project.PreviousNewProjectFolderPath, trimmedPath);
         }
 
         if (e.PropertyName == nameof(DestFolderPath) ||
@@ -288,7 +289,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
             NewProjectConfig = config;
 
             // Persist the template selection only when project is successfully created
-            _editorSettings.PreviousNewProjectTemplateName = SelectedTemplate.Name;
+            _settingsService.Set(SettingCatalog.Project.PreviousNewProjectTemplateName, SelectedTemplate.Name);
         }
 
         // The dialog closes automatically after the Create button is clicked.

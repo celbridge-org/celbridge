@@ -62,8 +62,8 @@ public partial class PackageTools : AgentToolBase
     // returned to the agent.
     private async Task<Result<string>> ResolvePublishAuthorAsync(bool confirmWithUser)
     {
-        var editorSettings = GetRequiredService<IEditorSettings>();
-        var author = editorSettings.WorkshopAuthor.Trim();
+        var settingsService = GetRequiredService<ISettingsService>();
+        var author = settingsService.Get(SettingCatalog.Workshop.Author).Trim();
         if (author.Length > 0)
         {
             return author;

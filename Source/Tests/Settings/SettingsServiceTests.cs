@@ -19,14 +19,14 @@ public class SettingsServiceTests
     private static readonly SettingDescriptor<float> TestWorkspaceSetting =
         new("Test.WorkspaceSetting", SettingScope.Workspace, 1.5f);
 
-    private InMemorySettingsStore _settingsStore = null!;
+    private FakeSettingsStore _settingsStore = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private SettingsService _settingsService = null!;
 
     [SetUp]
     public void Setup()
     {
-        _settingsStore = new InMemorySettingsStore();
+        _settingsStore = new FakeSettingsStore();
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
@@ -105,7 +105,7 @@ public class SettingsServiceTests
     [Test]
     public void WorkspaceScope_StoreAttached_RoutesToStore()
     {
-        var store = new FakeWorkspaceSettingsStore();
+        var store = new FakeSettingsStore();
         AttachWorkspaceStore(store);
 
         _settingsService.IsScopeAvailable(SettingScope.Workspace).Should().BeTrue();
@@ -120,7 +120,7 @@ public class SettingsServiceTests
 
     // Wires the workspace hub so that the settings service resolves the given
     // store as the live per-project store.
-    private void AttachWorkspaceStore(IWorkspaceSettingsStore store)
+    private void AttachWorkspaceStore(ISettingsStore store)
     {
         var settingsService = Substitute.For<IWorkspaceSettingsService>();
         settingsService.WorkspaceSettingsStore.Returns(store);
@@ -130,45 +130,5 @@ public class SettingsServiceTests
 
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-    }
-
-    // Minimal in-memory store so workspace-scope routing can be exercised without
-    // a project on disk.
-    private sealed class FakeWorkspaceSettingsStore : IWorkspaceSettingsStore
-    {
-        private readonly Dictionary<string, object> _values = new();
-
-        public bool TryGetValue<T>(string key, out T value) where T : notnull
-        {
-            if (_values.TryGetValue(key, out var stored)
-                && stored is T typed)
-            {
-                value = typed;
-                return true;
-            }
-
-            value = default!;
-            return false;
-        }
-
-        public void SetValue<T>(string key, T value) where T : notnull
-        {
-            _values[key] = value;
-        }
-
-        public bool ContainsKey(string key)
-        {
-            return _values.ContainsKey(key);
-        }
-
-        public void RemoveValue(string key)
-        {
-            _values.Remove(key);
-        }
-
-        public Task FlushAsync()
-        {
-            return Task.CompletedTask;
-        }
     }
 }

@@ -1,3 +1,5 @@
+using Celbridge.Settings;
+
 namespace Celbridge.Workspace;
 
 /// <summary>
@@ -11,10 +13,10 @@ public interface IWorkspaceSettingsService
     IWorkspacePropertyBag? PropertyBag { get; }
 
     /// <summary>
-    /// The synchronous key/value store backing Workspace-scope settings for the
+    /// The key/value store backing Workspace-scope settings for the
     /// current loaded project. Null when no workspace is loaded.
     /// </summary>
-    IWorkspaceSettingsStore? WorkspaceSettingsStore { get; }
+    ISettingsStore? WorkspaceSettingsStore { get; }
 
     /// <summary>
     /// Folder containing the workspace settings file.

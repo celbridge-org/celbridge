@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;

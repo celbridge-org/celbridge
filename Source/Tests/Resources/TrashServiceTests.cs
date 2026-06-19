@@ -1,6 +1,5 @@
 using Celbridge.Messaging;
 using Celbridge.Resources;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;

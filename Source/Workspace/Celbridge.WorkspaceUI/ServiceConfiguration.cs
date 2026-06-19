@@ -18,7 +18,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IPanelFocusService, PanelFocusService>();
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
-        services.AddTransient<IWorkspaceSettings, WorkspaceSettings>();
+        services.AddTransient<IBindableWorkspaceSettings, BindableWorkspaceSettings>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();

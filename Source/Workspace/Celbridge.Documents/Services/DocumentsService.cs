@@ -4,7 +4,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 

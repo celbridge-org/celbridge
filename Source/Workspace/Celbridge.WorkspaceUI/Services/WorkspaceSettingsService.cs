@@ -1,4 +1,5 @@
 using Celbridge.Projects;
+using Celbridge.Settings;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -6,11 +7,11 @@ public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDispo
 {
     private readonly ILocalFileSystem _fileSystem;
 
-    private JsonWorkspaceStore? _workspaceStore;
+    private WorkspaceStore? _workspaceStore;
 
     public IWorkspacePropertyBag? PropertyBag => _workspaceStore;
 
-    public IWorkspaceSettingsStore? WorkspaceSettingsStore => _workspaceStore;
+    public ISettingsStore? WorkspaceSettingsStore => _workspaceStore;
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
@@ -49,7 +50,7 @@ public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDispo
 
         var filePath = Path.Combine(WorkspaceSettingsFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
-        var loadResult = await JsonWorkspaceStore.LoadAsync(_fileSystem, filePath);
+        var loadResult = await WorkspaceStore.LoadAsync(_fileSystem, filePath);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to load workspace settings file: {filePath}")

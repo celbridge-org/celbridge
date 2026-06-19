@@ -13,8 +13,8 @@ public class LayoutManagerTests
 {
     private ServiceProvider? _serviceProvider;
     private IMessengerService _messengerService = null!;
-    private IEditorSettings _editorSettings = null!;
-    private IWorkspaceSettings _workspaceSettings = null!;
+    private ISettingsService _settingsService = null!;
+    private IBindableWorkspaceSettings _workspaceSettings = null!;
     private LayoutManager _layoutManager = null!;
 
     [SetUp]
@@ -28,11 +28,11 @@ public class LayoutManagerTests
         _serviceProvider = services.BuildServiceProvider();
 
         _messengerService = _serviceProvider.GetRequiredService<IMessengerService>();
-        _editorSettings = Substitute.For<IEditorSettings>();
+        _settingsService = Substitute.For<ISettingsService>();
 
         // Panel layout is Workspace-scoped, so it is read from and written to the
         // workspace settings facade reached through the workspace wrapper.
-        _workspaceSettings = Substitute.For<IWorkspaceSettings>();
+        _workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
 
         // Default to all panels visible. Set the value (rather than stubbing the
         // getter) so writes by the layout manager are reflected on subsequent reads.
@@ -50,7 +50,7 @@ public class LayoutManagerTests
         // Default to console panel feature enabled for tests
         featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel).Returns(true);
 
-        _layoutManager = new LayoutManager(logger, _messengerService, _editorSettings, workspaceWrapper, featureFlags);
+        _layoutManager = new LayoutManager(logger, _messengerService, _settingsService, workspaceWrapper, featureFlags);
     }
 
     [TearDown]

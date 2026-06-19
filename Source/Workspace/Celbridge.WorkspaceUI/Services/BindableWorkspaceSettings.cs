@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -10,78 +9,78 @@ namespace Celbridge.WorkspaceUI.Services;
 /// descriptors: each property reads and writes its descriptor through the Get and
 /// Set helpers, which raise PropertyChanged for the calling property. The
 /// descriptors remain the source of truth; this type exists so views can bind to
-/// named per-project panel, search, and editor state. It is the workspace-scope
-/// peer of EditorSettings.
+/// named per-project panel, search, and editor state. Programmatic access goes
+/// through ISettingsService; this facade is only for the views that bind.
 /// </summary>
-public sealed class WorkspaceSettings : IWorkspaceSettings
+public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
 {
     private readonly ISettingsService _settings;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public WorkspaceSettings(ISettingsService settings)
+    public BindableWorkspaceSettings(ISettingsService settings)
     {
         _settings = settings;
     }
 
     public LayoutRegion PreferredRegionVisibility
     {
-        get => Get(Setting.Layout.PreferredRegionVisibility);
-        set => Set(Setting.Layout.PreferredRegionVisibility, value);
+        get => Get(SettingCatalog.Layout.PreferredRegionVisibility);
+        set => Set(SettingCatalog.Layout.PreferredRegionVisibility, value);
     }
 
     public float PrimaryPanelWidth
     {
-        get => Get(Setting.Layout.PrimaryPanelWidth);
-        set => Set(Setting.Layout.PrimaryPanelWidth, value);
+        get => Get(SettingCatalog.Layout.PrimaryPanelWidth);
+        set => Set(SettingCatalog.Layout.PrimaryPanelWidth, value);
     }
 
     public float SecondaryPanelWidth
     {
-        get => Get(Setting.Layout.SecondaryPanelWidth);
-        set => Set(Setting.Layout.SecondaryPanelWidth, value);
+        get => Get(SettingCatalog.Layout.SecondaryPanelWidth);
+        set => Set(SettingCatalog.Layout.SecondaryPanelWidth, value);
     }
 
     public float ConsolePanelHeight
     {
-        get => Get(Setting.Layout.ConsolePanelHeight);
-        set => Set(Setting.Layout.ConsolePanelHeight, value);
+        get => Get(SettingCatalog.Layout.ConsolePanelHeight);
+        set => Set(SettingCatalog.Layout.ConsolePanelHeight, value);
     }
 
     public float DetailPanelHeight
     {
-        get => Get(Setting.Layout.DetailPanelHeight);
-        set => Set(Setting.Layout.DetailPanelHeight, value);
+        get => Get(SettingCatalog.Layout.DetailPanelHeight);
+        set => Set(SettingCatalog.Layout.DetailPanelHeight, value);
     }
 
     public bool IsConsoleMaximized
     {
-        get => Get(Setting.Layout.IsConsoleMaximized);
-        set => Set(Setting.Layout.IsConsoleMaximized, value);
+        get => Get(SettingCatalog.Layout.IsConsoleMaximized);
+        set => Set(SettingCatalog.Layout.IsConsoleMaximized, value);
     }
 
     public bool SearchMatchCase
     {
-        get => Get(Setting.Search.MatchCase);
-        set => Set(Setting.Search.MatchCase, value);
+        get => Get(SettingCatalog.Search.MatchCase);
+        set => Set(SettingCatalog.Search.MatchCase, value);
     }
 
     public bool SearchWholeWord
     {
-        get => Get(Setting.Search.WholeWord);
-        set => Set(Setting.Search.WholeWord, value);
+        get => Get(SettingCatalog.Search.WholeWord);
+        set => Set(SettingCatalog.Search.WholeWord, value);
     }
 
     public bool ReplaceMode
     {
-        get => Get(Setting.Search.ReplaceMode);
-        set => Set(Setting.Search.ReplaceMode, value);
+        get => Get(SettingCatalog.Search.ReplaceMode);
+        set => Set(SettingCatalog.Search.ReplaceMode, value);
     }
 
     public string PreviousNewFileExtension
     {
-        get => Get(Setting.Editor.PreviousNewFileExtension);
-        set => Set(Setting.Editor.PreviousNewFileExtension, value);
+        get => Get(SettingCatalog.Editor.PreviousNewFileExtension);
+        set => Set(SettingCatalog.Editor.PreviousNewFileExtension, value);
     }
 
     private T Get<T>(SettingDescriptor<T> descriptor) where T : notnull

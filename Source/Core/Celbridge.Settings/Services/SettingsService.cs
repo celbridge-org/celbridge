@@ -16,13 +16,13 @@ internal sealed class SettingsService : ISettingsService
     private const string ProtectedUnavailableMessage = "Credential storage is not available on this platform";
 
     private readonly ILogger<SettingsService> _logger;
-    private readonly IApplicationSettingsStore _applicationStore;
+    private readonly ISettingsStore _applicationStore;
     private readonly ICredentialProtector _protector;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public SettingsService(
         ILogger<SettingsService> logger,
-        IApplicationSettingsStore applicationStore,
+        ISettingsStore applicationStore,
         ICredentialProtector protector,
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -55,7 +55,9 @@ internal sealed class SettingsService : ISettingsService
         switch (setting.Scope)
         {
             case SettingScope.Application:
-                return _applicationStore.GetValue(setting.Key, setting.DefaultValue);
+                return _applicationStore.TryGetValue<T>(setting.Key, out var applicationValue)
+                    ? applicationValue
+                    : setting.DefaultValue;
 
             case SettingScope.Workspace:
                 var store = WorkspaceStore;
@@ -127,7 +129,9 @@ internal sealed class SettingsService : ISettingsService
         switch (setting.Scope)
         {
             case SettingScope.Application:
-                return Result<T>.Ok(_applicationStore.GetValue(setting.Key, setting.DefaultValue));
+                return _applicationStore.TryGetValue<T>(setting.Key, out var applicationValue)
+                    ? Result<T>.Ok(applicationValue)
+                    : Result<T>.Ok(setting.DefaultValue);
 
             case SettingScope.Workspace:
                 var store = WorkspaceStore;
@@ -162,10 +166,18 @@ internal sealed class SettingsService : ISettingsService
         }
     }
 
+    public Task<Result> FlushAsync()
+    {
+        // The Workspace store is flushed through the workspace save path, so only
+        // the Application store (which also holds the Protected ciphertext) needs
+        // flushing here.
+        return _applicationStore.FlushAsync();
+    }
+
     // The live per-project store, or null when no workspace is loaded. Resolved
     // at call time through the workspace hub rather than injected, since the
     // store's lifetime is the loaded project, not the application.
-    private IWorkspaceSettingsStore? WorkspaceStore
+    private ISettingsStore? WorkspaceStore
     {
         get
         {
@@ -207,8 +219,8 @@ internal sealed class SettingsService : ISettingsService
             return Result<T>.Fail(ProtectedUnavailableMessage);
         }
 
-        var base64 = _applicationStore.GetValue<string>(setting.Key, string.Empty);
-        if (string.IsNullOrEmpty(base64))
+        if (!_applicationStore.TryGetValue<string>(setting.Key, out var base64)
+            || string.IsNullOrEmpty(base64))
         {
             return Result<T>.Fail($"No value is configured for '{setting.Key}'");
         }

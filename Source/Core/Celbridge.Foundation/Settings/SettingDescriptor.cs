@@ -1,8 +1,8 @@
 namespace Celbridge.Settings;
 
 /// <summary>
-/// Non-generic view of a setting declaration, so descriptors of differing value
-/// types can be enumerated and routed without knowing T.
+/// Non-generic view of a setting declaration, so a descriptor can be routed by
+/// key and scope without knowing its value type T.
 /// </summary>
 public interface ISettingDescriptor
 {

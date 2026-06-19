@@ -1,7 +1,6 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
 using Celbridge.Tests.Migration.TestHelpers;
-using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
 
 namespace Celbridge.Tests.Settings;

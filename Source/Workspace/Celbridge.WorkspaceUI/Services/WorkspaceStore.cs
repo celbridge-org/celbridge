@@ -1,35 +1,29 @@
 using System.Text.Json;
-using Celbridge.Workspace;
+using Celbridge.Settings;
+using Celbridge.Utilities;
 
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Per-project data stored as a JSON key/value file in the project folder, loaded
-/// into memory once. Backs two surfaces: the async IWorkspacePropertyBag, which
-/// persists on each write, and the synchronous IWorkspaceSettingsStore, which
-/// updates memory only and defers the disk write to FlushAsync.
+/// The per-project JSON store. Backs both the eager IWorkspacePropertyBag and the
+/// deferred ISettingsStore.
 /// </summary>
-public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettingsStore
+public sealed class WorkspaceStore : IWorkspacePropertyBag, ISettingsStore
 {
     private const int DataVersion = 1;
     private const string DataVersionKey = nameof(DataVersion);
 
-    private static readonly JsonSerializerOptions FileSerializerOptions = new()
-    {
-        WriteIndented = true,
-    };
-
     private readonly ILocalFileSystem _fileSystem;
     private readonly string _filePath;
-    private readonly Dictionary<string, string> _entries;
+    private readonly KeyValueStore _store;
 
     private bool _isDirty;
 
-    private JsonWorkspaceStore(ILocalFileSystem fileSystem, string filePath, Dictionary<string, string> entries)
+    private WorkspaceStore(ILocalFileSystem fileSystem, string filePath, KeyValueStore store)
     {
         _fileSystem = fileSystem;
         _filePath = filePath;
-        _entries = entries;
+        _store = store;
     }
 
     public async Task<int> GetDataVersionAsync()
@@ -46,7 +40,7 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
     {
         try
         {
-            _entries[key] = JsonSerializer.Serialize(value);
+            _store.SetValue(key, value);
         }
         catch (Exception ex)
         {
@@ -62,7 +56,7 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
 
         try
         {
-            if (!_entries.TryGetValue(key, out var json))
+            if (!_store.TryGetSerialized(key, out var json))
             {
                 return defaultValue;
             }
@@ -89,7 +83,7 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
 
     public async Task<bool> DeletePropertyAsync(string key)
     {
-        if (!_entries.Remove(key))
+        if (!_store.Remove(key))
         {
             return false;
         }
@@ -101,57 +95,48 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
 
     public bool TryGetValue<T>(string key, out T value) where T : notnull
     {
-        value = default!;
-
-        if (!_entries.TryGetValue(key, out var json))
-        {
-            return false;
-        }
-
-        try
-        {
-            var deserialized = JsonSerializer.Deserialize<T>(json);
-            if (deserialized is null)
-            {
-                return false;
-            }
-
-            value = deserialized;
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
+        return _store.TryGetValue(key, out value);
     }
 
     public void SetValue<T>(string key, T value) where T : notnull
     {
-        _entries[key] = JsonSerializer.Serialize(value);
+        _store.SetValue(key, value);
         _isDirty = true;
     }
 
     public bool ContainsKey(string key)
     {
-        return _entries.ContainsKey(key);
+        return _store.ContainsKey(key);
     }
 
     public void RemoveValue(string key)
     {
-        if (_entries.Remove(key))
+        if (_store.Remove(key))
         {
             _isDirty = true;
         }
     }
 
-    public async Task FlushAsync()
+    public async Task<Result> FlushAsync()
     {
         if (!_isDirty)
         {
-            return;
+            return Result.Ok();
         }
 
-        await PersistAsync();
+        // PersistAsync throws on failure (the async property-bag writes rely on
+        // that); convert it to a Result for the ISettingsStore flush contract.
+        try
+        {
+            await PersistAsync();
+        }
+        catch (Exception exception)
+        {
+            return Result.Fail("Failed to flush workspace settings")
+                .WithException(exception);
+        }
+
+        return Result.Ok();
     }
 
     // Overwrites the settings file with the full in-memory store. The data is
@@ -162,7 +147,7 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
         string json;
         try
         {
-            json = JsonSerializer.Serialize(_entries, FileSerializerOptions);
+            json = _store.ToJson();
         }
         catch (Exception ex)
         {
@@ -184,11 +169,11 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
     /// empty store when the file is missing or unreadable. Ensures the data version
     /// is recorded, creating the file on first load.
     /// </summary>
-    public static async Task<Result<JsonWorkspaceStore>> LoadAsync(ILocalFileSystem fileSystem, string filePath)
+    public static async Task<Result<WorkspaceStore>> LoadAsync(ILocalFileSystem fileSystem, string filePath)
     {
         Guard.IsNotNullOrWhiteSpace(filePath);
 
-        var entries = new Dictionary<string, string>();
+        KeyValueStore store;
 
         var infoResult = await fileSystem.GetInfoAsync(filePath);
         bool fileExists = infoResult.IsSuccess
@@ -199,36 +184,26 @@ public sealed class JsonWorkspaceStore : IWorkspacePropertyBag, IWorkspaceSettin
             var readResult = await fileSystem.ReadAllTextAsync(filePath);
             if (readResult.IsFailure)
             {
-                return Result<JsonWorkspaceStore>.Fail($"Failed to read workspace settings file: {filePath}")
+                return Result<WorkspaceStore>.Fail($"Failed to read workspace settings file: {filePath}")
                     .WithErrors(readResult);
             }
 
-            var content = readResult.Value;
-            if (!string.IsNullOrWhiteSpace(content))
-            {
-                try
-                {
-                    var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(content);
-                    if (parsed is not null)
-                    {
-                        entries = parsed;
-                    }
-                }
-                catch (JsonException)
-                {
-                    // A corrupt store is treated as empty rather than failing the
-                    // workspace load; the data is regenerable UI state.
-                }
-            }
+            // A corrupt store is treated as empty rather than failing the workspace
+            // load; the data is regenerable UI state.
+            store = KeyValueStore.FromJson(readResult.Value);
         }
-
-        var store = new JsonWorkspaceStore(fileSystem, filePath, entries);
-
-        if (!store.ContainsKey(DataVersionKey))
+        else
         {
-            await store.SetDataVersionAsync(DataVersion);
+            store = new KeyValueStore();
         }
 
-        return store;
+        var workspaceStore = new WorkspaceStore(fileSystem, filePath, store);
+
+        if (!workspaceStore.ContainsKey(DataVersionKey))
+        {
+            await workspaceStore.SetDataVersionAsync(DataVersion);
+        }
+
+        return workspaceStore;
     }
 }

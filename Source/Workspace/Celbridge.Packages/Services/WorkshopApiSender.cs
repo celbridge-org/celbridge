@@ -108,7 +108,7 @@ internal sealed class WorkshopApiSender : IDisposable
     {
         await Task.CompletedTask;
 
-        var keyResult = _settingsService.TryGet(Setting.Workshop.Key);
+        var keyResult = _settingsService.TryGet(SettingCatalog.Workshop.Key);
         if (keyResult.IsFailure)
         {
             return Result.Fail("Failed to read the Workshop Key from the credential store")
@@ -116,7 +116,7 @@ internal sealed class WorkshopApiSender : IDisposable
         }
         var workshopKey = keyResult.Value;
 
-        var baseUriResult = ValidateWorkshopUrl(_settingsService.Get(Setting.Workshop.Url));
+        var baseUriResult = ValidateWorkshopUrl(_settingsService.Get(SettingCatalog.Workshop.Url));
         if (baseUriResult.IsFailure)
         {
             return Result.Fail(baseUriResult);
@@ -138,7 +138,7 @@ internal sealed class WorkshopApiSender : IDisposable
     public async Task<Result<Uri>> GetBaseUriAsync()
     {
         await Task.CompletedTask;
-        return ValidateWorkshopUrl(_settingsService.Get(Setting.Workshop.Url));
+        return ValidateWorkshopUrl(_settingsService.Get(SettingCatalog.Workshop.Url));
     }
 
     // The Workshop Key is a bearer credential, so sending it over plain HTTP

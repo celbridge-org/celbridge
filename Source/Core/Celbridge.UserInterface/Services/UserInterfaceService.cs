@@ -7,7 +7,7 @@ public class UserInterfaceService : IUserInterfaceService
 {
     private readonly ILogger<UserInterfaceService> _logger;
     private IMessengerService _messengerService;
-    private IEditorSettings _editorSettings;
+    private ISettingsService _settingsService;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -27,7 +27,7 @@ public class UserInterfaceService : IUserInterfaceService
     public UserInterfaceService(
         ILogger<UserInterfaceService> logger,
         IMessengerService messengerService,
-        IEditorSettings editorSettings
+        ISettingsService settingsService
 #if WINDOWS
         , WindowStateHelper windowStateHelper
 #endif
@@ -35,7 +35,7 @@ public class UserInterfaceService : IUserInterfaceService
     {
         _logger = logger;
         _messengerService = messengerService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
 #if WINDOWS
         _windowStateHelper = windowStateHelper;
 #endif
@@ -139,7 +139,7 @@ public class UserInterfaceService : IUserInterfaceService
     private void OnSystemThemeChanged(UserInterfaceTheme newTheme)
     {
         // Only apply theme changes if the app is configured to follow system theme
-        if (_editorSettings.Theme != ApplicationColorTheme.System)
+        if (_settingsService.Get(SettingCatalog.Application.Theme) != ApplicationColorTheme.System)
         {
             return;
         }
@@ -161,7 +161,7 @@ public class UserInterfaceService : IUserInterfaceService
 
     public void ApplyCurrentTheme()
     {
-        var theme = _editorSettings.Theme;
+        var theme = _settingsService.Get(SettingCatalog.Application.Theme);
         switch (theme)
         {
             case ApplicationColorTheme.System:

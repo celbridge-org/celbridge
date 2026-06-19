@@ -33,7 +33,7 @@ public interface IWorkspaceService
     /// <summary>
     /// Returns the typed Workspace Settings facade for the current project.
     /// </summary>
-    IWorkspaceSettings Settings { get; }
+    IBindableWorkspaceSettings Settings { get; }
 
     /// <summary>
     /// Returns the dynamic Workspace property bag for the current project.

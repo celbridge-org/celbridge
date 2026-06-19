@@ -16,7 +16,7 @@ public sealed class WindowStateHelper
 {
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IEditorSettings _editorSettings;
+    private readonly ISettingsService _settingsService;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -26,11 +26,11 @@ public sealed class WindowStateHelper
     public WindowStateHelper(
         ILogger<WindowStateHelper> logger,
         IMessengerService messengerService,
-        IEditorSettings editorSettings)
+        ISettingsService settingsService)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _editorSettings = editorSettings;
+        _settingsService = settingsService;
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ public sealed class WindowStateHelper
             // This is a "best-effort" restore. If it doesn't work, the default window state will be applied automatically.
             TryRestoreWindowState();
 
-            if (_editorSettings.IsWindowMaximized)
+            if (_settingsService.Get(SettingCatalog.Window.IsMaximized))
             {
                 _overlappedPresenter.Maximize();
             }
@@ -107,7 +107,7 @@ public sealed class WindowStateHelper
         {
             _isApplyingWindowMode = true;
 
-            if (_editorSettings.IsWindowMaximized)
+            if (_settingsService.Get(SettingCatalog.Window.IsMaximized))
             {
                 _overlappedPresenter.Maximize();
             }
@@ -150,7 +150,7 @@ public sealed class WindowStateHelper
                         
                         // Get the new presenter and restore maximized state if needed
                         _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
-                        if (_overlappedPresenter != null && _editorSettings.IsWindowMaximized)
+                        if (_overlappedPresenter != null && _settingsService.Get(SettingCatalog.Window.IsMaximized))
                         {
                             _overlappedPresenter.Maximize();
                         }
@@ -189,16 +189,16 @@ public sealed class WindowStateHelper
         }
 
         // Check if we should use saved window geometry
-        if (!_editorSettings.UsePreferredWindowGeometry)
+        if (!_settingsService.Get(SettingCatalog.Window.UsePreferredGeometry))
         {
             _logger.LogDebug("UsePreferredWindowGeometry is false, using default window placement");
             return;
         }
 
-        int x = _editorSettings.PreferredWindowX;
-        int y = _editorSettings.PreferredWindowY;
-        int width = _editorSettings.PreferredWindowWidth;
-        int height = _editorSettings.PreferredWindowHeight;
+        int x = _settingsService.Get(SettingCatalog.Window.PreferredX);
+        int y = _settingsService.Get(SettingCatalog.Window.PreferredY);
+        int width = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
+        int height = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
 
         // Validate that the title bar area is visible on screen
         if (!IsTitleBarVisible(x, y, width, height))
@@ -308,7 +308,7 @@ public sealed class WindowStateHelper
                 if (presenter != null)
                 {
                     bool isMaximized = presenter.State == OverlappedPresenterState.Maximized;
-                    _editorSettings.IsWindowMaximized = isMaximized;
+                    _settingsService.Set(SettingCatalog.Window.IsMaximized, isMaximized);
 
                     // Only save bounds when not maximized or minimized
                     // Also skip if we're transitioning from fullscreen to avoid saving fullscreen
@@ -340,13 +340,13 @@ public sealed class WindowStateHelper
         var position = _appWindow.Position;
         var size = _appWindow.Size;
 
-        _editorSettings.PreferredWindowX = position.X;
-        _editorSettings.PreferredWindowY = position.Y;
-        _editorSettings.PreferredWindowWidth = size.Width;
-        _editorSettings.PreferredWindowHeight = size.Height;
+        _settingsService.Set(SettingCatalog.Window.PreferredX, position.X);
+        _settingsService.Set(SettingCatalog.Window.PreferredY, position.Y);
+        _settingsService.Set(SettingCatalog.Window.PreferredWidth, size.Width);
+        _settingsService.Set(SettingCatalog.Window.PreferredHeight, size.Height);
 
         // Mark that we now have valid saved geometry to restore on next startup
-        _editorSettings.UsePreferredWindowGeometry = true;
+        _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, true);
     }
 
     private static AppWindow? GetAppWindow(Window? window)

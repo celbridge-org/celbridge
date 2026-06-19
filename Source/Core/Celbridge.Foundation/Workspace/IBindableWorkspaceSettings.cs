@@ -3,13 +3,10 @@ using System.ComponentModel;
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Typed, bindable facade over the Workspace-scope setting descriptors for the
-/// current loaded project. Each property reads and writes its descriptor through
-/// the settings service and raises PropertyChanged from its setter, so views can
-/// bind to named panel, search, and editor state that persists per project.
-/// Distinct from IWorkspacePropertyBag, the dynamic key/value bag.
+/// Bindable view of the current project's Workspace-scope settings, for the controls
+/// that bind them. Programmatic access uses ISettingsService.
 /// </summary>
-public interface IWorkspaceSettings : INotifyPropertyChanged
+public interface IBindableWorkspaceSettings : INotifyPropertyChanged
 {
     /// <summary>
     /// Preferred visibility of the workspace panel regions.
