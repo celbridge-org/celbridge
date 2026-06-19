@@ -32,8 +32,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _workspaceWrapper = workspaceWrapper;
         _featureFlags = featureFlags;
 
-        // Panel layout is per-project, so the preferred region visibility is read
-        // from the workspace settings when a workspace loads, not here.
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
@@ -45,7 +43,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
     // Panel layout is Workspace-scoped, so it has no meaning outside a project.
     private IBindableWorkspaceSettings? WorkspaceSettings =>
         _workspaceWrapper.IsWorkspacePageLoaded
-            ? _workspaceWrapper.WorkspaceService.Settings
+            ? _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings
             : null;
 
     // The project's preferred region visibility, falling back to all regions

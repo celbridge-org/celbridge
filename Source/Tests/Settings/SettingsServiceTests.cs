@@ -126,7 +126,7 @@ public class SettingsServiceTests
         settingsService.WorkspaceSettingsStore.Returns(store);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.WorkspaceSettingsService.Returns(settingsService);
+        workspaceService.WorkspaceSettings.Returns(settingsService);
 
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);

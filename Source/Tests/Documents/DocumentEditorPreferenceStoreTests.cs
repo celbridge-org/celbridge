@@ -30,7 +30,10 @@ public class DocumentEditorPreferenceStoreTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
-        workspaceService.PropertyBag.Returns(_propertyBag);
+
+        var workspaceSettingsService = Substitute.For<IWorkspaceSettingsService>();
+        workspaceSettingsService.PropertyBag.Returns(_propertyBag);
+        workspaceService.WorkspaceSettings.Returns(workspaceSettingsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);

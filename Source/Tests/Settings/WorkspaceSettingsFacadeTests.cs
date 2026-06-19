@@ -56,7 +56,7 @@ public class WorkspaceSettingsFacadeTests
         // Wire the workspace hub so the settings service walks to the live
         // per-project store, matching the path it uses at runtime.
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.WorkspaceSettingsService.Returns(workspaceSettingsService);
+        workspaceService.WorkspaceSettings.Returns(workspaceSettingsService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
@@ -70,8 +70,8 @@ public class WorkspaceSettingsFacadeTests
 
         var facade = new BindableWorkspaceSettings(settingsService);
 
-        // The facade is what consumers reach through WorkspaceService.Settings.
-        workspaceService.Settings.Returns(facade);
+        // The facade is what consumers reach through WorkspaceService.BindableWorkspaceSettings.
+        workspaceService.BindableWorkspaceSettings.Returns(facade);
 
         return new WorkspaceFixture(facade, workspaceWrapper, workspaceSettingsService);
     }

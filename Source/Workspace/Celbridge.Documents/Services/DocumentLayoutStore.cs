@@ -44,7 +44,7 @@ public class DocumentLayoutStore
 
     public async Task StoreDocumentLayoutAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         var storedAddresses = DocumentsPanel.GetOpenDocuments()
@@ -63,7 +63,7 @@ public class DocumentLayoutStore
 
     public async Task StoreActiveDocumentAsync(ResourceKey activeDocument)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         var fileResource = activeDocument.ToString();
@@ -72,7 +72,7 @@ public class DocumentLayoutStore
 
     public async Task StoreSectionRatiosAsync(List<double> ratios)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         await propertyBag.SetPropertyAsync(SectionRatiosKey, ratios);
@@ -80,7 +80,7 @@ public class DocumentLayoutStore
 
     public async Task StoreDocumentEditorStatesAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         // Start with existing saved states so that editors that aren't ready yet
@@ -132,7 +132,7 @@ public class DocumentLayoutStore
 
     public async Task StoreDocumentEditorStateAsync(ResourceKey fileResource, string? state)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         try
@@ -190,7 +190,7 @@ public class DocumentLayoutStore
 
     private async Task<StoredLayout> LoadStoredLayoutAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         var sectionRatios = await propertyBag.GetPropertyAsync<List<double>>(SectionRatiosKey);
@@ -287,7 +287,7 @@ public class DocumentLayoutStore
 
     private async Task RestoreActiveDocumentAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         var selectedDocument = await propertyBag.GetPropertyAsync<string>(ActiveDocumentKey);

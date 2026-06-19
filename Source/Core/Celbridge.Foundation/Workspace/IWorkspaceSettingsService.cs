@@ -25,7 +25,7 @@ public interface IWorkspaceSettingsService
 
     /// <summary>
     /// Loads the workspace settings for the current loaded project, creating the
-    /// settings file if it does not exist and porting any legacy SQLite store.
+    /// settings file if it does not exist. Idempotent: a no-op when already loaded.
     /// </summary>
     Task<Result> AcquireWorkspaceSettingsAsync();
 

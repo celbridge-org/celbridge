@@ -26,19 +26,15 @@ public interface IWorkspaceService
         IConsolePanel? consolePanel);
 
     /// <summary>
-    /// Returns the Workspace Settings Service associated with the workspace.
+    /// Returns the workspace settings service for the current project, which owns
+    /// the property bag and the Workspace-scope settings store.
     /// </summary>
-    IWorkspaceSettingsService WorkspaceSettingsService { get; }
+    IWorkspaceSettingsService WorkspaceSettings { get; }
 
     /// <summary>
-    /// Returns the typed Workspace Settings facade for the current project.
+    /// Returns the bindable Workspace-scope settings facade for the current project.
     /// </summary>
-    IBindableWorkspaceSettings Settings { get; }
-
-    /// <summary>
-    /// Returns the dynamic Workspace property bag for the current project.
-    /// </summary>
-    IWorkspacePropertyBag PropertyBag { get; }
+    IBindableWorkspaceSettings BindableWorkspaceSettings { get; }
 
     /// <summary>
     /// Returns the Package Service associated with the workspace.

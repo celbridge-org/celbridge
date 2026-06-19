@@ -28,7 +28,7 @@ public class DocumentEditorPreferenceStore
     /// </summary>
     public async Task<DocumentEditorId> GetExtensionPreferenceAsync(string extension)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
@@ -51,7 +51,7 @@ public class DocumentEditorPreferenceStore
     /// </summary>
     public async Task SetExtensionPreferenceAsync(string extension, DocumentEditorId editorId)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);

@@ -55,7 +55,7 @@ public class ScreenplaySaver
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
-        _propertyBag = workspaceWrapper.WorkspaceService.PropertyBag;
+        _propertyBag = workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
         _fileSystem = fileSystem;
     }
 

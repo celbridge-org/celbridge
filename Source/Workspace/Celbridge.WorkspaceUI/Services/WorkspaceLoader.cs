@@ -78,7 +78,7 @@ public class WorkspaceLoader
         //
         // Acquire the workspace settings
         //
-        var workspaceSettingsService = workspaceService.WorkspaceSettingsService;
+        var workspaceSettingsService = workspaceService.WorkspaceSettings;
         var acquireResult = await workspaceSettingsService.AcquireWorkspaceSettingsAsync();
         if (acquireResult.IsFailure)
         {

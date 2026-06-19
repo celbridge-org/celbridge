@@ -97,7 +97,7 @@ public class WorkshopSettingsViewModelTests
     private void SeedStoredConnection(string author = "")
     {
         _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
-        _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKey.GetDisplayHint(TestWorkshopKey));
+        _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKeyHelper.GetDisplayHint(TestWorkshopKey));
         _settingsService.Set(SettingCatalog.Workshop.Url, WorkshopUrl);
         _settingsService.Set(SettingCatalog.Workshop.Author, author);
     }

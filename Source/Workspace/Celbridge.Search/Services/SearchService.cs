@@ -29,7 +29,7 @@ public class SearchService : ISearchService, IDisposable
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-    private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.PropertyBag;
+    private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
 
     public SearchService(
         ILogger<SearchService> logger,

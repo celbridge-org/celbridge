@@ -16,8 +16,8 @@ public enum SettingScope
     Application,
 
     /// <summary>
-    /// Per-project. Persists alongside the project files so each project
-    /// remembers its own value.
+    /// Per-project. Persists in the project's hidden .celbridge folder so each
+    /// project remembers its own value.
     /// </summary>
     Workspace,
 

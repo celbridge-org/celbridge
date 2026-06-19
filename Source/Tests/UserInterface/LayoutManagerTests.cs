@@ -42,7 +42,7 @@ public class LayoutManagerTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        workspaceService.Settings.Returns(_workspaceSettings);
+        workspaceService.BindableWorkspaceSettings.Returns(_workspaceSettings);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
         var featureFlags = Substitute.For<IFeatureFlags>();

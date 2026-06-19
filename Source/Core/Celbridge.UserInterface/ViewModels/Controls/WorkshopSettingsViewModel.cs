@@ -290,7 +290,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         try
         {
             _settingsService.Set(SettingCatalog.Workshop.Key, workshopKey);
-            _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKey.GetDisplayHint(workshopKey));
+            _settingsService.Set(SettingCatalog.Workshop.KeyHint, WorkshopKeyHelper.GetDisplayHint(workshopKey));
         }
         catch (InvalidOperationException ex)
         {

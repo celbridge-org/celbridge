@@ -6,7 +6,7 @@ namespace Celbridge.UserInterface.Helpers;
 /// to derive non-secret display data, which is a UI concern rather than a
 /// storage one.
 /// </summary>
-public static class WorkshopKey
+public static class WorkshopKeyHelper
 {
     private const string WorkshopKeyPrefix = "kpf_";
 

@@ -18,9 +18,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IMessengerService _messengerService;
 
-    public IWorkspaceSettingsService WorkspaceSettingsService { get; }
-    public IBindableWorkspaceSettings Settings { get; }
-    public IWorkspacePropertyBag PropertyBag => WorkspaceSettingsService.PropertyBag!;
+    public IWorkspaceSettingsService WorkspaceSettings { get; }
+    public IBindableWorkspaceSettings BindableWorkspaceSettings { get; }
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
     public IExplorerService ExplorerService { get; }
@@ -53,8 +52,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Create instances of the required sub-services
 
-        WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
-        Settings = serviceProvider.GetRequiredService<IBindableWorkspaceSettings>();
+        WorkspaceSettings = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+        BindableWorkspaceSettings = serviceProvider.GetRequiredService<IBindableWorkspaceSettings>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
@@ -80,7 +79,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
 
         // The folder itself is created on demand by AcquireWorkspaceSettingsAsync.
-        WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
+        WorkspaceSettings.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
     }
@@ -152,7 +151,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // options, last new-file extension). These are set on the UI thread but
         // deferred, so the disk write happens here off the UI thread. FlushAsync
         // is a no-op when nothing has changed since the last tick.
-        var workspaceSettingsStore = WorkspaceSettingsService.WorkspaceSettingsStore;
+        var workspaceSettingsStore = WorkspaceSettings.WorkspaceSettingsStore;
         if (workspaceSettingsStore is not null)
         {
             var flushResult = await workspaceSettingsStore.FlushAsync();
@@ -203,7 +202,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();
-                (WorkspaceSettingsService as IDisposable)!.Dispose();
+                (WorkspaceSettings as IDisposable)!.Dispose();
                 (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();

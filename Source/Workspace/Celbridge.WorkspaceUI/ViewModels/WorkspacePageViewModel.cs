@@ -30,20 +30,20 @@ public partial class WorkspacePageViewModel : ObservableObject
     // Panel width/height properties now use Primary/Secondary naming
     public float PrimaryPanelWidth
     {
-        get => _workspaceService.Settings.PrimaryPanelWidth;
-        set => _workspaceService.Settings.PrimaryPanelWidth = value;
+        get => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth;
+        set => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth = value;
     }
 
     public float SecondaryPanelWidth
     {
-        get => _workspaceService.Settings.SecondaryPanelWidth;
-        set => _workspaceService.Settings.SecondaryPanelWidth = value;
+        get => _workspaceService.BindableWorkspaceSettings.SecondaryPanelWidth;
+        set => _workspaceService.BindableWorkspaceSettings.SecondaryPanelWidth = value;
     }
 
     public float ConsolePanelHeight
     {
-        get => _workspaceService.Settings.ConsolePanelHeight;
-        set => _workspaceService.Settings.ConsolePanelHeight = value;
+        get => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight;
+        set => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight = value;
     }
 
     public bool IsFullScreen => _windowModeService.IsFullScreen;
@@ -92,7 +92,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
         // Forward panel-size change notifications from the workspace settings so the
         // bound panel columns update when the layout is reset or restored.
-        _workspaceService.Settings.PropertyChanged += OnWorkspaceSettings_PropertyChanged;
+        _workspaceService.BindableWorkspaceSettings.PropertyChanged += OnWorkspaceSettings_PropertyChanged;
     }
 
     private void OnWorkspaceSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -123,7 +123,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public void OnWorkspacePageUnloaded()
     {
-        _workspaceService.Settings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
+        _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
 
         // Unregister message handlers
         _messengerService.Unregister<WindowModeChangedMessage>(this);
@@ -149,7 +149,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public async Task<Result> AcquireWorkspaceSettingsAsync()
     {
-        return await _workspaceService.WorkspaceSettingsService.AcquireWorkspaceSettingsAsync();
+        return await _workspaceService.WorkspaceSettings.AcquireWorkspaceSettingsAsync();
     }
 
     public async Task LoadWorkspaceAsync()

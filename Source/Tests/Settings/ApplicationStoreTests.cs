@@ -115,6 +115,28 @@ public class ApplicationStoreTests
     }
 
     [Test]
+    public async Task Flush_CreatesTheSettingsFolderWhenMissing()
+    {
+        // Point the store at a settings file whose parent folder does not exist,
+        // mirroring a first run on a platform where the per-user Celbridge folder
+        // has not been created yet (e.g. macOS and Linux).
+        var nestedFolder = Path.Combine(_folderPath, "Celbridge");
+        var nestedFilePath = Path.Combine(nestedFolder, "settings.json");
+        Directory.Exists(nestedFolder).Should().BeFalse();
+
+        var store = new ApplicationStore(new NullLogger<ApplicationStore>(), _fileSystem, nestedFilePath);
+        store.SetValue("Count", 7);
+
+        var flushResult = await store.FlushAsync();
+        flushResult.IsSuccess.Should().BeTrue();
+        File.Exists(nestedFilePath).Should().BeTrue();
+
+        var reloaded = new ApplicationStore(new NullLogger<ApplicationStore>(), _fileSystem, nestedFilePath);
+        reloaded.TryGetValue<int>("Count", out var count).Should().BeTrue();
+        count.Should().Be(7);
+    }
+
+    [Test]
     public void ResolveDefaultFilePath_ReturnsSettingsFileInPerUserFolder()
     {
         var path = ApplicationStore.ResolveDefaultFilePath();

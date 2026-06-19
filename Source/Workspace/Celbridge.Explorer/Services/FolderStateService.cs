@@ -49,7 +49,9 @@ public class FolderStateService : IFolderStateService
 
     public async Task LoadAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
+
         var expandedFolders = await propertyBag.GetPropertyAsync<List<string>>(ExpandedFoldersKey);
         if (expandedFolders is not null &&
             expandedFolders.Count > 0)
@@ -63,7 +65,9 @@ public class FolderStateService : IFolderStateService
 
     public async Task SaveAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.PropertyBag;
+        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
+        Guard.IsNotNull(propertyBag);
+
         await propertyBag.SetPropertyAsync(ExpandedFoldersKey, ExpandedFolders);
     }
 }

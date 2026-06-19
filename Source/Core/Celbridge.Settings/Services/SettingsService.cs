@@ -186,7 +186,7 @@ internal sealed class SettingsService : ISettingsService
                 return null;
             }
 
-            return _workspaceWrapper.WorkspaceService.WorkspaceSettingsService.WorkspaceSettingsStore;
+            return _workspaceWrapper.WorkspaceService.WorkspaceSettings.WorkspaceSettingsStore;
         }
     }
 

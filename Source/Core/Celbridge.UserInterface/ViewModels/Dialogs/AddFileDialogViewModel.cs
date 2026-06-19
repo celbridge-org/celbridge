@@ -46,7 +46,7 @@ public partial class AddFileDialogViewModel : ObservableObject
     /// <summary>
     /// Gets the previously saved file extension from settings.
     /// </summary>
-    public string PreviousFileExtension => _workspaceWrapper.WorkspaceService.Settings.PreviousNewFileExtension;
+    public string PreviousFileExtension => _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PreviousNewFileExtension;
 
     public AddFileDialogViewModel(
         IStringLocalizer stringLocalizer,
@@ -74,7 +74,7 @@ public partial class AddFileDialogViewModel : ObservableObject
         FileTypes.Add(otherFileType);
 
         // Select the dropdown based on the previously saved extension
-        var previousExtension = _workspaceWrapper.WorkspaceService.Settings.PreviousNewFileExtension;
+        var previousExtension = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PreviousNewFileExtension;
         var index = FileTypes.FindIndex(ft =>
             !string.IsNullOrEmpty(ft.Extension) &&
             ft.Extension.Equals(previousExtension, StringComparison.OrdinalIgnoreCase));
@@ -232,7 +232,7 @@ public partial class AddFileDialogViewModel : ObservableObject
         var extension = Path.GetExtension(FileName);
         if (!string.IsNullOrEmpty(extension))
         {
-            _workspaceWrapper.WorkspaceService.Settings.PreviousNewFileExtension = extension;
+            _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PreviousNewFileExtension = extension;
         }
     }
 

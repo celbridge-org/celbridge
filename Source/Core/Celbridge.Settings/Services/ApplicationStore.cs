@@ -11,6 +11,7 @@ namespace Celbridge.Settings.Services;
 internal sealed class ApplicationStore : ISettingsStore
 {
     private const string SettingsFileName = "settings.json";
+    private const string ApplicationDataFolderName = "Celbridge";
 
     private readonly ILogger<ApplicationStore> _logger;
     private readonly ILocalFileSystem _fileSystem;
@@ -65,6 +66,21 @@ internal sealed class ApplicationStore : ISettingsStore
             return Result.Ok();
         }
 
+        // The settings folder may not exist on a first run (the per-user Celbridge
+        // folder on macOS and Linux). WriteAllTextAsync does not create it, so ensure
+        // it exists first.
+        var settingsFolder = Path.GetDirectoryName(_filePath);
+        if (!string.IsNullOrEmpty(settingsFolder))
+        {
+            var createFolderResult = await _fileSystem.CreateFolderAsync(settingsFolder);
+            if (createFolderResult.IsFailure)
+            {
+                // Leave the store dirty so the next flush retries.
+                return Result.Fail($"Failed to create application settings folder: {settingsFolder}")
+                    .WithErrors(createFolderResult);
+            }
+        }
+
         var writeResult = await _fileSystem.WriteAllTextAsync(_filePath, _store.ToJson());
         if (writeResult.IsFailure)
         {
@@ -78,19 +94,22 @@ internal sealed class ApplicationStore : ISettingsStore
         return Result.Ok();
     }
 
-    // Resolves the settings file path in the per-user config folder, mirroring the
-    // bootstrap logging path resolution in App.xaml.cs. This is the only platform
-    // branch and it decides where the file lives, not whether persistence works.
+    // Resolves the settings file path in the per-user config folder. On Windows the
+    // packaged app's LocalFolder is already private to Celbridge, so the file sits at
+    // its root. On macOS and Linux the local data folder is shared between
+    // applications, so the file lives under a Celbridge subfolder to avoid colliding
+    // with other applications.
     public static string ResolveDefaultFilePath()
     {
-        string localDataPath;
 #if WINDOWS
-        localDataPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-#else
-        localDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-#endif
+        var localDataPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
 
         return Path.Combine(localDataPath, SettingsFileName);
+#else
+        var localDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        return Path.Combine(localDataPath, ApplicationDataFolderName, SettingsFileName);
+#endif
     }
 
     // Reads the store once at construction. Settings are read synchronously

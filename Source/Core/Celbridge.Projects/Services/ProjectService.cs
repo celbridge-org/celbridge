@@ -95,7 +95,8 @@ public class ProjectService : IProjectService
 
             // Update the recent projects list. Copy before mutating: an unconfigured
             // read returns the descriptor's shared default list instance.
-            var recentProjects = new List<string>(_settingsService.Get(SettingCatalog.Project.RecentProjects));
+            var storedProjects = _settingsService.Get(SettingCatalog.Project.RecentProjects);
+            var recentProjects = new List<string>(storedProjects);
             recentProjects.Remove(projectFilePath);
             recentProjects.Insert(0, projectFilePath);
             while (recentProjects.Count > RecentProjectsMax)
@@ -153,12 +154,17 @@ public class ProjectService : IProjectService
         if (currentProjectPath != null)
         {
             // Keep only the currently opened project in the list
-            _settingsService.Set(SettingCatalog.Project.RecentProjects, new List<string> { currentProjectPath });
+            var openProjectOnly = new List<string>
+            {
+                currentProjectPath
+            };
+            _settingsService.Set(SettingCatalog.Project.RecentProjects, openProjectOnly);
         }
         else
         {
             // No project is open, clear everything
-            _settingsService.Set(SettingCatalog.Project.RecentProjects, new List<string>());
+            var emptyProjectList = new List<string>();
+            _settingsService.Set(SettingCatalog.Project.RecentProjects, emptyProjectList);
         }
     }
 }

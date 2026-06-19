@@ -225,7 +225,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         // Get the previously saved extension
-        var extension = _workspaceWrapper.WorkspaceService.Settings.PreviousNewFileExtension;
+        var extension = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PreviousNewFileExtension;
 
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 

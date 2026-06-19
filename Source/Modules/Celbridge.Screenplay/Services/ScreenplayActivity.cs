@@ -33,7 +33,7 @@ public class ScreenplayActivity : IActivity
         _localizerService = localizerService;
         _dialogService = dialogService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _propertyBag = workspaceWrapper.WorkspaceService.PropertyBag;
+        _propertyBag = workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 

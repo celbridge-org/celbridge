@@ -15,7 +15,7 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.Settings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
         switch (Region)
         {

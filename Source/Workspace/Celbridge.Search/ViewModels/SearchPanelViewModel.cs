@@ -163,7 +163,7 @@ public partial class SearchPanelViewModel : ObservableObject
         ReplaceMatchTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceMatchTooltip");
 
         // Load saved search options from the workspace settings
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.Settings;
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
         MatchCase = workspaceSettings.SearchMatchCase;
         WholeWord = workspaceSettings.SearchWholeWord;
         IsReplaceModeEnabled = workspaceSettings.ReplaceMode;
@@ -258,7 +258,7 @@ public partial class SearchPanelViewModel : ObservableObject
     partial void OnMatchCaseChanged(bool value)
     {
         // Save to the workspace settings
-        _workspaceWrapper.WorkspaceService.Settings.SearchMatchCase = value;
+        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.SearchMatchCase = value;
 
         if (!string.IsNullOrEmpty(SearchText))
         {
@@ -269,7 +269,7 @@ public partial class SearchPanelViewModel : ObservableObject
     partial void OnWholeWordChanged(bool value)
     {
         // Save to the workspace settings
-        _workspaceWrapper.WorkspaceService.Settings.SearchWholeWord = value;
+        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.SearchWholeWord = value;
 
         if (!string.IsNullOrEmpty(SearchText))
         {
@@ -280,7 +280,7 @@ public partial class SearchPanelViewModel : ObservableObject
     partial void OnIsReplaceModeEnabledChanged(bool value)
     {
         // Save to the workspace settings
-        _workspaceWrapper.WorkspaceService.Settings.ReplaceMode = value;
+        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.ReplaceMode = value;
     }
 
     [RelayCommand]
