@@ -284,6 +284,12 @@ function initializeSpreadsheet() {
 
 async function initializeEditor() {
     try {
+        // Resolve the host capability context before initializeSpreadsheet reads the
+        // SpreadJS license keys from client.secrets. On the Skia head the context arrives
+        // over the bridge (host/getContext), so the secrets are empty until ready()
+        // resolves. The packaged WinUI head resolves immediately from the injected global.
+        await client.ready();
+
         const ready = initializeSpreadsheet();
         if (!ready) {
             // Still complete the document handshake so the host's load flow
