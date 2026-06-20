@@ -221,6 +221,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
         var documentView = createResult.Value;
 
+        // DP1 diagnostics: which concrete view type actually handles this resource.
+        _logger.LogDebug("DP1: created document view '{ViewType}' (editor '{EditorId}') for '{Resource}'",
+            documentView.GetType().Name, documentView.EditorId, fileResource);
+
         // Factories must set view.EditorId before returning; catch a missed stamp here.
         if (documentView.EditorId.IsEmpty)
         {

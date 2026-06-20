@@ -211,7 +211,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         try
         {
             // Acquire a WebView from the factory and add it to the container.
+            _logger.LogDebug("DP1: InitContributionView: acquiring WebView from factory");
             WebView = await _webViewFactory.AcquireAsync();
+            _logger.LogDebug("DP1: InitContributionView: WebView acquired, adding to container");
             ContributionWebViewContainer.Children.Add(WebView);
 
             // DevTools is off when the hosting package blocks it (sensitive material)
@@ -278,6 +280,22 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
                 args.Handled = true;
             };
 
+            // DP1 diagnostics: trace navigation outcomes on the desktop head to
+            // distinguish a silent content-load failure (virtual-host mapping not
+            // resolving) from a native-control compositing problem.
+            WebView.CoreWebView2.NavigationCompleted += (s, args) =>
+            {
+                _logger.LogDebug(
+                    "WebView NavigationCompleted: IsSuccess={IsSuccess}, WebErrorStatus={WebErrorStatus}, HttpStatusCode={HttpStatusCode}",
+                    args.IsSuccess, args.WebErrorStatus, args.HttpStatusCode);
+            };
+            WebView.CoreWebView2.ProcessFailed += (s, args) =>
+            {
+                _logger.LogError(
+                    "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
+                    args.ProcessFailedKind, args.Reason, args.ExitCode);
+            };
+
             // Wire up the JSON-RPC host channel for WebView communication.
             _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
             Host = new CelbridgeHost(_hostChannel);
@@ -318,6 +336,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
+            _logger.LogDebug("WebView navigating to entry URL: {EntryUrl}", entryUrl);
             WebView.CoreWebView2.Navigate(entryUrl);
 
             _initTcs!.TrySetResult(Result.Ok());
@@ -463,9 +482,18 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         }
 
         var theme = _userInterfaceService.UserInterfaceTheme;
-        WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
-            ? CoreWebView2PreferredColorScheme.Dark
-            : CoreWebView2PreferredColorScheme.Light;
+        try
+        {
+            // CoreWebView2.Profile is not implemented on the Uno Skia CoreWebView2.
+            // Tolerated for DP1 validation; real theming path is DP2.
+            WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+                ? CoreWebView2PreferredColorScheme.Dark
+                : CoreWebView2PreferredColorScheme.Light;
+        }
+        catch (NotImplementedException)
+        {
+            _logger.LogWarning("DP1: CoreWebView2.Profile not implemented on this head; skipping WebView theme");
+        }
     }
 
     private DocumentMetadata CreateDocumentMetadata()
@@ -837,7 +865,16 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         }
 
         var script = $"window.__celbridgeContext = {contextJson};";
-        await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+        try
+        {
+            // AddScriptToExecuteOnDocumentCreatedAsync is not implemented on the Uno Skia
+            // CoreWebView2. Tolerated for DP1 validation; a real injection path is DP2.
+            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+        }
+        catch (NotImplementedException)
+        {
+            _logger.LogWarning("DP1: celbridge context injection skipped (AddScriptToExecuteOnDocumentCreatedAsync not implemented on this head)");
+        }
     }
 
     private static readonly JsonSerializerOptions ContextSerializerOptions = new()

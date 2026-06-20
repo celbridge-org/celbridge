@@ -67,14 +67,10 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
-#if WINDOWS
         var view = _serviceProvider.GetRequiredService<ContributionDocumentView>();
         view.Contribution = _contribution;
         view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);
-#else
-        return Result<IDocumentView>.Fail("Contribution editors are only available on Windows");
-#endif
     }
 }
