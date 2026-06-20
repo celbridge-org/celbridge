@@ -55,8 +55,14 @@ public class ProjectTemplateService : IProjectTemplateService
         // Use a temporary staging folder to prevent leftover files on failure.
         // The project doesn't exist yet, so temp: isn't available; fall back to
         // the application's OS temp folder.
+#if WINDOWS
+        var tempRootPath = ApplicationData.Current.TemporaryFolder.Path;
+#else
+        // The Skia desktop head is unpackaged, so ApplicationData.Current is unavailable.
+        var tempRootPath = Path.GetTempPath();
+#endif
         var tempStagingPath = Path.Combine(
-            ApplicationData.Current.TemporaryFolder.Path,
+            tempRootPath,
             "NewProject",
             Path.GetFileNameWithoutExtension(Path.GetRandomFileName()));
 
@@ -87,7 +93,10 @@ public class ProjectTemplateService : IProjectTemplateService
             // Get Celbridge application version
             var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
 
-            // Extract template zip to staging location
+            // Extract template zip to staging location. On the packaged Windows build the
+            // template zips are ms-appx assets at the package root; on the Skia desktop head
+            // they sit beside the executable under the Celbridge.Projects content folder.
+#if WINDOWS
             var templateAsset = new Uri($"ms-appx:///Assets/Templates/{template.Id}.zip");
             var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(templateAsset);
 
@@ -96,7 +105,17 @@ public class ProjectTemplateService : IProjectTemplateService
                 "template.zip",
                 NameCollisionOption.ReplaceExisting);
 
-            ZipFile.ExtractToDirectory(tempZipFile.Path, tempStagingPath!, overwriteFiles: true);
+            var sourceZipPath = tempZipFile.Path;
+#else
+            var sourceZipPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Celbridge.Projects",
+                "Assets",
+                "Templates",
+                $"{template.Id}.zip");
+#endif
+
+            ZipFile.ExtractToDirectory(sourceZipPath, tempStagingPath!, overwriteFiles: true);
 
             // Update the extracted project file with actual version values
             var extractedProjectFile = Path.Combine(tempStagingPath!, TemplateProjectFileName);

@@ -30,7 +30,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" />
+    <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net9.0-desktop)
+         from forcing net9.0-desktop onto this net9.0 NoTargets project (NETSDK1139). -->
+    <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" UndefineProperties="TargetFramework" />
   </ItemGroup>
   
 </Project>

@@ -1,5 +1,3 @@
-#if WINDOWS
-
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -478,5 +476,3 @@ public sealed class ConPtyTerminal : IDisposable
 
     #endregion
 }
-
-#endif

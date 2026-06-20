@@ -9,11 +9,17 @@
     The analyzer project cannot reference itself. Test projects opt out here and
     wire their own reference (see Celbridge.Tests.csproj) so they can also
     instantiate the analyzer for unit tests.
+
+    UndefineProperties="TargetFramework" stops a consuming project's TargetFramework
+    from flowing into the netstandard2.0 analyzer. Without it, a CLI build that sets a
+    global TargetFramework (e.g. dotnet build -f net9.0-desktop) forces net9.0-desktop
+    onto the analyzer and fails with NETSDK1139 (unrecognized platform "desktop").
   -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Celbridge.FileSystem.Analyzers' and '$(IsTestProject)' != 'true'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)Core\Celbridge.FileSystem.Analyzers\Celbridge.FileSystem.Analyzers.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false"
+                      UndefineProperties="TargetFramework" />
   </ItemGroup>
 
   <ItemGroup>

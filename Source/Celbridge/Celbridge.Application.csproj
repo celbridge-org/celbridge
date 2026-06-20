@@ -9,8 +9,16 @@
     <RootNamespace>Celbridge</RootNamespace>
     <ApplicationTitle>Celbridge</ApplicationTitle>
     <ApplicationId>com.AnTulcha.Celbridge</ApplicationId>
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <!-- Single source for the application version. The Uno.Sdk maps ApplicationDisplayVersion to
+         the assembly $(Version) on the platform heads (Desktop/Wasm/WinAppSdk), but NOT on the plain
+         net9.0 reference TFM, which would default to 1.0.0 and leave PackageVersion inconsistent
+         across target frameworks (which fails project load in Visual Studio). Setting Version from it
+         here keeps every TFM in agreement. The packaged Windows build reports its identity from
+         Package.appxmanifest instead, which the SDK does not derive from this value, so keep that
+         Identity Version in sync. -->
+    <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
+    <Version>$(ApplicationDisplayVersion)</Version>
     <ApplicationPublisher>An Tulcha</ApplicationPublisher>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
