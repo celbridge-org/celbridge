@@ -11,6 +11,9 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     private const string SharedAssetsHostName = "shared.celbridge";
     private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
 
+#if WINDOWS
+    // Injected via AddScriptToExecuteOnDocumentCreatedAsync, which is implemented only on the
+    // packaged WinUI head (see CreateWebViewAsync).
     private const string KeyboardShortcutScript = """
         (function() {
             window.addEventListener('keydown', function(event) {
@@ -37,6 +40,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             }, true); // Use capture phase to intercept before other handlers
         })();
         """;
+#endif
 
     private readonly ILogger<WebViewFactory> _logger;
     private readonly Queue<WebView2> _pool;
@@ -286,22 +290,19 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             SharedAssetsFolderPath,
             CoreWebView2HostResourceAccessKind.Allow);
 
-        // Document-start script injection is not implemented on the Uno Skia CoreWebView2.
-        // On that head window.isWebView is instead set by the JS client once it connects to
-        // the host (celbridge.ready), and the F11 shortcut handler is not wired. The packaged
-        // WinUI head injects both before navigation as usual.
-        try
-        {
-            // Mark this as a WebView running in the Celbridge host
-            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+#if WINDOWS
+        // Document-start script injection runs only on the packaged WinUI head. The Uno Skia
+        // CoreWebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, and awaiting
+        // the faulted operation can stall the WebView init, so the Skia head omits these: the JS
+        // client sets window.isWebView when it connects (celbridge.ready) and the F11 handler is
+        // part of the tool-bridge work still to be delivered over the bridge.
 
-            // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
-        }
-        catch (NotImplementedException)
-        {
-            _logger.LogDebug("Document-start script injection not available on this head; skipping startup scripts");
-        }
+        // Mark this as a WebView running in the Celbridge host
+        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+
+        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
+        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
+#endif
 
         return webView;
     }

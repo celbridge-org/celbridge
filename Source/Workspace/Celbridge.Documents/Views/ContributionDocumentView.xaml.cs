@@ -375,6 +375,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
     private async Task TryInjectToolBridgeShimAsync()
     {
+#if WINDOWS
+        // The tool-bridge shim rides AddScriptToExecuteOnDocumentCreatedAsync, implemented only on
+        // the packaged WinUI head. Awaiting the faulted operation can stall the WebView init, so the
+        // Skia head omits it; the webview_* tool surface there awaits a bridge-delivered shim.
         var coreWebView2 = WebView?.CoreWebView2;
         if (coreWebView2 is null)
         {
@@ -396,6 +400,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         {
             _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into contribution WebView");
         }
+#else
+        await Task.CompletedTask;
+#endif
     }
 
     private void TryRegisterWithToolBridge()
@@ -847,20 +854,17 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             return;
         }
 
+#if WINDOWS
+        // Document-start global injection is the packaged WinUI fast path. The Uno Skia
+        // CoreWebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, and awaiting
+        // the faulted operation can stall the WebView init, so the Skia head omits it: the JS
+        // client fetches the context over the bridge via host/getContext (see GetContext).
         var contextJson = JsonSerializer.Serialize(BuildCelbridgeContext(), ContextSerializerOptions);
         var script = $"window.__celbridgeContext = {contextJson};";
-        try
-        {
-            // Document-start global injection is the packaged WinUI fast path. On the Skia head
-            // AddScriptToExecuteOnDocumentCreatedAsync is not implemented; the JS client then
-            // fetches the context over the bridge via host/getContext (see GetContext), so a
-            // skip here is expected rather than an error.
-            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
-        }
-        catch (NotImplementedException)
-        {
-            _logger.LogDebug("Document-start context injection unavailable on this head; client will use host/getContext");
-        }
+        await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+#else
+        await Task.CompletedTask;
+#endif
     }
 
     public CelbridgeContext GetContext()
@@ -878,8 +882,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             Contribution.Options);
     }
 
+#if WINDOWS
+    // Used only for the packaged WinUI document-start context injection (see InjectCelbridgeContextAsync).
     private static readonly JsonSerializerOptions ContextSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+#endif
 }
