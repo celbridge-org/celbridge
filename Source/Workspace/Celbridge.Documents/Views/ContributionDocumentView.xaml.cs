@@ -20,7 +20,7 @@ namespace Celbridge.Documents.Views;
 /// <summary>
 /// Document view for contribution-based editors, hosted via a WebView2.
 /// </summary>
-public sealed partial class ContributionDocumentView : DocumentView, IHostInput
+public sealed partial class ContributionDocumentView : DocumentView, IHostInput, IHostContext
 {
     private const int SaveRequestTimeoutSeconds = 30;
     private const int ReloadStateWaitSeconds = 5;
@@ -211,9 +211,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         try
         {
             // Acquire a WebView from the factory and add it to the container.
-            _logger.LogDebug("DP1: InitContributionView: acquiring WebView from factory");
             WebView = await _webViewFactory.AcquireAsync();
-            _logger.LogDebug("DP1: InitContributionView: WebView acquired, adding to container");
             ContributionWebViewContainer.Children.Add(WebView);
 
             // DevTools is off when the hosting package blocks it (sensitive material)
@@ -243,7 +241,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
             ApplyThemeToWebView();
 
-            await InjectCelbridgeContextAsync(Contribution.Package, Contribution.Options);
+            await InjectCelbridgeContextAsync();
 
             // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
             // Skipped when the package opts out via DevToolsBlocked (sensitive material)
@@ -280,15 +278,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
                 args.Handled = true;
             };
 
-            // DP1 diagnostics: trace navigation outcomes on the desktop head to
-            // distinguish a silent content-load failure (virtual-host mapping not
-            // resolving) from a native-control compositing problem.
-            WebView.CoreWebView2.NavigationCompleted += (s, args) =>
-            {
-                _logger.LogDebug(
-                    "WebView NavigationCompleted: IsSuccess={IsSuccess}, WebErrorStatus={WebErrorStatus}, HttpStatusCode={HttpStatusCode}",
-                    args.IsSuccess, args.WebErrorStatus, args.HttpStatusCode);
-            };
             WebView.CoreWebView2.ProcessFailed += (s, args) =>
             {
                 _logger.LogError(
@@ -300,6 +289,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
             Host = new CelbridgeHost(_hostChannel);
             Host.AddLocalRpcTarget<IHostInput>(this);
+            Host.AddLocalRpcTarget<IHostContext>(this);
 
             _documentHandler = new ContributionDocumentHandler(
                 _viewModel,
@@ -336,7 +326,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
-            _logger.LogDebug("WebView navigating to entry URL: {EntryUrl}", entryUrl);
             WebView.CoreWebView2.Navigate(entryUrl);
 
             _initTcs!.TrySetResult(Result.Ok());
@@ -484,15 +473,16 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         var theme = _userInterfaceService.UserInterfaceTheme;
         try
         {
-            // CoreWebView2.Profile is not implemented on the Uno Skia CoreWebView2.
-            // Tolerated for DP1 validation; real theming path is DP2.
+            // CoreWebView2.Profile is not implemented on the Uno Skia CoreWebView2, so the
+            // WebView preferred-color-scheme cannot be set on that head. The editor still
+            // applies its own theme from the host context, so skipping this is cosmetic.
             WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
                 ? CoreWebView2PreferredColorScheme.Dark
                 : CoreWebView2PreferredColorScheme.Light;
         }
         catch (NotImplementedException)
         {
-            _logger.LogWarning("DP1: CoreWebView2.Profile not implemented on this head; skipping WebView theme");
+            _logger.LogDebug("CoreWebView2.Profile not available on this head; skipping WebView color scheme");
         }
     }
 
@@ -833,29 +823,22 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async Task InjectCelbridgeContextAsync(
-        PackageInfo package,
-        IReadOnlyDictionary<string, string> options)
+    private async Task InjectCelbridgeContextAsync()
     {
-        var permittedTools = package.PermittedTools;
-        var secrets = package.Secrets;
+        Guard.IsNotNull(Contribution);
 
         // An empty secret value almost certainly indicates a missing private license
         // file or a module that failed to populate its BundledPackageDescriptor. The
         // editor at the other end will typically fail to activate so surface it loudly here.
-        foreach (var pair in secrets)
+        foreach (var pair in Contribution.Package.Secrets)
         {
             if (string.IsNullOrEmpty(pair.Value))
             {
                 _logger.LogWarning(
                     "Secret '{SecretName}' for package '{PackageName}' is empty; the editor will likely fail to activate.",
-                    pair.Key, package.Name);
+                    pair.Key, Contribution.Package.Name);
             }
         }
-
-        var contextJson = JsonSerializer.Serialize(
-            new CelbridgeContext(permittedTools, secrets, options),
-            ContextSerializerOptions);
 
         var coreWebView2 = WebView?.CoreWebView2;
         if (coreWebView2 is null)
@@ -864,26 +847,39 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             return;
         }
 
+        var contextJson = JsonSerializer.Serialize(BuildCelbridgeContext(), ContextSerializerOptions);
         var script = $"window.__celbridgeContext = {contextJson};";
         try
         {
-            // AddScriptToExecuteOnDocumentCreatedAsync is not implemented on the Uno Skia
-            // CoreWebView2. Tolerated for DP1 validation; a real injection path is DP2.
+            // Document-start global injection is the packaged WinUI fast path. On the Skia head
+            // AddScriptToExecuteOnDocumentCreatedAsync is not implemented; the JS client then
+            // fetches the context over the bridge via host/getContext (see GetContext), so a
+            // skip here is expected rather than an error.
             await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
         }
         catch (NotImplementedException)
         {
-            _logger.LogWarning("DP1: celbridge context injection skipped (AddScriptToExecuteOnDocumentCreatedAsync not implemented on this head)");
+            _logger.LogDebug("Document-start context injection unavailable on this head; client will use host/getContext");
         }
+    }
+
+    public CelbridgeContext GetContext()
+    {
+        return BuildCelbridgeContext();
+    }
+
+    private CelbridgeContext BuildCelbridgeContext()
+    {
+        Guard.IsNotNull(Contribution);
+
+        return new CelbridgeContext(
+            Contribution.Package.PermittedTools,
+            Contribution.Package.Secrets,
+            Contribution.Options);
     }
 
     private static readonly JsonSerializerOptions ContextSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
-
-    private sealed record CelbridgeContext(
-        IReadOnlyList<string> PermittedTools,
-        IReadOnlyDictionary<string, string> Secrets,
-        IReadOnlyDictionary<string, string> Options);
 }

@@ -17,6 +17,17 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 /// </summary>
 public record InitializeResult(string Content, DocumentMetadata Metadata, string WritableState, string? EditorStateJson = null);
 
+/// <summary>
+/// The host capability context for a contribution editor: the resolved tool allowlist,
+/// the package's secrets, and its options. Delivered to the WebView client either as the
+/// pre-injected window.__celbridgeContext global (packaged WinUI head) or over the bridge
+/// via host/getContext (Skia head, where document-start script injection is unavailable).
+/// </summary>
+public record CelbridgeContext(
+    IReadOnlyList<string> PermittedTools,
+    IReadOnlyDictionary<string, string> Secrets,
+    IReadOnlyDictionary<string, string> Options);
+
 // =============================================================================
 // Document Operation Results
 // =============================================================================

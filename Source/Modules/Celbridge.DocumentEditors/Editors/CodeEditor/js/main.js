@@ -16,8 +16,6 @@ import { log } from './logger.js';
 let editorController = null;
 let previewPipeline = null;
 
-const options = parseOptions();
-
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
 require(['vs/editor/editor.main'], () => {
@@ -25,10 +23,9 @@ require(['vs/editor/editor.main'], () => {
 });
 
 function parseOptions() {
-    // celbridge.options is populated by celbridge.js on first access from
-    // window.__celbridgeContext.options. Reading before Monaco finishes
-    // loading is safe because the context is already injected when the
-    // WebView navigates.
+    // celbridge.options is populated from the host capability context. Callers must await
+    // celbridge.ready() first so the context is resolved (from the injected global on the
+    // packaged WinUI head, or over the bridge via host/getContext on the Skia head).
     const raw = celbridge.options || {};
     return {
         previewRendererUrl: raw.preview_renderer_url || null,
@@ -39,6 +36,12 @@ function parseOptions() {
 }
 
 async function initialize() {
+    // Resolve the host capability context before reading celbridge.options. On the Skia head
+    // this fetches the context over the bridge (host/getContext); on the packaged WinUI head
+    // it resolves immediately from the pre-injected global.
+    await celbridge.ready();
+    const options = parseOptions();
+
     log('initialize: start', options);
 
     const container = document.getElementById('container');

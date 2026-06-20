@@ -13,6 +13,10 @@ function createTestClient(options = {}) {
         postMessage: (msg) => sentMessages.push(msg),
         onMessage: (handler) => { messageHandler = handler; },
         timeout: options.timeout ?? 1000,
+        // Provide a context so ready() resolves synchronously; these tests exercise the
+        // request/response machinery, not the host/getContext bridge fallback (covered
+        // separately). Callers can override via options.context.
+        context: { permittedTools: [], secrets: {}, options: {} },
         ...options
     });
 
@@ -80,6 +84,40 @@ describe('Celbridge', () => {
             await initPromise;
 
             await expect(client.initialize()).rejects.toThrow('Client already initialized');
+        });
+    });
+
+    describe('ready (capability context)', () => {
+        it('fetches context over the bridge via host/getContext when no global is injected', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient({ context: null });
+
+            const readyPromise = client.ready();
+
+            // The first request is host/getContext, sent synchronously.
+            expect(sentMessages).toHaveLength(1);
+            const sent = JSON.parse(sentMessages[0]);
+            expect(sent.method).toBe('host/getContext');
+
+            simulateResponse(sent.id, {
+                permittedTools: ['app.*'],
+                secrets: { license: 'abc' },
+                options: { preview_renderer_url: 'https://x/y.js' }
+            });
+
+            await readyPromise;
+
+            expect(client.tools.allowedPatterns).toEqual(['app.*']);
+            expect(client.secrets.license).toBe('abc');
+            expect(client.options.preview_renderer_url).toBe('https://x/y.js');
+            expect(globalThis.isWebView).toBe(true);
+
+            delete globalThis.isWebView;
+        });
+
+        it('resolves immediately and sends no request when context was injected', async () => {
+            const { client, sentMessages } = createTestClient();
+            await client.ready();
+            expect(sentMessages).toHaveLength(0);
         });
     });
 

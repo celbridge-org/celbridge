@@ -272,16 +272,13 @@ public class WebViewFactory : IWebViewFactory, IDisposable
 
     private async Task<WebView2> CreateWebViewAsync()
     {
-        _logger.LogDebug("DP1: CreateWebViewAsync: constructing WebView2");
         var webView = new WebView2();
 
         // This fixes a visual bug where the WebView2 control would show a white background briefly when
         // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
         webView.DefaultBackgroundColor = Colors.Transparent;
 
-        _logger.LogDebug("DP1: CreateWebViewAsync: initializing CoreWebView2");
         await InitializeCoreWebView2Async(webView);
-        _logger.LogDebug("DP1: CreateWebViewAsync: CoreWebView2 initialized");
 
         // Map shared assets (Bootstrap Icons, etc.) for all factory-created WebViews
         webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -289,9 +286,10 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             SharedAssetsFolderPath,
             CoreWebView2HostResourceAccessKind.Allow);
 
-        // Document-start script injection (AddScriptToExecuteOnDocumentCreatedAsync) is not
-        // implemented on the Uno Skia CoreWebView2. Tolerated here for DP1 validation so the
-        // WebView still navigates; a real injection alternative is DP2 (the WebView seam).
+        // Document-start script injection is not implemented on the Uno Skia CoreWebView2.
+        // On that head window.isWebView is instead set by the JS client once it connects to
+        // the host (celbridge.ready), and the F11 shortcut handler is not wired. The packaged
+        // WinUI head injects both before navigation as usual.
         try
         {
             // Mark this as a WebView running in the Celbridge host
@@ -302,10 +300,9 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         }
         catch (NotImplementedException)
         {
-            _logger.LogWarning("DP1: AddScriptToExecuteOnDocumentCreatedAsync not implemented on this head; skipping startup scripts");
+            _logger.LogDebug("Document-start script injection not available on this head; skipping startup scripts");
         }
 
-        _logger.LogDebug("DP1: CreateWebViewAsync: WebView2 fully created and configured");
         return webView;
     }
 

@@ -69,6 +69,13 @@ export class RpcTransport {
                     handler(event.data);
                 });
             }
+
+            // C#->JS dispatch entry point for heads where PostWebMessageAsString does not
+            // deliver (Uno Skia): the host pushes messages by invoking this global via
+            // ExecuteScriptAsync. Heads that use chrome.webview messaging never call it.
+            if (typeof globalThis !== 'undefined') {
+                globalThis.__celbridgeReceiveHostMessage = (data) => handler(data);
+            }
         });
 
         setupListener((data) => this.#handleMessage(data));

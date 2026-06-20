@@ -86,6 +86,20 @@ export class Celbridge {
     #exposeCelGlobal;
 
     /**
+     * Whether the capability context has been resolved — either from the injected
+     * `__celbridgeContext` global (packaged WinUI head) or fetched over the bridge via
+     * `host/getContext` (Skia head). Until resolved, tools/secrets/options are empty.
+     * @type {boolean}
+     */
+    #contextResolved = false;
+
+    /**
+     * In-flight `host/getContext` fetch, so concurrent `ready()` calls share one round-trip.
+     * @type {Promise<void>|null}
+     */
+    #readyPromise = null;
+
+    /**
      * Creates a new Celbridge instance.
      * @param {Object} [options] - Configuration options.
      * @param {Function} [options.postMessage] - Custom postMessage function (for testing).
@@ -100,18 +114,63 @@ export class Celbridge {
     constructor(options = {}) {
         this.#transport = new RpcTransport(options);
 
-        const context = readAndScrubContext(options.context);
-
         // Initialize sub-APIs
         this.document = new DocumentAPI(this.#transport);
         this.dialog = new DialogAPI(this.#transport);
         this.input = new InputAPI(this.#transport);
         this.theme = new ThemeAPI();
         this.localization = new LocalizationAPI(this.#transport);
+        this.#exposeCelGlobal = options.exposeCelGlobal !== false;
+
+        // The capability context arrives one of two ways. On the packaged WinUI head it is
+        // injected as the __celbridgeContext global before navigation and read here. On the
+        // Skia head that global is unavailable, so the context stays empty until ready()
+        // fetches it over the bridge via host/getContext.
+        const context = readAndScrubContext(options.context);
+        this.#contextResolved = context !== null;
+        this.#applyContext(context ?? normalizeContext(null));
+    }
+
+    /**
+     * Sets the tools/secrets/options sub-APIs from a normalized capability context.
+     * @param {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string,string>>, options: Readonly<Object<string,string>> }} context
+     */
+    #applyContext(context) {
         this.tools = new ToolsAPI(this.#transport, context.permittedTools);
         this.secrets = context.secrets;
         this.options = context.options;
-        this.#exposeCelGlobal = options.exposeCelGlobal !== false;
+    }
+
+    /**
+     * Resolves the capability context before tools/secrets/options are read. On the packaged
+     * WinUI head the context was already read from the injected global in the constructor, so
+     * this resolves immediately. On the Skia head it fetches the context over the bridge via
+     * host/getContext and sets `globalThis.isWebView`. Editors must await this before reading
+     * `tools`, `secrets`, or `options`. Idempotent and safe to call concurrently.
+     * @returns {Promise<void>}
+     */
+    async ready() {
+        if (this.#contextResolved) {
+            return;
+        }
+        if (this.#readyPromise) {
+            return this.#readyPromise;
+        }
+
+        this.#readyPromise = (async () => {
+            const raw = await this.#transport.request('host/getContext', {});
+            this.#applyContext(normalizeContext(raw));
+            this.#contextResolved = true;
+
+            // The host-injected `window.isWebView = true` document-start script is also
+            // unavailable on the Skia head; a successful host/getContext proves we are
+            // running inside the Celbridge host, so set the flag here.
+            if (typeof globalThis !== 'undefined') {
+                globalThis.isWebView = true;
+            }
+        })();
+
+        return this.#readyPromise;
     }
 
     /**
@@ -194,6 +253,14 @@ export class Celbridge {
      * @returns {Promise<InitializeResult>} - The initialization result with content and config.
      */
     async initializeDocument(handlers = {}) {
+        // Resolve the capability context before the handshake so the cel.* proxy, secrets,
+        // and options are ready. On the Skia head this fetches over the bridge via
+        // host/getContext; on the packaged WinUI head the injected global already resolved
+        // it in the constructor, so skip the await to keep the handshake send synchronous.
+        if (!this.#contextResolved) {
+            await this.ready();
+        }
+
         const result = await this.initialize();
 
         // Register the writable-state handler and seed it with the initial state
@@ -274,7 +341,9 @@ export class Celbridge {
  *   Used by editors to configure themselves (e.g., which preview renderer to load).
  *
  * @param {Object} [providedContext] - Context passed via constructor options (testing).
- * @returns {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
+ * @returns {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> } | null}
+ *   The normalized context, or `null` when no source is present (Skia head) so the caller
+ *   knows to fetch it over the bridge via `host/getContext`.
  */
 function readAndScrubContext(providedContext) {
     const fromArg = providedContext ?? null;
@@ -290,6 +359,17 @@ function readAndScrubContext(providedContext) {
         }
     }
 
+    return raw === null ? null : normalizeContext(raw);
+}
+
+/**
+ * Normalizes a raw capability context (from the injected global or the host/getContext
+ * response) into frozen `permittedTools`/`secrets`/`options`. A null/empty input yields an
+ * empty default (no tools, no secrets, no options).
+ * @param {Object|null} raw
+ * @returns {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
+ */
+function normalizeContext(raw) {
     const permittedTools = Array.isArray(raw?.permittedTools)
         ? Object.freeze([...raw.permittedTools])
         : Object.freeze([]);
