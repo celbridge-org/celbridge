@@ -42,10 +42,9 @@ public static class ServiceConfiguration
         services.AddSingleton<IWindowModeService>(sp => sp.GetRequiredService<LayoutManager>());
         services.AddSingleton<ILayoutService>(sp => sp.GetRequiredService<LayoutManager>());
 
-#if WINDOWS
-        // Register WindowStateHelper for Windows platform only
+        // Window state management runs on both the packaged WinUI head and the Skia desktop head
+        // via the cross-platform Microsoft.UI.Windowing APIs.
         services.AddSingleton<Helpers.WindowStateHelper>();
-#endif
 
         //
         // Register commands

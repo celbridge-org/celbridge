@@ -42,7 +42,7 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="144"/><!-- Space for window caption buttons -->
+            <ColumnDefinition x:Name="CaptionButtonsColumn" Width="144"/><!-- Space for window caption buttons (overlapping WinUI captions on the packaged head) -->
         </Grid.ColumnDefinitions>
 
         <Image Source="ms-appx:///Assets/Images/title_icon.png"

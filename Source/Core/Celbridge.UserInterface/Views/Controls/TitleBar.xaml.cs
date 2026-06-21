@@ -32,6 +32,13 @@ public sealed partial class TitleBar : UserControl, ITitleBar
     {
         this.InitializeComponent();
 
+#if !WINDOWS
+        // The Skia desktop head draws a native Win32 title bar above this toolbar, so there are no
+        // overlapping WinUI caption buttons to reserve space for. Collapse the reserved column so the
+        // right-aligned controls sit flush against the window edge.
+        CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(0);
+#endif
+
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<TitleBarViewModel>();

@@ -1,21 +1,18 @@
-#if WINDOWS
+using Celbridge.Logging;
 using Windows.UI.ViewManagement;
-#endif
 
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Platform-specific helper for detecting and applying system theme changes.
-/// On Windows: monitors UISettings.ColorValuesChanged and updates titlebar colors.
-/// On other platforms: no-op implementation for future cross-platform support.
+/// Detects and applies system theme changes. The system theme listener (UISettings.ColorValuesChanged)
+/// runs on both the packaged WinUI head and the Skia desktop head. The caption-button theming in
+/// UpdateTitleBar applies only to the integrated WinUI title bar.
 /// </summary>
 public class ThemeHelper
 {
     private readonly Window? _mainWindow;
 
-#if WINDOWS
     private UISettings? _uiSettings;
-#endif
     private Action<UserInterfaceTheme>? _onThemeChanged;
 
     public ThemeHelper(Window mainWindow)
@@ -27,14 +24,21 @@ public class ThemeHelper
     {
         _onThemeChanged = onThemeChanged;
 
-#if WINDOWS
-        // Listen for system theme changes via UISettings
-        _uiSettings = new UISettings();
-        _uiSettings.ColorValuesChanged += UISettings_ColorValuesChanged;
-#endif
+        // Listen for system theme changes via UISettings. This is supported on both Windows heads.
+        // Wrapped defensively so a platform that does not support UISettings degrades to no live theme
+        // updates rather than failing startup (relevant to the future macOS desktop head).
+        try
+        {
+            _uiSettings = new UISettings();
+            _uiSettings.ColorValuesChanged += UISettings_ColorValuesChanged;
+        }
+        catch (Exception ex)
+        {
+            var logger = ServiceLocator.AcquireService<ILogger<ThemeHelper>>();
+            logger.LogDebug(ex, "System theme change listener is not available on this platform");
+        }
     }
 
-#if WINDOWS
     private void UISettings_ColorValuesChanged(UISettings sender, object args)
     {
         // UISettings events fire on a background thread, so dispatch to UI thread
@@ -50,7 +54,6 @@ public class ThemeHelper
             _onThemeChanged?.Invoke(currentTheme);
         });
     }
-#endif
 
     public void UpdateTitleBar(UserInterfaceTheme theme)
     {

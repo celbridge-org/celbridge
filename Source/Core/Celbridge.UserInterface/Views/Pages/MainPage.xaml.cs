@@ -20,10 +20,7 @@ public partial class MainPage : Page
     private Grid _contentArea;
     private readonly Dictionary<Type, Page> _pageCache = new();
     private Page? _currentPage;
-
-#if WINDOWS
     private TitleBar? _titleBar;
-#endif
 
     public MainPage()
     {
@@ -60,11 +57,13 @@ public partial class MainPage : Page
         var mainWindow = _userInterfaceService.MainWindow as Window;
         Guard.IsNotNull(mainWindow);
 
-#if WINDOWS
-        // Setup the custom title bar (Windows only)
+        // The application toolbar (page navigation, layout toggles, settings) occupies row 0 of the
+        // layout grid on every head. On the packaged WinUI head it is also extended into the custom
+        // title bar; on the Skia desktop head the native Win32 title bar is drawn above it instead.
         _titleBar = new TitleBar();
         _layoutRoot.Children.Add(_titleBar);
 
+#if WINDOWS
         mainWindow.ExtendsContentIntoTitleBar = true;
         mainWindow.SetTitleBar(_titleBar);
 
@@ -75,9 +74,9 @@ public partial class MainPage : Page
         {
             appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
         }
+#endif
 
         _userInterfaceService.RegisterTitleBar(_titleBar);
-#endif
 
         // Register for window mode changes
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowLayoutChanged);
@@ -126,18 +125,16 @@ public partial class MainPage : Page
 
     private void OnWindowLayoutChanged(object recipient, WindowModeChangedMessage message)
     {
-#if WINDOWS
         // Show/hide the title bar based on window mode
         // In Windowed, FullScreen, and ZenMode modes, the title bar is visible
         // In Presenter mode, the title bar is hidden
         if (_titleBar != null)
         {
-            bool showTitleBar = message.WindowMode == WindowMode.Windowed || 
+            bool showTitleBar = message.WindowMode == WindowMode.Windowed ||
                                 message.WindowMode == WindowMode.FullScreen ||
                                 message.WindowMode == WindowMode.ZenMode;
             _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
         }
-#endif
     }
 
     private bool OnKeyDown(VirtualKey key)

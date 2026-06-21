@@ -14,10 +14,7 @@ public class UserInterfaceService : IUserInterfaceService
     private ITitleBar? _titleBar;
     private ApplicationPage _activePage = ApplicationPage.None;
     private ThemeHelper? _themeHelper;
-
-#if WINDOWS
     private Helpers.WindowStateHelper? _windowStateHelper;
-#endif
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
@@ -27,18 +24,13 @@ public class UserInterfaceService : IUserInterfaceService
     public UserInterfaceService(
         ILogger<UserInterfaceService> logger,
         IMessengerService messengerService,
-        ISettingsService settingsService
-#if WINDOWS
-        , WindowStateHelper windowStateHelper
-#endif
-        )
+        ISettingsService settingsService,
+        Helpers.WindowStateHelper windowStateHelper)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
-#if WINDOWS
         _windowStateHelper = windowStateHelper;
-#endif
     }
 
     public Result Initialize(object mainWindow, object xamlRoot)
@@ -70,17 +62,21 @@ public class UserInterfaceService : IUserInterfaceService
         _themeHelper = new ThemeHelper(_mainWindow);
         _themeHelper.Initialize(OnSystemThemeChanged);
 
-#if WINDOWS
-        // Initialize window state management
+        // Initialize window state management. A failure here is non-fatal: window geometry and
+        // maximize-state restore are a convenience, not a startup requirement, so log and continue
+        // with the default window placement rather than aborting initialization.
         Guard.IsNotNull(_windowStateHelper);
-        var initResult = _windowStateHelper.Initialize(_mainWindow);
-        if (initResult.IsFailure)
+        var windowStateResult = _windowStateHelper.Initialize(_mainWindow);
+        if (windowStateResult.IsFailure)
         {
-            return Result.Fail("Failed to initialize window state management")
-                .WithErrors(initResult);
+            _logger.LogWarning("Failed to initialize window state management: {Error}", windowStateResult.DiagnosticReport);
         }
 
-        // Broadcast a message whenever the main window acquires or loses focus
+#if WINDOWS
+        // Broadcast a message whenever the main window acquires or loses focus. This drives the custom
+        // title bar's active/inactive tint, which only applies to the integrated WinUI title bar. The
+        // Skia desktop head uses a native title bar that the OS tints on focus change, and its
+        // WindowActivatedEventArgs exposes the legacy CoreWindowActivationState type, so this is gated.
         _mainWindow.Activated += MainWindow_Activated;
 #endif
 

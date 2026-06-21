@@ -1,11 +1,8 @@
-#if WINDOWS
-
 using Celbridge.Logging;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
-using WinRT.Interop;
 
 namespace Celbridge.UserInterface.Helpers;
 
@@ -42,7 +39,9 @@ public sealed class WindowStateHelper
 
         try
         {
-            _appWindow = GetAppWindow(mainWindow);
+            // Window.AppWindow is the cross-platform Microsoft.UI.Windowing entry point and works on
+            // both the packaged WinUI head and the Skia desktop head, so no Win32 interop is needed.
+            _appWindow = mainWindow.AppWindow;
             if (_appWindow == null)
             {
                 return Result.Fail("Failed to get AppWindow from main window");
@@ -207,11 +206,17 @@ public sealed class WindowStateHelper
             return;
         }
 
-        // Apply the saved bounds
-        var position = new PointInt32(x, y);
-        var size = new SizeInt32(width, height);
+        // Apply the saved bounds. Object-initializer syntax is used for the Windows.Graphics structs
+        // because the Skia desktop head's projection does not expose their positional constructors.
+        var bounds = new RectInt32
+        {
+            X = x,
+            Y = y,
+            Width = width,
+            Height = height
+        };
 
-        _appWindow.MoveAndResize(new RectInt32(position.X, position.Y, size.Width, size.Height));
+        _appWindow.MoveAndResize(bounds);
     }
 
     private bool IsTitleBarVisible(int x, int y, int width, int height)
@@ -220,7 +225,13 @@ public sealed class WindowStateHelper
         {
             // Check if any part of the title bar area (top ~40 pixels of window) is visible on any display
             const int titleBarHeight = 40;
-            var titleBarRect = new RectInt32(x, y, width, titleBarHeight);
+            var titleBarRect = new RectInt32
+            {
+                X = x,
+                Y = y,
+                Width = width,
+                Height = titleBarHeight
+            };
 
             var displayAreas = DisplayArea.FindAll();
             if (displayAreas == null || displayAreas.Count == 0)
@@ -348,14 +359,4 @@ public sealed class WindowStateHelper
         // Mark that we now have valid saved geometry to restore on next startup
         _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, true);
     }
-
-    private static AppWindow? GetAppWindow(Window? window)
-    {
-        if (window == null) return null;
-
-        var windowHandle = WindowNative.GetWindowHandle(window);
-        var windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
-        return AppWindow.GetFromWindowId(windowId);
-    }
 }
-#endif
