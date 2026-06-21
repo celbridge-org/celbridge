@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Logging;
 using Celbridge.Settings;
 using Celbridge.Utilities;
 
@@ -68,6 +69,16 @@ public sealed class WorkspaceStore : IWorkspacePropertyBag, ISettingsStore
             }
 
             return value;
+        }
+        catch (JsonException ex)
+        {
+            // A stored value that cannot be deserialized (corruption, or a schema change
+            // across versions) is treated as absent rather than failing the read. The
+            // workspace state is regenerable and is rewritten on the next store, so a
+            // single malformed property must not abort the whole workspace load.
+            var logger = ServiceLocator.AcquireService<ILogger<WorkspaceStore>>();
+            logger.LogWarning(ex, "Discarding malformed workspace property '{Key}'; using the default value", key);
+            return defaultValue;
         }
         catch (Exception ex)
         {

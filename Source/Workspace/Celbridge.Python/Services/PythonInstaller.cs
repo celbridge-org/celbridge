@@ -15,6 +15,16 @@ public class PythonInstaller : IPythonInstaller
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string UVTempFileName = "uv.zip";
 
+#if !WINDOWS
+    // On the Skia desktop and macOS heads the bundled assets are not packaged via ms-appx; the Uno
+    // library layout copies them next to the assembly under "<base>/Celbridge.Python/Assets".
+    private const string BundledAssetsModuleFolder = "Celbridge.Python";
+    private const string BundledAssetsFolderName = "Assets";
+    private const string UVAssetSubfolder = "UV";
+    private const string UVZipFileName = "uv-x86_64-pc-windows-msvc.zip";
+    private const string PythonAssetSubfolder = "Python";
+#endif
+
     private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger<PythonInstaller> _logger;
 
@@ -111,8 +121,11 @@ public class PythonInstaller : IPythonInstaller
         // Non-critical: if we can't hash the wheel, the app version alone
         // still triggers reinstalls on app updates.
         var wheelHash = "";
-        var installedLocation = Package.Current.InstalledLocation;
-        var assetsFolder = Path.Combine(installedLocation.Path, PythonAssetsFolder);
+#if WINDOWS
+        var assetsFolder = Path.Combine(Package.Current.InstalledLocation.Path, PythonAssetsFolder);
+#else
+        var assetsFolder = Path.Combine(GetBundledAssetsFolderPath(), PythonAssetSubfolder);
+#endif
         var enumerateFilesResult = await _fileSystem.EnumerateAsync(assetsFolder, WheelFilePattern, recursive: false);
         if (enumerateFilesResult.IsSuccess)
         {
@@ -148,6 +161,8 @@ public class PythonInstaller : IPythonInstaller
 
         var pythonFolder = await localFolder.CreateFolderAsync(PythonFolderName, CreationCollisionOption.OpenIfExists);
 
+#if WINDOWS
+        // Packaged WinUI head: bundled assets are addressed via ms-appx and the package install location.
         // uv handles installing the required python & package versions for the loaded project
         var uvZipFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(UVZipAssetPath));
         var uvTempFile = await uvZipFile.CopyAsync(ApplicationData.Current.TemporaryFolder, UVTempFileName, NameCollisionOption.ReplaceExisting);
@@ -157,6 +172,19 @@ public class PythonInstaller : IPythonInstaller
         StorageFolder installedLocation = Package.Current.InstalledLocation;
         StorageFolder pythonAssetsFolder = await installedLocation.GetFolderAsync(PythonAssetsFolder);
         await CopyStorageFolderAsync(pythonAssetsFolder, pythonFolder.Path);
+#else
+        // Skia desktop / macOS head: ms-appx and Package.Current are packaged-only, so the bundled
+        // assets are read from the library-layout folder next to the assembly via AppContext.BaseDirectory.
+        var bundledAssetsFolder = GetBundledAssetsFolderPath();
+
+        // uv handles installing the required python & package versions for the loaded project
+        var uvZipPath = Path.Combine(bundledAssetsFolder, UVAssetSubfolder, UVZipFileName);
+        ZipFile.ExtractToDirectory(uvZipPath, pythonFolder.Path, overwriteFiles: true);
+
+        // Copy the bundled Python assets to the local Python folder
+        var pythonAssetsPath = Path.Combine(bundledAssetsFolder, PythonAssetSubfolder);
+        await CopyBundledFolderAsync(pythonAssetsPath, pythonFolder.Path);
+#endif
 
         // Write the version file after successful install.
         // This signals that the install completed successfully and includes both the app
@@ -202,4 +230,50 @@ public class PythonInstaller : IPythonInstaller
             await CopyStorageFolderAsync(subfolder, subfolderPath);
         }
     }
+
+#if !WINDOWS
+    private static string GetBundledAssetsFolderPath()
+    {
+        return Path.Combine(AppContext.BaseDirectory, BundledAssetsModuleFolder, BundledAssetsFolderName);
+    }
+
+    // Recursively copies a bundled-asset folder through the filesystem gateway. Mirrors
+    // CopyStorageFolderAsync but works from plain paths rather than WinRT StorageFolders,
+    // since the Skia/macOS heads address bundled assets by AppContext.BaseDirectory.
+    private async Task CopyBundledFolderAsync(string sourcePath, string destinationPath)
+    {
+        await _fileSystem.CreateFolderAsync(destinationPath);
+
+        var enumerateResult = await _fileSystem.EnumerateAsync(sourcePath, "*", recursive: true);
+        if (enumerateResult.IsFailure)
+        {
+            throw new InvalidOperationException(
+                $"Failed to enumerate bundled assets folder '{sourcePath}': {enumerateResult.FirstErrorMessage}");
+        }
+
+        foreach (var entry in enumerateResult.Value)
+        {
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+
+            var relativePath = Path.GetRelativePath(sourcePath, entry.FullPath);
+            var targetPath = Path.Combine(destinationPath, relativePath);
+
+            var targetFolder = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(targetFolder))
+            {
+                await _fileSystem.CreateFolderAsync(targetFolder);
+            }
+
+            var copyResult = await _fileSystem.CopyFileAsync(entry.FullPath, targetPath);
+            if (copyResult.IsFailure)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to copy bundled asset '{entry.FullPath}' to '{targetPath}': {copyResult.FirstErrorMessage}");
+            }
+        }
+    }
+#endif
 }
