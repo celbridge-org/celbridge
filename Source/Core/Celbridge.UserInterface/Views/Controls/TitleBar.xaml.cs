@@ -37,6 +37,11 @@ public sealed partial class TitleBar : UserControl, ITitleBar
         // overlapping WinUI caption buttons to reserve space for. Collapse the reserved column so the
         // right-aligned controls sit flush against the window edge.
         CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(0);
+
+        // The native title bar already shows the app icon, so hide the duplicate icon on this toolbar
+        // and reclaim its column.
+        AppIconImage.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(0);
 #endif
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();

@@ -36,7 +36,7 @@
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="48"/>
+            <ColumnDefinition x:Name="AppIconColumn" Width="48"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
@@ -45,7 +45,8 @@
             <ColumnDefinition x:Name="CaptionButtonsColumn" Width="144"/><!-- Space for window caption buttons (overlapping WinUI captions on the packaged head) -->
         </Grid.ColumnDefinitions>
 
-        <Image Source="ms-appx:///Assets/Images/title_icon.png"
+        <Image x:Name="AppIconImage"
+               Source="ms-appx:///Assets/Images/title_icon.png"
                Width="28" Height="28"
                Margin="0"
                HorizontalAlignment="Center"
