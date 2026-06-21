@@ -130,6 +130,11 @@ public sealed partial class Splitter : UserControl
         UpdateOrientation();
         UpdateLineThickness();
         UpdateGrabAreaSize();
+
+        // Defensive reset: cancel any fade-in that a transient pointer enter raised during
+        // construction so the hover line starts hidden rather than stuck on.
+        HoverFadeIn.Stop();
+        HoverLine.Opacity = 0;
     }
 
     private static void OnOrientationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -219,12 +224,37 @@ public sealed partial class Splitter : UserControl
         }
     }
 
+    private void BeginHoverFadeIn()
+    {
+        // Stop the fade-out so the two opacity animations never run together.
+        HoverFadeOut.Stop();
+        HoverFadeIn.Begin();
+    }
+
+    private void BeginHoverFadeOut()
+    {
+        // Capture the current (animated) opacity before stopping the fade-in. Stop reverts the
+        // opacity to its base value of 0, so without an explicit From the fade-out would have
+        // nothing to animate down from and would snap off in a single frame.
+        var currentOpacity = HoverLine.Opacity;
+
+        // Cancel any pending or in-progress fade-in first. The fade-in has a start delay, so
+        // without this a fade-in scheduled just before the pointer left fires afterwards and
+        // leaves the hover line stuck on. This is what made splitters appear highlighted
+        // without being hovered, since the Skia head raises transient pointer enter/exit
+        // pairs during layout that trip exactly this race.
+        HoverFadeIn.Stop();
+
+        // Animate down from the captured opacity so the fade-out is smooth.
+        HoverFadeOutAnimation.From = currentOpacity;
+        HoverFadeOut.Begin();
+    }
+
     private void OnPointerEntered(object sender, PointerRoutedEventArgs e)
     {
         UpdateCursor();
 
-        // Start hover fade-in animation
-        HoverFadeIn.Begin();
+        BeginHoverFadeIn();
     }
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
@@ -233,8 +263,7 @@ public sealed partial class Splitter : UserControl
         {
             SetCursor(InputSystemCursorShape.Arrow);
 
-            // Start hover fade-out animation
-            HoverFadeOut.Begin();
+            BeginHoverFadeOut();
         }
     }
 
@@ -328,8 +357,7 @@ public sealed partial class Splitter : UserControl
             // Restore original line thickness
             UpdateLineThickness();
 
-            // Fade out hover line
-            HoverFadeOut.Begin();
+            BeginHoverFadeOut();
 
             DragCompleted?.Invoke(this, EventArgs.Empty);
 
@@ -355,8 +383,7 @@ public sealed partial class Splitter : UserControl
             // Restore original line thickness
             UpdateLineThickness();
 
-            // Fade out hover line
-            HoverFadeOut.Begin();
+            BeginHoverFadeOut();
 
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
@@ -384,8 +411,7 @@ public sealed partial class Splitter : UserControl
     {
         _lastDoubleClickTime = DateTime.UtcNow;
 
-        // Start fade-out animation
-        HoverFadeOut.Begin();
+        BeginHoverFadeOut();
 
         DoubleClicked?.Invoke(this, EventArgs.Empty);
         e.Handled = true;

@@ -18,9 +18,11 @@
       </DoubleAnimation>
     </Storyboard>
     
-    <!-- Fade out animation - quick fade -->
+    <!-- Fade out animation - quick fade. From is set in code from the current opacity so the
+         fade-out animates down smoothly even though stopping the fade-in resets opacity to 0. -->
     <Storyboard x:Name="HoverFadeOut">
-      <DoubleAnimation Storyboard.TargetName="HoverLine"
+      <DoubleAnimation x:Name="HoverFadeOutAnimation"
+                       Storyboard.TargetName="HoverLine"
                        Storyboard.TargetProperty="Opacity"
                        To="0.0"
                        Duration="0:0:0.20">
