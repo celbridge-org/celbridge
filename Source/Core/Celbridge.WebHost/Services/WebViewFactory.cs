@@ -11,9 +11,10 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     private const string SharedAssetsHostName = "shared.celbridge";
     private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
 
-#if WINDOWS
-    // Injected via AddScriptToExecuteOnDocumentCreatedAsync, which is implemented only on the
-    // packaged WinUI head (see CreateWebViewAsync).
+    // Installs a window-level F11 handler that forwards the shortcut to the host. On the packaged
+    // WinUI head this is injected as a document-start script; on the Skia head, where
+    // AddScriptToExecuteOnDocumentCreatedAsync is not implemented, it is re-delivered per navigation
+    // via ExecuteScriptAsync (see CreateWebViewAsync).
     private const string KeyboardShortcutScript = """
         (function() {
             window.addEventListener('keydown', function(event) {
@@ -40,7 +41,6 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             }, true); // Use capture phase to intercept before other handlers
         })();
         """;
-#endif
 
     private readonly ILogger<WebViewFactory> _logger;
     private readonly Queue<WebView2> _pool;
@@ -291,21 +291,40 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             CoreWebView2HostResourceAccessKind.Allow);
 
 #if WINDOWS
-        // Document-start script injection runs only on the packaged WinUI head. The Uno Skia
-        // CoreWebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, and awaiting
-        // the faulted operation can stall the WebView init, so the Skia head omits these: the JS
-        // client sets window.isWebView when it connects (celbridge.ready) and the F11 handler is
-        // part of the tool-bridge work still to be delivered over the bridge.
+        // Document-start script injection runs on the packaged WinUI head, where it executes before
+        // page scripts on every navigation.
 
         // Mark this as a WebView running in the Celbridge host
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
         // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
+#else
+        // The Uno Skia CoreWebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, and
+        // awaiting the faulted operation can stall the WebView init, so the F11 keyboard handler is
+        // re-delivered per navigation via ExecuteScriptAsync instead. window.isWebView is set by the
+        // JS client when it connects (celbridge.ready), so it is not re-injected here.
+        webView.CoreWebView2.NavigationCompleted += OnSkiaNavigationCompleted_ReinjectScripts;
 #endif
 
         return webView;
     }
+
+#if !WINDOWS
+    private async void OnSkiaNavigationCompleted_ReinjectScripts(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        // async void event handler: swallow exceptions so a failed script injection cannot crash the
+        // process. ExecuteScriptAsync is implemented on the Skia head (unlike the document-start API).
+        try
+        {
+            await sender.ExecuteScriptAsync(KeyboardShortcutScript);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to re-inject the keyboard shortcut script into a WebView on the Skia head");
+        }
+    }
+#endif
 
 #if WINDOWS
     // The packaged WinAppSDK WebView2 initializes without being attached to the

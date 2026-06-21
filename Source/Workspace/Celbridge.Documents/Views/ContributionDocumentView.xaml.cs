@@ -375,10 +375,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
     private async Task TryInjectToolBridgeShimAsync()
     {
-#if WINDOWS
-        // The tool-bridge shim rides AddScriptToExecuteOnDocumentCreatedAsync, implemented only on
-        // the packaged WinUI head. Awaiting the faulted operation can stall the WebView init, so the
-        // Skia head omits it; the webview_* tool surface there awaits a bridge-delivered shim.
         var coreWebView2 = WebView?.CoreWebView2;
         if (coreWebView2 is null)
         {
@@ -391,6 +387,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             return;
         }
 
+#if WINDOWS
+        // Packaged WinUI: install the shim as a document-start script so it runs before page scripts
+        // on every navigation.
         try
         {
             var script = toolBridge.GetShimScript();
@@ -401,9 +400,36 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into contribution WebView");
         }
 #else
+        // Skia: AddScriptToExecuteOnDocumentCreatedAsync is not implemented (and awaiting the faulted
+        // operation can stall the WebView init), so the shim is re-delivered per navigation via
+        // ExecuteScriptAsync. NavigationCompleted fires before the editor's notifyContentLoaded opens
+        // the content-ready gate, so webview_* tool calls find the shim present.
+        coreWebView2.NavigationCompleted += OnSkiaNavigationCompleted_ReinjectShim;
         await Task.CompletedTask;
 #endif
     }
+
+#if !WINDOWS
+    private async void OnSkiaNavigationCompleted_ReinjectShim(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        // async void event handler: swallow exceptions to protect the process. The bridge caches the
+        // shim after the first read, so re-reading per navigation is cheap, and the shim is idempotent.
+        if (_toolBridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = _toolBridge.GetShimScript();
+            await sender.ExecuteScriptAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim on the Skia head");
+        }
+    }
+#endif
 
     private void TryRegisterWithToolBridge()
     {
@@ -480,9 +506,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         var theme = _userInterfaceService.UserInterfaceTheme;
         try
         {
-            // CoreWebView2.Profile is not implemented on the Uno Skia CoreWebView2, so the
-            // WebView preferred-color-scheme cannot be set on that head. The editor still
-            // applies its own theme from the host context, so skipping this is cosmetic.
+            // CoreWebView2.Profile is not implemented on the Uno Skia CoreWebView2, so the WebView
+            // preferred-color-scheme cannot be set on that head. Editors theme themselves off the
+            // prefers-color-scheme media query, which the Skia WebView resolves to the OS theme
+            // (its default is Auto). So on Skia the editor follows the system theme, matching the
+            // app only when the app theme is set to System; an explicit Dark/Light app override is
+            // not reflected in the editor. Driving the editor theme over the bridge to fix that is
+            // a deferred enhancement; the mismatch is cosmetic.
             WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
                 ? CoreWebView2PreferredColorScheme.Dark
                 : CoreWebView2PreferredColorScheme.Light;

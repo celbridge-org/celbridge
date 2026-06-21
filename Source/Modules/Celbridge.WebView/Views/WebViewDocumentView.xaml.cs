@@ -432,6 +432,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             return;
         }
 
+#if WINDOWS
+        // Packaged WinUI: install the shim as a document-start script so it runs before page scripts
+        // on every navigation.
         try
         {
             var script = toolBridge.GetShimScript();
@@ -441,7 +444,34 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into HTML viewer WebView");
         }
+#else
+        // Skia: AddScriptToExecuteOnDocumentCreatedAsync is not implemented (and awaiting the faulted
+        // operation can stall the WebView init), so the shim is re-delivered per navigation via
+        // ExecuteScriptAsync in CoreWebView2_NavigationCompleted, before the content-ready gate opens.
+        await Task.CompletedTask;
+#endif
     }
+
+#if !WINDOWS
+    private async Task ReinjectToolBridgeShimAsync()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        if (coreWebView2 is null || _toolBridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = _toolBridge.GetShimScript();
+            await coreWebView2.ExecuteScriptAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim on the Skia head");
+        }
+    }
+#endif
 
     private void TryRegisterWithToolBridge()
     {
@@ -483,6 +513,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             if (e.IsSuccess)
             {
+#if !WINDOWS
+                // Install the shim before opening the content-ready gate. ExecuteScriptAsync calls are
+                // serialised in invocation order, so this fire-and-forget eval is queued ahead of any
+                // later webview_* tool eval even without awaiting it here.
+                _ = ReinjectToolBridgeShimAsync();
+#endif
                 _toolBridge?.NotifyContentReady(FileResource);
             }
             else
