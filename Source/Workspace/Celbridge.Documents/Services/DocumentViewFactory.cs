@@ -180,7 +180,12 @@ public class DocumentViewFactory
             return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        if (viewType != DocumentViewType.TextDocument)
+        // Markdown is plain text, so when no Markdown editor is available it can still be edited as
+        // text. This is the path taken on the Skia heads where the WebView-backed Markdown editor is
+        // gated off; the plain TextBox is the built-in fallback. WebViewDocument and FileViewer are
+        // not text-representable, so they correctly fail here rather than opening as text.
+        if (viewType != DocumentViewType.TextDocument
+            && viewType != DocumentViewType.Markdown)
         {
             return Result.Fail($"Failed to create document view for file: '{fileResource}'");
         }

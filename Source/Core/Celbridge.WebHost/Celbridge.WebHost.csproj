@@ -8,6 +8,8 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- MacOSWebViewInterop builds an Objective-C callback block from a function pointer. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <UnoFeatures>
       CSharpMarkup;

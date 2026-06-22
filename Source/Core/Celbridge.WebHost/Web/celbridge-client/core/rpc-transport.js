@@ -59,6 +59,11 @@ export class RpcTransport {
         this.#postMessage = options.postMessage ?? ((msg) => {
             if (window.chrome?.webview) {
                 window.chrome.webview.postMessage(msg);
+            } else if (window.webkit?.messageHandlers?.unoWebView) {
+                // macOS WKWebView (Uno Skia): chrome.webview is absent. Route JS->C# through the
+                // native message handler, which surfaces on the host as CoreWebView2.WebMessageReceived
+                // (the same event the chrome.webview path raises).
+                window.webkit.messageHandlers.unoWebView.postMessage(msg);
             }
         });
 

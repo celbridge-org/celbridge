@@ -32,4 +32,28 @@ public interface IFileServer
     /// string if the server is not available or the path cannot be resolved.
     /// </summary>
     string ResolveLocalFileUrl(string path, ResourceKey contextResource = default);
+
+    /// <summary>
+    /// The per-session token that the host-asset routes require as a query parameter. It gates the
+    /// loopback host routes so other local processes cannot read served content over the socket.
+    /// </summary>
+    string HostAccessToken { get; }
+
+    /// <summary>
+    /// Registers a folder to be served over loopback under the given ".celbridge" host name. This is
+    /// the macOS replacement for SetVirtualHostNameToFolderMapping, which is a no-op on the Skia head.
+    /// Re-registering a host name replaces the previous folder.
+    /// </summary>
+    void RegisterHostFolder(string hostName, string folderPath);
+
+    /// <summary>
+    /// Stops serving the given host name and releases its file provider.
+    /// </summary>
+    void UnregisterHostFolder(string hostName);
+
+    /// <summary>
+    /// Resolves a loopback URL (including the access token) for a file under a registered host, or an
+    /// empty string when the server is not running or the host is not registered.
+    /// </summary>
+    string ResolveHostFileUrl(string hostName, string path);
 }

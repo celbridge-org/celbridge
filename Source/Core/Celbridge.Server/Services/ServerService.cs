@@ -55,7 +55,15 @@ public class ServerService : IServerService, IDisposable
 
     public async Task StartAsync()
     {
-        if (!_featureFlags.IsEnabled(FeatureFlagConstants.McpTools))
+        var mcpToolsEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools);
+
+        // On the macOS Skia head SetVirtualHostNameToFolderMapping is a no-op, so WebView content is
+        // served over this loopback file server instead. That makes the server a hard dependency for
+        // every WebView on macOS, independent of the MCP tools flag.
+        var webViewAssetServingRequired = OperatingSystem.IsMacOS();
+
+        if (!mcpToolsEnabled
+            && !webViewAssetServingRequired)
         {
             Status = ServerStatus.Ready;
             _logger.LogInformation("MCP tools disabled by feature flag. Server will not start.");
@@ -89,19 +97,25 @@ public class ServerService : IServerService, IDisposable
                 : $"http://127.0.0.1:{_persistentPort}";
             builder.WebHost.UseUrls(bindUrl);
 
-            // Make the main application's services available to MCP tool classes.
-            // Tools take IApplicationServiceProvider and resolve what they need.
-            var applicationServiceProvider = new ApplicationServiceProvider(_applicationServices);
-            builder.Services.AddSingleton<IApplicationServiceProvider>(applicationServiceProvider);
-
-            // Let AgentServer register MCP SDK services
             var agentServer = (AgentServer)_agentServer;
-            agentServer.ConfigureServices(builder.Services);
+            if (mcpToolsEnabled)
+            {
+                // Make the main application's services available to MCP tool classes.
+                // Tools take IApplicationServiceProvider and resolve what they need.
+                var applicationServiceProvider = new ApplicationServiceProvider(_applicationServices);
+                builder.Services.AddSingleton<IApplicationServiceProvider>(applicationServiceProvider);
+
+                // Let AgentServer register MCP SDK services
+                agentServer.ConfigureServices(builder.Services);
+            }
 
             _webApplication = builder.Build();
 
             // Let AgentServer and FileServer configure their endpoints
-            agentServer.ConfigureEndpoints(_webApplication);
+            if (mcpToolsEnabled)
+            {
+                agentServer.ConfigureEndpoints(_webApplication);
+            }
 
             var fileServer = (FileServer)_fileServer;
             fileServer.ConfigureEndpoints(_webApplication);
@@ -122,6 +136,12 @@ public class ServerService : IServerService, IDisposable
             }
 
             _fileServer.Enable(currentProject.ProjectFolderPath, Port);
+
+            // Serve the shared WebView assets (Bootstrap icons, fonts) under their ".celbridge" host.
+            // On Windows this host is mapped in-process by WebViewFactory; the loopback registration is
+            // what the macOS Skia head uses, since its virtual-host mapping is a no-op.
+            var sharedAssetsFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
+            _fileServer.RegisterHostFolder("shared.celbridge", sharedAssetsFolder);
 
             Status = ServerStatus.Ready;
             _logger.LogInformation("Server started on port {Port}", Port);

@@ -7,6 +7,7 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
@@ -98,6 +99,16 @@ public partial class App : Application
                         .EmbeddedSource<App>()
                         .Section<AppConfig>()
                 )
+                // Layer the macOS feature-flag overlay on top of appsettings.json so unported
+                // subsystems are gated off while the macOS port is in progress. Windows is
+                // unaffected. Registered after UseConfiguration so it wins for the same keys.
+                .ConfigureAppConfiguration((context, appConfigBuilder) =>
+                {
+                    if (OperatingSystem.IsMacOS())
+                    {
+                        appConfigBuilder.AddInMemoryCollection(MacOSFeatureFlagOverlay.Overrides);
+                    }
+                })
                 // Enable localization (see appsettings.json for supported languages)
                 .UseLocalization()
                 .ConfigureServices((context, services) =>

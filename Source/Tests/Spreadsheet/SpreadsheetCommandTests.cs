@@ -1407,7 +1407,10 @@ public class SpreadsheetCommandTests
 
         using var workbook = new XLWorkbook(_workbookPath);
         var sheet = workbook.Worksheet("Data");
-        sheet.Column("A").Width.Should().Be(workbook.ColumnWidth);
+        // BeApproximately, not Be: ClosedXML's default width (8.38) is not exactly representable as a
+        // double, so the round-trip through the reset can differ by a floating-point epsilon. The exact
+        // comparison passes on Windows but fails on macOS, where the rounding lands differently.
+        sheet.Column("A").Width.Should().BeApproximately(workbook.ColumnWidth, 1e-9);
     }
 
     [Test]
@@ -1436,7 +1439,8 @@ public class SpreadsheetCommandTests
 
         using var workbook = new XLWorkbook(_workbookPath);
         var sheet = workbook.Worksheet("Data");
-        sheet.Row(1).Height.Should().Be(workbook.RowHeight);
+        // BeApproximately for the same floating-point reason as the column-width reset assertion above.
+        sheet.Row(1).Height.Should().BeApproximately(workbook.RowHeight, 1e-9);
     }
 
     [Test]
