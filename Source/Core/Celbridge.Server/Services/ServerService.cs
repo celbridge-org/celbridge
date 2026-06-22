@@ -137,11 +137,10 @@ public class ServerService : IServerService, IDisposable
 
             _fileServer.Enable(currentProject.ProjectFolderPath, Port);
 
-            // Serve the shared WebView assets (Bootstrap icons, fonts) under their ".celbridge" host.
-            // On Windows this host is mapped in-process by WebViewFactory; the loopback registration is
-            // what the macOS Skia head uses, since its virtual-host mapping is a no-op.
+            // Serve the app-bundled web assets (celbridge-client JS, bootstrap-icons, cascadia-mono)
+            // at /assets/. This is the loopback replacement for the shared.celbridge virtual host.
             var sharedAssetsFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
-            _fileServer.RegisterHostFolder("shared.celbridge", sharedAssetsFolder);
+            _fileServer.RegisterAssetsFolder(sharedAssetsFolder);
 
             Status = ServerStatus.Ready;
             _logger.LogInformation("Server started on port {Port}", Port);

@@ -65,6 +65,14 @@ public partial record PackageInfo
     public bool DevToolsBlocked { get; init; }
 
     /// <summary>
+    /// When true, the package's WebView is served over the loopback file server and addressed
+    /// root-relative (the /package/{name}/ route), instead of a SetVirtualHostNameToFolderMapping
+    /// virtual host. Loopback-served editors run on every head; virtual-host editors are unsupported on
+    /// the Skia heads where the mapping is a no-op. Transitional during the macOS port.
+    /// </summary>
+    public bool ServedViaLoopback { get; init; }
+
+    /// <summary>
     /// Whether the package was discovered as a bundled (in-module) or project
     /// (project-tree) package. Drives the read path selection at every site
     /// that loads bytes for the package.

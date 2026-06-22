@@ -34,26 +34,37 @@ public interface IFileServer
     string ResolveLocalFileUrl(string path, ResourceKey contextResource = default);
 
     /// <summary>
-    /// The per-session token that the host-asset routes require as a query parameter. It gates the
-    /// loopback host routes so other local processes cannot read served content over the socket.
+    /// Registers the folder of app-bundled web assets shared by every WebView (the celbridge-client
+    /// JS, icons, fonts), served at /assets/{path}. Replaces the shared.celbridge virtual host.
     /// </summary>
-    string HostAccessToken { get; }
+    void RegisterAssetsFolder(string folderPath);
 
     /// <summary>
-    /// Registers a folder to be served over loopback under the given ".celbridge" host name. This is
-    /// the macOS replacement for SetVirtualHostNameToFolderMapping, which is a no-op on the Skia head.
-    /// Re-registering a host name replaces the previous folder.
+    /// Registers a package's asset folder, served at /package/{name}/{path}. Re-registering a name
+    /// replaces the previous folder. Replaces the pkg-{name}.celbridge virtual host.
     /// </summary>
-    void RegisterHostFolder(string hostName, string folderPath);
+    void RegisterPackageFolder(string packageName, string folderPath);
 
     /// <summary>
-    /// Stops serving the given host name and releases its file provider.
+    /// Stops serving the given package and releases its file provider.
     /// </summary>
-    void UnregisterHostFolder(string hostName);
+    void UnregisterPackageFolder(string packageName);
 
     /// <summary>
-    /// Resolves a loopback URL (including the access token) for a file under a registered host, or an
-    /// empty string when the server is not running or the host is not registered.
+    /// Builds the absolute loopback URL a WebView is navigated to for a project file, or an empty
+    /// string when the server is not running. In-page references use root-relative /project/ paths.
     /// </summary>
-    string ResolveHostFileUrl(string hostName, string path);
+    string GetProjectUrl(string path);
+
+    /// <summary>
+    /// Builds the absolute loopback URL for a shared bundled asset, or an empty string when the
+    /// server is not running. In-page references use root-relative /assets/ paths.
+    /// </summary>
+    string GetAssetsUrl(string path);
+
+    /// <summary>
+    /// Builds the absolute loopback URL a WebView is navigated to for a package file, or an empty
+    /// string when the server is not running. In-page references use root-relative /package/ paths.
+    /// </summary>
+    string GetPackageUrl(string packageName, string path);
 }

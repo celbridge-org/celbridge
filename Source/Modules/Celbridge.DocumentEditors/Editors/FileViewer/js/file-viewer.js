@@ -1,9 +1,10 @@
 // File viewer initialization for Celbridge WebView integration.
-// Renders an image, audio, video, or PDF file by loading it from the
-// project virtual host.
+// Renders an image, audio, video, or PDF file by loading it from the file server.
+// Served over the loopback file server, so the shared client is addressed root-relative
+// under /assets/ (resolved against the page's own loopback origin).
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason, projectUrl } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
 
 if (!window.isWebView) {
     console.log('Not running in WebView, skipping client initialization');

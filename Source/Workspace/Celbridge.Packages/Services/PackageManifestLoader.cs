@@ -65,6 +65,7 @@ public static class PackageManifestLoader
         string? hostNameOverride = null,
         IReadOnlyDictionary<string, string>? secrets = null,
         bool devToolsBlocked = false,
+        bool servedViaLoopback = false,
         PackageOrigin origin = PackageOrigin.Bundled,
         IPackageReader? reader = null)
     {
@@ -141,6 +142,7 @@ public static class PackageManifestLoader
                 PermittedTools = permittedTools,
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,
+                ServedViaLoopback = servedViaLoopback,
                 Origin = origin
             };
 

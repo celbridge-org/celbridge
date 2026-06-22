@@ -24,17 +24,31 @@ export const ContentLoadedReason = Object.freeze({
 export const PROJECT_HOST_URL = 'https://project.celbridge/';
 
 /**
- * Converts a project resource key to a full URL under the project virtual host.
- * Strips the "project:" prefix so the URL path lines up with WebView2's virtual
- * host mapping (which serves paths relative to the project folder). Returns the
- * bare PROJECT_HOST_URL when the resource key is empty.
+ * Base URL for project files. On the loopback file-server heads the document is served from
+ * 127.0.0.1, so project files are addressed root-relative under /project/ (resolved against the
+ * page's own loopback origin). On the virtual-host heads they use the project.celbridge host. We
+ * detect from the page's own origin so no per-head configuration is injected.
+ */
+function projectBaseUrl() {
+    if (typeof window !== 'undefined'
+        && window.location
+        && window.location.hostname === '127.0.0.1') {
+        return '/project/';
+    }
+    return PROJECT_HOST_URL;
+}
+
+/**
+ * Converts a project resource key to a full URL for the current head. Strips the "project:" prefix
+ * so the path lines up with the project folder root. Returns the bare base URL when the resource
+ * key is empty.
  */
 export function projectUrl(resourceKey) {
     const key = resourceKey || '';
     const path = key.startsWith('project:')
         ? key.substring('project:'.length)
         : key;
-    return `${PROJECT_HOST_URL}${path}`;
+    return `${projectBaseUrl()}${path}`;
 }
 
 /**

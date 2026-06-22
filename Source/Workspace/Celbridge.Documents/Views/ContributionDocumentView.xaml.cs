@@ -223,20 +223,37 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             WebView.GotFocus -= WebView_GotFocus;
             WebView.GotFocus += WebView_GotFocus;
 
-            // Map the package's asset folder to a virtual host
-            WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                Contribution.Package.HostName,
-                Contribution.Package.PackageFolder,
-                CoreWebView2HostResourceAccessKind.Allow);
+            // Loopback-served packages are addressed over the file server (the /package/, /project/,
+            // and /assets/ routes) and run on every head; the rest still use the in-process virtual
+            // host, which only works on the Windows heads. See PackageInfo.ServedViaLoopback.
+            var servedViaLoopback = Contribution.Package.ServedViaLoopback;
+            var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
+            var packageUrlName = Contribution.Package.Name.Replace('.', '-');
 
-            // Map the project folder for resource key path resolution
-            var projectFolder = ResourceRegistry.ProjectFolderPath;
-            if (!string.IsNullOrEmpty(projectFolder))
+            if (servedViaLoopback)
             {
+                // The project and shared assets are registered globally by the server; only the
+                // package's own folder needs registering here. The document loads from the loopback
+                // origin, so the page resolves all root-relative references against the file server.
+                fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
+            }
+            else
+            {
+                // Map the package's asset folder to a virtual host
                 WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "project.celbridge",
-                    projectFolder,
+                    Contribution.Package.HostName,
+                    Contribution.Package.PackageFolder,
                     CoreWebView2HostResourceAccessKind.Allow);
+
+                // Map the project folder for resource key path resolution
+                var projectFolder = ResourceRegistry.ProjectFolderPath;
+                if (!string.IsNullOrEmpty(projectFolder))
+                {
+                    WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                        "project.celbridge",
+                        projectFolder,
+                        CoreWebView2HostResourceAccessKind.Allow);
+                }
             }
 
             ApplyThemeToWebView();
@@ -251,10 +268,12 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                 await TryInjectToolBridgeShimAsync();
             }
 
-            // Block all navigations except the package's own host name. Each allowed
+            // Block all navigations except the package's own origin. Each allowed
             // navigation also resets the tool bridge's content-ready gate so webview_*
             // tool calls block until the editor signals readiness post-navigation.
-            var allowedHostPrefix = $"https://{Contribution.Package.HostName}/";
+            var allowedNavigationPrefix = servedViaLoopback
+                ? fileServer.GetPackageUrl(packageUrlName, string.Empty)
+                : $"https://{Contribution.Package.HostName}/";
             WebView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
@@ -263,7 +282,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                     return;
                 }
 
-                if (uri.StartsWith(allowedHostPrefix))
+                if (uri.StartsWith(allowedNavigationPrefix))
                 {
                     _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
                     return;
@@ -325,7 +344,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             }
 
             var entryPoint = Contribution.EntryPoint;
-            var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
+            var entryUrl = servedViaLoopback
+                ? fileServer.GetPackageUrl(packageUrlName, entryPoint)
+                : $"https://{Contribution.Package.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
 
             _initTcs!.TrySetResult(Result.Ok());

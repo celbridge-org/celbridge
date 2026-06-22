@@ -30,4 +30,13 @@ public sealed record BundledPackageDescriptor
     /// and not the public manifest, third-party packages cannot set it.
     /// </summary>
     public bool DevToolsBlocked { get; init; }
+
+    /// <summary>
+    /// When true, this package's WebView is served over the loopback file server (the
+    /// /package/{name}/ route) and addressed root-relative, instead of the SetVirtualHostNameToFolderMapping
+    /// virtual host. Transitional during the macOS port: editors flip to this as they are migrated, and
+    /// the virtual-host path is removed once all are across. Loopback-served editors run on every head;
+    /// virtual-host editors are unsupported on the Skia heads where the mapping is a no-op.
+    /// </summary>
+    public bool ServedViaLoopback { get; init; }
 }

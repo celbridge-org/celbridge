@@ -15,21 +15,20 @@ public class FileServer : IFileServer, IDisposable
 {
     private readonly ILogger<FileServer> _logger;
 
-    // Folders served under a ".celbridge" host name over loopback. This is the macOS replacement for
-    // SetVirtualHostNameToFolderMapping, keyed by host name (e.g. "shared.celbridge").
-    private readonly ConcurrentDictionary<string, PhysicalFileProvider> _hostFileProviders = new();
+    // The app-bundled web assets shared by every WebView (the celbridge-client JS, bootstrap-icons,
+    // cascadia-mono fonts), served at /assets/{path}. The loopback replacement for the
+    // shared.celbridge virtual host.
+    private PhysicalFileProvider? _assetsFileProvider;
 
-    // Per-session token required on the host routes so other local processes cannot read served
-    // content over the loopback socket.
-    private readonly string _hostAccessToken = Guid.NewGuid().ToString("N");
+    // Per-package asset folders served at /package/{name}/{path}, keyed by package name. The loopback
+    // replacement for the pkg-<name>.celbridge virtual hosts.
+    private readonly ConcurrentDictionary<string, PhysicalFileProvider> _packageFileProviders = new();
 
     private PhysicalFileProvider? _projectFileProvider;
     private int _port;
     private bool _disposed;
 
     public bool IsReady => _port != 0 && _projectFileProvider is not null;
-
-    public string HostAccessToken => _hostAccessToken;
 
     public FileServer(ILogger<FileServer> logger)
     {
@@ -73,52 +72,53 @@ public class FileServer : IFileServer, IDisposable
             await context.Response.SendFileAsync(fileInfo);
         });
 
-        // Serves files registered under a ".celbridge" host name. On the macOS Skia head WebView
-        // documents are loaded under a synthetic "http://<host>.celbridge/" origin via native
-        // loadHTMLString:baseURL:, and their assets are fetched cross-origin from here. The token
-        // gates access so other local processes cannot read served content.
-        application.MapGet("/host/{host}/{**path}", async (HttpContext context, string host, string path) =>
+        // The three WebView content routes. WebViews are navigated to a loopback URL under one of
+        // these and reference everything else root-relative, so the page resolves all content against
+        // its own loopback origin. This is the cross-platform replacement for the .celbridge virtual
+        // hosts (project.celbridge / shared.celbridge / pkg-*.celbridge).
+        application.MapGet("/project/{**path}", (HttpContext context, string path) =>
+            ServeFromProvider(context, _projectFileProvider, path));
+
+        application.MapGet("/assets/{**path}", (HttpContext context, string path) =>
+            ServeFromProvider(context, _assetsFileProvider, path));
+
+        application.MapGet("/package/{name}/{**path}", (HttpContext context, string name, string path) =>
         {
-            if (!IsAuthorizedHostRequest(context))
-            {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return;
-            }
-
-            if (!_hostFileProviders.TryGetValue(host, out var hostFileProvider))
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
-
-            var fileInfo = hostFileProvider.GetFileInfo(path);
-            if (!fileInfo.Exists
-                || fileInfo.IsDirectory)
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
-
-            var contentTypeProvider = new FileExtensionContentTypeProvider();
-            if (!contentTypeProvider.TryGetContentType(path, out var contentType))
-            {
-                contentType = "application/octet-stream";
-            }
-
-            context.Response.ContentType = contentType;
-            context.Response.Headers["Access-Control-Allow-Origin"] = "*";
-            context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
-            context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
-
-            await context.Response.SendFileAsync(fileInfo);
+            _packageFileProviders.TryGetValue(name, out var packageFileProvider);
+            return ServeFromProvider(context, packageFileProvider, path);
         });
     }
 
-    private bool IsAuthorizedHostRequest(HttpContext context)
+    private static async Task ServeFromProvider(HttpContext context, PhysicalFileProvider? fileProvider, string path)
     {
-        var token = context.Request.Query["token"].ToString();
-        return !string.IsNullOrEmpty(token)
-            && string.Equals(token, _hostAccessToken, StringComparison.Ordinal);
+        if (fileProvider is null)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var fileInfo = fileProvider.GetFileInfo(path);
+        if (!fileInfo.Exists
+            || fileInfo.IsDirectory)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var contentTypeProvider = new FileExtensionContentTypeProvider();
+        if (!contentTypeProvider.TryGetContentType(path, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+
+        context.Response.ContentType = contentType;
+
+        // The page and its assets share one loopback origin, so no CORS is needed. These match the
+        // /local/ route and enable WebContainer support in local HTML/JS.
+        context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
+        context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
+
+        await context.Response.SendFileAsync(fileInfo);
     }
 
     /// <summary>
@@ -184,54 +184,97 @@ public class FileServer : IFileServer, IDisposable
         return string.Empty;
     }
 
-    public void RegisterHostFolder(string hostName, string folderPath)
+    public void RegisterAssetsFolder(string folderPath)
     {
-        if (string.IsNullOrWhiteSpace(hostName)
-            || string.IsNullOrWhiteSpace(folderPath))
+        var provider = CreateFileProvider("assets", folderPath);
+        if (provider is null)
         {
             return;
         }
 
-        PhysicalFileProvider provider;
-        try
-        {
-            provider = new PhysicalFileProvider(folderPath);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(exception, "Failed to register host folder '{HostName}' at {FolderPath}", hostName, folderPath);
-            return;
-        }
-
-        var previousProvider = _hostFileProviders.TryGetValue(hostName, out var existingProvider)
-            ? existingProvider
-            : null;
-        _hostFileProviders[hostName] = provider;
-        previousProvider?.Dispose();
-
-        _logger.LogDebug("Registered WebView host '{HostName}' -> {FolderPath}", hostName, folderPath);
+        _assetsFileProvider?.Dispose();
+        _assetsFileProvider = provider;
+        _logger.LogDebug("Registered WebView assets folder -> {FolderPath}", folderPath);
     }
 
-    public void UnregisterHostFolder(string hostName)
+    public void RegisterPackageFolder(string packageName, string folderPath)
     {
-        if (_hostFileProviders.TryRemove(hostName, out var provider))
+        if (string.IsNullOrWhiteSpace(packageName))
+        {
+            return;
+        }
+
+        var provider = CreateFileProvider(packageName, folderPath);
+        if (provider is null)
+        {
+            return;
+        }
+
+        var previousProvider = _packageFileProviders.TryGetValue(packageName, out var existingProvider)
+            ? existingProvider
+            : null;
+        _packageFileProviders[packageName] = provider;
+        previousProvider?.Dispose();
+
+        _logger.LogDebug("Registered WebView package '{PackageName}' -> {FolderPath}", packageName, folderPath);
+    }
+
+    public void UnregisterPackageFolder(string packageName)
+    {
+        if (_packageFileProviders.TryRemove(packageName, out var provider))
         {
             provider.Dispose();
         }
     }
 
-    public string ResolveHostFileUrl(string hostName, string path)
+    public string GetProjectUrl(string path)
     {
-        if (_port == 0
-            || string.IsNullOrWhiteSpace(hostName)
-            || !_hostFileProviders.ContainsKey(hostName))
+        return BuildContentUrl("project", path);
+    }
+
+    public string GetAssetsUrl(string path)
+    {
+        return BuildContentUrl("assets", path);
+    }
+
+    public string GetPackageUrl(string packageName, string path)
+    {
+        if (string.IsNullOrWhiteSpace(packageName))
+        {
+            return string.Empty;
+        }
+
+        return BuildContentUrl($"package/{packageName}", path);
+    }
+
+    private string BuildContentUrl(string area, string path)
+    {
+        if (_port == 0)
         {
             return string.Empty;
         }
 
         var normalizedPath = NormalizePath(path ?? string.Empty);
 
-        return $"http://127.0.0.1:{_port}/host/{hostName}/{normalizedPath}?token={_hostAccessToken}";
+        return $"http://127.0.0.1:{_port}/{area}/{normalizedPath}";
+    }
+
+    private PhysicalFileProvider? CreateFileProvider(string label, string folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            return new PhysicalFileProvider(folderPath);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to register WebView content folder '{Label}' at {FolderPath}", label, folderPath);
+            return null;
+        }
     }
 
     /// <summary>
@@ -292,11 +335,14 @@ public class FileServer : IFileServer, IDisposable
                 _projectFileProvider?.Dispose();
                 _projectFileProvider = null;
 
-                foreach (var hostFileProvider in _hostFileProviders.Values)
+                _assetsFileProvider?.Dispose();
+                _assetsFileProvider = null;
+
+                foreach (var packageFileProvider in _packageFileProviders.Values)
                 {
-                    hostFileProvider.Dispose();
+                    packageFileProvider.Dispose();
                 }
-                _hostFileProviders.Clear();
+                _packageFileProviders.Clear();
             }
         }
     }

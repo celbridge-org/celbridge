@@ -76,10 +76,38 @@ public class WebViewHostChannel : IHostChannel
 
     private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        var message = e.TryGetWebMessageAsString();
-        if (!string.IsNullOrEmpty(message))
+        try
         {
-            MessageReceived?.Invoke(this, message);
+            string? message = null;
+
+            // On the Windows heads the page posts via chrome.webview.postMessage(string), delivered
+            // as a JS string.
+            try
+            {
+                message = e.TryGetWebMessageAsString();
+            }
+            catch (Exception)
+            {
+                // On the macOS WKWebView head the page posts via window.webkit.messageHandlers, and the
+                // message is delivered as JSON (an object), not a string, so TryGetWebMessageAsString
+                // throws. Fall back to the raw JSON below, which is the JSON-RPC envelope itself.
+            }
+
+            if (string.IsNullOrEmpty(message))
+            {
+                message = e.WebMessageAsJson;
+            }
+
+            if (!string.IsNullOrEmpty(message))
+            {
+                MessageReceived?.Invoke(this, message);
+            }
+        }
+        catch (Exception ex)
+        {
+            // This handler runs on the UI thread, so an escaping exception would be fatal. A
+            // malformed web message must never crash the host.
+            _logger.LogWarning(ex, "Failed to read a web message from the WebView");
         }
     }
 

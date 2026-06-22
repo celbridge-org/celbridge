@@ -286,6 +286,7 @@ public class PackageRegistry
                 descriptor.HostNameOverride,
                 descriptor.Secrets,
                 descriptor.DevToolsBlocked,
+                descriptor.ServedViaLoopback,
                 origin: PackageOrigin.Bundled,
                 reader: _bundledReader);
             if (loadResult.IsFailure)
