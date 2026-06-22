@@ -5,6 +5,7 @@
 // parent via contentDocument because of allow-same-origin.
 
 import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
+import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 
 let iframeElement = null;
 let callbacks = null;
@@ -153,7 +154,7 @@ function configureMarked() {
 
                 if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
                     const resolvedPath = resolveRelativePath(src);
-                    src = `https://project.celbridge/${resolvedPath}`;
+                    src = projectUrl(resolvedPath);
                 }
 
                 const titleAttr = title ? ` title="${title}"` : '';

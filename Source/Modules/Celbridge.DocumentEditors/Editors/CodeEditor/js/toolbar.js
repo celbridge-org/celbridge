@@ -6,7 +6,7 @@
 // have activated and attaches click handlers.
 
 import { ViewMode } from './view-mode-controller.js';
-import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
+import { t } from '/assets/celbridge-client/localization.js';
 import { getSnippetSet } from './snippets.js';
 
 // Module-scope state for the snippet button's effective disabled flag. The

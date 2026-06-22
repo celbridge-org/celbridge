@@ -36,11 +36,11 @@ public class Module : IModule
         return new[]
         {
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
-            // FileViewer is the first editor migrated to the loopback file-server scheme (the macOS
-            // WebView hosting layer). The others follow; each flips ServedViaLoopback as it is migrated.
+            // Editors migrated to the loopback file-server scheme (the macOS WebView hosting layer)
+            // set ServedViaLoopback. The remaining editors follow; each flips the flag as it is migrated.
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer"), ServedViaLoopback = true },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor"), ServedViaLoopback = true },
         };
     }
 }

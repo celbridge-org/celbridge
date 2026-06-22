@@ -5,7 +5,7 @@
 // The same bundle serves both the code and markdown document contributions;
 // the options decide which parts to activate at runtime.
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
 import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
@@ -28,11 +28,23 @@ function parseOptions() {
     // packaged WinUI head, or over the bridge via host/getContext on the Skia head).
     const raw = celbridge.options || {};
     return {
-        previewRendererUrl: raw.preview_renderer_url || null,
+        previewRendererUrl: resolveRendererUrl(raw.preview_renderer_url),
         initialViewMode: raw.initial_view_mode || ViewMode.Source,
         enableSnippetToolbar: raw.enable_snippet_toolbar === 'true',
         snippetSet: raw.snippet_set || null
     };
+}
+
+// The preview renderer ships inside the package and is addressed in the document options as a
+// package-root-relative path. Resolve it against the page's own URL so the absolute URL handed to
+// import() is correct on every head (the loopback origin or the in-process virtual host), without
+// the option needing to name a host. An option that already supplies an absolute URL is preserved.
+function resolveRendererUrl(rawUrl) {
+    if (!rawUrl) {
+        return null;
+    }
+
+    return new URL(rawUrl, document.baseURI).href;
 }
 
 async function initialize() {

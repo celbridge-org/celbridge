@@ -6,8 +6,8 @@
 // The module expects the global `monaco` AMD namespace to be loaded before
 // create() is called.
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { log } from './logger.js';
 
 export class EditorController {

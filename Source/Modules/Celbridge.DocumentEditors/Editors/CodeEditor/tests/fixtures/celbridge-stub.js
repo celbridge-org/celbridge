@@ -1,5 +1,5 @@
 // Test stub for the celbridge client module. The real module is served by
-// the WebView host at https://shared.celbridge/...; vitest aliases that URL
+// the file server at /assets/celbridge-client/...; vitest aliases that URL
 // to this file so editor-controller.js can be imported under jsdom without
 // the live host environment.
 
