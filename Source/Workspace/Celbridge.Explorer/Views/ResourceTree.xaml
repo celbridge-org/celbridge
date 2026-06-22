@@ -33,8 +33,8 @@
                 Click="ExpanderButton_Click"
                 Visibility="{x:Bind ChevronVisibility}"
                 Style="{StaticResource TreeExpanderButtonStyle}">
-          <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpanderGlyphConverter}}"
+          <controls:Icon
+                    Symbol="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpanderGlyphConverter}}"
                     FontSize="12"/>
         </Button>
 

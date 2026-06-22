@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -32,7 +33,7 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Paste"),
-            IconGlyph: "\uE77F"); // Paste icon
+            Icon: IconSymbol.Paste); // Paste icon
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

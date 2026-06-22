@@ -21,7 +21,7 @@ internal static class ProjectTreeBuilderTestHelper
 {
     public static ProjectTreeBuilder Build(
         string projectFolderPath,
-        IFileIconService? fileIconService = null,
+        IIconService? iconService = null,
         bool useProjectIgnoreFile = false,
         string[]? lockPatterns = null)
     {
@@ -60,7 +60,7 @@ internal static class ProjectTreeBuilderTestHelper
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
 
-        return new ProjectTreeBuilder(fileIconService ?? new FileIconService(), workspaceWrapper);
+        return new ProjectTreeBuilder(iconService ?? new IconService(), workspaceWrapper);
     }
 
     private static IResourcePolicy BuildPolicy(string projectFolderPath, bool useProjectIgnoreFile, string[]? lockPatterns)

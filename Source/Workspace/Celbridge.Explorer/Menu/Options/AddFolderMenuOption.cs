@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -31,7 +32,7 @@ public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_AddFolder"),
-            IconGlyph: "\uE8B7"); // Folder icon
+            Icon: IconSymbol.FolderAdd); // folder-plus icon
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

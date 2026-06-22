@@ -50,9 +50,9 @@ public class ResourceCommandTests
         File.WriteAllText(Path.Combine(subFolder, NestedFileName), FileContents);
 
         var messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
+        var iconService = new IconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
         await _resourceRegistry.UpdateResourceRegistryAsync();
 

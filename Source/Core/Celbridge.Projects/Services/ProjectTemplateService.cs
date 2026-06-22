@@ -26,8 +26,8 @@ public class ProjectTemplateService : IProjectTemplateService
 
         _templates =
         [
-            CreateTemplate(stringLocalizer, "Empty", "\uE8A5"),
-            CreateTemplate(stringLocalizer, "Examples", "\uE736")
+            CreateTemplate(stringLocalizer, "Empty", "file-earmark"),
+            CreateTemplate(stringLocalizer, "Examples", "collection")
         ];
     }
 

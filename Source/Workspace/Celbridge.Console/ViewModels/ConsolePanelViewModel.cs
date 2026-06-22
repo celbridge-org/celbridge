@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -57,15 +58,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     private string _projectCheckBannerMessage = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MaximizeRestoreGlyph))]
+    [NotifyPropertyChangedFor(nameof(MaximizeRestoreIcon))]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreTooltip))]
     [NotifyPropertyChangedFor(nameof(IsMaximizeButtonHighlighted))]
     private bool _isConsoleMaximized;
 
     /// <summary>
-    /// Glyph for the maximize/restore button. Chevron down when maximized, chevron up when restored.
+    /// Icon for the maximize/restore button. Chevron down when maximized, chevron up when restored.
     /// </summary>
-    public string MaximizeRestoreGlyph => IsConsoleMaximized ? "\uE70D" : "\uE70E";
+    public IconSymbol MaximizeRestoreIcon => IsConsoleMaximized ? IconSymbol.ChevronDown : IconSymbol.ChevronUp;
 
     /// <summary>
     /// Tooltip for the maximize/restore button.

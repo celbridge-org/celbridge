@@ -10,9 +10,9 @@ public class ExpanderGlyphConverter : IValueConverter
         if (value is bool isExpanded)
         {
             // Down chevron when expanded, right chevron when collapsed
-            return isExpanded ? "\uE70D" : "\uE76C";
+            return isExpanded ? IconSymbol.ChevronDown : IconSymbol.ChevronRight;
         }
-        return "\uE76C";
+        return IconSymbol.ChevronRight;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

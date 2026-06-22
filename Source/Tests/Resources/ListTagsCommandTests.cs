@@ -35,12 +35,12 @@ public class ListTagsCommandTests
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
+        var iconService = new IconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService),
             ResourceClassifierTestHelper.BuildClassifier(),
             _rootHandlerRegistry,
             TestFileSystem.CreateLocal());

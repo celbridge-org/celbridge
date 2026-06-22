@@ -2,6 +2,7 @@
   x:Class="Celbridge.WorkspaceUI.Views.PanelHeader"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:local="using:Celbridge.WorkspaceUI.Views">
 
   <Grid Height="40"
@@ -41,8 +42,8 @@
             Margin="0,0,8,0"
             VerticalAlignment="Center"
             Click="CloseButton_Click">
-      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                Glyph="&#xE711;"
+      <controls:Icon
+                Symbol="Close"
                 FontSize="14" />
     </Button>
   </Grid>

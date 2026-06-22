@@ -221,10 +221,9 @@ public class ShortcutMenuBuilder
                 Text = def?.DisplayName ?? name
             };
             
-            if (!string.IsNullOrEmpty(def?.Icon) && 
-                Enum.TryParse<Symbol>(def.Icon, out var icon))
+            if (!string.IsNullOrEmpty(def?.Icon))
             {
-                subMenu.Icon = new SymbolIcon(icon);
+                subMenu.Icon = new Icon { GlyphName = def.Icon };
             }
             
             AddMenuItemsFromTree(childNode, subMenu.Items);
@@ -250,10 +249,9 @@ public class ShortcutMenuBuilder
                 Tag = tag
             };
 
-            if (!string.IsNullOrEmpty(def.Icon) && 
-                Enum.TryParse<Symbol>(def.Icon, out var icon))
+            if (!string.IsNullOrEmpty(def.Icon))
             {
-                menuItem.Icon = new SymbolIcon(icon);
+                menuItem.Icon = new Icon { GlyphName = def.Icon };
             }
 
             menuItem.Click += OnMenuItemClick;
@@ -266,16 +264,11 @@ public class ShortcutMenuBuilder
         var button = new ShortcutButton();
 
         // Set icon if provided
-        if (!string.IsNullOrEmpty(iconName) && 
-            Enum.TryParse<Symbol>(iconName, out var icon))
+        if (!string.IsNullOrEmpty(iconName))
         {
-            button.SetIcon(icon);
+            button.SetIcon(iconName);
         }
-        else
-        {
-            // Default to Play icon for shortcuts
-            button.SetIcon(Symbol.Play);
-        }
+        // Otherwise the button keeps its default Play icon.
 
         // Set tooltip if provided
         if (!string.IsNullOrEmpty(tooltip))

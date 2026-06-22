@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -32,7 +33,7 @@ public class AddFileMenuOption : IMenuOption<ExplorerMenuContext>
         var label = _stringLocalizer.GetString("ResourceTree_AddFile");
         return new MenuItemDisplayInfo(
             LocalizedText: label,
-            IconGlyph: "\uE8A5"); // Page2 icon
+            Icon: IconSymbol.FileAdd); // file-earmark icon
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

@@ -1,4 +1,5 @@
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
 
 namespace Celbridge.UserInterface.Views;
@@ -36,7 +37,7 @@ public class MainMenu
         _menuNavItem = new NavigationViewItem
         {
             Tag = MenuTag,
-            Icon = new SymbolIcon(Symbol.GlobalNavigationButton)
+            Icon = new Icon { Symbol = IconSymbol.Menu }
         };
         _menuNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
 
@@ -69,7 +70,7 @@ public class MainMenu
         // New Project
         var newProjectNavItem = CreateMenuItem(
             tag: NewProjectTag,
-            icon: new SymbolIcon(Symbol.NewFolder),
+            icon: new Icon { Symbol = IconSymbol.FolderAdd },
             label: _stringLocalizer.GetString("MainMenu_NewProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_NewProjectTooltip"),
             isEnabled: true);
@@ -78,7 +79,7 @@ public class MainMenu
         // Open Project
         var openProjectNavItem = CreateMenuItem(
             tag: OpenProjectTag,
-            icon: new SymbolIcon(Symbol.OpenLocal),
+            icon: new Icon { Symbol = IconSymbol.FolderOpen },
             label: _stringLocalizer.GetString("MainMenu_OpenProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_OpenProjectTooltip"),
             isEnabled: true);
@@ -91,7 +92,7 @@ public class MainMenu
         // Reload Project
         var reloadProjectNavItem = CreateMenuItem(
             tag: ReloadProjectTag,
-            icon: new SymbolIcon(Symbol.Refresh),
+            icon: new Icon { Symbol = IconSymbol.Refresh },
             label: _stringLocalizer.GetString("MainMenu_ReloadProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip"),
             isEnabled: isWorkspaceLoaded);
@@ -100,7 +101,7 @@ public class MainMenu
         // Close Project
         var closeProjectNavItem = CreateMenuItem(
             tag: CloseProjectTag,
-            icon: new SymbolIcon(Symbol.Cancel),
+            icon: new Icon { Symbol = IconSymbol.Close },
             label: _stringLocalizer.GetString("MainMenu_CloseProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_CloseProjectTooltip"),
             isEnabled: isWorkspaceLoaded);
@@ -111,7 +112,7 @@ public class MainMenu
         // Settings
         var settingsNavItem = CreateMenuItem(
             tag: NavigationConstants.SettingsTag,
-            icon: new SymbolIcon(Symbol.Setting),
+            icon: new Icon { Symbol = IconSymbol.Settings },
             label: _stringLocalizer.GetString("MainMenu_Settings"),
             tooltip: _stringLocalizer.GetString("MainMenu_SettingsTooltip"),
             isEnabled: true);
@@ -124,11 +125,7 @@ public class MainMenu
         // Exit
         var exitNavItem = CreateMenuItem(
             tag: ExitTag,
-            icon: new FontIcon 
-            { 
-                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                Glyph = "\uE7E8"
-            },
+            icon: new Icon { Symbol = IconSymbol.Exit },
             label: _stringLocalizer.GetString("MainMenu_Exit"),
             tooltip: _stringLocalizer.GetString("MainMenu_ExitTooltip"),
             isEnabled: true);
@@ -143,7 +140,7 @@ public class MainMenu
         var openRecentNavItem = new NavigationViewItem
         {
             Tag = OpenRecentTag,
-            Icon = new SymbolIcon(Symbol.Clock),
+            Icon = new Icon { Symbol = IconSymbol.Recent },
             Content = _stringLocalizer.GetString("MainMenu_OpenRecent"),
             IsEnabled = hasRecentProjects
         };
@@ -178,7 +175,7 @@ public class MainMenu
             var clearRecentNavItem = new NavigationViewItem
             {
                 Tag = ClearRecentProjectsTag,
-                Icon = new SymbolIcon(Symbol.Delete),
+                Icon = new Icon { Symbol = IconSymbol.Delete },
                 Content = _stringLocalizer.GetString("MainMenu_ClearRecentProjects")
             };
             clearRecentNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);

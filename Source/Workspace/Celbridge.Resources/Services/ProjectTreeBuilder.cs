@@ -11,14 +11,14 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
-    private readonly IFileIconService _fileIconService;
+    private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ProjectTreeBuilder(
-        IFileIconService fileIconService,
+        IIconService iconService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _fileIconService = fileIconService;
+        _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -82,10 +82,10 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
             {
                 var fileExtension = GetFileExtension(childName);
 
-                var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
+                var getIconResult = _iconService.GetFileIconForExtension(fileExtension);
                 var iconDefinition = getIconResult.IsSuccess
                     ? getIconResult.Value
-                    : _fileIconService.DefaultFileIcon;
+                    : _iconService.DefaultFileIcon;
 
                 var fileResource = new FileResource(childName, folderResource, iconDefinition);
                 fileResource.WritableState = writableState;

@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace Celbridge.UserInterface.Services;
 
-public class FileIconService : IFileIconService
+public class IconService : IIconService
 {
     private const string DefaultFileIconName = "_file";
     private const string DefaultFolderIconName = "_folder";
@@ -11,14 +11,69 @@ public class FileIconService : IFileIconService
     public const string DefaultFolderColor = "#FFCC40";
 
     private const string FileIconsThemeResource = "Assets.Fonts.FileIcons.file-icons-icon-theme.json";
+    private const string IconGlyphsResource = "Assets.Fonts.BootstrapIcons.icon-glyphs.json";
+    private const string FallbackGlyphName = "question-circle";
 
     private Dictionary<string, string> _fileExtensionDefinitions = new();
     private Dictionary<string, FileIconDefinition> _iconDefinitions = new();
+    private Dictionary<string, string> _glyphsByName = new();
+
+    // Maps each IconSymbol to its glyph name in the bundled icon font (Bootstrap Icons). The name is
+    // resolved to a glyph code via the bundled icon-glyphs.json map. Add new common icons here;
+    // anything not listed is still resolvable by glyph name.
+    private static readonly Dictionary<IconSymbol, string> _kindToGlyphName = new()
+    {
+        { IconSymbol.Close, "x-lg" },
+        { IconSymbol.Search, "search" },
+        { IconSymbol.Folder, "folder" },
+        { IconSymbol.FolderOpen, "folder2-open" },
+        { IconSymbol.FolderFilled, "folder-fill" },
+        { IconSymbol.FolderAdd, "folder-plus" },
+        { IconSymbol.FileAdd, "file-earmark-plus" },
+        { IconSymbol.File, "file-earmark" },
+        { IconSymbol.Bug, "bug" },
+        { IconSymbol.Back, "arrow-left" },
+        { IconSymbol.Forward, "arrow-right" },
+        { IconSymbol.Home, "house" },
+        { IconSymbol.Refresh, "arrow-clockwise" },
+        { IconSymbol.Reveal, "box-arrow-up-right" },
+        { IconSymbol.Delete, "trash" },
+        { IconSymbol.Error, "exclamation-circle-fill" },
+        { IconSymbol.Warning, "exclamation-triangle-fill" },
+        { IconSymbol.More, "three-dots" },
+        { IconSymbol.Collapse, "arrows-collapse" },
+        { IconSymbol.Settings, "gear" },
+        { IconSymbol.Windowed, "window" },
+        { IconSymbol.FullScreen, "arrows-fullscreen" },
+        { IconSymbol.ZenMode, "fullscreen" },
+        { IconSymbol.Presenter, "easel" },
+        { IconSymbol.Save, "floppy" },
+        { IconSymbol.ExitFullScreen, "fullscreen-exit" },
+        { IconSymbol.People, "people" },
+        { IconSymbol.Upload, "upload" },
+        { IconSymbol.ChevronDown, "chevron-down" },
+        { IconSymbol.ChevronRight, "chevron-right" },
+        { IconSymbol.ChevronUp, "chevron-up" },
+        { IconSymbol.MatchCase, "type" },
+        { IconSymbol.Replace, "arrow-left-right" },
+        { IconSymbol.Add, "plus-lg" },
+        { IconSymbol.Copy, "copy" },
+        { IconSymbol.Cut, "scissors" },
+        { IconSymbol.Paste, "clipboard" },
+        { IconSymbol.Rename, "pencil" },
+        { IconSymbol.Archive, "archive" },
+        { IconSymbol.Unarchive, "box-arrow-up" },
+        { IconSymbol.Recent, "clock-history" },
+        { IconSymbol.Menu, "list" },
+        { IconSymbol.Play, "play-fill" },
+        { IconSymbol.Examples, "collection" },
+        { IconSymbol.Exit, "box-arrow-right" }
+    };
 
     public FileIconDefinition DefaultFileIcon { get; private set; }
     public FileIconDefinition DefaultFolderIcon { get; private set; }
 
-    public FileIconService()
+    public IconService()
     {
         var loadResult = LoadDefinitions();
         if (loadResult.IsFailure)
@@ -39,6 +94,12 @@ public class FileIconService : IFileIconService
             throw new InvalidOperationException($"Failed to get default folder icon definitions. {getFolderResult.DiagnosticReport}");
         }
         DefaultFolderIcon = getFolderResult.Value;
+
+        var loadGlyphsResult = LoadGlyphMap();
+        if (loadGlyphsResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Failed to load icon glyph map. {loadGlyphsResult.DiagnosticReport}");
+        }
     }
 
     public Result LoadDefinitions()
@@ -111,6 +172,93 @@ public class FileIconService : IFileIconService
         }
 
         throw new InvalidOperationException();
+    }
+
+    public string IconFontFamilyUri => "ms-appx:///Celbridge.UserInterface/Assets/Fonts/BootstrapIcons/bootstrap-icons.ttf#bootstrap-icons";
+
+    public string GetGlyph(IconSymbol icon)
+    {
+        if (_kindToGlyphName.TryGetValue(icon, out string? glyphName))
+        {
+            return GetGlyph(glyphName);
+        }
+
+        return FallbackGlyph();
+    }
+
+    public string GetGlyph(string glyphName)
+    {
+        if (TryGetGlyph(glyphName, out string glyph))
+        {
+            return glyph;
+        }
+
+        return FallbackGlyph();
+    }
+
+    public bool TryGetGlyph(string glyphName, out string glyph)
+    {
+        if (!string.IsNullOrEmpty(glyphName) &&
+            _glyphsByName.TryGetValue(glyphName, out string? found))
+        {
+            glyph = found;
+            return true;
+        }
+
+        glyph = string.Empty;
+        return false;
+    }
+
+    private string FallbackGlyph()
+    {
+        if (_glyphsByName.TryGetValue(FallbackGlyphName, out string? fallback))
+        {
+            return fallback;
+        }
+
+        return string.Empty;
+    }
+
+    private Result LoadGlyphMap()
+    {
+        var loadResult = LoadIconDataResource(IconGlyphsResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail($"Failed to load icon glyph map from resource '{IconGlyphsResource}'.")
+                .WithErrors(loadResult);
+        }
+        var stream = loadResult.Value;
+
+        try
+        {
+            using (var reader = new StreamReader(stream))
+            {
+                var json = reader.ReadToEnd();
+                var glyphData = JsonNode.Parse(json) as JsonObject;
+                if (glyphData is null)
+                {
+                    return Result.Fail("Failed to parse the icon glyph map as a JSON object.");
+                }
+
+                foreach (var kv in glyphData)
+                {
+                    Guard.IsNotNull(kv.Value);
+
+                    string code = kv.Value.ToString();
+                    int codePoint = int.Parse(code, System.Globalization.NumberStyles.HexNumber);
+                    string glyph = ((char)codePoint).ToString();
+
+                    _glyphsByName[kv.Key] = glyph;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail("An exception occurred when loading the icon glyph map.")
+                .WithException(ex);
+        }
+
+        return Result.Ok();
     }
 
     private void PopulateIconDefinitions(JsonObject iconData)

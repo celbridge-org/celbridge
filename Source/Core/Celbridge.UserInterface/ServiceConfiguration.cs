@@ -26,7 +26,7 @@ public static class ServiceConfiguration
         services.AddSingleton<ILocalizerService, LocalizerService>();
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddSingleton<INavigationService, NavigationService>();
-        services.AddSingleton<IFileIconService, FileIconService>();
+        services.AddSingleton<IIconService, IconService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();

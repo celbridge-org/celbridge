@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -31,7 +32,7 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_ExtractArchive"),
-            IconGlyph: "\uE8C8");
+            Icon: IconSymbol.Unarchive); // box-arrow-up icon
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

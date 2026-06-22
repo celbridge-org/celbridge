@@ -39,6 +39,8 @@
     <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\BootstrapIcons\bootstrap-icons.ttf" />
+    <EmbeddedResource Include="Assets\Fonts\BootstrapIcons\icon-glyphs.json" />
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,7 @@
     x:Class="Celbridge.WorkspaceUI.Views.ActivityPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
     <Grid x:Name="LayoutRoot">
@@ -31,8 +32,8 @@
                     <NavigationViewItem x:Name="ExplorerNavItem"
                                         Tag="Explorer">
                         <NavigationViewItem.Icon>
-                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                      Glyph="&#xEC50;"/>
+                            <controls:Icon
+                                      Symbol="Folder"/>
                         </NavigationViewItem.Icon>
                     </NavigationViewItem>
 
@@ -40,8 +41,8 @@
                     <NavigationViewItem x:Name="SearchNavItem"
                                         Tag="Search">
                         <NavigationViewItem.Icon>
-                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                      Glyph="&#xE721;"/>
+                            <controls:Icon
+                                      Symbol="Search"/>
                         </NavigationViewItem.Icon>
                     </NavigationViewItem>
 
@@ -51,8 +52,8 @@
                                         IsEnabled="False"
                                         Visibility="Collapsed">
                         <NavigationViewItem.Icon>
-                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                      Glyph="&#xEBE8;"/>
+                            <controls:Icon
+                                      Symbol="Bug"/>
                         </NavigationViewItem.Icon>
                     </NavigationViewItem>
 
@@ -62,7 +63,7 @@
                                         IsEnabled="False"
                                         Visibility="Collapsed">
                         <NavigationViewItem.Icon>
-                            <SymbolIcon Symbol="Upload"/>
+                            <controls:Icon Symbol="Upload"/>
                         </NavigationViewItem.Icon>
                     </NavigationViewItem>
                 </NavigationView.MenuItems>

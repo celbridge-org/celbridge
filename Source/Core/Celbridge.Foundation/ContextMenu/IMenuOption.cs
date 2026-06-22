@@ -1,9 +1,11 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.ContextMenu;
 
 /// <summary>
 /// Display information for a menu option.
 /// </summary>
-public record MenuItemDisplayInfo(string LocalizedText, string? IconGlyph = null);
+public record MenuItemDisplayInfo(string LocalizedText, IconSymbol? Icon = null);
 
 /// <summary>
 /// State information for a menu option.

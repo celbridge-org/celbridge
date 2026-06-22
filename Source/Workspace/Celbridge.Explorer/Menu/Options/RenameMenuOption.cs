@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -31,7 +32,7 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Rename"),
-            IconGlyph: "\uE70F"); // Edit icon
+            Icon: IconSymbol.Rename); // pencil (edit) icon
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

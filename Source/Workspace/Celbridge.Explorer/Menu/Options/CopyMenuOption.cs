@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -32,7 +33,7 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Copy"),
-            IconGlyph: "\uE8C8"); // Copy icon
+            Icon: IconSymbol.Copy); // Copy icon
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)
