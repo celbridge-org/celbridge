@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Settings;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Celbridge.Workspace;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
@@ -14,6 +15,7 @@ public sealed class WindowStateHelper
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
+    private readonly IFullScreenController _fullScreenController;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -23,11 +25,13 @@ public sealed class WindowStateHelper
     public WindowStateHelper(
         ILogger<WindowStateHelper> logger,
         IMessengerService messengerService,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        IFullScreenController fullScreenController)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
+        _fullScreenController = fullScreenController;
     }
 
     /// <summary>
@@ -55,6 +59,9 @@ public sealed class WindowStateHelper
 
             // Track the initial presenter kind
             _previousPresenterKind = _appWindow.Presenter.Kind;
+
+            // Bind the platform-specific fullscreen controller to this window.
+            _fullScreenController.Initialize(_appWindow);
 
             // This is a "best-effort" restore. If it doesn't work, the default window state will be applied automatically.
             TryRestoreWindowState();
@@ -139,35 +146,26 @@ public sealed class WindowStateHelper
         {
             _isApplyingWindowMode = true;
 
-            switch (windowMode)
+            // The platform-specific controller owns the fullscreen mechanism and remembers the prior
+            // windowed placement, so it restores maximized/bounds itself when leaving fullscreen.
+            Result transitionResult;
+            if (windowMode == WindowMode.Windowed)
             {
-                case WindowMode.Windowed:
-                    // Exit fullscreen - restore to overlapped presenter
-                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.Overlapped)
-                    {
-                        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-                        
-                        // Get the new presenter and restore maximized state if needed
-                        _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
-                        if (_overlappedPresenter != null && _settingsService.Get(SettingCatalog.Window.IsMaximized))
-                        {
-                            _overlappedPresenter.Maximize();
-                        }
-                    }
-                    break;
-
-                case WindowMode.FullScreen:
-                case WindowMode.ZenMode:
-                case WindowMode.Presenter:
-                    // Enter fullscreen mode
-                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
-                    {
-                        _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
-                    }
-                    break;
+                transitionResult = _fullScreenController.ExitFullScreen();
+            }
+            else
+            {
+                transitionResult = _fullScreenController.EnterFullScreen();
             }
 
-            // Update the tracked presenter kind after applying the mode
+            if (transitionResult.IsFailure)
+            {
+                _logger.LogError(transitionResult, $"Failed to apply window mode: {windowMode}");
+            }
+
+            // The controller may have re-created the presenter when switching presenter kinds, so
+            // refresh the cached reference and the tracked kind for window-state tracking.
+            _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
             _previousPresenterKind = _appWindow.Presenter.Kind;
         }
         catch (Exception ex)
@@ -277,9 +275,12 @@ public sealed class WindowStateHelper
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
-        // Ignore changes while we're in the middle of applying a window mode change
-        // to avoid saving fullscreen dimensions as the preferred window bounds.
-        if (_isApplyingWindowMode)
+        // Ignore changes while we're in the middle of applying a window mode change, or while a
+        // fullscreen mode is active, to avoid saving fullscreen dimensions as the preferred window
+        // bounds. The desktop emulation keeps an overlapped presenter, so IsFullScreen is the only
+        // reliable signal that the window is currently covering the screen.
+        if (_isApplyingWindowMode ||
+            _fullScreenController.IsFullScreen)
         {
             return;
         }

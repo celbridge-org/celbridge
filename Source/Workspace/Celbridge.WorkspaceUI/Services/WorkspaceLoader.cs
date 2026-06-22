@@ -234,9 +234,8 @@ public class WorkspaceLoader
             _logger.LogInformation("Console panel is disabled by feature flag");
         }
 
-        // Runs after WorkspaceLoadedMessage, on the load thread: the banner it
-        // raises needs a live panel subscriber, and a full project scan would
-        // otherwise delay the visible load.
+        // Awaited so the consistency check completes before any project script that runs on load can
+        // modify the structure the scan reads.
         await RunProjectCheckAsync();
 
         return Result.Ok();
@@ -261,7 +260,10 @@ public class WorkspaceLoader
         try
         {
             var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
-            var reportResult = await commandService.ExecuteAsync<IProjectCheckCommand, ProjectCheckReport>();
+
+            // ExecuteImmediate, not ExecuteAsync: this runs inside the in-flight LoadProjectCommand, so
+            // enqueuing and awaiting a command would deadlock the serial queue.
+            var reportResult = await commandService.ExecuteImmediate<IProjectCheckCommand, ProjectCheckReport>();
             if (reportResult.IsFailure)
             {
                 _logger.LogWarning(reportResult, "Project consistency check failed.");

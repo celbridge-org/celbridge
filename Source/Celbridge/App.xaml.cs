@@ -30,9 +30,7 @@ public partial class App : Application
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
-#if WINDOWS
     private FullscreenToolbar? _fullscreenToolbar;
-#endif
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -170,6 +168,11 @@ public partial class App : Application
                 }
             }
         }
+#else
+        // The Skia desktop head is an unpackaged dev/proxy build with no OS file-association
+        // registration, so packaged file activation does not apply. The app auto-opens the previous
+        // project on launch, which covers the dev flow; a platform-native file-open path (e.g. macOS
+        // document handling) is added by the macOS port when it is needed.
 #endif
 
         // Initialize the Core Services
@@ -201,14 +204,13 @@ public partial class App : Application
             };
             rootGrid.Children.Add(rootFrame);
 
-#if WINDOWS
-            // Add the Fullscreen toolbar overlay (appears in fullscreen modes)
+            // Add the Fullscreen toolbar overlay (appears in fullscreen modes). The control and its
+            // pointer-tracking use only cross-platform APIs, so it runs on every head.
             _fullscreenToolbar = new FullscreenToolbar();
             rootGrid.Children.Add(_fullscreenToolbar);
 
             // Track mouse movement for Fullscreen toolbar
             rootGrid.PointerMoved += OnRootGrid_PointerMoved;
-#endif
 
             // Place the grid in the current Window
             MainWindow.Content = rootGrid;
@@ -241,13 +243,11 @@ public partial class App : Application
             var appLogger = Host.Services.GetRequiredService<Logging.ILogger<App>>();
             appLogger.Shutdown();
 
-#if WINDOWS
             // Clean up mouse tracking
             if (MainWindow.Content is Grid grid)
             {
                 grid.PointerMoved -= OnRootGrid_PointerMoved;
             }
-#endif
         };
 
         if (contentFrame != null)
@@ -346,7 +346,6 @@ public partial class App : Application
         logger.LogError(exception, "An unhandled exception occurred");
     }
 
-#if WINDOWS
     private void OnRootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         if (_fullscreenToolbar != null && MainWindow?.Content != null)
@@ -355,7 +354,6 @@ public partial class App : Application
             _fullscreenToolbar.OnPointerMoved(position.Y);
         }
     }
-#endif
 
 
     /// <summary>

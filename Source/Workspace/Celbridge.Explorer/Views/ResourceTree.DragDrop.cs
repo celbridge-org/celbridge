@@ -10,6 +10,14 @@ public sealed partial class ResourceTree
 {
     private ResourceViewItem? _dragOverItem;
 
+    // Resources being dragged within this ListView. Tracked in a field rather than via the DataPackage's
+    // custom properties because those managed properties do not round-trip to the DragOver/Drop events on
+    // the Uno Skia head (only OS-serialisable formats survive), so the internal-drag path was never
+    // recognised there. Set when an internal drag starts, read during drag-over and drop, and cleared
+    // after an internal drop. External drags are identified by the StorageItems format and checked first,
+    // so a stale value here never affects them.
+    private List<IResource>? _internalDragResources;
+
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
         // Store the dragged items for later use, excluding the project folder
@@ -29,7 +37,7 @@ public sealed partial class ResourceTree
             return;
         }
 
-        e.Data.Properties["DraggedResources"] = draggedResources;
+        _internalDragResources = draggedResources;
         e.Data.RequestedOperation = DataPackageOperation.Move;
 
         // Set text for drag visual - show count of items being dragged
@@ -63,23 +71,9 @@ public sealed partial class ResourceTree
 
     private (bool CanDrop, bool IsInternalDrag) EvaluateDropTarget(DragEventArgs e, ResourceViewItem? targetItem)
     {
-        // Check for internal drag (from our ListView)
-        if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
-        {
-            // Internal drag - check if target is valid (folder or file)
-            var targetIsValid = targetItem?.Resource is IFolderResource or IFileResource;
-            if (!targetIsValid)
-            {
-                return (CanDrop: false, IsInternalDrag: true);
-            }
-
-            var destFolder = ResolveDropTargetFolder(targetItem!.Resource);
-            var draggedResources = e.Data.Properties["DraggedResources"] as List<IResource>;
-            var canDrop = CanDropInto(destFolder, draggedResources);
-            return (canDrop, IsInternalDrag: true);
-        }
-
-        // Check for external drag (from File Explorer, etc.)
+        // Check for external drag (from File Explorer, etc.) first, identified by the StorageItems
+        // format. Checking it before the internal-drag field means a stale field can never shadow a
+        // real external drag.
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
             // External drag - allow drop on folder, file (uses parent), or empty space (project folder).
@@ -91,6 +85,21 @@ public sealed partial class ResourceTree
             var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
             var canDrop = _operationService.CanAddToFolder(destFolderKey).IsSuccess;
             return (canDrop, IsInternalDrag: false);
+        }
+
+        // Check for internal drag (from our ListView), tracked via the field.
+        if (_internalDragResources is not null)
+        {
+            // Internal drag - check if target is valid (folder or file)
+            var targetIsValid = targetItem?.Resource is IFolderResource or IFileResource;
+            if (!targetIsValid)
+            {
+                return (CanDrop: false, IsInternalDrag: true);
+            }
+
+            var destFolder = ResolveDropTargetFolder(targetItem!.Resource);
+            var canDrop = CanDropInto(destFolder, _internalDragResources);
+            return (canDrop, IsInternalDrag: true);
         }
 
         return (CanDrop: false, IsInternalDrag: false);
@@ -181,18 +190,19 @@ public sealed partial class ResourceTree
         var dropTargetItem = FindItemAtPosition(position);
         var destFolder = ResolveDropTargetFolder(dropTargetItem?.Resource);
 
-        // Check if this is an internal drag (from our ListView)
-        if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true &&
-            draggedObj is List<IResource> draggedResources)
-        {
-            MoveResourcesToFolder(draggedResources, destFolder);
-            return;
-        }
-
-        // Handle external drop (from file explorer)
+        // Handle external drop (from file explorer) first, identified by the StorageItems format.
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
             _ = ProcessExternalDrop(e.DataView, destFolder);
+            return;
+        }
+
+        // Handle internal drop (from our ListView), tracked via the field.
+        if (_internalDragResources is not null)
+        {
+            var draggedResources = _internalDragResources;
+            _internalDragResources = null;
+            MoveResourcesToFolder(draggedResources, destFolder);
         }
     }
 

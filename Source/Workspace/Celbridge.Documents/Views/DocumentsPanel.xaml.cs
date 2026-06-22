@@ -241,6 +241,26 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
     {
         UpdateTabStripVisibility(message.WindowMode);
+
+        // Entering a mode that hides the side panels can leave keyboard focus on a now-hidden panel
+        // (e.g. the Explorer), which stops app shortcuts like F11 from being delivered until the user
+        // clicks back into the content. Move focus to the active document's editor so the shortcuts
+        // keep working. FullScreen keeps the panels, so its focus is unaffected.
+        if (message.WindowMode == WindowMode.ZenMode ||
+            message.WindowMode == WindowMode.Presenter)
+        {
+            FocusActiveDocument();
+        }
+    }
+
+    private void FocusActiveDocument()
+    {
+        // Defer so focus is set after the panels have collapsed and layout has settled.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var webView = VisualTreeHelperEx.FindDescendant<WebView2>(SectionContainer);
+            webView?.Focus(FocusState.Programmatic);
+        });
     }
 
     private void UpdateTabStripVisibility(WindowMode windowMode)

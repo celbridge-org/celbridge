@@ -88,28 +88,21 @@ public partial class MainPage : Page
 
         await ViewModel.OnMainPage_LoadedAsync();
 
-        // Listen for keyboard input events (required for undo / redo)
-#if WINDOWS
-        mainWindow.Content.KeyDown += (s, e) =>
-        {
-            if (OnKeyDown(e.Key))
-            {
-                e.Handled = true;
-            }
-        };
-#else
-        Guard.IsNotNull(mainWindow);
-        if (mainWindow.CoreWindow is not null)
-        {
-            mainWindow.CoreWindow.KeyDown += (s, e) =>
-            {
-                if (OnKeyDown(e.VirtualKey))
-                {
-                    e.Handled = true;
-                }
-            };
-        }
-#endif
+        // Listen for keyboard input events (required for undo / redo and other app shortcuts).
+        // Window.CoreWindow is a legacy UWP API that is null on the Skia desktop head, so the root
+        // content's KeyDown is used on every head.
+        var rootContent = mainWindow.Content;
+        Guard.IsNotNull(rootContent);
+
+        // Register with handledEventsToo so app shortcuts are received even when the focused control
+        // (the Explorer tree, Inspector, or toolbar) marks the key event handled before it bubbles to
+        // the root. A plain KeyDown += handler is skipped for already-handled events, which left F11
+        // and other shortcuts dead unless a WebView (which routes shortcuts over the RPC bridge) had
+        // focus.
+        rootContent.AddHandler(
+            UIElement.KeyDownEvent,
+            new Microsoft.UI.Xaml.Input.KeyEventHandler(OnRootContentKeyDown),
+            handledEventsToo: true);
     }
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
@@ -125,15 +118,23 @@ public partial class MainPage : Page
 
     private void OnWindowLayoutChanged(object recipient, WindowModeChangedMessage message)
     {
-        // Show/hide the title bar based on window mode
-        // In Windowed, FullScreen, and ZenMode modes, the title bar is visible
-        // In Presenter mode, the title bar is hidden
+        // Show/hide the title bar based on window mode.
+        // Windowed and FullScreen keep the toolbar; ZenMode and Presenter hide it so the document
+        // content fills the screen (per the WindowMode definitions: ZenMode shows only the documents
+        // panel, Presenter shows only the document content).
         if (_titleBar != null)
         {
             bool showTitleBar = message.WindowMode == WindowMode.Windowed ||
-                                message.WindowMode == WindowMode.FullScreen ||
-                                message.WindowMode == WindowMode.ZenMode;
+                                message.WindowMode == WindowMode.FullScreen;
             _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void OnRootContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (OnKeyDown(e.Key))
+        {
+            e.Handled = true;
         }
     }
 

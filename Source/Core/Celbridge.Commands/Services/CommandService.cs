@@ -30,6 +30,8 @@ public class CommandService : ICommandService
 
     private bool _stopped = false;
 
+    private static readonly TimeSpan WatchdogWarningInterval = TimeSpan.FromSeconds(5);
+
     public CommandService(
         IServiceProvider serviceProvider,
         ICommandLogger logger,
@@ -72,6 +74,31 @@ public class CommandService : ICommandService
         configure?.Invoke(command);
 
         return await command.ExecuteAsync();
+    }
+
+    public async Task<Result<TResult>> ExecuteImmediate<TCommand, TResult>(
+        Action<TCommand>? configure = null,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+        where TCommand : IExecutableCommand<TResult>
+        where TResult : notnull
+    {
+        // ExecuteImmediate<TCommand> resolves the command from DI internally, so we capture a
+        // reference to it via the configure callback to read ResultValue after execution completes.
+        TCommand? capturedCommand = default;
+
+        var result = await ExecuteImmediate<TCommand>(command =>
+        {
+            configure?.Invoke(command);
+            capturedCommand = command;
+        }, filePath, lineNumber);
+
+        if (result.IsFailure)
+        {
+            return Result.Fail(result);
+        }
+
+        return Result<TResult>.Ok(capturedCommand!.ResultValue);
     }
 
     public async Task<Result> ExecuteAsync<T>(
@@ -188,7 +215,7 @@ public class CommandService : ICommandService
 
             // To avoid race conditions, application and workspace state is updated while there are no
             // executing commands. This ensures that no commands run until pending saves complete.
-            var updateResult = await UpdateApplicationAsync();
+            var updateResult = await ExecuteWithWatchdogAsync(UpdateApplicationAsync(), "Application update");
             if (updateResult.IsFailure)
             {
                 _logger.LogError(updateResult, "Failed to update application");
@@ -228,7 +255,7 @@ public class CommandService : ICommandService
                             _logger.LogDebug(logEntry);
                         }
 
-                        var executeResult = await command.ExecuteAsync();
+                        var executeResult = await ExecuteWithWatchdogAsync(command.ExecuteAsync(), $"Command '{command.GetType().Name}'");
 
                         if (executeResult.IsFailure)
                         {
@@ -290,6 +317,33 @@ public class CommandService : ICommandService
             }
 
             await Task.Delay(1);
+        }
+    }
+
+    // Awaits a command-loop operation while a watchdog logs a warning if it runs unusually long.
+    // The serial queue cannot advance until the awaited operation returns, so a genuine hang would
+    // otherwise leave no trace. The operation is never cancelled; the watchdog only emits a warning,
+    // and repeats it while the operation stays blocked so a permanent hang keeps reporting itself.
+    private async Task<Result> ExecuteWithWatchdogAsync(Task<Result> operation, string operationName)
+    {
+        using var watchdogCancellation = new CancellationTokenSource();
+        var startElapsed = _stopwatch.Elapsed;
+
+        while (true)
+        {
+            var warningDelay = Task.Delay(WatchdogWarningInterval, watchdogCancellation.Token);
+            var completedTask = await Task.WhenAny(operation, warningDelay);
+
+            if (ReferenceEquals(completedTask, operation))
+            {
+                watchdogCancellation.Cancel();
+                return await operation;
+            }
+
+            var blockedSeconds = (_stopwatch.Elapsed - startElapsed).TotalSeconds;
+            _logger.LogWarning(
+                $"Command queue blocked: {operationName} has run for {blockedSeconds:F0}s without completing. " +
+                $"No further commands will execute until it returns.");
         }
     }
 

@@ -27,7 +27,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
                     if (window.chrome && window.chrome.webview) {
                         window.chrome.webview.postMessage(JSON.stringify({
                             jsonrpc: '2.0',
-                            method: 'host/keyboardShortcut',
+                            method: 'input/keyboardShortcut',
                             params: {
                                 key: 'F11',
                                 ctrlKey: event.ctrlKey,
