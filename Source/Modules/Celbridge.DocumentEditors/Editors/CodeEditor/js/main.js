@@ -122,6 +122,10 @@ async function initialize() {
                 if (previewPipeline) {
                     previewPipeline.handleInitialContent(content, metadata?.resourceKey);
                 }
+
+                // Reveal the editor now that Monaco has the first buffer. Until this point
+                // #split-root is opacity:0 so the user never sees the empty pre-content view.
+                document.getElementById('split-root').classList.add('is-loaded');
             },
             onExternalReloadContent: (content) => {
                 previewPipeline?.handleExternalReload(content);

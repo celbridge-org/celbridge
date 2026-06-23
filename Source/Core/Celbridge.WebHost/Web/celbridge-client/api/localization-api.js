@@ -30,10 +30,12 @@ export class LocalizationAPI {
         }
 
         const { setStrings } = await import('../localization.js');
-        const hostName = location.hostname;
 
         const tryFetch = async (loc) => {
-            const url = `https://${hostName}/localization/${loc}.json`;
+            // Page-relative so the URL resolves to the package's own localization folder
+            // under whichever origin the editor is loaded from (loopback /package/{name}/ on every
+            // head, or the legacy virtual host on the Windows heads still using it).
+            const url = `localization/${loc}.json`;
             try {
                 const response = await fetch(url);
                 if (response.ok) {
