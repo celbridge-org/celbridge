@@ -24,17 +24,25 @@ public class WebViewFactory : IWebViewFactory, IDisposable
                     event.preventDefault();
                     event.stopPropagation();
                     event.stopImmediatePropagation();
-                    if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(JSON.stringify({
-                            jsonrpc: '2.0',
-                            method: 'input/keyboardShortcut',
-                            params: {
-                                key: 'F11',
-                                ctrlKey: event.ctrlKey,
-                                shiftKey: event.shiftKey,
-                                altKey: event.altKey
-                            }
-                        }));
+                    var message = JSON.stringify({
+                        jsonrpc: '2.0',
+                        method: 'input/keyboardShortcut',
+                        params: {
+                            key: 'F11',
+                            ctrlKey: event.ctrlKey,
+                            shiftKey: event.shiftKey,
+                            altKey: event.altKey
+                        }
+                    });
+                    // Prefer the active transport the celbridge client exposes (WebSocket or otherwise),
+                    // so this works on the WebSocket bridge. Pages that never load the client fall back to
+                    // the raw WebView2 message channel (chrome.webview on Windows, webkit on macOS).
+                    if (window.__celbridgeSendHostMessage) {
+                        window.__celbridgeSendHostMessage(message);
+                    } else if (window.chrome && window.chrome.webview) {
+                        window.chrome.webview.postMessage(message);
+                    } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.unoWebView) {
+                        window.webkit.messageHandlers.unoWebView.postMessage(message);
                     }
                     return false;
                 }

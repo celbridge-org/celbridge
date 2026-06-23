@@ -60,21 +60,26 @@ export class RpcTransport {
             this.#postMessage = options.postMessage ?? defaultWebViewPostMessage;
             const setupListener = options.onMessage ?? defaultWebViewSetupListener;
             setupListener((data) => this.#handleMessage(data));
-            return;
+        } else {
+            // The host selects the WebSocket transport by embedding a connection token in the page URL.
+            // When present, the bridge runs over a WebSocket on the loopback server (independent of the
+            // WebView's view attachment, so it survives backgrounding); otherwise fall back to the
+            // WebView2 messaging transport.
+            const webSocketToken = options.wsToken ?? readWebSocketToken();
+            if (webSocketToken) {
+                this.#setupWebSocketTransport(webSocketToken);
+            } else {
+                this.#postMessage = defaultWebViewPostMessage;
+                defaultWebViewSetupListener((data) => this.#handleMessage(data));
+            }
         }
 
-        // The host selects the WebSocket transport by embedding a connection token in the page URL.
-        // When present, the bridge runs over a WebSocket on the loopback server (independent of the
-        // WebView's view attachment, so it survives backgrounding); otherwise fall back to the
-        // WebView2 messaging transport.
-        const webSocketToken = options.wsToken ?? readWebSocketToken();
-        if (webSocketToken) {
-            this.#setupWebSocketTransport(webSocketToken);
-            return;
+        // Expose the active transport's raw send so client-independent injected scripts (e.g. the F11
+        // keyboard-shortcut script) can reach the host over whichever transport this page uses, rather
+        // than assuming chrome.webview. Pages that never load this client fall back to chrome.webview.
+        if (typeof globalThis !== 'undefined') {
+            globalThis.__celbridgeSendHostMessage = (json) => this.#postMessage(json);
         }
-
-        this.#postMessage = defaultWebViewPostMessage;
-        defaultWebViewSetupListener((data) => this.#handleMessage(data));
     }
 
     /**
