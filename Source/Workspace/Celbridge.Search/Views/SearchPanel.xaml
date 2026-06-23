@@ -56,6 +56,7 @@
                  Margin="0,0,0,4"/>
 
       <TextBox x:Name="SearchTextBox"
+               AutomationProperties.AutomationId="landmark.search-input"
                Grid.Row="1"
                Grid.Column="0"
                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

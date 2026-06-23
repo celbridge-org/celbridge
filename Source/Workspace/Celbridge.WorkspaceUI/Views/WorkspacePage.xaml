@@ -36,6 +36,7 @@
           Grid.RowSpan="2"
           MinWidth="200"
           Tag="Explorer"
+          AutomationProperties.AutomationId="landmark.explorer"
           Background="{ThemeResource PanelBackgroundABrush}"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
@@ -45,6 +46,7 @@
     <Grid x:Name="DocumentsPanel"
           Grid.Column="1"
           Tag="Documents"
+          AutomationProperties.AutomationId="landmark.documents"
           Background="{ThemeResource ApplicationBackgroundBrush}"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
@@ -57,6 +59,7 @@
           Grid.RowSpan="2"
           MinWidth="200"
           Tag="Inspector"
+          AutomationProperties.AutomationId="landmark.inspector"
           Background="{ThemeResource PanelBackgroundABrush}"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
@@ -67,6 +70,7 @@
           Grid.Column="1"
           Grid.Row="1"
           Tag="Console"
+          AutomationProperties.AutomationId="landmark.console"
           Background="{ThemeResource PanelBackgroundBBrush}"
           GotFocus="Panel_GotFocus"
           PointerPressed="Panel_PointerPressed">
@@ -91,5 +95,30 @@
                        Grid.Row="1"
                        VerticalAlignment="Top"
                        Orientation="Horizontal"/>
+
+    <!-- Agent-driven spotlight callout, driven by the app_spotlight tool. -->
+    <TeachingTip x:Name="SpotlightTeachingTip"
+                 Grid.RowSpan="2"
+                 IsLightDismissEnabled="False"
+                 Closed="SpotlightTeachingTip_Closed">
+      <!--
+        Fill the callout (and its tail) with the accent color so it stands out
+        against the dark panels. The body and tail share these background brushes,
+        so overriding them recolors the tail too; the foreground brushes switch the
+        text to the on-accent colour for contrast.
+      -->
+      <TeachingTip.Resources>
+        <StaticResource x:Key="TeachingTipBackgroundBrush"
+                        ResourceKey="AccentFillColorDefaultBrush"/>
+        <StaticResource x:Key="TeachingTipTransientBackground"
+                        ResourceKey="AccentFillColorDefaultBrush"/>
+        <StaticResource x:Key="TeachingTipForegroundBrush"
+                        ResourceKey="TextOnAccentFillColorPrimaryBrush"/>
+        <StaticResource x:Key="TeachingTipTitleForegroundBrush"
+                        ResourceKey="TextOnAccentFillColorPrimaryBrush"/>
+        <StaticResource x:Key="TeachingTipSubtitleForegroundBrush"
+                        ResourceKey="TextOnAccentFillColorPrimaryBrush"/>
+      </TeachingTip.Resources>
+    </TeachingTip>
   </Grid>
 </Page>

@@ -98,60 +98,31 @@ public class McpToolBridge : IMcpToolBridge
             var name = tool["name"]?.GetValue<string>() ?? string.Empty;
             var description = tool["description"]?.GetValue<string>() ?? string.Empty;
 
+            // Share the parameter extraction with ListToolsAsync via BuildToolParameters,
+            // which reads the schema type through ReadSchemaType. A nullable value-type
+            // parameter (e.g. int?) serializes its "type" as a JSON array
+            // (["integer", "null"]); reading that with GetValue<string>() throws and would
+            // crash tool registration for every tool.
             var parameters = new List<object>();
-            var inputSchema = tool["inputSchema"]?["properties"]?.AsObject();
-            var requiredArray = tool["inputSchema"]?["required"]?.AsArray();
-            var requiredNames = new HashSet<string>();
-            if (requiredArray is not null)
+            foreach (var parameter in BuildToolParameters(tool["inputSchema"]))
             {
-                foreach (var requiredName in requiredArray)
+                var parameterInfo = new Dictionary<string, object?>
                 {
-                    var requiredString = requiredName?.GetValue<string>();
-                    if (requiredString is not null)
-                    {
-                        requiredNames.Add(requiredString);
-                    }
-                }
-            }
+                    ["name"] = parameter.Name,
+                    ["type"] = parameter.Type,
+                    ["description"] = parameter.Description,
+                    ["hasDefaultValue"] = parameter.HasDefaultValue,
+                    ["defaultValue"] = parameter.DefaultValue
+                };
 
-            if (inputSchema is not null)
-            {
-                foreach (var property in inputSchema)
+                // For array parameters, include the item type so clients
+                // know the element type (e.g. "array of string").
+                if (parameter.ItemType is not null)
                 {
-                    var parameterName = property.Key;
-                    var parameterSchema = property.Value?.AsObject();
-                    var parameterType = parameterSchema?["type"]?.GetValue<string>() ?? "string";
-                    var parameterDescription = parameterSchema?["description"]?.GetValue<string>() ?? string.Empty;
-                    var hasDefaultValue = !requiredNames.Contains(parameterName);
-
-                    object? defaultValue = null;
-                    if (hasDefaultValue && parameterSchema?["default"] is JsonNode defaultNode)
-                    {
-                        defaultValue = ConvertJsonNodeToObject(defaultNode);
-                    }
-
-                    var parameterInfo = new Dictionary<string, object?>
-                    {
-                        ["name"] = parameterName,
-                        ["type"] = parameterType,
-                        ["description"] = parameterDescription,
-                        ["hasDefaultValue"] = hasDefaultValue,
-                        ["defaultValue"] = defaultValue
-                    };
-
-                    // For array parameters, include the item type so clients
-                    // know the element type (e.g. "array of string").
-                    if (parameterType == "array")
-                    {
-                        var itemType = parameterSchema?["items"]?["type"]?.GetValue<string>();
-                        if (itemType is not null)
-                        {
-                            parameterInfo["itemType"] = itemType;
-                        }
-                    }
-
-                    parameters.Add(parameterInfo);
+                    parameterInfo["itemType"] = parameter.ItemType;
                 }
+
+                parameters.Add(parameterInfo);
             }
 
             _toolMetadata.TryGetValue(name, out var metadata);
@@ -378,7 +349,7 @@ public class McpToolBridge : IMcpToolBridge
         }
     }
 
-    private static IReadOnlyList<ToolParameter> BuildToolParameters(JsonNode? inputSchemaNode)
+    internal static IReadOnlyList<ToolParameter> BuildToolParameters(JsonNode? inputSchemaNode)
     {
         var parameters = new List<ToolParameter>();
         var inputSchema = inputSchemaNode?["properties"]?.AsObject();

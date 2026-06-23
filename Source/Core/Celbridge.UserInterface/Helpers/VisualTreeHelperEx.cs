@@ -54,4 +54,33 @@ public static class VisualTreeHelperEx
 
         return null;
     }
+
+    /// <summary>
+    /// Finds the first descendant whose AutomationProperties.AutomationId matches
+    /// the specified id in the visual tree. Reads the managed attached property
+    /// directly, so it works regardless of whether native automation mapping is
+    /// enabled.
+    /// </summary>
+    public static FrameworkElement? FindDescendantByAutomationId(DependencyObject parent, string automationId)
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(parent);
+
+        for (int i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is FrameworkElement element &&
+                Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(element) == automationId)
+            {
+                return element;
+            }
+
+            var descendant = FindDescendantByAutomationId(child, automationId);
+            if (descendant != null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
+    }
 }

@@ -36,6 +36,7 @@
       <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
     </StackPanel.Resources>
     <Button x:Name="AddFileButton"
+            AutomationProperties.AutomationId="landmark.add-file"
             ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
             Padding="4"
             Click="AddFileButton_Click">
@@ -44,6 +45,7 @@
                 FontSize="20" />
     </Button>
     <Button x:Name="AddFolderButton"
+            AutomationProperties.AutomationId="landmark.add-folder"
             ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
             Padding="4"
             Click="AddFolderButton_Click">
@@ -60,6 +62,7 @@
                 FontSize="20" />
     </Button>
     <Button x:Name="ProjectSettingsButton"
+            AutomationProperties.AutomationId="landmark.project-settings"
             ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
             Padding="4"
             Click="ProjectSettingsButton_Click">

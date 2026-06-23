@@ -28,6 +28,7 @@
                           DoubleTapped="TitleBar_DoubleTapped">
       <controls:PanelHeader.ToolbarContent>
         <Button x:Name="MaximizeRestoreButton"
+                AutomationProperties.AutomationId="landmark.console-maximize"
                 Style="{StaticResource TransparentIconButtonStyle}"
                 ToolTipService.ToolTip="{x:Bind ViewModel.MaximizeRestoreTooltip, Mode=OneWay}"
                 VerticalAlignment="Center"
@@ -91,6 +92,7 @@
 
     <!-- Container for dynamically acquired WebView2 from factory -->
     <Grid x:Name="WebViewContainer"
+          AutomationProperties.AutomationId="landmark.console-input"
           Grid.Row="5"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"/>

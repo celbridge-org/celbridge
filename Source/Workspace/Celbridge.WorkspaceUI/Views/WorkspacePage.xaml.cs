@@ -184,6 +184,8 @@ public sealed partial class WorkspacePage : Page
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
+        messengerService.Register<ShowSpotlightMessage>(this, OnShowSpotlight);
+        messengerService.Register<ClearSpotlightMessage>(this, OnClearSpotlight);
 
         _ = ViewModel.LoadWorkspaceAsync();
     }

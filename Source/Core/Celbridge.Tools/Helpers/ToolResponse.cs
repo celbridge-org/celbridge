@@ -43,6 +43,7 @@ public static class ToolResponse
             [nameof(InvalidResourceKey)] = "troubleshoot_resource_key",
             [nameof(FeatureFlagDisabled)] = "troubleshoot_feature_flag",
             [nameof(ResourceNotFound)] = "troubleshoot_resource_not_found",
+            [nameof(SpotlightTargetNotFound)] = "troubleshoot_spotlight_target",
         };
 
     /// <summary>
@@ -138,6 +139,15 @@ public static class ToolResponse
         ErrorWithTroubleshooter(
             $"Resource not found: '{resource}'.",
             HelperTroubleshooters[nameof(ResourceNotFound)]);
+
+    /// <summary>
+    /// Standardised response for app_spotlight when the requested target is not a
+    /// catalogued landmark. Lists the valid landmark identifiers.
+    /// </summary>
+    public static CallToolResult SpotlightTargetNotFound(string target, string validTargets) =>
+        ErrorWithTroubleshooter(
+            $"Unknown spotlight target: '{target}'. Valid landmarks: {validTargets}.",
+            HelperTroubleshooters[nameof(SpotlightTargetNotFound)]);
 
     private static CallToolResult ErrorWithTroubleshooter(string message, string troubleshooterName)
     {

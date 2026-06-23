@@ -30,6 +30,7 @@
 
                     <!-- Explorer -->
                     <NavigationViewItem x:Name="ExplorerNavItem"
+                                        AutomationProperties.AutomationId="landmark.activity-explorer"
                                         Tag="Explorer">
                         <NavigationViewItem.Icon>
                             <controls:Icon
@@ -39,6 +40,7 @@
 
                     <!-- Search -->
                     <NavigationViewItem x:Name="SearchNavItem"
+                                        AutomationProperties.AutomationId="landmark.activity-search"
                                         Tag="Search">
                         <NavigationViewItem.Icon>
                             <controls:Icon
