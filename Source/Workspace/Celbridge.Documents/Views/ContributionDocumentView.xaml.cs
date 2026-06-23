@@ -314,8 +314,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             // Wire up the JSON-RPC host channel for WebView communication. The factory selects the
             // WebView2 messaging transport or the loopback WebSocket transport from the feature flag;
             // the WebSocket transport returns a connection token to embed in the page navigation URL.
+            // The WebSocket transport requires the page to be same-origin with the loopback server so the
+            // client can derive the ws:// URL from window.location. Editors still served from a virtual
+            // host (SpreadJS) are not same-origin with the loopback server, so they stay on the WebView2
+            // transport even when the flag is on.
             var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
-            var useWebSocketChannel = featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
+            var useWebSocketChannel = servedViaLoopback
+                && featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
             var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
             var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
             _hostChannelTeardown = hostChannelSetup.Teardown;

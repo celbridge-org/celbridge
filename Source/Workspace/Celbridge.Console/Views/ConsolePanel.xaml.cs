@@ -5,6 +5,8 @@ using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Server;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -30,10 +32,13 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
     public ConsolePanelViewModel ViewModel { get; }
 
+    // The console's Terminal web folder is served over the loopback file server under this package name.
+    private const string ConsolePackageName = "console";
+
     private ITerminal? _terminal;
     private UserInterfaceTheme _currentTheme;
     private WebView2? _consoleWebView;
-    private WebViewHostChannel? _hostChannel;
+    private Action? _hostChannelTeardown;
     private ConsoleHost? _consoleHost;
     private DispatcherQueue? _dispatcher;
 
@@ -163,9 +168,17 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         settings.AreDevToolsEnabled = false;
         settings.AreDefaultContextMenusEnabled = true;
 
-        // Set up JSON-RPC host channel
-        _hostChannel = new WebViewHostChannel(_consoleWebView.CoreWebView2);
-        var celbridgeHost = new CelbridgeHost(_hostChannel);
+        // Set up the JSON-RPC host channel. The console is served over the loopback file server (all
+        // heads), so it uses the same WebSocket-or-WebView2 transport selection as the document editors;
+        // the WebSocket transport returns a connection token to embed in the page navigation URL.
+        var featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
+        var useWebSocketChannel = featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
+        var hostChannelBroker = ServiceLocator.AcquireService<IHostChannelBroker>();
+        var hostChannelSetup = HostChannelFactory.Create(_consoleWebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
+        _hostChannelTeardown = hostChannelSetup.Teardown;
+        var connectionToken = hostChannelSetup.ConnectionToken;
+
+        var celbridgeHost = new CelbridgeHost(hostChannelSetup.Channel);
         _consoleHost = new ConsoleHost(celbridgeHost);
 
         // Register this panel as handler for console notifications
@@ -181,11 +194,17 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         }
         _consoleWebView.NavigationCompleted += Handler;
 
-        _consoleWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("console.celbridge",
-            "Celbridge.Console/Web/Terminal",
-            CoreWebView2HostResourceAccessKind.Allow);
+        // Serve the console's Terminal folder over the loopback file server. This is the cross-platform
+        // replacement for the console.celbridge virtual host (SetVirtualHostNameToFolderMapping is a
+        // no-op on the Skia heads). The server is started and ready before the console initializes (see
+        // WorkspaceLoader, which awaits ServerService.StartAsync first).
+        var fileServer = ServiceLocator.AcquireService<IFileServer>();
+        var terminalFolderPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.Console", "Web", "Terminal");
+        fileServer.RegisterPackageFolder(ConsolePackageName, terminalFolderPath);
 
-        _consoleWebView.CoreWebView2.Navigate("http://console.celbridge/index.html");
+        var entryUrl = fileServer.GetPackageUrl(ConsolePackageName, "index.html");
+        entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
+        _consoleWebView.CoreWebView2.Navigate(entryUrl);
 
         // Wait for navigation to complete
         bool success = await tcs.Task;
@@ -285,8 +304,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _consoleHost?.Dispose();
         _consoleHost = null;
 
-        _hostChannel?.Detach();
-        _hostChannel = null;
+        _hostChannelTeardown?.Invoke();
+        _hostChannelTeardown = null;
 
         if (_consoleWebView != null)
         {
