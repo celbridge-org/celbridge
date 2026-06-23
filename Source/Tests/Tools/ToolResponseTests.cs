@@ -105,10 +105,12 @@ public class ToolResponseTests
         ToolResponse.HelperTroubleshooters.Keys.Should().BeEquivalentTo(
             "InvalidResourceKey",
             "FeatureFlagDisabled",
-            "ResourceNotFound");
+            "ResourceNotFound",
+            "SpotlightTargetNotFound");
         ToolResponse.HelperTroubleshooters.Values.Should().BeEquivalentTo(
             "troubleshoot_resource_key",
             "troubleshoot_feature_flag",
-            "troubleshoot_resource_not_found");
+            "troubleshoot_resource_not_found",
+            "troubleshoot_spotlight_target");
     }
 }

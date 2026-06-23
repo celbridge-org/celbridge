@@ -50,6 +50,13 @@ public partial class App : Application
 
         SetupLoggingEnvironment();
 
+#if !WINDOWS
+        // Project AutomationProperties.AutomationId to native automation peers, for
+        // the spotlight feature, UI test drivers, and accessibility. Skia heads only:
+        // the native Windows head maps AutomationId itself and has no FrameworkElementHelper.
+        Uno.UI.FrameworkElementHelper.IsUiAutomationMappingEnabled = true;
+#endif
+
         // Load XAML resources
         Resources.Build(r => r
             .Merged(new XamlControlsResources())
