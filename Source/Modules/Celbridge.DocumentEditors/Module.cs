@@ -35,11 +35,12 @@ public class Module : IModule
 
         return new[]
         {
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
             // Editors migrated to the loopback file-server scheme (the macOS WebView hosting layer)
-            // set ServedViaLoopback. The remaining editors follow; each flips the flag as it is migrated.
+            // set ServedViaLoopback. SpreadJS is the last remaining editor (it needs the native
+            // synthetic-origin shim) and flips the flag once that lands.
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes"), ServedViaLoopback = true },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer"), ServedViaLoopback = true },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer"), ServedViaLoopback = true },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor"), ServedViaLoopback = true },
         };
     }

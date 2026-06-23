@@ -1,8 +1,8 @@
 // Screenplay viewer initialization for Celbridge WebView integration.
 // Uses celbridge.js for JSON-RPC communication with the host.
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {

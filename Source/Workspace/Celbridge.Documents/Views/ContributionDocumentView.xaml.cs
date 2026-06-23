@@ -25,6 +25,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private const int SaveRequestTimeoutSeconds = 30;
     private const int ReloadStateWaitSeconds = 5;
 
+    // Editor-state capture/restore is best-effort (a user convenience, not data). Bound the wait so an
+    // editor that never responds to the host->editor RPC cannot stall document close, which would jam
+    // the serial command queue. Kept under the command watchdog's 5s threshold.
+    private const int EditorStateRequestTimeoutSeconds = 3;
+
     private readonly ILogger<ContributionDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
@@ -307,6 +312,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             // Wire up the JSON-RPC host channel for WebView communication.
             _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
             Host = new CelbridgeHost(_hostChannel);
+
             Host.AddLocalRpcTarget<IHostInput>(this);
             Host.AddLocalRpcTarget<IHostContext>(this);
 
@@ -653,15 +659,41 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             return null;
         }
 
+        // Race the request against a hard timeout and abandon it on timeout. A CancellationToken does
+        // not work here: StreamJsonRpc cancellation waits for the editor to acknowledge the cancel, and
+        // the unresponsive editor is exactly the failure being guarded against. State capture is
+        // best-effort, so abandoning the request and closing without state is the correct degradation.
+        var requestStateTask = Host.RequestStateAsync();
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(EditorStateRequestTimeoutSeconds));
+        var completedTask = await Task.WhenAny(requestStateTask, timeoutTask);
+
+        if (completedTask != requestStateTask)
+        {
+            _logger.LogWarning("Editor did not return state within {Seconds}s; closing without preserving editor state.", EditorStateRequestTimeoutSeconds);
+            ObserveAbandonedRequest(requestStateTask);
+            return null;
+        }
+
         try
         {
-            return await Host.RequestStateAsync();
+            return await requestStateTask;
         }
         catch (StreamJsonRpc.RemoteMethodNotFoundException)
         {
             // Editor did not register a document/requestState handler.
             return null;
         }
+    }
+
+    // Swallows the eventual fault of an abandoned host->editor request (it faults when the WebView is
+    // torn down) so it does not surface as an unobserved task exception.
+    private static void ObserveAbandonedRequest(Task task)
+    {
+        _ = task.ContinueWith(
+            static abandonedTask => { _ = abandonedTask.Exception; },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 
     public override async Task RestoreEditorStateAsync(string state)
@@ -672,9 +704,21 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             return;
         }
 
+        var restoreStateTask = Host!.RestoreStateAsync(state);
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(EditorStateRequestTimeoutSeconds));
+        var completedTask = await Task.WhenAny(restoreStateTask, timeoutTask);
+
+        if (completedTask != restoreStateTask)
+        {
+            // Best-effort restore; an unresponsive editor should not stall the caller. Abandon and move on.
+            _logger.LogWarning("Editor did not acknowledge restoreState within {Seconds}s; continuing.", EditorStateRequestTimeoutSeconds);
+            ObserveAbandonedRequest(restoreStateTask);
+            return;
+        }
+
         try
         {
-            await Host!.RestoreStateAsync(state);
+            await restoreStateTask;
         }
         catch (StreamJsonRpc.RemoteMethodNotFoundException)
         {

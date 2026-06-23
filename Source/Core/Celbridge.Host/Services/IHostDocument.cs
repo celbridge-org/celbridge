@@ -134,6 +134,8 @@ public static class HostDocumentExtensions
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.
+    /// Callers must impose their own hard timeout: StreamJsonRpc cancellation is cooperative (it waits
+    /// for the editor to acknowledge), so it cannot unblock a caller when the editor never replies.
     /// </summary>
     public static Task<string?> RequestStateAsync(this CelbridgeHost host)
         => host.Rpc.InvokeAsync<string?>(DocumentRpcMethods.RequestState);

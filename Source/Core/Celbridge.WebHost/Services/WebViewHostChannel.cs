@@ -37,7 +37,23 @@ public class WebViewHostChannel : IHostChannel
             // and is unchanged. Serializing the JSON yields a safely-escaped JS string literal.
             var encodedJson = JsonSerializer.Serialize(json);
             var script = $"window.__celbridgeReceiveHostMessage && window.__celbridgeReceiveHostMessage({encodedJson});";
-            _ = _coreWebView2.ExecuteScriptAsync(script);
+
+            // ExecuteScriptAsync is the C#->JS push on Skia. Observe the operation instead of discarding
+            // it, so a delivery fault (the script never ran) is surfaced rather than lost silently.
+            var executeScriptOperation = _coreWebView2.ExecuteScriptAsync(script);
+            _ = ObserveExecuteScriptAsync();
+
+            async Task ObserveExecuteScriptAsync()
+            {
+                try
+                {
+                    await executeScriptOperation;
+                }
+                catch (Exception observeException)
+                {
+                    _logger.LogError(observeException, "Failed to deliver host->editor message via ExecuteScriptAsync");
+                }
+            }
 #endif
         }
         catch (Exception ex)

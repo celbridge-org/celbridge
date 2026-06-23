@@ -2,9 +2,9 @@
 // TipTap-based rich text editor using native JSON storage format
 
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from '../lib/tiptap.js';
-import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason, PROJECT_HOST_URL, projectUrl } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import { t } from '/assets/celbridge-client/localization.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
@@ -472,12 +472,12 @@ client.theme.onChanged((theme) => {
 
 // Handle language changes (for future runtime language switching)
 client.localization.onLanguageChanged(async (locale) => {
-    // Reload localization from the extension's localization folder
-    const hostName = location.hostname;
+    // Reload localization from the package's own localization folder, addressed relative to the
+    // page so it resolves against the page's origin on every head (loopback or virtual host).
     try {
-        const response = await fetch(`https://${hostName}/localization/${locale}.json`);
+        const response = await fetch(`localization/${locale}.json`);
         if (response.ok) {
-            const { setStrings } = await import('https://shared.celbridge/celbridge-client/localization.js');
+            const { setStrings } = await import('/assets/celbridge-client/localization.js');
             const strings = await response.json();
             setStrings(strings);
 
@@ -501,8 +501,9 @@ async function initializeEditor() {
 
         await client.initializeDocument({
             onContent: async (content, metadata) => {
-                // Set base URLs for resolving relative paths
-                projectBaseUrl = PROJECT_HOST_URL;
+                // Set base URLs for resolving relative paths. projectUrl('') yields the project
+                // root for the current head (loopback /project/ or the project virtual host).
+                projectBaseUrl = projectUrl('');
                 const resourceKey = metadata?.resourceKey || '';
                 const lastSlash = resourceKey.lastIndexOf('/');
                 documentBaseUrl = lastSlash >= 0

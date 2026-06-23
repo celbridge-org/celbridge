@@ -256,7 +256,23 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public void SelectTab(DocumentTab tab)
     {
-        TabView.SelectedItem = tab;
+        try
+        {
+            TabView.SelectedItem = tab;
+        }
+        catch (InvalidOperationException) when (OperatingSystem.IsMacOS())
+        {
+            // On the macOS Skia head, selecting a tab in an overflowing strip that has not been measured
+            // yet (as happens when the active document is restored after all tabs are added) makes Uno
+            // throw a layout exception for the selected tab's corner render (an invalid NaN/Infinity
+            // frame size), which wedges the workspace load. Retry on the next dispatcher cycle, once the
+            // strip has a valid layout. The common path stays synchronous so tab selection order during
+            // restore is preserved.
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TabView.SelectedItem = tab;
+            });
+        }
     }
 
     /// <summary>

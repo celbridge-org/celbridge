@@ -57,18 +57,12 @@ public class ServerService : IServerService, IDisposable
     {
         var mcpToolsEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools);
 
-        // On the macOS Skia head SetVirtualHostNameToFolderMapping is a no-op, so WebView content is
-        // served over this loopback file server instead. That makes the server a hard dependency for
-        // every WebView on macOS, independent of the MCP tools flag.
-        var webViewAssetServingRequired = OperatingSystem.IsMacOS();
-
-        if (!mcpToolsEnabled
-            && !webViewAssetServingRequired)
-        {
-            Status = ServerStatus.Ready;
-            _logger.LogInformation("MCP tools disabled by feature flag. Server will not start.");
-            return;
-        }
+        // The loopback file server hosts all WebView editor content (the /project/, /assets/, and
+        // /package/ routes) on every head: SetVirtualHostNameToFolderMapping is a no-op on the macOS
+        // Skia head, and the bundled editors are addressed root-relative against the loopback origin
+        // on all heads. The server is therefore a hard dependency for every WebView, independent of
+        // the MCP tools flag, and always starts once a project is loaded. The MCP tools flag only
+        // gates the agent endpoints registered further down.
 
         if (_webApplication is not null)
         {
