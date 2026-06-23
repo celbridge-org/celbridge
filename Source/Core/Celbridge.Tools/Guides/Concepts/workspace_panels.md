@@ -1,12 +1,14 @@
 # Workspace panels
 
-A loaded project shows several panels around a central editor area:
+A loaded project arranges the UI around a central editor area. You can highlight any named part of this UI for the user with `app_spotlight` (which lists the landmark names); prefer that over describing locations in prose when onboarding or answering "where is X?".
 
-- **Explorer** — the project file tree. `explorer_*` tools create, move, rename, and delete resources. `explorer_undo` / `explorer_redo` reverse file system operations only — they cannot undo document text edits.
-- **Documents** — the central editor area. Files open as tabs across up to three sections (sectionIndex 0, 1, 2 from left to right). `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content.
-- **Inspector** — contextual properties for the selected resource.
-- **Search** — full-text search UI. From the agent, use `file_grep` for the same purpose.
-- **Console** — a Python REPL for interactive scripting.
+- **Explorer** (left sidebar) — the project file tree, with toolbar buttons to add a file, add a folder, and open project settings. `explorer_*` tools create, move, rename, and delete resources; `explorer_undo` / `explorer_redo` reverse file system operations only, not document text edits.
+- **Documents** (centre) — the editor area. Files open as tabs across up to three sections (sectionIndex 0, 1, 2 from left to right); a split-editor button on the document toolbar sets the section count. `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content.
+- **Inspector** (right sidebar) — contextual properties for the selected resource.
+- **Search** — full-text search, reached from the activity bar alongside Explorer in the left sidebar. From the agent, use `file_grep` for the same purpose.
+- **Console** (bottom) — a Python REPL where the user converses with you; it can be maximised to fill the editor area.
+
+The sidebars and console are shown or hidden from the title-bar toggle buttons, and the activity bar switches the left sidebar between Explorer and Search. `app_get_state` reports which panels are currently visible and focused.
 
 ## Resolving ambiguous file references
 

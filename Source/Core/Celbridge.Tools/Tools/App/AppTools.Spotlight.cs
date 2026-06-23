@@ -8,7 +8,7 @@ public partial class AppTools
     /// <summary>Highlight a named UI landmark with a teaching-tip callout to orient the user; an empty target clears it.</summary>
     [McpServerTool(Name = "app_spotlight")]
     [ToolAlias("app.spotlight")]
-    [RelatedGuides]
+    [RelatedGuides("workspace_panels")]
     public async partial Task<CallToolResult> Spotlight(string target, string label = "", int durationMs = 0)
     {
         // An empty target is the clear sentinel and is handled before catalog
@@ -20,10 +20,15 @@ public partial class AppTools
             return ToolResponse.SpotlightTargetNotFound(target, validTargets);
         }
 
+        // Agents sometimes HTML-escape characters such as & in the text they emit,
+        // which would otherwise render literally (e.g. "&amp;") in the callout. The
+        // label is plain text, so decode any entities before displaying it.
+        var decodedLabel = System.Net.WebUtility.HtmlDecode(label);
+
         var spotlightResult = await ExecuteCommandAsync<ISpotlightCommand>(command =>
         {
             command.Target = target;
-            command.Label = label;
+            command.Label = decodedLabel;
             command.DurationMs = durationMs;
         });
         if (spotlightResult.IsFailure)
