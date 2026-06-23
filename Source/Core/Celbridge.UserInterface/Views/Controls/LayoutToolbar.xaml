@@ -88,6 +88,7 @@
         <StackPanel x:Name="PanelToggleButtons" Orientation="Horizontal">
             <!-- Primary Panel Toggle -->
             <Button x:Name="TogglePrimaryPanelButton"
+                    AutomationProperties.AutomationId="landmark.toggle-explorer"
                     Click="TogglePrimaryPanelButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
@@ -99,6 +100,7 @@
             
             <!-- Console Panel Toggle -->
             <Button x:Name="ToggleConsolePanelButton"
+                    AutomationProperties.AutomationId="landmark.toggle-console"
                     Click="ToggleConsolePanelButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
@@ -110,6 +112,7 @@
             
             <!-- Secondary Panel Toggle -->
             <Button x:Name="ToggleSecondaryPanelButton"
+                    AutomationProperties.AutomationId="landmark.toggle-inspector"
                     Click="ToggleSecondaryPanelButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"

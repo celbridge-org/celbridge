@@ -29,6 +29,7 @@
 
                     <!-- Explorer -->
                     <NavigationViewItem x:Name="ExplorerNavItem"
+                                        AutomationProperties.AutomationId="landmark.activity-explorer"
                                         Tag="Explorer">
                         <NavigationViewItem.Icon>
                             <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
@@ -38,6 +39,7 @@
 
                     <!-- Search -->
                     <NavigationViewItem x:Name="SearchNavItem"
+                                        AutomationProperties.AutomationId="landmark.activity-search"
                                         Tag="Search">
                         <NavigationViewItem.Icon>
                             <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"

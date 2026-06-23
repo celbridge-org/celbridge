@@ -13,7 +13,11 @@ public sealed partial class WorkspacePage
 
     private void OnShowSpotlight(object recipient, ShowSpotlightMessage message)
     {
-        var element = VisualTreeHelperEx.FindDescendantByAutomationId(LayoutRoot, message.Target);
+        // Resolve from the window content root so shell landmarks (title bar, panel
+        // toggles) that live outside the workspace panels are reachable too. Fall back
+        // to the workspace root when the XamlRoot is not available yet.
+        var searchRoot = (XamlRoot?.Content as DependencyObject) ?? LayoutRoot;
+        var element = VisualTreeHelperEx.FindDescendantByAutomationId(searchRoot, message.Target);
         if (element is null)
         {
             _logger.LogWarning($"Spotlight target '{message.Target}' is catalogued but could not be resolved in the visual tree. The owning panel may not be open.");

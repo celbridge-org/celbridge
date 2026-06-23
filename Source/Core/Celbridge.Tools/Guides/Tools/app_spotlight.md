@@ -6,12 +6,34 @@ Use it while explaining the interface: spotlight the panel you are talking about
 
 ## Landmarks
 
-`target` must be one of these catalogued landmarks:
+`target` must be one of these catalogued landmarks.
+
+Shell panels:
 
 - `landmark.explorer` — the Explorer panel (left).
 - `landmark.documents` — the Documents area (centre).
 - `landmark.console` — the Console panel (bottom), where the user talks to you.
 - `landmark.inspector` — the Inspector panel (right).
+
+Affordances inside those panels:
+
+- `landmark.add-file` — the new-file button in the Explorer toolbar.
+- `landmark.add-folder` — the new-folder button in the Explorer toolbar.
+- `landmark.project-settings` — the project-settings button in the Explorer toolbar.
+- `landmark.activity-explorer` — the Explorer icon in the activity bar.
+- `landmark.activity-search` — the Search icon in the activity bar.
+- `landmark.search-input` — the search box (only resolves while Search is the active activity).
+- `landmark.console-input` — the console area where the user types to you.
+- `landmark.console-maximize` — the console maximise/restore button.
+- `landmark.document-tabs` — the open-document tab strip (only resolves with a document open).
+- `landmark.split-editor` — the split-editor button on the document toolbar.
+
+Title bar:
+
+- `landmark.settings` — the app Settings button.
+- `landmark.toggle-explorer` — the button that shows or hides the Explorer panel.
+- `landmark.toggle-console` — the button that shows or hides the Console panel.
+- `landmark.toggle-inspector` — the button that shows or hides the Inspector panel.
 
 A `target` outside this list returns an error that lists the valid names; see `troubleshoot_spotlight_target`.
 
