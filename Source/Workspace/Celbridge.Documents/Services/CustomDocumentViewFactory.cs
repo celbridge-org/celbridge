@@ -68,11 +68,14 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
         // Contribution editors are hosted in a WebView2 driven over the C# and JavaScript RPC bridge.
-        // Editors served over the loopback file server (ServedViaLoopback) run on every head; editors
-        // still on a SetVirtualHostNameToFolderMapping virtual host only work on the Windows heads,
-        // where that mapping is implemented (it is a no-op on the Skia heads). Gate at runtime, not on
-        // the WINDOWS TFM, so the Skia desktop head on Windows is included.
+        // Editors served over the loopback file server (ServedViaLoopback) run on every head, and
+        // synthetic-origin editors (SpreadJS) run on Windows (virtual host) and macOS (native
+        // loadHTMLString:baseURL:). Editors still on a plain SetVirtualHostNameToFolderMapping virtual
+        // host only work on the Windows heads, where that mapping is implemented (it is a no-op on the
+        // Skia heads). Gate at runtime, not on the WINDOWS TFM, so the Skia desktop head on Windows is
+        // included.
         if (!_contribution.Package.ServedViaLoopback
+            && !_contribution.Package.SyntheticOrigin
             && !OperatingSystem.IsWindows())
         {
             return Result.Fail($"Contribution editors are not supported on this platform: '{fileResource}'");

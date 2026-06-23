@@ -61,13 +61,20 @@ export class RpcTransport {
             const setupListener = options.onMessage ?? defaultWebViewSetupListener;
             setupListener((data) => this.#handleMessage(data));
         } else {
-            // The host selects the WebSocket transport by embedding a connection token in the page URL.
-            // When present, the bridge runs over a WebSocket on the loopback server (independent of the
-            // WebView's view attachment, so it survives backgrounding); otherwise fall back to the
-            // WebView2 messaging transport.
+            // The host selects the WebSocket transport in one of two ways. A synthetic-origin page
+            // (SpreadJS, served under its faked origin so its derived URL would not reach the loopback
+            // server) gets the full bridge URL injected as window.__celbridgeBridgeUrl. A normal
+            // loopback page instead carries a connection token in its URL and derives the same-origin
+            // ws:// URL from it. Either way the WebSocket survives the WebView's view attachment. With
+            // neither present, fall back to the WebView2 messaging transport.
+            const injectedBridgeUrl = options.wsUrl ?? readInjectedBridgeUrl();
             const webSocketToken = options.wsToken ?? readWebSocketToken();
-            if (webSocketToken) {
-                this.#setupWebSocketTransport(webSocketToken);
+            if (injectedBridgeUrl) {
+                this.#setupWebSocketTransport(injectedBridgeUrl);
+            } else if (webSocketToken) {
+                const scheme = (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss' : 'ws';
+                const host = (typeof location !== 'undefined' && location.host) ? location.host : '127.0.0.1';
+                this.#setupWebSocketTransport(`${scheme}://${host}/ws/host?token=${encodeURIComponent(webSocketToken)}`);
             } else {
                 this.#postMessage = defaultWebViewPostMessage;
                 defaultWebViewSetupListener((data) => this.#handleMessage(data));
@@ -83,17 +90,13 @@ export class RpcTransport {
     }
 
     /**
-     * Routes the bridge over a WebSocket on the loopback server. The URL is same-origin (the page is
-     * served from the loopback origin), and the connection token both routes the socket to this
-     * document's host channel and authenticates it. Outbound messages are buffered until the socket
-     * opens. No automatic reconnection: the socket lives for the page's lifetime.
-     * @param {string} token - The connection token from the page URL.
+     * Routes the bridge over a WebSocket on the loopback server at the given URL. The token in the URL
+     * both routes the socket to this document's host channel and authenticates it. Outbound messages
+     * are buffered until the socket opens. No automatic reconnection: the socket lives for the page's
+     * lifetime.
+     * @param {string} url - The full ws:// URL (same-origin-derived, or host-injected for synthetic-origin pages).
      */
-    #setupWebSocketTransport(token) {
-        const scheme = (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss' : 'ws';
-        const host = (typeof location !== 'undefined' && location.host) ? location.host : '127.0.0.1';
-        const url = `${scheme}://${host}/ws/host?token=${encodeURIComponent(token)}`;
-
+    #setupWebSocketTransport(url) {
         const outboundQueue = [];
         const socket = new WebSocket(url);
 
@@ -441,4 +444,18 @@ function readWebSocketToken() {
     } catch {
         return null;
     }
+}
+
+/**
+ * Reads the full bridge URL the host injected for a synthetic-origin page (SpreadJS), whose faked
+ * origin means it cannot derive the loopback ws:// URL from its own location. Null when absent.
+ * @returns {string|null}
+ */
+function readInjectedBridgeUrl() {
+    if (typeof globalThis === 'undefined') {
+        return null;
+    }
+
+    const url = globalThis.__celbridgeBridgeUrl;
+    return typeof url === 'string' && url.length > 0 ? url : null;
 }

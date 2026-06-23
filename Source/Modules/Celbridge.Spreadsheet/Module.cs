@@ -114,6 +114,7 @@ public class Module : IModule
                 HostNameOverride = "spreadjs.celbridge",
                 Secrets = secrets,
                 DevToolsBlocked = true,
+                SyntheticOrigin = true,
             }
         };
     }

@@ -113,8 +113,15 @@ public class FileServer : IFileServer, IDisposable
 
         context.Response.ContentType = contentType;
 
-        // The page and its assets share one loopback origin, so no CORS is needed. These match the
-        // /local/ route and enable WebContainer support in local HTML/JS.
+        // Loopback-served pages are same-origin and need no CORS. The exception is a synthetic-origin
+        // editor (SpreadJS, loaded under its faked spreadjs.celbridge origin for its domain-locked
+        // license): it pulls its lib and the shared client cross-origin from this server, so the routes
+        // must allow any origin and be embeddable cross-origin. Validated watermark-free in the macOS
+        // SpreadJS feasibility spike with exactly these headers.
+        context.Response.Headers["Access-Control-Allow-Origin"] = "*";
+        context.Response.Headers["Cross-Origin-Resource-Policy"] = "cross-origin";
+
+        // These match the /local/ route and enable WebContainer support in local HTML/JS.
         context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
         context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
 

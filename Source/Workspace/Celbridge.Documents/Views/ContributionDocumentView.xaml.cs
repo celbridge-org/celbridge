@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.FileSystem;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -234,14 +235,23 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             // and /assets/ routes) and run on every head; the rest still use the in-process virtual
             // host, which only works on the Windows heads. See PackageInfo.ServedViaLoopback.
             var servedViaLoopback = Contribution.Package.ServedViaLoopback;
+#if WINDOWS
+            var useSyntheticOriginNativeLoad = false;
+#else
+            // Synthetic-origin packages (SpreadJS) load under their faked origin via native
+            // loadHTMLString:baseURL: on the Skia heads, for their domain-locked license; on the Windows
+            // heads they keep the virtual-host path (fixed up later).
+            var useSyntheticOriginNativeLoad = Contribution.Package.SyntheticOrigin && OperatingSystem.IsMacOS();
+#endif
             var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
             var packageUrlName = Contribution.Package.Name.Replace('.', '-');
 
-            if (servedViaLoopback)
+            if (servedViaLoopback || useSyntheticOriginNativeLoad)
             {
-                // The project and shared assets are registered globally by the server; only the
-                // package's own folder needs registering here. The document loads from the loopback
-                // origin, so the page resolves all root-relative references against the file server.
+                // The project and shared assets are registered globally by the server; only the package's
+                // own folder needs registering here. Loopback-served editors load directly from the
+                // loopback origin; synthetic-origin editors load under their faked origin but pull their
+                // lib and the shared client cross-origin from this /package/ route.
                 fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
             }
             else
@@ -319,7 +329,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             // host (SpreadJS) are not same-origin with the loopback server, so they stay on the WebView2
             // transport even when the flag is on.
             var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
-            var useWebSocketChannel = servedViaLoopback
+            var useWebSocketChannel = (servedViaLoopback || useSyntheticOriginNativeLoad)
                 && featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
             var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
             var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
@@ -364,11 +374,23 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             }
 
             var entryPoint = Contribution.EntryPoint;
-            var entryUrl = servedViaLoopback
-                ? fileServer.GetPackageUrl(packageUrlName, entryPoint)
-                : $"https://{Contribution.Package.HostName}/{entryPoint}";
-            entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
-            WebView.CoreWebView2.Navigate(entryUrl);
+            if (useSyntheticOriginNativeLoad)
+            {
+#if !WINDOWS
+                // Load the synthetic-origin page via native loadHTMLString. The content must be set before
+                // the tab-refresh kick renders the WebView (loadHTMLString into an unrendered webview is a
+                // no-op until a render is triggered), so this runs inline during init.
+                await LoadSyntheticOriginPageAsync(packageUrlName, entryPoint, connectionToken);
+#endif
+            }
+            else
+            {
+                var entryUrl = servedViaLoopback
+                    ? fileServer.GetPackageUrl(packageUrlName, entryPoint)
+                    : $"https://{Contribution.Package.HostName}/{entryPoint}";
+                entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
+                WebView.CoreWebView2.Navigate(entryUrl);
+            }
 
             _initTcs!.TrySetResult(Result.Ok());
         }
@@ -381,6 +403,62 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             _initTcs!.TrySetResult(failure);
         }
     }
+
+#if !WINDOWS
+    /// <summary>
+    /// Loads a synthetic-origin editor (SpreadJS) under its faked origin via native loadHTMLString:baseURL:
+    /// on the Skia heads, so its domain-locked license passes. The entry HTML is rewritten so its lib and
+    /// shared-client references resolve cross-origin to the loopback file server (absolute URLs, since
+    /// loadHTMLString ignores a base element), and the WebSocket bridge URL is injected (the faked-origin
+    /// page cannot derive it from its own location).
+    /// </summary>
+    private async Task LoadSyntheticOriginPageAsync(string packageUrlName, string entryPoint, string? connectionToken)
+    {
+        var coreWebView2 = WebView!.CoreWebView2;
+
+        var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
+        var serverService = _serviceProvider.GetRequiredService<IServerService>();
+        var localFileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
+
+        var packageBaseUrl = fileServer.GetPackageUrl(packageUrlName, string.Empty);
+        var assetsBaseUrl = $"http://127.0.0.1:{serverService.Port}/assets/";
+        var bridgeUrl = $"ws://127.0.0.1:{serverService.Port}/ws/host?token={connectionToken}";
+
+        var entryHtmlPath = System.IO.Path.Combine(Contribution.Package.PackageFolder, entryPoint);
+        var readResult = await localFileSystem.ReadAllTextAsync(entryHtmlPath);
+        if (readResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Failed to read synthetic-origin entry HTML '{entryHtmlPath}': {readResult.DiagnosticReport}");
+        }
+
+        var encodedBridgeUrl = JsonSerializer.Serialize(bridgeUrl);
+
+        // Rewrite the page's relative resource references to absolute loopback URLs. loadHTMLString does
+        // not honour a <base> element, so (as in the validated feasibility spike) the lib and entry
+        // script URLs are made absolute against the package's loopback /package/ route.
+        var entryHtml = readResult.Value
+            .Replace("\"lib/", $"\"{packageBaseUrl}lib/")
+            .Replace("\"spreadsheet.js\"", $"\"{packageBaseUrl}spreadsheet.js\"");
+
+        // Inject into <head>: an import map remapping the editor's absolute shared.celbridge client
+        // imports to the loopback /assets/ route (keeping the package's own files unchanged, so the
+        // Windows virtual-host path still works), and the WebSocket bridge URL the faked-origin page
+        // cannot derive itself.
+        var importMap = $"<script type=\"importmap\">{{\"imports\":{{\"https://shared.celbridge/\":\"{assetsBaseUrl}\"}}}}</script>";
+        var injectedHead = $"{importMap}<script>window.__celbridgeBridgeUrl={encodedBridgeUrl};</script>";
+        var html = entryHtml.Replace("<head>", "<head>" + injectedHead);
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var handle, out var detail))
+        {
+            throw new InvalidOperationException($"Could not reach the native WKWebView handle for the synthetic-origin editor: {detail}");
+        }
+
+        // http (not https) origin so the cross-origin http loopback resource fetches are not blocked as
+        // mixed content. The license validates on the hostname, not the scheme.
+        var syntheticOriginUrl = $"http://{Contribution.Package.HostName}/";
+        MacOSWebViewInterop.LoadHtmlString(handle, html, syntheticOriginUrl);
+    }
+#endif
 
     /// <summary>
     /// Tears down the WebView, host channel, and associated handlers. Safe to call

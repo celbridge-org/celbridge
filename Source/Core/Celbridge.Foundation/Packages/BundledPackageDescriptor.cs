@@ -39,4 +39,14 @@ public sealed record BundledPackageDescriptor
     /// virtual-host editors are unsupported on the Skia heads where the mapping is a no-op.
     /// </summary>
     public bool ServedViaLoopback { get; init; }
+
+    /// <summary>
+    /// When true, this package is loaded under a faked origin (its HostNameOverride) rather than the
+    /// loopback origin, because it depends on a fixed origin it cannot get from the loopback server
+    /// (SpreadJS, whose OSS license is domain-locked to spreadjs.celbridge). The page gets the synthetic
+    /// origin via the WebView virtual host on Windows and native loadHTMLString:baseURL: on the Skia
+    /// heads, while its lib, the shared client, and its WebSocket bridge load cross-origin from the
+    /// loopback server by absolute URL. Mutually exclusive with ServedViaLoopback.
+    /// </summary>
+    public bool SyntheticOrigin { get; init; }
 }

@@ -73,6 +73,15 @@ public partial record PackageInfo
     public bool ServedViaLoopback { get; init; }
 
     /// <summary>
+    /// When true, the package is loaded under its faked HostName origin (virtual host on Windows, native
+    /// loadHTMLString:baseURL: on the Skia heads) because it depends on a fixed origin the loopback server
+    /// cannot provide (SpreadJS's domain-locked license). Its lib, the shared client, and its WebSocket
+    /// bridge load cross-origin from the loopback server by absolute URL. Mutually exclusive with
+    /// ServedViaLoopback.
+    /// </summary>
+    public bool SyntheticOrigin { get; init; }
+
+    /// <summary>
     /// Whether the package was discovered as a bundled (in-module) or project
     /// (project-tree) package. Drives the read path selection at every site
     /// that loads bytes for the package.

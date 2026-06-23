@@ -287,6 +287,7 @@ public class PackageRegistry
                 descriptor.Secrets,
                 descriptor.DevToolsBlocked,
                 descriptor.ServedViaLoopback,
+                descriptor.SyntheticOrigin,
                 origin: PackageOrigin.Bundled,
                 reader: _bundledReader);
             if (loadResult.IsFailure)

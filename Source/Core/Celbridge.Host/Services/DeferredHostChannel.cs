@@ -51,12 +51,14 @@ public sealed class DeferredHostChannel : IHostChannel, IDisposable
     }
 
     /// <summary>
-    /// Binds the socket channel that the page connected back over. Flushes buffered outbound messages
-    /// in order and forwards all future inbound messages. Returns false if the view was already torn
-    /// down or a connection was already bound, in which case the caller must dispose the socket channel.
+    /// Binds the socket channel that the page connected back over. Flushes buffered outbound messages in
+    /// order and forwards all future inbound messages. Supports re-binding: if a previous connection is
+    /// still bound (a reloaded page reconnecting), it is detached and disposed first. Returns false only
+    /// if the view was already torn down, in which case the caller must dispose the socket channel.
     /// </summary>
     internal bool Bind(IHostChannel socketChannel)
     {
+        IHostChannel? previousChannel;
         List<string> bufferedOutbound;
         lock (_gate)
         {
@@ -65,15 +67,16 @@ public sealed class DeferredHostChannel : IHostChannel, IDisposable
                 return false;
             }
 
-            if (_boundChannel is not null)
-            {
-                _logger.LogWarning("DeferredHostChannel is already bound; ignoring duplicate connection.");
-                return false;
-            }
-
+            previousChannel = _boundChannel;
             _boundChannel = socketChannel;
             bufferedOutbound = new List<string>(_pendingOutbound);
             _pendingOutbound.Clear();
+        }
+
+        if (previousChannel is not null)
+        {
+            previousChannel.MessageReceived -= OnSocketMessageReceived;
+            (previousChannel as IDisposable)?.Dispose();
         }
 
         socketChannel.MessageReceived += OnSocketMessageReceived;
