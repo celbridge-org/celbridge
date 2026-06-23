@@ -9,7 +9,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
 using Celbridge.Server;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -321,16 +320,14 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                     args.ProcessFailedKind, args.Reason, args.ExitCode);
             };
 
-            // Wire up the JSON-RPC host channel for WebView communication. The factory selects the
-            // WebView2 messaging transport or the loopback WebSocket transport from the feature flag;
-            // the WebSocket transport returns a connection token to embed in the page navigation URL.
-            // The WebSocket transport requires the page to be same-origin with the loopback server so the
-            // client can derive the ws:// URL from window.location. Editors still served from a virtual
-            // host (SpreadJS) are not same-origin with the loopback server, so they stay on the WebView2
-            // transport even when the flag is on.
-            var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
-            var useWebSocketChannel = (servedViaLoopback || useSyntheticOriginNativeLoad)
-                && featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
+            // Wire up the JSON-RPC host channel for WebView communication. The transport is chosen
+            // structurally: first-party content served over the loopback server, or loaded under a
+            // synthetic origin, loads the celbridge client and so opens a WebSocket back to the host
+            // (the factory returns a connection token to embed in the page navigation URL). Content
+            // still served from a virtual host (SpreadJS on Windows, until its synthetic path lands) is
+            // not same-origin with the loopback server and cannot derive that socket URL, so it stays on
+            // the WebView2 message channel.
+            var useWebSocketChannel = servedViaLoopback || useSyntheticOriginNativeLoad;
             var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
             var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
             _hostChannelTeardown = hostChannelSetup.Teardown;

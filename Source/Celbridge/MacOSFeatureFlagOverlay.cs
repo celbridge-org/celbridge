@@ -3,7 +3,7 @@ namespace Celbridge;
 /// <summary>
 /// A configuration overlay that sets macOS-specific feature flag values while the macOS port is in
 /// progress. It is layered over appsettings.json so the macOS desktop head runs with unported
-/// subsystems gated off (and the WebSocket host bridge forced on), while Windows is unaffected.
+/// subsystems gated off, while Windows is unaffected.
 /// </summary>
 /// <remarks>
 /// This is a live checklist of what is not yet ported. As each workstream lands and is verified on
@@ -26,11 +26,5 @@ internal static class MacOSFeatureFlagOverlay
         // initialization (WS3, no macOS uv binary yet). Both are reached only through this panel, so
         // gating it off keeps workspace load clean until those workstreams land.
         ["FeatureFlags:console-panel"] = "false",
-
-        // Forces the WebSocket host bridge on (the appsettings default is off so Windows stays on the
-        // WebView2 transport until equivalence is proven). The WebView2 transport loses its JS->C#
-        // bridge for backgrounded WebViews on macOS, so the WebSocket channel is the only viable
-        // transport here. Remove this entry once the WebView2 transport is deleted at parity.
-        ["FeatureFlags:websocket-host-channel"] = "true",
     };
 }

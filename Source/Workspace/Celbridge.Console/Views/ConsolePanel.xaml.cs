@@ -6,7 +6,6 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Server;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -168,13 +167,11 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         settings.AreDevToolsEnabled = false;
         settings.AreDefaultContextMenusEnabled = true;
 
-        // Set up the JSON-RPC host channel. The console is served over the loopback file server (all
-        // heads), so it uses the same WebSocket-or-WebView2 transport selection as the document editors;
-        // the WebSocket transport returns a connection token to embed in the page navigation URL.
-        var featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
-        var useWebSocketChannel = featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
+        // Set up the JSON-RPC host channel. The console is always served over the loopback file server
+        // (all heads) and loads the celbridge client, so it always uses the WebSocket transport, which
+        // returns a connection token to embed in the page navigation URL.
         var hostChannelBroker = ServiceLocator.AcquireService<IHostChannelBroker>();
-        var hostChannelSetup = HostChannelFactory.Create(_consoleWebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
+        var hostChannelSetup = HostChannelFactory.Create(_consoleWebView.CoreWebView2, useWebSocketChannel: true, hostChannelBroker);
         _hostChannelTeardown = hostChannelSetup.Teardown;
         var connectionToken = hostChannelSetup.ConnectionToken;
 
