@@ -26,6 +26,7 @@
     
     <!-- TabView for documents -->
     <TabView x:Name="TabView"
+             AutomationProperties.AutomationId="landmark.document-tabs"
              IsAddTabButtonVisible="False"
              TabWidthMode="SizeToContent"
              VerticalAlignment="Stretch"

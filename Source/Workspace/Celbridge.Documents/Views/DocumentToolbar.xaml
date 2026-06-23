@@ -13,6 +13,7 @@
               VerticalAlignment="Center"
               Margin="0, 0, 4, 0">
     <Button x:Name="SplitEditorButton"
+            AutomationProperties.AutomationId="landmark.split-editor"
             Style="{StaticResource TransparentIconButtonStyle}"
             Width="24"
             Height="24"

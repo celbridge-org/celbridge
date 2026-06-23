@@ -51,3 +51,15 @@ public record ConsoleMaximizedChangedMessage(bool IsMaximized);
 /// Listeners should reset their layout state (e.g., document sections).
 /// </summary>
 public record ResetLayoutRequestedMessage();
+
+/// <summary>
+/// Sent to display a teaching-tip spotlight on a resolved UI landmark. Label is
+/// the callout text (empty for no text); DurationMs is an auto-clear delay in
+/// milliseconds, or zero to persist until cleared or replaced.
+/// </summary>
+public record ShowSpotlightMessage(string Target, string Label, int DurationMs);
+
+/// <summary>
+/// Sent to clear any visible teaching-tip spotlight.
+/// </summary>
+public record ClearSpotlightMessage();
