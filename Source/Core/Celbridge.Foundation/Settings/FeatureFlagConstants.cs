@@ -41,4 +41,12 @@ public static class FeatureFlagConstants
     /// Enables the built-in WebFetch and WebSearch tools for coding agents.
     /// </summary>
     public const string WebAccessTools = "web-access-tools";
+
+    /// <summary>
+    /// Routes the JSON-RPC host bridge over a WebSocket on the loopback server instead of the
+    /// WebView2 messaging transport. Transitional flag while the WebSocket channel is proven
+    /// equivalent to chrome.webview on Windows; forced on for macOS, where the WebView2 transport
+    /// loses its bridge for backgrounded WebViews.
+    /// </summary>
+    public const string WebSocketHostChannel = "websocket-host-channel";
 }

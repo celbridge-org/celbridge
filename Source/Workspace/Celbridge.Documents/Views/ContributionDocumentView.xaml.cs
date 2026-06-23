@@ -8,6 +8,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
 using Celbridge.Server;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -45,8 +46,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private ContributionDocumentHandler? _documentHandler;
     private ContributionToolsHandler? _toolsHandler;
 
-    // JSON-RPC infrastructure
-    private WebViewHostChannel? _hostChannel;
+    // JSON-RPC infrastructure. Teardown detaches the WebView2 channel or disposes the deferred
+    // WebSocket channel, depending on the transport the host channel factory selected.
+    private Action? _hostChannelTeardown;
 
     // WebView tool bridge registration tracking. Only set when the package allows the
     // webview_* tools and the registration has succeeded; the field doubles as a guard
@@ -309,9 +311,16 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                     args.ProcessFailedKind, args.Reason, args.ExitCode);
             };
 
-            // Wire up the JSON-RPC host channel for WebView communication.
-            _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
-            Host = new CelbridgeHost(_hostChannel);
+            // Wire up the JSON-RPC host channel for WebView communication. The factory selects the
+            // WebView2 messaging transport or the loopback WebSocket transport from the feature flag;
+            // the WebSocket transport returns a connection token to embed in the page navigation URL.
+            var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
+            var useWebSocketChannel = featureFlags.IsEnabled(FeatureFlagConstants.WebSocketHostChannel);
+            var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
+            var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
+            _hostChannelTeardown = hostChannelSetup.Teardown;
+            var connectionToken = hostChannelSetup.ConnectionToken;
+            Host = new CelbridgeHost(hostChannelSetup.Channel);
 
             Host.AddLocalRpcTarget<IHostInput>(this);
             Host.AddLocalRpcTarget<IHostContext>(this);
@@ -353,6 +362,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             var entryUrl = servedViaLoopback
                 ? fileServer.GetPackageUrl(packageUrlName, entryPoint)
                 : $"https://{Contribution.Package.HostName}/{entryPoint}";
+            entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
             WebView.CoreWebView2.Navigate(entryUrl);
 
             _initTcs!.TrySetResult(Result.Ok());
@@ -394,10 +404,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         }
 
         Host?.Dispose();
-        _hostChannel?.Detach();
+        _hostChannelTeardown?.Invoke();
 
         Host = null;
-        _hostChannel = null;
+        _hostChannelTeardown = null;
     }
 
     private async Task TryInjectToolBridgeShimAsync()

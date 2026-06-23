@@ -1,3 +1,4 @@
+using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -23,6 +24,7 @@ public class ServerService : IServerService, IDisposable
     private readonly IServiceProvider _applicationServices;
     private readonly IFeatureFlags _featureFlags;
     private readonly AgentMonitor _agentMonitor;
+    private readonly IHostChannelBroker _hostChannelBroker;
     private readonly ILogger<ServerService> _logger;
 
     private WebApplication? _webApplication;
@@ -41,6 +43,7 @@ public class ServerService : IServerService, IDisposable
         IServiceProvider applicationServices,
         IFeatureFlags featureFlags,
         AgentMonitor agentMonitor,
+        IHostChannelBroker hostChannelBroker,
         ILogger<ServerService> logger)
     {
         _agentServer = agentServer;
@@ -50,6 +53,7 @@ public class ServerService : IServerService, IDisposable
         _applicationServices = applicationServices;
         _featureFlags = featureFlags;
         _agentMonitor = agentMonitor;
+        _hostChannelBroker = hostChannelBroker;
         _logger = logger;
     }
 
@@ -105,6 +109,10 @@ public class ServerService : IServerService, IDisposable
 
             _webApplication = builder.Build();
 
+            // The JSON-RPC host bridge runs over a WebSocket on this server (the cross-platform
+            // replacement for WebView2 messaging), so the WebSocket middleware must be in the pipeline.
+            _webApplication.UseWebSockets();
+
             // Let AgentServer and FileServer configure their endpoints
             if (mcpToolsEnabled)
             {
@@ -113,6 +121,8 @@ public class ServerService : IServerService, IDisposable
 
             var fileServer = (FileServer)_fileServer;
             fileServer.ConfigureEndpoints(_webApplication);
+
+            HostChannelEndpoint.Map(_webApplication, _hostChannelBroker);
 
             await _webApplication.StartAsync();
 

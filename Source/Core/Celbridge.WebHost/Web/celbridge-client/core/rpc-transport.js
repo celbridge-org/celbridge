@@ -55,35 +55,67 @@ export class RpcTransport {
     constructor(options = {}) {
         this.#timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
 
-        // Use provided postMessage or default to WebView2's
-        this.#postMessage = options.postMessage ?? ((msg) => {
-            if (window.chrome?.webview) {
-                window.chrome.webview.postMessage(msg);
-            } else if (window.webkit?.messageHandlers?.unoWebView) {
-                // macOS WKWebView (Uno Skia): chrome.webview is absent. Route JS->C# through the
-                // native message handler, which surfaces on the host as CoreWebView2.WebMessageReceived
-                // (the same event the chrome.webview path raises).
-                window.webkit.messageHandlers.unoWebView.postMessage(msg);
+        // Tests inject their own transport via postMessage/onMessage; that always wins.
+        if (options.postMessage || options.onMessage) {
+            this.#postMessage = options.postMessage ?? defaultWebViewPostMessage;
+            const setupListener = options.onMessage ?? defaultWebViewSetupListener;
+            setupListener((data) => this.#handleMessage(data));
+            return;
+        }
+
+        // The host selects the WebSocket transport by embedding a connection token in the page URL.
+        // When present, the bridge runs over a WebSocket on the loopback server (independent of the
+        // WebView's view attachment, so it survives backgrounding); otherwise fall back to the
+        // WebView2 messaging transport.
+        const webSocketToken = options.wsToken ?? readWebSocketToken();
+        if (webSocketToken) {
+            this.#setupWebSocketTransport(webSocketToken);
+            return;
+        }
+
+        this.#postMessage = defaultWebViewPostMessage;
+        defaultWebViewSetupListener((data) => this.#handleMessage(data));
+    }
+
+    /**
+     * Routes the bridge over a WebSocket on the loopback server. The URL is same-origin (the page is
+     * served from the loopback origin), and the connection token both routes the socket to this
+     * document's host channel and authenticates it. Outbound messages are buffered until the socket
+     * opens. No automatic reconnection: the socket lives for the page's lifetime.
+     * @param {string} token - The connection token from the page URL.
+     */
+    #setupWebSocketTransport(token) {
+        const scheme = (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss' : 'ws';
+        const host = (typeof location !== 'undefined' && location.host) ? location.host : '127.0.0.1';
+        const url = `${scheme}://${host}/ws/host?token=${encodeURIComponent(token)}`;
+
+        const outboundQueue = [];
+        const socket = new WebSocket(url);
+
+        socket.addEventListener('open', () => {
+            this.#log('debug', 'Host WebSocket connected');
+            while (outboundQueue.length > 0 && socket.readyState === WebSocket.OPEN) {
+                socket.send(outboundQueue.shift());
             }
         });
-
-        // Set up message listener
-        const setupListener = options.onMessage ?? ((handler) => {
-            if (window.chrome?.webview) {
-                window.chrome.webview.addEventListener('message', (event) => {
-                    handler(event.data);
-                });
-            }
-
-            // C#->JS dispatch entry point for heads where PostWebMessageAsString does not
-            // deliver (Uno Skia): the host pushes messages by invoking this global via
-            // ExecuteScriptAsync. Heads that use chrome.webview messaging never call it.
-            if (typeof globalThis !== 'undefined') {
-                globalThis.__celbridgeReceiveHostMessage = (data) => handler(data);
-            }
+        socket.addEventListener('message', (event) => {
+            this.#handleMessage(event.data);
+        });
+        socket.addEventListener('close', () => {
+            this.#log('warn', 'Host WebSocket closed');
+        });
+        socket.addEventListener('error', (event) => {
+            this.#log('error', 'Host WebSocket error', event);
         });
 
-        setupListener((data) => this.#handleMessage(data));
+        this.#postMessage = (message) => {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(message);
+            } else {
+                // Buffer until the socket opens (still connecting), then flush on 'open'.
+                outboundQueue.push(message);
+            }
+        };
     }
 
     /**
@@ -352,5 +384,56 @@ export class RpcTransport {
                 console.log(fullMessage, data !== undefined ? data : '');
                 break;
         }
+    }
+}
+
+/**
+ * The WebView2 messaging send path (the fallback transport when no WebSocket token is present).
+ * @param {string} message
+ */
+function defaultWebViewPostMessage(message) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(message);
+    } else if (window.webkit?.messageHandlers?.unoWebView) {
+        // macOS WKWebView (Uno Skia): chrome.webview is absent. Route JS->C# through the native
+        // message handler, which surfaces on the host as CoreWebView2.WebMessageReceived (the same
+        // event the chrome.webview path raises).
+        window.webkit.messageHandlers.unoWebView.postMessage(message);
+    }
+}
+
+/**
+ * The WebView2 messaging receive path (the fallback transport when no WebSocket token is present).
+ * @param {Function} handler
+ */
+function defaultWebViewSetupListener(handler) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.addEventListener('message', (event) => {
+            handler(event.data);
+        });
+    }
+
+    // C#->JS dispatch entry point for heads where PostWebMessageAsString does not deliver (Uno Skia):
+    // the host pushes messages by invoking this global via ExecuteScriptAsync. Heads that use
+    // chrome.webview messaging never call it.
+    if (typeof globalThis !== 'undefined') {
+        globalThis.__celbridgeReceiveHostMessage = (data) => handler(data);
+    }
+}
+
+/**
+ * Reads the WebSocket connection token the host embedded in the page URL, or null when absent (the
+ * host did not select the WebSocket transport, or this is a non-browser test environment).
+ * @returns {string|null}
+ */
+function readWebSocketToken() {
+    if (typeof location === 'undefined' || !location.search) {
+        return null;
+    }
+
+    try {
+        return new URLSearchParams(location.search).get('__celToken');
+    } catch {
+        return null;
     }
 }

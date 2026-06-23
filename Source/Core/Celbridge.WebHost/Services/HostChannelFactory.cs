@@ -1,0 +1,56 @@
+using System;
+using Celbridge.Host;
+using Microsoft.Web.WebView2.Core;
+
+namespace Celbridge.WebHost.Services;
+
+/// <summary>
+/// The host channel to build a CelbridgeHost on, plus the per-transport details a view needs:
+/// the optional connection token to embed in the page navigation URL (WebSocket transport only),
+/// and the teardown to run when the view is disposed.
+/// </summary>
+public sealed record HostChannelSetup(IHostChannel Channel, string? ConnectionToken, Action Teardown);
+
+/// <summary>
+/// Builds the host channel for a WebView consumer, selecting between the WebView2 messaging transport
+/// (WebViewHostChannel) and the loopback WebSocket transport (a DeferredHostChannel bound by the
+/// host channel broker once the page connects). The transport is chosen by the caller from the
+/// websocket-host-channel feature flag.
+/// </summary>
+public static class HostChannelFactory
+{
+    public static HostChannelSetup Create(
+        CoreWebView2 coreWebView2,
+        bool useWebSocketChannel,
+        IHostChannelBroker hostChannelBroker)
+    {
+        if (useWebSocketChannel)
+        {
+            var pendingConnection = hostChannelBroker.CreatePendingConnection();
+            var deferredChannel = pendingConnection.Channel;
+
+            return new HostChannelSetup(deferredChannel, pendingConnection.Token, deferredChannel.Dispose);
+        }
+
+        var webViewChannel = new WebViewHostChannel(coreWebView2);
+
+        return new HostChannelSetup(webViewChannel, null, webViewChannel.Detach);
+    }
+
+    /// <summary>
+    /// Appends the WebSocket connection token to a navigation URL as a query parameter, or returns the
+    /// URL unchanged when there is no token (the WebView2 transport). The page reads the token from
+    /// location.search and opens its WebSocket with it.
+    /// </summary>
+    public static string AppendConnectionToken(string navigationUrl, string? connectionToken)
+    {
+        if (string.IsNullOrEmpty(connectionToken))
+        {
+            return navigationUrl;
+        }
+
+        var separator = navigationUrl.Contains('?') ? '&' : '?';
+
+        return $"{navigationUrl}{separator}__celToken={connectionToken}";
+    }
+}

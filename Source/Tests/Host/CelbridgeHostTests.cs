@@ -1,5 +1,7 @@
 using Celbridge.Host;
 using Celbridge.Resources;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Celbridge.Tests.Host;
 
@@ -11,10 +13,22 @@ public class CelbridgeHostTests
 {
     private MockHostChannel _channel = null!;
     private CelbridgeHost _host = null!;
+    private IServiceProvider? _previousServiceProvider;
 
     [SetUp]
     public void SetUp()
     {
+        // RpcMessageHandler acquires its logger through the global ServiceLocator, so the locator must
+        // be initialized with the Celbridge logger registration before a CelbridgeHost is constructed.
+        // The previous provider is captured and restored in TearDown so this fixture leaves the global
+        // ServiceLocator exactly as it found it (other fixtures inherit it).
+        _previousServiceProvider = ServiceLocator.ServiceProvider;
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Celbridge.Logging.Services.Logger<>)));
+        ServiceLocator.Initialize(services.BuildServiceProvider());
+
         _channel = new MockHostChannel();
         _host = new CelbridgeHost(_channel);
     }
@@ -23,6 +37,11 @@ public class CelbridgeHostTests
     public void TearDown()
     {
         _host.Dispose();
+
+        if (_previousServiceProvider is not null)
+        {
+            ServiceLocator.Initialize(_previousServiceProvider);
+        }
     }
 
     [Test]

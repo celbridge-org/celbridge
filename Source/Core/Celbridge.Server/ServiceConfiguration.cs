@@ -1,3 +1,4 @@
+using Celbridge.Host;
 using Celbridge.Server.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,6 +8,7 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IHostChannelBroker, HostChannelBroker>();
         services.AddSingleton<IFileServer, FileServer>();
         services.AddSingleton<IMcpToolBridge, McpToolBridge>();
         services.AddSingleton<AgentMonitor>();
