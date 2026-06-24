@@ -115,6 +115,34 @@ public class RootHandlerRegistryTests
     }
 
     [Test]
+    public void GetResourceKey_MatchesCaseInsensitivelyOnCaseInsensitiveFileSystems()
+    {
+        _rootRegistry.RegisterRootHandler(
+            new ProjectRootHandler(_projectFolderPath));
+
+        // A path whose backing-location portion differs only in case from how the
+        // root was registered. On a case-insensitive volume (Windows, default APFS)
+        // the dispatch must still recognise it as under the project root; a
+        // case-sensitive volume (Linux) correctly rejects it.
+        var differentlyCasedBacking = _projectFolderPath.ToUpperInvariant();
+        var fullPath = Path.Combine(differentlyCasedBacking, "Notes", "todo.txt");
+
+        var result = _rootRegistry.GetResourceKey(fullPath);
+
+        if (OperatingSystem.IsLinux())
+        {
+            result.IsFailure.Should().BeTrue();
+            result.FirstErrorMessage.Should().Contain("not under any registered resource root");
+        }
+        else
+        {
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Root.Should().Be(ResourceKey.DefaultRoot);
+            result.Value.Path.Should().Be("Notes/todo.txt");
+        }
+    }
+
+    [Test]
     public void GetResourceKey_FailsForPathOutsideEveryRoot()
     {
         _rootRegistry.RegisterRootHandler(

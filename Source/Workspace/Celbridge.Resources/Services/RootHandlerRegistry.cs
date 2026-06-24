@@ -1,3 +1,5 @@
+using Celbridge.Resources.Helpers;
+
 namespace Celbridge.Resources.Services;
 
 public sealed class RootHandlerRegistry : IRootHandlerRegistry
@@ -27,9 +29,7 @@ public sealed class RootHandlerRegistry : IRootHandlerRegistry
             //   C:\proj\.celbridge\temp\  (temp root, length 23)
             var normalizedPath = Path.GetFullPath(absolutePath);
 
-            var comparison = OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal;
+            var comparison = PathComparison.Comparison;
 
             IResourceRootHandler? bestHandler = null;
             int bestPrefixLength = -1;

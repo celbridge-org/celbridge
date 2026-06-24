@@ -27,7 +27,7 @@ public class RootPathResolver
         _normalizedBackingWithSeparator = NormalizeBackingLocation(backingLocation);
         _normalizedBackingTrimmed = _normalizedBackingWithSeparator
             .TrimEnd(Path.DirectorySeparatorChar);
-        _verifiedFolders = new HashSet<string>(GetPathComparer());
+        _verifiedFolders = new HashSet<string>(PathComparison.Comparer);
     }
 
     /// <summary>
@@ -52,9 +52,9 @@ public class RootPathResolver
         var combinedPath = Path.Combine(_backingLocation, pathPortion);
         var resolvedPath = Path.GetFullPath(combinedPath);
 
-        var isBackingRoot = resolvedPath.Equals(_normalizedBackingTrimmed, GetPathComparison());
+        var isBackingRoot = resolvedPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison);
 
-        if (!isBackingRoot && !resolvedPath.StartsWith(_normalizedBackingWithSeparator, GetPathComparison()))
+        if (!isBackingRoot && !resolvedPath.StartsWith(_normalizedBackingWithSeparator, PathComparison.Comparison))
         {
             return Result<string>.Fail(
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
@@ -83,7 +83,7 @@ public class RootPathResolver
             // No symlink check here: ValidateAndResolve enforces it at the I/O
             // boundary, and replaying it on every label call would dominate the
             // watcher / enumerate hot path.
-            var comparison = GetPathComparison();
+            var comparison = PathComparison.Comparison;
 
             bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
             bool isUnderBacking = normalizedPath.StartsWith(
@@ -132,7 +132,7 @@ public class RootPathResolver
         try
         {
             var normalizedPath = Path.GetFullPath(absolutePath);
-            var comparison = GetPathComparison();
+            var comparison = PathComparison.Comparison;
 
             bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
             bool isUnderBacking = normalizedPath.StartsWith(_normalizedBackingWithSeparator, comparison);
@@ -172,7 +172,7 @@ public class RootPathResolver
 
         // When resolvedPath is the backing location itself, there's nothing to check
         var backingTrimmed = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
-        if (resolvedPath.Equals(backingTrimmed, GetPathComparison()))
+        if (resolvedPath.Equals(backingTrimmed, PathComparison.Comparison))
         {
             _verifiedFolders.Add(folderPath);
             return Result.Ok();
@@ -225,21 +225,5 @@ public class RootPathResolver
             normalized += Path.DirectorySeparatorChar;
         }
         return normalized;
-    }
-
-    // StringComparison flavour for string ops; StringComparer flavour for
-    // collection keys. Both consult the same Windows / non-Windows selector.
-    private static StringComparison GetPathComparison()
-    {
-        return OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-    }
-
-    private static StringComparer GetPathComparer()
-    {
-        return OperatingSystem.IsWindows()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
     }
 }

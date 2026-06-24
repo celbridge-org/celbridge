@@ -152,56 +152,71 @@ public class ResourceUtils
 
 #if !WINDOWS
     // The Uno Skia desktop head does not fully implement the WinRT Launcher / FolderLauncherOptions
-    // members, so these shell out to the native file manager. Windows-only for now; the macOS port
-    // adds the open / xdg-open equivalents.
+    // members, so these shell out to the native file manager via the OS open command.
     private static Result LaunchAssociatedApplication(string path)
     {
-        if (!OperatingSystem.IsWindows())
+        if (OperatingSystem.IsMacOS())
         {
-            return Result.Fail("Launching the associated application is not supported on this platform");
+            // 'open <path>' launches a file with its default application, or opens a folder in Finder.
+            return StartProcess("open", path);
         }
 
-        try
+        if (OperatingSystem.IsLinux())
         {
-            var startInfo = new System.Diagnostics.ProcessStartInfo(path)
-            {
-                UseShellExecute = true
-            };
-            System.Diagnostics.Process.Start(startInfo);
+            return StartProcess("xdg-open", path);
+        }
 
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when opening the associated application: {path}")
-                .WithException(ex);
-        }
+        return Result.Fail("Launching the associated application is not supported on this platform");
     }
 
     private static Result RevealInFileManager(string path, bool selectItem)
     {
-        if (!OperatingSystem.IsWindows())
+        var fullPath = Path.GetFullPath(path);
+
+        if (OperatingSystem.IsMacOS())
         {
-            return Result.Fail("Opening the file manager is not supported on this platform");
+            // 'open -R' reveals and selects the item in Finder; 'open' opens the folder itself.
+            return selectItem
+                ? StartProcess("open", "-R", fullPath)
+                : StartProcess("open", fullPath);
         }
 
+        if (OperatingSystem.IsLinux())
+        {
+            // xdg-open has no reveal-and-select, so open the containing folder when selecting a file.
+            var target = selectItem
+                ? (Path.GetDirectoryName(fullPath) ?? fullPath)
+                : fullPath;
+            return StartProcess("xdg-open", target);
+        }
+
+        return Result.Fail("Opening the file manager is not supported on this platform");
+    }
+
+    // Starts a process with raw (unquoted) arguments via ArgumentList, which quotes each argument
+    // per-platform; this avoids the shell-quoting pitfalls of a single arguments string.
+    private static Result StartProcess(string fileName, params string[] arguments)
+    {
         try
         {
-            // explorer.exe /select,"<path>" opens the containing folder with the item highlighted;
-            // without /select it opens the folder itself.
-            var fullPath = Path.GetFullPath(path);
-            var arguments = selectItem ? $"/select,\"{fullPath}\"" : $"\"{fullPath}\"";
-            var startInfo = new System.Diagnostics.ProcessStartInfo("explorer.exe", arguments)
+            var startInfo = new System.Diagnostics.ProcessStartInfo
             {
-                UseShellExecute = true
+                FileName = fileName,
+                UseShellExecute = false
             };
+
+            foreach (var argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
             System.Diagnostics.Process.Start(startInfo);
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when opening the path in the file manager: {path}")
+            return Result.Fail($"Failed to start the '{fileName}' process for path: {string.Join(' ', arguments)}")
                 .WithException(ex);
         }
     }
