@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Logging;
-using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.WorkspaceUI.Commands;
 
@@ -12,13 +11,16 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
     private readonly ILogger<CopyResourceToClipboardCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileClipboard _fileClipboard;
 
     public CopyResourceToClipboardCommand(
         ILogger<CopyResourceToClipboardCommand> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileClipboard fileClipboard)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _fileClipboard = fileClipboard;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -29,7 +31,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var storageItems = new List<IStorageItem>();
+        var files = new List<ClipboardFile>();
 
         foreach (var sourceResource in SourceResources)
         {
@@ -49,11 +51,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
                     _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
                     continue;
                 }
-                var storageFile = await StorageFile.GetFileFromPathAsync(resolveResult.Value);
-                if (storageFile != null)
-                {
-                    storageItems.Add(storageFile);
-                }
+                files.Add(new ClipboardFile(resolveResult.Value, IsFolder: false));
             }
             else if (resource is IFolderResource folderResource)
             {
@@ -63,28 +61,17 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
                     _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
                     continue;
                 }
-                var storageFolder = await StorageFolder.GetFolderFromPathAsync(resolveResult.Value);
-                if (storageFolder != null)
-                {
-                    storageItems.Add(storageFolder);
-                }
+                files.Add(new ClipboardFile(resolveResult.Value, IsFolder: true));
             }
         }
 
-        if (storageItems.Count == 0)
+        if (files.Count == 0)
         {
             // Nothing to copy, treat it as a noop.
             return Result.Ok();
         }
 
-        var dataPackage = new DataPackage();
-        dataPackage.RequestedOperation = TransferMode == DataTransferMode.Copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
-
-        dataPackage.SetStorageItems(storageItems);
-        Clipboard.SetContent(dataPackage);
-        Clipboard.Flush();
-
-        return Result.Ok();
+        return await _fileClipboard.SetFilesAsync(files, TransferMode);
     }
 
     //

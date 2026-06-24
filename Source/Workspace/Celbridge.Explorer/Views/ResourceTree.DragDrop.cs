@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
+using Celbridge.Logging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
@@ -17,6 +18,26 @@ public sealed partial class ResourceTree
     // after an internal drop. External drags are identified by the StorageItems format and checked first,
     // so a stale value here never affects them.
     private List<IResource>? _internalDragResources;
+
+    // TEMP WS21 PROBE
+    private bool _loggedExternalDragFormats;
+
+    // TEMP WS21 PROBE — logs what the OS delivers during an external (Finder) drag.
+    private static void LogDropProbe(string phase, DragEventArgs e)
+    {
+        var logger = ServiceLocator.AcquireService<ILogger<ResourceTree>>();
+        try
+        {
+            var formats = e.DataView is null ? "(null dataview)" : string.Join(", ", e.DataView.AvailableFormats);
+            var hasStorageItems = e.DataView?.Contains(StandardDataFormats.StorageItems) == true;
+            var hasText = e.DataView?.Contains(StandardDataFormats.Text) == true;
+            logger.LogInformation($"WS21 DROP PROBE [{phase}]: formats=[{formats}] storageItems={hasStorageItems} text={hasText}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, $"WS21 DROP PROBE [{phase}] threw");
+        }
+    }
 
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
@@ -51,6 +72,13 @@ public sealed partial class ResourceTree
 
     private void ListView_DragOver(object sender, DragEventArgs e)
     {
+        // TEMP WS21 PROBE — log the formats once per drag (DragOver fires repeatedly).
+        if (!_loggedExternalDragFormats)
+        {
+            _loggedExternalDragFormats = true;
+            LogDropProbe("DragOver", e);
+        }
+
         // Clear previous highlight
         if (_dragOverItem != null)
         {
@@ -180,6 +208,10 @@ public sealed partial class ResourceTree
 
     private void ListView_Drop(object sender, DragEventArgs e)
     {
+        // TEMP WS21 PROBE
+        _loggedExternalDragFormats = false;
+        LogDropProbe("Drop", e);
+
         // Clear drag-over highlight
         _dragOverItem = null;
 
@@ -239,6 +271,11 @@ public sealed partial class ResourceTree
     {
         var sourcePaths = new List<string>();
         var items = await dataView.GetStorageItemsAsync();
+
+        // TEMP WS21 PROBE
+        ServiceLocator.AcquireService<ILogger<ResourceTree>>()
+            .LogInformation($"WS21 DROP PROBE [ProcessExternalDrop]: GetStorageItemsAsync count={items.Count} first={(items.Count > 0 ? items[0].Path : string.Empty)}");
+
         if (items.Count == 0)
         {
             return;

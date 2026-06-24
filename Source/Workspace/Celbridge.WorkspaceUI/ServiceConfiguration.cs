@@ -17,6 +17,20 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<IPanelFocusService, PanelFocusService>();
+
+        // The file clipboard is platform-specific: macOS writes file URLs to NSPasteboard (the WinRT
+        // storage-item clipboard does not round-trip on the Skia head), other heads use the WinRT
+        // clipboard. It is a singleton because the macOS implementation remembers the copy/move mode of
+        // its own write across calls.
+        if (OperatingSystem.IsMacOS())
+        {
+            services.AddSingleton<IFileClipboard, MacFileClipboard>();
+        }
+        else
+        {
+            services.AddSingleton<IFileClipboard, WinRtFileClipboard>();
+        }
+
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IBindableWorkspaceSettings, BindableWorkspaceSettings>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();

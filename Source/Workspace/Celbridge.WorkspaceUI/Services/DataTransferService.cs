@@ -10,11 +10,13 @@ public class DataTransferService : IDataTransferService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileClipboard _fileClipboard;
 
     public DataTransferService(
         IMessengerService messengerService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileClipboard fileClipboard)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -22,6 +24,7 @@ public class DataTransferService : IDataTransferService, IDisposable
         _messengerService = messengerService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _fileClipboard = fileClipboard;
 
         ApplicationDataTransfer.Clipboard.ContentChanged += Clipboard_ContentChanged;
     }
@@ -34,56 +37,41 @@ public class DataTransferService : IDataTransferService, IDisposable
 
     public ClipboardContentDescription GetClipboardContentDescription()
     {
+        // Files are handled by the platform file clipboard (NSPasteboard on macOS); text stays on the
+        // WinRT clipboard, which round-trips on every head.
+        var fileTransferMode = _fileClipboard.GetFileTransferMode();
+        if (fileTransferMode is not null)
+        {
+            var fileOperation = fileTransferMode == DataTransferMode.Move
+                ? ClipboardContentOperation.Move
+                : ClipboardContentOperation.Copy;
+            return new ClipboardContentDescription(ClipboardContentType.Resource, fileOperation);
+        }
+
         var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
-        return GetClipboardContentDescription(dataPackageView);
-    }
-
-    private ClipboardContentDescription GetClipboardContentDescription(ApplicationDataTransfer.DataPackageView dataPackageView)
-    {
-        ClipboardContentType contentType;
-        if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.StorageItems))
+        if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.Text))
         {
-            contentType = ClipboardContentType.Resource;
-        }
-        else if (dataPackageView.Contains(ApplicationDataTransfer.StandardDataFormats.Text))
-        {
-            contentType = ClipboardContentType.Text;
-        }
-        else
-        {
-            contentType = ClipboardContentType.None;
-        }
-
-        ClipboardContentOperation contentOperation;
-        if (contentType != ClipboardContentType.None)
-        {
-            switch (dataPackageView.RequestedOperation)
-            {
-                case ApplicationDataTransfer.DataPackageOperation.None:
-                default:
-                    contentOperation = ClipboardContentOperation.None;
-                    break;
-                case ApplicationDataTransfer.DataPackageOperation.Copy:
-                    contentOperation = ClipboardContentOperation.Copy;
-                    break;
-                case ApplicationDataTransfer.DataPackageOperation.Move:
-                    contentOperation = ClipboardContentOperation.Move;
-                    break;
-            }
-
-            return new ClipboardContentDescription(contentType, contentOperation);
+            return new ClipboardContentDescription(ClipboardContentType.Text, MapContentOperation(dataPackageView.RequestedOperation));
         }
 
         return new ClipboardContentDescription(ClipboardContentType.None, ClipboardContentOperation.None);
     }
 
+    private static ClipboardContentOperation MapContentOperation(ApplicationDataTransfer.DataPackageOperation operation)
+    {
+        return operation switch
+        {
+            ApplicationDataTransfer.DataPackageOperation.Copy => ClipboardContentOperation.Copy,
+            ApplicationDataTransfer.DataPackageOperation.Move => ClipboardContentOperation.Move,
+            _ => ClipboardContentOperation.None
+        };
+    }
+
     public async Task<Result<IResourceTransfer>> GetClipboardResourceTransfer(ResourceKey destFolderResource)
     {
-        // Get clipboard content once and reuse it to avoid issues with virtualized storage items
-        var dataPackageView = ApplicationDataTransfer.Clipboard.GetContent();
-        var contentDescription = GetClipboardContentDescription(dataPackageView);
-
-        if (contentDescription.ContentType != ClipboardContentType.Resource)
+        // Read the files (and their copy/move mode) from the platform file clipboard once.
+        var clipboardFiles = await _fileClipboard.GetFilesAsync();
+        if (clipboardFiles is null)
         {
             return Result<IResourceTransfer>.Fail("Clipboard content does not contain a resource");
         }
@@ -126,18 +114,15 @@ public class DataTransferService : IDataTransferService, IDisposable
 
         try
         {
-            var storageItems = await dataPackageView.GetStorageItemsAsync();
             var paths = new List<string>();
-            foreach (var storageItem in storageItems)
+            foreach (var filePath in clipboardFiles.Paths)
             {
-                // Skip storage items with empty paths (can happen with virtualized items)
-                if (string.IsNullOrEmpty(storageItem.Path))
+                if (string.IsNullOrEmpty(filePath))
                 {
                     continue;
                 }
 
-                var path = Path.GetFullPath(storageItem.Path);
-                paths.Add(path);
+                paths.Add(Path.GetFullPath(filePath));
             }
 
             if (paths.Count == 0)
@@ -145,11 +130,7 @@ public class DataTransferService : IDataTransferService, IDisposable
                 return Result<IResourceTransfer>.Fail("No valid file paths found in clipboard");
             }
 
-            // Note whether the operation is a move or a copy
-            var transferMode =
-                contentDescription.ContentOperation == ClipboardContentOperation.Move
-                ? DataTransferMode.Move
-                : DataTransferMode.Copy;
+            var transferMode = clipboardFiles.TransferMode;
 
             var createTransferResult = await resourceTransferService.CreateResourceTransferAsync(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
