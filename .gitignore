@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# macOS Finder / OS metadata
+.DS_Store
+._*
+
 # User-specific files
 *.rsuser
 *.suo

@@ -14,7 +14,7 @@ namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// Unit tests for the WorkshopSettingsView view model. The Workshop Key
-/// round-trips through the real SettingsService over a reversing protector fake;
+/// round-trips through the real SettingsService over an in-memory credential store fake;
 /// the secret is entered through a substitute IDialogService standing in for the
 /// masked input dialog. The non-secret URL and Author are ordinary settings, read
 /// back through the same service.
@@ -26,7 +26,7 @@ public class WorkshopSettingsViewModelTests
     private const string TestWorkshopKey = "kpf_abc123_supersecretvalue";
 
     private FakeSettingsStore _settingsStore = null!;
-    private FakeCredentialProtector _protector = null!;
+    private FakeCredentialStore _credentialStore = null!;
     private SettingsService _settingsService = null!;
     private IPackageApiClient _packageApiClient = null!;
     private IDialogService _dialogService = null!;
@@ -36,7 +36,7 @@ public class WorkshopSettingsViewModelTests
     public void Setup()
     {
         _settingsStore = new FakeSettingsStore();
-        _protector = new FakeCredentialProtector();
+        _credentialStore = new FakeCredentialStore();
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
@@ -44,7 +44,7 @@ public class WorkshopSettingsViewModelTests
         _settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
             _settingsStore,
-            _protector,
+            _credentialStore,
             workspaceWrapper);
 
         _packageApiClient = Substitute.For<IPackageApiClient>();
@@ -128,7 +128,7 @@ public class WorkshopSettingsViewModelTests
     [Test]
     public async Task Initialize_StoreUnavailable_ShowsErrorAndDisablesEntry()
     {
-        _protector.Available = false;
+        _credentialStore.Available = false;
 
         await _viewModel.InitializeAsync();
 

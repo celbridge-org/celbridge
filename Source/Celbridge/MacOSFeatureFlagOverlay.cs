@@ -14,8 +14,8 @@ namespace Celbridge;
 /// platform checks elsewhere rather than by a feature flag, so they need no entry:
 ///   - Contribution / WebView editors: CustomDocumentViewFactory.CreateDocumentView returns
 ///     Result.Fail when !OperatingSystem.IsWindows() (widens to macOS once the WebView layer lands).
-///   - Credential storage: DpapiCredentialProtector.IsAvailable is false off Windows, so the
-///     credentials UI degrades to a "store unavailable" message.
+///   - Credential storage: ICredentialStore is selected by platform in Celbridge.Settings (DpapiCredentialStore
+///     on Windows, MacOSKeychainCredentialStore on macOS); ICredentialStore.IsAvailable is the gate.
 ///   - File-association activation: App.xaml.cs has a documented no-op on the non-Windows head.
 /// </remarks>
 internal static class MacOSFeatureFlagOverlay

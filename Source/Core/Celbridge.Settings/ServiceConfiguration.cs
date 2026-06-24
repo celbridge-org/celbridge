@@ -12,7 +12,14 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<ISettingsStore, ApplicationStore>();
-        services.AddSingleton<ICredentialProtector, DpapiCredentialProtector>();
+        if (OperatingSystem.IsMacOS())
+        {
+            services.AddSingleton<ICredentialStore, MacOSKeychainCredentialStore>();
+        }
+        else
+        {
+            services.AddSingleton<ICredentialStore, DpapiCredentialStore>();
+        }
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IFeatureFlags, FeatureFlags>();
     }
