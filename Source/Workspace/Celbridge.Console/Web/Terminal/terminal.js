@@ -113,14 +113,20 @@ term.attachCustomKeyEventHandler((ev) => {
         return true; // no selection, ctrl-c clears the input buffer
     }
 
-    // Paste: ctrl+v pastes clipboard into the terminal
+    // Paste: ctrl+v is delivered as a native paste event on xterm's hidden
+    // textarea, which xterm.js handles internally. Returning false stops xterm
+    // from also sending the Ctrl+V control char to the PTY. We deliberately do
+    // not call navigator.clipboard.readText() here as that would prompt the
+    // user for clipboard read permission when the WebView is served over http.
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'v') {
-        navigator.clipboard.readText().then(text => term.paste(text));
-        ev.preventDefault?.();
-        return false;  // consume the event
+        return false;
     }
 
-    // No exit: Block Ctrl+D and Ctrl+Z (Windows EOF)
+    // Swallow Ctrl+D and Ctrl+Z so they do not reach the PTY. On Windows, IPython treats
+    // Ctrl+D as quit-with-confirmation and the shell layer treats Ctrl+Z as the legacy
+    // MS-DOS EOF marker; prompt_toolkit's default Ctrl+Z handler just inserts a literal
+    // ^Z into the line buffer. Neither behaviour is what a user pressing these keys in
+    // the Celbridge console expects, and there is no undo binding to forward to anyway.
     if (ev.ctrlKey && (ev.key === 'd' || ev.key === 'z')) {
         return false;
     }
