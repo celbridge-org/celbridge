@@ -6,7 +6,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace Celbridge.Console.Services;
 
-public sealed class ConPtyTerminal : IDisposable
+public sealed class ConPtyTerminal : IPtyBackend
 {
     private IntPtr _pseudoConsoleHandle = IntPtr.Zero;
     private IntPtr _hInputWrite;

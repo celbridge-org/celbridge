@@ -427,6 +427,7 @@ Source/Core/Celbridge.Projects/Assets/Templates/*.zip
 
 # UV binary (downloaded during build from GitHub releases)
 Source/Workspace/Celbridge.Python/Assets/UV/*.zip
+Source/Workspace/Celbridge.Python/Assets/UV/*.tar.gz
 
 # Design documentation (keep local only)
 Source/Celbridge/DesignDocs/

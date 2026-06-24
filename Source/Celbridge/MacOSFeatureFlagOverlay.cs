@@ -22,9 +22,8 @@ internal static class MacOSFeatureFlagOverlay
 {
     public static IReadOnlyDictionary<string, string?> Overrides { get; } = new Dictionary<string, string?>
     {
-        // The console panel hosts the terminal (WS2, no Unix pty backend yet) and triggers Python
-        // initialization (WS3, no macOS uv binary yet). Both are reached only through this panel, so
-        // gating it off keeps workspace load clean until those workstreams land.
-        ["FeatureFlags:console-panel"] = "false",
+        // No flag overrides remain: the console panel (its terminal is WS2, its Python init is WS3) now
+        // runs on macOS. Other unported subsystems are gated by runtime platform checks, not flags (see
+        // the remarks above), so they need no entry here.
     };
 }

@@ -2,28 +2,34 @@ namespace Celbridge.Console.Services;
 
 public class Terminal : ITerminal, IDisposable
 {
-    // ConPtyTerminal wraps the Windows pseudo-console API. It is created only on Windows;
-    // on other platforms _terminal stays null and the terminal operations report that the
-    // platform is not yet supported. A macOS pty backend is a separate workstream.
-    private readonly ConPtyTerminal? _terminal;
+    // The pty backend is selected by platform: ConPtyTerminal wraps the Windows pseudo-console API,
+    // UnixPtyTerminal wraps openpty/posix_spawn on the macOS and Linux heads. On an unsupported
+    // platform _backend stays null and the terminal operations report that the platform is not yet
+    // supported.
+    private readonly IPtyBackend? _backend;
 
-#pragma warning disable CS0067 // Events are only raised on platforms with a terminal backend
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
-#pragma warning restore CS0067
 
     public Terminal()
     {
         if (OperatingSystem.IsWindows())
         {
-            _terminal = new ConPtyTerminal();
+            _backend = new ConPtyTerminal();
+        }
+        else if (OperatingSystem.IsMacOS() || OperatingSystem.IsLinux())
+        {
+            _backend = new UnixPtyTerminal();
+        }
 
-            _terminal.OutputReceived += (sender, output) =>
+        if (_backend is not null)
+        {
+            _backend.OutputReceived += (sender, output) =>
             {
                 OutputReceived?.Invoke(sender, output);
             };
 
-            _terminal.ProcessExited += (sender, e) =>
+            _backend.ProcessExited += (sender, e) =>
             {
                 ProcessExited?.Invoke(sender, e);
             };
@@ -32,31 +38,31 @@ public class Terminal : ITerminal, IDisposable
 
     public void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null)
     {
-        GetTerminal().Start(commandLine, workingDir, environmentVariables);
+        GetBackend().Start(commandLine, workingDir, environmentVariables);
     }
 
     public void Write(string input)
     {
-        GetTerminal().Write(input);
+        GetBackend().Write(input);
     }
 
     public void SetSize(int cols, int rows)
     {
-        GetTerminal().SetSize(cols, rows);
+        GetBackend().SetSize(cols, rows);
     }
 
-    private ConPtyTerminal GetTerminal()
+    private IPtyBackend GetBackend()
     {
-        if (_terminal is null)
+        if (_backend is null)
         {
             throw new PlatformNotSupportedException("The terminal is not supported on this platform yet.");
         }
 
-        return _terminal;
+        return _backend;
     }
 
     public void Dispose()
     {
-        _terminal?.Dispose();
+        _backend?.Dispose();
     }
 }

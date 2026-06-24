@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Versioning;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Console;
@@ -72,7 +71,6 @@ public class PythonService : IPythonService, IDisposable
 
     public bool IsPythonHostAvailable { get; private set; } = false;
 
-    [SupportedOSPlatform("windows10.0.10240.0")]
     public async Task<Result> InitializePython()
     {
         try
@@ -282,11 +280,14 @@ public class PythonService : IPythonService, IDisposable
                 .Add("-m", "celbridge")
                 .ToString();
 
-            // Wrap in a shell so the terminal stays alive after the REPL exits.
-            // This lets the user type 'celbridge-py' to start a new session.
+            // Keep the terminal alive after the REPL exits so the user can type 'celbridge-py' to start a
+            // new session. On Windows the ConPty backend runs the command line via cmd.exe; the Unix
+            // backend already runs the command line through /bin/sh -c, so the uv command is appended with
+            // 'exec bash' rather than wrapped in another shell (a second 'bash -c' would collide with the
+            // single quotes uvCommand already uses to quote its own arguments).
             var commandLine = OperatingSystem.IsWindows()
                 ? $"cmd.exe /k \"{uvCommand}\""
-                : $"bash -c '{uvCommand}; exec bash'";
+                : $"{uvCommand}; exec bash";
 
             // Cancel any previous RPC listening loop in case InitializePython
             // is called again after a project reload.
@@ -402,7 +403,6 @@ public class PythonService : IPythonService, IDisposable
     /// Installs the celbridge package as a uv tool so the 'celbridge' command is
     /// available on PATH for manual invocation in the terminal.
     /// </summary>
-    [SupportedOSPlatform("windows10.0.10240.0")]
     private async Task InstallCelbridgeToolAsync(
         string uvExePath,
         string uvCacheDir,
@@ -414,32 +414,39 @@ public class PythonService : IPythonService, IDisposable
     {
         _logger.LogInformation("Installing celbridge as uv tool");
 
-        // Build the arguments list separately from the executable path.
-        // ProcessStartInfo takes FileName and Arguments as separate fields,
-        // so we don't use CommandLineBuilder here (which combines them).
-        var toolInstallArguments = new CommandLineBuilder("tool")
-            .Add("install")
-            .Add("--force")
-            .Add("--cache-dir", uvCacheDir)
-            .Add("--python", pythonVersion)
-            .Add("--managed-python")
-            .Add(celbridgeWheelPath)
-            .ToString();
-
-        _logger.LogDebug("uv tool install command: {FileName} {Arguments}", uvExePath, toolInstallArguments);
-
-        // uv tool install uses UV_TOOL_DIR and UV_TOOL_BIN_DIR environment variables
-        // (not CLI flags) to control where tools are installed.
+        // Pass arguments through ArgumentList (raw, unquoted) rather than a single Arguments string:
+        // ProcessStartInfo quotes each element correctly for the platform. A shell-quoted string would
+        // be taken literally here, since the argument parser does not treat single quotes as shell
+        // quotes (uv would receive a literal 'tool' and reject it).
         var processStartInfo = new ProcessStartInfo
         {
             FileName = uvExePath,
-            Arguments = toolInstallArguments,
             WorkingDirectory = Path.GetDirectoryName(uvExePath)!,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
+
+        var toolInstallArguments = new[]
+        {
+            "tool",
+            "install",
+            "--force",
+            "--cache-dir", uvCacheDir,
+            "--python", pythonVersion,
+            "--managed-python",
+            celbridgeWheelPath,
+        };
+        foreach (var argument in toolInstallArguments)
+        {
+            processStartInfo.ArgumentList.Add(argument);
+        }
+
+        _logger.LogDebug("uv tool install command: {FileName} {Arguments}", uvExePath, string.Join(' ', toolInstallArguments));
+
+        // uv tool install uses UV_TOOL_DIR and UV_TOOL_BIN_DIR environment variables
+        // (not CLI flags) to control where tools are installed.
         processStartInfo.Environment["UV_TOOL_DIR"] = uvToolsFolder;
         processStartInfo.Environment["UV_TOOL_BIN_DIR"] = uvBinFolder;
         processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir;

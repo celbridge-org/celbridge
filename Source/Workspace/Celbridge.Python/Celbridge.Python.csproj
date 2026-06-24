@@ -30,7 +30,12 @@
   <PropertyGroup>
     <UvVersion>0.10.11</UvVersion>
     <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Windows'))">x86_64-pc-windows-msvc</UvPlatform>
-    <UvZipFileName>uv-$(UvPlatform).zip</UvZipFileName>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">aarch64-apple-darwin</UvPlatform>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x86_64-apple-darwin</UvPlatform>
+    <!-- The Windows uv release is a .zip; the macOS and Linux releases are .tar.gz archives. -->
+    <UvArchiveExtension Condition="$([MSBuild]::IsOSPlatform('Windows'))">zip</UvArchiveExtension>
+    <UvArchiveExtension Condition="!$([MSBuild]::IsOSPlatform('Windows'))">tar.gz</UvArchiveExtension>
+    <UvZipFileName>uv-$(UvPlatform).$(UvArchiveExtension)</UvZipFileName>
     <UvAssetFolder>$(MSBuildThisFileDirectory)Assets\UV</UvAssetFolder>
     <UvZipPath>$(UvAssetFolder)\$(UvZipFileName)</UvZipPath>
     <UvDownloadUrl>https://github.com/astral-sh/uv/releases/download/$(UvVersion)/$(UvZipFileName)</UvDownloadUrl>
