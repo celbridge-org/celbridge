@@ -15,7 +15,9 @@ public sealed partial class ResourceTree
     // the Uno Skia head (only OS-serialisable formats survive), so the internal-drag path was never
     // recognised there. Set when an internal drag starts, read during drag-over and drop, and cleared
     // after an internal drop. External drags are identified by the StorageItems format and checked first,
-    // so a stale value here never affects them.
+    // so a stale value here never affects them. The DataPackage property is also populated so that
+    // cross-control consumers (e.g. DocumentSection) can recognise the drag on Windows, where managed
+    // properties do round-trip.
     private List<IResource>? _internalDragResources;
 
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
@@ -38,6 +40,7 @@ public sealed partial class ResourceTree
         }
 
         _internalDragResources = draggedResources;
+        e.Data.Properties["DraggedResources"] = draggedResources;
         e.Data.RequestedOperation = DataPackageOperation.Move;
 
         // Set text for drag visual - show count of items being dragged

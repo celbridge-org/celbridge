@@ -45,7 +45,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdatePanelIcons();
         UpdateLayoutModeRadios();
         UpdateFullScreenToggle();
-        UpdateWorkspaceOnlyControlsVisibility();
+        UpdateWorkspaceControlsVisibility();
 
         // Register for layout manager state change messages
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
@@ -63,7 +63,7 @@ public sealed partial class LayoutToolbar : UserControl
         Unloaded -= LayoutToolbar_Unloaded;
     }
 
-    private void UpdateWorkspaceOnlyControlsVisibility()
+    private void UpdateWorkspaceControlsVisibility()
     {
         // Panel toggles, layout-mode radios, and the reset button only make sense on the Workspace page.
         // The Full Screen toggle stays available everywhere because it is a window-level concern.
@@ -134,18 +134,18 @@ public sealed partial class LayoutToolbar : UserControl
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
     {
         _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
-        UpdateWorkspaceOnlyControlsVisibility();
+        UpdateWorkspaceControlsVisibility();
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         // Update button visibility when workspace loads (feature flags may have changed)
-        UpdateWorkspaceOnlyControlsVisibility();
+        UpdateWorkspaceControlsVisibility();
     }
 
     private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
     {
-        UpdateWorkspaceOnlyControlsVisibility();
+        UpdateWorkspaceControlsVisibility();
     }
 
     private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
