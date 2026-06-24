@@ -484,11 +484,7 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Accept file drags from ResourceTree (check both Data and DataView for cross-control drags)
-        var hasDataProps = e.Data?.Properties?.ContainsKey("DraggedResources") == true;
-        var hasDataViewProps = e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
-
-        if (hasDataProps || hasDataViewProps)
+        if (IsResourceDragInFlight(e))
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
@@ -520,17 +516,7 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Handle file drop from ResourceTree (check both Data and DataView for cross-control drags)
-        List<IResource>? draggedResources = null;
-        if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
-        {
-            draggedResources = draggedObj as List<IResource>;
-        }
-        else if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
-        {
-            draggedResources = draggedViewObj as List<IResource>;
-        }
-
+        var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
             FilesDropped?.Invoke(this, draggedResources);
@@ -550,11 +536,7 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Accept file drags from ResourceTree (check both Data and DataView for cross-control drags)
-        var hasDataProps = e.Data?.Properties?.ContainsKey("DraggedResources") == true;
-        var hasDataViewProps = e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
-
-        if (hasDataProps || hasDataViewProps)
+        if (IsResourceDragInFlight(e))
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
@@ -586,7 +568,34 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Handle file drop from ResourceTree (check both Data and DataView for cross-control drags)
+        var draggedResources = TakeResourceDragPayload(e);
+        if (draggedResources != null)
+        {
+            FilesDropped?.Invoke(this, draggedResources);
+            e.Handled = true;
+        }
+    }
+
+    // Resource drags from ResourceTree can arrive via the DataPackage's custom properties on Windows
+    // or via ResourceDragState on the Uno Skia desktop head (where managed properties do not
+    // round-trip).
+    private static bool IsResourceDragInFlight(DragEventArgs e)
+    {
+        if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
+        {
+            return true;
+        }
+
+        if (e.DataView?.Properties?.ContainsKey("DraggedResources") == true)
+        {
+            return true;
+        }
+
+        return ResourceDragState.Current is not null;
+    }
+
+    private static List<IResource>? TakeResourceDragPayload(DragEventArgs e)
+    {
         List<IResource>? draggedResources = null;
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
         {
@@ -596,12 +605,17 @@ public sealed partial class DocumentSection : UserControl
         {
             draggedResources = draggedViewObj as List<IResource>;
         }
-
-        if (draggedResources != null)
+        else if (ResourceDragState.Current is { } sharedResources)
         {
-            FilesDropped?.Invoke(this, draggedResources);
-            e.Handled = true;
+            draggedResources = sharedResources.ToList();
         }
+
+        if (draggedResources is not null)
+        {
+            ResourceDragState.End();
+        }
+
+        return draggedResources;
     }
 
     /// <summary>

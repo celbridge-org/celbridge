@@ -10,19 +10,14 @@ namespace Celbridge.UserInterface.Views;
 /// </summary>
 public sealed class TitleBar : UserControl, ITitleBar
 {
-    // Width reserved on the right for the WinUI caption buttons (minimize/maximize/close), which
-    // overlap the extended title bar.
-    private const double CaptionButtonsWidth = 144;
-
     private readonly ApplicationToolbar _applicationToolbar;
     private Window? _mainWindow;
 
     public TitleBar()
     {
-        _applicationToolbar = new ApplicationToolbar
-        {
-            Margin = new Thickness(0, 0, CaptionButtonsWidth, 0)
-        };
+        // The toolbar reserves its own trailing column for the caption buttons so its background paints
+        // behind them. No outer margin is needed here.
+        _applicationToolbar = new ApplicationToolbar();
 
         Content = _applicationToolbar;
 
