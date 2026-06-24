@@ -45,7 +45,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdatePanelIcons();
         UpdateLayoutModeRadios();
         UpdateFullScreenToggle();
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceOnlyControlsVisibility();
 
         // Register for layout manager state change messages
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
@@ -63,19 +63,25 @@ public sealed partial class LayoutToolbar : UserControl
         Unloaded -= LayoutToolbar_Unloaded;
     }
 
-    private void UpdatePanelToggleVisibility()
+    private void UpdateWorkspaceOnlyControlsVisibility()
     {
-        // Show panel toggle buttons and reset layout controls only on the Workspace page
+        // Panel toggles, layout-mode radios, and the reset button only make sense on the Workspace page.
+        // The Full Screen toggle stays available everywhere because it is a window-level concern.
         var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
 
         PanelToggleButtons.Visibility = visibility;
         ResetLayoutSeparator.Visibility = visibility;
         ResetLayoutButton.Visibility = visibility;
 
+        WindowModeHeader.Visibility = visibility;
+        DefaultModeRadio.Visibility = visibility;
+        FocusModeRadio.Visibility = visibility;
+        PresentationModeRadio.Visibility = visibility;
+
         // Hide console panel toggle button if console-panel feature is disabled
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled) 
-            ? Visibility.Visible 
+        ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled)
+            ? Visibility.Visible
             : Visibility.Collapsed;
     }
 
@@ -128,18 +134,18 @@ public sealed partial class LayoutToolbar : UserControl
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
     {
         _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceOnlyControlsVisibility();
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         // Update button visibility when workspace loads (feature flags may have changed)
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceOnlyControlsVisibility();
     }
 
     private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
     {
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceOnlyControlsVisibility();
     }
 
     private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
