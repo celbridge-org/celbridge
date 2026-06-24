@@ -1,5 +1,3 @@
-using Celbridge.Commands;
-using Celbridge.Logging;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Services;
@@ -10,33 +8,15 @@ namespace Celbridge.UserInterface.Services;
 /// </summary>
 public class KeyboardShortcutService : IKeyboardShortcutService
 {
-    private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
-    private readonly ILogger<KeyboardShortcutService> _logger;
 
-    public KeyboardShortcutService(
-        ICommandService commandService,
-        IMessengerService messengerService,
-        ILogger<KeyboardShortcutService> logger)
+    public KeyboardShortcutService(IMessengerService messengerService)
     {
-        _commandService = commandService;
         _messengerService = messengerService;
-        _logger = logger;
     }
 
     public bool HandleShortcut(VirtualKey key, bool control, bool shift, bool alt)
     {
-        // F11 shortcut toggles the Focus layout (side panels hidden)
-        if (key == VirtualKey.F11)
-        {
-            _logger.LogDebug("F11 pressed - toggling Focus layout");
-            _commandService.Execute<ISetLayoutCommand>(command =>
-            {
-                command.Transition = LayoutTransition.ToggleFocus;
-            });
-            return true;
-        }
-
         // All platforms redo shortcut: Ctrl+Shift+Z
         if (control && shift && key == VirtualKey.Z)
         {
@@ -70,7 +50,6 @@ public class KeyboardShortcutService : IKeyboardShortcutService
     {
         var virtualKey = key switch
         {
-            "F11" => VirtualKey.F11,
             "z" or "Z" => VirtualKey.Z,
             "y" or "Y" => VirtualKey.Y,
             _ => VirtualKey.None

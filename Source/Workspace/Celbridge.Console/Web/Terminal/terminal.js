@@ -103,12 +103,6 @@ term.onResize(({ cols, rows }) => {
 fitAddon.fit();
 
 term.attachCustomKeyEventHandler((ev) => {
-    // F11 is handled by WebViewFactory's injected script via JSON-RPC
-    // Just consume the event here to prevent default browser behavior
-    if (ev.key === 'F11') {
-        return false;
-    }
-
     // Copy: if there's a selection, ctl-c copies it to the clipboard
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c') {
         if (term.hasSelection()) {

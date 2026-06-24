@@ -102,11 +102,9 @@ public partial class MainPage : Page
         var rootContent = mainWindow.Content;
         Guard.IsNotNull(rootContent);
 
-        // Register with handledEventsToo so app shortcuts are received even when the focused control
-        // (the Explorer tree, Inspector, or toolbar) marks the key event handled before it bubbles to
-        // the root. A plain KeyDown += handler is skipped for already-handled events, which left F11
-        // and other shortcuts dead unless a WebView (which routes shortcuts over the RPC bridge) had
-        // focus.
+        // Register with handledEventsToo so app shortcuts (undo / redo) are received even when the
+        // focused control (the Explorer tree, Inspector, or toolbar) marks the key event handled before
+        // it bubbles to the root. A plain KeyDown += handler is skipped for already-handled events.
         rootContent.AddHandler(
             UIElement.KeyDownEvent,
             new Microsoft.UI.Xaml.Input.KeyEventHandler(OnRootContentKeyDown),
