@@ -148,6 +148,17 @@ public partial class MainPage : Page
         var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
             .HasFlag(CoreVirtualKeyStates.Down);
 
+        // On macOS the command modifier is Cmd, which the Uno macOS head reports as the left
+        // Windows key. Fold it into the control flag so Cmd+Z / Cmd+Shift+Z drive undo/redo.
+        // Control stays active too, so this is additive (no regression) and remains the fallback
+        // for right Cmd, which the head does not surface as a key code.
+        if (OperatingSystem.IsMacOS())
+        {
+            var command = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.LeftWindows)
+                .HasFlag(CoreVirtualKeyStates.Down);
+            control = control || command;
+        }
+
         var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
             .HasFlag(CoreVirtualKeyStates.Down);
 
