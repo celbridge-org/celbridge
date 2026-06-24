@@ -20,7 +20,7 @@ public partial class MainPage : Page
     private Grid _contentArea;
     private readonly Dictionary<Type, Page> _pageCache = new();
     private Page? _currentPage;
-    private TitleBar? _titleBar;
+    private FrameworkElement? _titleBar;
 
     public MainPage()
     {
@@ -58,14 +58,16 @@ public partial class MainPage : Page
         Guard.IsNotNull(mainWindow);
 
         // The application toolbar (page navigation, layout toggles, settings) occupies row 0 of the
-        // layout grid on every head. On the packaged WinUI head it is also extended into the custom
-        // title bar; on the Skia desktop head the native Win32 title bar is drawn above it instead.
-        _titleBar = new TitleBar();
-        _layoutRoot.Children.Add(_titleBar);
-
+        // layout grid on every head. On Windows it is hosted inside the TitleBar chrome wrapper and
+        // extended into the custom title bar; on the Skia desktop heads the native title bar is drawn
+        // above it, so the platform-neutral ApplicationToolbar is hosted directly.
 #if WINDOWS
+        var titleBar = new TitleBar();
+        _titleBar = titleBar;
+        _layoutRoot.Children.Add(titleBar);
+
         mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(_titleBar);
+        mainWindow.SetTitleBar(titleBar);
 
         // Configure the AppWindow titlebar to use taller caption buttons (48px instead of 32px)
         // This makes the system minimize/maximize/close buttons larger to match the increased titlebar height
@@ -74,9 +76,15 @@ public partial class MainPage : Page
         {
             appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
         }
-#endif
 
-        _userInterfaceService.RegisterTitleBar(_titleBar);
+        _userInterfaceService.RegisterTitleBar(titleBar);
+#else
+        var applicationToolbar = new ApplicationToolbar();
+        _titleBar = applicationToolbar;
+        _layoutRoot.Children.Add(applicationToolbar);
+
+        _userInterfaceService.RegisterTitleBar(applicationToolbar);
+#endif
 
         // Register for window mode changes
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowLayoutChanged);

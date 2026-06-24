@@ -1,26 +1,50 @@
 using Celbridge.Logging;
+using Microsoft.UI.Windowing;
+#if !WINDOWS
+using Celbridge.UserInterface.Helpers;
+#endif
 
 namespace Celbridge.UserInterface.Helpers.FullScreen;
 
 /// <summary>
-/// Fullscreen controller for the macOS Skia desktop head. The monitor-cover hook is not yet
-/// implemented, so it falls back to the base borderless maximize; the macOS port should cover the
-/// screen with native NSScreen/NSWindow handling (and account for the menu bar and Dock).
+/// Fullscreen controller for the macOS Skia desktop head. macOS owns fullscreen natively through the
+/// title-bar green button (the app adopts the native window chrome), so the app does not emulate it:
+/// EnterFullScreen and ExitFullScreen are no-ops and IsFullScreen reports the OS's native-fullscreen
+/// state. The app's non-windowed layout modes (Zen, Presenter) only change panel visibility on macOS;
+/// the user fills the screen with the native control.
 /// </summary>
-public sealed class MacDesktopFullScreenController : DesktopFullScreenControllerBase
+public sealed class MacDesktopFullScreenController : IFullScreenController
 {
+    private readonly ILogger<MacDesktopFullScreenController> _logger;
+
     public MacDesktopFullScreenController(ILogger<MacDesktopFullScreenController> logger)
-        : base(logger)
+    {
+        _logger = logger;
+    }
+
+    public bool IsFullScreen => GetNativeFullScreenState();
+
+    public void Initialize(AppWindow appWindow)
     {
     }
 
-    protected override bool TryCoverMonitor()
+    public Result EnterFullScreen()
     {
-        Logger.LogDebug("Monitor cover is not implemented for the macOS desktop head; using borderless maximize");
+        _logger.LogDebug("Fullscreen is handled natively on macOS; the app does not emulate it");
+        return Result.Ok();
+    }
+
+    public Result ExitFullScreen()
+    {
+        return Result.Ok();
+    }
+
+    private static bool GetNativeFullScreenState()
+    {
+#if !WINDOWS
+        return MacOSWindowInterop.IsMainWindowInNativeFullScreen();
+#else
         return false;
-    }
-
-    protected override void ReleaseMonitorCover()
-    {
+#endif
     }
 }

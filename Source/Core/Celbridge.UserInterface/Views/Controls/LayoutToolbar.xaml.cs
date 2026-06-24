@@ -21,6 +21,13 @@ public sealed partial class LayoutToolbar : UserControl
     {
         InitializeComponent();
 
+#if !WINDOWS
+        // macOS provides fullscreen natively through the title-bar green button, so the app does not
+        // offer its own redundant "Full Screen" window mode. The Zen and Presenter panel-layout modes
+        // remain available.
+        FullScreenModeRadio.Visibility = Visibility.Collapsed;
+#endif
+
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();

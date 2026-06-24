@@ -219,6 +219,15 @@ public sealed class WindowStateHelper
 
     private bool IsTitleBarVisible(int x, int y, int width, int height)
     {
+#if !WINDOWS
+        // DisplayArea.FindAll throws NotImplementedException on the Skia desktop head, so on macOS the
+        // saved bounds are validated against the native NSScreen geometry instead.
+        if (OperatingSystem.IsMacOS())
+        {
+            return IsTitleBarVisibleOnMacOS(x, y, width, height);
+        }
+#endif
+
         try
         {
             // Check if any part of the title bar area (top ~40 pixels of window) is visible on any display
@@ -264,6 +273,84 @@ public sealed class WindowStateHelper
             return false;
         }
     }
+
+#if !WINDOWS
+    private bool IsTitleBarVisibleOnMacOS(int x, int y, int width, int height)
+    {
+        if (!MacOSWindowInterop.TryGetScreens(out var screens))
+        {
+            _logger.LogDebug("Could not read native screen geometry; using default window placement");
+            return false;
+        }
+
+        // The saved bounds come from AppWindow, whose coordinate unit on the Skia head is ambiguous
+        // (points or physical pixels). NSScreen frames are in points with a bottom-left origin, so each
+        // screen is converted to a top-left rect and the saved title-bar strip is tested against it in
+        // both point space and pixel space; a hit in either accepts the restore. This keeps the unit
+        // ambiguity from silently rejecting a valid placement, and the values are logged so the
+        // interpretation can be tightened once confirmed on device.
+        const int titleBarHeight = 40;
+        var titleBarRect = new RectInt32
+        {
+            X = x,
+            Y = y,
+            Width = width,
+            Height = titleBarHeight
+        };
+
+        // The flip from a bottom-left to a top-left origin is relative to the primary display (the one
+        // whose origin is at 0,0), falling back to the first screen.
+        double primaryHeightPoints = screens[0].FrameHeight;
+        foreach (var screen in screens)
+        {
+            if (screen.FrameX == 0
+                && screen.FrameY == 0)
+            {
+                primaryHeightPoints = screen.FrameHeight;
+                break;
+            }
+        }
+
+        foreach (var screen in screens)
+        {
+            double topLeftYPoints = primaryHeightPoints - (screen.FrameY + screen.FrameHeight);
+            double scale = screen.BackingScaleFactor <= 0 ? 1.0 : screen.BackingScaleFactor;
+
+            var pointRect = new RectInt32
+            {
+                X = (int)screen.FrameX,
+                Y = (int)topLeftYPoints,
+                Width = (int)screen.FrameWidth,
+                Height = (int)screen.FrameHeight
+            };
+
+            var pixelRect = new RectInt32
+            {
+                X = (int)(screen.FrameX * scale),
+                Y = (int)(topLeftYPoints * scale),
+                Width = (int)(screen.FrameWidth * scale),
+                Height = (int)(screen.FrameHeight * scale)
+            };
+
+            _logger.LogDebug(
+                "Window restore check: saved=({SavedX},{SavedY},{SavedW},{SavedH}) " +
+                "screenPoints=({PointX},{PointY},{PointW},{PointH}) " +
+                "screenPixels=({PixelX},{PixelY},{PixelW},{PixelH}) scale={Scale}",
+                x, y, width, height,
+                pointRect.X, pointRect.Y, pointRect.Width, pointRect.Height,
+                pixelRect.X, pixelRect.Y, pixelRect.Width, pixelRect.Height,
+                scale);
+
+            if (RectanglesIntersect(titleBarRect, pointRect)
+                || RectanglesIntersect(titleBarRect, pixelRect))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+#endif
 
     private bool RectanglesIntersect(RectInt32 rect1, RectInt32 rect2)
     {

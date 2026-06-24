@@ -1,5 +1,5 @@
-﻿<UserControl
-    x:Class="Celbridge.UserInterface.Views.TitleBar"
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.ApplicationToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ic="using:Celbridge.UserInterface.Views.Controls"
@@ -19,7 +19,8 @@
           BorderBrush="{ThemeResource DividerBrush}"
           BorderThickness="0 0 0 1">
 
-        <!-- TitleBar changes to a lighter color when the application loses focus (Windows only) -->
+        <!-- The toolbar tints to a lighter color when the application loses focus (Windows only; on the
+             Skia desktop heads the native title bar handles focus tinting) -->
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="BackgroundStates">
                 <VisualState x:Name="Active">
@@ -43,7 +44,6 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition x:Name="CaptionButtonsColumn" Width="144"/><!-- Space for window caption buttons (overlapping WinUI captions on the packaged head) -->
         </Grid.ColumnDefinitions>
 
         <Image x:Name="AppIconImage"
@@ -68,14 +68,14 @@
                   FontSize="18"
                   Symbol="Save"/>
 
-        <!-- Layout Toolbar - positioned on the right side of the title bar -->
+        <!-- Layout Toolbar - positioned on the right side of the toolbar -->
         <controls:LayoutToolbar x:Name="LayoutToolbar"
                                 Grid.Column="4"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
                                 Margin="0,0,8,0"/>
 
-        <!-- Settings Button - positioned between layout toolbar and window controls -->
+        <!-- Settings Button - positioned at the right edge of the toolbar -->
         <Button x:Name="SettingsButton"
                 AutomationProperties.AutomationId="landmark.settings"
                 Grid.Column="5"
@@ -88,4 +88,3 @@
         </Button>
   </Grid>
 </UserControl>
-
