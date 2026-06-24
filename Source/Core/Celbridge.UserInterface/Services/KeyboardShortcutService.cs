@@ -26,13 +26,13 @@ public class KeyboardShortcutService : IKeyboardShortcutService
 
     public bool HandleShortcut(VirtualKey key, bool control, bool shift, bool alt)
     {
-        // F11 shortcut toggles Zen Mode (fullscreen with panels hidden)
+        // F11 shortcut toggles the Focus layout (side panels hidden)
         if (key == VirtualKey.F11)
         {
-            _logger.LogDebug("F11 pressed - toggling Zen Mode");
+            _logger.LogDebug("F11 pressed - toggling Focus layout");
             _commandService.Execute<ISetLayoutCommand>(command =>
             {
-                command.Transition = WindowModeTransition.ToggleZenMode;
+                command.Transition = LayoutTransition.ToggleFocus;
             });
             return true;
         }

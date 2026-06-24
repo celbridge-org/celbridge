@@ -4,7 +4,9 @@ using Microsoft.UI.Xaml.Media.Animation;
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// A minimal toolbar that appears at the top of the screen in fullscreen modes when the mouse moves near the top edge.
+/// A minimal strip that appears at the top of the screen in Presentation mode (where the application
+/// toolbar is hidden) when the mouse moves near the top edge. Clicking it reveals the toolbar by
+/// switching to the Focus layout.
 /// </summary>
 public sealed partial class FullscreenToolbar : UserControl
 {
@@ -18,12 +20,12 @@ public sealed partial class FullscreenToolbar : UserControl
     private readonly IStringLocalizer _stringLocalizer;
     private readonly DispatcherTimer _hideTimer;
     
-    private bool _isFullscreenModeActive;
+    private bool _isToolbarHidden;
     private bool _isToolbarVisible;
     private bool _isMouseOverToolbar;
     private Storyboard? _currentAnimation;
     
-    public string ExitFullscreenString => _stringLocalizer.GetString("FullScreenToolbar_ExitFullscreen");
+    public string ShowToolbarString => _stringLocalizer.GetString("FullScreenToolbar_ShowToolbar");
 
     public FullscreenToolbar()
     {
@@ -56,12 +58,12 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void FullscreenToolbar_Loaded(object sender, RoutedEventArgs e)
     {
-        // Register for Window Mode changes
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
-        
-        // Check if already in a fullscreen mode
-        _isFullscreenModeActive = _windowModeService.IsFullScreen;
-        
+        // Register for layout mode changes
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+
+        // The toolbar is hidden only in Presentation mode
+        _isToolbarHidden = _windowModeService.LayoutMode == LayoutMode.Presentation;
+
         // Update trigger zone visibility based on current mode
         UpdateTriggerZoneVisibility();
     }
@@ -77,31 +79,32 @@ public sealed partial class FullscreenToolbar : UserControl
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-        _isFullscreenModeActive = message.WindowMode != WindowMode.Windowed;
+        _isToolbarHidden = message.LayoutMode == LayoutMode.Presentation;
 
-        if (!_isFullscreenModeActive)
+        if (!_isToolbarHidden)
         {
-            // Exiting fullscreen mode - hide toolbar immediately
+            // The application toolbar is visible again, so hide the reveal strip immediately
             HideToolbar(animate: false);
         }
-        
+
         // Update trigger zone visibility
         UpdateTriggerZoneVisibility();
     }
-    
+
     private void UpdateTriggerZoneVisibility()
     {
-        // Show the trigger zone only in fullscreen modes when the toolbar is not visible.
-        TriggerZone.Visibility = _isFullscreenModeActive && !_isToolbarVisible 
-            ? Visibility.Visible 
+        // Show the trigger zone only when the application toolbar is hidden and the reveal strip is not
+        // already showing.
+        TriggerZone.Visibility = _isToolbarHidden && !_isToolbarVisible
+            ? Visibility.Visible
             : Visibility.Collapsed;
     }
-    
+
     private void TriggerZone_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (_isFullscreenModeActive)
+        if (_isToolbarHidden)
         {
             ShowToolbar();
         }
@@ -112,7 +115,7 @@ public sealed partial class FullscreenToolbar : UserControl
     /// </summary>
     public void OnPointerMoved(double yPosition)
     {
-        if (!_isFullscreenModeActive)
+        if (!_isToolbarHidden)
         {
             return;
         }
@@ -135,7 +138,7 @@ public sealed partial class FullscreenToolbar : UserControl
     {
         _isMouseOverToolbar = false;
         // Hide immediately when mouse leaves toolbar (short delay for smooth UX)
-        if (_isFullscreenModeActive && _isToolbarVisible)
+        if (_isToolbarHidden && _isToolbarVisible)
         {
             _hideTimer.Stop();
             // Use a very short delay so it doesn't feel jarring
@@ -151,7 +154,7 @@ public sealed partial class FullscreenToolbar : UserControl
         _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
 
         // Only hide if not hovering over toolbar and still in fullscreen mode
-        if (_isFullscreenModeActive && !_isMouseOverToolbar)
+        if (_isToolbarHidden && !_isMouseOverToolbar)
         {
             HideToolbar(animate: true);
         }
@@ -271,18 +274,19 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void ToolbarContainer_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        // Clicking anywhere on the toolbar exits fullscreen mode
-        // This handles cases where other UI elements (e.g., screen sharing notifications) might block the exit button
-        ExitFullscreen();
+        // Clicking anywhere on the strip reveals the application toolbar. Clicking anywhere (not just a
+        // button) handles cases where other UI elements (e.g. screen-sharing notifications) overlap it.
+        RevealMainToolbar();
         e.Handled = true;
     }
 
-    private void ExitFullscreen()
+    private void RevealMainToolbar()
     {
-        // Return to Windowed mode using SetLayoutCommand
+        // Switch to the Focus layout, which shows the application toolbar while keeping the side panels
+        // hidden. The user can then change layout or fullscreen from the toolbar itself.
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = WindowModeTransition.EnterWindowed;
+            command.Transition = LayoutTransition.Focus;
         });
     }
 }

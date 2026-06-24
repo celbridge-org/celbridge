@@ -16,9 +16,14 @@ public record MainWindowDeactivatedMessage();
 public record ActivePageChangedMessage(ApplicationPage ActivePage);
 
 /// <summary>
-/// Message sent when the window mode changes.
+/// Message sent when the layout mode (chrome level) changes.
 /// </summary>
-public record WindowModeChangedMessage(WindowMode WindowMode);
+public record LayoutModeChangedMessage(LayoutMode LayoutMode);
+
+/// <summary>
+/// Message sent when the window's fullscreen state changes.
+/// </summary>
+public record FullScreenChangedMessage(bool IsFullScreen);
 
 /// <summary>
 /// Message sent to request the window state (maximized/restored) to be synchronized

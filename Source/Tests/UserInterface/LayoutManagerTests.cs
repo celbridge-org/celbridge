@@ -62,9 +62,9 @@ public class LayoutManagerTests
     #region Initial State Tests
 
     [Test]
-    public void InitialState_WindowModeIsWindowed()
+    public void InitialState_LayoutModeIsDefault()
     {
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 
     [Test]
@@ -89,132 +89,134 @@ public class LayoutManagerTests
 
     #endregion
 
-    #region Window Mode Transition Tests
+    #region Layout Mode Transition Tests
 
     [Test]
-    public void TransitionToFullScreen_FromWindowed_ChangesMode()
+    public void TransitionToFocus_FromDefault_HidesSidePanels()
     {
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.FullScreen);
-        _layoutManager.IsFullScreen.Should().BeTrue();
-    }
-
-    [Test]
-    public void TransitionToZenMode_FromWindowed_HidesAllPanels()
-    {
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
-
-        result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
         _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
-        _layoutManager.IsFullScreen.Should().BeTrue();
-    }
 
-    [Test]
-    public void TransitionToPresenterMode_FromWindowed_HidesAllPanels()
-    {
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterPresenterMode);
-
-        result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Presenter);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
-        _layoutManager.IsFullScreen.Should().BeTrue();
-    }
-
-    [Test]
-    public void TransitionToWindowed_FromFullScreen_RestoresPreferredRegionVisibility()
-    {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
-
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
-
-        result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
+        // Fullscreen is independent of the layout mode.
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]
-    public void TransitionToWindowed_FromZenMode_RestoresPreferredRegionVisibility()
+    public void TransitionToPresentation_FromDefault_HidesSidePanels()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
-
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Presentation);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+        _layoutManager.IsFullScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void TransitionToDefault_FromFocus_RestoresPreferredRegionVisibility()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        result.IsSuccess.Should().BeTrue();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
         _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 
     [Test]
     public void TransitionToSameMode_Succeeds()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.FullScreen);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
+    }
+
+    [Test]
+    public void ToggleFocus_FromDefault_EntersFocus()
+    {
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFocus);
+
+        result.IsSuccess.Should().BeTrue();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+    }
+
+    [Test]
+    public void ToggleFocus_FromFocus_ReturnsToDefault()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFocus);
+
+        result.IsSuccess.Should().BeTrue();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+    }
+
+    [Test]
+    public void ToggleFocus_FromPresentation_ReturnsToDefault()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFocus);
+
+        result.IsSuccess.Should().BeTrue();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 
     #endregion
 
-    #region Toggle ZenMode Tests
+    #region Fullscreen Tests
 
     [Test]
-    public void ToggleZenMode_FromWindowed_EntersZenMode()
+    public void ToggleFullScreen_FromWindowed_EntersFullScreen()
     {
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+        _layoutManager.IsFullScreen.Should().BeTrue();
+
+        // The layout mode is unaffected by the fullscreen toggle.
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 
     [Test]
-    public void ToggleZenMode_FromZenMode_ReturnsToWindowed()
+    public void ToggleFullScreen_Twice_ReturnsToWindowed()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
+        _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]
-    public void ToggleZenMode_FromFullScreen_ReturnsToWindowed()
+    public void ToggleFullScreen_DoesNotChangeLayoutMode()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 
-        result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
+        _layoutManager.IsFullScreen.Should().BeTrue();
     }
 
     [Test]
-    public void ToggleZenMode_FromWindowedWithAllPanelsCollapsed_MaintainsNoPanel()
+    public void LayoutModeChange_DoesNotChangeFullScreen()
     {
-        // Manually collapse all panels while in Windowed mode
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 
-        // Toggle to ZenMode
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-
-        // Toggle back to Windowed - should restore the persisted preference (None)
-        result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
-
-        result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+        _layoutManager.IsFullScreen.Should().BeTrue();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
     }
 
     #endregion
@@ -255,27 +257,16 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SetRegionVisibility_InZenMode_ShowingPanelTransitionsToFullScreen()
+    public void SetRegionVisibility_InFocusMode_ReturnsToDefault()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
+        // Manually showing a panel means the user is customizing the layout, so the mode returns to
+        // Default rather than staying in Focus with a panel visible.
         _layoutManager.SetRegionVisibility(LayoutRegion.Primary, true);
 
-        _layoutManager.WindowMode.Should().Be(WindowMode.FullScreen);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
         _layoutManager.IsContextPanelVisible.Should().BeTrue();
-    }
-
-    [Test]
-    public void SetRegionVisibility_InFullScreen_HidingAllPanelsTransitionsToZenMode()
-    {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
-
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
-
-        _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
     }
 
     [Test]
@@ -300,27 +291,39 @@ public class LayoutManagerTests
         _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
         _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
 
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 
     [Test]
-    public void ResetLayout_FromFullScreen_ReturnsToWindowed()
+    public void ResetLayout_FromFocus_ReturnsToDefault()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+    }
+
+    [Test]
+    public void ResetLayout_FromFullScreen_ClearsFullScreen()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
+
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
+
+        result.IsSuccess.Should().BeTrue();
+        _layoutManager.IsFullScreen.Should().BeFalse();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 
     [Test]
     public void ResetLayout_ResetsPanelSizesInWorkspaceSettings()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         _workspaceSettings.Received(1).PrimaryPanelWidth = 300f;
         _workspaceSettings.Received(1).SecondaryPanelWidth = 300f;
@@ -330,7 +333,7 @@ public class LayoutManagerTests
     [Test]
     public void ResetLayout_ResetsPreferredRegionVisibilityInWorkspaceSettings()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.All;
     }
@@ -340,16 +343,29 @@ public class LayoutManagerTests
     #region Messaging Tests
 
     [Test]
-    public void WindowModeChange_SendsWindowModeChangedMessage()
+    public void LayoutModeChange_SendsLayoutModeChangedMessage()
     {
-        WindowModeChangedMessage? receivedMessage = null;
+        LayoutModeChangedMessage? receivedMessage = null;
         var recipient = new object();
-        _messengerService.Register<WindowModeChangedMessage>(recipient, (r, m) => receivedMessage = m);
+        _messengerService.Register<LayoutModeChangedMessage>(recipient, (r, m) => receivedMessage = m);
 
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         receivedMessage.Should().NotBeNull();
-        receivedMessage!.WindowMode.Should().Be(WindowMode.FullScreen);
+        receivedMessage!.LayoutMode.Should().Be(LayoutMode.Focus);
+    }
+
+    [Test]
+    public void FullScreenToggle_SendsFullScreenChangedMessage()
+    {
+        FullScreenChangedMessage? receivedMessage = null;
+        var recipient = new object();
+        _messengerService.Register<FullScreenChangedMessage>(recipient, (r, m) => receivedMessage = m);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
+
+        receivedMessage.Should().NotBeNull();
+        receivedMessage!.IsFullScreen.Should().BeTrue();
     }
 
     [Test]
@@ -370,7 +386,7 @@ public class LayoutManagerTests
     #region Settings Persistence Tests
 
     [Test]
-    public void SetRegionVisibility_InWindowedMode_UpdatesPreferredRegionVisibility()
+    public void SetRegionVisibility_InDefaultMode_UpdatesPreferredRegionVisibility()
     {
         _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
 
@@ -379,9 +395,10 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SetRegionVisibility_InFullScreenMode_UpdatesPreferredRegionVisibility()
+    public void SetRegionVisibility_WhileFullScreen_UpdatesPreferredRegionVisibility()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
+        // Fullscreen does not change the layout mode, so panel changes still persist as preferred.
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
         _workspaceSettings.ClearReceivedCalls();
 
         _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
@@ -393,16 +410,13 @@ public class LayoutManagerTests
     [Test]
     public void SetRegionVisibility_ToNone_UpdatesPreferredRegionVisibility()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
-        _workspaceSettings.ClearReceivedCalls();
-
-        // Hide all panels
+        // Hide all panels one by one in the Default layout.
         _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
         _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
         _workspaceSettings.ClearReceivedCalls();
 
-        // The last panel being hidden SHOULD persist None as preference
-        // because the user explicitly chose to hide all panels
+        // The last panel being hidden persists None as the preference, because the user explicitly
+        // chose to hide all panels.
         _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
 
         _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.None;
@@ -415,14 +429,11 @@ public class LayoutManagerTests
     [Test]
     public void MultipleQuickTransitions_MaintainsConsistentState()
     {
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterPresenterMode);
-        _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterWindowed);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
 
-        _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.IsFullScreen.Should().BeFalse();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
         _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 

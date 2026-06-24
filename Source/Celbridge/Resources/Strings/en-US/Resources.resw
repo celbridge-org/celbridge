@@ -845,6 +845,30 @@ Do you wish to continue?</value>
   <data name="LayoutToolbar_PresenterModeTooltip" xml:space="preserve">
     <value>Full screen presentation mode for displaying content</value>
   </data>
+  <data name="LayoutToolbar_LayoutModeLabel" xml:space="preserve">
+    <value>Layout</value>
+  </data>
+  <data name="LayoutToolbar_DefaultLabel" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="LayoutToolbar_FocusLabel" xml:space="preserve">
+    <value>Focus</value>
+  </data>
+  <data name="LayoutToolbar_PresentationLabel" xml:space="preserve">
+    <value>Presentation</value>
+  </data>
+  <data name="LayoutToolbar_DefaultModeTooltip" xml:space="preserve">
+    <value>The full editor with all panels visible</value>
+  </data>
+  <data name="LayoutToolbar_FocusModeTooltip" xml:space="preserve">
+    <value>Hide the side panels to focus on the document</value>
+  </data>
+  <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
+    <value>Show only the document content</value>
+  </data>
+  <data name="FullScreenToolbar_ShowToolbar" xml:space="preserve">
+    <value>Show Toolbar</value>
+  </data>
   <data name="TitleBar_SettingsTooltip" xml:space="preserve">
     <value>Open Application Settings</value>
   </data>

@@ -46,8 +46,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight = value;
     }
 
-    public bool IsFullScreen => _windowModeService.IsFullScreen;
-
     // Panel visibility properties now use Primary/Secondary naming
     public bool IsPrimaryPanelVisible => _layoutService.IsContextPanelVisible;
 
@@ -80,7 +78,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         _workspaceLoader = workspaceLoader;
 
         // Listen for layout manager state changes via messages
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
         _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
@@ -99,12 +96,6 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         // Forward property change notifications from the workspace settings facade
         OnPropertyChanged(e);
-    }
-
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
-    {
-        // Notify that IsFullScreen might have changed
-        OnPropertyChanged(nameof(IsFullScreen));
     }
 
     private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
@@ -126,7 +117,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
 
         // Unregister message handlers
-        _messengerService.Unregister<WindowModeChangedMessage>(this);
         _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
         _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
 

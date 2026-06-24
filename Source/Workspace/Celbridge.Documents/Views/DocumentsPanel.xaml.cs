@@ -187,8 +187,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
-        // Listen for window mode changes to show/hide tab strip in Presenter mode
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+        // Listen for layout mode changes to show/hide the tab strip in Presentation mode
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
         // Listen for document view focus to update active document
         _messengerService.Register<DocumentViewFocusedMessage>(this, OnDocumentViewFocused);
@@ -196,8 +196,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for layout reset requests to reset section count
         _messengerService.Register<ResetLayoutRequestedMessage>(this, OnResetLayoutRequested);
 
-        // Apply initial tab strip visibility based on current window mode
-        UpdateTabStripVisibility(_windowModeService.WindowMode);
+        // Apply initial tab strip visibility based on the current layout mode
+        UpdateTabStripVisibility(_windowModeService.LayoutMode);
     }
 
     private void OnDocumentViewFocused(object recipient, DocumentViewFocusedMessage message)
@@ -238,16 +238,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-        UpdateTabStripVisibility(message.WindowMode);
+        UpdateTabStripVisibility(message.LayoutMode);
 
         // Entering a mode that hides the side panels can leave keyboard focus on a now-hidden panel
         // (e.g. the Explorer), which stops app shortcuts like F11 from being delivered until the user
         // clicks back into the content. Move focus to the active document's editor so the shortcuts
-        // keep working. FullScreen keeps the panels, so its focus is unaffected.
-        if (message.WindowMode == WindowMode.ZenMode ||
-            message.WindowMode == WindowMode.Presenter)
+        // keep working. The Default layout keeps the panels, so its focus is unaffected.
+        if (message.LayoutMode == LayoutMode.Focus ||
+            message.LayoutMode == LayoutMode.Presentation)
         {
             FocusActiveDocument();
         }
@@ -263,11 +263,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         });
     }
 
-    private void UpdateTabStripVisibility(WindowMode windowMode)
+    private void UpdateTabStripVisibility(LayoutMode layoutMode)
     {
-        // In Presenter mode, hide the tab strip and toolbar to show only the document content
-        // In all other modes, show the tab strip and toolbar
-        bool showTabStrip = windowMode != WindowMode.Presenter;
+        // In Presentation mode, hide the tab strip and toolbar to show only the document content.
+        // In all other modes, show the tab strip and toolbar.
+        bool showTabStrip = layoutMode != LayoutMode.Presentation;
         SectionContainer.UpdateTabStripVisibility(showTabStrip);
         DocumentToolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
     }

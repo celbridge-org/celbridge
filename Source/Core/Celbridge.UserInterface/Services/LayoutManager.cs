@@ -5,8 +5,8 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Centralized manager for window modes and panel visibility state.
-/// Implements a state machine with clear transitions between allowed states.
+/// Centralized manager for the window layout mode (chrome level) and panel visibility. The layout mode
+/// and the fullscreen state are independent: changing one does not change the other.
 /// </summary>
 public class LayoutManager : IWindowModeService, ILayoutService
 {
@@ -16,7 +16,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFeatureFlags _featureFlags;
 
-    private WindowMode _windowMode = WindowMode.Windowed;
+    private LayoutMode _layoutMode = LayoutMode.Default;
+    private bool _isFullScreen;
     private LayoutRegion _regionVisibility = LayoutRegion.All;
 
     public LayoutManager(
@@ -69,48 +70,38 @@ public class LayoutManager : IWindowModeService, ILayoutService
         UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
     }
 
-    public WindowMode WindowMode
-    {
-        get => _windowMode;
-        private set
-        {
-            if (_windowMode != value)
-            {
-                _windowMode = value;
-            }
-        }
-    }
+    public LayoutMode LayoutMode => _layoutMode;
 
-    public Result RequestWindowModeTransition(WindowModeTransition transition)
+    public bool IsFullScreen => _isFullScreen;
+
+    public Result RequestLayoutTransition(LayoutTransition transition)
     {
-        _logger.LogDebug($"Requesting layout transition: {transition} (current mode: {WindowMode})");
+        _logger.LogDebug($"Requesting layout transition: {transition} (current mode: {_layoutMode}, fullscreen: {_isFullScreen})");
 
         switch (transition)
         {
-            case WindowModeTransition.EnterWindowed:
-                return TransitionToWindowed();
+            case LayoutTransition.Default:
+                return TransitionToLayoutMode(LayoutMode.Default);
 
-            case WindowModeTransition.EnterFullScreen:
-                return TransitionToFullScreen();
+            case LayoutTransition.Focus:
+                return TransitionToLayoutMode(LayoutMode.Focus);
 
-            case WindowModeTransition.EnterZenMode:
-                return TransitionToZenMode();
+            case LayoutTransition.Presentation:
+                return TransitionToLayoutMode(LayoutMode.Presentation);
 
-            case WindowModeTransition.EnterPresenterMode:
-                return TransitionToPresenterMode();
+            case LayoutTransition.ToggleFocus:
+                return HandleToggleFocus();
 
-            case WindowModeTransition.ToggleZenMode:
-                return HandleToggleZenMode();
+            case LayoutTransition.ToggleFullScreen:
+                return HandleToggleFullScreen();
 
-            case WindowModeTransition.ResetLayout:
+            case LayoutTransition.ResetLayout:
                 return HandleResetLayout();
 
             default:
                 return Result.Fail($"Unknown layout transition: {transition}");
         }
     }
-
-    public bool IsFullScreen => WindowMode != WindowMode.Windowed;
 
     public LayoutRegion RegionVisibility
     {
@@ -152,8 +143,12 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // This is a user-initiated change, so it should persist
         UpdateRegionVisibility(newVisibility, shouldPersist: true);
 
-        // Sync window mode to match the new state
-        UpdateWindowMode();
+        // Manually changing panel visibility means the user is customizing the layout, so leave any
+        // Focus/Presentation mode and return to the Default layout.
+        if (_layoutMode != LayoutMode.Default)
+        {
+            SetLayoutModeInternal(LayoutMode.Default);
+        }
     }
 
     public void ToggleRegionVisibility(LayoutRegion region)
@@ -190,49 +185,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _messengerService.Send(message);
 
         _logger.LogDebug($"Console maximized state changed: {isMaximized}");
-
-        // Sync window mode to match the new state
-        UpdateWindowMode();
-    }
-
-    /// <summary>
-    /// Evaluates the current panel visibility and console state to determine
-    /// the appropriate window mode, then transitions if necessary.
-    /// </summary>
-    private void UpdateWindowMode()
-    {
-        // Only sync between ZenMode and FullScreen - other modes are explicit user choices
-        if (WindowMode != WindowMode.ZenMode &&
-            WindowMode != WindowMode.FullScreen)
-        {
-            return;
-        }
-
-        var screenMode = EvaluateFullscreenMode();
-        if (WindowMode != screenMode)
-        {
-            SetWindowModeInternal(screenMode);
-        }
-    }
-
-    /// <summary>
-    /// Determines whether the current state matches ZenMode or FullScreen criteria.
-    /// ZenMode: No sidebars visible AND (no panels OR only maximized console)
-    /// FullScreen: Any other fullscreen configuration
-    /// </summary>
-    private WindowMode EvaluateFullscreenMode()
-    {
-        var sidebarRegions = LayoutRegion.Primary | LayoutRegion.Secondary;
-        var sidebarsHidden = (RegionVisibility & sidebarRegions) == LayoutRegion.None;
-
-        // Zen Mode requires:
-        // 1. No sidebar regions visible, AND
-        // 2. Either no regions at all, OR only console visible AND maximized
-        var isZenModeState = sidebarsHidden &&
-            (RegionVisibility == LayoutRegion.None ||
-             (RegionVisibility == LayoutRegion.Console && IsConsoleMaximized));
-
-        return isZenModeState ? WindowMode.ZenMode : WindowMode.FullScreen;
     }
 
     private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
@@ -248,109 +200,57 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
     {
-        // The window has exited fullscreen via drag, so sync our internal state to Windowed mode
-        // This ensures the UI state matches the actual window state
-        if (WindowMode != WindowMode.Windowed)
+        // The window has exited fullscreen via drag, so sync our fullscreen state. The layout mode is
+        // independent of fullscreen and is left unchanged.
+        if (_isFullScreen)
         {
-            _logger.LogDebug("Detected fullscreen exit via drag, transitioning to Windowed mode");
-
-            // Restore the preferred panel visibility configuration
-            UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
-
-            // Update internal state without sending another WindowModeChangedMessage
-            // since the window is already in the correct state
-            WindowMode = WindowMode.Windowed;
-
-            // Still need to send the message so other UI components update
-            var windowModeMessage = new WindowModeChangedMessage(WindowMode.Windowed);
-            _messengerService.Send(windowModeMessage);
+            _logger.LogDebug("Detected fullscreen exit via drag, clearing fullscreen state");
+            SetFullScreenInternal(false);
         }
     }
 
-    private Result TransitionToWindowed()
+    private Result TransitionToLayoutMode(LayoutMode mode)
     {
-        if (WindowMode == WindowMode.Windowed)
+        if (_layoutMode == mode)
         {
-            return Result.Ok(); // Already in Windowed mode
+            return Result.Ok();
         }
 
-        // Restore the preferred panel visibility configuration.
-        // No need to persist this change, we're just restoring the saved state.
-        UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
-        SetWindowModeInternal(WindowMode.Windowed);
-
-        return Result.Ok();
-    }
-
-    private Result TransitionToFullScreen()
-    {
-        if (WindowMode == WindowMode.FullScreen)
+        // Default restores the user's preferred panels; Focus and Presentation both hide the side
+        // panels (keeping a maximized console so the user can keep working in it). They differ only in
+        // the toolbar and document tabs, which the views hide based on the layout mode.
+        LayoutRegion targetVisibility;
+        if (mode == LayoutMode.Default)
         {
-            return Result.Ok(); // Already in FullScreen mode
-        }
-
-        // Restore the preferred panel visibility configuration.
-        // No need to persist this change, we're just restoring the saved state.
-        UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
-        SetWindowModeInternal(WindowMode.FullScreen);
-
-        return Result.Ok();
-    }
-
-    private Result TransitionToZenMode()
-    {
-        if (WindowMode == WindowMode.ZenMode)
-        {
-            return Result.Ok(); // Already in ZenMode
-        }
-
-        // If console is maximized, keep it visible in Zen Mode (fullscreen console).
-        // This allows the user to continue working in the console with full screen space.
-        // Otherwise, hide all panels for fullscreen documents.
-        var zenModeVisibility = IsConsoleMaximized
-            ? LayoutRegion.Console
-            : LayoutRegion.None;
-
-        // Don't persist this change as it's only temporary.
-        UpdateRegionVisibility(zenModeVisibility, shouldPersist: false);
-        SetWindowModeInternal(WindowMode.ZenMode);
-
-        return Result.Ok();
-    }
-
-    private Result TransitionToPresenterMode()
-    {
-        if (WindowMode == WindowMode.Presenter)
-        {
-            return Result.Ok(); // Already in Presenter mode
-        }
-
-        // If console is maximized, keep it visible in Presenter Mode (fullscreen console).
-        // This allows the user to present console output with full screen space.
-        // Otherwise, hide all panels for fullscreen document presentation.
-        var presenterModeVisibility = IsConsoleMaximized
-            ? LayoutRegion.Console
-            : LayoutRegion.None;
-
-        // Don't persist this change as it's only temporary.
-        UpdateRegionVisibility(presenterModeVisibility, shouldPersist: false);
-        SetWindowModeInternal(WindowMode.Presenter);
-
-        return Result.Ok();
-    }
-
-    private Result HandleToggleZenMode()
-    {
-        if (WindowMode == WindowMode.Windowed)
-        {
-            // Enter Zen Mode (fullscreen with all panels hidden)
-            return TransitionToZenMode();
+            targetVisibility = PreferredRegionVisibility;
         }
         else
         {
-            // Exit any fullscreen mode back to Windowed
-            return TransitionToWindowed();
+            targetVisibility = IsConsoleMaximized
+                ? LayoutRegion.Console
+                : LayoutRegion.None;
         }
+
+        // Mode-driven visibility is transient, so it is not persisted as the preferred configuration.
+        UpdateRegionVisibility(targetVisibility, shouldPersist: false);
+        SetLayoutModeInternal(mode);
+
+        return Result.Ok();
+    }
+
+    private Result HandleToggleFocus()
+    {
+        var target = _layoutMode == LayoutMode.Default
+            ? LayoutMode.Focus
+            : LayoutMode.Default;
+
+        return TransitionToLayoutMode(target);
+    }
+
+    private Result HandleToggleFullScreen()
+    {
+        SetFullScreenInternal(!_isFullScreen);
+        return Result.Ok();
     }
 
     private Result HandleResetLayout()
@@ -380,23 +280,26 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
         // Reset preferred visibility to all regions, but exclude Console if feature is disabled
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        var targetVisibility = isConsolePanelEnabled 
-            ? LayoutRegion.All 
+        var targetVisibility = isConsolePanelEnabled
+            ? LayoutRegion.All
             : (LayoutRegion.Primary | LayoutRegion.Secondary);
 
         UpdateRegionVisibility(targetVisibility, shouldPersist: true);
         PersistPreferredRegionVisibility(targetVisibility);
 
-        // Return to Windowed mode if in fullscreen
-        if (WindowMode != WindowMode.Windowed)
+        // Return to the Default layout and exit fullscreen.
+        if (_layoutMode != LayoutMode.Default)
         {
-            SetWindowModeInternal(WindowMode.Windowed);
+            SetLayoutModeInternal(LayoutMode.Default);
         }
-        else
+
+        if (_isFullScreen)
         {
-            // Already in Windowed mode, but need to sync window state (e.g., restore from maximized)
-            _messengerService.Send(new RestoreWindowStateMessage());
+            SetFullScreenInternal(false);
         }
+
+        // Sync the window state (e.g., restore from maximized).
+        _messengerService.Send(new RestoreWindowStateMessage());
 
         // Notify listeners to reset their layout state (e.g., document sections)
         var message = new ResetLayoutRequestedMessage();
@@ -416,8 +319,9 @@ public class LayoutManager : IWindowModeService, ILayoutService
         RegionVisibility = newVisibility;
 
         // Only persist if explicitly requested (user-initiated changes)
-        // and not in Presenter mode (temporary presentation state)
-        if (shouldPersist && WindowMode != WindowMode.Presenter)
+        // and not in Presentation mode (temporary presentation state)
+        if (shouldPersist &&
+            _layoutMode != LayoutMode.Presentation)
         {
             PersistPreferredRegionVisibility(newVisibility);
         }
@@ -429,20 +333,34 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _logger.LogDebug($"Panel visibility changed: {oldVisibility} -> {newVisibility} (persist: {shouldPersist})");
     }
 
-    private void SetWindowModeInternal(WindowMode newMode)
+    private void SetLayoutModeInternal(LayoutMode newMode)
     {
-        if (WindowMode == newMode)
+        if (_layoutMode == newMode)
         {
             return;
         }
 
-        var oldMode = WindowMode;
-        WindowMode = newMode;
+        var oldMode = _layoutMode;
+        _layoutMode = newMode;
 
-        // Broadcast the change
-        var message = new WindowModeChangedMessage(newMode);
+        var message = new LayoutModeChangedMessage(newMode);
         _messengerService.Send(message);
 
-        _logger.LogDebug($"Window mode changed: {oldMode} -> {newMode}");
+        _logger.LogDebug($"Layout mode changed: {oldMode} -> {newMode}");
+    }
+
+    private void SetFullScreenInternal(bool isFullScreen)
+    {
+        if (_isFullScreen == isFullScreen)
+        {
+            return;
+        }
+
+        _isFullScreen = isFullScreen;
+
+        var message = new FullScreenChangedMessage(isFullScreen);
+        _messengerService.Send(message);
+
+        _logger.LogDebug($"Fullscreen changed: {isFullScreen}");
     }
 }

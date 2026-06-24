@@ -86,8 +86,8 @@ public partial class MainPage : Page
         _userInterfaceService.RegisterTitleBar(applicationToolbar);
 #endif
 
-        // Register for window mode changes
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowLayoutChanged);
+        // Register for layout mode changes
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
         // Register the navigation handler
         var navigationService = _navigationService as Celbridge.UserInterface.Services.NavigationService;
@@ -124,17 +124,14 @@ public partial class MainPage : Page
         Unloaded -= OnMainPage_Unloaded;
     }
 
-    private void OnWindowLayoutChanged(object recipient, WindowModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-        // Show/hide the title bar based on window mode.
-        // Windowed and FullScreen keep the toolbar; ZenMode and Presenter hide it so the document
-        // content fills the screen (per the WindowMode definitions: ZenMode shows only the documents
-        // panel, Presenter shows only the document content).
+        // Show/hide the application toolbar based on the layout mode. Default and Focus keep the
+        // toolbar; Presentation hides it so only the document content is shown.
         if (_titleBar != null)
         {
-            bool showTitleBar = message.WindowMode == WindowMode.Windowed ||
-                                message.WindowMode == WindowMode.FullScreen;
-            _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
+            bool showToolbar = message.LayoutMode != LayoutMode.Presentation;
+            _titleBar.Visibility = showToolbar ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 

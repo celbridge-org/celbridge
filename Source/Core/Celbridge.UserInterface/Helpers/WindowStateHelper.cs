@@ -74,8 +74,8 @@ public sealed class WindowStateHelper
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
 
-            // Listen for window mode changes to handle fullscreen
-            _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+            // Listen for fullscreen state changes to drive the platform fullscreen controller
+            _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
 
             // Listen for requests to restore window state (e.g., after layout reset)
             _messengerService.Register<RestoreWindowStateMessage>(this, OnRestoreWindowState);
@@ -89,9 +89,9 @@ public sealed class WindowStateHelper
         }
     }
 
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    private void OnFullScreenChanged(object recipient, FullScreenChangedMessage message)
     {
-        ApplyWindowMode(message.WindowMode);
+        ApplyFullScreen(message.IsFullScreen);
     }
 
     private void OnRestoreWindowState(object recipient, RestoreWindowStateMessage message)
@@ -133,9 +133,9 @@ public sealed class WindowStateHelper
     }
 
     /// <summary>
-    /// Applies the specified window mode to the window.
+    /// Enters or exits fullscreen via the platform-specific controller.
     /// </summary>
-    public void ApplyWindowMode(WindowMode windowMode)
+    public void ApplyFullScreen(bool isFullScreen)
     {
         if (_appWindow == null)
         {
@@ -149,18 +149,18 @@ public sealed class WindowStateHelper
             // The platform-specific controller owns the fullscreen mechanism and remembers the prior
             // windowed placement, so it restores maximized/bounds itself when leaving fullscreen.
             Result transitionResult;
-            if (windowMode == WindowMode.Windowed)
+            if (isFullScreen)
             {
-                transitionResult = _fullScreenController.ExitFullScreen();
+                transitionResult = _fullScreenController.EnterFullScreen();
             }
             else
             {
-                transitionResult = _fullScreenController.EnterFullScreen();
+                transitionResult = _fullScreenController.ExitFullScreen();
             }
 
             if (transitionResult.IsFailure)
             {
-                _logger.LogError(transitionResult, $"Failed to apply window mode: {windowMode}");
+                _logger.LogError(transitionResult, $"Failed to apply fullscreen: {isFullScreen}");
             }
 
             // The controller may have re-created the presenter when switching presenter kinds, so
@@ -170,7 +170,7 @@ public sealed class WindowStateHelper
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to apply window mode: {windowMode}");
+            _logger.LogError(ex, $"Failed to apply fullscreen: {isFullScreen}");
         }
         finally
         {
