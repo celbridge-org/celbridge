@@ -413,6 +413,9 @@ solution-config.props
 !**/*.Windows/Properties/PublishProfiles/*.pubxml
 /CelbridgeEditor/CelbridgeWebUtils/Properties/PublishProfiles/CelbridgeContent.pubxml
 
+# macOS app-bundle publish profile (build config only, no secrets — tracked despite *.pubxml above)
+!Source/Celbridge/Properties/PublishProfiles/*.pubxml
+
 .idea/
 
 # Celbridge temp files

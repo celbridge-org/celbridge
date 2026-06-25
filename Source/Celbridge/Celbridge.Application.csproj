@@ -8,7 +8,7 @@
     <AssemblyName>Celbridge</AssemblyName>
     <RootNamespace>Celbridge</RootNamespace>
     <ApplicationTitle>Celbridge</ApplicationTitle>
-    <ApplicationId>com.AnTulcha.Celbridge</ApplicationId>
+    <ApplicationId>org.celbridge.Celbridge</ApplicationId>
     <!-- Single source for the application version. The Uno.Sdk maps ApplicationDisplayVersion to
          the assembly $(Version) on the platform heads (Desktop/Wasm/WinAppSdk), but NOT on the plain
          net9.0 reference TFM, which would default to 1.0.0 and leave PackageVersion inconsistent
@@ -47,6 +47,11 @@
          NETSDK1198 fires when VS probes for a per-platform publish profile
          (win-AnyCPU.pubxml) that we don't maintain in source control. -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);DEP0840;NETSDK1198</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <!-- Custom Info.plist for the macOS desktop bundle (see that file for details). -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-desktop'">
+    <UnoMacOSCustomInfoPlist>$(MSBuildProjectDirectory)/Platforms/Desktop/Info.plist</UnoMacOSCustomInfoPlist>
   </PropertyGroup>
 
   <PropertyGroup>

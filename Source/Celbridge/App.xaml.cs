@@ -187,10 +187,9 @@ public partial class App : Application
             }
         }
 #else
-        // The Skia desktop head is an unpackaged dev/proxy build with no OS file-association
-        // registration, so packaged file activation does not apply. The app auto-opens the previous
-        // project on launch, which covers the dev flow; a platform-native file-open path (e.g. macOS
-        // document handling) is added by the macOS port when it is needed.
+        // The macOS counterpart to the Windows file activation above is not implemented yet: a double-clicked
+        // .celbridge launches the app (the bundle declares the association), but macOS delivers the opened
+        // path via an Apple Event that Uno does not surface on this head. The app auto-opens the previous project.
 #endif
 
         // Initialize the Core Services

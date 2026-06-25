@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Custom Info.plist for the macOS desktop bundle, referenced by UnoMacOSCustomInfoPlist in
+  Celbridge.Application.csproj. The Uno packaging task merges it over the generated plist, supplying the
+  standard CFBundle* keys (identifier, version, icon) from the project properties, so this file holds only
+  what those properties cannot: the .celbridge document type and its exported UTI.
+-->
+<dict>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Celbridge Project</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>icon.icns</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>org.celbridge.project</string>
+      </array>
+    </dict>
+  </array>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>org.celbridge.project</string>
+      <key>UTTypeDescription</key>
+      <string>Celbridge Project</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+        <string>public.content</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>celbridge</string>
+        </array>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>
