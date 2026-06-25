@@ -6,9 +6,15 @@
 
 import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
 
 let iframeElement = null;
 let callbacks = null;
+
+// Registered once: the preview iframe is a separate document that does not load the celbridge client,
+// so it cannot read the app theme itself. The parent mirrors the effective theme onto the iframe's
+// html[data-theme], which preview.css and highlight.css key off, and keeps it in sync on changes.
+let previewThemeListenerRegistered = false;
 let documentBasePath = '';
 let currentContent = '';
 let previewContentElement = null;
@@ -310,8 +316,27 @@ export async function initialize(iframe, handlers) {
         throw new Error('Preview iframe is missing #preview-content or #preview-container elements');
     }
 
+    applyPreviewTheme(celbridge.appState.current.theme);
+    if (!previewThemeListenerRegistered) {
+        previewThemeListenerRegistered = true;
+        // One listener for the page's lifetime; it always targets the current iframe document.
+        celbridge.appState.onChanged((appState) => applyPreviewTheme(appState.theme));
+    }
+
     attachScrollListener();
     attachClickToSyncListener();
+}
+
+/**
+ * Mirrors the effective app theme onto the preview iframe's html[data-theme] so preview.css and
+ * highlight.css follow the Celbridge theme setting instead of only the OS prefers-color-scheme.
+ * @param {('Light'|'Dark')} theme
+ */
+function applyPreviewTheme(theme) {
+    const iframeDocument = iframeElement && iframeElement.contentDocument;
+    if (iframeDocument && iframeDocument.documentElement) {
+        iframeDocument.documentElement.dataset.theme = theme === 'Dark' ? 'dark' : 'light';
+    }
 }
 
 function loadIframeShell(iframe) {

@@ -17,9 +17,10 @@ function applyTheme(theme) {
     document.body.className = isDark ? 'theme-dark' : 'theme-light';
 }
 
-// Listen for theme changes
-client.theme.onChanged((theme) => {
-    applyTheme(theme);
+client.appState.onChanged((appState) => {
+    if (appState.theme) {
+        applyTheme(appState.theme);
+    }
 });
 
 // Initialize the editor
@@ -30,9 +31,6 @@ async function initializeEditor() {
 
         await client.initializeDocument({
             onContent: (content) => {
-                // Apply initial theme
-                applyTheme(client.theme.current);
-
                 // Set the screenplay content
                 document.getElementById('screenplay-container').innerHTML = content;
             },

@@ -15,20 +15,20 @@
     --hl-punctuation: #24292f;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --hl-keyword: #569cd6;
-        --hl-string: #ce9178;
-        --hl-comment: #6a9955;
-        --hl-number: #b5cea8;
-        --hl-function: #dcdcaa;
-        --hl-variable: #9cdcfe;
-        --hl-type: #4ec9b0;
-        --hl-attribute: #9cdcfe;
-        --hl-tag: #569cd6;
-        --hl-operator: #d4d4d4;
-        --hl-punctuation: #d4d4d4;
-    }
+/* Dark theme keys off html[data-theme] (set by the parent to the effective app theme) so syntax
+   highlighting follows the Celbridge theme setting, not only the OS prefers-color-scheme. */
+:root[data-theme="dark"] {
+    --hl-keyword: #569cd6;
+    --hl-string: #ce9178;
+    --hl-comment: #6a9955;
+    --hl-number: #b5cea8;
+    --hl-function: #dcdcaa;
+    --hl-variable: #9cdcfe;
+    --hl-type: #4ec9b0;
+    --hl-attribute: #9cdcfe;
+    --hl-tag: #569cd6;
+    --hl-operator: #d4d4d4;
+    --hl-punctuation: #d4d4d4;
 }
 
 /* highlight.js classes */

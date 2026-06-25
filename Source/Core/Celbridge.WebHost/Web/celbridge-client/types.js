@@ -17,6 +17,8 @@
  * @typedef {Object} InitializeResult
  * @property {string} content - The document content.
  * @property {DocumentMetadata} metadata - Document metadata including locale.
+ * @property {string} writableState - The document's writable state at handshake time.
+ * @property {WebViewTheme} theme - The effective application theme at handshake time.
  */
 
 /**

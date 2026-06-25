@@ -6,8 +6,12 @@ import { consoleClient } from './console-client.js';
 const darkTheme = window.VSCodeTerminalThemes.dark;
 const lightTheme = window.VSCodeTerminalThemes.light;
 
-// Default to dark theme, will be updated by host
-const initialTheme = darkTheme;
+// Default to the OS theme so the first paint matches the system; the host delivers the app's effective
+// theme (which may be an in-app override) over the host-state channel once the client subscribes.
+const initialIsDark = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : true;
+const initialTheme = initialIsDark ? darkTheme : lightTheme;
 
 const term = new Terminal({
     theme: initialTheme,
@@ -54,12 +58,11 @@ term.open(terminalElement);
 // name. DevTools flags this as an a11y warning, so set a name after open.
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
-// Function to apply theme based on host application
+// Apply the xterm color theme. The page background (and the 8px margin around the terminal) follows
+// html[data-theme] via CSS, set by the celbridge client, so it is not set here.
 function applyTheme(isDark) {
     try {
-        const theme = isDark ? darkTheme : lightTheme;
-        term.options.theme = theme;
-        document.body.style.background = theme.background;
+        term.options.theme = isDark ? darkTheme : lightTheme;
     } catch (e) {
         // ignore if term.options isn't available yet
     }
@@ -148,9 +151,12 @@ consoleClient.onFocus(() => {
     term.focus();
 });
 
-consoleClient.onSetTheme((theme) => {
-    applyTheme(theme === 'dark');
+consoleClient.appState.onChanged((appState) => {
+    if (appState.theme) {
+        applyTheme(appState.theme === 'Dark');
+    }
 });
+// No subscribe call: the host pushes the current theme on connect, caught by the handler above.
 
 consoleClient.onInjectCommand((command) => {
     // Send Ctrl+U (erase-line) to clear any partial input at the readline prompt,

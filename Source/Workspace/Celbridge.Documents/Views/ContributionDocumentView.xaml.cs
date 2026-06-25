@@ -45,6 +45,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
     private ContributionDocumentHandler? _documentHandler;
     private ContributionToolsHandler? _toolsHandler;
+    private IDisposable? _appStateConnection;
 
     // JSON-RPC infrastructure. Teardown detaches the WebView2 channel or disposes the deferred
     // WebSocket channel, depending on the transport the host channel factory selected.
@@ -122,8 +123,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
         this.InitializeComponent();
-
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChangedMessage);
 
         _viewModel.ReloadRequested += ViewModel_ReloadRequested;
     }
@@ -272,8 +271,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                 }
             }
 
-            ApplyThemeToWebView();
-
             await InjectCelbridgeContextAsync();
 
             // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
@@ -362,6 +359,14 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             }
 
             Host.StartListening();
+
+            // Connect this WebView to the app-state channel so it receives the app theme (and future
+            // app-global state) on connect and on change. Registering pushes the current snapshot to
+            // this WebView immediately, so it must run after StartListening. Disposed on teardown.
+            var appStateService = _serviceProvider.GetRequiredService<IWebViewAppStateService>();
+            var capturedHost = Host;
+            _appStateConnection = appStateService.RegisterConnection(
+                snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(AppStateRpcMethods.Changed, snapshot));
 
             // Register with the WebView tool bridge so the webview_* MCP tools can
             // target this WebView by resource key. Mirrors the shim injection guard.
@@ -483,9 +488,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             WebView = null;
         }
 
+        _appStateConnection?.Dispose();
         Host?.Dispose();
         _hostChannelTeardown?.Invoke();
 
+        _appStateConnection = null;
         Host = null;
         _hostChannelTeardown = null;
     }
@@ -580,14 +587,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
 
-    private void OnThemeChangedMessage(object recipient, ThemeChangedMessage message)
-    {
-        if (WebView?.CoreWebView2 is not null)
-        {
-            ApplyThemeToWebView();
-        }
-    }
-
     protected override void OnWritableStateChanged()
     {
         // Skip when the host isn't up yet; the initial state ships through the
@@ -610,33 +609,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to notify contribution of writable-state change");
-        }
-    }
-
-    private void ApplyThemeToWebView()
-    {
-        if (WebView?.CoreWebView2 is null)
-        {
-            return;
-        }
-
-        var theme = _userInterfaceService.UserInterfaceTheme;
-        try
-        {
-            // CoreWebView2.Profile is not implemented on the Uno Skia CoreWebView2, so the WebView
-            // preferred-color-scheme cannot be set on that head. Editors theme themselves off the
-            // prefers-color-scheme media query, which the Skia WebView resolves to the OS theme
-            // (its default is Auto). So on Skia the editor follows the system theme, matching the
-            // app only when the app theme is set to System; an explicit Dark/Light app override is
-            // not reflected in the editor. Driving the editor theme over the bridge to fix that is
-            // a deferred enhancement; the mismatch is cosmetic.
-            WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
-                ? CoreWebView2PreferredColorScheme.Dark
-                : CoreWebView2PreferredColorScheme.Light;
-        }
-        catch (NotImplementedException)
-        {
-            _logger.LogDebug("CoreWebView2.Profile not available on this head; skipping WebView color scheme");
         }
     }
 

@@ -24,9 +24,9 @@ export class EditorController {
     create(containerElement) {
         this.#containerElement = containerElement;
 
-        // Determine initial theme from system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initialTheme = prefersDark ? 'vs-dark' : 'vs-light';
+        // Determine the initial Monaco theme from the app's effective theme. appState may be empty this
+        // early (before the snapshot arrives); #setupThemeListener corrects it as soon as it does.
+        const initialTheme = celbridge.appState.current.theme === 'Dark' ? 'vs-dark' : 'vs-light';
 
         this.#editor = monaco.editor.create(containerElement, {
             language: 'plaintext',
@@ -532,19 +532,16 @@ export class EditorController {
     }
 
     #setupThemeListener() {
-        // Listen for color scheme changes (triggered by WebView2's
-        // PreferredColorScheme). The CSS @media (prefers-color-scheme) queries
-        // don't consistently re-evaluate on WebView2 theme swaps, so we drive
-        // theme-dependent CSS via a data-theme attribute on <html> and toggle
-        // it from this listener alongside Monaco's built-in theme.
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-        const applyTheme = (isDark) => {
-            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-            monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs-light');
+        // Drive Monaco's built-in theme from the celbridge client's effective theme (a host override,
+        // or the OS theme for the System setting). The client mirrors that theme onto html[data-theme],
+        // which the editor and preview CSS key off, so this only sets Monaco's theme. We deliberately
+        // do not read prefers-color-scheme here: it follows only the OS and would ignore an in-app
+        // override, and the @media query was unreliable on WebView2 theme swaps anyway.
+        const applyMonacoTheme = (theme) => {
+            monaco.editor.setTheme(theme === 'Dark' ? 'vs-dark' : 'vs-light');
         };
 
-        applyTheme(mediaQuery.matches);
-        mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
+        applyMonacoTheme(celbridge.appState.current.theme);
+        celbridge.appState.onChanged((appState) => applyMonacoTheme(appState.theme));
     }
 }

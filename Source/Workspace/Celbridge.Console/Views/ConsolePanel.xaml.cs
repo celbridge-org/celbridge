@@ -26,6 +26,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private readonly IPanelFocusService _panelFocusService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IKeyboardShortcutService _keyboardShortcutService;
+    private readonly IWebViewAppStateService _webViewAppStateService;
 
     private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
@@ -35,8 +36,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private const string ConsolePackageName = "console";
 
     private ITerminal? _terminal;
-    private UserInterfaceTheme _currentTheme;
     private WebView2? _consoleWebView;
+    private IDisposable? _appStateConnection;
     private Action? _hostChannelTeardown;
     private ConsoleHost? _consoleHost;
     private DispatcherQueue? _dispatcher;
@@ -53,42 +54,17 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        _webViewAppStateService = ServiceLocator.AcquireService<IWebViewAppStateService>();
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
-        // Monitor theme changes via messenger
-        _currentTheme = _userInterfaceService.UserInterfaceTheme;
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
-
         // Listen for console focus requests
         _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
-
-        this.Loaded += ConsolePanel_Loaded;
-    }
-
-    private void ConsolePanel_Loaded(object sender, RoutedEventArgs e)
-    {
-        // Sync theme when control becomes visible again in case it changed while invisible
-        var currentTheme = _userInterfaceService.UserInterfaceTheme;
-        if (_currentTheme != currentTheme)
-        {
-            _currentTheme = currentTheme;
-            SendThemeToConsole();
-        }
     }
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
         _panelFocusService.SetFocusedPanel(WorkspacePanel.Console);
-    }
-
-    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
-    {
-        if (_currentTheme != message.Theme)
-        {
-            _currentTheme = message.Theme;
-            SendThemeToConsole();
-        }
     }
 
     private void OnRequestConsoleFocus(object recipient, RequestConsoleFocusMessage message)
@@ -123,17 +99,6 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         _consoleWebView.Focus(FocusState.Programmatic);
         _ = _consoleHost.FocusAsync();
-    }
-
-    private void SendThemeToConsole()
-    {
-        if (_consoleHost is null)
-        {
-            return;
-        }
-
-        var themeName = _currentTheme == UserInterfaceTheme.Dark ? "dark" : "light";
-        _ = _consoleHost.SetThemeAsync(themeName);
     }
 
     public void RunCommand(string command)
@@ -181,7 +146,13 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         // Register this panel as handler for console notifications
         _consoleHost.AddLocalRpcTarget<IConsoleNotifications>(this);
         _consoleHost.AddLocalRpcTarget<IHostInput>(this);
+
         _consoleHost.StartListening();
+
+        // Connect the console to the app-state channel so it receives the app theme on connect and on
+        // change, over the same mechanism the editors use. Registering pushes the current snapshot
+        // immediately, so it must run after StartListening.
+        _appStateConnection = _consoleHost.RegisterAppState(_webViewAppStateService);
 
         var tcs = new TaskCompletionSource<bool>();
         void Handler(object? sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -214,8 +185,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         _logger.LogDebug("Console WebView initialized successfully");
 
-        // Send initial theme to console after navigation completes
-        SendThemeToConsole();
+        // The theme arrives over the host-state channel: the console client requests the snapshot once
+        // it has loaded and registered its handler, so there is no theme push to send from here.
 
         // Clicking weblinks in the console triggers a navigation event.
         // We intercept those navigation events here and instead open the URI in the system browser.
@@ -298,6 +269,9 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
             _terminal.ProcessExited -= OnTerminalProcessExited;
         }
 
+        _appStateConnection?.Dispose();
+        _appStateConnection = null;
+
         _consoleHost?.Dispose();
         _consoleHost = null;
 
@@ -309,8 +283,6 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
             _consoleWebView.Close();
             _consoleWebView = null;
         }
-
-        this.Loaded -= ConsolePanel_Loaded;
 
         // Cleanup ViewModel
         ViewModel.Cleanup();

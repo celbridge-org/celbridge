@@ -13,7 +13,9 @@ html, body {
     color-scheme: light;
 }
 
-/* Theme detection via prefers-color-scheme (controlled by WebView2) */
+/* Light theme defaults. Dark theme keys off html[data-theme], which the parent sets to the effective
+   app theme (an in-app override, or the OS theme for the System setting), so the preview follows the
+   Celbridge theme setting rather than only the OS prefers-color-scheme. */
 :root {
     --bg-color: #ffffff;
     --text-color: #24292f;
@@ -31,28 +33,26 @@ html, body {
     --kbd-border: #d0d7de;
 }
 
-@media (prefers-color-scheme: dark) {
-    html, body {
-        /* Use dark color scheme for native elements (scrollbars, etc.) */
-        color-scheme: dark;
-    }
+html[data-theme="dark"] {
+    /* Use dark color scheme for native elements (scrollbars, etc.) */
+    color-scheme: dark;
+}
 
-    :root {
-        --bg-color: #1e1e1e;
-        --text-color: #d4d4d4;
-        --heading-color: #e0e0e0;
-        --link-color: #58a6ff;
-        --link-hover-color: #79c0ff;
-        --code-bg: #282828;
-        --code-text: #d4d4d4;
-        --blockquote-border: #444;
-        --blockquote-text: #9e9e9e;
-        --table-border: #444;
-        --table-header-bg: #282828;
-        --hr-color: #444;
-        --kbd-bg: #282828;
-        --kbd-border: #444;
-    }
+:root[data-theme="dark"] {
+    --bg-color: #1e1e1e;
+    --text-color: #d4d4d4;
+    --heading-color: #e0e0e0;
+    --link-color: #58a6ff;
+    --link-hover-color: #79c0ff;
+    --code-bg: #282828;
+    --code-text: #d4d4d4;
+    --blockquote-border: #444;
+    --blockquote-text: #9e9e9e;
+    --table-border: #444;
+    --table-header-bg: #282828;
+    --hr-color: #444;
+    --kbd-bg: #282828;
+    --kbd-border: #444;
 }
 
 body {
@@ -353,11 +353,9 @@ mark {
     border-radius: 2px;
 }
 
-@media (prefers-color-scheme: dark) {
-    mark {
-        background-color: rgba(187, 128, 9, 0.4);
-        color: var(--text-color);
-    }
+:root[data-theme="dark"] mark {
+    background-color: rgba(187, 128, 9, 0.4);
+    color: var(--text-color);
 }
 
 /* Footnotes */

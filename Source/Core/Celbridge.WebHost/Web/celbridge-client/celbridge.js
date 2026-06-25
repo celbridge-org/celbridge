@@ -5,7 +5,7 @@ import { RpcTransport } from './core/rpc-transport.js';
 import { DocumentAPI } from './api/document-api.js';
 import { DialogAPI } from './api/dialog-api.js';
 import { InputAPI } from './api/input-api.js';
-import { ThemeAPI } from './api/theme-api.js';
+import { AppState } from './core/app-state.js';
 import { LocalizationAPI } from './api/localization-api.js';
 import { ToolsAPI } from './api/tools-api.js';
 
@@ -41,10 +41,11 @@ export class Celbridge {
     input;
 
     /**
-     * Theme events API.
-     * @type {ThemeAPI}
+     * Read-only mirror of application-global host state (theme, ...). Exposed as `cel.appState`:
+     * read `cel.appState.current.theme`, react with `cel.appState.onChanged(...)`.
+     * @type {AppState}
      */
-    theme;
+    #appState;
 
     /**
      * Localization events API.
@@ -118,7 +119,7 @@ export class Celbridge {
         this.document = new DocumentAPI(this.#transport);
         this.dialog = new DialogAPI(this.#transport);
         this.input = new InputAPI(this.#transport);
-        this.theme = new ThemeAPI();
+        this.#appState = new AppState(this.#transport);
         this.localization = new LocalizationAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
@@ -181,6 +182,16 @@ export class Celbridge {
      */
     get cel() {
         return this.tools.cel;
+    }
+
+    /**
+     * The application-global state store (theme, ...), shared by every WebView. Read the latest snapshot
+     * via `cel.appState.current.theme`; react with `cel.appState.onChanged(snapshot => ...)`. The client
+     * fetches the initial snapshot during document initialization.
+     * @returns {AppState}
+     */
+    get appState() {
+        return this.#appState;
     }
 
     /**

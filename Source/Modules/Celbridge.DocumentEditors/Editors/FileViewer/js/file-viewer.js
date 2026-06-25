@@ -22,8 +22,10 @@ function applyTheme(theme) {
     document.body.className = isDark ? 'theme-dark' : 'theme-light';
 }
 
-client.theme.onChanged((theme) => {
-    applyTheme(theme);
+client.appState.onChanged((appState) => {
+    if (appState.theme) {
+        applyTheme(appState.theme);
+    }
 });
 
 function getExtension(fileName) {
@@ -82,7 +84,6 @@ async function initializeEditor() {
     try {
         await client.initializeDocument({
             onContent: (_content, metadata) => {
-                applyTheme(client.theme.current);
                 renderFile(metadata);
             },
             onExternalChange: async () => {

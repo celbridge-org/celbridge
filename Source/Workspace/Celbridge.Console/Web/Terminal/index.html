@@ -15,13 +15,23 @@
     <script src="lib/addon-web-links.js"></script>
 
     <style>
+        /* Page background follows the app theme. The celbridge client mirrors the effective theme onto
+           html[data-theme]; until that lands, fall back to the OS prefers-color-scheme so the common
+           "theme = system" case never flashes. This background shows in the 8px margin around #terminal. */
         html, body {
             margin: 0;
             height: 100%;
             width: 100%;
-            background: #1E1E1E;
+            background: #ffffff;
             overflow: hidden;
         }
+
+        @media (prefers-color-scheme: dark) {
+            html, body { background: #1E1E1E; }
+        }
+
+        html[data-theme="light"], html[data-theme="light"] body { background: #ffffff; }
+        html[data-theme="dark"], html[data-theme="dark"] body { background: #1E1E1E; }
 
         #terminal {
             height: calc(100vh - 16px);

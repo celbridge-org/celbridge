@@ -463,12 +463,8 @@ editor.on('transaction', ({ transaction }) => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// Handle theme changes
-client.theme.onChanged((theme) => {
-    // Theme is handled by CSS prefers-color-scheme via WebView2 settings
-    // but we could add custom handling here if needed
-});
+// Theme needs no JS here: the celbridge client mirrors the effective theme onto html[data-theme],
+// which note.css keys off.
 
 // Handle language changes (for future runtime language switching)
 client.localization.onLanguageChanged(async (locale) => {

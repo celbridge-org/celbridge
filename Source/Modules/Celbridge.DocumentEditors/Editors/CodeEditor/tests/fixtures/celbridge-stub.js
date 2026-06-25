@@ -7,6 +7,10 @@ export const __capturedHandlers = {};
 
 const celbridge = {
     options: {},
+    appState: {
+        current: { theme: 'Light' },
+        onChanged: (handler) => { __capturedHandlers.onAppStateChanged = handler; }
+    },
     document: {
         notifyChanged: () => {},
         notifyContentLoaded: () => {},

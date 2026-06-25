@@ -1,4 +1,5 @@
 using Celbridge.Host;
+using Celbridge.WebHost;
 
 namespace Celbridge.Console.Services;
 
@@ -10,7 +11,6 @@ public static class ConsoleRpcMethods
     // Host to client (outgoing notifications)
     public const string Write = "console/write";
     public const string Focus = "console/focus";
-    public const string SetTheme = "console/setTheme";
     public const string InjectCommand = "console/injectCommand";
 
     // Client to host (incoming notifications)
@@ -65,11 +65,13 @@ public class ConsoleHost : IDisposable
     }
 
     /// <summary>
-    /// Sets the console theme.
+    /// Connects the console WebView to the app-state channel so it receives the app theme (and future
+    /// app-global state). Returns the connection, which the caller disposes on teardown.
     /// </summary>
-    public Task SetThemeAsync(string theme)
+    public IDisposable RegisterAppState(IWebViewAppStateService service)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(ConsoleRpcMethods.SetTheme, new { theme });
+        return service.RegisterConnection(
+            snapshot => _host.Rpc.NotifyWithParameterObjectAsync(AppStateRpcMethods.Changed, snapshot));
     }
 
     /// <summary>
