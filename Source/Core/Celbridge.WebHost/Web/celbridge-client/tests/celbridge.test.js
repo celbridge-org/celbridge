@@ -229,60 +229,42 @@ describe('Celbridge', () => {
             expect(handler).toHaveBeenCalledOnce();
         });
 
-        it('should dispatch writable-state-changed notifications with the state payload', async () => {
-            const { client, simulateResponse, simulateNotification } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+        it('cel.viewState mirrors per-view state pushed by the host', () => {
+            const { client, simulateNotification } = createTestClient();
 
             const handler = vi.fn();
-            client.document.onWritableStateChanged(handler);
+            client.viewState.onChanged(handler);
 
-            simulateNotification('document/writableStateChanged', { state: 'Locked' });
+            simulateNotification('viewState/changed', { writable: 'Locked' });
 
             expect(handler).toHaveBeenCalledOnce();
-            expect(handler).toHaveBeenCalledWith({ state: 'Locked' });
+            expect(handler).toHaveBeenCalledWith({ writable: 'Locked' });
+            expect(client.viewState.current).toEqual({ writable: 'Locked' });
         });
 
-        it('initializeDocument seeds onWritableStateChanged from the initialize response before applying content', async () => {
-            const { client, simulateResponse } = createTestClient();
+        it('cel.viewState replays the latest snapshot to a late subscriber', () => {
+            const { client, simulateNotification } = createTestClient();
 
-            const onWritableStateChanged = vi.fn();
-            const onContent = vi.fn();
-            const initPromise = client.initializeDocument({ onContent, onWritableStateChanged });
+            // The host seeds the store with a connect-time push before the editor subscribes.
+            simulateNotification('viewState/changed', { writable: 'Writable' });
 
-            simulateResponse(1, {
-                content: '# Locked file',
-                metadata: { filePath: '/locked.md', resourceKey: 'locked.md', fileName: 'locked.md' },
-                writableState: 'Locked',
-            });
+            const handler = vi.fn();
+            client.viewState.onChanged(handler);
 
-            await initPromise;
-
-            expect(onWritableStateChanged).toHaveBeenCalledOnce();
-            expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'Locked' });
-
-            // Ordering: the writable-state seed runs before content is applied, so the
-            // editor enters read-only mode before its first setValue.
-            expect(onWritableStateChanged.mock.invocationCallOrder[0])
-                .toBeLessThan(onContent.mock.invocationCallOrder[0]);
+            expect(handler).toHaveBeenCalledOnce();
+            expect(handler).toHaveBeenCalledWith({ writable: 'Writable' });
         });
 
-        it('initializeDocument omits the writable-state seed when the response carries no value', async () => {
-            const { client, simulateResponse } = createTestClient();
+        it('cel.appState mirrors app-global state pushed by the host', () => {
+            const { client, simulateNotification } = createTestClient();
 
-            const onWritableStateChanged = vi.fn();
-            const initPromise = client.initializeDocument({ onWritableStateChanged });
+            const handler = vi.fn();
+            client.appState.onChanged(handler);
 
-            simulateResponse(1, {
-                content: '',
-                metadata: {},
-            });
+            simulateNotification('appState/changed', { theme: 'Dark' });
 
-            await initPromise;
-
-            expect(onWritableStateChanged).not.toHaveBeenCalled();
+            expect(handler).toHaveBeenCalledWith({ theme: 'Dark' });
+            expect(client.appState.current.theme).toBe('Dark');
         });
 
         it('should handle language change notifications', async () => {

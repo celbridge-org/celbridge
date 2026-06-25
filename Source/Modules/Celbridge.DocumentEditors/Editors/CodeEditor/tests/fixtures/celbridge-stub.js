@@ -11,6 +11,10 @@ const celbridge = {
         current: { theme: 'Light' },
         onChanged: (handler) => { __capturedHandlers.onAppStateChanged = handler; }
     },
+    viewState: {
+        current: {},
+        onChanged: (handler) => { __capturedHandlers.onViewStateChanged = handler; }
+    },
     document: {
         notifyChanged: () => {},
         notifyContentLoaded: () => {},

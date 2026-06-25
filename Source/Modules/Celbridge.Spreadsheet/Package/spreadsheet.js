@@ -308,14 +308,16 @@ async function initializeEditor() {
                     client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
                 },
                 onRequestState: () => null,
-                onRestoreState: () => {},
-                // No designer to protect, but the bridge contract still
-                // requires an explicit handler so the editor-unavailable
-                // path matches the live-editor path.
-                onWritableStateChanged: () => {}
+                onRestoreState: () => {}
             });
             return;
         }
+
+        client.viewState.onChanged((viewState) => {
+            if (viewState.writable) {
+                applyWritableState(viewState.writable);
+            }
+        });
 
         await client.initializeDocument({
             onContent: async (content) => {
@@ -375,9 +377,6 @@ async function initializeEditor() {
                 } catch (e) {
                     console.warn('[Spreadsheet] Failed to restore view state:', e);
                 }
-            },
-            onWritableStateChanged: ({ state }) => {
-                applyWritableState(state);
             }
         });
     } catch (e) {

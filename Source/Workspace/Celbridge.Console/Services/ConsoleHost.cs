@@ -65,13 +65,13 @@ public class ConsoleHost : IDisposable
     }
 
     /// <summary>
-    /// Connects the console WebView to the app-state channel so it receives the app theme (and future
+    /// Connects the console WebView to the app-state store so it receives the app theme (and future
     /// app-global state). Returns the connection, which the caller disposes on teardown.
     /// </summary>
-    public IDisposable RegisterAppState(IWebViewAppStateService service)
+    public IDisposable RegisterAppState(IWebViewStateService service)
     {
-        return service.RegisterConnection(
-            snapshot => _host.Rpc.NotifyWithParameterObjectAsync(AppStateRpcMethods.Changed, snapshot));
+        return service.AppState.RegisterConnection(
+            snapshot => _host.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.AppStateChanged, snapshot));
     }
 
     /// <summary>

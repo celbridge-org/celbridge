@@ -582,15 +582,18 @@ async function initializeEditor() {
                 } catch (e) {
                     console.error('[Note] Failed to restore state:', e);
                 }
-            },
-            onWritableStateChanged: ({ state }) => {
-                applyReadOnlyState(state !== 'Writable');
             }
         });
     } catch (e) {
         console.error('[Note] Failed to initialize:', e);
     }
 }
+
+client.viewState.onChanged((viewState) => {
+    if (viewState.writable) {
+        applyReadOnlyState(viewState.writable !== 'Writable');
+    }
+});
 
 // Start initialization
 initializeEditor();

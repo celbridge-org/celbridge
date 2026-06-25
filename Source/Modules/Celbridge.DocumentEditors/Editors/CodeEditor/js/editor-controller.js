@@ -288,6 +288,24 @@ export class EditorController {
         onWritableStateChanged
     } = {}) {
         log('editor: initializeHost starting');
+
+        // Forwards {state, readOnly} to the caller, not the raw snapshot, so Code Editor consumers can
+        // destructure either.
+        celbridge.viewState.onChanged((viewState) => {
+            const state = viewState.writable;
+            if (!state) {
+                return;
+            }
+            const readOnly = state !== 'Writable';
+            // Logged so a user-reported "stuck read-only" can be diagnosed from the WebView2 console
+            // without re-running with extra instrumentation.
+            log('editor: writable state', { state, readOnly });
+            this.#editor.updateOptions({ readOnly });
+            if (onWritableStateChanged) {
+                onWritableStateChanged({ state, readOnly });
+            }
+        });
+
         await celbridge.initializeDocument({
             onContent: (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
@@ -304,21 +322,6 @@ export class EditorController {
             },
             onExternalChange: async () => {
                 await this.#handleExternalChange(onExternalReloadContent);
-            },
-            onWritableStateChanged: ({ state }) => {
-                // Derive readOnly once and forward both fields so Code Editor
-                // consumers can destructure either without recomputing the
-                // predicate. Diverges from the celbridge.js contract, which
-                // forwards {state} only.
-                const readOnly = state !== 'Writable';
-                // Logged so a user-reported "stuck read-only" can be diagnosed
-                // from the WebView2 console without re-running with extra
-                // instrumentation.
-                log('editor: writable state', { state, readOnly });
-                this.#editor.updateOptions({ readOnly });
-                if (onWritableStateChanged) {
-                    onWritableStateChanged({ state, readOnly });
-                }
             },
             onRequestState,
             onRestoreState

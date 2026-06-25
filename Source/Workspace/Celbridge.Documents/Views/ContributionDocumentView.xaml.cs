@@ -47,6 +47,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private ContributionToolsHandler? _toolsHandler;
     private IDisposable? _appStateConnection;
 
+    // This view's own state store (writability), mirrored to its WebView over the viewState channel.
+    private IStateStore? _viewState;
+    private IDisposable? _viewStateConnection;
+
     // JSON-RPC infrastructure. Teardown detaches the WebView2 channel or disposes the deferred
     // WebSocket channel, depending on the transport the host channel factory selected.
     private Action? _hostChannelTeardown;
@@ -338,7 +342,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                 _viewModel,
                 _logger,
                 CreateDocumentMetadata,    // Callback to construct document metadata on demand
-                () => WritableState,       // Callback to read the current writable state at initialize time
                 CompleteSave);             // Callback to update state when saving has completed
 
             _documentHandler.ContentLoaded += SetContentLoaded;
@@ -360,13 +363,17 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
             Host.StartListening();
 
-            // Connect this WebView to the app-state channel so it receives the app theme (and future
-            // app-global state) on connect and on change. Registering pushes the current snapshot to
-            // this WebView immediately, so it must run after StartListening. Disposed on teardown.
-            var appStateService = _serviceProvider.GetRequiredService<IWebViewAppStateService>();
+            // Registering pushes the current snapshot, so it must run after StartListening. Seed writability
+            // before registering so the connect push carries it.
+            var stateService = _serviceProvider.GetRequiredService<IWebViewStateService>();
             var capturedHost = Host;
-            _appStateConnection = appStateService.RegisterConnection(
-                snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(AppStateRpcMethods.Changed, snapshot));
+            _appStateConnection = stateService.AppState.RegisterConnection(
+                snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.AppStateChanged, snapshot));
+
+            _viewState = stateService.CreateViewState();
+            _viewState.SetValue("writable", WritableState.ToString());
+            _viewStateConnection = _viewState.RegisterConnection(
+                snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
 
             // Register with the WebView tool bridge so the webview_* MCP tools can
             // target this WebView by resource key. Mirrors the shim injection guard.
@@ -489,10 +496,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         }
 
         _appStateConnection?.Dispose();
+        _viewStateConnection?.Dispose();
         Host?.Dispose();
         _hostChannelTeardown?.Invoke();
 
         _appStateConnection = null;
+        _viewStateConnection = null;
+        _viewState = null;
         Host = null;
         _hostChannelTeardown = null;
     }
@@ -589,27 +599,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
     protected override void OnWritableStateChanged()
     {
-        // Skip when the host isn't up yet; the initial state ships through the
-        // document/initialize handshake (InitializeResult.WritableState) so the
-        // JS client sees it on first load.
-        if (Host is null)
-        {
-            return;
-        }
-
-        _ = NotifyWritableStateAsync();
-    }
-
-    private async Task NotifyWritableStateAsync()
-    {
-        try
-        {
-            await Host!.NotifyWritableStateChangedAsync(WritableState);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to notify contribution of writable-state change");
-        }
+        // The store may not exist yet (SetWritableState runs before LoadContent); the seed at registration
+        // captures the current value, so an early change before connect is not lost.
+        _viewState?.SetValue("writable", WritableState.ToString());
     }
 
     private DocumentMetadata CreateDocumentMetadata()

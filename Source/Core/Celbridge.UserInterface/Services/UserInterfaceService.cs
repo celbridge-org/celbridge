@@ -9,7 +9,7 @@ public class UserInterfaceService : IUserInterfaceService
     private readonly ILogger<UserInterfaceService> _logger;
     private IMessengerService _messengerService;
     private ISettingsService _settingsService;
-    private IWebViewAppStateService _webViewAppStateService;
+    private IWebViewStateService _webViewStateService;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -27,13 +27,13 @@ public class UserInterfaceService : IUserInterfaceService
         ILogger<UserInterfaceService> logger,
         IMessengerService messengerService,
         ISettingsService settingsService,
-        IWebViewAppStateService webViewAppStateService,
+        IWebViewStateService webViewStateService,
         Helpers.WindowStateHelper windowStateHelper)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
-        _webViewAppStateService = webViewAppStateService;
+        _webViewStateService = webViewStateService;
         _windowStateHelper = windowStateHelper;
     }
 
@@ -198,9 +198,9 @@ public class UserInterfaceService : IUserInterfaceService
         var message = new ThemeChangedMessage(UserInterfaceTheme);
         _messengerService.Send(message);
 
-        // Publish to WebView clients (editors + console) via the app-state channel. New WebViews pick
+        // Publish to WebView clients (editors + console) via the app-state store. New WebViews pick
         // this up in their connect snapshot; open ones receive the broadcast.
-        _webViewAppStateService.SetValue("theme", UserInterfaceTheme.ToString());
+        _webViewStateService.AppState.SetValue("theme", UserInterfaceTheme.ToString());
 
         // Update titlebar buttons
         _themeHelper?.UpdateTitleBar(UserInterfaceTheme);

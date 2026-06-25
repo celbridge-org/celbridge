@@ -121,14 +121,14 @@ describe('EditorController.handleExternalChange', () => {
         const onWritableStateChanged = vi.fn();
 
         await controller.initializeHost({ onWritableStateChanged });
-        expect(__capturedHandlers.onWritableStateChanged).toBeTypeOf('function');
+        expect(__capturedHandlers.onViewStateChanged).toBeTypeOf('function');
 
-        __capturedHandlers.onWritableStateChanged({ state: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
 
         expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: true });
         expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'Locked', readOnly: true });
 
-        __capturedHandlers.onWritableStateChanged({ state: 'Writable' });
+        __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
 
         expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: false });
         expect(onWritableStateChanged).toHaveBeenLastCalledWith({ state: 'Writable', readOnly: false });

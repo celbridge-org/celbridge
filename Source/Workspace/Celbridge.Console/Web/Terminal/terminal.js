@@ -7,7 +7,7 @@ const darkTheme = window.VSCodeTerminalThemes.dark;
 const lightTheme = window.VSCodeTerminalThemes.light;
 
 // Default to the OS theme so the first paint matches the system; the host delivers the app's effective
-// theme (which may be an in-app override) over the host-state channel once the client subscribes.
+// theme (which may be an in-app override) over the app-state store, pushed on connect.
 const initialIsDark = typeof window !== 'undefined' && window.matchMedia
     ? window.matchMedia('(prefers-color-scheme: dark)').matches
     : true;

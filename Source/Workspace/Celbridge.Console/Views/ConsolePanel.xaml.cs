@@ -26,7 +26,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private readonly IPanelFocusService _panelFocusService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IKeyboardShortcutService _keyboardShortcutService;
-    private readonly IWebViewAppStateService _webViewAppStateService;
+    private readonly IWebViewStateService _webViewStateService;
 
     private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
@@ -54,7 +54,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
-        _webViewAppStateService = ServiceLocator.AcquireService<IWebViewAppStateService>();
+        _webViewStateService = ServiceLocator.AcquireService<IWebViewStateService>();
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
@@ -152,7 +152,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         // Connect the console to the app-state channel so it receives the app theme on connect and on
         // change, over the same mechanism the editors use. Registering pushes the current snapshot
         // immediately, so it must run after StartListening.
-        _appStateConnection = _consoleHost.RegisterAppState(_webViewAppStateService);
+        _appStateConnection = _consoleHost.RegisterAppState(_webViewStateService);
 
         var tcs = new TaskCompletionSource<bool>();
         void Handler(object? sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -185,8 +185,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         _logger.LogDebug("Console WebView initialized successfully");
 
-        // The theme arrives over the host-state channel: the console client requests the snapshot once
-        // it has loaded and registered its handler, so there is no theme push to send from here.
+        // The theme arrives over the app-state store: the host pushes the current snapshot when the
+        // console connection registers (see RegisterAppState), so there is no theme push to send from here.
 
         // Clicking weblinks in the console triggers a navigation event.
         // We intercept those navigation events here and instead open the URI in the system browser.

@@ -12,10 +12,8 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 
 /// <summary>
 /// Result of the document/initialize request.
-/// Localization is handled by JS fetching from the extension's localization folder.
-/// WritableState is the string name of the document's writable state at handshake time.
 /// </summary>
-public record InitializeResult(string Content, DocumentMetadata Metadata, string WritableState, string? EditorStateJson = null);
+public record InitializeResult(string Content, DocumentMetadata Metadata, string? EditorStateJson = null);
 
 /// <summary>
 /// The host capability context for a contribution editor: the resolved tool allowlist,

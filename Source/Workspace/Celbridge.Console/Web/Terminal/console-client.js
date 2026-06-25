@@ -2,7 +2,7 @@
 // Uses the shared RPC transport from celbridge.js.
 
 import { RpcTransport } from '/assets/celbridge-client/core/rpc-transport.js';
-import { AppState } from '/assets/celbridge-client/core/app-state.js';
+import { createAppStateStore } from '/assets/celbridge-client/core/state-store.js';
 
 /**
  * Console Client for console communication.
@@ -11,18 +11,18 @@ class ConsoleClient {
     /** @type {RpcTransport} */
     #transport;
 
-    /** @type {AppState} */
+    /** @type {import('/assets/celbridge-client/core/state-store.js').Store} */
     #appState;
 
     constructor() {
         this.#transport = new RpcTransport();
-        this.#appState = new AppState(this.#transport);
+        this.#appState = createAppStateStore(this.#transport);
     }
 
     /**
      * The application-global state store (theme, ...). Read `consoleClient.appState.current.theme`,
      * react with `consoleClient.appState.onChanged(...)`. The host pushes the snapshot on connect.
-     * @returns {AppState}
+     * @returns {import('/assets/celbridge-client/core/state-store.js').Store}
      */
     get appState() {
         return this.#appState;

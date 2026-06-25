@@ -10,7 +10,7 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IHostChannelBroker, HostChannelBroker>();
-        services.AddSingleton<IWebViewAppStateService, WebViewAppStateService>();
+        services.AddSingleton<IWebViewStateService, WebViewStateService>();
         services.AddSingleton<IFileServer, FileServer>();
         services.AddSingleton<IMcpToolBridge, McpToolBridge>();
         services.AddSingleton<AgentMonitor>();

@@ -160,16 +160,4 @@ export class DocumentAPI {
             handler(state);
         });
     }
-
-    /**
-     * Registers a handler for writable-state change notifications from the host.
-     * The handler receives a params object {state} where state is one of "Writable",
-     * "Locked", "ReadOnlyAttribute", or "ReadOnlyRoot". Anything other than "Writable"
-     * means the document must refuse edits; the specific reason is for tooltips and
-     * status text, not for behaviour branching.
-     * @param {Function} handler - Called with the notification params object.
-     */
-    onWritableStateChanged(handler) {
-        this.#transport.addEventListener('document/writableStateChanged', handler);
-    }
 }

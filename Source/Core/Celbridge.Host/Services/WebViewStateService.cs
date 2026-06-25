@@ -3,20 +3,21 @@ using Celbridge.WebHost;
 namespace Celbridge.Host;
 
 /// <summary>
-/// JSON-RPC method names for the application-state channel.
+/// JSON-RPC method names for the host-to-client state channels. Each carries a fresh snapshot, pushed on
+/// connect and on every change.
 /// </summary>
-public static class AppStateRpcMethods
+public static class StateRpcMethods
 {
-    /// <summary>Host to client: a fresh app-state snapshot, pushed on connect and on every change.</summary>
-    public const string Changed = "appState/changed";
+    public const string AppStateChanged = "appState/changed";
+    public const string ViewStateChanged = "viewState/changed";
 }
 
 /// <summary>
-/// Default IWebViewAppStateService. Holds the application-global state and the set of active WebView
-/// connections, and broadcasts changes to them. Values are set from UI-thread code paths, so a single
-/// lock guards the shared collections.
+/// State store kernel: holds the values and the active WebView connections, and broadcasts the full snapshot
+/// on connect and on every change. A single lock guards the shared collections (values are set from the UI
+/// thread). One instance backs the app-global store; CreateViewState mints one more per document view.
 /// </summary>
-public sealed class WebViewAppStateService : IWebViewAppStateService
+public sealed class StateStore : IStateStore
 {
     private readonly object _lock = new();
     private readonly Dictionary<string, string> _state = new();
@@ -71,13 +72,13 @@ public sealed class WebViewAppStateService : IWebViewAppStateService
 
     private sealed class Connection : IDisposable
     {
-        private readonly WebViewAppStateService _service;
+        private readonly StateStore _store;
         private readonly Func<IReadOnlyDictionary<string, string>, Task> _sendSnapshot;
         private bool _disposed;
 
-        public Connection(WebViewAppStateService service, Func<IReadOnlyDictionary<string, string>, Task> sendSnapshot)
+        public Connection(StateStore store, Func<IReadOnlyDictionary<string, string>, Task> sendSnapshot)
         {
-            _service = service;
+            _store = store;
             _sendSnapshot = sendSnapshot;
         }
 
@@ -88,7 +89,7 @@ public sealed class WebViewAppStateService : IWebViewAppStateService
                 return Task.CompletedTask;
             }
 
-            return _sendSnapshot(_service.Snapshot());
+            return _sendSnapshot(_store.Snapshot());
         }
 
         public void Dispose()
@@ -99,7 +100,22 @@ public sealed class WebViewAppStateService : IWebViewAppStateService
             }
 
             _disposed = true;
-            _service.Remove(this);
+            _store.Remove(this);
         }
+    }
+}
+
+/// <summary>
+/// Default IWebViewStateService. Owns the single app-global store and mints a fresh store per document view.
+/// </summary>
+public sealed class WebViewStateService : IWebViewStateService
+{
+    private readonly StateStore _appState = new();
+
+    public IStateStore AppState => _appState;
+
+    public IStateStore CreateViewState()
+    {
+        return new StateStore();
     }
 }

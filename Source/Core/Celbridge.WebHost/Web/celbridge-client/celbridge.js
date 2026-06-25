@@ -5,7 +5,7 @@ import { RpcTransport } from './core/rpc-transport.js';
 import { DocumentAPI } from './api/document-api.js';
 import { DialogAPI } from './api/dialog-api.js';
 import { InputAPI } from './api/input-api.js';
-import { AppState } from './core/app-state.js';
+import { createAppStateStore, createViewStateStore } from './core/state-store.js';
 import { LocalizationAPI } from './api/localization-api.js';
 import { ToolsAPI } from './api/tools-api.js';
 
@@ -43,9 +43,16 @@ export class Celbridge {
     /**
      * Read-only mirror of application-global host state (theme, ...). Exposed as `cel.appState`:
      * read `cel.appState.current.theme`, react with `cel.appState.onChanged(...)`.
-     * @type {AppState}
+     * @type {import('./core/state-store.js').Store}
      */
     #appState;
+
+    /**
+     * Read-only mirror of this view's own host state (a document's writability, ...). Exposed as
+     * `cel.viewState`: read `cel.viewState.current.writable`, react with `cel.viewState.onChanged(...)`.
+     * @type {import('./core/state-store.js').Store}
+     */
+    #viewState;
 
     /**
      * Localization events API.
@@ -119,7 +126,8 @@ export class Celbridge {
         this.document = new DocumentAPI(this.#transport);
         this.dialog = new DialogAPI(this.#transport);
         this.input = new InputAPI(this.#transport);
-        this.#appState = new AppState(this.#transport);
+        this.#appState = createAppStateStore(this.#transport);
+        this.#viewState = createViewStateStore(this.#transport);
         this.localization = new LocalizationAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
@@ -186,12 +194,22 @@ export class Celbridge {
 
     /**
      * The application-global state store (theme, ...), shared by every WebView. Read the latest snapshot
-     * via `cel.appState.current.theme`; react with `cel.appState.onChanged(snapshot => ...)`. The client
-     * fetches the initial snapshot during document initialization.
-     * @returns {AppState}
+     * via `cel.appState.current.theme`; react with `cel.appState.onChanged(snapshot => ...)`. The host
+     * pushes the current snapshot on connect.
+     * @returns {import('./core/state-store.js').Store}
      */
     get appState() {
         return this.#appState;
+    }
+
+    /**
+     * This view's own state store (a document's writability, ...). Read the latest snapshot via
+     * `cel.viewState.current.writable`; react with `cel.viewState.onChanged(snapshot => ...)`. The host
+     * pushes the current snapshot on connect, so a handler registered after connect still sees it.
+     * @returns {import('./core/state-store.js').Store}
+     */
+    get viewState() {
+        return this.#viewState;
     }
 
     /**
@@ -258,9 +276,6 @@ export class Celbridge {
      *   The returned string must round-trip through `onRestoreState` with equivalent editor behavior.
      * @param {Function} [handlers.onRestoreState] - Called with a state string previously returned
      *   from `onRequestState` to restore editor view state.
-     * @param {Function} [handlers.onWritableStateChanged] - Called with `{state}` when the document's
-     *   writable state changes. `state` is one of "Writable", "Locked", "ReadOnlyAttribute", or
-     *   "ReadOnlyRoot"; treat anything other than "Writable" as read-only.
      * @returns {Promise<InitializeResult>} - The initialization result with content and config.
      */
     async initializeDocument(handlers = {}) {
@@ -273,19 +288,6 @@ export class Celbridge {
         }
 
         const result = await this.initialize();
-
-        // Register the writable-state handler and seed it with the initial state
-        // from the handshake before applying content. The editor enters read-only
-        // mode (if applicable) before its first setValue, so the user never sees
-        // a brief writable window for a locked document.
-        if (handlers.onWritableStateChanged) {
-            // Subscribe the callback to future host-pushed state changes.
-            this.document.onWritableStateChanged(handlers.onWritableStateChanged);
-            if (result.writableState) {
-                // Invoke the callback directly with the initial state from the handshake.
-                handlers.onWritableStateChanged({ state: result.writableState });
-            }
-        }
 
         if (handlers.onContent) {
             await handlers.onContent(result.content, result.metadata);

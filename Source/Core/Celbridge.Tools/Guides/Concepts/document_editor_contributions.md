@@ -54,8 +54,12 @@ await client.initializeDocument({
     onRequestSave: async () => { /* await client.document.save(serialised) */ },
     onExternalChange: async () => { /* reload, then notifyContentLoaded(ExternalReload) */ },
     onRequestState: () => { /* return opaque snapshot string or null */ },
-    onRestoreState: (stateJson) => { /* apply snapshot */ },
-    onWritableStateChanged: ({ state }) => { /* apply read-only state */ }
+    onRestoreState: (stateJson) => { /* apply snapshot */ }
+});
+
+// Writability is per-view host state, not a document handler — subscribe to it separately (see below).
+client.viewState.onChanged((viewState) => {
+    if (viewState.writable) { applyWritableState(viewState.writable); }
 });
 ```
 
@@ -63,11 +67,10 @@ await client.initializeDocument({
 - **`onRequestSave()`** — auto-save, tab close, programmatic flush. `await client.document.save(content)`. May fire while the tab is hidden.
 - **`onExternalChange(args)`** — file changed on disk. `client.document.load()`, apply with the spurious-update guard, then `client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload)`. Forward `args.preserveViewState`.
 - **`onRequestState()` / `onRestoreState(stateJson)`** — opaque string round-trip for scroll, selection, pending view state. Survives external reloads and session restore. Return `null` if nothing to preserve.
-- **`onWritableStateChanged({ state })`** — see below. Required.
 
-## `onWritableStateChanged` is required
+## Writability rides `cel.viewState`
 
-Fires once during `initializeDocument` with the initial state, then again whenever it changes mid-session. `state` is one of:
+Writability is not a document handler — it is per-view host state on the `cel.viewState` store, alongside any other state the host replicates per view. Subscribe with `client.viewState.onChanged(viewState => ...)` and read `viewState.writable`. The host seeds the value before the view connects, so a handler registered at startup (after your editor surface exists) receives the current value before content is applied, and again whenever it changes mid-session. `viewState.writable` is one of:
 
 - `"Writable"` — accept edits.
 - `"Locked"` — `[resources].lock` pattern match.
@@ -76,13 +79,7 @@ Fires once during `initializeDocument` with the initial state, then again whenev
 
 Treat **anything other than `"Writable"`** as read-only. Same representation for all three non-writable states.
 
-Read-only-by-design editors register an empty handler — a stub, not a TODO:
-
-```javascript
-onWritableStateChanged: () => {}
-```
-
-A future edit-mode addition must deliberately remove the no-op, surfacing the read-only obligation at review time. Precedent: `Source/Modules/Celbridge.DocumentEditors/Editors/FileViewer/js/file-viewer.js`.
+Read-only-by-design editors simply do not subscribe to `cel.viewState` — there is no writable state to apply, so there is nothing to register. Precedent: `Source/Modules/Celbridge.DocumentEditors/Editors/FileViewer/js/file-viewer.js`.
 
 ## The spurious-update trap
 
@@ -123,7 +120,7 @@ Apply at every framework-driven `setContent` site.
 | Rich-text / TipTap, ProseMirror | `editor.setEditable(false, false)` plus disabled toolbar buttons |
 | Spreadsheet / SpreadJS | Translucent overlay absorbing pointer events (workbook surface is too multi-tiered to gate option-by-option) |
 | Canvas / iframe-wrapped | `pointer-events: none` on the surface, muted filter on the wrapper |
-| Presentation-only viewer | Explicit no-op handler |
+| Presentation-only viewer | Does not subscribe to `cel.viewState` |
 
 ## Cross-references
 
