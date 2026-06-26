@@ -85,7 +85,20 @@ public class UserInterfaceService : IUserInterfaceService
 #endif
 
         ApplyCurrentTheme();
-        
+
+#if !WINDOWS
+        // The macOS Skia head ships only a minimal default app menu, so populate the native menubar with
+        // the standard App/File/Edit/Window/Help menus. No-op on non-macOS desktop platforms.
+        if (OperatingSystem.IsMacOS())
+        {
+            var menuInstalled = Helpers.MacOSMainMenu.Install();
+            if (!menuInstalled)
+            {
+                _logger.LogWarning("Failed to install the native macOS menubar");
+            }
+        }
+#endif
+
         _logger.LogDebug("UserInterfaceService initialized successfully");
         return Result.Ok();
     }

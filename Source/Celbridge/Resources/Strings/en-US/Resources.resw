@@ -899,6 +899,69 @@ Do you wish to continue?</value>
   <data name="MainMenu_SettingsTooltip" xml:space="preserve">
     <value>Open Application Settings</value>
   </data>
+  <data name="Menu_About" xml:space="preserve">
+    <value>About Celbridge</value>
+  </data>
+  <data name="Menu_About_Website" xml:space="preserve">
+    <value>Website</value>
+  </data>
+  <data name="Menu_About_GitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="Menu_Hide" xml:space="preserve">
+    <value>Hide Celbridge</value>
+  </data>
+  <data name="Menu_HideOthers" xml:space="preserve">
+    <value>Hide Others</value>
+  </data>
+  <data name="Menu_ShowAll" xml:space="preserve">
+    <value>Show All</value>
+  </data>
+  <data name="Menu_Quit" xml:space="preserve">
+    <value>Quit Celbridge</value>
+  </data>
+  <data name="Menu_File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Menu_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Menu_Undo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="Menu_Redo" xml:space="preserve">
+    <value>Redo</value>
+  </data>
+  <data name="Menu_Cut" xml:space="preserve">
+    <value>Cut</value>
+  </data>
+  <data name="Menu_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Menu_Paste" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="Menu_SelectAll" xml:space="preserve">
+    <value>Select All</value>
+  </data>
+  <data name="Menu_Window" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="Menu_Minimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="Menu_Zoom" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Menu_BringAllToFront" xml:space="preserve">
+    <value>Bring All to Front</value>
+  </data>
+  <data name="Menu_Help" xml:space="preserve">
+    <value>Help</value>
+  </data>
+  <data name="Menu_HelpWebsite" xml:space="preserve">
+    <value>Celbridge Website</value>
+  </data>
   <data name="MainMenu_OpenRecent" xml:space="preserve">
     <value>Open Recent</value>
   </data>
