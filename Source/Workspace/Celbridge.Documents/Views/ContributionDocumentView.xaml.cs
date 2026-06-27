@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -15,13 +16,14 @@ using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document view for contribution-based editors, hosted via a WebView2.
 /// </summary>
-public sealed partial class ContributionDocumentView : DocumentView, IHostInput, IHostContext
+public sealed partial class ContributionDocumentView : DocumentView, IHostInput, IHostContext, IEditTarget
 {
     private const int SaveRequestTimeoutSeconds = 30;
     private const int ReloadStateWaitSeconds = 5;
@@ -40,6 +42,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
+    private readonly IFocusService _focusService;
+
+    // Latest edit availability reported by the editor over the bridge; drives CanPerformEdit.
+    private EditAvailability _editAvailability = EditAvailability.None;
 
     private readonly ContributionDocumentViewModel _viewModel;
 
@@ -123,6 +129,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _serviceProvider = serviceProvider;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
@@ -913,6 +920,136 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         // Set this document as the active document when the WebView2 receives focus
         var message = new DocumentViewFocusedMessage(FileResource);
         _messengerService.Send(message);
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
+    }
+
+    public void OnFocusReceived()
+    {
+        // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
+        // reports DOM focus over the bridge. Marshal to the UI thread and register this editor as the
+        // active surface; on Windows this is redundant with WebView_GotFocus and harmless.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var message = new DocumentViewFocusedMessage(FileResource);
+            _messengerService.Send(message);
+
+            _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
+        });
+    }
+
+    private void ReleaseFocus()
+    {
+        _ = Host?.NotifyReleaseFocusAsync();
+    }
+
+    public bool CanPerformEdit(EditIntent intent)
+    {
+        return _editAvailability.Allows(intent);
+    }
+
+    public void PerformEdit(EditIntent intent)
+    {
+        // The WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView,
+        // so the clipboard verbs are host-mediated: the host moves text between Monaco and the native
+        // clipboard. Select-all, undo, and redo touch no clipboard and run inside the editor.
+        switch (intent)
+        {
+            case EditIntent.Copy:
+                _ = CopyEditorSelectionAsync(deleteSelection: false);
+                break;
+
+            case EditIntent.Cut:
+                _ = CopyEditorSelectionAsync(deleteSelection: true);
+                break;
+
+            case EditIntent.Paste:
+                _ = PasteIntoEditorAsync();
+                break;
+
+            case EditIntent.SelectAll:
+                _ = Host?.NotifyPerformEditAsync("selectAll");
+                break;
+
+            case EditIntent.Undo:
+                _ = Host?.NotifyPerformEditAsync("undo");
+                break;
+
+            case EditIntent.Redo:
+                _ = Host?.NotifyPerformEditAsync("redo");
+                break;
+        }
+    }
+
+    private async Task CopyEditorSelectionAsync(bool deleteSelection)
+    {
+        var host = Host;
+        if (host is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var selectedText = await host.Rpc.InvokeAsync<string?>("editor/getSelectedText");
+            if (string.IsNullOrEmpty(selectedText))
+            {
+                return;
+            }
+
+            _commandService.Execute<ICopyTextToClipboardCommand>(command => command.Text = selectedText);
+
+            if (deleteSelection)
+            {
+                await host.Rpc.NotifyWithParameterObjectAsync("editor/insertText", new { text = string.Empty });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to copy the editor selection to the clipboard");
+        }
+    }
+
+    private async Task PasteIntoEditorAsync()
+    {
+        var host = Host;
+        if (host is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var dataPackageView = Clipboard.GetContent();
+            if (!dataPackageView.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+
+            var text = await dataPackageView.GetTextAsync();
+            await host.Rpc.NotifyWithParameterObjectAsync("editor/insertText", new { text });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to paste the clipboard into the editor");
+        }
+    }
+
+    public void OnEditAvailabilityChanged(
+        bool canCopy,
+        bool canCut,
+        bool canPaste,
+        bool canSelectAll,
+        bool canUndo,
+        bool canRedo)
+    {
+        _editAvailability = new EditAvailability(
+            canCopy,
+            canCut,
+            canPaste,
+            canSelectAll,
+            canUndo,
+            canRedo);
     }
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)

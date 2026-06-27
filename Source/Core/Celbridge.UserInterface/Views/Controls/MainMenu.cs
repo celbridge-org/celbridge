@@ -1,6 +1,8 @@
+using Celbridge.Commands;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -18,6 +20,14 @@ public class MainMenu
     private const string ReloadProjectTag = "ReloadProject";
     private const string CloseProjectTag = "CloseProject";
     private const string ExitTag = "Exit";
+
+    private const string EditMenuTag = "EditMenu";
+    private const string EditUndoTag = "EditUndo";
+    private const string EditRedoTag = "EditRedo";
+    private const string EditCutTag = "EditCut";
+    private const string EditCopyTag = "EditCopy";
+    private const string EditPasteTag = "EditPaste";
+    private const string EditSelectAllTag = "EditSelectAll";
 
     private readonly IStringLocalizer _stringLocalizer;
     private readonly NavigationViewItem _menuNavItem;
@@ -109,6 +119,13 @@ public class MainMenu
 
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
 
+        // Edit verbs, surfaced for parity with the macOS Edit menu. Each routes to the focused surface
+        // through the edit-intent command; enable state reflects what that surface can currently do.
+        var editNavItem = CreateEditMenuItem();
+        _menuNavItem.MenuItems.Add(editNavItem);
+
+        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+
         // Settings
         var settingsNavItem = CreateMenuItem(
             tag: NavigationConstants.SettingsTag,
@@ -189,6 +206,58 @@ public class MainMenu
         return openRecentNavItem;
     }
 
+    private NavigationViewItem CreateEditMenuItem()
+    {
+        var focusService = ServiceLocator.AcquireService<IFocusService>();
+        var activeTarget = focusService.EditTarget;
+
+        var editNavItem = new NavigationViewItem
+        {
+            Tag = EditMenuTag,
+            Content = _stringLocalizer.GetString("Menu_Edit")
+        };
+        editNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+        ToolTipService.SetPlacement(editNavItem, PlacementMode.Right);
+
+        void AddEditItem(string tag, string labelKey, EditIntent intent)
+        {
+            var item = new NavigationViewItem
+            {
+                Tag = tag,
+                Content = _stringLocalizer.GetString(labelKey),
+                IsEnabled = activeTarget is not null
+                    && activeTarget.CanPerformEdit(intent)
+            };
+            item.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+            ToolTipService.SetPlacement(item, PlacementMode.Right);
+            editNavItem.MenuItems.Add(item);
+        }
+
+        AddEditItem(EditUndoTag, "Menu_Undo", EditIntent.Undo);
+        AddEditItem(EditRedoTag, "Menu_Redo", EditIntent.Redo);
+        editNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+        AddEditItem(EditCutTag, "Menu_Cut", EditIntent.Cut);
+        AddEditItem(EditCopyTag, "Menu_Copy", EditIntent.Copy);
+        AddEditItem(EditPasteTag, "Menu_Paste", EditIntent.Paste);
+        AddEditItem(EditSelectAllTag, "Menu_SelectAll", EditIntent.SelectAll);
+
+        return editNavItem;
+    }
+
+    private static EditIntent? EditIntentForTag(string tag)
+    {
+        return tag switch
+        {
+            EditUndoTag => EditIntent.Undo,
+            EditRedoTag => EditIntent.Redo,
+            EditCutTag => EditIntent.Cut,
+            EditCopyTag => EditIntent.Copy,
+            EditPasteTag => EditIntent.Paste,
+            EditSelectAllTag => EditIntent.SelectAll,
+            _ => null
+        };
+    }
+
     private NavigationViewItem CreateMenuItem(string tag, IconElement icon, string label, string tooltip, bool isEnabled)
     {
         var navItem = new NavigationViewItem
@@ -233,6 +302,17 @@ public class MainMenu
         {
             var projectFilePath = tag.Substring(RecentProjectTagPrefix.Length);
             await ViewModel.OpenRecentProjectAsync(projectFilePath);
+            MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        // Edit verbs route to the focused surface through the edit-intent command, the same path the
+        // keyboard and the macOS Edit menu use.
+        var editIntent = EditIntentForTag(tag);
+        if (editIntent is not null)
+        {
+            var commandService = ServiceLocator.AcquireService<ICommandService>();
+            commandService.Execute<IPerformEditCommand>(command => command.Intent = editIntent.Value);
             MenuItemInvoked?.Invoke(this, EventArgs.Empty);
             return;
         }

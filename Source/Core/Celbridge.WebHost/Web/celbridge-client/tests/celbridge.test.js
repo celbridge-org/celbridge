@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Celbridge } from './celbridge.js';
 
 /**
@@ -422,6 +422,35 @@ describe('Celbridge', () => {
             expect(notification.method).toBe('input/scrollChanged');
             expect(notification.params.scrollPercentage).toBe(0.75);
             expect(notification.id).toBeUndefined();
+        });
+    });
+
+    describe('input/releaseFocus handling', () => {
+        afterEach(() => {
+            delete globalThis.document;
+        });
+
+        it('blurs the active element when the host sends input/releaseFocus', () => {
+            const { simulateNotification } = createTestClient();
+
+            const blur = vi.fn();
+            const activeElement = { blur };
+            globalThis.document = { body: {}, activeElement };
+
+            simulateNotification('input/releaseFocus', {});
+
+            expect(blur).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not blur when nothing is focused (active element is the body)', () => {
+            const { simulateNotification } = createTestClient();
+
+            const body = { blur: vi.fn() };
+            globalThis.document = { body, activeElement: body };
+
+            simulateNotification('input/releaseFocus', {});
+
+            expect(body.blur).not.toHaveBeenCalled();
         });
     });
 

@@ -16,7 +16,7 @@ public static class ServiceConfiguration
         // Register services
         //
 
-        services.AddSingleton<IPanelFocusService, PanelFocusService>();
+        services.AddSingleton<IFocusService, FocusService>();
 
         // The file clipboard is platform-specific: macOS writes file URLs to NSPasteboard (the WinRT
         // storage-item clipboard does not round-trip on the Skia head), other heads use the WinRT
@@ -61,6 +61,7 @@ public static class ServiceConfiguration
         services.AddTransient<ISetRegionVisibilityCommand, SetRegionVisibilityCommand>();
         services.AddTransient<ISetConsoleMaximizedCommand, SetConsoleMaximizedCommand>();
         services.AddTransient<IResetPanelCommand, ResetPanelCommand>();
+        services.AddTransient<IPerformEditCommand, PerformEditCommand>();
     }
 
     public static void Initialize()

@@ -131,6 +131,28 @@ export class Celbridge {
         this.localization = new LocalizationAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
+        // Report focus to the host, and clear the report when the host blurs us. On the Skia heads the
+        // WinUI WebView.GotFocus event does not fire for clicks inside the WebView, so DOM focus is the
+        // reliable signal that this surface became active; the host uses it to set the active edit target
+        // and register the blur callback.
+        let hasReportedFocusReceived = false;
+        if (typeof document !== 'undefined') {
+            document.addEventListener('focusin', () => {
+                if (!hasReportedFocusReceived) {
+                    hasReportedFocusReceived = true;
+                    this.#transport.notify('input/focusReceived', {});
+                }
+            });
+        }
+
+        // Release the active element when the host signals that focus moved to another panel. Wired
+        // universally so any editor's WebView caret stops when a native panel takes focus on heads
+        // where WebView and host focus are not integrated (Skia).
+        this.#transport.addEventListener('input/releaseFocus', () => {
+            hasReportedFocusReceived = false;
+            blurActiveElement();
+        });
+
         // The capability context arrives one of two ways. On the packaged WinUI head it is
         // injected as the __celbridgeContext global before navigation and read here. On the
         // Skia head that global is unavailable, so the context stays empty until ready()
@@ -322,6 +344,18 @@ export class Celbridge {
     }
 
     /**
+     * Registers a handler for a custom host-to-client request (the host expects a return value).
+     * Use this for host-driven queries beyond the standard lifecycle — e.g. the host fetching the
+     * editor's current selection for a clipboard operation. The handler's return value (or resolved
+     * promise) is sent back to the host as the response.
+     * @param {string} method - The RPC method name (e.g. 'editor/getSelectedText').
+     * @param {Function} handler - Called with the request params; returns the response value.
+     */
+    onRequest(method, handler) {
+        this.#transport.setRequestHandler(method, handler);
+    }
+
+    /**
      * Internal method to send requests (used by sub-modules).
      * @param {string} method - The method name.
      * @param {Object} params - The request parameters.
@@ -395,6 +429,20 @@ function normalizeContext(raw) {
         secrets: Object.freeze(secrets),
         options: Object.freeze(options)
     };
+}
+
+/**
+ * Blurs the document's active element so an editor's caret stops when focus moves to another panel.
+ * No-ops outside a browser (e.g. the test environment) or when nothing is focused.
+ */
+function blurActiveElement() {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.blur === 'function') {
+        active.blur();
+    }
 }
 
 function readStringMap(source) {

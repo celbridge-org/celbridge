@@ -31,6 +31,11 @@ function createMockEditor(model) {
         setPosition: vi.fn(),
         setScrollTop: vi.fn(),
         onDidScrollChange: vi.fn(),
+        onDidChangeCursorSelection: vi.fn(),
+        onDidFocusEditorText: vi.fn(),
+        getSelection: vi.fn(() => ({ isEmpty: () => true })),
+        setSelection: vi.fn(),
+        trigger: vi.fn(),
         updateOptions: vi.fn(),
         focus: vi.fn(),
         layout: vi.fn(),
@@ -132,5 +137,49 @@ describe('EditorController.handleExternalChange', () => {
 
         expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: false });
         expect(onWritableStateChanged).toHaveBeenLastCalledWith({ state: 'Writable', readOnly: false });
+    });
+});
+
+describe('EditorController.performEdit', () => {
+    let model;
+    let editor;
+    let controller;
+
+    beforeEach(() => {
+        model = createMockModel();
+        editor = createMockEditor(model);
+        installMonacoStub(editor);
+
+        if (!window.matchMedia) {
+            window.matchMedia = () => ({
+                matches: false,
+                addEventListener: () => {},
+                removeEventListener: () => {}
+            });
+        }
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('runs the matching Monaco clipboard action for copy', () => {
+        controller.performEdit('copy');
+
+        expect(editor.focus).toHaveBeenCalled();
+        expect(editor.trigger).toHaveBeenCalledWith('celbridge', 'editor.action.clipboardCopyAction', null);
+    });
+
+    it('selects the full model range for selectAll', () => {
+        controller.performEdit('selectAll');
+
+        expect(editor.setSelection).toHaveBeenCalledWith(model.getFullModelRange());
+        expect(editor.trigger).not.toHaveBeenCalled();
+    });
+
+    it('ignores an unknown intent', () => {
+        controller.performEdit('frobnicate');
+
+        expect(editor.trigger).not.toHaveBeenCalled();
+        expect(editor.setSelection).not.toHaveBeenCalled();
     });
 });

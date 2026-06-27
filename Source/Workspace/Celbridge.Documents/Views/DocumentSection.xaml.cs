@@ -18,7 +18,7 @@ public sealed partial class DocumentSection : UserControl
 {
     private readonly IDocumentSectionLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
     private bool _isShuttingDown = false;
 
     /// <summary>
@@ -76,7 +76,7 @@ public sealed partial class DocumentSection : UserControl
 
         _logger = ServiceLocator.AcquireService<IDocumentSectionLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         // Disable tab add/remove animations so tabs snap into place immediately
         TabView.Loaded += (s, e) => DisableTabViewAnimations();
@@ -84,7 +84,7 @@ public sealed partial class DocumentSection : UserControl
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Documents);
+        _focusService.OnFocusReceived(WorkspacePanel.Documents);
     }
 
     /// <summary>

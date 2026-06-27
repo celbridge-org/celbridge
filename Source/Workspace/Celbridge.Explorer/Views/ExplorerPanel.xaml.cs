@@ -5,7 +5,7 @@ namespace Celbridge.Explorer.Views;
 
 public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 {
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
     private bool _isPointerOver;
     private bool _hasFocus;
 
@@ -13,7 +13,7 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ExplorerPanel()
     {
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
         ViewModel = ServiceLocator.AcquireService<ExplorerPanelViewModel>();
 
         InitializeComponent();
@@ -43,13 +43,13 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Explorer);
+        _focusService.OnFocusReceived(WorkspacePanel.Explorer, ResourceTree);
     }
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
         _hasFocus = true;
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Explorer);
+        _focusService.OnFocusReceived(WorkspacePanel.Explorer, ResourceTree);
         UpdateToolbarVisibility();
     }
 

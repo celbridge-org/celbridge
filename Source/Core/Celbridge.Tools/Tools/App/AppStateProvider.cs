@@ -48,20 +48,20 @@ internal sealed class AppStateProvider : IAppStateProvider
     private readonly IEnvironmentService _environmentService;
     private readonly IProjectService _projectService;
     private readonly IFeatureFlags _featureFlags;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
     private readonly ILayoutService _layoutService;
 
     public AppStateProvider(
         IEnvironmentService environmentService,
         IProjectService projectService,
         IFeatureFlags featureFlags,
-        IPanelFocusService panelFocusService,
+        IFocusService focusService,
         ILayoutService layoutService)
     {
         _environmentService = environmentService;
         _projectService = projectService;
         _featureFlags = featureFlags;
-        _panelFocusService = panelFocusService;
+        _focusService = focusService;
         _layoutService = layoutService;
     }
 
@@ -79,7 +79,7 @@ internal sealed class AppStateProvider : IAppStateProvider
             featureFlags[flagName] = _featureFlags.IsEnabled(flagName);
         }
 
-        var focusedPanel = _panelFocusService.FocusedPanel.ToString();
+        var focusedPanel = _focusService.FocusedPanel.ToString();
 
         var layoutMode = new LayoutModeInfo(
             ContextPanelVisible: _layoutService.IsContextPanelVisible,

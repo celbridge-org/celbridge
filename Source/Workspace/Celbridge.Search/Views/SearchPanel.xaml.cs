@@ -1,13 +1,13 @@
 using Celbridge.Search.ViewModels;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Windows.System;
-using Microsoft.UI.Input;
 
 namespace Celbridge.Search.Views;
 
 public sealed partial class SearchPanel : UserControl, ISearchPanel
 {
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
 
     // Saved scroll position for refresh operations
     private double _savedScrollOffset;
@@ -16,7 +16,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     public SearchPanel()
     {
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
         ViewModel = ServiceLocator.AcquireService<SearchPanelViewModel>();
 
         this.InitializeComponent();
@@ -110,12 +110,12 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Search);
+        _focusService.OnFocusReceived(WorkspacePanel.Search);
     }
 
     private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Search);
+        _focusService.OnFocusReceived(WorkspacePanel.Search);
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -147,11 +147,9 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
             return;
         }
 
-        // Check for modifier keys
-        var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        var isShiftPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        // Check for modifier keys. The command modifier is Cmd on macOS, Control elsewhere.
+        var isCtrlPressed = EditKeyboard.IsCommandModifierDown();
+        var isShiftPressed = EditKeyboard.IsShiftDown();
 
         // Handle selection
         ViewModel.SelectFileResult(fileResult, isCtrlPressed, isShiftPressed);
@@ -183,11 +181,9 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
             return;
         }
 
-        // Check for modifier keys
-        var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        var isShiftPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        // Check for modifier keys. The command modifier is Cmd on macOS, Control elsewhere.
+        var isCtrlPressed = EditKeyboard.IsCommandModifierDown();
+        var isShiftPressed = EditKeyboard.IsShiftDown();
 
         // Handle selection
         ViewModel.SelectMatchLine(matchLine, isCtrlPressed, isShiftPressed);

@@ -339,6 +339,39 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Update the ViewModel with the current selection (also sends notification)
         var selectedItems = ResourceListView.SelectedItems.OfType<ResourceViewItem>().ToList();
         ViewModel.UpdateSelectedItems(selectedItems);
+
+        RepaintSelectionVisuals(e);
+    }
+
+    // On the Uno Skia head a row's selection visual state is set on selection change but the row is not
+    // repainted until a later pointer event, so the highlight lags a click. Re-assert the visual state on
+    // the changed containers (deferred so it runs after the ListView's own selection handling) to repaint
+    // immediately. No-op on Windows, where the selection repaints natively.
+    private void RepaintSelectionVisuals(SelectionChangedEventArgs e)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var changedItems = e.AddedItems.Concat(e.RemovedItems).ToList();
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            foreach (var item in changedItems)
+            {
+                if (ResourceListView.ContainerFromItem(item) is ListViewItem container)
+                {
+                    var state = container.IsSelected ? "Selected" : "Normal";
+                    VisualStateManager.GoToState(container, state, false);
+
+                    // GoToState alone sets the brush but the Skia row is not repainted until a pointer
+                    // event; forcing a re-measure re-renders the container with its current visual now.
+                    container.InvalidateMeasure();
+                    container.InvalidateArrange();
+                }
+            }
+        });
     }
 
     private void ListView_Tapped(object sender, TappedRoutedEventArgs e)

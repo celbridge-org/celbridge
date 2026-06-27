@@ -109,6 +109,19 @@ async function initialize() {
             p.endColumn ?? 0);
     });
 
+    // The host (macOS Edit menu / in-window menu) routes an edit verb here when the editor holds focus;
+    // Monaco runs its own command.
+    celbridge.onNotification('input/performEdit', (params) => {
+        editorController.performEdit(params?.command);
+    });
+
+    // Host-mediated clipboard: the host fetches the selection for copy/cut and pushes text for
+    // paste / cut-delete, because the WebView's own JS clipboard write is blocked on the Skia WKWebView.
+    celbridge.onRequest('editor/getSelectedText', () => editorController.getSelectedText());
+    celbridge.onNotification('editor/insertText', (params) => {
+        editorController.insertText(params?.text ?? '');
+    });
+
     if (previewPipeline) {
         previewPipeline.attachRenderer(options.previewRendererUrl);
     }

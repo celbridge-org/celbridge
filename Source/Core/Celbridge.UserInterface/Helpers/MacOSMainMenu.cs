@@ -23,6 +23,14 @@ internal static class MacOSMainMenu
     private const long TagHelpWebsite = 7;
     private const long TagAbout = 8;
 
+    // Edit verbs route to the focused surface through the edit-intent command.
+    private const long TagEditUndo = 9;
+    private const long TagEditRedo = 10;
+    private const long TagEditCut = 11;
+    private const long TagEditCopy = 12;
+    private const long TagEditPaste = 13;
+    private const long TagEditSelectAll = 14;
+
     private const string WebsiteUrl = "https://celbridge.org";
     private const string GitHubUrl = "https://github.com/celbridge-org/celbridge";
 
@@ -66,22 +74,23 @@ internal static class MacOSMainMenu
             }
         };
 
-        // The Edit items deliberately carry no key equivalents: with a key equivalent, AppKit would
-        // intercept the shortcut before the focused editor (Monaco, the console, native text controls)
-        // sees it, breaking their own copy/paste/undo handling. Without one, the items stay discoverable
-        // and act through the responder chain when clicked, and every existing editor shortcut is untouched.
+        // The Edit items are Command items carrying the standard shortcuts. Each routes to the focused
+        // surface through IPerformEditCommand, and validateMenuItem reports whether that surface can
+        // perform the verb. When the focused surface cannot (a native text box, or an editor with no
+        // selection), the item is disabled and AppKit lets the key equivalent fall through to the control's
+        // own handling, so native and editor copy/paste/undo keep working.
         var editMenu = new MacMenu
         {
             Title = Text("Menu_Edit"),
             Items = new List<MacMenuItem>
             {
-                MacMenuItem.Selector(Text("Menu_Undo"), "undo:"),
-                MacMenuItem.Selector(Text("Menu_Redo"), "redo:"),
+                MacMenuItem.Command(Text("Menu_Undo"), TagEditUndo, "z"),
+                MacMenuItem.Command(Text("Menu_Redo"), TagEditRedo, "z", MacKeyModifier.Command | MacKeyModifier.Shift),
                 MacMenuItem.Separator(),
-                MacMenuItem.Selector(Text("Menu_Cut"), "cut:"),
-                MacMenuItem.Selector(Text("Menu_Copy"), "copy:"),
-                MacMenuItem.Selector(Text("Menu_Paste"), "paste:"),
-                MacMenuItem.Selector(Text("Menu_SelectAll"), "selectAll:")
+                MacMenuItem.Command(Text("Menu_Cut"), TagEditCut, "x"),
+                MacMenuItem.Command(Text("Menu_Copy"), TagEditCopy, "c"),
+                MacMenuItem.Command(Text("Menu_Paste"), TagEditPaste, "v"),
+                MacMenuItem.Command(Text("Menu_SelectAll"), TagEditSelectAll, "a")
             }
         };
 
@@ -119,8 +128,33 @@ internal static class MacOSMainMenu
         return MacOSMenuInterop.Install(menus, OnCommand, Validate);
     }
 
+    private static EditIntent? EditIntentForTag(long tag)
+    {
+        return tag switch
+        {
+            TagEditUndo => EditIntent.Undo,
+            TagEditRedo => EditIntent.Redo,
+            TagEditCut => EditIntent.Cut,
+            TagEditCopy => EditIntent.Copy,
+            TagEditPaste => EditIntent.Paste,
+            TagEditSelectAll => EditIntent.SelectAll,
+            _ => null
+        };
+    }
+
     private static bool Validate(long tag)
     {
+        // An Edit verb is enabled exactly when the focused surface can perform it. When it cannot, the
+        // item is disabled and AppKit lets the shortcut fall through to the control's own handling.
+        var editIntent = EditIntentForTag(tag);
+        if (editIntent is not null)
+        {
+            var focusService = ServiceLocator.AcquireService<IFocusService>();
+            var target = focusService.EditTarget;
+            return target is not null
+                && target.CanPerformEdit(editIntent.Value);
+        }
+
         // Reload and Close act on the open project, so they are enabled only while a workspace is loaded;
         // every other command is always available. Mirrors the hamburger menu's IsWorkspaceLoaded gating.
         switch (tag)
@@ -136,6 +170,16 @@ internal static class MacOSMainMenu
 
     private static void OnCommand(long tag)
     {
+        // Edit verbs route to the focused surface through the edit-intent command, the same path the
+        // keyboard and in-window menu use.
+        var editIntent = EditIntentForTag(tag);
+        if (editIntent is not null)
+        {
+            var commandService = ServiceLocator.AcquireService<ICommandService>();
+            commandService.Execute<IPerformEditCommand>(command => command.Intent = editIntent.Value);
+            return;
+        }
+
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
         // stay in lockstep. Resolved per invocation; the methods only dispatch commands or open dialogs.
         var viewModel = ServiceLocator.AcquireService<MainMenuViewModel>();

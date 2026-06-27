@@ -66,4 +66,26 @@ export class InputAPI {
             altKey: modifiers.alt === true
         });
     }
+
+    /**
+     * Reports which standard edit verbs the editor can currently perform, so the host can drive menu
+     * enable state. Send this whenever the editor's selection changes.
+     * @param {Object} availability - The current edit availability.
+     * @param {boolean} [availability.canCopy]
+     * @param {boolean} [availability.canCut]
+     * @param {boolean} [availability.canPaste]
+     * @param {boolean} [availability.canSelectAll]
+     * @param {boolean} [availability.canUndo]
+     * @param {boolean} [availability.canRedo]
+     */
+    notifyEditAvailability(availability = {}) {
+        this.#transport.notify('input/editAvailabilityChanged', {
+            canCopy: availability.canCopy === true,
+            canCut: availability.canCut === true,
+            canPaste: availability.canPaste === true,
+            canSelectAll: availability.canSelectAll === true,
+            canUndo: availability.canUndo === true,
+            canRedo: availability.canRedo === true
+        });
+    }
 }

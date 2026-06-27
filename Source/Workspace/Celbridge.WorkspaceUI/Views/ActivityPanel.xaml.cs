@@ -11,7 +11,7 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
     private readonly ILogger<ActivityPanel> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDispatcher _dispatcher;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
 
     public IExplorerPanel ExplorerPanel { get; }
     public ISearchPanel SearchPanel { get; }
@@ -30,7 +30,7 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         _logger = ServiceLocator.AcquireService<ILogger<ActivityPanel>>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _dispatcher = ServiceLocator.AcquireService<IDispatcher>();
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         // Acquire panel views via DI and host them in ContentControls
         ExplorerPanel = ServiceLocator.AcquireService<IExplorerPanel>();
@@ -93,11 +93,11 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         {
             case ActivityPanelTab.Explorer:
                 ExplorerPanelControl.Visibility = Visibility.Visible;
-                _panelFocusService.SetFocusedPanel(WorkspacePanel.Explorer);
+                _focusService.OnFocusReceived(WorkspacePanel.Explorer);
                 break;
             case ActivityPanelTab.Search:
                 SearchPanelControl.Visibility = Visibility.Visible;
-                _panelFocusService.SetFocusedPanel(WorkspacePanel.Search);
+                _focusService.OnFocusReceived(WorkspacePanel.Search);
                 // Use dispatcher to ensure the panel is fully loaded before focusing
                 _dispatcher.TryEnqueue(() => SearchPanel.FocusSearchInput());
                 break;

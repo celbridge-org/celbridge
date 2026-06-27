@@ -40,6 +40,7 @@ export class EditorController {
         this.#setupContentChangeListener();
         this.#setupScrollListener();
         this.#setupThemeListener();
+        this.#setupSelectionListener();
     }
 
     getValue() {
@@ -98,6 +99,51 @@ export class EditorController {
 
         this.#editor.executeEdits('insert', [{ range: range, text: text }]);
         this.#editor.focus();
+    }
+
+    // Returns the currently selected text. The host fetches this for clipboard copy/cut, because the
+    // WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView.
+    getSelectedText() {
+        if (!this.#editor) {
+            return '';
+        }
+
+        const selection = this.#editor.getSelection();
+        if (!selection) {
+            return '';
+        }
+
+        return this.#editor.getModel().getValueInRange(selection);
+    }
+
+    // Runs one of Monaco's own edit commands in response to a host edit intent (e.g. the macOS Edit
+    // menu). The outcome equals Monaco handling the keystroke itself; we never reimplement the command.
+    performEdit(intent) {
+        if (!this.#editor) {
+            return;
+        }
+
+        this.#editor.focus();
+
+        if (intent === 'selectAll') {
+            const model = this.#editor.getModel();
+            if (model) {
+                this.#editor.setSelection(model.getFullModelRange());
+            }
+            return;
+        }
+
+        const actionId = {
+            copy: 'editor.action.clipboardCopyAction',
+            cut: 'editor.action.clipboardCutAction',
+            paste: 'editor.action.clipboardPasteAction',
+            undo: 'undo',
+            redo: 'redo'
+        }[intent];
+
+        if (actionId) {
+            this.#editor.trigger('celbridge', actionId, null);
+        }
     }
 
     scrollToPercentage(percentage) {
@@ -500,6 +546,32 @@ export class EditorController {
             // Fire unconditionally so the preview stays in sync with in-flight
             // edits; the gating above is only for host-direction notifications.
             this.#onContentChanged();
+        });
+    }
+
+    #setupSelectionListener() {
+        // Report edit capabilities to the host whenever the selection or focus changes, so the macOS
+        // Edit menu enables Copy/Cut only when there is a selection. Copy is the discriminating verb;
+        // paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
+        this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
+        this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
+    }
+
+    #notifyEditAvailability() {
+        if (!this.#shouldNotifyHost()) {
+            return;
+        }
+
+        const selection = this.#editor.getSelection();
+        const hasSelection = selection !== null && !selection.isEmpty();
+
+        celbridge.input.notifyEditAvailability({
+            canCopy: hasSelection,
+            canCut: hasSelection,
+            canPaste: true,
+            canSelectAll: true,
+            canUndo: true,
+            canRedo: true
         });
     }
 

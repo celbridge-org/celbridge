@@ -65,6 +65,31 @@ public class ConsoleHost : IDisposable
     }
 
     /// <summary>
+    /// Releases the console's DOM focus when focus moves to another panel.
+    /// </summary>
+    public Task ReleaseFocusAsync()
+    {
+        return _host.NotifyReleaseFocusAsync();
+    }
+
+    /// <summary>
+    /// Asks the console to run one of its own edit commands (selectAll) in response to a host menu.
+    /// </summary>
+    public Task NotifyPerformEditAsync(string intent)
+    {
+        return _host.NotifyPerformEditAsync(intent);
+    }
+
+    /// <summary>
+    /// Fetches the terminal's current selection text, so the host can write it to the native clipboard
+    /// (the WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView).
+    /// </summary>
+    public Task<string> GetSelectionAsync()
+    {
+        return _host.Rpc.InvokeAsync<string>("console/getSelection");
+    }
+
+    /// <summary>
     /// Connects the console WebView to the app-state store so it receives the app theme (and future
     /// app-global state). Returns the connection, which the caller disposes on teardown.
     /// </summary>

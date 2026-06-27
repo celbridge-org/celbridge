@@ -12,6 +12,7 @@ using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
@@ -32,6 +33,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
+    private readonly IFocusService _focusService;
 
     private WebView2? _webView;
     private WebViewHostChannel? _hostChannel;
@@ -74,6 +76,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
@@ -775,6 +778,26 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         var message = new DocumentViewFocusedMessage(FileResource);
         _messengerService.Send(message);
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
+    }
+
+    public void OnFocusReceived()
+    {
+        // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
+        // reports DOM focus over the bridge. Marshal to the UI thread and record the focus.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var message = new DocumentViewFocusedMessage(FileResource);
+            _messengerService.Send(message);
+
+            _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
+        });
+    }
+
+    private void ReleaseFocus()
+    {
+        _ = _host?.NotifyReleaseFocusAsync();
     }
 
     public override async Task PrepareToClose()

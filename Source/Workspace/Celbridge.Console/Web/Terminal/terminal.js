@@ -165,3 +165,46 @@ consoleClient.onInjectCommand((command) => {
     // Use \r (carriage return) as this is what terminals send for Enter.
     consoleClient.sendInput('\x15' + command + '\r');
 });
+
+// Reports which edit verbs the console can do. Copy needs a selection; paste and select-all are always
+// available. Sent on focus and whenever the selection changes so the Edit menu enables correctly.
+function reportConsoleEditAvailability() {
+    consoleClient.notifyEditAvailability({
+        canCopy: term.hasSelection(),
+        canPaste: true,
+        canSelectAll: true
+    });
+}
+
+// Report focus + edit availability to the host, and clear focus on blur. On the Skia heads GotFocus does not
+// fire for clicks inside the console WebView, so DOM focus is the reliable signal it became active.
+let hasReportedConsoleFocus = false;
+document.addEventListener('focusin', () => {
+    if (!hasReportedConsoleFocus) {
+        hasReportedConsoleFocus = true;
+        consoleClient.notifyFocusReceived();
+    }
+    reportConsoleEditAvailability();
+});
+
+// Release the terminal's focus when the host signals focus moved to another panel, so its caret stops
+// on heads where WebView and host focus are not integrated (Skia).
+consoleClient.onReleaseFocus(() => {
+    hasReportedConsoleFocus = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.blur === 'function') {
+        active.blur();
+    }
+});
+
+// Copy and paste are host-mediated: the WebView's own JS clipboard is blocked on the Skia WKWebView, so
+// the host fetches the selection for copy and writes clipboard text straight to the pty for paste.
+// Select-all runs here.
+consoleClient.onGetSelection(() => term.getSelection());
+consoleClient.onPerformEdit((command) => {
+    if (command === 'selectAll') {
+        term.selectAll();
+    }
+});
+
+term.onSelectionChange(() => reportConsoleEditAvailability());

@@ -155,8 +155,8 @@ public class AppToolTests
         var environmentInfo = new EnvironmentInfo(appVersion, "Windows", "Debug");
         environmentService.GetEnvironmentInfo().Returns(environmentInfo);
 
-        var panelFocusService = Substitute.For<IPanelFocusService>();
-        panelFocusService.FocusedPanel.Returns(focusedPanel);
+        var focusService = Substitute.For<IFocusService>();
+        focusService.FocusedPanel.Returns(focusedPanel);
 
         var layoutService = Substitute.For<ILayoutService>();
         layoutService.IsContextPanelVisible.Returns(contextVisible);
@@ -166,7 +166,7 @@ public class AppToolTests
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
         _services.GetRequiredService<IEnvironmentService>().Returns(environmentService);
-        _services.GetRequiredService<IPanelFocusService>().Returns(panelFocusService);
+        _services.GetRequiredService<IFocusService>().Returns(focusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 
         // AppTools.GetState resolves IAppStateProvider; build a real provider
@@ -180,7 +180,7 @@ public class AppToolTests
                 environmentService,
                 _services.GetRequiredService<IProjectService>(),
                 featureFlags,
-                panelFocusService,
+                focusService,
                 layoutService));
 
         return featureFlags;

@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
+using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Logging;
@@ -13,17 +14,18 @@ using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostInput
+public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostInput, IEditTarget
 {
     private readonly ILogger<ConsolePanel> _logger;
     private readonly ICommandService _commandService;
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IKeyboardShortcutService _keyboardShortcutService;
     private readonly IWebViewStateService _webViewStateService;
@@ -35,6 +37,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     // The console's Terminal web folder is served over the loopback file server under this package name.
     private const string ConsolePackageName = "console";
 
+    private EditAvailability _editAvailability = EditAvailability.None;
     private ITerminal? _terminal;
     private WebView2? _consoleWebView;
     private IDisposable? _appStateConnection;
@@ -51,7 +54,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         _webViewStateService = ServiceLocator.AcquireService<IWebViewStateService>();
@@ -64,7 +67,116 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Console);
+        _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
+    }
+
+    public void OnFocusReceived()
+    {
+        // The Skia head does not raise GotFocus for clicks inside the console WebView, so its JS client
+        // reports DOM focus over the bridge. Marshal to the UI thread and record the focus.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
+        });
+    }
+
+    private void ReleaseFocus()
+    {
+        _ = _consoleHost?.ReleaseFocusAsync();
+    }
+
+    public bool CanPerformEdit(EditIntent intent)
+    {
+        return _editAvailability.Allows(intent);
+    }
+
+    public void PerformEdit(EditIntent intent)
+    {
+        // Copy and paste are host-mediated: the WebView's own JS clipboard is blocked on the Skia
+        // WKWebView, so the host fetches the terminal selection for copy and writes the clipboard text
+        // straight to the pty for paste. Select-all runs in the terminal itself.
+        if (intent == EditIntent.Copy)
+        {
+            _ = CopyConsoleSelectionAsync();
+            return;
+        }
+
+        if (intent == EditIntent.Paste)
+        {
+            _ = PasteIntoConsoleAsync();
+            return;
+        }
+
+        if (intent == EditIntent.SelectAll)
+        {
+            _ = _consoleHost?.NotifyPerformEditAsync("selectAll");
+        }
+    }
+
+    private async Task CopyConsoleSelectionAsync()
+    {
+        var consoleHost = _consoleHost;
+        if (consoleHost is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var text = await consoleHost.GetSelectionAsync();
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            _commandService.Execute<ICopyTextToClipboardCommand>(command => command.Text = text);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to copy the console selection to the clipboard");
+        }
+    }
+
+    private async Task PasteIntoConsoleAsync()
+    {
+        try
+        {
+            var dataPackageView = Clipboard.GetContent();
+            if (!dataPackageView.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+
+            var text = await dataPackageView.GetTextAsync();
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            // Pasting into a terminal is writing the text to the pty's input, as if the user typed it.
+            _terminal?.Write(text);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to paste the clipboard into the console");
+        }
+    }
+
+    public void OnEditAvailabilityChanged(
+        bool canCopy,
+        bool canCut,
+        bool canPaste,
+        bool canSelectAll,
+        bool canUndo,
+        bool canRedo)
+    {
+        _editAvailability = new EditAvailability(
+            canCopy,
+            canCut,
+            canPaste,
+            canSelectAll,
+            canUndo,
+            canRedo);
     }
 
     private void OnRequestConsoleFocus(object recipient, RequestConsoleFocusMessage message)

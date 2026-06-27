@@ -1,9 +1,8 @@
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.ViewModels.Pages;
-using Microsoft.UI.Input;
 using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -143,27 +142,11 @@ public partial class MainPage : Page
 
     private bool OnKeyDown(VirtualKey key)
     {
-        // Use the HasFlag method to check if the control key is down.
-        // If you just compare with CoreVirtualKeyStates.Down it doesn't work when the key is held down.
-        var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            .HasFlag(CoreVirtualKeyStates.Down);
-
-        // On macOS the command modifier is Cmd, which the Uno macOS head reports as the left
-        // Windows key. Fold it into the control flag so Cmd+Z / Cmd+Shift+Z drive undo/redo.
-        // Control stays active too, so this is additive (no regression) and remains the fallback
-        // for right Cmd, which the head does not surface as a key code.
-        if (OperatingSystem.IsMacOS())
-        {
-            var command = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.LeftWindows)
-                .HasFlag(CoreVirtualKeyStates.Down);
-            control = control || command;
-        }
-
-        var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-            .HasFlag(CoreVirtualKeyStates.Down);
-
-        var alt = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu)
-            .HasFlag(CoreVirtualKeyStates.Down);
+        // The command modifier folds in Cmd on macOS (which the head reports as the left Windows key),
+        // so Cmd+Z / Cmd+Shift+Z drive undo/redo there.
+        var control = EditKeyboard.IsCommandModifierDown();
+        var shift = EditKeyboard.IsShiftDown();
+        var alt = EditKeyboard.IsAltDown();
 
         var shortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         return shortcutService.HandleShortcut(key, control, shift, alt);
