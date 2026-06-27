@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Server;
 using Celbridge.WebHost;
 using Celbridge.WebView.Services;
 using Celbridge.Workspace;
@@ -15,6 +16,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     private readonly ICommandService _commandService;
     private readonly IWebViewService _webViewService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IServerService _serverService;
 
     [ObservableProperty]
     private string _sourceUrl = string.Empty;
@@ -27,9 +29,9 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public WebViewDocumentRole Role { get; set; }
 
     /// <summary>
-    /// The URL the view should navigate to. For .webview documents this is the configured
-    /// source URL verbatim; for the HTML viewer it is the project virtual-host URL derived
-    /// from FileResource.
+    /// The URL the view should navigate to. For .webview documents this is the configured source URL
+    /// verbatim; for the HTML viewer it is the loopback /project/ URL on the Skia heads, or the project
+    /// virtual-host URL on Windows.
     /// </summary>
     public string NavigateUrl
     {
@@ -45,7 +47,16 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
                 // URL path is the bare resource path; the "project:" prefix that
                 // ResourceKey.ToString() now emits is for serialised diagnostics,
                 // not URL construction.
-                return $"https://{ProjectVirtualHost}/{FileResource.Path}";
+
+                // The Skia heads serve project content over the loopback file server's /project/ route,
+                // since SetVirtualHostNameToFolderMapping is a no-op there. Windows keeps the project
+                // virtual host. Both serve the same project folder, so relative asset references resolve.
+                if (OperatingSystem.IsWindows())
+                {
+                    return $"https://{ProjectVirtualHost}/{FileResource.Path}";
+                }
+
+                return $"http://127.0.0.1:{_serverService.Port}/project/{FileResource.Path}";
             }
 
             return SourceUrl;
@@ -61,19 +72,21 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public WebViewDocumentViewModel(
         ICommandService commandService,
         IWebViewService webViewService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IServerService serverService)
     {
         _commandService = commandService;
         _webViewService = webViewService;
         _workspaceWrapper = workspaceWrapper;
+        _serverService = serverService;
     }
 
     public async Task<Result> LoadContent()
     {
         if (Role == WebViewDocumentRole.HtmlViewer)
         {
-            // HTML viewer reads the file directly via the project virtual host.
-            // Nothing to parse; succeeding here is enough to allow TryNavigate to run.
+            // HTML viewer content is served by the file server (loopback /project/ route, or the project
+            // virtual host on Windows). Nothing to parse; succeeding here lets TryNavigate run.
             await Task.CompletedTask;
             return Result.Ok();
         }
