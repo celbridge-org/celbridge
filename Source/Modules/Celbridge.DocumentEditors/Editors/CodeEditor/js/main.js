@@ -109,7 +109,7 @@ async function initialize() {
             p.endColumn ?? 0);
     });
 
-    // The host (macOS Edit menu / in-window menu) routes an edit verb here when the editor holds focus;
+    // The host (a menu or keyboard shortcut) routes an edit verb here when the editor holds focus;
     // Monaco runs its own command.
     celbridge.onNotification('input/performEdit', (params) => {
         editorController.performEdit(params?.command);
