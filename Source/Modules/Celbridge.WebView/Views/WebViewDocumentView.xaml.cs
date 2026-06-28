@@ -448,9 +448,25 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into HTML viewer WebView");
         }
 #else
-        // Skia: AddScriptToExecuteOnDocumentCreatedAsync is not implemented (and awaiting the faulted
-        // operation can stall the WebView init), so the shim is re-delivered per navigation via
-        // ExecuteScriptAsync in CoreWebView2_NavigationCompleted, before the content-ready gate opens.
+        // Skia: AddScriptToExecuteOnDocumentCreatedAsync is not implemented. Install the shim as a native
+        // WKUserScript at document-start so it wraps console/fetch before page scripts run -- required for
+        // get_console / get_network capture. This runs before the first navigation (TryNavigate), so the
+        // initial page's boot output is captured. CoreWebView2_NavigationCompleted still re-delivers the
+        // shim via ExecuteScriptAsync as a fallback for the call-time-only tools.
+        if (OperatingSystem.IsMacOS()
+            && Celbridge.WebHost.Services.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
+        {
+            try
+            {
+                var script = toolBridge.GetShimScript();
+                Celbridge.WebHost.Services.MacOSWebViewInterop.AddUserScriptAtDocumentStart(nativeHandle, script);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim on macOS");
+            }
+        }
+
         await Task.CompletedTask;
 #endif
     }

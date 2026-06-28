@@ -1,6 +1,10 @@
-using System.Text.Json;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
+#if WINDOWS
+using System.Text.Json;
+#else
+using Celbridge.WebHost.Services;
+#endif
 
 namespace Celbridge.WebHost;
 
@@ -10,9 +14,11 @@ namespace Celbridge.WebHost;
 /// </summary>
 public static class DocumentWebViewToolBridgeExtensions
 {
+#if WINDOWS
     // Bounds the wait for Page.captureScreenshot. Inactive WinUI tabs pause the
     // WebView2 renderer, which would otherwise leave the CDP call hanging.
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
+#endif
 
     // ~2 frames at 60fps. Content-ready can fire before the first paint commits,
     // so this gives every capture a minimum of one frame of paint headroom.
@@ -74,6 +80,7 @@ public static class DocumentWebViewToolBridgeExtensions
         {
             try
             {
+#if WINDOWS
                 if (clearCache)
                 {
                     await coreWebView2.Profile.ClearBrowsingDataAsync(
@@ -81,6 +88,12 @@ public static class DocumentWebViewToolBridgeExtensions
                 }
 
                 coreWebView2.Reload();
+#else
+                // Skia: CoreWebView2.Profile (cache clear) and Reload() are not implemented, so reload
+                // through the page. clearCache is best-effort here -- location.reload() does not purge the
+                // HTTP cache (that would need WKWebsiteDataStore interop).
+                await coreWebView2.ExecuteScriptAsync("location.reload()");
+#endif
                 tcs.TrySetResult();
             }
             catch (Exception ex)
@@ -132,6 +145,7 @@ public static class DocumentWebViewToolBridgeExtensions
                         "Re-activate the document tab and retry.");
                 }
 
+#if WINDOWS
                 var coreWebView2 = webView.CoreWebView2;
                 var paramsJson = BuildCaptureScreenshotParams(request);
                 var captureTask = coreWebView2
@@ -170,6 +184,38 @@ public static class DocumentWebViewToolBridgeExtensions
                 }
 
                 tcs.TrySetResult(new ScreenshotData(request.Format, width, height, bytes));
+#else
+                // Skia: Page.captureScreenshot (CDP) is not implemented, so snapshot the native WKWebView.
+                // The bridge's clip and MaxEdge scaling are not applied here, so the capture is the full
+                // visible surface at native resolution, encoded to the requested format.
+                if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
+                {
+                    throw new InvalidOperationException(
+                        $"Could not resolve the native WKWebView for a screenshot. Walked: {detail}");
+                }
+
+                // The bridge resolves the clip rect (viewport or selector) and a Scale that fits MaxEdge.
+                // Map that to the native snapshot: clip to the rect, render at Width * Scale points.
+                var clip = request.Clip;
+                var snapshotRequest = new MacSnapshotRequest(
+                    clip?.X ?? 0,
+                    clip?.Y ?? 0,
+                    clip?.Width ?? 0,
+                    clip?.Height ?? 0,
+                    clip is not null ? clip.Width * clip.Scale : 0,
+                    request.Format,
+                    request.Quality);
+
+                var snapshot = await MacOSWebViewInterop.TakeSnapshotAsync(nativeHandle, snapshotRequest);
+                if (snapshot is null)
+                {
+                    throw new InvalidOperationException(
+                        "The native WKWebView snapshot did not complete. The document tab must be the " +
+                        "active, visible tab for a screenshot.");
+                }
+
+                tcs.TrySetResult(new ScreenshotData(request.Format, snapshot.Width, snapshot.Height, snapshot.Bytes));
+#endif
             }
             catch (Exception ex)
             {
@@ -196,6 +242,7 @@ public static class DocumentWebViewToolBridgeExtensions
             && webView.ActualHeight > 0;
     }
 
+#if WINDOWS
     private static string BuildCaptureScreenshotParams(ScreenshotRequest request)
     {
         var payload = new Dictionary<string, object>
@@ -219,4 +266,5 @@ public static class DocumentWebViewToolBridgeExtensions
         }
         return JsonSerializer.Serialize(payload);
     }
+#endif
 }

@@ -8,6 +8,25 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
+/// A WKWebView snapshot encoded to PNG or JPEG bytes, with the captured pixel dimensions.
+/// </summary>
+public sealed record MacWebViewSnapshot(byte[] Bytes, int Width, int Height);
+
+/// <summary>
+/// Parameters for a WKWebView snapshot. The clip rectangle (CSS pixels, in the web view's coordinate space)
+/// selects the region to capture; SnapshotWidth is the target output width in points (0 leaves the capture
+/// at native resolution). Format is "png" or "jpeg" (Quality 1-100 applies to JPEG).
+/// </summary>
+public sealed record MacSnapshotRequest(
+    double ClipX,
+    double ClipY,
+    double ClipWidth,
+    double ClipHeight,
+    double SnapshotWidth,
+    string Format,
+    int Quality);
+
+/// <summary>
 /// Objective-C runtime interop for reaching the native WKWebView behind Uno's macOS Skia WebView2
 /// control and calling the WebKit methods it does not surface through managed code.
 /// </summary>
@@ -41,6 +60,9 @@ public static class MacOSWebViewInterop
     // NSBitmapImageFileTypePNG == 4.
     private const nint BitmapImageFileTypePng = 4;
 
+    // NSBitmapImageFileTypeJPEG == 3.
+    private const nint BitmapImageFileTypeJpeg = 3;
+
     [DllImport(LibObjC)]
     private static extern IntPtr objc_getClass(string name);
 
@@ -72,6 +94,17 @@ public static class MacOSWebViewInterop
         IntPtr source,
         nint injectionTime,
         [MarshalAs(UnmanagedType.I1)] bool mainFrameOnly);
+
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern IntPtr SendMessageDouble(IntPtr receiver, IntPtr selector, double argument);
+
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern nint SendMessageReturnNint(IntPtr receiver, IntPtr selector);
+
+    // A CGRect is four doubles, a homogeneous float aggregate the ARM64 ABI passes in the floating-point
+    // registers, so the struct marshals by value directly.
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern void SendMessageVoidCGRect(IntPtr receiver, IntPtr selector, CGRect rect);
 
     [DllImport(LibSystem)]
     private static extern IntPtr dlsym(IntPtr handle, string symbol);
@@ -181,19 +214,29 @@ public static class MacOSWebViewInterop
 
     /// <summary>
     /// Captures the rendered WKWebView surface via -[WKWebView
-    /// takeSnapshotWithConfiguration:completionHandler:] and returns it as PNG bytes, or null if the
-    /// snapshot does not complete within the timeout. This is the macOS replacement for the Chrome
-    /// DevTools Protocol Page.captureScreenshot, which is unavailable on WKWebView.
+    /// takeSnapshotWithConfiguration:completionHandler:], clipping to the request's rect and rendering at
+    /// its SnapshotWidth, then encodes to the requested format ("png" or "jpeg", quality 1-100 for JPEG).
+    /// Returns null if the snapshot does not complete within the timeout. This is the macOS replacement for
+    /// the Chrome DevTools Protocol Page.captureScreenshot, which is unavailable on WKWebView. On a Retina
+    /// display the captured pixels can be up to the backing-scale multiple of SnapshotWidth.
     /// </summary>
-    public static async Task<byte[]?> TakeSnapshotPngAsync(IntPtr webView)
+    public static async Task<MacWebViewSnapshot?> TakeSnapshotAsync(IntPtr webView, MacSnapshotRequest request)
     {
         _snapshotCompletion = new TaskCompletionSource<IntPtr>();
         var completionBlock = EnsureSnapshotBlock();
 
+        var configuration = BuildSnapshotConfiguration(request);
+
         var selector = sel_registerName("takeSnapshotWithConfiguration:completionHandler:");
-        SendMessageVoidTwoPointers(webView, selector, IntPtr.Zero, completionBlock);
+        SendMessageVoidTwoPointers(webView, selector, configuration, completionBlock);
 
         var finishedTask = await Task.WhenAny(_snapshotCompletion.Task, Task.Delay(8000));
+
+        if (configuration != IntPtr.Zero)
+        {
+            SendMessage(configuration, sel_registerName("release"));
+        }
+
         if (finishedTask != _snapshotCompletion.Task)
         {
             return null;
@@ -207,7 +250,7 @@ public static class MacOSWebViewInterop
 
         try
         {
-            return ConvertNSImageToPng(image);
+            return ConvertNSImage(image, request.Format, request.Quality);
         }
         finally
         {
@@ -215,7 +258,42 @@ public static class MacOSWebViewInterop
         }
     }
 
-    private static byte[]? ConvertNSImageToPng(IntPtr nsImage)
+    private static IntPtr BuildSnapshotConfiguration(MacSnapshotRequest request)
+    {
+        var configurationClass = objc_getClass("WKSnapshotConfiguration");
+        if (configurationClass == IntPtr.Zero)
+        {
+            // No configuration class: fall back to a full-surface snapshot.
+            return IntPtr.Zero;
+        }
+
+        var allocated = SendMessage(configurationClass, sel_registerName("alloc"));
+        var configuration = SendMessage(allocated, sel_registerName("init"));
+
+        // Leave rect at its default (the whole view) when no positive clip is supplied.
+        if (request.ClipWidth > 0
+            && request.ClipHeight > 0)
+        {
+            var rect = new CGRect
+            {
+                X = request.ClipX,
+                Y = request.ClipY,
+                Width = request.ClipWidth,
+                Height = request.ClipHeight,
+            };
+            SendMessageVoidCGRect(configuration, sel_registerName("setRect:"), rect);
+        }
+
+        if (request.SnapshotWidth > 0)
+        {
+            var snapshotWidthNumber = SendMessageDouble(objc_getClass("NSNumber"), sel_registerName("numberWithDouble:"), request.SnapshotWidth);
+            SendMessage(configuration, sel_registerName("setSnapshotWidth:"), snapshotWidthNumber);
+        }
+
+        return configuration;
+    }
+
+    private static MacWebViewSnapshot? ConvertNSImage(IntPtr nsImage, string format, int quality)
     {
         var tiffData = SendMessage(nsImage, sel_registerName("TIFFRepresentation"));
         if (tiffData == IntPtr.Zero)
@@ -230,20 +308,39 @@ public static class MacOSWebViewInterop
             return null;
         }
 
-        var emptyProperties = SendMessage(objc_getClass("NSDictionary"), sel_registerName("dictionary"));
+        var width = (int)SendMessageReturnNint(bitmapRep, sel_registerName("pixelsWide"));
+        var height = (int)SendMessageReturnNint(bitmapRep, sel_registerName("pixelsHigh"));
 
-        var pngData = SendMessageEnumThenPointer(
+        nint fileType;
+        IntPtr properties;
+        if (string.Equals(format, "jpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            fileType = BitmapImageFileTypeJpeg;
+
+            // NSImageCompressionFactor expects a 0-1 quality value.
+            var compressionFactor = Math.Clamp(quality, 1, 100) / 100.0;
+            var compressionNumber = SendMessageDouble(objc_getClass("NSNumber"), sel_registerName("numberWithDouble:"), compressionFactor);
+            var compressionKey = CreateNSString("NSImageCompressionFactor");
+            properties = SendMessage(objc_getClass("NSDictionary"), sel_registerName("dictionaryWithObject:forKey:"), compressionNumber, compressionKey);
+        }
+        else
+        {
+            fileType = BitmapImageFileTypePng;
+            properties = SendMessage(objc_getClass("NSDictionary"), sel_registerName("dictionary"));
+        }
+
+        var imageData = SendMessageEnumThenPointer(
             bitmapRep,
             sel_registerName("representationUsingType:properties:"),
-            BitmapImageFileTypePng,
-            emptyProperties);
-        if (pngData == IntPtr.Zero)
+            fileType,
+            properties);
+        if (imageData == IntPtr.Zero)
         {
             return null;
         }
 
-        var length = (long)SendMessage(pngData, sel_registerName("length"));
-        var bytesPointer = SendMessage(pngData, sel_registerName("bytes"));
+        var length = (long)SendMessage(imageData, sel_registerName("length"));
+        var bytesPointer = SendMessage(imageData, sel_registerName("bytes"));
         if (bytesPointer == IntPtr.Zero
             || length <= 0)
         {
@@ -252,7 +349,7 @@ public static class MacOSWebViewInterop
 
         var managedBytes = new byte[length];
         Marshal.Copy(bytesPointer, managedBytes, 0, (int)length);
-        return managedBytes;
+        return new MacWebViewSnapshot(managedBytes, width, height);
     }
 
     // takeSnapshotWithConfiguration:completionHandler: calls back through an Objective-C block. We
@@ -339,6 +436,15 @@ public static class MacOSWebViewInterop
         }
 
         return null;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CGRect
+    {
+        public double X;
+        public double Y;
+        public double Width;
+        public double Height;
     }
 
     [StructLayout(LayoutKind.Sequential)]
