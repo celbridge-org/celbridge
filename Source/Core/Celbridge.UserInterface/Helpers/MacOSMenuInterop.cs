@@ -7,7 +7,9 @@ namespace Celbridge.UserInterface.Helpers;
 /// <summary>
 /// One item in a native macOS menu. A Command item dispatches back to managed code by Tag; a Selector item
 /// targets the AppKit responder chain by selector name (e.g. "copy:") and is auto-enabled only when some
-/// responder handles it; a Separator is a divider.
+/// responder handles it; a Separator is a divider; a Submenu item opens a nested menu whose contents are
+/// rebuilt by SubmenuItemsProvider each time it is shown, so a changing list (e.g. recent projects) stays
+/// current.
 /// </summary>
 internal sealed record MacMenuItem
 {
@@ -17,12 +19,16 @@ internal sealed record MacMenuItem
     public string SelectorName { get; init; } = string.Empty;
     public string KeyEquivalent { get; init; } = string.Empty;
     public MacKeyModifier KeyModifiers { get; init; } = MacKeyModifier.Command;
+    public Func<IReadOnlyList<MacMenuItem>>? SubmenuItemsProvider { get; init; }
 
     public static MacMenuItem Command(string title, long tag, string keyEquivalent = "", MacKeyModifier keyModifiers = MacKeyModifier.Command)
         => new() { Kind = MacMenuItemKind.Command, Title = title, Tag = tag, KeyEquivalent = keyEquivalent, KeyModifiers = keyModifiers };
 
     public static MacMenuItem Selector(string title, string selectorName, string keyEquivalent = "", MacKeyModifier keyModifiers = MacKeyModifier.Command)
         => new() { Kind = MacMenuItemKind.Selector, Title = title, SelectorName = selectorName, KeyEquivalent = keyEquivalent, KeyModifiers = keyModifiers };
+
+    public static MacMenuItem Submenu(string title, Func<IReadOnlyList<MacMenuItem>> itemsProvider)
+        => new() { Kind = MacMenuItemKind.Submenu, Title = title, SubmenuItemsProvider = itemsProvider };
 
     public static MacMenuItem Separator()
         => new() { Kind = MacMenuItemKind.Separator };
@@ -32,6 +38,7 @@ internal enum MacMenuItemKind
 {
     Command,
     Selector,
+    Submenu,
     Separator
 }
 
@@ -82,6 +89,7 @@ internal static class MacOSMenuInterop
     // Hold the callback function pointers alive for the process lifetime (they back native IMPs).
     private static MenuActionDelegate? _menuActionDelegate;
     private static MenuValidateDelegate? _menuValidateDelegate;
+    private static MenuNeedsUpdateDelegate? _menuNeedsUpdateDelegate;
 
     // Invoked with the tag of the Command item the user chose.
     private static Action<long>? _onCommand;
@@ -89,11 +97,18 @@ internal static class MacOSMenuInterop
     // Invoked with a Command item's tag to decide whether it is currently enabled.
     private static Func<long, bool>? _onValidate;
 
+    // Each dynamic submenu's NSMenu pointer mapped to the provider that rebuilds its items on open. AppKit
+    // hands the NSMenu back in menuNeedsUpdate:, so the pointer is the lookup key.
+    private static readonly Dictionary<IntPtr, Func<IReadOnlyList<MacMenuItem>>> _dynamicSubmenuProviders = new();
+
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void MenuActionDelegate(IntPtr self, IntPtr selector, IntPtr sender);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate byte MenuValidateDelegate(IntPtr self, IntPtr selector, IntPtr menuItem);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void MenuNeedsUpdateDelegate(IntPtr self, IntPtr selector, IntPtr menu);
 
     [DllImport(LibObjC)]
     private static extern IntPtr objc_getClass(string name);
@@ -281,6 +296,12 @@ internal static class MacOSMenuInterop
             // sends this to a Command item's target before the menu shows, to set the item's enabled state.
             class_addMethod(newClass, sel_registerName("validateMenuItem:"), validateImplementation, "c@:@");
 
+            _menuNeedsUpdateDelegate = HandleMenuNeedsUpdate;
+            var needsUpdateImplementation = Marshal.GetFunctionPointerForDelegate(_menuNeedsUpdateDelegate);
+            // "v@:@" = void return; arguments self (id), _cmd (SEL), menu (id). AppKit sends this to a dynamic
+            // submenu's delegate (this same object) just before the submenu is displayed, so it can be rebuilt.
+            class_addMethod(newClass, sel_registerName("menuNeedsUpdate:"), needsUpdateImplementation, "v@:@");
+
             objc_registerClassPair(newClass);
         }
         else
@@ -323,12 +344,35 @@ internal static class MacOSMenuInterop
         }
     }
 
+    private static void HandleMenuNeedsUpdate(IntPtr self, IntPtr selector, IntPtr menu)
+    {
+        // Runs on the AppKit main thread just before a dynamic submenu is displayed. Never let an exception
+        // cross back into native code.
+        try
+        {
+            if (_dynamicSubmenuProviders.TryGetValue(menu, out var provider))
+            {
+                PopulateDynamicSubmenu(menu, provider);
+            }
+        }
+        catch
+        {
+            // Swallow: a throw here would unwind through AppKit and crash the process.
+        }
+    }
+
     private static void AddItem(IntPtr menu, MacMenuItem item)
     {
         if (item.Kind == MacMenuItemKind.Separator)
         {
             var separator = SendMessage(objc_getClass("NSMenuItem"), sel_registerName("separatorItem"));
             SendMessagePtr(menu, sel_registerName("addItem:"), separator);
+            return;
+        }
+
+        if (item.Kind == MacMenuItemKind.Submenu)
+        {
+            AddSubmenu(menu, item);
             return;
         }
 
@@ -353,6 +397,49 @@ internal static class MacOSMenuInterop
         }
 
         SendMessagePtr(menu, sel_registerName("addItem:"), menuItem);
+    }
+
+    private static void AddSubmenu(IntPtr menu, MacMenuItem item)
+    {
+        var submenu = CreateMenu(item.Title);
+
+        // The parent is a titled item with no action; clicking it just opens the submenu.
+        var parentItem = CreateMenuItem(item.Title, IntPtr.Zero, string.Empty);
+        SendMessagePtr(parentItem, sel_registerName("setSubmenu:"), submenu);
+        SendMessagePtr(menu, sel_registerName("addItem:"), parentItem);
+
+        var provider = item.SubmenuItemsProvider;
+        if (provider is null)
+        {
+            return;
+        }
+
+        // Rebuild on every open via the delegate, and once now so the parent's initial enabled state (which
+        // AppKit derives from whether the submenu holds any enabled item) is correct before first display.
+        _dynamicSubmenuProviders[submenu] = provider;
+        SendMessagePtr(submenu, sel_registerName("setDelegate:"), _commandTarget);
+        PopulateDynamicSubmenu(submenu, provider);
+    }
+
+    private static void PopulateDynamicSubmenu(IntPtr submenu, Func<IReadOnlyList<MacMenuItem>> provider)
+    {
+        SendMessage(submenu, sel_registerName("removeAllItems"));
+
+        IReadOnlyList<MacMenuItem> items;
+        try
+        {
+            items = provider();
+        }
+        catch
+        {
+            // A throw here would unwind through AppKit; leave the submenu empty rather than crash.
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            AddItem(submenu, item);
+        }
     }
 
     private static nuint ToModifierFlags(MacKeyModifier modifiers)

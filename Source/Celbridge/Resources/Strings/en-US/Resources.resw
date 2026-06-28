@@ -962,6 +962,9 @@ Do you wish to continue?</value>
   <data name="Menu_HelpWebsite" xml:space="preserve">
     <value>Celbridge Website</value>
   </data>
+  <data name="Menu_NoRecentProjects" xml:space="preserve">
+    <value>No Recent Projects</value>
+  </data>
   <data name="MainMenu_OpenRecent" xml:space="preserve">
     <value>Open Recent</value>
   </data>

@@ -83,6 +83,10 @@ public partial class MainPage : Page
         _layoutRoot.Children.Add(applicationToolbar);
 
         _userInterfaceService.RegisterTitleBar(applicationToolbar);
+
+        // Resign the hosted WebView first responder when a managed panel gains focus, so the native
+        // Edit-menu shortcuts fall through to Uno's keyboard handling there (macOS-only).
+        Celbridge.UserInterface.Helpers.MacOSManagedPanelResponder.Start(_messengerService);
 #endif
 
         // Register for layout mode changes

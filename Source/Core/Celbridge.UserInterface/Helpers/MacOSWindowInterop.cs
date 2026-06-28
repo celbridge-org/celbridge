@@ -65,6 +65,9 @@ internal static class MacOSWindowInterop
     private static extern IntPtr SendMessage(IntPtr receiver, IntPtr selector);
 
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern void SendMessageVoidPointer(IntPtr receiver, IntPtr selector, IntPtr argument);
+
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern IntPtr SendMessageIndex(IntPtr receiver, IntPtr selector, nint index);
 
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
@@ -166,6 +169,34 @@ internal static class MacOSWindowInterop
 
         var styleMask = SendMessageReturnNuint(window, sel_registerName("styleMask"));
         return (styleMask & NSWindowStyleMaskFullScreen) != 0;
+    }
+
+    /// <summary>
+    /// Makes the main window's content view the AppKit first responder, resigning any hosted WebView that
+    /// was holding it. Called when a managed Uno panel gains focus so the native Edit-menu shortcuts
+    /// (cut:/copy:/paste:/undo:/redo:) disable for that panel and the key equivalents fall through to Uno's
+    /// own keyboard handling, instead of routing to a stale WebView. No-op off macOS.
+    /// </summary>
+    public static void MakeContentViewFirstResponder()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var contentView = SendMessage(window, sel_registerName("contentView"));
+        if (contentView == IntPtr.Zero)
+        {
+            return;
+        }
+
+        SendMessageVoidPointer(window, sel_registerName("makeFirstResponder:"), contentView);
     }
 
     private static IntPtr GetMainWindow()

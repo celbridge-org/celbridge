@@ -115,10 +115,15 @@ public sealed partial class PageNavigationToolbar : UserControl
     {
         ViewModel.OnLoaded();
 
-        _mainMenu = new MainMenu();
-        _mainMenu.OnLoaded();
-        _mainMenu.MenuItemInvoked += OnMainMenu_ItemInvoked;
-        PageNavigation.MenuItems.Insert(0, _mainMenu.GetMenuNavItem());
+        // macOS surfaces these commands through the native menubar (see MacOSMainMenu), so the in-window
+        // hamburger menu is mounted only on platforms without one (Windows, Linux).
+        if (!OperatingSystem.IsMacOS())
+        {
+            _mainMenu = new MainMenu();
+            _mainMenu.OnLoaded();
+            _mainMenu.MenuItemInvoked += OnMainMenu_ItemInvoked;
+            PageNavigation.MenuItems.Insert(0, _mainMenu.GetMenuNavItem());
+        }
 
         ApplyTooltips();
 

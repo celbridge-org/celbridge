@@ -22,14 +22,14 @@ internal static class MacOSMainMenu
     private const long TagCloseProject = 6;
     private const long TagHelpWebsite = 7;
     private const long TagAbout = 8;
+    private const long TagClearRecentProjects = 9;
+    private const long TagNoRecentProjects = 10;
 
-    // Edit verbs route to the focused surface through the edit-intent command.
-    private const long TagEditUndo = 9;
-    private const long TagEditRedo = 10;
-    private const long TagEditCut = 11;
-    private const long TagEditCopy = 12;
-    private const long TagEditPaste = 13;
-    private const long TagEditSelectAll = 14;
+    // Recent project items are generated on demand, so their tags start above the fixed tags and index into
+    // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
+    private const long TagRecentProjectBase = 1000;
+
+    private static readonly Dictionary<long, string> _recentProjectPaths = new();
 
     private const string WebsiteUrl = "https://celbridge.org";
     private const string GitHubUrl = "https://github.com/celbridge-org/celbridge";
@@ -68,29 +68,31 @@ internal static class MacOSMainMenu
             {
                 MacMenuItem.Command(Text("MainMenu_NewProject"), TagNewProject, "n"),
                 MacMenuItem.Command(Text("MainMenu_OpenProject"), TagOpenProject, "o"),
+                MacMenuItem.Submenu(Text("MainMenu_OpenRecent"), BuildRecentProjectItems),
                 MacMenuItem.Separator(),
                 MacMenuItem.Command(Text("MainMenu_ReloadProject"), TagReloadProject),
                 MacMenuItem.Command(Text("MainMenu_CloseProject"), TagCloseProject)
             }
         };
 
-        // The Edit items are Command items carrying the standard shortcuts. Each routes to the focused
-        // surface through IPerformEditCommand, and validateMenuItem reports whether that surface can
-        // perform the verb. When the focused surface cannot (a native text box, or an editor with no
-        // selection), the item is disabled and AppKit lets the key equivalent fall through to the control's
-        // own handling, so native and editor copy/paste/undo keep working.
+        // The Edit items are responder-chain Selector items (cut:/copy:/paste:/selectAll:/undo:/redo:).
+        // AppKit auto-enables each only when a responder in the chain handles it and routes the action
+        // there, so they target whatever native view holds focus: a hosted WKWebView editor or the project
+        // HTML viewer's form fields. Managed Uno panels (Explorer, Inspector) are painted on the Skia
+        // canvas and are not AppKit responders, so the items disable there and the key equivalents fall
+        // through to Uno's managed keyboard handling (the same path app-global undo/redo already uses).
         var editMenu = new MacMenu
         {
             Title = Text("Menu_Edit"),
             Items = new List<MacMenuItem>
             {
-                MacMenuItem.Command(Text("Menu_Undo"), TagEditUndo, "z"),
-                MacMenuItem.Command(Text("Menu_Redo"), TagEditRedo, "z", MacKeyModifier.Command | MacKeyModifier.Shift),
+                MacMenuItem.Selector(Text("Menu_Undo"), "undo:", "z"),
+                MacMenuItem.Selector(Text("Menu_Redo"), "redo:", "z", MacKeyModifier.Command | MacKeyModifier.Shift),
                 MacMenuItem.Separator(),
-                MacMenuItem.Command(Text("Menu_Cut"), TagEditCut, "x"),
-                MacMenuItem.Command(Text("Menu_Copy"), TagEditCopy, "c"),
-                MacMenuItem.Command(Text("Menu_Paste"), TagEditPaste, "v"),
-                MacMenuItem.Command(Text("Menu_SelectAll"), TagEditSelectAll, "a")
+                MacMenuItem.Selector(Text("Menu_Cut"), "cut:", "x"),
+                MacMenuItem.Selector(Text("Menu_Copy"), "copy:", "c"),
+                MacMenuItem.Selector(Text("Menu_Paste"), "paste:", "v"),
+                MacMenuItem.Selector(Text("Menu_SelectAll"), "selectAll:", "a")
             }
         };
 
@@ -128,32 +130,46 @@ internal static class MacOSMainMenu
         return MacOSMenuInterop.Install(menus, OnCommand, Validate);
     }
 
-    private static EditIntent? EditIntentForTag(long tag)
+    private static IReadOnlyList<MacMenuItem> BuildRecentProjectItems()
     {
-        return tag switch
+        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        var viewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+        var recentProjects = viewModel.GetRecentProjects();
+
+        _recentProjectPaths.Clear();
+
+        var items = new List<MacMenuItem>();
+
+        if (recentProjects.Count == 0)
         {
-            TagEditUndo => EditIntent.Undo,
-            TagEditRedo => EditIntent.Redo,
-            TagEditCut => EditIntent.Cut,
-            TagEditCopy => EditIntent.Copy,
-            TagEditPaste => EditIntent.Paste,
-            TagEditSelectAll => EditIntent.SelectAll,
-            _ => null
-        };
+            // A single disabled placeholder (greyed by Validate) when there is no history, matching the
+            // in-window menu's disabled Open Recent entry.
+            var noRecentItem = MacMenuItem.Command(stringLocalizer.GetString("Menu_NoRecentProjects"), TagNoRecentProjects);
+            items.Add(noRecentItem);
+            return items;
+        }
+
+        long tag = TagRecentProjectBase;
+        foreach (var recentProject in recentProjects)
+        {
+            _recentProjectPaths[tag] = recentProject.ProjectFilePath;
+            var projectItem = MacMenuItem.Command(recentProject.ProjectName, tag);
+            items.Add(projectItem);
+            tag++;
+        }
+
+        items.Add(MacMenuItem.Separator());
+
+        var clearItem = MacMenuItem.Command(stringLocalizer.GetString("MainMenu_ClearRecentProjects"), TagClearRecentProjects);
+        items.Add(clearItem);
+
+        return items;
     }
 
     private static bool Validate(long tag)
     {
-        // An Edit verb is enabled exactly when the focused surface can perform it. When it cannot, the
-        // item is disabled and AppKit lets the shortcut fall through to the control's own handling.
-        var editIntent = EditIntentForTag(tag);
-        if (editIntent is not null)
-        {
-            var focusService = ServiceLocator.AcquireService<IFocusService>();
-            var target = focusService.EditTarget;
-            return target is not null
-                && target.CanPerformEdit(editIntent.Value);
-        }
+        // The standard Edit verbs are responder-chain Selector items (see the Edit menu in Install), so
+        // AppKit handles their enable state; this validation only covers the Command items below.
 
         // Reload and Close act on the open project, so they are enabled only while a workspace is loaded;
         // every other command is always available. Mirrors the hamburger menu's IsWorkspaceLoaded gating.
@@ -163,6 +179,9 @@ internal static class MacOSMainMenu
             case TagCloseProject:
                 return ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
 
+            case TagNoRecentProjects:
+                return false;
+
             default:
                 return true;
         }
@@ -170,19 +189,23 @@ internal static class MacOSMainMenu
 
     private static void OnCommand(long tag)
     {
-        // Edit verbs route to the focused surface through the edit-intent command, the same path the
-        // keyboard and in-window menu use.
-        var editIntent = EditIntentForTag(tag);
-        if (editIntent is not null)
-        {
-            var commandService = ServiceLocator.AcquireService<ICommandService>();
-            commandService.Execute<IPerformEditCommand>(command => command.Intent = editIntent.Value);
-            return;
-        }
+        // The standard Edit verbs are responder-chain Selector items handled by AppKit, so they never
+        // reach this callback; only the Command items (project, help, about) below are dispatched here.
 
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
         // stay in lockstep. Resolved per invocation; the methods only dispatch commands or open dialogs.
         var viewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+
+        // Recent project items carry generated tags above the fixed range; open the project they map to.
+        if (tag >= TagRecentProjectBase)
+        {
+            if (_recentProjectPaths.TryGetValue(tag, out var recentProjectFilePath))
+            {
+                _ = viewModel.OpenRecentProjectAsync(recentProjectFilePath);
+            }
+
+            return;
+        }
 
         switch (tag)
         {
@@ -212,6 +235,10 @@ internal static class MacOSMainMenu
 
             case TagCloseProject:
                 _ = viewModel.CloseProjectAsync();
+                break;
+
+            case TagClearRecentProjects:
+                viewModel.ClearRecentProjects();
                 break;
 
             case TagHelpWebsite:
