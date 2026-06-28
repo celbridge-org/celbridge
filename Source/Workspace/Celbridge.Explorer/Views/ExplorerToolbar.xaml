@@ -35,20 +35,20 @@
       <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
       <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
     </StackPanel.Resources>
-    <Button x:Name="AddFileButton"
+    <Button x:Name="NewFileButton"
             AutomationProperties.AutomationId="landmark.add-file"
-            ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
+            ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
             Padding="4"
-            Click="AddFileButton_Click">
+            Click="NewFileButton_Click">
       <controls:Icon
                 Symbol="FileAdd"
                 FontSize="20" />
     </Button>
-    <Button x:Name="AddFolderButton"
+    <Button x:Name="NewFolderButton"
             AutomationProperties.AutomationId="landmark.add-folder"
-            ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
+            ToolTipService.ToolTip="{x:Bind NewFolderTooltipString}"
             Padding="4"
-            Click="AddFolderButton_Click">
+            Click="NewFolderButton_Click">
       <controls:Icon
                 Symbol="FolderAdd"
                 FontSize="20" />

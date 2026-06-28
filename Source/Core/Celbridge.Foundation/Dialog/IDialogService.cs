@@ -59,7 +59,7 @@ public interface IDialogService
     /// <summary>
     /// Display an Add File Dialog with file type selection.
     /// </summary>
-    Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
+    Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
 
     /// <summary>
     /// Display a Resource Picker Dialog filtered to the specified file extensions.

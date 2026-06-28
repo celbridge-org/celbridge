@@ -6,30 +6,30 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class AddResourceCommand : CommandBase, IAddResourceCommand
+public class CreateResourceCommand : CommandBase, ICreateResourceCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public string SourcePath { get; set; } = string.Empty;
     public ResourceKey DestResource { get; set; }
-    public bool OpenAfterAdding { get; set; } = false;
+    public bool OpenAfterCreating { get; set; } = false;
 
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly AddResourceHelper _addResourceHelper;
+    private readonly CreateResourceHelper _createResourceHelper;
 
-    public AddResourceCommand(
+    public CreateResourceCommand(
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        AddResourceHelper addResourceHelper)
+        CreateResourceHelper createResourceHelper)
     {
         _messengerService = messengerService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _addResourceHelper = addResourceHelper;
+        _createResourceHelper = createResourceHelper;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -51,16 +51,16 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             return reservationFailure;
         }
 
-        var addResult = await _addResourceHelper.AddResourceAsync(ResourceType, SourcePath, DestResource);
+        var createResult = await _createResourceHelper.CreateResourceAsync(ResourceType, SourcePath, DestResource);
 
-        if (addResult.IsFailure)
+        if (createResult.IsFailure)
         {
             // Notify the UI about the failure
             List<string> failedItems = [DestResource.ResourceName];
             var message = new ResourceOperationFailedMessage(ResourceOperationType.Create, failedItems);
             _messengerService.Send(message);
 
-            return addResult;
+            return createResult;
         }
 
         _commandService.Execute<ISelectResourceCommand>(command =>
@@ -68,7 +68,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
             command.Resource = DestResource;
         });
 
-        if (OpenAfterAdding)
+        if (OpenAfterCreating)
         {
             _commandService.Execute<IOpenDocumentCommand>(command =>
             {
@@ -89,12 +89,12 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
     // Static methods for scripting support.
     //
 
-    public static async void AddFile(string sourcePath, ResourceKey destResource)
+    public static async void NewFile(string sourcePath, ResourceKey destResource)
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
         {
-            throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
+            throw new InvalidOperationException("Failed to create resource because workspace is not loaded");
         }
 
         // If the destination resource is a existing folder, resolve the destination resource to a file in
@@ -104,26 +104,26 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        await commandService.ExecuteAsync<IAddResourceCommand>(command =>
+        await commandService.ExecuteAsync<ICreateResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.SourcePath = sourcePath;
             command.DestResource = resolvedDestResource;
-            command.OpenAfterAdding = true;
+            command.OpenAfterCreating = true;
         });
     }
 
-    public static void AddFile(ResourceKey destResource)
+    public static void NewFile(ResourceKey destResource)
     {
-        AddFile(new ResourceKey(), destResource);
+        NewFile(new ResourceKey(), destResource);
     }
 
-    public static void AddFolder(string sourcePath, ResourceKey destResource)
+    public static void NewFolder(string sourcePath, ResourceKey destResource)
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)
         {
-            throw new InvalidOperationException("Failed to add resource because workspace is not loaded");
+            throw new InvalidOperationException("Failed to create resource because workspace is not loaded");
         }
 
         // If the destination resource is a existing folder, resolve the destination resource to a folder in
@@ -133,7 +133,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IAddResourceCommand>(command =>
+        commandService.Execute<ICreateResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
             command.SourcePath = sourcePath;
@@ -141,8 +141,8 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
         });
     }
 
-    public static void AddFolder(ResourceKey destResource)
+    public static void NewFolder(ResourceKey destResource)
     {
-        AddFolder(new ResourceKey(), destResource);
+        NewFolder(new ResourceKey(), destResource);
     }
 }

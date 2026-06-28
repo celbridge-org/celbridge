@@ -1,5 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.Explorer;
 using Celbridge.Navigation;
+using Celbridge.Resources;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -13,6 +15,8 @@ public class MainMenu
 {
     private const string MenuTag = "Menu";
     private const string NewProjectTag = "NewProject";
+    private const string NewFileTag = "NewFile";
+    private const string NewFolderTag = "NewFolder";
     private const string OpenProjectTag = "OpenProject";
     private const string OpenRecentTag = "OpenRecent";
     private const string RecentProjectTagPrefix = "RecentProject_";
@@ -85,6 +89,25 @@ public class MainMenu
             tooltip: _stringLocalizer.GetString("MainMenu_NewProjectTooltip"),
             isEnabled: true);
         _menuNavItem.MenuItems.Add(newProjectNavItem);
+
+        // New File, surfaced for parity with the macOS File menu. Creates a file in the Explorer's selected
+        // folder (or the project root); enabled only while a workspace is loaded.
+        var newFileNavItem = CreateMenuItem(
+            tag: NewFileTag,
+            icon: new Icon { Symbol = IconSymbol.FileAdd },
+            label: _stringLocalizer.GetString("MainMenu_NewFile"),
+            tooltip: _stringLocalizer.GetString("MainMenu_NewFileTooltip"),
+            isEnabled: isWorkspaceLoaded);
+        _menuNavItem.MenuItems.Add(newFileNavItem);
+
+        // New Folder
+        var newFolderNavItem = CreateMenuItem(
+            tag: NewFolderTag,
+            icon: new Icon { Symbol = IconSymbol.FolderAdd },
+            label: _stringLocalizer.GetString("MainMenu_NewFolder"),
+            tooltip: _stringLocalizer.GetString("MainMenu_NewFolderTooltip"),
+            isEnabled: isWorkspaceLoaded);
+        _menuNavItem.MenuItems.Add(newFolderNavItem);
 
         // Open Project
         var openProjectNavItem = CreateMenuItem(
@@ -330,6 +353,22 @@ public class MainMenu
 
             case OpenProjectTag:
                 ViewModel.OpenProject();
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case NewFileTag:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICreateResourceDialogCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.File;
+                });
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case NewFolderTag:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICreateResourceDialogCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.Folder;
+                });
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 

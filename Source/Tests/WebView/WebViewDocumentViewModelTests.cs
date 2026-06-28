@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Resources;
+using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -16,12 +17,16 @@ public class WebViewDocumentViewModelTests
     private IWebViewService _webViewService = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private IServerService _serverService = null!;
 
     [SetUp]
     public void SetUp()
     {
         _commandService = Substitute.For<ICommandService>();
         var featureFlags = Substitute.For<IFeatureFlags>();
+
+        _serverService = Substitute.For<IServerService>();
+        _serverService.Port.Returns(5000);
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         // Default: file exists on disk so reads are attempted. Per-test stubs
@@ -133,7 +138,7 @@ public class WebViewDocumentViewModelTests
         // The HtmlViewer role serves the HTML file directly via the project virtual
         // host without consulting any .webview file; the resource file system is
         // never called for this role.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
         {
             FilePath = "ignored.html",
             FileResource = new ResourceKey("page.html"),
@@ -149,13 +154,19 @@ public class WebViewDocumentViewModelTests
     [Test]
     public void NavigateUrl_HtmlViewer_BuildsProjectVirtualHostUrlFromResourceKey()
     {
-        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
         {
             FileResource = new ResourceKey("Pages/welcome.html"),
             Role = WebViewDocumentRole.HtmlViewer,
         };
 
-        viewModel.NavigateUrl.Should().Be("https://project.celbridge/Pages/welcome.html");
+        // Windows serves the HtmlViewer via the project virtual host; other heads serve it over the
+        // loopback file server (the virtual-host mapping is a no-op off Windows).
+        var expectedUrl = OperatingSystem.IsWindows()
+            ? "https://project.celbridge/Pages/welcome.html"
+            : "http://127.0.0.1:5000/project/Pages/welcome.html";
+
+        viewModel.NavigateUrl.Should().Be(expectedUrl);
     }
 
     [Test]
@@ -177,7 +188,7 @@ public class WebViewDocumentViewModelTests
 
     private WebViewDocumentViewModel CreateViewModel()
     {
-        return new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper)
+        return new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
         {
             FileResource = new ResourceKey("test.webview"),
         };

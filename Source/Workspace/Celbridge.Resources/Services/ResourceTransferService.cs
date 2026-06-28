@@ -119,7 +119,7 @@ public class ResourceTransferService : IResourceTransferService
                 else
                 {
                     // This file or folder resource is outside the project folder, so we should add it to the project
-                    // via the AddResource command, which will create new metadata for the resource.
+                    // via the CreateResource command, which will create new metadata for the resource.
                     // This behaviour is indicated by having an empty source resource property.
                     var sourceResource = new ResourceKey();
                     var resourcename = Path.GetFileName(sourcePath);

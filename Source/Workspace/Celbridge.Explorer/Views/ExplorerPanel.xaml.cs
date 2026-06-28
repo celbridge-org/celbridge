@@ -66,14 +66,14 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         ExplorerToolbar.SetToolbarVisible(isToolbarVisible);
     }
 
-    private void ExplorerToolbar_AddFileClicked(object sender, EventArgs e)
+    private void ExplorerToolbar_NewFileClicked(object sender, EventArgs e)
     {
-        ResourceTree.AddFileToSelectedFolder();
+        ResourceTree.NewFileToSelectedFolder();
     }
 
-    private void ExplorerToolbar_AddFolderClicked(object sender, EventArgs e)
+    private void ExplorerToolbar_NewFolderClicked(object sender, EventArgs e)
     {
-        ResourceTree.AddFolderToSelectedFolder();
+        ResourceTree.NewFolderToSelectedFolder();
     }
 
     private void ExplorerToolbar_CollapseFoldersClicked(object sender, EventArgs e)

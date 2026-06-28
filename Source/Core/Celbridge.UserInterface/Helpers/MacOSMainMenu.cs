@@ -1,6 +1,7 @@
 #if !WINDOWS
 using Celbridge.Commands;
 using Celbridge.Explorer;
+using Celbridge.Resources;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -24,6 +25,8 @@ internal static class MacOSMainMenu
     private const long TagAbout = 8;
     private const long TagClearRecentProjects = 9;
     private const long TagNoRecentProjects = 10;
+    private const long TagNewFile = 11;
+    private const long TagNewFolder = 12;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -66,7 +69,10 @@ internal static class MacOSMainMenu
             Title = Text("Menu_File"),
             Items = new List<MacMenuItem>
             {
-                MacMenuItem.Command(Text("MainMenu_NewProject"), TagNewProject, "n"),
+                MacMenuItem.Command(Text("MainMenu_NewProject"), TagNewProject, "n", MacKeyModifier.Command | MacKeyModifier.Shift),
+                MacMenuItem.Command(Text("MainMenu_NewFile"), TagNewFile, "n"),
+                MacMenuItem.Command(Text("MainMenu_NewFolder"), TagNewFolder),
+                MacMenuItem.Separator(),
                 MacMenuItem.Command(Text("MainMenu_OpenProject"), TagOpenProject, "o"),
                 MacMenuItem.Submenu(Text("MainMenu_OpenRecent"), BuildRecentProjectItems),
                 MacMenuItem.Separator(),
@@ -177,6 +183,8 @@ internal static class MacOSMainMenu
         {
             case TagReloadProject:
             case TagCloseProject:
+            case TagNewFile:
+            case TagNewFolder:
                 return ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
 
             case TagNoRecentProjects:
@@ -223,6 +231,20 @@ internal static class MacOSMainMenu
 
             case TagNewProject:
                 viewModel.NewProject();
+                break;
+
+            case TagNewFile:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICreateResourceDialogCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.File;
+                });
+                break;
+
+            case TagNewFolder:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICreateResourceDialogCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.Folder;
+                });
                 break;
 
             case TagOpenProject:

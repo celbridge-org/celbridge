@@ -9,7 +9,7 @@ namespace Celbridge.Explorer.Menu.Options;
 /// <summary>
 /// Menu option to add a new folder.
 /// </summary>
-public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
+public class NewFolderMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
@@ -18,7 +18,7 @@ public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
     public int Priority => 2;
     public string GroupId => nameof(ExplorerMenuGroup.AddItems);
 
-    public AddFolderMenuOption(
+    public NewFolderMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
@@ -31,7 +31,7 @@ public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
-            _stringLocalizer.GetString("ResourceTree_AddFolder"),
+            _stringLocalizer.GetString("ResourceTree_NewFolder"),
             Icon: IconSymbol.FolderAdd); // folder-plus icon
     }
 
@@ -48,7 +48,7 @@ public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var destFolderKey = resourceRegistry.GetResourceKey(destFolder);
 
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
             command.DestFolderResource = destFolderKey;

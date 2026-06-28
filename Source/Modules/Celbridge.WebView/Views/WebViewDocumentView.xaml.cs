@@ -660,7 +660,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
                 {
                     if (s.State == CoreWebView2DownloadState.Completed)
                     {
-                        var importResult = await _commandService.ExecuteAsync<IAddResourceCommand>(command =>
+                        var importResult = await _commandService.ExecuteAsync<ICreateResourceCommand>(command =>
                         {
                             command.ResourceType = ResourceType.File;
                             command.SourcePath = tempPath;
@@ -674,7 +674,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
                         if (importResult.IsFailure)
                         {
-                            // The user-facing toast is raised by AddResourceCommand.
+                            // The user-facing toast is raised by CreateResourceCommand.
                             _logger.LogError(
                                 $"Failed to import downloaded file to '{saveResourceKey}'. {importResult.DiagnosticReport}");
                         }

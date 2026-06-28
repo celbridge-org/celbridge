@@ -5,16 +5,16 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Helper class that encapsulates the core logic for adding resources to the project.
+/// Helper class that encapsulates the core logic for creating resources in the project.
 /// </summary>
-public class AddResourceHelper
+public class CreateResourceHelper
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileTemplateService _fileTemplateService;
     private readonly ICommandService _commandService;
     private readonly ILocalFileSystem _fileSystem;
 
-    public AddResourceHelper(
+    public CreateResourceHelper(
         IWorkspaceWrapper workspaceWrapper,
         IFileTemplateService fileTemplateService,
         ICommandService commandService,
@@ -27,16 +27,16 @@ public class AddResourceHelper
     }
 
     /// <summary>
-    /// Add a resource (file or folder) to the project.
+    /// Create a resource (file or folder) in the project.
     /// </summary>
-    public async Task<Result> AddResourceAsync(
+    public async Task<Result> CreateResourceAsync(
         ResourceType resourceType,
         string sourcePath,
         ResourceKey destResource)
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail("Failed to add resource because workspace is not loaded");
+            return Result.Fail("Failed to create resource because workspace is not loaded");
         }
 
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;

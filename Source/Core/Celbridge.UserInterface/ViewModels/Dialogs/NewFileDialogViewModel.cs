@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.ViewModels;
 
 public record FileTypeItem(string DisplayName, ResourceFormat Format, string Extension);
 
-public partial class AddFileDialogViewModel : ObservableObject
+public partial class NewFileDialogViewModel : ObservableObject
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IStringLocalizer _stringLocalizer;
@@ -48,7 +48,7 @@ public partial class AddFileDialogViewModel : ObservableObject
     /// </summary>
     public string PreviousFileExtension => _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PreviousNewFileExtension;
 
-    public AddFileDialogViewModel(
+    public NewFileDialogViewModel(
         IStringLocalizer stringLocalizer,
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -57,11 +57,11 @@ public partial class AddFileDialogViewModel : ObservableObject
 
         FileTypes =
         [
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Python"), ResourceFormat.Python, ExplorerConstants.PythonExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Excel"), ResourceFormat.Excel, ExplorerConstants.ExcelExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_WebView"), ResourceFormat.WebView, ExplorerConstants.WebViewExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
+            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Python"), ResourceFormat.Python, ExplorerConstants.PythonExtension),
+            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Excel"), ResourceFormat.Excel, ExplorerConstants.ExcelExtension),
+            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
+            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_WebView"), ResourceFormat.WebView, ExplorerConstants.WebViewExtension),
+            new FileTypeItem(_stringLocalizer.GetString("NewFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
         ];
 
         // Add package-provided document types before the "Other" option
@@ -69,7 +69,7 @@ public partial class AddFileDialogViewModel : ObservableObject
         AddPackageDocumentTypes(packageService);
 
         // Add "Other" as the last option
-        var otherDisplayName = _stringLocalizer.GetString("AddFileDialog_FileType_Other");
+        var otherDisplayName = _stringLocalizer.GetString("NewFileDialog_FileType_Other");
         var otherFileType = new FileTypeItem(otherDisplayName, ResourceFormat.Text, string.Empty);
         FileTypes.Add(otherFileType);
 
@@ -82,10 +82,10 @@ public partial class AddFileDialogViewModel : ObservableObject
         // If extension matches a known type, select it; otherwise select "Other"
         _selectedFileTypeIndex = index >= 0 ? index : OtherFileTypeIndex;
 
-        PropertyChanged += AddFileDialogViewModel_PropertyChanged;
+        PropertyChanged += NewFileDialogViewModel_PropertyChanged;
     }
 
-    private void AddFileDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void NewFileDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_isUpdatingFromCode)
         {

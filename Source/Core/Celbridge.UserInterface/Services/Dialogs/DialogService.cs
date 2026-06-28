@@ -149,9 +149,9 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
-    public async Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
+    public async Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
-        var dialog = _dialogFactory.CreateAddFileDialog(defaultFileName, selectionRange, validator);
+        var dialog = _dialogFactory.CreateNewFileDialog(defaultFileName, selectionRange, validator);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 

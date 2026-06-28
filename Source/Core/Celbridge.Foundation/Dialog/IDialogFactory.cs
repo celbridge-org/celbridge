@@ -40,7 +40,7 @@ public interface IDialogFactory
     /// <summary>
     /// Create an Add File Dialog.
     /// </summary>
-    IAddFileDialog CreateAddFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
+    INewFileDialog CreateNewFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
 
     /// <summary>
     /// Create a Resource Picker Dialog filtered to the specified file extensions.

@@ -431,12 +431,12 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     /// <summary>
     /// Adds a file to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
-    public void AddFileToSelectedFolder()
+    public void NewFileToSelectedFolder()
     {
         var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
 
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.DestFolderResource = destFolderResource;
@@ -446,12 +446,12 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     /// <summary>
     /// Adds a folder to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
-    public void AddFolderToSelectedFolder()
+    public void NewFolderToSelectedFolder()
     {
         var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
 
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
             command.DestFolderResource = destFolderResource;

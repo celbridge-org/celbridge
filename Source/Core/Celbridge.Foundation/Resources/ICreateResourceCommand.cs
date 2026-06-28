@@ -3,12 +3,12 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Add a file or folder resource to the project.
+/// Create a file or folder resource in the project.
 /// </summary>
-public interface IAddResourceCommand : IExecutableCommand
+public interface ICreateResourceCommand : IExecutableCommand
 {
     /// <summary>
-    /// The type of resource to add
+    /// The type of resource to create
     /// </summary>
     ResourceType ResourceType { get; set; }
 
@@ -26,5 +26,5 @@ public interface IAddResourceCommand : IExecutableCommand
     /// <summary>
     /// Open the created file in the Explorer after it's been added to the project.
     /// </summary>
-    bool OpenAfterAdding { get; set; }
+    bool OpenAfterCreating { get; set; }
 }

@@ -37,7 +37,7 @@ public static class ServiceConfiguration
         // Register commands
         //
 
-        services.AddTransient<IAddResourceDialogCommand, AddResourceDialogCommand>();
+        services.AddTransient<ICreateResourceDialogCommand, CreateResourceDialogCommand>();
         services.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         services.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();
         services.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
@@ -57,8 +57,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuBuilder<ExplorerMenuContext>, ExplorerMenuBuilder>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, RunMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenMenuOption>();
-        services.AddSingleton<IMenuOption<ExplorerMenuContext>, AddFileMenuOption>();
-        services.AddSingleton<IMenuOption<ExplorerMenuContext>, AddFolderMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, NewFileMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, NewFolderMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CutMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, PasteMenuOption>();

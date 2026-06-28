@@ -5,13 +5,13 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Commands;
 
-public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
+public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCommand
 {
-    private const string AddFolderTitleKey = "ResourceTree_AddFolder";
-    private const string FolderNameKey = "AddFolderDialog_FolderName";
+    private const string NewFolderTitleKey = "ResourceTree_NewFolder";
+    private const string FolderNameKey = "NewFolderDialog_FolderName";
     private const string DefaultFolderNameKey = "ResourceTree_DefaultFolderName";
     private const string DefaultFileNameKey = "ResourceTree_DefaultFileName";
-    private const string AddButtonKey = "DialogButton_Add";
+    private const string CreateButtonKey = "DialogButton_Create";
 
     public override CommandFlags CommandFlags => CommandFlags.None;
 
@@ -24,7 +24,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public AddResourceDialogCommand(
+    public CreateResourceDialogCommand(
         IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
@@ -40,21 +40,56 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
     public override async Task<Result> ExecuteAsync()
     {
+        // When invoked without a destination (e.g. from the application menu), default to the Explorer's
+        // selected folder, falling back to the project root. The toolbar and context-menu callers always
+        // supply DestFolderResource explicitly, so this only fills the gap for the menu entry points.
+        if (DestFolderResource.IsEmpty
+            && _workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            DestFolderResource = ResolveDefaultDestinationFolder();
+        }
+
         if (ResourceType == ResourceType.File)
         {
-            return await ShowAddFileDialogAsync();
+            return await ShowNewFileDialogAsync();
         }
         else
         {
-            return await ShowAddFolderDialogAsync();
+            return await ShowNewFolderDialogAsync();
         }
     }
 
-    private async Task<Result> ShowAddFileDialogAsync()
+    private ResourceKey ResolveDefaultDestinationFolder()
+    {
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+
+        var selectedResource = explorerService.SelectedResource;
+        if (!selectedResource.IsEmpty)
+        {
+            var getResult = resourceRegistry.GetResource(selectedResource);
+            if (getResult.IsSuccess)
+            {
+                var resource = getResult.Value;
+                if (resource is IFolderResource)
+                {
+                    return selectedResource;
+                }
+                if (resource is IFileResource fileResource)
+                {
+                    return resourceRegistry.GetResourceKey(fileResource.ParentFolder);
+                }
+            }
+        }
+
+        return resourceRegistry.GetResourceKey(resourceRegistry.ProjectFolder);
+    }
+
+    private async Task<Result> ShowNewFileDialogAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to show add file dialog because workspace is not loaded");
+            return Result.Fail($"Failed to show new file dialog because workspace is not loaded");
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -88,7 +123,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var extensionIndex = defaultFileName.LastIndexOf('.');
         var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
 
-        var showResult = await _dialogService.ShowAddFileDialogAsync(
+        var showResult = await _dialogService.ShowNewFileDialogAsync(
             defaultFileName,
             selectionRange,
             validator);
@@ -98,23 +133,23 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             var config = showResult.Value;
             var newResource = DestFolderResource.Combine(config.FileName);
 
-            // Execute a command to add the resource
-            _commandService.Execute<IAddResourceCommand>(command =>
+            // Execute a command to create the resource
+            _commandService.Execute<ICreateResourceCommand>(command =>
             {
                 command.ResourceType = ResourceType.File;
                 command.DestResource = newResource;
-                command.OpenAfterAdding = true;
+                command.OpenAfterCreating = true;
             });
         }
 
         return Result.Ok();
     }
 
-    private async Task<Result> ShowAddFolderDialogAsync()
+    private async Task<Result> ShowNewFolderDialogAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            return Result.Fail($"Failed to show add folder dialog because workspace is not loaded");
+            return Result.Fail($"Failed to show new folder dialog because workspace is not loaded");
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -144,7 +179,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         validator.ParentFolder = parentFolder;
         validator.ValidateAsFolder = true;
 
-        var titleString = _stringLocalizer.GetString(AddFolderTitleKey);
+        var titleString = _stringLocalizer.GetString(NewFolderTitleKey);
         var nameString = _stringLocalizer.GetString(FolderNameKey);
 
         // Select the entire folder name
@@ -156,7 +191,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             defaultText,
             selectionRange,
             validator,
-            AddButtonKey);
+            CreateButtonKey);
 
         if (showResult.IsSuccess)
         {
@@ -164,12 +199,12 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
             var newResource = DestFolderResource.Combine(inputText);
 
-            // Execute a command to add the resource
-            _commandService.Execute<IAddResourceCommand>(command =>
+            // Execute a command to create the resource
+            _commandService.Execute<ICreateResourceCommand>(command =>
             {
                 command.ResourceType = ResourceType.Folder;
                 command.DestResource = newResource;
-                command.OpenAfterAdding = false;
+                command.OpenAfterCreating = false;
             });
         }
 
@@ -256,22 +291,22 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     // Static methods for scripting support.
     //
 
-    public static void AddFileDialog(ResourceKey parentFolderResource)
+    public static void NewFileDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IAddResourceDialogCommand>(command =>
+        commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.DestFolderResource = parentFolderResource;
         });
     }
 
-    public static void AddFolderDialog(ResourceKey parentFolderResource)
+    public static void NewFolderDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IAddResourceDialogCommand>(command =>
+        commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
             command.DestFolderResource = parentFolderResource;

@@ -88,7 +88,7 @@ public static class ServiceConfiguration
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
         services.AddTransient<SecretInputDialogViewModel>();
-        services.AddTransient<AddFileDialogViewModel>();
+        services.AddTransient<NewFileDialogViewModel>();
         services.AddTransient<ResourcePickerDialogViewModel>();
         services.AddTransient<StackPanelElement>();
         services.AddTransient<TextBoxElement>();
