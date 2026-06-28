@@ -150,6 +150,21 @@ class TestWebView:
             pytest.skip("webview-dev-tools-eval flag is off")
         assert webview.eval(TEST_RESOURCE, "this is not valid javascript") is None
 
+    def test_eval_undefined_result_returns_none(self, webview, eval_enabled):
+        # An undefined result faults WKWebView's evaluateJavaScript (surfaced by
+        # Uno as ArgumentNullException) where WebView2 returns "null"; the host
+        # normalises both to None. console.log returns undefined.
+        if not eval_enabled:
+            pytest.skip("webview-dev-tools-eval flag is off")
+        assert webview.eval(TEST_RESOURCE, "console.log('eval-undefined-probe')") is None
+
+    def test_eval_promise_result_returns_none(self, webview, eval_enabled):
+        # A Promise is an unsupported return type that faults WKWebView (WKError
+        # code 5) where WebView2 returns "null"; the host normalises both to None.
+        if not eval_enabled:
+            pytest.skip("webview-dev-tools-eval flag is off")
+        assert webview.eval(TEST_RESOURCE, "Promise.resolve(1)") is None
+
     def test_eval_empty_expression_rejected(self, webview, eval_enabled):
         if not eval_enabled:
             pytest.skip("webview-dev-tools-eval flag is off")
@@ -454,6 +469,15 @@ class TestWebView:
         # `resource` is omitted from the JSON when null (WhenWritingNull).
         assert result.get("resource") is None
         assert result["imageReturned"]
+
+    def test_screenshot_max_edge_bounds_dimensions(self, webview):
+        # maxEdge downscales the longest edge. On macOS this runs through the
+        # native WKWebView snapshot path (WKSnapshotConfiguration.snapshotWidth)
+        # rather than CDP, so the bound is the cross-platform contract to lock in.
+        result = webview.screenshot(TEST_RESOURCE, max_edge=256)
+        assert result["width"] > 0
+        assert result["height"] > 0
+        assert max(result["width"], result["height"]) <= 256
 
     def test_screenshot_save_to_resource_writes_file(self, webview, file):
         save_resource = "TestWebView/captured.png"
