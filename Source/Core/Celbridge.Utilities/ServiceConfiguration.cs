@@ -1,3 +1,5 @@
+using Celbridge.Platform;
+using Celbridge.Utilities.Platform;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Utilities;
@@ -8,5 +10,6 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IEnvironmentService, EnvironmentService>();
         services.AddSingleton<ITextBinarySniffer, TextBinarySniffer>();
+        services.AddSingleton<IPlatformInfo, PlatformInfo>();
     }
 }
