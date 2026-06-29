@@ -152,18 +152,11 @@ class TestWebView:
 
     def test_eval_undefined_result_returns_none(self, webview, eval_enabled):
         # An undefined result faults WKWebView's evaluateJavaScript (surfaced by
-        # Uno as ArgumentNullException) where WebView2 returns "null"; the host
-        # normalises both to None. console.log returns undefined.
+        # Uno as ArgumentNullException) and is serialised by WebView2 as the JSON
+        # literal "null". Both paths converge on None. console.log returns undefined.
         if not eval_enabled:
             pytest.skip("webview-dev-tools-eval flag is off")
         assert webview.eval(TEST_RESOURCE, "console.log('eval-undefined-probe')") is None
-
-    def test_eval_promise_result_returns_none(self, webview, eval_enabled):
-        # A Promise is an unsupported return type that faults WKWebView (WKError
-        # code 5) where WebView2 returns "null"; the host normalises both to None.
-        if not eval_enabled:
-            pytest.skip("webview-dev-tools-eval flag is off")
-        assert webview.eval(TEST_RESOURCE, "Promise.resolve(1)") is None
 
     def test_eval_empty_expression_rejected(self, webview, eval_enabled):
         if not eval_enabled:

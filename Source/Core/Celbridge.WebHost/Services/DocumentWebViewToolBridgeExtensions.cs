@@ -61,9 +61,11 @@ public static class DocumentWebViewToolBridgeExtensions
 #else
                 // WKWebView's evaluateJavaScript faults on JS exceptions and syntax errors (WKError 4), on
                 // unsupported return types such as Promises (WKError 5), and on an undefined result
-                // (surfaced by Uno as an ArgumentNullException). WebView2 on Windows instead returns the
-                // JSON literal "null" silently for all of these, and the webview_* tools depend on that
-                // contract (e.g. eval of console.log or a fetch must succeed), so normalise to "null".
+                // (surfaced by Uno as an ArgumentNullException). WebView2 returns the JSON literal "null"
+                // silently in the equivalent cases. Normalise the faults so common errors and undefined
+                // results read as None on Python callers across platforms. Best-effort: exotic return
+                // values (Promise, Date, NaN, circular references) may still serialise differently per
+                // platform. Agents are expected to adapt to the result they get.
                 try
                 {
                     var result = await coreWebView2.ExecuteScriptAsync(expression);
