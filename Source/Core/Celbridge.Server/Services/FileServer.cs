@@ -74,8 +74,7 @@ public class FileServer : IFileServer, IDisposable
 
         // The three WebView content routes. WebViews are navigated to a loopback URL under one of
         // these and reference everything else root-relative, so the page resolves all content against
-        // its own loopback origin. This is the cross-platform replacement for the .celbridge virtual
-        // hosts (project.celbridge / shared.celbridge / pkg-*.celbridge).
+        // its own loopback origin.
         application.MapGet("/project/{**path}", (HttpContext context, string path) =>
             ServeFromProvider(context, _projectFileProvider, path));
 
@@ -114,10 +113,9 @@ public class FileServer : IFileServer, IDisposable
         context.Response.ContentType = contentType;
 
         // Loopback-served pages are same-origin and need no CORS. The exception is a synthetic-origin
-        // editor (SpreadJS, loaded under its faked spreadjs.celbridge origin for its domain-locked
-        // license): it pulls its lib and the shared client cross-origin from this server, so the routes
-        // must allow any origin and be embeddable cross-origin. Validated watermark-free in the macOS
-        // SpreadJS feasibility spike with exactly these headers.
+        // editor (loaded under a faked origin for a domain-locked library): it pulls its lib and the
+        // shared client cross-origin from this server, so the routes must allow any origin and be
+        // embeddable cross-origin. Validated on the macOS Skia head with exactly these headers.
         context.Response.Headers["Access-Control-Allow-Origin"] = "*";
         context.Response.Headers["Cross-Origin-Resource-Policy"] = "cross-origin";
 

@@ -35,14 +35,13 @@ public class Module : IModule
 
         return new[]
         {
-            // Editors migrated to the loopback file-server scheme (the macOS WebView hosting layer)
-            // set ServedViaLoopback, which routes them over the WebSocket host channel. SpreadJS is the
-            // last remaining editor (it needs the native synthetic-origin shim) and stays on the
-            // virtual-host WebView2 transport on Windows until that path lands.
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes"), ServedViaLoopback = true },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer"), ServedViaLoopback = true },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer"), ServedViaLoopback = true },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor"), ServedViaLoopback = true },
+            // Served over the loopback file server (the default) and driven over the WebSocket host channel,
+            // so they run on every head. None of these pins a synthetic origin; a package that needs one sets
+            // SyntheticOriginHost in its own descriptor.
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor") },
         };
     }
 }

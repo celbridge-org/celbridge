@@ -423,11 +423,11 @@ describe('Celbridge.tools integration', () => {
     });
 
     it('reads and exposes secrets', () => {
-        const secrets = { spreadjs_license: 'abc123' };
+        const secrets = { library_license: 'abc123' };
         const { client } = createTestClient({
             context: { permittedTools: [], secrets }
         });
-        expect(client.secrets.spreadjs_license).toBe('abc123');
+        expect(client.secrets.library_license).toBe('abc123');
     });
 
     it('cel accessor throws before initialize() completes', () => {
@@ -560,24 +560,6 @@ describe('cel globalThis exposure', () => {
         // With permittedTools=[], no tools/list is sent, so init completes with only the one message.
         expect(globalThis.cel).toBeUndefined();
         expect(client.tools.isReady).toBe(true);
-    });
-});
-
-describe('Celbridge global context scrubbing', () => {
-    it('reads globalThis.__celbridgeContext and deletes it', () => {
-        globalThis.__celbridgeContext = {
-            permittedTools: ['app.*'],
-            secrets: { key: 'value' }
-        };
-
-        const client = new Celbridge({
-            postMessage: () => {},
-            onMessage: () => {}
-        });
-
-        expect(client.tools.allowedPatterns).toEqual(['app.*']);
-        expect(client.secrets.key).toBe('value');
-        expect(globalThis.__celbridgeContext).toBeUndefined();
     });
 });
 

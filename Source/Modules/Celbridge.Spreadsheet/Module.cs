@@ -108,13 +108,14 @@ public class Module : IModule
 
         return new[]
         {
+            // SpreadJS's licence is domain-locked to spreadjs.celbridge, so its page cannot run from the
+            // shared loopback origin. SyntheticOriginHost pins it to that host; every other editor loopback-serves.
             new BundledPackageDescriptor
             {
                 Folder = packageFolder,
-                HostNameOverride = "spreadjs.celbridge",
                 Secrets = secrets,
                 DevToolsBlocked = true,
-                SyntheticOrigin = true,
+                SyntheticOriginHost = "spreadjs.celbridge",
             }
         };
     }

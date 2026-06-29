@@ -8,9 +8,8 @@ public static class ContextRpcMethods
 }
 
 /// <summary>
-/// RPC service interface for retrieving the contribution editor's capability context.
-/// The Skia head cannot inject window.__celbridgeContext before navigation, so the JS
-/// client fetches the context over the bridge during startup instead.
+/// RPC service interface for retrieving the contribution editor's capability context. The JS client fetches
+/// it over the bridge during startup, on every head.
 /// </summary>
 public interface IHostContext
 {

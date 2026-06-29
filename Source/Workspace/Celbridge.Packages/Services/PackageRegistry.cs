@@ -283,11 +283,9 @@ public class PackageRegistry
 
             var loadResult = PackageManifestLoader.LoadPackage(
                 manifestPath,
-                descriptor.HostNameOverride,
+                descriptor.SyntheticOriginHost,
                 descriptor.Secrets,
                 descriptor.DevToolsBlocked,
-                descriptor.ServedViaLoopback,
-                descriptor.SyntheticOrigin,
                 origin: PackageOrigin.Bundled,
                 reader: _bundledReader);
             if (loadResult.IsFailure)
@@ -384,9 +382,11 @@ public class PackageRegistry
             var manifestPath = resolveResult.Value;
             var packageFolder = Path.GetDirectoryName(manifestPath)!;
 
+            // Project packages are served over the loopback file server (the default — a synthetic origin is
+            // bundled-only). Their contribution editors therefore run on every head.
             var loadResult = PackageManifestLoader.LoadPackage(
                 manifestPath,
-                hostNameOverride: null,
+                syntheticOriginHost: null,
                 secrets: null,
                 origin: PackageOrigin.Project,
                 reader: projectReader);

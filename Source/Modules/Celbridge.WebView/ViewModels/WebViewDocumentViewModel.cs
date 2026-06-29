@@ -11,7 +11,6 @@ namespace Celbridge.WebView.ViewModels;
 
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
-    private const string ProjectVirtualHost = "project.celbridge";
 
     private readonly ICommandService _commandService;
     private readonly IWebViewService _webViewService;
@@ -48,14 +47,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
                 // ResourceKey.ToString() now emits is for serialised diagnostics,
                 // not URL construction.
 
-                // The Skia heads serve project content over the loopback file server's /project/ route,
-                // since SetVirtualHostNameToFolderMapping is a no-op there. Windows keeps the project
-                // virtual host. Both serve the same project folder, so relative asset references resolve.
-                if (OperatingSystem.IsWindows())
-                {
-                    return $"https://{ProjectVirtualHost}/{FileResource.Path}";
-                }
-
+                // Served over the loopback file server's /project/ route. Relative asset
+                // references in the HTML resolve against this origin.
                 return $"http://127.0.0.1:{_serverService.Port}/project/{FileResource.Path}";
             }
 

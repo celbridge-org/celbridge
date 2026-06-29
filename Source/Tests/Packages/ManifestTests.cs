@@ -54,7 +54,7 @@ public class ManifestTests
         var package = result.Value;
         package.Info.Title.Should().Be("My Editor");
         package.Info.PackageFolder.Should().Be(_tempFolder);
-        package.Info.HostName.Should().Be("pkg-test-my-editor.celbridge");
+        package.Info.SyntheticOriginHost.Should().BeNull();
         package.DocumentEditors.Should().ContainSingle();
 
         var contribution = package.DocumentEditors[0];
@@ -63,7 +63,7 @@ public class ManifestTests
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".myext");
         ((CustomDocumentEditorContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Package.PackageFolder.Should().Be(_tempFolder);
-        contribution.Package.HostName.Should().Be("pkg-test-my-editor.celbridge");
+        contribution.Package.SyntheticOriginHost.Should().BeNull();
     }
 
     [Test]
@@ -148,7 +148,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_HostNameOverride_ReplacesDefault()
+    public void LoadPackage_SyntheticOriginHost_IsSetOnPackageInfo()
     {
         WritePackageToml("""
             [package]
@@ -173,10 +173,10 @@ public class ManifestTests
 
         var result = PackageManifestLoader.LoadPackage(
             Path.Combine(_tempFolder, "package.toml"),
-            hostNameOverride: "custom.celbridge");
+            syntheticOriginHost: "custom.celbridge");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Info.HostName.Should().Be("custom.celbridge");
+        result.Value.Info.SyntheticOriginHost.Should().Be("custom.celbridge");
     }
 
     [Test]

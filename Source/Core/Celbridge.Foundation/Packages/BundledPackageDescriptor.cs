@@ -12,12 +12,6 @@ public sealed record BundledPackageDescriptor
     public string Folder { get; init; } = string.Empty;
 
     /// <summary>
-    /// Optional override for the WebView virtual host name the package is served under.
-    /// When null, the default hostname is derived from the package id.
-    /// </summary>
-    public string? HostNameOverride { get; init; }
-
-    /// <summary>
     /// Named secrets (e.g. license keys) supplied from the module's compiled source code.
     /// </summary>
     public IReadOnlyDictionary<string, string> Secrets { get; init; } = new Dictionary<string, string>();
@@ -32,21 +26,10 @@ public sealed record BundledPackageDescriptor
     public bool DevToolsBlocked { get; init; }
 
     /// <summary>
-    /// When true, this package's WebView is served over the loopback file server (the
-    /// /package/{name}/ route) and addressed root-relative, instead of the SetVirtualHostNameToFolderMapping
-    /// virtual host. Transitional during the macOS port: editors flip to this as they are migrated, and
-    /// the virtual-host path is removed once all are across. Loopback-served editors run on every head;
-    /// virtual-host editors are unsupported on the Skia heads where the mapping is a no-op.
+    /// When set, pins this bundled package's WebView to the given fixed origin instead of loopback serving,
+    /// for content that cannot run from the shared loopback origin. Lives on the descriptor rather than the
+    /// public manifest, so only bundled packages can pin an origin. When null, the package is served
+    /// normally over the loopback file server (the default).
     /// </summary>
-    public bool ServedViaLoopback { get; init; }
-
-    /// <summary>
-    /// When true, this package is loaded under a faked origin (its HostNameOverride) rather than the
-    /// loopback origin, because it depends on a fixed origin it cannot get from the loopback server
-    /// (SpreadJS, whose OSS license is domain-locked to spreadjs.celbridge). The page gets the synthetic
-    /// origin via the WebView virtual host on Windows and native loadHTMLString:baseURL: on the Skia
-    /// heads, while its lib, the shared client, and its WebSocket bridge load cross-origin from the
-    /// loopback server by absolute URL. Mutually exclusive with ServedViaLoopback.
-    /// </summary>
-    public bool SyntheticOrigin { get; init; }
+    public string? SyntheticOriginHost { get; init; }
 }

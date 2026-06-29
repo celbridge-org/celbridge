@@ -518,7 +518,7 @@ export class EditorController {
     }
 
     #shouldNotifyHost() {
-        return window.isWebView &&
+        return celbridge.isHosted &&
             this.#isInitialized &&
             !this.#isReloadingExternally;
     }

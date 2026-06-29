@@ -230,11 +230,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {
-                MapProjectVirtualHost(_webView.CoreWebView2);
-
-                // The HTML viewer renders project-served content and supports the
-                // webview_* MCP tool namespace. External-URL .webview documents
-                // intentionally skip both the shim and the tool bridge registration.
+                // The HTML viewer renders project-served content (over the loopback /project/ route) and
+                // supports the webview_* MCP tool namespace. External-URL .webview documents intentionally
+                // skip both the shim and the tool bridge registration.
                 await TryInjectToolBridgeShimAsync();
             }
 
@@ -278,21 +276,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _logger.LogError(ex, "Failed to initialize WebView document view");
             TeardownWebViewState();
         }
-    }
-
-    private void MapProjectVirtualHost(CoreWebView2 coreWebView)
-    {
-        var projectFolder = ResourceRegistry.ProjectFolderPath;
-        if (string.IsNullOrEmpty(projectFolder))
-        {
-            _logger.LogWarning("Cannot map project virtual host: project folder path is empty");
-            return;
-        }
-
-        coreWebView.SetVirtualHostNameToFolderMapping(
-            "project.celbridge",
-            projectFolder,
-            CoreWebView2HostResourceAccessKind.Allow);
     }
 
     private void AttachNavigationPolicy(CoreWebView2 coreWebView)
@@ -435,43 +418,21 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             return;
         }
 
-#if WINDOWS
-        // Packaged WinUI: install the shim as a document-start script so it runs before page scripts
-        // on every navigation.
+        // Install the shim as a document-start script so it wraps console/fetch before page scripts run --
+        // required for get_console / get_network capture. This runs before the first navigation, so the
+        // initial page's boot output is captured; CoreWebView2_NavigationCompleted re-delivers it per
+        // navigation on the Skia heads.
         try
         {
             var script = toolBridge.GetShimScript();
-            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+            await coreWebView2.InstallDocumentStartScriptAsync(script);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into HTML viewer WebView");
+            _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim into the HTML viewer");
         }
-#else
-        // Skia: AddScriptToExecuteOnDocumentCreatedAsync is not implemented. Install the shim as a native
-        // WKUserScript at document-start so it wraps console/fetch before page scripts run -- required for
-        // get_console / get_network capture. This runs before the first navigation (TryNavigate), so the
-        // initial page's boot output is captured. CoreWebView2_NavigationCompleted still re-delivers the
-        // shim via ExecuteScriptAsync as a fallback for the call-time-only tools.
-        if (OperatingSystem.IsMacOS()
-            && Celbridge.WebHost.Services.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
-        {
-            try
-            {
-                var script = toolBridge.GetShimScript();
-                Celbridge.WebHost.Services.MacOSWebViewInterop.AddUserScriptAtDocumentStart(nativeHandle, script);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim on macOS");
-            }
-        }
-
-        await Task.CompletedTask;
-#endif
     }
 
-#if !WINDOWS
     private async Task ReinjectToolBridgeShimAsync()
     {
         var coreWebView2 = _webView?.CoreWebView2;
@@ -483,14 +444,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         try
         {
             var script = _toolBridge.GetShimScript();
-            await coreWebView2.ExecuteScriptAsync(script);
+            await coreWebView2.ReinjectDocumentStartScriptAsync(script);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim on the Skia head");
+            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim");
         }
     }
-#endif
 
     private void TryRegisterWithToolBridge()
     {
@@ -532,12 +492,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             if (e.IsSuccess)
             {
-#if !WINDOWS
-                // Install the shim before opening the content-ready gate. ExecuteScriptAsync calls are
-                // serialised in invocation order, so this fire-and-forget eval is queued ahead of any
+                // Re-deliver the shim before opening the content-ready gate (no-op on Windows). ExecuteScriptAsync
+                // calls are serialised in invocation order, so this fire-and-forget eval is queued ahead of any
                 // later webview_* tool eval even without awaiting it here.
                 _ = ReinjectToolBridgeShimAsync();
-#endif
                 _toolBridge?.NotifyContentReady(FileResource);
             }
             else

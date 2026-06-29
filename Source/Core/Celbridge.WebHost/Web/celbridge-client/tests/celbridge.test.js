@@ -109,9 +109,7 @@ describe('Celbridge', () => {
             expect(client.tools.allowedPatterns).toEqual(['app.*']);
             expect(client.secrets.license).toBe('abc');
             expect(client.options.preview_renderer_url).toBe('https://x/y.js');
-            expect(globalThis.isWebView).toBe(true);
-
-            delete globalThis.isWebView;
+            expect(client.isHosted).toBe(true);
         });
 
         it('resolves immediately and sends no request when context was injected', async () => {

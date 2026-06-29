@@ -4,11 +4,6 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 
-// Only proceed if running in WebView
-if (!window.isWebView) {
-    console.log('Not running in WebView, skipping client initialization');
-}
-
 const client = celbridge;
 
 // Apply theme to the body element

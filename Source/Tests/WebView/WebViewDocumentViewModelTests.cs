@@ -152,7 +152,7 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
-    public void NavigateUrl_HtmlViewer_BuildsProjectVirtualHostUrlFromResourceKey()
+    public void NavigateUrl_HtmlViewer_BuildsLoopbackProjectUrlFromResourceKey()
     {
         var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
         {
@@ -160,13 +160,8 @@ public class WebViewDocumentViewModelTests
             Role = WebViewDocumentRole.HtmlViewer,
         };
 
-        // Windows serves the HtmlViewer via the project virtual host; other heads serve it over the
-        // loopback file server (the virtual-host mapping is a no-op off Windows).
-        var expectedUrl = OperatingSystem.IsWindows()
-            ? "https://project.celbridge/Pages/welcome.html"
-            : "http://127.0.0.1:5000/project/Pages/welcome.html";
-
-        viewModel.NavigateUrl.Should().Be(expectedUrl);
+        // The HtmlViewer is served over the loopback file server's /project/ route on every head.
+        viewModel.NavigateUrl.Should().Be("http://127.0.0.1:5000/project/Pages/welcome.html");
     }
 
     [Test]

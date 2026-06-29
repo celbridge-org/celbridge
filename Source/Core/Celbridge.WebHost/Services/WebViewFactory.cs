@@ -259,13 +259,6 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             SharedAssetsFolderPath,
             CoreWebView2HostResourceAccessKind.Allow);
 
-#if WINDOWS
-        // Mark this as a WebView running in the Celbridge host. Document-start injection runs on the
-        // packaged WinUI head before page scripts on every navigation. On the Skia head window.isWebView
-        // is set by the JS client when it connects (celbridge.ready) instead.
-        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
-#endif
-
         return webView;
     }
 

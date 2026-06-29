@@ -240,49 +240,18 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             WebView.GotFocus -= WebView_GotFocus;
             WebView.GotFocus += WebView_GotFocus;
 
-            // Loopback-served packages are addressed over the file server (the /package/, /project/,
-            // and /assets/ routes) and run on every head; the rest still use the in-process virtual
-            // host, which only works on the Windows heads. See PackageInfo.ServedViaLoopback.
-            var servedViaLoopback = Contribution.Package.ServedViaLoopback;
-#if WINDOWS
-            var useSyntheticOriginNativeLoad = false;
-#else
-            // Synthetic-origin packages (SpreadJS) load under their faked origin via native
-            // loadHTMLString:baseURL: on the Skia heads, for their domain-locked license; on the Windows
-            // heads they keep the virtual-host path (fixed up later).
-            var useSyntheticOriginNativeLoad = Contribution.Package.SyntheticOrigin && OperatingSystem.IsMacOS();
-#endif
+            // Every contribution editor is served over the loopback file server, on every head. A
+            // synthetic-origin package (SyntheticOriginHost set) is the sole exception: it loads under that
+            // fixed origin instead. Either way the package folder is registered on the loopback server below,
+            // since a synthetic-origin editor still pulls its lib and the shared client from there cross-origin.
             var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
             var packageUrlName = Contribution.Package.Name.Replace('.', '-');
 
-            if (servedViaLoopback || useSyntheticOriginNativeLoad)
-            {
-                // The project and shared assets are registered globally by the server; only the package's
-                // own folder needs registering here. Loopback-served editors load directly from the
-                // loopback origin; synthetic-origin editors load under their faked origin but pull their
-                // lib and the shared client cross-origin from this /package/ route.
-                fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
-            }
-            else
-            {
-                // Map the package's asset folder to a virtual host
-                WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    Contribution.Package.HostName,
-                    Contribution.Package.PackageFolder,
-                    CoreWebView2HostResourceAccessKind.Allow);
+            fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
 
-                // Map the project folder for resource key path resolution
-                var projectFolder = ResourceRegistry.ProjectFolderPath;
-                if (!string.IsNullOrEmpty(projectFolder))
-                {
-                    WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                        "project.celbridge",
-                        projectFolder,
-                        CoreWebView2HostResourceAccessKind.Allow);
-                }
-            }
+            ConfigureSyntheticOriginHosting();
 
-            await InjectCelbridgeContextAsync();
+            WarnOnEmptyPackageSecrets();
 
             // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
             // Skipped when the package opts out via DevToolsBlocked (sensitive material)
@@ -295,9 +264,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             // Block all navigations except the package's own origin. Each allowed
             // navigation also resets the tool bridge's content-ready gate so webview_*
             // tool calls block until the editor signals readiness post-navigation.
-            var allowedNavigationPrefix = servedViaLoopback
-                ? fileServer.GetPackageUrl(packageUrlName, string.Empty)
-                : $"https://{Contribution.Package.HostName}/";
+            var allowedNavigationPrefix = HasSyntheticOrigin
+                ? $"https://{Contribution.Package.SyntheticOriginHost}/"
+                : fileServer.GetPackageUrl(packageUrlName, string.Empty);
             WebView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
@@ -328,14 +297,12 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                     args.ProcessFailedKind, args.Reason, args.ExitCode);
             };
 
-            // Wire up the JSON-RPC host channel for WebView communication. The transport is chosen
-            // structurally: first-party content served over the loopback server, or loaded under a
-            // synthetic origin, loads the celbridge client and so opens a WebSocket back to the host
-            // (the factory returns a connection token to embed in the page navigation URL). Content
-            // still served from a virtual host (SpreadJS on Windows, until its synthetic path lands) is
-            // not same-origin with the loopback server and cannot derive that socket URL, so it stays on
-            // the WebView2 message channel.
-            var useWebSocketChannel = servedViaLoopback || useSyntheticOriginNativeLoad;
+            // Wire up the JSON-RPC host channel. Loopback editors open a WebSocket back to the host, deriving
+            // the socket URL from their own loopback origin plus a connection token in the page URL. A
+            // synthetic-origin package is not same-origin with the loopback server: on the Skia heads its
+            // loadHTMLString page has the bridge URL injected so it still uses the WebSocket; on Windows its
+            // virtual-host page gets no such injection and falls back to the WebView2 message channel.
+            var useWebSocketChannel = ResolveUseWebSocketChannel();
             var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
             var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
             _hostChannelTeardown = hostChannelSetup.Teardown;
@@ -390,23 +357,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             }
 
             var entryPoint = Contribution.EntryPoint;
-            if (useSyntheticOriginNativeLoad)
-            {
-#if !WINDOWS
-                // Load the synthetic-origin page via native loadHTMLString. The content must be set before
-                // the tab-refresh kick renders the WebView (loadHTMLString into an unrendered webview is a
-                // no-op until a render is triggered), so this runs inline during init.
-                await LoadSyntheticOriginPageAsync(packageUrlName, entryPoint, connectionToken);
-#endif
-            }
-            else
-            {
-                var entryUrl = servedViaLoopback
-                    ? fileServer.GetPackageUrl(packageUrlName, entryPoint)
-                    : $"https://{Contribution.Package.HostName}/{entryPoint}";
-                entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
-                WebView.CoreWebView2.Navigate(entryUrl);
-            }
+            await NavigateToEntryPointAsync(packageUrlName, entryPoint, connectionToken);
 
             _initTcs!.TrySetResult(Result.Ok());
         }
@@ -419,62 +370,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             _initTcs!.TrySetResult(failure);
         }
     }
-
-#if !WINDOWS
-    /// <summary>
-    /// Loads a synthetic-origin editor (SpreadJS) under its faked origin via native loadHTMLString:baseURL:
-    /// on the Skia heads, so its domain-locked license passes. The entry HTML is rewritten so its lib and
-    /// shared-client references resolve cross-origin to the loopback file server (absolute URLs, since
-    /// loadHTMLString ignores a base element), and the WebSocket bridge URL is injected (the faked-origin
-    /// page cannot derive it from its own location).
-    /// </summary>
-    private async Task LoadSyntheticOriginPageAsync(string packageUrlName, string entryPoint, string? connectionToken)
-    {
-        var coreWebView2 = WebView!.CoreWebView2;
-
-        var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
-        var serverService = _serviceProvider.GetRequiredService<IServerService>();
-        var localFileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
-
-        var packageBaseUrl = fileServer.GetPackageUrl(packageUrlName, string.Empty);
-        var assetsBaseUrl = $"http://127.0.0.1:{serverService.Port}/assets/";
-        var bridgeUrl = $"ws://127.0.0.1:{serverService.Port}/ws/host?token={connectionToken}";
-
-        var entryHtmlPath = System.IO.Path.Combine(Contribution.Package.PackageFolder, entryPoint);
-        var readResult = await localFileSystem.ReadAllTextAsync(entryHtmlPath);
-        if (readResult.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to read synthetic-origin entry HTML '{entryHtmlPath}': {readResult.DiagnosticReport}");
-        }
-
-        var encodedBridgeUrl = JsonSerializer.Serialize(bridgeUrl);
-
-        // Rewrite the page's relative resource references to absolute loopback URLs. loadHTMLString does
-        // not honour a <base> element, so (as in the validated feasibility spike) the lib and entry
-        // script URLs are made absolute against the package's loopback /package/ route.
-        var entryHtml = readResult.Value
-            .Replace("\"lib/", $"\"{packageBaseUrl}lib/")
-            .Replace("\"spreadsheet.js\"", $"\"{packageBaseUrl}spreadsheet.js\"");
-
-        // Inject into <head>: an import map remapping the editor's absolute shared.celbridge client
-        // imports to the loopback /assets/ route (keeping the package's own files unchanged, so the
-        // Windows virtual-host path still works), and the WebSocket bridge URL the faked-origin page
-        // cannot derive itself.
-        var importMap = $"<script type=\"importmap\">{{\"imports\":{{\"https://shared.celbridge/\":\"{assetsBaseUrl}\"}}}}</script>";
-        var injectedHead = $"{importMap}<script>window.__celbridgeBridgeUrl={encodedBridgeUrl};</script>";
-        var html = entryHtml.Replace("<head>", "<head>" + injectedHead);
-
-        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var handle, out var detail))
-        {
-            throw new InvalidOperationException($"Could not reach the native WKWebView handle for the synthetic-origin editor: {detail}");
-        }
-
-        // http (not https) origin so the cross-origin http loopback resource fetches are not blocked as
-        // mixed content. The license validates on the hostname, not the scheme.
-        var syntheticOriginUrl = $"http://{Contribution.Package.HostName}/";
-        MacOSWebViewInterop.LoadHtmlString(handle, html, syntheticOriginUrl);
-    }
-#endif
 
     /// <summary>
     /// Tears down the WebView, host channel, and associated handlers. Safe to call
@@ -528,47 +423,27 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             return;
         }
 
-#if WINDOWS
-        // Packaged WinUI: install the shim as a document-start script so it runs before page scripts
-        // on every navigation.
+        // Install the tool bridge shim as a document-start script so it wraps console/fetch before page
+        // scripts run -- required for get_console / get_network capture. The Skia heads also re-deliver it
+        // per navigation through OnNavigationCompleted_ReinjectShim.
         try
         {
             var script = toolBridge.GetShimScript();
-            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+            await coreWebView2.InstallDocumentStartScriptAsync(script);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into contribution WebView");
-        }
-#else
-        // Skia: AddScriptToExecuteOnDocumentCreatedAsync is not implemented. Install the shim as a native
-        // WKUserScript at document-start so it wraps console/fetch before page scripts run -- required for
-        // get_console / get_network capture. NavigationCompleted also re-delivers the shim via
-        // ExecuteScriptAsync as a fallback for the call-time-only tools.
-        if (OperatingSystem.IsMacOS()
-            && Celbridge.WebHost.Services.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
-        {
-            try
-            {
-                var script = toolBridge.GetShimScript();
-                Celbridge.WebHost.Services.MacOSWebViewInterop.AddUserScriptAtDocumentStart(nativeHandle, script);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim on macOS");
-            }
+            _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim");
         }
 
-        coreWebView2.NavigationCompleted += OnSkiaNavigationCompleted_ReinjectShim;
-        await Task.CompletedTask;
-#endif
+        coreWebView2.NavigationCompleted += OnNavigationCompleted_ReinjectShim;
     }
 
-#if !WINDOWS
-    private async void OnSkiaNavigationCompleted_ReinjectShim(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    private async void OnNavigationCompleted_ReinjectShim(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
-        // async void event handler: swallow exceptions to protect the process. The bridge caches the
-        // shim after the first read, so re-reading per navigation is cheap, and the shim is idempotent.
+        // async void event handler: swallow exceptions to protect the process. The bridge caches the shim
+        // after the first read, and the shim is idempotent. Re-injection is a no-op on Windows, where the
+        // document-start script persists across navigations.
         if (_toolBridge is null)
         {
             return;
@@ -577,14 +452,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         try
         {
             var script = _toolBridge.GetShimScript();
-            await sender.ExecuteScriptAsync(script);
+            await sender.ReinjectDocumentStartScriptAsync(script);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim on the Skia head");
+            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim");
         }
     }
-#endif
 
     private void TryRegisterWithToolBridge()
     {
@@ -1130,13 +1004,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         }
     }
 
-    private async Task InjectCelbridgeContextAsync()
+    private void WarnOnEmptyPackageSecrets()
     {
         Guard.IsNotNull(Contribution);
 
-        // An empty secret value almost certainly indicates a missing private license
-        // file or a module that failed to populate its BundledPackageDescriptor. The
-        // editor at the other end will typically fail to activate so surface it loudly here.
+        // An empty secret value almost certainly indicates a missing private license file or a module that
+        // failed to populate its BundledPackageDescriptor. The editor at the other end will typically fail
+        // to activate, so surface it loudly here.
         foreach (var pair in Contribution.Package.Secrets)
         {
             if (string.IsNullOrEmpty(pair.Value))
@@ -1146,27 +1020,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                     pair.Key, Contribution.Package.Name);
             }
         }
-
-        var coreWebView2 = WebView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            _logger.LogWarning("Cannot inject celbridge context: CoreWebView2 is not available");
-            return;
-        }
-
-#if WINDOWS
-        // Document-start global injection is the packaged WinUI fast path. The Uno Skia
-        // CoreWebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, and awaiting
-        // the faulted operation can stall the WebView init, so the Skia head omits it: the JS
-        // client fetches the context over the bridge via host/getContext (see GetContext).
-        var contextJson = JsonSerializer.Serialize(BuildCelbridgeContext(), ContextSerializerOptions);
-        var script = $"window.__celbridgeContext = {contextJson};";
-        await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
-#else
-        await Task.CompletedTask;
-#endif
     }
 
+    // Builds the capability context (permitted tools, secrets, options) that the JS client fetches over the
+    // bridge via host/getContext on every head.
     public CelbridgeContext GetContext()
     {
         return BuildCelbridgeContext();
@@ -1181,12 +1038,4 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             Contribution.Package.Secrets,
             Contribution.Options);
     }
-
-#if WINDOWS
-    // Used only for the packaged WinUI document-start context injection (see InjectCelbridgeContextAsync).
-    private static readonly JsonSerializerOptions ContextSerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-#endif
 }

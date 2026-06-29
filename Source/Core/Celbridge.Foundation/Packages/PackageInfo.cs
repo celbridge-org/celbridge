@@ -65,21 +65,12 @@ public partial record PackageInfo
     public bool DevToolsBlocked { get; init; }
 
     /// <summary>
-    /// When true, the package's WebView is served over the loopback file server and addressed
-    /// root-relative (the /package/{name}/ route), instead of a SetVirtualHostNameToFolderMapping
-    /// virtual host. Loopback-served editors run on every head; virtual-host editors are unsupported on
-    /// the Skia heads where the mapping is a no-op. Transitional during the macOS port.
+    /// The fixed origin the package's WebView page must load under, for content that cannot run from the
+    /// shared loopback origin. When null or empty (the default), the package is served normally over the
+    /// loopback file server. Either way the package's assets are served from the loopback server; only the
+    /// page's origin differs.
     /// </summary>
-    public bool ServedViaLoopback { get; init; }
-
-    /// <summary>
-    /// When true, the package is loaded under its faked HostName origin (virtual host on Windows, native
-    /// loadHTMLString:baseURL: on the Skia heads) because it depends on a fixed origin the loopback server
-    /// cannot provide (SpreadJS's domain-locked license). Its lib, the shared client, and its WebSocket
-    /// bridge load cross-origin from the loopback server by absolute URL. Mutually exclusive with
-    /// ServedViaLoopback.
-    /// </summary>
-    public bool SyntheticOrigin { get; init; }
+    public string? SyntheticOriginHost { get; init; }
 
     /// <summary>
     /// Whether the package was discovered as a bundled (in-module) or project
@@ -92,9 +83,4 @@ public partial record PackageInfo
     /// The folder containing the package (set during loading, not from TOML).
     /// </summary>
     public string PackageFolder { get; init; } = string.Empty;
-
-    /// <summary>
-    /// A unique virtual host name for this package's assets (set during loading, not from TOML).
-    /// </summary>
-    public string HostName { get; init; } = string.Empty;
 }

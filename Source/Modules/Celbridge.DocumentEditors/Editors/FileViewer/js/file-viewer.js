@@ -6,10 +6,6 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
 
-if (!window.isWebView) {
-    console.log('Not running in WebView, skipping client initialization');
-}
-
 const client = celbridge;
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico']);

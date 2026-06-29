@@ -38,9 +38,9 @@ public sealed record MacSnapshotRequest(
 /// (WKUserContentController.addUserScript:), and capturing the rendered surface
 /// (takeSnapshotWithConfiguration:).
 ///
-/// The _webview reflection field is version-pinned to the Uno runtime validated by the macOS spike
-/// (6.5.237, shipped by Uno.Sdk 6.5.36). It is the single place that needs re-verification on any Uno
-/// bump, which is why all of the reflection lives here.
+/// The _webview reflection field reaches into Uno's internals, so its name is coupled to the Uno runtime
+/// version and must be re-verified on any Uno bump. All the reflection lives here to keep that re-check in
+/// a single place.
 ///
 /// Every method touches WebKit, which is only safe on the macOS main (UI) thread. Callers must invoke
 /// these on the UI thread; the methods do not marshal internally. The whole type is macOS-only, so

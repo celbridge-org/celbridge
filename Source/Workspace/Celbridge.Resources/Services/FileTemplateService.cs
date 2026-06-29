@@ -37,7 +37,6 @@ public class FileTemplateService : IFileTemplateService
             var sheet = wb.AddWorksheet("Sheet1");
 
             // This workaround forces a block of cells to be displayed instead of a single empty cell.
-            // I think SpreadJS does something similar internally when you add a new sheet.
             sheet.Cell(200, 20).Style.NumberFormat.Format = "@";
 
             wb.SaveAs(ms);

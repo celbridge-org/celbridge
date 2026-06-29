@@ -4,10 +4,6 @@
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
-if (!window.isWebView) {
-    console.log('Not running in WebView, skipping client initialization');
-}
-
 const client = celbridge;
 
 let designer = null;

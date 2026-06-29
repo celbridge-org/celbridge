@@ -73,7 +73,7 @@ async function initialize() {
                 previewIframe: document.getElementById('preview-iframe')
             },
             onLinkClicked: (href) => {
-                if (window.isWebView) {
+                if (celbridge.isHosted) {
                     celbridge.input.notifyLinkClicked(href);
                 }
             }
@@ -90,7 +90,7 @@ async function initialize() {
 
     await initializeLanguageMap();
 
-    if (!window.isWebView) {
+    if (!celbridge.isHosted) {
         return;
     }
 

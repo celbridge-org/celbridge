@@ -1,9 +1,9 @@
 // Tools API: MCP tool dispatch wrapper and dynamic `cel.*` proxy for contribution editors.
 //
 // Contribution packages declare the tools they need via `[permissions] tools` in package.toml.
-// The host injects the resolved allowlist as `window.__celbridgeContext.permittedTools`
-// before navigation. This module builds a dynamic proxy that exposes only the allowed
-// tools as `celbridge.cel.<namespace>.<tool>(...)`.
+// The client fetches the resolved allowlist over the bridge via `host/getContext`. This module
+// builds a dynamic proxy that exposes only the allowed tools as
+// `celbridge.cel.<namespace>.<tool>(...)`.
 //
 // The host re-enforces the same allowlist on every `tools/call` — the client-side proxy
 // is a convenience that keeps undeclared tools off the API surface, but the host gate is
