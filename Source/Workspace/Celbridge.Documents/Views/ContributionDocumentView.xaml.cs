@@ -243,143 +243,48 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         _viewModel.Contribution = Contribution;
 
+        // Resolve the loader up front: it decides whether this editor's WebView must be created in place (in
+        // its own container, never re-parented) rather than taken from the shared pool.
+        var editorLoader = ResolveContributionEditorLoader(Contribution.Package);
+
         try
         {
-            // Acquire a WebView from the factory and add it to the container.
+            if (editorLoader.RequiresInPlaceWebView)
+            {
+                // Create the WebView directly in the document container. EnsureCoreWebView2Async needs the
+                // control window-rooted, which happens only once the view is shown (Loaded) -- and the view is
+                // not added to the visual tree until after LoadContent returns. So signal init done now and
+                // finish configuring when the control is Loaded.
+                WebView = new WebView2
+                {
+                    DefaultBackgroundColor = Microsoft.UI.Colors.Transparent
+                };
+                ContributionWebViewContainer.Children.Add(WebView);
+                _initTcs!.TrySetResult(Result.Ok());
+
+                if (WebView.IsLoaded)
+                {
+                    await ConfigureInPlaceWebViewAsync(editorLoader);
+                }
+                else
+                {
+                    RoutedEventHandler? onLoaded = null;
+                    onLoaded = async (sender, args) =>
+                    {
+                        WebView!.Loaded -= onLoaded;
+                        await ConfigureInPlaceWebViewAsync(editorLoader);
+                    };
+                    WebView.Loaded += onLoaded;
+                }
+
+                return;
+            }
+
+            // Pooled path: the factory returns a WebView with CoreWebView2 already live.
             WebView = await _webViewFactory.AcquireAsync();
             ContributionWebViewContainer.Children.Add(WebView);
 
-            // DevTools is off when the hosting package blocks it (sensitive material)
-            // or when the user has not enabled the WebViewDevTools feature flag.
-            var devToolsBlocked = Contribution.Package.DevToolsBlocked;
-            WebView.CoreWebView2.Settings.AreDevToolsEnabled =
-                !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
-
-            WebView.GotFocus -= WebView_GotFocus;
-            WebView.GotFocus += WebView_GotFocus;
-
-            // Every contribution editor's assets (its lib, the shared client) are served from the loopback
-            // file server, so register this package's folder there. The resolved loader decides where the
-            // entry page itself loads from.
-            var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
-            var packageUrlName = Contribution.Package.Name.Replace('.', '-');
-
-            fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
-
-            var editorLoader = ResolveContributionEditorLoader(Contribution.Package);
-
-            WarnOnEmptyPackageSecrets();
-
-            // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
-            // Skipped when the package opts out via DevToolsBlocked (sensitive material)
-            // so that no tool surface is exposed for those packages.
-            if (!devToolsBlocked)
-            {
-                await TryInjectToolBridgeShimAsync();
-            }
-
-            // Block all new window requests
-            WebView.CoreWebView2.NewWindowRequested += (s, args) =>
-            {
-                args.Handled = true;
-            };
-
-            WebView.CoreWebView2.ProcessFailed += (s, args) =>
-            {
-                _logger.LogError(
-                    "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
-                    args.ProcessFailedKind, args.Reason, args.ExitCode);
-            };
-
-            // Wire up the JSON-RPC host channel. The loader's declared transport selects between the loopback
-            // WebSocket (the page derives the socket URL from its own origin plus a connection token) and the
-            // WebView2 message channel (for a page that is not same-origin with the loopback server).
-            var useWebSocketChannel = editorLoader.GetTransport(Contribution.Package) == HostChannelTransport.LoopbackWebSocket;
-            var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
-            var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
-            _hostChannelTeardown = hostChannelSetup.Teardown;
-            var connectionToken = hostChannelSetup.ConnectionToken;
-            Host = new CelbridgeHost(hostChannelSetup.Channel);
-
-            Host.AddLocalRpcTarget<IHostInput>(this);
-            Host.AddLocalRpcTarget<IHostContext>(this);
-
-            _documentHandler = new ContributionDocumentHandler(
-                _viewModel,
-                _logger,
-                CreateDocumentMetadata,    // Callback to construct document metadata on demand
-                CompleteSave);             // Callback to update state when saving has completed
-
-            _documentHandler.ContentLoaded += SetContentLoaded;
-
-            var dialogHandler = new ContributionDialogHandler(
-                _dialogService,
-                _stringLocalizer,
-                _viewModel);
-
-            Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
-            Host.AddLocalRpcTarget<IHostDialog>(dialogHandler);
-
-            var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
-            if (mcpToolBridge is not null)
-            {
-                _toolsHandler = new ContributionToolsHandler(mcpToolBridge, Contribution.Package.PermittedTools);
-                Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
-            }
-
-            Host.StartListening();
-
-            // Registering pushes the current snapshot, so it must run after StartListening. Seed writability
-            // before registering so the connect push carries it.
-            var stateService = _serviceProvider.GetRequiredService<IWebViewStateService>();
-            var capturedHost = Host;
-            _appStateConnection = stateService.AppState.RegisterConnection(
-                snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.AppStateChanged, snapshot));
-
-            _viewState = stateService.CreateViewState();
-            _viewState.SetValue("writable", WritableState.ToString());
-            _viewStateConnection = _viewState.RegisterConnection(
-                snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
-
-            // Register with the WebView tool bridge so the webview_* MCP tools can
-            // target this WebView by resource key. Mirrors the shim injection guard.
-            if (!devToolsBlocked)
-            {
-                TryRegisterWithToolBridge();
-            }
-
-            var entryPoint = Contribution.EntryPoint;
-            var serverPort = _serviceProvider.GetRequiredService<IServerService>().Port;
-            var loadRequest = new ContributionEditorLoadRequest(
-                WebView!.CoreWebView2,
-                Contribution.Package,
-                packageUrlName,
-                entryPoint,
-                connectionToken,
-                serverPort);
-
-            // Block all navigations except the editor's own origin. Each allowed navigation also resets the
-            // tool bridge's content-ready gate so webview_* tool calls block until the editor signals
-            // readiness post-navigation.
-            var allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
-            WebView!.NavigationStarting += (s, args) =>
-            {
-                var uri = args.Uri;
-                if (string.IsNullOrEmpty(uri))
-                {
-                    return;
-                }
-
-                if (uri.StartsWith(allowedNavigationPrefix))
-                {
-                    _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
-                    return;
-                }
-
-                args.Cancel = true;
-            };
-
-            await editorLoader.LoadAsync(loadRequest);
+            await ConfigureWebViewAndHostAsync(editorLoader);
 
             _initTcs!.TrySetResult(Result.Ok());
         }
@@ -391,6 +296,161 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                 .WithException(ex);
             _initTcs!.TrySetResult(failure);
         }
+    }
+
+    // Completes initialization for an in-place WebView once it is window-rooted: brings up CoreWebView2 in the
+    // container (no re-parent) and configures the host channel and page load. Init is already signalled, so a
+    // failure here is logged and torn down rather than surfaced to the open flow.
+    private async Task ConfigureInPlaceWebViewAsync(IContributionEditorLoader editorLoader)
+    {
+        try
+        {
+            await WebView!.EnsureCoreWebView2Async();
+            await ConfigureWebViewAndHostAsync(editorLoader);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to initialize in-place contribution view: {Contribution!.Package.Name}");
+            TeardownWebViewState();
+        }
+    }
+
+    // Configures a live WebView (CoreWebView2 ready): host channel, RPC targets, tool bridge, navigation gate,
+    // and the editor load. Shared by the pooled and in-place init paths.
+    private async Task ConfigureWebViewAndHostAsync(IContributionEditorLoader editorLoader)
+    {
+        Guard.IsNotNull(Contribution);
+        Guard.IsNotNull(WebView);
+
+        // DevTools is off when the hosting package blocks it (sensitive material)
+        // or when the user has not enabled the WebViewDevTools feature flag.
+        var devToolsBlocked = Contribution.Package.DevToolsBlocked;
+        WebView.CoreWebView2.Settings.AreDevToolsEnabled =
+            !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
+
+        WebView.GotFocus -= WebView_GotFocus;
+        WebView.GotFocus += WebView_GotFocus;
+
+        // Every contribution editor's assets (its lib, the shared client) are served from the loopback
+        // file server, so register this package's folder there. The resolved loader decides where the
+        // entry page itself loads from.
+        var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
+        var packageUrlName = Contribution.Package.Name.Replace('.', '-');
+
+        fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
+
+        WarnOnEmptyPackageSecrets();
+
+        // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
+        // Skipped when the package opts out via DevToolsBlocked (sensitive material)
+        // so that no tool surface is exposed for those packages.
+        if (!devToolsBlocked)
+        {
+            await TryInjectToolBridgeShimAsync();
+        }
+
+        // Block all new window requests
+        WebView.CoreWebView2.NewWindowRequested += (s, args) =>
+        {
+            args.Handled = true;
+        };
+
+        WebView.CoreWebView2.ProcessFailed += (s, args) =>
+        {
+            _logger.LogError(
+                "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
+                args.ProcessFailedKind, args.Reason, args.ExitCode);
+        };
+
+        // Wire up the JSON-RPC host channel. The loader's declared transport selects between the loopback
+        // WebSocket (the page derives the socket URL from its own origin plus a connection token) and the
+        // WebView2 message channel (for a page that is not same-origin with the loopback server).
+        var useWebSocketChannel = editorLoader.GetTransport(Contribution.Package) == HostChannelTransport.LoopbackWebSocket;
+        var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
+        var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
+        _hostChannelTeardown = hostChannelSetup.Teardown;
+        var connectionToken = hostChannelSetup.ConnectionToken;
+        Host = new CelbridgeHost(hostChannelSetup.Channel);
+
+        Host.AddLocalRpcTarget<IHostInput>(this);
+        Host.AddLocalRpcTarget<IHostContext>(this);
+
+        _documentHandler = new ContributionDocumentHandler(
+            _viewModel,
+            _logger,
+            CreateDocumentMetadata,    // Callback to construct document metadata on demand
+            CompleteSave);             // Callback to update state when saving has completed
+
+        _documentHandler.ContentLoaded += SetContentLoaded;
+
+        var dialogHandler = new ContributionDialogHandler(
+            _dialogService,
+            _stringLocalizer,
+            _viewModel);
+
+        Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
+        Host.AddLocalRpcTarget<IHostDialog>(dialogHandler);
+
+        var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
+        if (mcpToolBridge is not null)
+        {
+            _toolsHandler = new ContributionToolsHandler(mcpToolBridge, Contribution.Package.PermittedTools);
+            Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
+        }
+
+        Host.StartListening();
+
+        // Registering pushes the current snapshot, so it must run after StartListening. Seed writability
+        // before registering so the connect push carries it.
+        var stateService = _serviceProvider.GetRequiredService<IWebViewStateService>();
+        var capturedHost = Host;
+        _appStateConnection = stateService.AppState.RegisterConnection(
+            snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.AppStateChanged, snapshot));
+
+        _viewState = stateService.CreateViewState();
+        _viewState.SetValue("writable", WritableState.ToString());
+        _viewStateConnection = _viewState.RegisterConnection(
+            snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
+
+        // Register with the WebView tool bridge so the webview_* MCP tools can
+        // target this WebView by resource key. Mirrors the shim injection guard.
+        if (!devToolsBlocked)
+        {
+            TryRegisterWithToolBridge();
+        }
+
+        var entryPoint = Contribution.EntryPoint;
+        var serverPort = _serviceProvider.GetRequiredService<IServerService>().Port;
+        var loadRequest = new ContributionEditorLoadRequest(
+            WebView!,
+            Contribution.Package,
+            packageUrlName,
+            entryPoint,
+            connectionToken,
+            serverPort);
+
+        // Block all navigations except the editor's own origin. Each allowed navigation also resets the
+        // tool bridge's content-ready gate so webview_* tool calls block until the editor signals
+        // readiness post-navigation.
+        var allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
+        WebView!.NavigationStarting += (s, args) =>
+        {
+            var uri = args.Uri;
+            if (string.IsNullOrEmpty(uri))
+            {
+                return;
+            }
+
+            if (uri.StartsWith(allowedNavigationPrefix))
+            {
+                _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+                return;
+            }
+
+            args.Cancel = true;
+        };
+
+        await editorLoader.LoadAsync(loadRequest);
     }
 
     /// <summary>

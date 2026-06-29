@@ -1,5 +1,4 @@
 using Celbridge.Packages;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
 
@@ -15,6 +14,14 @@ public interface IContributionEditorLoader
     /// resolved as the fallback; a custom loader matches only its own package and is resolved ahead of it.
     /// </summary>
     bool CanLoad(PackageInfo package);
+
+    /// <summary>
+    /// True when this editor's WebView must be created and initialised directly in its document container
+    /// rather than acquired from the shared pool. The pool initialises controls in a hidden host and then
+    /// re-parents them, which resets the WebKit context on the Uno Skia heads; an in-place control is never
+    /// re-parented, so its context stays intact.
+    /// </summary>
+    bool RequiresInPlaceWebView { get; }
 
     /// <summary>
     /// The host channel transport the editor's loaded page can reach.
@@ -51,10 +58,12 @@ public enum HostChannelTransport
 }
 
 /// <summary>
-/// The inputs a loader needs to place a contribution editor's entry page into its WebView.
+/// The inputs a loader needs to place a contribution editor's entry page into its WebView. The WebView2
+/// control is supplied (rather than just its CoreWebView2) so a loader can also observe the control's
+/// lifecycle, e.g. to defer loading until it is parented into the visual tree.
 /// </summary>
 public sealed record ContributionEditorLoadRequest(
-    CoreWebView2 CoreWebView2,
+    WebView2 WebView,
     PackageInfo Package,
     string PackageUrlName,
     string EntryPoint,

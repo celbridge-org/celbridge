@@ -17,6 +17,8 @@ internal sealed class LoopbackContributionEditorLoader : IContributionEditorLoad
 
     public bool CanLoad(PackageInfo package) => true;
 
+    public bool RequiresInPlaceWebView => false;
+
     public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
 
     public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request)
@@ -28,7 +30,7 @@ internal sealed class LoopbackContributionEditorLoader : IContributionEditorLoad
     {
         var entryUrl = _fileServer.GetPackageUrl(request.PackageUrlName, request.EntryPoint);
         var navigationUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
-        request.CoreWebView2.Navigate(navigationUrl);
+        request.WebView.CoreWebView2.Navigate(navigationUrl);
 
         return Task.CompletedTask;
     }

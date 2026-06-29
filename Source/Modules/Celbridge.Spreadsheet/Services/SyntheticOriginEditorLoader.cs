@@ -29,6 +29,17 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
 
+    public bool RequiresInPlaceWebView =>
+#if WINDOWS
+        // The Windows virtual-host path uses the shared WebView pool without issue.
+        false;
+#else
+        // The Skia heads load natively via loadHTMLString. A pooled WebView is re-parented out of the
+        // factory's init host, which resets the WebKit context and kills the page's subresource loading,
+        // so this editor needs a WebView created in place and never re-parented.
+        true;
+#endif
+
     public HostChannelTransport GetTransport(PackageInfo package)
     {
 #if WINDOWS
@@ -41,7 +52,14 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 #endif
     }
 
-    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request) => $"https://{SyntheticHost}/";
+    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request) =>
+#if WINDOWS
+        // Windows navigates to the https virtual host.
+        $"https://{SyntheticHost}/";
+#else
+        // The Skia heads load under the http synthetic origin via loadHTMLString.
+        $"http://{SyntheticHost}/";
+#endif
 
     public async Task LoadAsync(ContributionEditorLoadRequest request)
     {
@@ -50,27 +68,39 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
         // Map the package folder to the synthetic-origin virtual host, then navigate to it. The licence
         // validates on the hostname.
-        request.CoreWebView2.SetVirtualHostNameToFolderMapping(
+        request.WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
             SyntheticHost,
             request.Package.PackageFolder,
             CoreWebView2HostResourceAccessKind.Allow);
 
         var entryUrl = $"https://{SyntheticHost}/{request.EntryPoint}";
         entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
-        request.CoreWebView2.Navigate(entryUrl);
+        request.WebView.CoreWebView2.Navigate(entryUrl);
 #else
-        await LoadSyntheticOriginPageAsync(request);
+        // The WebView is created in place (RequiresInPlaceWebView), so it is window-rooted and never
+        // re-parented: its context is stable and the page can be loaded directly.
+        var html = await BuildSyntheticOriginHtmlAsync(request);
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(request.WebView.CoreWebView2, out var handle, out var detail))
+        {
+            throw new InvalidOperationException($"Could not reach the native WKWebView handle for the synthetic-origin editor: {detail}");
+        }
+
+        // http (not https) origin so the cross-origin http loopback resource fetches are not blocked as mixed
+        // content. The licence validates on the hostname, not the scheme.
+        var syntheticOriginUrl = $"http://{SyntheticHost}/";
+        MacOSWebViewInterop.LoadHtmlString(handle, html, syntheticOriginUrl);
 #endif
     }
 
 #if !WINDOWS
     /// <summary>
-    /// Loads the editor under its faked origin via native loadHTMLString:baseURL:. The entry HTML is rewritten
-    /// so its lib and shared-client references resolve cross-origin to the loopback file server (absolute URLs,
-    /// since loadHTMLString ignores a base element), and the WebSocket bridge URL is injected (the faked-origin
-    /// page cannot derive it from its own location).
+    /// Builds the entry page for native loadHTMLString:baseURL:. The entry HTML is rewritten so its lib and
+    /// shared-client references resolve cross-origin to the loopback file server (absolute URLs, since
+    /// loadHTMLString ignores a base element), and the WebSocket bridge URL is injected (the faked-origin page
+    /// cannot derive it from its own location).
     /// </summary>
-    private async Task LoadSyntheticOriginPageAsync(ContributionEditorLoadRequest request)
+    private async Task<string> BuildSyntheticOriginHtmlAsync(ContributionEditorLoadRequest request)
     {
         var packageBaseUrl = _fileServer.GetPackageUrl(request.PackageUrlName, string.Empty);
         var assetsBaseUrl = $"http://127.0.0.1:{request.ServerPort}/assets/";
@@ -83,8 +113,6 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
             throw new InvalidOperationException($"Failed to read synthetic-origin entry HTML '{entryHtmlPath}': {readResult.DiagnosticReport}");
         }
 
-        var encodedBridgeUrl = JsonSerializer.Serialize(bridgeUrl);
-
         // Rewrite the page's relative resource references to absolute loopback URLs. loadHTMLString does not
         // honour a <base> element, so the lib and entry script URLs are made absolute against the package's
         // loopback /package/ route.
@@ -94,19 +122,11 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
         // Inject into <head>: an import map remapping the absolute shared.celbridge client imports to the
         // loopback /assets/ route, and the WebSocket bridge URL the faked-origin page cannot derive itself.
+        var encodedBridgeUrl = JsonSerializer.Serialize(bridgeUrl);
         var importMap = $"<script type=\"importmap\">{{\"imports\":{{\"https://shared.celbridge/\":\"{assetsBaseUrl}\"}}}}</script>";
         var injectedHead = $"{importMap}<script>window.__celbridgeBridgeUrl={encodedBridgeUrl};</script>";
-        var html = entryHtml.Replace("<head>", "<head>" + injectedHead);
 
-        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(request.CoreWebView2, out var handle, out var detail))
-        {
-            throw new InvalidOperationException($"Could not reach the native WKWebView handle for the synthetic-origin editor: {detail}");
-        }
-
-        // http (not https) origin so the cross-origin http loopback resource fetches are not blocked as mixed
-        // content. The licence validates on the hostname, not the scheme.
-        var syntheticOriginUrl = $"http://{SyntheticHost}/";
-        MacOSWebViewInterop.LoadHtmlString(handle, html, syntheticOriginUrl);
+        return entryHtml.Replace("<head>", "<head>" + injectedHead);
     }
 #endif
 }
