@@ -394,8 +394,31 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         if (_webView is not null)
         {
             _webView.GotFocus -= WebView_GotFocus;
+
+#if WINDOWS
             AppWebViewContainer.Children.Remove(_webView);
             _webView.Close();
+#else
+            // The Skia (macOS) head leaks the WKWebView with no native destroy, and WebKit relaunches a
+            // renderer for the still-alive view if its process is merely killed. Capture the native handle,
+            // then call WKWebView's _close teardown SPI after the control leaves the tree: it terminates the
+            // renderer and marks the view closed so it will not relaunch, reclaiming the per-renderer process.
+            IntPtr nativeWebViewHandle = IntPtr.Zero;
+            if (OperatingSystem.IsMacOS()
+                && _webView.CoreWebView2 is not null)
+            {
+                MacOSWebViewInterop.TryGetNativeWebViewHandle(_webView.CoreWebView2, out nativeWebViewHandle, out _);
+            }
+
+            AppWebViewContainer.Children.Remove(_webView);
+            _webView.Close();
+
+            if (nativeWebViewHandle != IntPtr.Zero)
+            {
+                MacOSWebViewInterop.CloseNativeWebView(nativeWebViewHandle);
+            }
+#endif
+
             _webView = null;
         }
 

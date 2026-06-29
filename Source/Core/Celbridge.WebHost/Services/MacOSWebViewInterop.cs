@@ -169,6 +169,31 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
+    /// Calls -[WKWebView _close], WebKit's view teardown SPI (what Safari uses when closing a tab). It
+    /// terminates the WebContent process and marks the view closed so WebKit will not relaunch a renderer for
+    /// it. Unlike sending -release it does not free the object, so Uno's async dispose can still touch the view
+    /// safely. This is the macOS reclaim path for the WKWebView the Skia head otherwise leaks (no native
+    /// destroy exists). _close is private SPI, so it is guarded by respondsToSelector: to degrade to a no-op
+    /// rather than crash if a future macOS drops it.
+    /// </summary>
+    public static void CloseNativeWebView(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var closeSelector = sel_registerName("_close");
+        var respondsToSelector = sel_registerName("respondsToSelector:");
+        if (SendMessage(webView, respondsToSelector, closeSelector) == IntPtr.Zero)
+        {
+            return;
+        }
+
+        SendMessage(webView, closeSelector);
+    }
+
+    /// <summary>
     /// Calls -[WKWebView loadHTMLString:baseURL:] directly so the loaded document reports the given
     /// base URL as its origin. This is the macOS replacement for SetVirtualHostNameToFolderMapping,
     /// which is a silent no-op on the Skia head: assets are served from a loopback server and the

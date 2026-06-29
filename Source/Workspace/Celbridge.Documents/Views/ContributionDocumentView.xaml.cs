@@ -548,8 +548,31 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         if (WebView is not null)
         {
             WebView.GotFocus -= WebView_GotFocus;
+
+#if WINDOWS
             ContributionWebViewContainer.Children.Remove(WebView);
             WebView.Close();
+#else
+            // The Skia (macOS) head leaks the WKWebView with no native destroy, and WebKit relaunches a
+            // renderer for the still-alive view if the process is merely killed. Capture the native handle,
+            // then call WKWebView's _close teardown SPI after the control leaves the tree: it terminates the
+            // renderer and marks the view closed so it will not relaunch, reclaiming the per-renderer process.
+            IntPtr nativeWebViewHandle = IntPtr.Zero;
+            if (OperatingSystem.IsMacOS()
+                && WebView.CoreWebView2 is not null)
+            {
+                MacOSWebViewInterop.TryGetNativeWebViewHandle(WebView.CoreWebView2, out nativeWebViewHandle, out _);
+            }
+
+            ContributionWebViewContainer.Children.Remove(WebView);
+            WebView.Close();
+
+            if (nativeWebViewHandle != IntPtr.Zero)
+            {
+                MacOSWebViewInterop.CloseNativeWebView(nativeWebViewHandle);
+            }
+#endif
+
             WebView = null;
         }
 
