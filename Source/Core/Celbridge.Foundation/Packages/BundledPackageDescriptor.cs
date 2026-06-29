@@ -24,12 +24,4 @@ public sealed record BundledPackageDescriptor
     /// and not the public manifest, third-party packages cannot set it.
     /// </summary>
     public bool DevToolsBlocked { get; init; }
-
-    /// <summary>
-    /// When set, pins this bundled package's WebView to the given fixed origin instead of loopback serving,
-    /// for content that cannot run from the shared loopback origin. Lives on the descriptor rather than the
-    /// public manifest, so only bundled packages can pin an origin. When null, the package is served
-    /// normally over the loopback file server (the default).
-    /// </summary>
-    public string? SyntheticOriginHost { get; init; }
 }

@@ -35,9 +35,8 @@ public class Module : IModule
 
         return new[]
         {
-            // Served over the loopback file server (the default) and driven over the WebSocket host channel,
-            // so they run on every head. None of these pins a synthetic origin; a package that needs one sets
-            // SyntheticOriginHost in its own descriptor.
+            // Served over the loopback file server and driven over the WebSocket host channel, so they run on
+            // every head.
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },

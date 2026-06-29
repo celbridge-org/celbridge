@@ -54,7 +54,6 @@ public class ManifestTests
         var package = result.Value;
         package.Info.Title.Should().Be("My Editor");
         package.Info.PackageFolder.Should().Be(_tempFolder);
-        package.Info.SyntheticOriginHost.Should().BeNull();
         package.DocumentEditors.Should().ContainSingle();
 
         var contribution = package.DocumentEditors[0];
@@ -63,7 +62,6 @@ public class ManifestTests
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".myext");
         ((CustomDocumentEditorContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Package.PackageFolder.Should().Be(_tempFolder);
-        contribution.Package.SyntheticOriginHost.Should().BeNull();
     }
 
     [Test]
@@ -145,38 +143,6 @@ public class ManifestTests
         codeContribution.CodePreview!.EntryPoint.Should().Be("preview/index.html");
         codeContribution.CodeEditor.Should().NotBeNull();
         codeContribution.CodeEditor!.CustomizationScript.Should().Be("customize.js");
-    }
-
-    [Test]
-    public void LoadPackage_SyntheticOriginHost_IsSetOnPackageInfo()
-    {
-        WritePackageToml("""
-            [package]
-            name = "test.my-editor"
-            title = "My Editor"
-
-            [contributes]
-            document_editors = ["editor.document.toml"]
-            """);
-
-        WriteDocumentToml("editor.document.toml", """
-            [document]
-            id = "my-editor-doc"
-            type = "custom"
-            entry_point = "index.html"
-            display_name = "TestEditor"
-
-            [[document_file_types]]
-            extension = ".myext"
-            display_name = "TestFileType"
-            """);
-
-        var result = PackageManifestLoader.LoadPackage(
-            Path.Combine(_tempFolder, "package.toml"),
-            syntheticOriginHost: "custom.celbridge");
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Info.SyntheticOriginHost.Should().Be("custom.celbridge");
     }
 
     [Test]

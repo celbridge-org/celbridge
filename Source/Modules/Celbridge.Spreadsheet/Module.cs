@@ -5,6 +5,7 @@ using Celbridge.Packages;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Commands;
 using Celbridge.Spreadsheet.Services;
+using Celbridge.WebHost;
 
 namespace Celbridge.Spreadsheet;
 
@@ -29,6 +30,10 @@ public class Module : IModule
         services.AddTransient<SpreadsheetActivity>();
         services.AddTransient<SpreadsheetEditor>();
         services.AddSingleton<ISpreadsheetReader, SpreadsheetReader>();
+
+        // Hosts the SpreadJS editor under its synthetic origin. Registered after the core loopback default,
+        // so the contribution view resolves it ahead of the default for the spreadsheet package.
+        services.AddSingleton<IContributionEditorLoader, SyntheticOriginEditorLoader>();
 
         services.AddTransient<IWriteCellsCommand, WriteCellsCommand>();
         services.AddTransient<IAppendRowsCommand, AppendRowsCommand>();
@@ -108,14 +113,13 @@ public class Module : IModule
 
         return new[]
         {
-            // SpreadJS's licence is domain-locked to spreadjs.celbridge, so its page cannot run from the
-            // shared loopback origin. SyntheticOriginHost pins it to that host; every other editor loopback-serves.
+            // SpreadJS's licence is domain-locked, so its page loads under a synthetic origin owned by
+            // SyntheticOriginEditorLoader. The descriptor supplies the licence secrets and blocks DevTools.
             new BundledPackageDescriptor
             {
                 Folder = packageFolder,
                 Secrets = secrets,
                 DevToolsBlocked = true,
-                SyntheticOriginHost = "spreadjs.celbridge",
             }
         };
     }

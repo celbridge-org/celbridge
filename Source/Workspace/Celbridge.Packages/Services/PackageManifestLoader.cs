@@ -50,7 +50,6 @@ public static class PackageManifestLoader
 
     /// <summary>
     /// Loads a package from a package.toml file, including all referenced document editor contributions.
-    /// syntheticOriginHost pins the package to a synthetic origin instead of loopback serving (bundled only).
     /// secrets populates PackageInfo.Secrets for WebView injection.
     /// devToolsBlocked permanently disables DevTools on the package's WebViews.
     /// origin tags PackageInfo so downstream read sites pick the right IO path.
@@ -59,7 +58,6 @@ public static class PackageManifestLoader
     /// </summary>
     public static Result<Package> LoadPackage(
         string packageTomlPath,
-        string? syntheticOriginHost = null,
         IReadOnlyDictionary<string, string>? secrets = null,
         bool devToolsBlocked = false,
         PackageOrigin origin = PackageOrigin.Bundled,
@@ -125,7 +123,6 @@ public static class PackageManifestLoader
                 Title = packageTitle,
                 FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,
-                SyntheticOriginHost = syntheticOriginHost,
                 PermittedTools = permittedTools,
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,

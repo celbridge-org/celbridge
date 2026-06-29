@@ -258,20 +258,14 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             WebView.GotFocus -= WebView_GotFocus;
             WebView.GotFocus += WebView_GotFocus;
 
-            // Every contribution editor is served over the loopback file server, on every head. A
-            // synthetic-origin package (SyntheticOriginHost set) is the sole exception: it loads under that
-            // fixed origin instead. Either way the package folder is registered on the loopback server below,
-            // since a synthetic-origin editor still pulls its lib and the shared client from there cross-origin.
+            // Every contribution editor's assets (its lib, the shared client) are served from the loopback
+            // file server, so register this package's folder there. The resolved loader decides where the
+            // entry page itself loads from.
             var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
             var packageUrlName = Contribution.Package.Name.Replace('.', '-');
 
             fileServer.RegisterPackageFolder(packageUrlName, Contribution.Package.PackageFolder);
 
-            ConfigureSyntheticOriginHosting();
-
-            // Resolve the loader that hosts this editor. The loopback default serves every editor over the
-            // file server; a synthetic-origin package keeps its inline path here until a custom loader takes
-            // it over.
             var editorLoader = ResolveContributionEditorLoader(Contribution.Package);
 
             WarnOnEmptyPackageSecrets();
@@ -297,14 +291,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                     args.ProcessFailedKind, args.Reason, args.ExitCode);
             };
 
-            // Wire up the JSON-RPC host channel. Loopback editors open a WebSocket back to the host, deriving
-            // the socket URL from their own loopback origin plus a connection token in the page URL. A
-            // synthetic-origin package is not same-origin with the loopback server: on the Skia heads its
-            // loadHTMLString page has the bridge URL injected so it still uses the WebSocket; on Windows its
-            // virtual-host page gets no such injection and falls back to the WebView2 message channel.
-            var useWebSocketChannel = HasSyntheticOrigin
-                ? ResolveUseWebSocketChannel()
-                : editorLoader.GetTransport(Contribution.Package) == HostChannelTransport.LoopbackWebSocket;
+            // Wire up the JSON-RPC host channel. The loader's declared transport selects between the loopback
+            // WebSocket (the page derives the socket URL from its own origin plus a connection token) and the
+            // WebView2 message channel (for a page that is not same-origin with the loopback server).
+            var useWebSocketChannel = editorLoader.GetTransport(Contribution.Package) == HostChannelTransport.LoopbackWebSocket;
             var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
             var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
             _hostChannelTeardown = hostChannelSetup.Teardown;
@@ -370,11 +360,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
             // Block all navigations except the editor's own origin. Each allowed navigation also resets the
             // tool bridge's content-ready gate so webview_* tool calls block until the editor signals
-            // readiness post-navigation. Registered here, after the connection token exists, so the loopback
-            // origin comes from the resolved loader.
-            var allowedNavigationPrefix = HasSyntheticOrigin
-                ? $"https://{Contribution.Package.SyntheticOriginHost}/"
-                : editorLoader.GetAllowedNavigationOrigin(loadRequest);
+            // readiness post-navigation.
+            var allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
             WebView!.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
@@ -392,14 +379,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                 args.Cancel = true;
             };
 
-            if (HasSyntheticOrigin)
-            {
-                await LoadSyntheticOriginEntryAsync(packageUrlName, entryPoint, connectionToken);
-            }
-            else
-            {
-                await editorLoader.LoadAsync(loadRequest);
-            }
+            await editorLoader.LoadAsync(loadRequest);
 
             _initTcs!.TrySetResult(Result.Ok());
         }

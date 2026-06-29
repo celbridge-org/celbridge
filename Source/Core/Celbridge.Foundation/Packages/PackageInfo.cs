@@ -65,14 +65,6 @@ public partial record PackageInfo
     public bool DevToolsBlocked { get; init; }
 
     /// <summary>
-    /// The fixed origin the package's WebView page must load under, for content that cannot run from the
-    /// shared loopback origin. When null or empty (the default), the package is served normally over the
-    /// loopback file server. Either way the package's assets are served from the loopback server; only the
-    /// page's origin differs.
-    /// </summary>
-    public string? SyntheticOriginHost { get; init; }
-
-    /// <summary>
     /// Whether the package was discovered as a bundled (in-module) or project
     /// (project-tree) package. Drives the read path selection at every site
     /// that loads bytes for the package.
