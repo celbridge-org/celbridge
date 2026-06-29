@@ -36,43 +36,35 @@ public sealed partial class ContributionDocumentView
 #endif
     }
 
-    // Every loopback editor uses the WebSocket host channel. The synthetic-origin package uses it too on the
-    // Skia heads (its loadHTMLString page gets the bridge URL injected), but on Windows its virtual-host page
-    // is not same-origin with the loopback server and falls back to the WebView2 message channel.
+    // The synthetic-origin page on the Skia heads gets the bridge URL injected and uses the WebSocket host
+    // channel; on Windows its virtual-host page is not same-origin with the loopback server and falls back to
+    // the WebView2 message channel.
     private bool ResolveUseWebSocketChannel()
     {
 #if WINDOWS
-        return !HasSyntheticOrigin;
+        return false;
 #else
         return true;
 #endif
     }
 
-    // Loopback editors navigate to their /package/ URL on every head. The synthetic-origin package loads
-    // under its faked origin instead -- via native loadHTMLString on the Skia heads, or by navigating to its
-    // virtual-host origin on Windows.
-    private async Task NavigateToEntryPointAsync(string packageUrlName, string entryPoint, string? connectionToken)
+    // Loads the synthetic-origin editor under its faked origin: native loadHTMLString on the Skia heads, or a
+    // navigation to its virtual-host origin on Windows.
+    private async Task LoadSyntheticOriginEntryAsync(string packageUrlName, string entryPoint, string? connectionToken)
     {
         Guard.IsNotNull(Contribution);
 
 #if !WINDOWS
-        if (HasSyntheticOrigin)
-        {
-            // loadHTMLString into an unrendered webview is a no-op until the tab-refresh kick triggers a
-            // render, so this must run inline during init.
-            await LoadSyntheticOriginPageAsync(packageUrlName, entryPoint, connectionToken);
-            return;
-        }
-#endif
-
-        var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
-        var entryUrl = HasSyntheticOrigin
-            ? $"https://{Contribution.Package.SyntheticOriginHost}/{entryPoint}"
-            : fileServer.GetPackageUrl(packageUrlName, entryPoint);
+        // loadHTMLString into an unrendered webview is a no-op until the tab-refresh kick triggers a render,
+        // so this must run inline during init.
+        await LoadSyntheticOriginPageAsync(packageUrlName, entryPoint, connectionToken);
+#else
+        var entryUrl = $"https://{Contribution.Package.SyntheticOriginHost}/{entryPoint}";
         entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
         WebView!.CoreWebView2.Navigate(entryUrl);
 
         await Task.CompletedTask;
+#endif
     }
 
 #if !WINDOWS

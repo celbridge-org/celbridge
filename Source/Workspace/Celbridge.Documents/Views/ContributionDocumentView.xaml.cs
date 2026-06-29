@@ -213,6 +213,24 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         return false;
     }
 
+    private IContributionEditorLoader ResolveContributionEditorLoader(PackageInfo package)
+    {
+        // The loopback default is registered first and matches every package, so it is the fallback; a
+        // module's custom loader is registered later and wins as the last matching loader.
+        IContributionEditorLoader? selected = null;
+        foreach (var candidate in _serviceProvider.GetServices<IContributionEditorLoader>())
+        {
+            if (candidate.CanLoad(package))
+            {
+                selected = candidate;
+            }
+        }
+
+        Guard.IsNotNull(selected);
+
+        return selected;
+    }
+
     private async Task InitContributionViewAsync()
     {
         if (Contribution is null)
@@ -251,6 +269,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
             ConfigureSyntheticOriginHosting();
 
+            // Resolve the loader that hosts this editor. The loopback default serves every editor over the
+            // file server; a synthetic-origin package keeps its inline path here until a custom loader takes
+            // it over.
+            var editorLoader = ResolveContributionEditorLoader(Contribution.Package);
+
             WarnOnEmptyPackageSecrets();
 
             // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
@@ -260,29 +283,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             {
                 await TryInjectToolBridgeShimAsync();
             }
-
-            // Block all navigations except the package's own origin. Each allowed
-            // navigation also resets the tool bridge's content-ready gate so webview_*
-            // tool calls block until the editor signals readiness post-navigation.
-            var allowedNavigationPrefix = HasSyntheticOrigin
-                ? $"https://{Contribution.Package.SyntheticOriginHost}/"
-                : fileServer.GetPackageUrl(packageUrlName, string.Empty);
-            WebView.NavigationStarting += (s, args) =>
-            {
-                var uri = args.Uri;
-                if (string.IsNullOrEmpty(uri))
-                {
-                    return;
-                }
-
-                if (uri.StartsWith(allowedNavigationPrefix))
-                {
-                    _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
-                    return;
-                }
-
-                args.Cancel = true;
-            };
 
             // Block all new window requests
             WebView.CoreWebView2.NewWindowRequested += (s, args) =>
@@ -302,7 +302,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             // synthetic-origin package is not same-origin with the loopback server: on the Skia heads its
             // loadHTMLString page has the bridge URL injected so it still uses the WebSocket; on Windows its
             // virtual-host page gets no such injection and falls back to the WebView2 message channel.
-            var useWebSocketChannel = ResolveUseWebSocketChannel();
+            var useWebSocketChannel = HasSyntheticOrigin
+                ? ResolveUseWebSocketChannel()
+                : editorLoader.GetTransport(Contribution.Package) == HostChannelTransport.LoopbackWebSocket;
             var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
             var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
             _hostChannelTeardown = hostChannelSetup.Teardown;
@@ -357,7 +359,47 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             }
 
             var entryPoint = Contribution.EntryPoint;
-            await NavigateToEntryPointAsync(packageUrlName, entryPoint, connectionToken);
+            var serverPort = _serviceProvider.GetRequiredService<IServerService>().Port;
+            var loadRequest = new ContributionEditorLoadRequest(
+                WebView!.CoreWebView2,
+                Contribution.Package,
+                packageUrlName,
+                entryPoint,
+                connectionToken,
+                serverPort);
+
+            // Block all navigations except the editor's own origin. Each allowed navigation also resets the
+            // tool bridge's content-ready gate so webview_* tool calls block until the editor signals
+            // readiness post-navigation. Registered here, after the connection token exists, so the loopback
+            // origin comes from the resolved loader.
+            var allowedNavigationPrefix = HasSyntheticOrigin
+                ? $"https://{Contribution.Package.SyntheticOriginHost}/"
+                : editorLoader.GetAllowedNavigationOrigin(loadRequest);
+            WebView!.NavigationStarting += (s, args) =>
+            {
+                var uri = args.Uri;
+                if (string.IsNullOrEmpty(uri))
+                {
+                    return;
+                }
+
+                if (uri.StartsWith(allowedNavigationPrefix))
+                {
+                    _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+                    return;
+                }
+
+                args.Cancel = true;
+            };
+
+            if (HasSyntheticOrigin)
+            {
+                await LoadSyntheticOriginEntryAsync(packageUrlName, entryPoint, connectionToken);
+            }
+            else
+            {
+                await editorLoader.LoadAsync(loadRequest);
+            }
 
             _initTcs!.TrySetResult(Result.Ok());
         }

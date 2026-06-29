@@ -12,6 +12,10 @@ public static class ServiceConfiguration
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
         services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
+
+        // The loopback default is registered first, so it is the fallback loader; a module may register a
+        // custom loader, which resolves ahead of it (the view picks the last matching loader).
+        services.AddSingleton<IContributionEditorLoader, LoopbackContributionEditorLoader>();
     }
 
     /// <summary>
