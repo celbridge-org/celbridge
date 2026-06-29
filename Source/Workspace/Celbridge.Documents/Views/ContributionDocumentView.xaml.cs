@@ -243,48 +243,33 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         _viewModel.Contribution = Contribution;
 
-        // Resolve the loader up front: it decides whether this editor's WebView must be created in place (in
-        // its own container, never re-parented) rather than taken from the shared pool.
         var editorLoader = ResolveContributionEditorLoader(Contribution.Package);
+
+        // In-place vs. pooled is a platform decision, not a loader one: re-parenting a pooled control resets
+        // the WebKit context on the Skia heads, so those create the WebView in place; Windows reuses the
+        // pre-warmed pool, where re-parenting is harmless.
+        if (OperatingSystem.IsWindows())
+        {
+            await InitPooledWebViewAsync(editorLoader);
+        }
+        else
+        {
+            await InitInPlaceWebViewAsync(editorLoader);
+        }
+    }
+
+    // Windows: the pre-warmed pool hands back a control with CoreWebView2 already live, so the host is
+    // configured immediately and init is signalled only once the editor's navigation has started.
+    private async Task InitPooledWebViewAsync(IContributionEditorLoader editorLoader)
+    {
+        Guard.IsNotNull(Contribution);
 
         try
         {
-            if (editorLoader.RequiresInPlaceWebView)
-            {
-                // Create the WebView directly in the document container. EnsureCoreWebView2Async needs the
-                // control window-rooted, which happens only once the view is shown (Loaded) -- and the view is
-                // not added to the visual tree until after LoadContent returns. So signal init done now and
-                // finish configuring when the control is Loaded.
-                WebView = new WebView2
-                {
-                    DefaultBackgroundColor = Microsoft.UI.Colors.Transparent
-                };
-                ContributionWebViewContainer.Children.Add(WebView);
-                _initTcs!.TrySetResult(Result.Ok());
-
-                if (WebView.IsLoaded)
-                {
-                    await ConfigureInPlaceWebViewAsync(editorLoader);
-                }
-                else
-                {
-                    RoutedEventHandler? onLoaded = null;
-                    onLoaded = async (sender, args) =>
-                    {
-                        WebView!.Loaded -= onLoaded;
-                        await ConfigureInPlaceWebViewAsync(editorLoader);
-                    };
-                    WebView.Loaded += onLoaded;
-                }
-
-                return;
-            }
-
-            // Pooled path: the factory returns a WebView with CoreWebView2 already live.
             WebView = await _webViewFactory.AcquireAsync();
             ContributionWebViewContainer.Children.Add(WebView);
 
-            await ConfigureWebViewAndHostAsync(editorLoader);
+            await ConfigureWebViewHostAsync(editorLoader);
 
             _initTcs!.TrySetResult(Result.Ok());
         }
@@ -298,26 +283,57 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         }
     }
 
-    // Completes initialization for an in-place WebView once it is window-rooted: brings up CoreWebView2 in the
-    // container (no re-parent) and configures the host channel and page load. Init is already signalled, so a
-    // failure here is logged and torn down rather than surfaced to the open flow.
-    private async Task ConfigureInPlaceWebViewAsync(IContributionEditorLoader editorLoader)
+    // Skia heads: create the control in place and never re-parent it, so its WebKit context stays intact.
+    // EnsureCoreWebView2Async completes only once the control is window-rooted (Loaded), which is after
+    // LoadContent returns -- so init is signalled up front and the host is configured once the control loads.
+    // A failure past that point is logged and torn down rather than surfaced, since init has already completed.
+    private async Task InitInPlaceWebViewAsync(IContributionEditorLoader editorLoader)
     {
+        Guard.IsNotNull(Contribution);
+
+        WebView = new WebView2
+        {
+            DefaultBackgroundColor = Microsoft.UI.Colors.Transparent
+        };
+        ContributionWebViewContainer.Children.Add(WebView);
+        _initTcs!.TrySetResult(Result.Ok());
+
         try
         {
-            await WebView!.EnsureCoreWebView2Async();
-            await ConfigureWebViewAndHostAsync(editorLoader);
+            await WaitForLoadedAsync(WebView);
+            await WebView.EnsureCoreWebView2Async();
+            await ConfigureWebViewHostAsync(editorLoader);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to initialize in-place contribution view: {Contribution!.Package.Name}");
+            _logger.LogError(ex, $"Failed to initialize in-place contribution view: {Contribution.Package.Name}");
             TeardownWebViewState();
         }
     }
 
+    // Completes once the element is loaded into the visual tree, or immediately if it already is.
+    private static Task WaitForLoadedAsync(FrameworkElement element)
+    {
+        if (element.IsLoaded)
+        {
+            return Task.CompletedTask;
+        }
+
+        var loadedCompletionSource = new TaskCompletionSource();
+        RoutedEventHandler? onLoaded = null;
+        onLoaded = (sender, args) =>
+        {
+            element.Loaded -= onLoaded;
+            loadedCompletionSource.TrySetResult();
+        };
+        element.Loaded += onLoaded;
+
+        return loadedCompletionSource.Task;
+    }
+
     // Configures a live WebView (CoreWebView2 ready): host channel, RPC targets, tool bridge, navigation gate,
     // and the editor load. Shared by the pooled and in-place init paths.
-    private async Task ConfigureWebViewAndHostAsync(IContributionEditorLoader editorLoader)
+    private async Task ConfigureWebViewHostAsync(IContributionEditorLoader editorLoader)
     {
         Guard.IsNotNull(Contribution);
         Guard.IsNotNull(WebView);

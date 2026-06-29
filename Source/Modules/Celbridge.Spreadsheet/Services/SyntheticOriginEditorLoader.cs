@@ -29,17 +29,6 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
 
-    public bool RequiresInPlaceWebView =>
-#if WINDOWS
-        // The Windows virtual-host path uses the shared WebView pool without issue.
-        false;
-#else
-        // The Skia heads load natively via loadHTMLString. A pooled WebView is re-parented out of the
-        // factory's init host, which resets the WebKit context and kills the page's subresource loading,
-        // so this editor needs a WebView created in place and never re-parented.
-        true;
-#endif
-
     public HostChannelTransport GetTransport(PackageInfo package)
     {
 #if WINDOWS
@@ -77,8 +66,8 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
         entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
         request.WebView.CoreWebView2.Navigate(entryUrl);
 #else
-        // The WebView is created in place (RequiresInPlaceWebView), so it is window-rooted and never
-        // re-parented: its context is stable and the page can be loaded directly.
+        // The Skia heads create the WebView in place, so it is window-rooted and never re-parented: its
+        // context is stable and the page can be loaded directly.
         var html = await BuildSyntheticOriginHtmlAsync(request);
 
         if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(request.WebView.CoreWebView2, out var handle, out var detail))

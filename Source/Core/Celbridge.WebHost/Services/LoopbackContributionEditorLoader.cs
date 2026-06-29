@@ -17,8 +17,6 @@ internal sealed class LoopbackContributionEditorLoader : IContributionEditorLoad
 
     public bool CanLoad(PackageInfo package) => true;
 
-    public bool RequiresInPlaceWebView => false;
-
     public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
 
     public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request)
