@@ -24,6 +24,18 @@ public sealed class PlatformInfo : IPlatformInfo
         }
     }
 
+    public bool PickersRequireWindowHandle
+    {
+        get
+        {
+#if WINDOWS
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
     public bool HostShowsProjectTitleInChrome
     {
         get
@@ -42,6 +54,8 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool TreatsBackspaceAsDeleteKey => OperatingSystem.IsMacOS();
 
+    public bool TreatsCtrlYAsRedo => OperatingSystem.IsWindows();
+
     public bool SuppressListItemTransitions
     {
         get
@@ -54,7 +68,7 @@ public sealed class PlatformInfo : IPlatformInfo
         }
     }
 
-    public bool RequiresSkiaSelectionRepaint => OperatingSystem.IsMacOS();
+    public bool RequiresMacOSSelectionRepaint => OperatingSystem.IsMacOS();
 
-    public bool RequiresSkiaLayoutRetry => OperatingSystem.IsMacOS();
+    public bool RequiresMacOSLayoutRetry => OperatingSystem.IsMacOS();
 }

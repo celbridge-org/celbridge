@@ -346,13 +346,13 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         RepaintSelectionVisuals(e);
     }
 
-    // On the Uno Skia head a row's selection visual state is set on selection change but the row is not
+    // On the macOS Skia head a row's selection visual state is set on selection change but the row is not
     // repainted until a later pointer event, so the highlight lags a click. Re-assert the visual state on
     // the changed containers (deferred so it runs after the ListView's own selection handling) to repaint
-    // immediately. No-op on Windows, where the selection repaints natively.
+    // immediately. No-op elsewhere.
     private void RepaintSelectionVisuals(SelectionChangedEventArgs e)
     {
-        if (!_platformInfo.RequiresSkiaSelectionRepaint)
+        if (!_platformInfo.RequiresMacOSSelectionRepaint)
         {
             return;
         }

@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Windows.System;
 
@@ -55,38 +56,17 @@ public partial class MainPage : Page
         var mainWindow = _userInterfaceService.MainWindow as Window;
         Guard.IsNotNull(mainWindow);
 
-        // The application toolbar (page navigation, layout toggles, settings) occupies row 0 of the
-        // layout grid on every head. On Windows it is hosted inside the TitleBar chrome wrapper and
-        // extended into the custom title bar; on the Skia desktop heads the native title bar is drawn
-        // above it, so the platform-neutral ApplicationToolbar is hosted directly.
-#if WINDOWS
-        var titleBar = new TitleBar();
-        _titleBar = titleBar;
-        _layoutRoot.Children.Add(titleBar);
-
-        mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(titleBar);
-
-        // Configure the AppWindow titlebar to use taller caption buttons (48px instead of 32px)
-        // This makes the system minimize/maximize/close buttons larger to match the increased titlebar height
-        var appWindow = mainWindow.AppWindow;
-        if (appWindow?.TitleBar != null)
-        {
-            appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
-        }
-
+        // The application toolbar (page navigation, layout toggles, settings) occupies row 0 of the layout
+        // grid. Each platform hosts it differently: inside the custom title bar on the packaged Windows
+        // head, or directly beneath the native title bar on the Skia desktop heads.
+        var applicationToolbarHost = ServiceLocator.AcquireService<IApplicationToolbarHost>();
+        var titleBar = applicationToolbarHost.Install(mainWindow, _layoutRoot);
+        _titleBar = (FrameworkElement)titleBar;
         _userInterfaceService.RegisterTitleBar(titleBar);
-#else
-        var applicationToolbar = new ApplicationToolbar();
-        _titleBar = applicationToolbar;
-        _layoutRoot.Children.Add(applicationToolbar);
 
-        _userInterfaceService.RegisterTitleBar(applicationToolbar);
-
-        // Resign the hosted WebView first responder when a managed panel gains focus, so the native
-        // Edit-menu shortcuts fall through to Uno's keyboard handling there (macOS-only).
+        // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
+        // shortcuts fall through to Uno's keyboard handling. macOS-only; a no-op elsewhere.
         Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
-#endif
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);

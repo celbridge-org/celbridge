@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Celbridge.Logging;
+using Celbridge.Resources.Services;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
+using Windows.System;
 
 namespace Celbridge.Explorer.Services;
 
@@ -14,6 +16,7 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileManagerLauncher _fileManagerLauncher;
 
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry =>
@@ -33,7 +36,8 @@ public class ExplorerService : IExplorerService, IDisposable
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
         IIconService iconService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileManagerLauncher fileManagerLauncher)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -42,6 +46,7 @@ public class ExplorerService : IExplorerService, IDisposable
         _messengerService = messengerService;
         _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
+        _fileManagerLauncher = fileManagerLauncher;
 
         FolderStateService = serviceProvider.GetRequiredService<IFolderStateService>();
 
@@ -141,7 +146,7 @@ public class ExplorerService : IExplorerService, IDisposable
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
-        var openResult = await ResourceUtils.OpenFileManager(resolveResult.Value);
+        var openResult = await _fileManagerLauncher.OpenFileManagerAsync(resolveResult.Value);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open file manager for resource: {resource}")
@@ -159,7 +164,7 @@ public class ExplorerService : IExplorerService, IDisposable
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
-        var openResult = await ResourceUtils.OpenApplication(resolveResult.Value);
+        var openResult = await _fileManagerLauncher.OpenApplicationAsync(resolveResult.Value);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open associated application for resource: {resource}")
@@ -171,11 +176,23 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenBrowser(string url)
     {
-        var openResult = await ResourceUtils.OpenBrowser(url);
-        if (openResult.IsFailure)
+        try
+        {
+            var targetUrl = url.Trim();
+            if (!string.IsNullOrWhiteSpace(targetUrl)
+                && !targetUrl.StartsWith("http")
+                && !targetUrl.StartsWith("file"))
+            {
+                targetUrl = $"https://{targetUrl}";
+            }
+
+            var uri = new Uri(targetUrl);
+            await Launcher.LaunchUriAsync(uri);
+        }
+        catch (Exception ex)
         {
             return Result.Fail($"Failed to open url in system default browser: {url}")
-                .WithErrors(openResult);
+                .WithException(ex);
         }
 
         return Result.Ok();

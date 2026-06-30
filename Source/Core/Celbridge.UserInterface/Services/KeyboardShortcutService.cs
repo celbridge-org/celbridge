@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Services;
@@ -9,10 +10,12 @@ namespace Celbridge.UserInterface.Services;
 public class KeyboardShortcutService : IKeyboardShortcutService
 {
     private readonly IMessengerService _messengerService;
+    private readonly IPlatformInfo _platformInfo;
 
-    public KeyboardShortcutService(IMessengerService messengerService)
+    public KeyboardShortcutService(IMessengerService messengerService, IPlatformInfo platformInfo)
     {
         _messengerService = messengerService;
+        _platformInfo = platformInfo;
     }
 
     public bool HandleShortcut(VirtualKey key, bool control, bool shift, bool alt)
@@ -25,15 +28,13 @@ public class KeyboardShortcutService : IKeyboardShortcutService
             return true;
         }
 
-#if WINDOWS
-        // Windows only redo shortcut: Ctrl+Y
-        if (control && key == VirtualKey.Y)
+        // Windows redo shortcut: Ctrl+Y
+        if (control && key == VirtualKey.Y && _platformInfo.TreatsCtrlYAsRedo)
         {
             var message = new RedoRequestedMessage();
             _messengerService.Send(message);
             return true;
         }
-#endif
 
         // All platforms undo shortcut: Ctrl+Z
         if (control && key == VirtualKey.Z)

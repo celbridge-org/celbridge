@@ -1,5 +1,7 @@
 #if WINDOWS
-namespace Celbridge.UserInterface.Views;
+using Celbridge.UserInterface.Views;
+
+namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// Windows title-bar chrome wrapper. Hosts the platform-neutral ApplicationToolbar inside the custom

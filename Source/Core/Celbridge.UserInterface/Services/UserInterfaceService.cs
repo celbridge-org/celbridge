@@ -12,6 +12,7 @@ public class UserInterfaceService : IUserInterfaceService
     private ISettingsService _settingsService;
     private IWebViewStateService _webViewStateService;
     private readonly IPlatformInfo _platformInfo;
+    private readonly IWindowActivationMonitor _windowActivationMonitor;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -31,7 +32,8 @@ public class UserInterfaceService : IUserInterfaceService
         ISettingsService settingsService,
         IWebViewStateService webViewStateService,
         Helpers.WindowStateHelper windowStateHelper,
-        IPlatformInfo platformInfo)
+        IPlatformInfo platformInfo,
+        IWindowActivationMonitor windowActivationMonitor)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -39,6 +41,7 @@ public class UserInterfaceService : IUserInterfaceService
         _webViewStateService = webViewStateService;
         _windowStateHelper = windowStateHelper;
         _platformInfo = platformInfo;
+        _windowActivationMonitor = windowActivationMonitor;
     }
 
     public Result Initialize(object mainWindow, object xamlRoot)
@@ -67,7 +70,7 @@ public class UserInterfaceService : IUserInterfaceService
         _xamlRoot = root;
 
         // Initialize platform-specific theme detection and titlebar management
-        _themeHelper = new ThemeHelper(_mainWindow);
+        _themeHelper = new ThemeHelper(_mainWindow, _platformInfo);
         _themeHelper.Initialize(OnSystemThemeChanged);
 
         // Initialize window state management. A failure here is non-fatal: window geometry and
@@ -80,13 +83,10 @@ public class UserInterfaceService : IUserInterfaceService
             _logger.LogWarning("Failed to initialize window state management: {Error}", windowStateResult.DiagnosticReport);
         }
 
-#if WINDOWS
-        // Broadcast a message whenever the main window acquires or loses focus. This drives the custom
-        // title bar's active/inactive tint, which only applies to the integrated WinUI title bar. The
-        // Skia desktop head uses a native title bar that the OS tints on focus change, and its
-        // WindowActivatedEventArgs exposes the legacy CoreWindowActivationState type, so this is gated.
-        _mainWindow.Activated += MainWindow_Activated;
-#endif
+        // Broadcast a message whenever the main window acquires or loses focus, driving the custom title
+        // bar's active/inactive tint. The monitor is a no-op on heads that draw a native title bar the OS
+        // tints itself.
+        _windowActivationMonitor.Start(_mainWindow);
 
         ApplyCurrentTheme();
 
@@ -131,25 +131,6 @@ public class UserInterfaceService : IUserInterfaceService
             }
         }
     }
-
-#if WINDOWS
-    private void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
-    {
-        var activationState = e.WindowActivationState;
-
-        if (activationState == WindowActivationState.Deactivated)
-        {
-            var message = new MainWindowDeactivatedMessage();
-            _messengerService.Send(message);
-        }
-        else if (activationState == WindowActivationState.PointerActivated ||
-                 activationState == WindowActivationState.CodeActivated)
-        {
-            var message = new MainWindowActivatedMessage();
-            _messengerService.Send(message);
-        }
-    }
-#endif
 
     private void OnSystemThemeChanged(UserInterfaceTheme newTheme)
     {

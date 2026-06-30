@@ -263,7 +263,7 @@ public sealed partial class DocumentSection : UserControl
         {
             TabView.SelectedItem = tab;
         }
-        catch (InvalidOperationException) when (_platformInfo.RequiresSkiaLayoutRetry)
+        catch (InvalidOperationException) when (_platformInfo.RequiresMacOSLayoutRetry)
         {
             // On the macOS Skia head, selecting a tab in an overflowing strip that has not been measured
             // yet (as happens when the active document is restored after all tabs are added) makes Uno

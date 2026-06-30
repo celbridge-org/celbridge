@@ -1,5 +1,6 @@
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Helpers;
+using Celbridge.Resources.Platform;
 using Celbridge.Resources.Services;
 
 namespace Celbridge.Resources;
@@ -11,6 +12,8 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+
+        PlatformServiceConfiguration.ConfigureServices(services);
 
         services.AddSingleton<IResourceOperationService, ResourceOperationService>();
         services.AddSingleton<IFileTemplateService, FileTemplateService>();

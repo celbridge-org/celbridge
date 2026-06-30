@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Windows.UI.ViewManagement;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -6,18 +7,21 @@ namespace Celbridge.UserInterface.Helpers;
 /// <summary>
 /// Detects and applies system theme changes. The system theme listener (UISettings.ColorValuesChanged)
 /// runs on both the packaged WinUI head and the Skia desktop head. The caption-button theming in
-/// UpdateTitleBar applies only to the integrated WinUI title bar.
+/// UpdateTitleBar applies only on heads that reserve the window caption buttons (the integrated WinUI
+/// title bar).
 /// </summary>
 public class ThemeHelper
 {
     private readonly Window? _mainWindow;
+    private readonly IPlatformInfo _platformInfo;
 
     private UISettings? _uiSettings;
     private Action<UserInterfaceTheme>? _onThemeChanged;
 
-    public ThemeHelper(Window mainWindow)
+    public ThemeHelper(Window mainWindow, IPlatformInfo platformInfo)
     {
         _mainWindow = mainWindow;
+        _platformInfo = platformInfo;
     }
 
     public void Initialize(Action<UserInterfaceTheme> onThemeChanged)
@@ -46,8 +50,8 @@ public class ThemeHelper
         {
             // Get the current OS theme
             var osTheme = SystemThemeHelper.GetCurrentOsTheme();
-            var currentTheme = osTheme == ApplicationTheme.Dark 
-                ? UserInterfaceTheme.Dark 
+            var currentTheme = osTheme == ApplicationTheme.Dark
+                ? UserInterfaceTheme.Dark
                 : UserInterfaceTheme.Light;
 
             // Notify the callback
@@ -57,7 +61,13 @@ public class ThemeHelper
 
     public void UpdateTitleBar(UserInterfaceTheme theme)
     {
-#if WINDOWS
+        // The caption-button colors apply only to the integrated WinUI title bar; other heads draw a
+        // native title bar that the OS themes on its own, so this is a no-op there.
+        if (!_platformInfo.ReservesWindowCaptionButtons)
+        {
+            return;
+        }
+
         if (_mainWindow?.AppWindow?.TitleBar == null)
         {
             return;
@@ -92,13 +102,8 @@ public class ThemeHelper
             titleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(255, 128, 128, 128);
             titleBar.ButtonInactiveBackgroundColor = backgroundColor;
         }
-
-#else
-        // No-op on non-Windows platforms
-#endif
     }
 
-#if WINDOWS
     /// <summary>
     /// Reads the TitleBarActiveColor from the theme resources defined in Colors.xaml.
     /// </summary>
@@ -118,5 +123,4 @@ public class ThemeHelper
         // Fallback to transparent if the resource isn't found
         return Windows.UI.Color.FromArgb(0, 0, 0, 0);
     }
-#endif
 }
