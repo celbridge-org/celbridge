@@ -6,10 +6,8 @@ using Microsoft.UI.Dispatching;
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The application toolbar: page navigation, layout toggles, the save indicator, and the settings
-/// button. This is the platform-neutral toolbar content. On Windows it is hosted inside the TitleBar
-/// chrome wrapper (extended into the custom title bar); on the Skia desktop heads it renders directly
-/// beneath the native title bar.
+/// The application toolbar. Platform-neutral content that each head hosts in its own title-bar
+/// arrangement.
 /// </summary>
 public sealed partial class ApplicationToolbar : UserControl, ITitleBar
 {
