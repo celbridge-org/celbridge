@@ -1,7 +1,5 @@
 using System.Text;
 using Celbridge.Settings.Platform;
-using Celbridge.Settings.Services;
-using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Settings;
 

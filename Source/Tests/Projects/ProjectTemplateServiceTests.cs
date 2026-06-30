@@ -1,4 +1,3 @@
-using System.IO;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Projects.Services;
 using Celbridge.Python;

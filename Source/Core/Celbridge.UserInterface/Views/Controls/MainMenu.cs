@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Navigation;
-using Celbridge.Resources;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;

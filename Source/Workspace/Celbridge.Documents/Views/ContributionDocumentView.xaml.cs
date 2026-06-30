@@ -4,7 +4,6 @@ using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.FileSystem;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;

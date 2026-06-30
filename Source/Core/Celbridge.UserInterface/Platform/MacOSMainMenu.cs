@@ -1,9 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Explorer;
-using Celbridge.Resources;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.UserInterface.Platform;
 

@@ -1,6 +1,5 @@
 using Celbridge.Logging;
 using Celbridge.Navigation;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Windows.System;
 

@@ -1,4 +1,3 @@
-using Celbridge.Messaging;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Platform;

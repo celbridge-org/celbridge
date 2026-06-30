@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Workspace;
 
 namespace Celbridge.WorkspaceUI.Commands;
 

@@ -1,5 +1,4 @@
 using Celbridge.Host;
-using Celbridge.Resources;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
