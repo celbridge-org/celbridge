@@ -97,6 +97,7 @@
             PreviewKeyDown="ListView_PreviewKeyDown"
             Tapped="ListView_Tapped"
             DragItemsStarting="ListView_DragItemsStarting"
+            DragItemsCompleted="ListView_DragItemsCompleted"
             DragOver="ListView_DragOver"
             Drop="ListView_Drop"
             SelectionChanged="ListView_SelectionChanged"

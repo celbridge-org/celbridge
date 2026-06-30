@@ -37,9 +37,8 @@
           <Border Background="{x:Bind ViewModel.IsMaximizeButtonHighlighted, Mode=OneWay, Converter={StaticResource BoolToAccentColorConverter}}"
                   CornerRadius="4"
                   Padding="4">
-            <ic:Icon
-                      Symbol="{x:Bind ViewModel.MaximizeRestoreIcon, Mode=OneWay}"
-                      FontSize="14" />
+            <ic:Icon Symbol="{x:Bind ViewModel.MaximizeRestoreIcon, Mode=OneWay}"
+                     FontSize="14" />
           </Border>
         </Button>
       </controls:PanelHeader.ToolbarContent>

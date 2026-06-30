@@ -9,7 +9,7 @@ namespace Celbridge.Host;
 public interface IHostChannelBroker
 {
     /// <summary>
-    /// Creates a deferred channel registered under a fresh single-use token. The view builds its
+    /// Creates a deferred channel registered under a fresh, unguessable token. The view builds its
     /// CelbridgeHost on the returned channel and embeds the token in the page's navigation URL.
     /// </summary>
     PendingHostConnection CreatePendingConnection();

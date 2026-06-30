@@ -69,6 +69,8 @@ public static class MacOSWebViewInterop
 
     private static readonly IntPtr RtldDefault = new(-2);
 
+    // Single snapshot in flight at a time: snapshots are serialized through the command queue and run on
+    // the main thread, so a second concurrent snapshot would clobber this field.
     private static TaskCompletionSource<IntPtr>? _snapshotCompletion;
     private static IntPtr _snapshotBlock;
 

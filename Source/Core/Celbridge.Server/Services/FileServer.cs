@@ -130,6 +130,9 @@ public class FileServer : IFileServer, IDisposable
     public void Enable(string projectFolderPath, int port)
     {
         _projectFileProvider?.Dispose();
+        // PhysicalFileProvider rejects path traversal but follows symlinks, so a symlink inside a served
+        // root that points outside it would be served. The served roots are user-owned content, so this
+        // stays within the loopback threat model.
         _projectFileProvider = new PhysicalFileProvider(projectFolderPath);
         _port = port;
         _logger.LogInformation("Project file serving enabled for {FolderPath}", projectFolderPath);

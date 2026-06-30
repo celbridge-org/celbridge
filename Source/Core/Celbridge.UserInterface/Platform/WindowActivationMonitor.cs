@@ -18,6 +18,8 @@ internal sealed class WindowActivationMonitor : IWindowActivationMonitor
 
     public void Start(Window window)
     {
+        // No matching unsubscribe: this is an app-lifetime singleton bound to the main window, which lives
+        // as long as the process, so the handler never needs detaching.
         window.Activated += OnWindowActivated;
     }
 

@@ -42,8 +42,25 @@ public class FocusService : IFocusService
             return;
         }
 
-        // Focus stayed on the same panel, but a specific surface within it is reporting. Adopt its target
-        // and release callback when provided, so a bubbled report carrying neither cannot clear them.
+        // Focus stayed on the same panel, but a different surface within it is reporting (e.g. switching
+        // between two document-section editors). Release the previous surface first so its DOM caret does
+        // not stay active on the Skia heads, updating state before the release so a re-entrant report
+        // observes the new surface.
+        if (target is not null
+            && !ReferenceEquals(target, _editTarget))
+        {
+            var releasePreviousFocus = _releaseFocusedSurface;
+
+            _editTarget = target;
+            _releaseFocusedSurface = onReleaseFocus;
+
+            releasePreviousFocus?.Invoke();
+
+            return;
+        }
+
+        // The same surface is re-reporting (e.g. a bubbled event). Adopt a target or release callback when
+        // provided, so a report carrying neither cannot clear them.
         if (target is not null)
         {
             _editTarget = target;

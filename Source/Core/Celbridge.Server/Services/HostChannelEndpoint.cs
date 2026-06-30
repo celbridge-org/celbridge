@@ -7,7 +7,7 @@ namespace Celbridge.Server.Services;
 /// <summary>
 /// Maps the /ws/host WebSocket endpoint that WebView pages connect their JSON-RPC bridge over. The
 /// connection token in the query string both routes the socket to its document's pending channel and
-/// authenticates it (an unguessable single-use token), so a stray local process cannot drive the host.
+/// authenticates it (an unguessable, view-scoped token), so a stray local process cannot drive the host.
 /// </summary>
 internal static class HostChannelEndpoint
 {
@@ -35,7 +35,7 @@ internal static class HostChannelEndpoint
             {
                 if (!broker.TryBindConnection(token, channel))
                 {
-                    // Unknown, already-bound, or expired token: refuse the connection.
+                    // Unknown, already-bound, or disposed token: refuse the connection.
                     return;
                 }
 

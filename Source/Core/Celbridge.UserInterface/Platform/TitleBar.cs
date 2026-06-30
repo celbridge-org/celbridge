@@ -1,4 +1,5 @@
 #if WINDOWS
+using Celbridge.Logging;
 using Celbridge.UserInterface.Views;
 
 namespace Celbridge.UserInterface.Platform;
@@ -107,9 +108,10 @@ public sealed class TitleBar : UserControl, ITitleBar
                 nonClientInputSource.ClearRegionRects(Microsoft.UI.Input.NonClientRegionKind.Passthrough);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Silently ignore any errors
+            // Best-effort region computation. Log at debug so an unexpected failure is not hidden.
+            ServiceLocator.AcquireService<ILogger<TitleBar>>().LogDebug(ex, "Failed to update title bar interactive regions");
         }
     }
 }

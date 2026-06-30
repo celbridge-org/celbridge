@@ -54,6 +54,16 @@ public sealed partial class ResourceTree
         e.Data.Properties.Add(StandardDataFormats.Text, text);
     }
 
+    private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    {
+        // Clear the internal-drag tracking once the drag ends, including when it is cancelled (Escape, or
+        // release over a surface where Drop never fires). A successful internal drop already cleared these
+        // in ListView_Drop. ResourceDragState.Current is process-wide, so leaving a stale value here could
+        // leak resources into a later, unrelated drag.
+        _internalDragResources = null;
+        ResourceDragState.End();
+    }
+
     private void ListView_DragOver(object sender, DragEventArgs e)
     {
         // Clear previous highlight

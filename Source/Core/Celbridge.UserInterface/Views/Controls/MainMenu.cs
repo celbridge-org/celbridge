@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Explorer;
+using Celbridge.Logging;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
@@ -158,8 +159,6 @@ public class MainMenu
         _menuNavItem.MenuItems.Add(settingsNavItem);
 
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
-
-
 
         // Exit
         var exitNavItem = CreateMenuItem(
@@ -323,7 +322,19 @@ public class MainMenu
         if (tag.StartsWith(RecentProjectTagPrefix))
         {
             var projectFilePath = tag.Substring(RecentProjectTagPrefix.Length);
-            await ViewModel.OpenRecentProjectAsync(projectFilePath);
+
+            // async void: observe exceptions here so a failed open (e.g. the recent project moved or was
+            // deleted) cannot crash on the UI thread.
+            try
+            {
+                await ViewModel.OpenRecentProjectAsync(projectFilePath);
+            }
+            catch (Exception ex)
+            {
+                var logger = ServiceLocator.AcquireService<ILogger<MainMenu>>();
+                logger.LogError(ex, "Failed to open recent project");
+            }
+
             MenuItemInvoked?.Invoke(this, EventArgs.Empty);
             return;
         }

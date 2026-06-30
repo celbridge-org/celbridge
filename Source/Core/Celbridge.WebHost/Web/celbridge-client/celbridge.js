@@ -186,9 +186,16 @@ export class Celbridge {
         }
 
         this.#readyPromise = (async () => {
-            const raw = await this.#transport.request('host/getContext', {});
-            this.#applyContext(normalizeContext(raw));
-            this.#contextResolved = true;
+            try {
+                const raw = await this.#transport.request('host/getContext', {});
+                this.#applyContext(normalizeContext(raw));
+                this.#contextResolved = true;
+            } catch (error) {
+                // Clear the cached promise so a later ready() can retry instead of returning this
+                // permanently-rejected one, which would leave tools/secrets/options empty for the page.
+                this.#readyPromise = null;
+                throw error;
+            }
         })();
 
         return this.#readyPromise;

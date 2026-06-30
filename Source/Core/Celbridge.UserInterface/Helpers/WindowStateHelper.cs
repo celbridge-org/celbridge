@@ -1,7 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers.FullScreen;
-using Celbridge.UserInterface.Platform;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 
@@ -16,6 +15,7 @@ public sealed class WindowStateHelper
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IFullScreenController _fullScreenController;
+    private readonly IWindowBoundsValidator _windowBoundsValidator;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -26,12 +26,14 @@ public sealed class WindowStateHelper
         ILogger<WindowStateHelper> logger,
         IMessengerService messengerService,
         ISettingsService settingsService,
-        IFullScreenController fullScreenController)
+        IFullScreenController fullScreenController,
+        IWindowBoundsValidator windowBoundsValidator)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
         _fullScreenController = fullScreenController;
+        _windowBoundsValidator = windowBoundsValidator;
     }
 
     /// <summary>
@@ -197,15 +199,8 @@ public sealed class WindowStateHelper
         int width = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
         int height = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
 
-        // Validate that the title bar area is visible on screen
-        if (!IsTitleBarVisible(x, y, width, height))
-        {
-            _logger.LogDebug("Saved window position is off-screen, using default placement");
-            return;
-        }
-
-        // Apply the saved bounds. Object-initializer syntax is used for the Windows.Graphics structs
-        // because the Skia desktop head's projection does not expose their positional constructors.
+        // Object-initializer syntax is used for the Windows.Graphics structs because the Skia desktop
+        // head's projection does not expose their positional constructors.
         var bounds = new RectInt32
         {
             X = x,
@@ -214,150 +209,14 @@ public sealed class WindowStateHelper
             Height = height
         };
 
+        // Validate that the title bar area is visible on screen.
+        if (!_windowBoundsValidator.IsTitleBarVisible(bounds))
+        {
+            _logger.LogDebug("Saved window position is off-screen, using default placement");
+            return;
+        }
+
         _appWindow.MoveAndResize(bounds);
-    }
-
-    private bool IsTitleBarVisible(int x, int y, int width, int height)
-    {
-#if !WINDOWS
-        // DisplayArea.FindAll throws NotImplementedException on the Skia desktop head, so on macOS the
-        // saved bounds are validated against the native NSScreen geometry instead.
-        if (OperatingSystem.IsMacOS())
-        {
-            return IsTitleBarVisibleOnMacOS(x, y, width, height);
-        }
-#endif
-
-        try
-        {
-            // Check if any part of the title bar area (top ~40 pixels of window) is visible on any display
-            const int titleBarHeight = 40;
-            var titleBarRect = new RectInt32
-            {
-                X = x,
-                Y = y,
-                Width = width,
-                Height = titleBarHeight
-            };
-
-            var displayAreas = DisplayArea.FindAll();
-            if (displayAreas == null || displayAreas.Count == 0)
-            {
-                return false;
-            }
-
-            // Using foreach here causes an exception, using the workaround described here:
-            // https://github.com/microsoft/microsoft-ui-xaml/issues/6454#issuecomment-2188377618
-            for (int i = 0; i < displayAreas.Count; i++)
-            {
-                var displayArea = displayAreas[i];
-                if (displayArea == null)
-                {
-                    continue;
-                }
-
-                var workArea = displayArea.WorkArea;
-
-                // Check if the title bar intersects with this display's work area
-                if (RectanglesIntersect(titleBarRect, workArea))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Exception occurred while checking display areas");
-            return false;
-        }
-    }
-
-#if !WINDOWS
-    private bool IsTitleBarVisibleOnMacOS(int x, int y, int width, int height)
-    {
-        if (!MacOSWindowInterop.TryGetScreens(out var screens))
-        {
-            _logger.LogDebug("Could not read native screen geometry; using default window placement");
-            return false;
-        }
-
-        // The saved bounds come from AppWindow, whose coordinate unit on the Skia head is ambiguous
-        // (points or physical pixels). NSScreen frames are in points with a bottom-left origin, so each
-        // screen is converted to a top-left rect and the saved title-bar strip is tested against it in
-        // both point space and pixel space. A hit in either accepts the restore. This keeps the unit
-        // ambiguity from silently rejecting a valid placement, and the values are logged so the
-        // interpretation can be tightened once confirmed on device.
-        const int titleBarHeight = 40;
-        var titleBarRect = new RectInt32
-        {
-            X = x,
-            Y = y,
-            Width = width,
-            Height = titleBarHeight
-        };
-
-        // The flip from a bottom-left to a top-left origin is relative to the primary display (the one
-        // whose origin is at 0,0), falling back to the first screen.
-        double primaryHeightPoints = screens[0].FrameHeight;
-        foreach (var screen in screens)
-        {
-            if (screen.FrameX == 0
-                && screen.FrameY == 0)
-            {
-                primaryHeightPoints = screen.FrameHeight;
-                break;
-            }
-        }
-
-        foreach (var screen in screens)
-        {
-            double topLeftYPoints = primaryHeightPoints - (screen.FrameY + screen.FrameHeight);
-            double scale = screen.BackingScaleFactor <= 0 ? 1.0 : screen.BackingScaleFactor;
-
-            var pointRect = new RectInt32
-            {
-                X = (int)screen.FrameX,
-                Y = (int)topLeftYPoints,
-                Width = (int)screen.FrameWidth,
-                Height = (int)screen.FrameHeight
-            };
-
-            var pixelRect = new RectInt32
-            {
-                X = (int)(screen.FrameX * scale),
-                Y = (int)(topLeftYPoints * scale),
-                Width = (int)(screen.FrameWidth * scale),
-                Height = (int)(screen.FrameHeight * scale)
-            };
-
-            _logger.LogDebug(
-                "Window restore check: saved=({SavedX},{SavedY},{SavedW},{SavedH}) " +
-                "screenPoints=({PointX},{PointY},{PointW},{PointH}) " +
-                "screenPixels=({PixelX},{PixelY},{PixelW},{PixelH}) scale={Scale}",
-                x, y, width, height,
-                pointRect.X, pointRect.Y, pointRect.Width, pointRect.Height,
-                pixelRect.X, pixelRect.Y, pixelRect.Width, pixelRect.Height,
-                scale);
-
-            if (RectanglesIntersect(titleBarRect, pointRect)
-                || RectanglesIntersect(titleBarRect, pixelRect))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-#endif
-
-    private bool RectanglesIntersect(RectInt32 rect1, RectInt32 rect2)
-    {
-        return rect1.X < rect2.X + rect2.Width &&
-               rect1.X + rect1.Width > rect2.X &&
-               rect1.Y < rect2.Y + rect2.Height &&
-               rect1.Y + rect1.Height > rect2.Y;
     }
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)

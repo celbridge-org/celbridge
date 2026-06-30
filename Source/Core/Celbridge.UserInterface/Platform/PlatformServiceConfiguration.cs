@@ -1,3 +1,4 @@
+using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Helpers.FullScreen;
 using Celbridge.UserInterface.Platform.FullScreen;
 using Celbridge.UserInterface.Services;
@@ -25,6 +26,15 @@ public static class PlatformServiceConfiguration
         {
             services.AddSingleton<IFullScreenController, WindowsDesktopFullScreenController>();
         }
+#endif
+
+        // Window-bounds validation reads the display geometry differently per head: the packaged
+        // WinAppSDK head uses DisplayArea, while the Skia heads use native screen geometry on macOS and
+        // cannot validate elsewhere (DisplayArea is unavailable there).
+#if WINDOWS
+        services.AddSingleton<IWindowBoundsValidator, WinAppSdkWindowBoundsValidator>();
+#else
+        services.AddSingleton<IWindowBoundsValidator, SkiaWindowBoundsValidator>();
 #endif
 
         // Window activation tinting is only meaningful on the head that draws the custom title bar. The

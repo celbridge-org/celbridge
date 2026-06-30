@@ -115,7 +115,8 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
     public void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken)
     {
         // The Chromium-based WebView2 UA is already recognised by sites, so only append the application token
-        // for identification rather than replacing the UA.
+        // for identification rather than replacing the UA. Not idempotent: call once per WebView, since a
+        // second call would append the token again.
         coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
     }
 

@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 
 namespace Celbridge.Host;
 
 /// <summary>
-/// Default IHostChannelBroker. Holds a map of single-use tokens to the deferred channels awaiting
-/// their page's WebSocket connection. An entry is removed when its connection is bound or when the
-/// view disposes the deferred channel before the page ever connects.
+/// Default IHostChannelBroker. Holds a map of unguessable, view-scoped tokens to the deferred channels
+/// awaiting their page's WebSocket connection. An entry is removed when the view disposes the deferred
+/// channel; the token is not consumed on bind, so a reloaded page can reconnect to the same channel.
 /// </summary>
 public sealed class HostChannelBroker : IHostChannelBroker
 {
@@ -13,7 +14,9 @@ public sealed class HostChannelBroker : IHostChannelBroker
 
     public PendingHostConnection CreatePendingConnection()
     {
-        var token = Guid.NewGuid().ToString("N");
+        // Used as a connection credential, so mint it from a cryptographic RNG rather than Guid.NewGuid,
+        // whose randomness is not contractually guaranteed across platforms.
+        var token = RandomNumberGenerator.GetHexString(32, lowercase: true);
         var channel = new DeferredHostChannel(() => _pendingConnections.TryRemove(token, out _));
         _pendingConnections[token] = channel;
 
