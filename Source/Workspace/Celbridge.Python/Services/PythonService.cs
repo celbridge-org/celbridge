@@ -31,7 +31,7 @@ public class PythonService : IPythonService, IDisposable
 
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IEnvironmentService _environmentService;
+    private readonly IAppEnvironment _environmentService;
     private readonly IServerService _serverService;
     private readonly IMessengerService _messengerService;
     private readonly IFeatureFlags _featureFlags;
@@ -48,7 +48,7 @@ public class PythonService : IPythonService, IDisposable
     public PythonService(
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IEnvironmentService environmentService,
+        IAppEnvironment environmentService,
         IServerService serverService,
         IMessengerService messengerService,
         IFeatureFlags featureFlags,

@@ -45,14 +45,14 @@ internal sealed class AppStateProvider : IAppStateProvider
     // get_state payload.
     private static readonly IReadOnlyList<string> KnownFeatureFlagNames = ReadFeatureFlagNames();
 
-    private readonly IEnvironmentService _environmentService;
+    private readonly IAppEnvironment _environmentService;
     private readonly IProjectService _projectService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IFocusService _focusService;
     private readonly ILayoutService _layoutService;
 
     public AppStateProvider(
-        IEnvironmentService environmentService,
+        IAppEnvironment environmentService,
         IProjectService projectService,
         IFeatureFlags featureFlags,
         IFocusService focusService,

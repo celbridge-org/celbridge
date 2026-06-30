@@ -14,7 +14,7 @@ public class ProjectMigrationServiceTests
 {
     private ILogger<ProjectMigrationService> _mockLogger = null!;
     private ILogger<MigrationStepRegistry> _mockRegistryLogger = null!;
-    private IEnvironmentService _mockEnvironmentService = null!;
+    private IAppEnvironment _mockEnvironmentService = null!;
     private MigrationStepRegistry _registry = null!;
     private ILocalFileSystem _fileSystem = null!;
 

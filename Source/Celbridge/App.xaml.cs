@@ -158,7 +158,7 @@ public partial class App : Application
         ServiceLocator.Initialize(Host.Services);
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
-        var environmentService = Host.Services.GetRequiredService<IEnvironmentService>();
+        var environmentService = Host.Services.GetRequiredService<IAppEnvironment>();
         var environmentInfo = environmentService.GetEnvironmentInfo();
         logger.LogDebug(environmentInfo.ToString());
 

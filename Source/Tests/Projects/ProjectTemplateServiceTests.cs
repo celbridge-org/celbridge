@@ -1,7 +1,7 @@
-using Celbridge.ApplicationEnvironment;
 using Celbridge.Projects.Services;
 using Celbridge.Python;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Utilities.Platform;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.Projects;
@@ -12,6 +12,7 @@ public class ProjectTemplateServiceTests
     private ILocalFileSystem _fileSystem = null!;
     private ProjectTemplateService _projectTemplateService = null!;
     private string _tempRootPath = null!;
+    private string _expectedAppVersion = null!;
 
     [SetUp]
     public void Setup()
@@ -21,17 +22,20 @@ public class ProjectTemplateServiceTests
         // The localizer is only used to label the templates, not by the creation flow.
         var stringLocalizer = Substitute.For<IStringLocalizer>();
 
-        var environmentService = Substitute.For<IEnvironmentService>();
-        environmentService.GetEnvironmentInfo().Returns(new EnvironmentInfo("1.2.3", "Test", "Debug"));
-
         var pythonConfigService = Substitute.For<IPythonConfigService>();
         pythonConfigService.DefaultPythonVersion.Returns("3.13");
 
+        // A real app environment so the test exercises actual bundled-asset path resolution (the
+        // AppContext.BaseDirectory layout the Skia heads use) and supplies the temp folder. Its reported
+        // version is what should flow into the generated project file.
+        var appEnvironment = new AppEnvironment();
+        _expectedAppVersion = appEnvironment.GetEnvironmentInfo().AppVersion;
+
         _projectTemplateService = new ProjectTemplateService(
             stringLocalizer,
-            environmentService,
             pythonConfigService,
-            _fileSystem);
+            _fileSystem,
+            appEnvironment);
 
         _tempRootPath = Path.Combine(
             Path.GetTempPath(),
@@ -74,7 +78,7 @@ public class ProjectTemplateServiceTests
         var projectContents = await File.ReadAllTextAsync(projectFilePath);
         projectContents.Should().NotContain("<application-version>");
         projectContents.Should().NotContain("<python-version>");
-        projectContents.Should().Contain("1.2.3");
+        projectContents.Should().Contain(_expectedAppVersion);
         projectContents.Should().Contain("3.13");
     }
 }

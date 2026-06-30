@@ -1,3 +1,4 @@
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Platform;
 using Celbridge.Utilities.Platform;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,8 +9,8 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<IEnvironmentService, EnvironmentService>();
         services.AddSingleton<ITextBinarySniffer, TextBinarySniffer>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
+        services.AddSingleton<IAppEnvironment, AppEnvironment>();
     }
 }

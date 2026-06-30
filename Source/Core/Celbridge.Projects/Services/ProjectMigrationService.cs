@@ -46,13 +46,13 @@ public class ProjectMigrationService : IProjectMigrationService
     private const string ApplicationVersionSentinel = "<application-version>";
 
     private readonly ILogger<ProjectMigrationService> _logger;
-    private readonly IEnvironmentService _environmentService;
+    private readonly IAppEnvironment _environmentService;
     private readonly MigrationStepRegistry _migrationRegistry;
     private readonly ILocalFileSystem _fileSystem;
 
     public ProjectMigrationService(
         ILogger<ProjectMigrationService> logger,
-        IEnvironmentService environmentService,
+        IAppEnvironment environmentService,
         IMigrationStepRegistry migrationRegistry,
         ILocalFileSystem fileSystem)
     {

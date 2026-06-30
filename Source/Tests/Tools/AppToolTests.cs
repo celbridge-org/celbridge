@@ -151,7 +151,7 @@ public class AppToolTests
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
 
-        var environmentService = Substitute.For<IEnvironmentService>();
+        var environmentService = Substitute.For<IAppEnvironment>();
         var environmentInfo = new EnvironmentInfo(appVersion, "Windows", "Debug");
         environmentService.GetEnvironmentInfo().Returns(environmentInfo);
 
@@ -165,7 +165,7 @@ public class AppToolTests
         layoutService.IsConsoleMaximized.Returns(consoleMaximized);
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
-        _services.GetRequiredService<IEnvironmentService>().Returns(environmentService);
+        _services.GetRequiredService<IAppEnvironment>().Returns(environmentService);
         _services.GetRequiredService<IFocusService>().Returns(focusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 

@@ -8,21 +8,22 @@ namespace Celbridge.Projects.Services;
 public class ProjectTemplateService : IProjectTemplateService
 {
     private const string TemplateProjectFileName = "project.celbridge";
+    private const string ProjectsModuleFolder = "Celbridge.Projects";
 
     private readonly List<ProjectTemplate> _templates;
-    private readonly IEnvironmentService _environmentService;
     private readonly IPythonConfigService _pythonConfigService;
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IAppEnvironment _appEnvironment;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
-        IEnvironmentService environmentService,
         IPythonConfigService pythonConfigService,
-        ILocalFileSystem fileSystem)
+        ILocalFileSystem fileSystem,
+        IAppEnvironment appEnvironment)
     {
-        _environmentService = environmentService;
         _pythonConfigService = pythonConfigService;
         _fileSystem = fileSystem;
+        _appEnvironment = appEnvironment;
 
         _templates =
         [
@@ -54,13 +55,8 @@ public class ProjectTemplateService : IProjectTemplateService
 
         // Use a temporary staging folder to prevent leftover files on failure.
         // The project doesn't exist yet, so temp: isn't available; fall back to
-        // the application's OS temp folder.
-#if WINDOWS
-        var tempRootPath = ApplicationData.Current.TemporaryFolder.Path;
-#else
-        // The Skia desktop head is unpackaged, so ApplicationData.Current is unavailable.
-        var tempRootPath = Path.GetTempPath();
-#endif
+        // the application's temp folder.
+        var tempRootPath = _appEnvironment.TemporaryFolderPath;
         var tempStagingPath = Path.Combine(
             tempRootPath,
             "NewProject",
@@ -91,29 +87,13 @@ public class ProjectTemplateService : IProjectTemplateService
             }
 
             // Get Celbridge application version
-            var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
+            var appVersion = _appEnvironment.GetEnvironmentInfo().AppVersion;
 
-            // Extract template zip to staging location. On the packaged Windows build the
-            // template zips are ms-appx assets at the package root; on the Skia desktop head
-            // they sit beside the executable under the Celbridge.Projects content folder.
-#if WINDOWS
-            var templateAsset = new Uri($"ms-appx:///Assets/Templates/{template.Id}.zip");
-            var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(templateAsset);
-
-            var tempZipFile = await sourceZipFile.CopyAsync(
-                ApplicationData.Current.TemporaryFolder,
-                "template.zip",
-                NameCollisionOption.ReplaceExisting);
-
-            var sourceZipPath = tempZipFile.Path;
-#else
-            var sourceZipPath = Path.Combine(
-                AppContext.BaseDirectory,
-                "Celbridge.Projects",
-                "Assets",
-                "Templates",
-                $"{template.Id}.zip");
-#endif
+            // Extract the bundled template zip to the staging location. The zip is read as a real file
+            // from the install location: the package root on the packaged Windows head, the
+            // Celbridge.Projects content folder beside the app on the Skia heads.
+            var sourceZipPath = _appEnvironment.GetBundledAssetPath(
+                ProjectsModuleFolder, $"Assets/Templates/{template.Id}.zip");
 
             ZipFile.ExtractToDirectory(sourceZipPath, tempStagingPath!, overwriteFiles: true);
 
