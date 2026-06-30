@@ -1,8 +1,9 @@
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 
-namespace Celbridge.UserInterface.Helpers.FullScreen;
+namespace Celbridge.UserInterface.Platform.FullScreen;
 
 /// <summary>
 /// Shared fullscreen emulation for the Skia desktop heads. The WPF shell's native fullscreen

@@ -1,4 +1,3 @@
-#if !WINDOWS
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Resources;
@@ -6,7 +5,7 @@ using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// Defines and installs Celbridge's native macOS menubar. Mirrors the in-window hamburger menu's project
@@ -282,4 +281,3 @@ internal static class MacOSMainMenu
         MacOSMenuInterop.ShowAboutPanel(links);
     }
 }
-#endif

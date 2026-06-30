@@ -2,7 +2,7 @@ using Celbridge.DataTransfer;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 
-namespace Celbridge.WorkspaceUI.Services;
+namespace Celbridge.WorkspaceUI.Platform;
 
 /// <summary>
 /// File clipboard backed by the WinRT data-transfer clipboard (storage items). Used on Windows, where

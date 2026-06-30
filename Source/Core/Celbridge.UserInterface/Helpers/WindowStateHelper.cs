@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers.FullScreen;
+using Celbridge.UserInterface.Platform;
 using Celbridge.Workspace;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;

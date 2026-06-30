@@ -1,11 +1,10 @@
+using Celbridge.Console.Platform;
+
 namespace Celbridge.Console.Services;
 
 public class Terminal : ITerminal, IDisposable
 {
-    // The pty backend is selected by platform: ConPtyTerminal wraps the Windows pseudo-console API,
-    // UnixPtyTerminal wraps openpty/posix_spawn on the macOS and Linux heads. On an unsupported
-    // platform _backend stays null and the terminal operations report that the platform is not yet
-    // supported.
+    // Null on a platform with no pty backend; the terminal operations then report it as unsupported.
     private readonly IPtyBackend? _backend;
 
     public event EventHandler<string>? OutputReceived;
@@ -13,14 +12,7 @@ public class Terminal : ITerminal, IDisposable
 
     public Terminal()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            _backend = new ConPtyTerminal();
-        }
-        else if (OperatingSystem.IsMacOS() || OperatingSystem.IsLinux())
-        {
-            _backend = new UnixPtyTerminal();
-        }
+        _backend = PtyBackendFactory.Create();
 
         if (_backend is not null)
         {

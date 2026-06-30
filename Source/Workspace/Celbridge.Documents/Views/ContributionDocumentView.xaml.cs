@@ -12,6 +12,7 @@ using Celbridge.Packages;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
+using Celbridge.WebHost.Platform;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;

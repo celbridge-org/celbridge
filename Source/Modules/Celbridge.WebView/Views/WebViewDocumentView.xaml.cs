@@ -9,6 +9,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
+using Celbridge.WebHost.Platform;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;

@@ -1,7 +1,8 @@
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Microsoft.UI.Windowing;
 
-namespace Celbridge.UserInterface.Helpers.FullScreen;
+namespace Celbridge.UserInterface.Platform.FullScreen;
 
 /// <summary>
 /// Fullscreen controller for the packaged WinAppSDK head, where the native fullscreen presenter works

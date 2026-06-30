@@ -1,3 +1,4 @@
+using Celbridge.Settings.Platform;
 using Celbridge.Settings.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,14 +13,9 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<ISettingsStore, ApplicationStore>();
-        if (OperatingSystem.IsMacOS())
-        {
-            services.AddSingleton<ICredentialStore, MacOSKeychainCredentialStore>();
-        }
-        else
-        {
-            services.AddSingleton<ICredentialStore, DpapiCredentialStore>();
-        }
+
+        PlatformServiceConfiguration.ConfigureServices(services);
+
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IFeatureFlags, FeatureFlags>();
     }

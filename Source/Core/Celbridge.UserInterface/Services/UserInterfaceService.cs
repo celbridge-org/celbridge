@@ -91,7 +91,7 @@ public class UserInterfaceService : IUserInterfaceService
         // the standard App/File/Edit/Window/Help menus. No-op on non-macOS desktop platforms.
         if (OperatingSystem.IsMacOS())
         {
-            var menuInstalled = Helpers.MacOSMainMenu.Install();
+            var menuInstalled = Platform.MacOSMainMenu.Install();
             if (!menuInstalled)
             {
                 _logger.LogWarning("Failed to install the native macOS menubar");

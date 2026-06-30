@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Celbridge.Logging;
 
-namespace Celbridge.UserInterface.Helpers.FullScreen;
+namespace Celbridge.UserInterface.Platform.FullScreen;
 
 /// <summary>
 /// Fullscreen controller for the Windows Skia desktop head. The cross-platform DisplayArea APIs are

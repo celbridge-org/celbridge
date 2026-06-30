@@ -1,7 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using Celbridge.Console.Services;
 
-namespace Celbridge.Console.Services;
+namespace Celbridge.Console.Platform;
 
 /// <summary>
 /// A pseudo-terminal backend for the macOS and Linux heads. It allocates a pty with openpty, spawns

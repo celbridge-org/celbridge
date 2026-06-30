@@ -2,9 +2,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Celbridge.Console.Services;
 using Microsoft.Win32.SafeHandles;
 
-namespace Celbridge.Console.Services;
+namespace Celbridge.Console.Platform;
 
 public sealed class ConPtyTerminal : IPtyBackend
 {

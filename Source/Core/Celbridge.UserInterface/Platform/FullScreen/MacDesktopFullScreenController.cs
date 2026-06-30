@@ -1,10 +1,8 @@
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Microsoft.UI.Windowing;
-#if !WINDOWS
-using Celbridge.UserInterface.Helpers;
-#endif
 
-namespace Celbridge.UserInterface.Helpers.FullScreen;
+namespace Celbridge.UserInterface.Platform.FullScreen;
 
 /// <summary>
 /// Fullscreen controller for the macOS Skia desktop head. macOS owns fullscreen natively through the

@@ -1,11 +1,10 @@
-#if !WINDOWS
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using Microsoft.Web.WebView2.Core;
+using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
-namespace Celbridge.WebHost.Services;
+namespace Celbridge.WebHost.Platform;
 
 /// <summary>
 /// A WKWebView snapshot encoded to PNG or JPEG bytes, with the captured pixel dimensions.
@@ -14,7 +13,7 @@ public sealed record MacWebViewSnapshot(byte[] Bytes, int Width, int Height);
 
 /// <summary>
 /// Parameters for a WKWebView snapshot. The clip rectangle (CSS pixels, in the web view's coordinate space)
-/// selects the region to capture; SnapshotWidth is the target output width in points (0 leaves the capture
+/// selects the region to capture. SnapshotWidth is the target output width in points (0 leaves the capture
 /// at native resolution). Format is "png" or "jpeg" (Quality 1-100 applies to JPEG).
 /// </summary>
 public sealed record MacSnapshotRequest(
@@ -27,25 +26,11 @@ public sealed record MacSnapshotRequest(
     int Quality);
 
 /// <summary>
-/// Objective-C runtime interop for reaching the native WKWebView behind Uno's macOS Skia WebView2
-/// control and calling the WebKit methods it does not surface through managed code.
+/// Objective-C interop for reaching the native WKWebView behind Uno's macOS Skia WebView2 control and
+/// calling the WebKit methods the managed CoreWebView2 leaves unimplemented on macOS: serving a document
+/// under a chosen origin, document-start script injection, surface capture, and view teardown. macOS-only.
+/// Every method touches WebKit, so call on the main (UI) thread.
 /// </summary>
-/// <remarks>
-/// On the macOS Skia head, CoreWebView2._nativeWebView is a MacOSNativeWebView whose _webview field
-/// is a UNOWebView* (a WKWebView subclass). That pointer is messaged directly with objc_msgSend to
-/// reach the three capabilities the managed CoreWebView2 leaves unimplemented on macOS: serving a
-/// document under a chosen origin (loadHTMLString:baseURL:), document-start script injection
-/// (WKUserContentController.addUserScript:), and capturing the rendered surface
-/// (takeSnapshotWithConfiguration:).
-///
-/// The _webview reflection field reaches into Uno's internals, so its name is coupled to the Uno runtime
-/// version and must be re-verified on any Uno bump. All the reflection lives here to keep that re-check in
-/// a single place.
-///
-/// Every method touches WebKit, which is only safe on the macOS main (UI) thread. Callers must invoke
-/// these on the UI thread; the methods do not marshal internally. The whole type is macOS-only, so
-/// callers also gate on OperatingSystem.IsMacOS() before use.
-/// </remarks>
 public static class MacOSWebViewInterop
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
@@ -63,30 +48,8 @@ public static class MacOSWebViewInterop
     // NSBitmapImageFileTypeJPEG == 3.
     private const nint BitmapImageFileTypeJpeg = 3;
 
-    [DllImport(LibObjC)]
-    private static extern IntPtr objc_getClass(string name);
-
-    [DllImport(LibObjC)]
-    private static extern IntPtr sel_registerName(string name);
-
-    [DllImport(LibObjC)]
-    private static extern IntPtr object_getClassName(IntPtr nativeObject);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage(IntPtr receiver, IntPtr selector);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage(IntPtr receiver, IntPtr selector, IntPtr argument);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage(IntPtr receiver, IntPtr selector, IntPtr firstArgument, IntPtr secondArgument);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern void SendMessageVoidTwoPointers(IntPtr receiver, IntPtr selector, IntPtr firstArgument, IntPtr secondArgument);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessageEnumThenPointer(IntPtr receiver, IntPtr selector, nint firstArgument, IntPtr secondArgument);
-
+    // initWithSource:injectionTime:forMainFrameOnly: takes an NSInteger and a BOOL after the source, a
+    // combination the shared runtime does not carry, so this declaration stays local.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern IntPtr SendMessageInitUserScript(
         IntPtr receiver,
@@ -95,14 +58,9 @@ public static class MacOSWebViewInterop
         nint injectionTime,
         [MarshalAs(UnmanagedType.I1)] bool mainFrameOnly);
 
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessageDouble(IntPtr receiver, IntPtr selector, double argument);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern nint SendMessageReturnNint(IntPtr receiver, IntPtr selector);
-
     // A CGRect is four doubles, a homogeneous float aggregate the ARM64 ABI passes in the floating-point
-    // registers, so the struct marshals by value directly.
+    // registers, so the struct marshals by value directly. The struct-by-value argument keeps this
+    // declaration local rather than in the shared runtime.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern void SendMessageVoidCGRect(IntPtr receiver, IntPtr selector, CGRect rect);
 
@@ -140,6 +98,8 @@ public static class MacOSWebViewInterop
         var nativeWebViewType = nativeWebView.GetType();
         detail = nativeWebViewType.FullName ?? nativeWebViewType.Name;
 
+        // _webview is an Uno-internal field, so its name is coupled to the Uno runtime version: re-verify it
+        // on an Uno bump. A mismatch returns false with the walked type name in 'detail' rather than crashing.
         var webViewField = FindFieldInHierarchy(nativeWebViewType, "_webview");
         if (webViewField is null)
         {
@@ -164,8 +124,7 @@ public static class MacOSWebViewInterop
     /// </summary>
     public static string GetObjectiveCClassName(IntPtr nativeObject)
     {
-        var classNamePointer = object_getClassName(nativeObject);
-        return Marshal.PtrToStringAnsi(classNamePointer) ?? "(null)";
+        return GetClassName(nativeObject);
     }
 
     /// <summary>
@@ -183,8 +142,8 @@ public static class MacOSWebViewInterop
             return;
         }
 
-        var closeSelector = sel_registerName("_close");
-        var respondsToSelector = sel_registerName("respondsToSelector:");
+        var closeSelector = GetSelector("_close");
+        var respondsToSelector = GetSelector("respondsToSelector:");
         if (SendMessage(webView, respondsToSelector, closeSelector) == IntPtr.Zero)
         {
             return;
@@ -204,11 +163,11 @@ public static class MacOSWebViewInterop
         var htmlString = CreateNSString(html);
         var baseUrlString = CreateNSString(baseUrl);
 
-        var nsUrlClass = objc_getClass("NSURL");
-        var urlWithStringSelector = sel_registerName("URLWithString:");
+        var nsUrlClass = GetClass("NSURL");
+        var urlWithStringSelector = GetSelector("URLWithString:");
         var baseUrlObject = SendMessage(nsUrlClass, urlWithStringSelector, baseUrlString);
 
-        var loadSelector = sel_registerName("loadHTMLString:baseURL:");
+        var loadSelector = GetSelector("loadHTMLString:baseURL:");
         SendMessage(webView, loadSelector, htmlString, baseUrlObject);
     }
 
@@ -219,14 +178,14 @@ public static class MacOSWebViewInterop
     /// </summary>
     public static void AddUserScriptAtDocumentStart(IntPtr webView, string source)
     {
-        var configuration = SendMessage(webView, sel_registerName("configuration"));
-        var userContentController = SendMessage(configuration, sel_registerName("userContentController"));
+        var configuration = SendMessage(webView, GetSelector("configuration"));
+        var userContentController = SendMessage(configuration, GetSelector("userContentController"));
 
-        var userScriptClass = objc_getClass("WKUserScript");
-        var allocatedUserScript = SendMessage(userScriptClass, sel_registerName("alloc"));
+        var userScriptClass = GetClass("WKUserScript");
+        var allocatedUserScript = SendMessage(userScriptClass, GetSelector("alloc"));
         var sourceString = CreateNSString(source);
 
-        var initSelector = sel_registerName("initWithSource:injectionTime:forMainFrameOnly:");
+        var initSelector = GetSelector("initWithSource:injectionTime:forMainFrameOnly:");
         var userScript = SendMessageInitUserScript(
             allocatedUserScript,
             initSelector,
@@ -234,7 +193,7 @@ public static class MacOSWebViewInterop
             InjectionTimeAtDocumentStart,
             false);
 
-        SendMessage(userContentController, sel_registerName("addUserScript:"), userScript);
+        SendMessage(userContentController, GetSelector("addUserScript:"), userScript);
     }
 
     /// <summary>
@@ -252,14 +211,14 @@ public static class MacOSWebViewInterop
 
         var configuration = BuildSnapshotConfiguration(request);
 
-        var selector = sel_registerName("takeSnapshotWithConfiguration:completionHandler:");
-        SendMessageVoidTwoPointers(webView, selector, configuration, completionBlock);
+        var selector = GetSelector("takeSnapshotWithConfiguration:completionHandler:");
+        SendMessageVoid(webView, selector, configuration, completionBlock);
 
         var finishedTask = await Task.WhenAny(_snapshotCompletion.Task, Task.Delay(8000));
 
         if (configuration != IntPtr.Zero)
         {
-            SendMessage(configuration, sel_registerName("release"));
+            SendMessage(configuration, GetSelector("release"));
         }
 
         if (finishedTask != _snapshotCompletion.Task)
@@ -279,21 +238,21 @@ public static class MacOSWebViewInterop
         }
         finally
         {
-            SendMessage(image, sel_registerName("release"));
+            SendMessage(image, GetSelector("release"));
         }
     }
 
     private static IntPtr BuildSnapshotConfiguration(MacSnapshotRequest request)
     {
-        var configurationClass = objc_getClass("WKSnapshotConfiguration");
+        var configurationClass = GetClass("WKSnapshotConfiguration");
         if (configurationClass == IntPtr.Zero)
         {
             // No configuration class: fall back to a full-surface snapshot.
             return IntPtr.Zero;
         }
 
-        var allocated = SendMessage(configurationClass, sel_registerName("alloc"));
-        var configuration = SendMessage(allocated, sel_registerName("init"));
+        var allocated = SendMessage(configurationClass, GetSelector("alloc"));
+        var configuration = SendMessage(allocated, GetSelector("init"));
 
         // Leave rect at its default (the whole view) when no positive clip is supplied.
         if (request.ClipWidth > 0
@@ -306,13 +265,13 @@ public static class MacOSWebViewInterop
                 Width = request.ClipWidth,
                 Height = request.ClipHeight,
             };
-            SendMessageVoidCGRect(configuration, sel_registerName("setRect:"), rect);
+            SendMessageVoidCGRect(configuration, GetSelector("setRect:"), rect);
         }
 
         if (request.SnapshotWidth > 0)
         {
-            var snapshotWidthNumber = SendMessageDouble(objc_getClass("NSNumber"), sel_registerName("numberWithDouble:"), request.SnapshotWidth);
-            SendMessage(configuration, sel_registerName("setSnapshotWidth:"), snapshotWidthNumber);
+            var snapshotWidthNumber = SendMessage(GetClass("NSNumber"), GetSelector("numberWithDouble:"), request.SnapshotWidth);
+            SendMessage(configuration, GetSelector("setSnapshotWidth:"), snapshotWidthNumber);
         }
 
         return configuration;
@@ -320,21 +279,21 @@ public static class MacOSWebViewInterop
 
     private static MacWebViewSnapshot? ConvertNSImage(IntPtr nsImage, string format, int quality)
     {
-        var tiffData = SendMessage(nsImage, sel_registerName("TIFFRepresentation"));
+        var tiffData = SendMessage(nsImage, GetSelector("TIFFRepresentation"));
         if (tiffData == IntPtr.Zero)
         {
             return null;
         }
 
-        var bitmapImageRepClass = objc_getClass("NSBitmapImageRep");
-        var bitmapRep = SendMessage(bitmapImageRepClass, sel_registerName("imageRepWithData:"), tiffData);
+        var bitmapImageRepClass = GetClass("NSBitmapImageRep");
+        var bitmapRep = SendMessage(bitmapImageRepClass, GetSelector("imageRepWithData:"), tiffData);
         if (bitmapRep == IntPtr.Zero)
         {
             return null;
         }
 
-        var width = (int)SendMessageReturnNint(bitmapRep, sel_registerName("pixelsWide"));
-        var height = (int)SendMessageReturnNint(bitmapRep, sel_registerName("pixelsHigh"));
+        var width = (int)SendMessageReturnNint(bitmapRep, GetSelector("pixelsWide"));
+        var height = (int)SendMessageReturnNint(bitmapRep, GetSelector("pixelsHigh"));
 
         nint fileType;
         IntPtr properties;
@@ -344,19 +303,19 @@ public static class MacOSWebViewInterop
 
             // NSImageCompressionFactor expects a 0-1 quality value.
             var compressionFactor = Math.Clamp(quality, 1, 100) / 100.0;
-            var compressionNumber = SendMessageDouble(objc_getClass("NSNumber"), sel_registerName("numberWithDouble:"), compressionFactor);
+            var compressionNumber = SendMessage(GetClass("NSNumber"), GetSelector("numberWithDouble:"), compressionFactor);
             var compressionKey = CreateNSString("NSImageCompressionFactor");
-            properties = SendMessage(objc_getClass("NSDictionary"), sel_registerName("dictionaryWithObject:forKey:"), compressionNumber, compressionKey);
+            properties = SendMessage(GetClass("NSDictionary"), GetSelector("dictionaryWithObject:forKey:"), compressionNumber, compressionKey);
         }
         else
         {
             fileType = BitmapImageFileTypePng;
-            properties = SendMessage(objc_getClass("NSDictionary"), sel_registerName("dictionary"));
+            properties = SendMessage(GetClass("NSDictionary"), GetSelector("dictionary"));
         }
 
-        var imageData = SendMessageEnumThenPointer(
+        var imageData = SendMessage(
             bitmapRep,
-            sel_registerName("representationUsingType:properties:"),
+            GetSelector("representationUsingType:properties:"),
             fileType,
             properties);
         if (imageData == IntPtr.Zero)
@@ -364,8 +323,8 @@ public static class MacOSWebViewInterop
             return null;
         }
 
-        var length = (long)SendMessage(imageData, sel_registerName("length"));
-        var bytesPointer = SendMessage(imageData, sel_registerName("bytes"));
+        var length = (long)SendMessage(imageData, GetSelector("length"));
+        var bytesPointer = SendMessage(imageData, GetSelector("bytes"));
         if (bytesPointer == IntPtr.Zero
             || length <= 0)
         {
@@ -420,30 +379,12 @@ public static class MacOSWebViewInterop
             && error == IntPtr.Zero)
         {
             // Retain so the NSImage survives past the completion handler's autorelease pool.
-            SendMessage(image, sel_registerName("retain"));
+            SendMessage(image, GetSelector("retain"));
             _snapshotCompletion?.TrySetResult(image);
         }
         else
         {
             _snapshotCompletion?.TrySetResult(IntPtr.Zero);
-        }
-    }
-
-    private static IntPtr CreateNSString(string value)
-    {
-        var nsStringClass = objc_getClass("NSString");
-        var selector = sel_registerName("stringWithUTF8String:");
-
-        var utf8Bytes = Encoding.UTF8.GetBytes(value + '\0');
-        var buffer = Marshal.AllocHGlobal(utf8Bytes.Length);
-        try
-        {
-            Marshal.Copy(utf8Bytes, 0, buffer, utf8Bytes.Length);
-            return SendMessage(nsStringClass, selector, buffer);
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(buffer);
         }
     }
 
@@ -489,4 +430,3 @@ public static class MacOSWebViewInterop
         public nuint Size;
     }
 }
-#endif

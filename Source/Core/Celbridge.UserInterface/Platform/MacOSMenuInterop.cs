@@ -1,8 +1,7 @@
-#if !WINDOWS
 using System.Runtime.InteropServices;
-using System.Text;
+using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// One item in a native macOS menu. A Command item dispatches back to managed code by Tag; a Selector item
@@ -111,12 +110,6 @@ internal static class MacOSMenuInterop
     private delegate void MenuNeedsUpdateDelegate(IntPtr self, IntPtr selector, IntPtr menu);
 
     [DllImport(LibObjC)]
-    private static extern IntPtr objc_getClass(string name);
-
-    [DllImport(LibObjC)]
-    private static extern IntPtr sel_registerName(string name);
-
-    [DllImport(LibObjC)]
     private static extern IntPtr objc_allocateClassPair(IntPtr superclass, string name, nuint extraBytes);
 
     [DllImport(LibObjC)]
@@ -125,27 +118,6 @@ internal static class MacOSMenuInterop
     [DllImport(LibObjC)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool class_addMethod(IntPtr cls, IntPtr selector, IntPtr implementation, string types);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage(IntPtr receiver, IntPtr selector);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessagePtr(IntPtr receiver, IntPtr selector, IntPtr arg);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage2Ptr(IntPtr receiver, IntPtr selector, IntPtr arg1, IntPtr arg2);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage3Ptr(IntPtr receiver, IntPtr selector, IntPtr arg1, IntPtr arg2, IntPtr arg3);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern void SendMessageVoidNint(IntPtr receiver, IntPtr selector, nint arg);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern void SendMessageVoidNuint(IntPtr receiver, IntPtr selector, nuint arg);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern nint SendMessageReturnNint(IntPtr receiver, IntPtr selector);
 
     /// <summary>
     /// Builds the menubar from the given menus and installs it as the application's main menu. The first
@@ -160,13 +132,13 @@ internal static class MacOSMenuInterop
             return false;
         }
 
-        var applicationClass = objc_getClass("NSApplication");
+        var applicationClass = GetClass("NSApplication");
         if (applicationClass == IntPtr.Zero)
         {
             return false;
         }
 
-        var application = SendMessage(applicationClass, sel_registerName("sharedApplication"));
+        var application = SendMessage(applicationClass, GetSelector("sharedApplication"));
         if (application == IntPtr.Zero)
         {
             return false;
@@ -189,8 +161,8 @@ internal static class MacOSMenuInterop
 
             // A top-level menu is a titled item on the main menu whose submenu holds the entries.
             var topItem = CreateMenuItem(menu.Title, IntPtr.Zero, string.Empty);
-            SendMessagePtr(topItem, sel_registerName("setSubmenu:"), submenu);
-            SendMessagePtr(mainMenu, sel_registerName("addItem:"), topItem);
+            SendMessage(topItem, GetSelector("setSubmenu:"), submenu);
+            SendMessage(mainMenu, GetSelector("addItem:"), topItem);
 
             if (menu.IsWindowMenu)
             {
@@ -198,10 +170,10 @@ internal static class MacOSMenuInterop
             }
         }
 
-        SendMessagePtr(application, sel_registerName("setMainMenu:"), mainMenu);
+        SendMessage(application, GetSelector("setMainMenu:"), mainMenu);
         if (windowMenu != IntPtr.Zero)
         {
-            SendMessagePtr(application, sel_registerName("setWindowsMenu:"), windowMenu);
+            SendMessage(application, GetSelector("setWindowsMenu:"), windowMenu);
         }
 
         return true;
@@ -218,59 +190,59 @@ internal static class MacOSMenuInterop
             return;
         }
 
-        var application = SendMessage(objc_getClass("NSApplication"), sel_registerName("sharedApplication"));
+        var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
         if (application == IntPtr.Zero)
         {
             return;
         }
 
         var credits = SendMessage(
-            SendMessage(objc_getClass("NSMutableAttributedString"), sel_registerName("alloc")),
-            sel_registerName("init"));
+            SendMessage(GetClass("NSMutableAttributedString"), GetSelector("alloc")),
+            GetSelector("init"));
 
         var linkAttributeKey = CreateNSString("NSLink");
-        var appendSelector = sel_registerName("appendAttributedString:");
+        var appendSelector = GetSelector("appendAttributedString:");
 
         for (var index = 0; index < links.Count; index++)
         {
             if (index > 0)
             {
-                SendMessagePtr(credits, appendSelector, CreatePlainAttributedString("\n"));
+                SendMessage(credits, appendSelector, CreatePlainAttributedString("\n"));
             }
 
-            SendMessagePtr(credits, appendSelector, CreateLinkAttributedString(links[index], linkAttributeKey));
+            SendMessage(credits, appendSelector, CreateLinkAttributedString(links[index], linkAttributeKey));
         }
 
         // Options: the credits links ("Credits"), plus an empty "Version" (NSAboutPanelOptionVersion) to
         // suppress the build-number parenthetical the panel appends after the version. Icon, name, and
         // version still come from the bundle.
         var options = SendMessage(
-            SendMessage(objc_getClass("NSMutableDictionary"), sel_registerName("alloc")),
-            sel_registerName("init"));
-        var setObjectForKey = sel_registerName("setObject:forKey:");
-        SendMessage2Ptr(options, setObjectForKey, credits, CreateNSString("Credits"));
-        SendMessage2Ptr(options, setObjectForKey, CreateNSString(string.Empty), CreateNSString("Version"));
+            SendMessage(GetClass("NSMutableDictionary"), GetSelector("alloc")),
+            GetSelector("init"));
+        var setObjectForKey = GetSelector("setObject:forKey:");
+        SendMessage(options, setObjectForKey, credits, CreateNSString("Credits"));
+        SendMessage(options, setObjectForKey, CreateNSString(string.Empty), CreateNSString("Version"));
 
-        SendMessagePtr(application, sel_registerName("orderFrontStandardAboutPanelWithOptions:"), options);
+        SendMessage(application, GetSelector("orderFrontStandardAboutPanelWithOptions:"), options);
     }
 
     private static IntPtr CreatePlainAttributedString(string text)
     {
-        var allocated = SendMessage(objc_getClass("NSAttributedString"), sel_registerName("alloc"));
-        return SendMessagePtr(allocated, sel_registerName("initWithString:"), CreateNSString(text));
+        var allocated = SendMessage(GetClass("NSAttributedString"), GetSelector("alloc"));
+        return SendMessage(allocated, GetSelector("initWithString:"), CreateNSString(text));
     }
 
     private static IntPtr CreateLinkAttributedString(MacAboutLink link, IntPtr linkAttributeKey)
     {
-        var url = SendMessagePtr(objc_getClass("NSURL"), sel_registerName("URLWithString:"), CreateNSString(link.Url));
-        var attributes = SendMessage2Ptr(
-            objc_getClass("NSDictionary"),
-            sel_registerName("dictionaryWithObject:forKey:"),
+        var url = SendMessage(GetClass("NSURL"), GetSelector("URLWithString:"), CreateNSString(link.Url));
+        var attributes = SendMessage(
+            GetClass("NSDictionary"),
+            GetSelector("dictionaryWithObject:forKey:"),
             url,
             linkAttributeKey);
 
-        var allocated = SendMessage(objc_getClass("NSAttributedString"), sel_registerName("alloc"));
-        return SendMessage2Ptr(allocated, sel_registerName("initWithString:attributes:"), CreateNSString(link.Label), attributes);
+        var allocated = SendMessage(GetClass("NSAttributedString"), GetSelector("alloc"));
+        return SendMessage(allocated, GetSelector("initWithString:attributes:"), CreateNSString(link.Label), attributes);
     }
 
     private static void EnsureCommandTarget()
@@ -280,9 +252,9 @@ internal static class MacOSMenuInterop
             return;
         }
 
-        _commandActionSelector = sel_registerName("celbridgeMenuAction:");
+        _commandActionSelector = GetSelector("celbridgeMenuAction:");
 
-        var newClass = objc_allocateClassPair(objc_getClass("NSObject"), "CelbridgeMenuTarget", 0);
+        var newClass = objc_allocateClassPair(GetClass("NSObject"), "CelbridgeMenuTarget", 0);
         if (newClass != IntPtr.Zero)
         {
             _menuActionDelegate = HandleMenuAction;
@@ -294,24 +266,24 @@ internal static class MacOSMenuInterop
             var validateImplementation = Marshal.GetFunctionPointerForDelegate(_menuValidateDelegate);
             // "c@:@" = BOOL (signed char) return; arguments self (id), _cmd (SEL), menuItem (id). AppKit
             // sends this to a Command item's target before the menu shows, to set the item's enabled state.
-            class_addMethod(newClass, sel_registerName("validateMenuItem:"), validateImplementation, "c@:@");
+            class_addMethod(newClass, GetSelector("validateMenuItem:"), validateImplementation, "c@:@");
 
             _menuNeedsUpdateDelegate = HandleMenuNeedsUpdate;
             var needsUpdateImplementation = Marshal.GetFunctionPointerForDelegate(_menuNeedsUpdateDelegate);
             // "v@:@" = void return; arguments self (id), _cmd (SEL), menu (id). AppKit sends this to a dynamic
             // submenu's delegate (this same object) just before the submenu is displayed, so it can be rebuilt.
-            class_addMethod(newClass, sel_registerName("menuNeedsUpdate:"), needsUpdateImplementation, "v@:@");
+            class_addMethod(newClass, GetSelector("menuNeedsUpdate:"), needsUpdateImplementation, "v@:@");
 
             objc_registerClassPair(newClass);
         }
         else
         {
             // The class already exists (Install ran before in this process); reuse the registered one.
-            newClass = objc_getClass("CelbridgeMenuTarget");
+            newClass = GetClass("CelbridgeMenuTarget");
         }
 
-        var allocated = SendMessage(newClass, sel_registerName("alloc"));
-        _commandTarget = SendMessage(allocated, sel_registerName("init"));
+        var allocated = SendMessage(newClass, GetSelector("alloc"));
+        _commandTarget = SendMessage(allocated, GetSelector("init"));
     }
 
     private static void HandleMenuAction(IntPtr self, IntPtr selector, IntPtr sender)
@@ -319,7 +291,7 @@ internal static class MacOSMenuInterop
         // Runs on the AppKit main thread (the UI thread). Never let an exception cross back into native code.
         try
         {
-            var tag = SendMessageReturnNint(sender, sel_registerName("tag"));
+            var tag = SendMessageReturnNint(sender, GetSelector("tag"));
             _onCommand?.Invoke(tag);
         }
         catch
@@ -334,7 +306,7 @@ internal static class MacOSMenuInterop
         // to enabled on any failure; never let an exception cross back into native code.
         try
         {
-            var tag = SendMessageReturnNint(menuItem, sel_registerName("tag"));
+            var tag = SendMessageReturnNint(menuItem, GetSelector("tag"));
             var enabled = _onValidate?.Invoke(tag) ?? true;
             return enabled ? (byte)1 : (byte)0;
         }
@@ -365,8 +337,8 @@ internal static class MacOSMenuInterop
     {
         if (item.Kind == MacMenuItemKind.Separator)
         {
-            var separator = SendMessage(objc_getClass("NSMenuItem"), sel_registerName("separatorItem"));
-            SendMessagePtr(menu, sel_registerName("addItem:"), separator);
+            var separator = SendMessage(GetClass("NSMenuItem"), GetSelector("separatorItem"));
+            SendMessage(menu, GetSelector("addItem:"), separator);
             return;
         }
 
@@ -378,14 +350,14 @@ internal static class MacOSMenuInterop
 
         var action = item.Kind == MacMenuItemKind.Command
             ? _commandActionSelector
-            : sel_registerName(item.SelectorName);
+            : GetSelector(item.SelectorName);
 
         var menuItem = CreateMenuItem(item.Title, action, item.KeyEquivalent);
 
         if (item.Kind == MacMenuItemKind.Command)
         {
-            SendMessagePtr(menuItem, sel_registerName("setTarget:"), _commandTarget);
-            SendMessageVoidNint(menuItem, sel_registerName("setTag:"), (nint)item.Tag);
+            SendMessage(menuItem, GetSelector("setTarget:"), _commandTarget);
+            SendMessageVoid(menuItem, GetSelector("setTag:"), (nint)item.Tag);
         }
 
         // A shortcut carries Command by default; override the mask only for other chords (e.g. Hide Others
@@ -393,10 +365,10 @@ internal static class MacOSMenuInterop
         if (item.KeyEquivalent.Length > 0
             && item.KeyModifiers != MacKeyModifier.Command)
         {
-            SendMessageVoidNuint(menuItem, sel_registerName("setKeyEquivalentModifierMask:"), ToModifierFlags(item.KeyModifiers));
+            SendMessageVoid(menuItem, GetSelector("setKeyEquivalentModifierMask:"), ToModifierFlags(item.KeyModifiers));
         }
 
-        SendMessagePtr(menu, sel_registerName("addItem:"), menuItem);
+        SendMessage(menu, GetSelector("addItem:"), menuItem);
     }
 
     private static void AddSubmenu(IntPtr menu, MacMenuItem item)
@@ -405,8 +377,8 @@ internal static class MacOSMenuInterop
 
         // The parent is a titled item with no action; clicking it just opens the submenu.
         var parentItem = CreateMenuItem(item.Title, IntPtr.Zero, string.Empty);
-        SendMessagePtr(parentItem, sel_registerName("setSubmenu:"), submenu);
-        SendMessagePtr(menu, sel_registerName("addItem:"), parentItem);
+        SendMessage(parentItem, GetSelector("setSubmenu:"), submenu);
+        SendMessage(menu, GetSelector("addItem:"), parentItem);
 
         var provider = item.SubmenuItemsProvider;
         if (provider is null)
@@ -417,13 +389,13 @@ internal static class MacOSMenuInterop
         // Rebuild on every open via the delegate, and once now so the parent's initial enabled state (which
         // AppKit derives from whether the submenu holds any enabled item) is correct before first display.
         _dynamicSubmenuProviders[submenu] = provider;
-        SendMessagePtr(submenu, sel_registerName("setDelegate:"), _commandTarget);
+        SendMessage(submenu, GetSelector("setDelegate:"), _commandTarget);
         PopulateDynamicSubmenu(submenu, provider);
     }
 
     private static void PopulateDynamicSubmenu(IntPtr submenu, Func<IReadOnlyList<MacMenuItem>> provider)
     {
-        SendMessage(submenu, sel_registerName("removeAllItems"));
+        SendMessage(submenu, GetSelector("removeAllItems"));
 
         IReadOnlyList<MacMenuItem> items;
         try
@@ -468,41 +440,19 @@ internal static class MacOSMenuInterop
 
     private static IntPtr CreateMenu(string title)
     {
-        var allocated = SendMessage(objc_getClass("NSMenu"), sel_registerName("alloc"));
-        return SendMessagePtr(allocated, sel_registerName("initWithTitle:"), CreateNSString(title));
+        var allocated = SendMessage(GetClass("NSMenu"), GetSelector("alloc"));
+        return SendMessage(allocated, GetSelector("initWithTitle:"), CreateNSString(title));
     }
 
     private static IntPtr CreateMenuItem(string title, IntPtr action, string keyEquivalent)
     {
-        var allocated = SendMessage(objc_getClass("NSMenuItem"), sel_registerName("alloc"));
-        return SendMessage3Ptr(
+        var allocated = SendMessage(GetClass("NSMenuItem"), GetSelector("alloc"));
+        return SendMessage(
             allocated,
-            sel_registerName("initWithTitle:action:keyEquivalent:"),
+            GetSelector("initWithTitle:action:keyEquivalent:"),
             CreateNSString(title),
             action,
             CreateNSString(keyEquivalent));
     }
 
-    private static IntPtr CreateNSString(string value)
-    {
-        // stringWithUTF8String: copies the bytes into a new (autoreleased) NSString, so the pinned buffer
-        // can be freed immediately after the call returns.
-        var utf8 = Encoding.UTF8.GetBytes(value);
-        var buffer = new byte[utf8.Length + 1];
-        Array.Copy(utf8, buffer, utf8.Length);
-
-        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-        try
-        {
-            return SendMessagePtr(
-                objc_getClass("NSString"),
-                sel_registerName("stringWithUTF8String:"),
-                handle.AddrOfPinnedObject());
-        }
-        finally
-        {
-            handle.Free();
-        }
-    }
 }
-#endif

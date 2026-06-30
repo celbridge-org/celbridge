@@ -1,8 +1,7 @@
-#if !WINDOWS
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// Keeps the AppKit first responder aligned with managed-panel focus on the Skia heads. A hosted WebView
@@ -48,4 +47,3 @@ internal static class MacOSManagedPanelResponder
         }
     }
 }
-#endif

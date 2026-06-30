@@ -1,11 +1,11 @@
-#if !WINDOWS
 using System.Runtime.InteropServices;
+using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// The geometry of one display, as reported by NSScreen. The frame is in macOS points with a
-/// bottom-left origin; BackingScaleFactor converts points to physical pixels for that display.
+/// bottom-left origin. BackingScaleFactor converts points to physical pixels for that display.
 /// </summary>
 internal readonly record struct MacScreen(
     double FrameX,
@@ -15,18 +15,11 @@ internal readonly record struct MacScreen(
     double BackingScaleFactor);
 
 /// <summary>
-/// Objective-C interop for the native AppKit window and screens behind Uno's macOS Skia head. Uno does
-/// not surface the NSWindow, and DisplayArea is unimplemented on the Skia head, so the app reaches AppKit
-/// directly to read display geometry (for validating a saved window placement) and to ask whether the
-/// window is in native fullscreen. macOS owns fullscreen itself (the title-bar green button), so this
-/// only reads state; it does not drive the window. Reports failure on other platforms.
+/// Objective-C interop for the native AppKit window and screens behind Uno's macOS Skia head, which
+/// surfaces neither the NSWindow nor (on the Skia head) the DisplayArea APIs. Reads display geometry and
+/// native-fullscreen state, and updates the window's first responder. macOS-only. Call on the main (UI)
+/// thread, where AppKit is safe.
 /// </summary>
-/// <remarks>
-/// AppKit is only safe on the macOS main (UI) thread, so callers must invoke these there. The type is
-/// macOS-only and callers gate on OperatingSystem.IsMacOS(). Unlike MacOSWebViewInterop it uses no Uno
-/// reflection (it messages NSApplication and NSScreen, which are stable system classes), so it needs no
-/// re-verification on an Uno bump.
-/// </remarks>
 internal static class MacOSWindowInterop
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
@@ -55,32 +48,9 @@ internal static class MacOSWindowInterop
         public CGSize Size;
     }
 
-    [DllImport(LibObjC)]
-    private static extern IntPtr objc_getClass(string name);
-
-    [DllImport(LibObjC)]
-    private static extern IntPtr sel_registerName(string name);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessage(IntPtr receiver, IntPtr selector);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern void SendMessageVoidPointer(IntPtr receiver, IntPtr selector, IntPtr argument);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessageIndex(IntPtr receiver, IntPtr selector, nint index);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern nint SendMessageReturnNint(IntPtr receiver, IntPtr selector);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern nuint SendMessageReturnNuint(IntPtr receiver, IntPtr selector);
-
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern double SendMessageReturnDouble(IntPtr receiver, IntPtr selector);
-
     // NSRect is a homogeneous aggregate of four doubles, so the ARM64 ABI returns it in the floating
-    // point registers; the CGRect struct marshals directly.
+    // point registers; the CGRect struct marshals directly. The struct-by-value return keeps this
+    // declaration local rather than in the shared runtime.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern CGRect SendMessageReturnCGRect(IntPtr receiver, IntPtr selector);
 
@@ -97,32 +67,32 @@ internal static class MacOSWindowInterop
             return false;
         }
 
-        var screenClass = objc_getClass("NSScreen");
+        var screenClass = GetClass("NSScreen");
         if (screenClass == IntPtr.Zero)
         {
             return false;
         }
 
-        var screenArray = SendMessage(screenClass, sel_registerName("screens"));
+        var screenArray = SendMessage(screenClass, GetSelector("screens"));
         if (screenArray == IntPtr.Zero)
         {
             return false;
         }
 
-        var count = SendMessageReturnNint(screenArray, sel_registerName("count"));
+        var count = SendMessageReturnNint(screenArray, GetSelector("count"));
         if (count <= 0)
         {
             return false;
         }
 
-        var objectAtIndexSelector = sel_registerName("objectAtIndex:");
-        var frameSelector = sel_registerName("frame");
-        var backingScaleSelector = sel_registerName("backingScaleFactor");
+        var objectAtIndexSelector = GetSelector("objectAtIndex:");
+        var frameSelector = GetSelector("frame");
+        var backingScaleSelector = GetSelector("backingScaleFactor");
 
         var result = new List<MacScreen>((int)count);
         for (nint index = 0; index < count; index++)
         {
-            var screen = SendMessageIndex(screenArray, objectAtIndexSelector, index);
+            var screen = SendMessage(screenArray, objectAtIndexSelector, index);
             if (screen == IntPtr.Zero)
             {
                 continue;
@@ -167,7 +137,7 @@ internal static class MacOSWindowInterop
             return false;
         }
 
-        var styleMask = SendMessageReturnNuint(window, sel_registerName("styleMask"));
+        var styleMask = SendMessageReturnNuint(window, GetSelector("styleMask"));
         return (styleMask & NSWindowStyleMaskFullScreen) != 0;
     }
 
@@ -190,24 +160,24 @@ internal static class MacOSWindowInterop
             return;
         }
 
-        var contentView = SendMessage(window, sel_registerName("contentView"));
+        var contentView = SendMessage(window, GetSelector("contentView"));
         if (contentView == IntPtr.Zero)
         {
             return;
         }
 
-        SendMessageVoidPointer(window, sel_registerName("makeFirstResponder:"), contentView);
+        SendMessageVoid(window, GetSelector("makeFirstResponder:"), contentView);
     }
 
     private static IntPtr GetMainWindow()
     {
-        var application = SendMessage(objc_getClass("NSApplication"), sel_registerName("sharedApplication"));
+        var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
         if (application == IntPtr.Zero)
         {
             return IntPtr.Zero;
         }
 
-        var mainWindow = SendMessage(application, sel_registerName("mainWindow"));
+        var mainWindow = SendMessage(application, GetSelector("mainWindow"));
         if (mainWindow != IntPtr.Zero)
         {
             return mainWindow;
@@ -215,19 +185,18 @@ internal static class MacOSWindowInterop
 
         // mainWindow is nil when the app is not the active application, so fall back to the first window
         // in the application's window list (Celbridge is single-window).
-        var windows = SendMessage(application, sel_registerName("windows"));
+        var windows = SendMessage(application, GetSelector("windows"));
         if (windows == IntPtr.Zero)
         {
             return IntPtr.Zero;
         }
 
-        var count = SendMessageReturnNint(windows, sel_registerName("count"));
+        var count = SendMessageReturnNint(windows, GetSelector("count"));
         if (count <= 0)
         {
             return IntPtr.Zero;
         }
 
-        return SendMessageIndex(windows, sel_registerName("objectAtIndex:"), 0);
+        return SendMessage(windows, GetSelector("objectAtIndex:"), (nint)0);
     }
 }
-#endif

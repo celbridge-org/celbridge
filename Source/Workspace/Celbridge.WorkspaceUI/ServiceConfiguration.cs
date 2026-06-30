@@ -2,6 +2,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Navigation;
 using Celbridge.UserInterface;
 using Celbridge.WorkspaceUI.Commands;
+using Celbridge.WorkspaceUI.Platform;
 using Celbridge.WorkspaceUI.Services;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views;
@@ -18,18 +19,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IFocusService, FocusService>();
 
-        // The file clipboard is platform-specific: macOS writes file URLs to NSPasteboard (the WinRT
-        // storage-item clipboard does not round-trip on the Skia head), other heads use the WinRT
-        // clipboard. It is a singleton because the macOS implementation remembers the copy/move mode of
-        // its own write across calls.
-        if (OperatingSystem.IsMacOS())
-        {
-            services.AddSingleton<IFileClipboard, MacFileClipboard>();
-        }
-        else
-        {
-            services.AddSingleton<IFileClipboard, WinRtFileClipboard>();
-        }
+        PlatformServiceConfiguration.ConfigureServices(services);
 
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IBindableWorkspaceSettings, BindableWorkspaceSettings>();

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Celbridge.Settings.Services;
+namespace Celbridge.Settings.Platform;
 
 /// <summary>
 /// Windows DPAPI encryption helper (CurrentUser scope). This is the internal crypto primitive composed by

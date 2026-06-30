@@ -1,6 +1,7 @@
 using System.Text;
+using Celbridge.Settings.Services;
 
-namespace Celbridge.Settings.Services;
+namespace Celbridge.Settings.Platform;
 
 /// <summary>
 /// Windows credential store: encrypts the secret with DPAPI and persists the ciphertext in the application

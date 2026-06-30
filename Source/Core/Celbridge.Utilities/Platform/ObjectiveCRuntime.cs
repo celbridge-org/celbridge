@@ -4,16 +4,13 @@ using System.Text;
 namespace Celbridge.Utilities.Platform;
 
 /// <summary>
-/// The shared Objective-C runtime marshaling used by the macOS native interop across the projects: class and
-/// selector lookup, the objc_msgSend overloads keyed by argument and return shape, and NSString conversion.
-/// The DllImports are metadata until called, so the type compiles on every head; callers gate on
-/// OperatingSystem.IsMacOS() and invoke on the main (UI) thread, where AppKit and WebKit are safe.
+/// The shared Objective-C runtime marshaling for the macOS native interop: class and selector lookup, the
+/// objc_msgSend overloads keyed by argument and return shape, and NSString conversion. Only signatures
+/// shared by more than one consumer live here. File-specific interop (struct-by-value returns, block and
+/// class-pair construction, the WebView reflection) stays with its consumer. The DllImports are metadata
+/// until called, so the type compiles on every head. Call on the main (UI) thread, where AppKit and WebKit
+/// are safe.
 /// </summary>
-/// <remarks>
-/// Only the signatures shared by more than one consumer live here. Interop that is specific to one file stays
-/// with that file: struct-by-value returns (CGRect/NSRect), Objective-C block and class-pair construction, and
-/// the Uno-internals reflection in MacOSWebViewInterop.
-/// </remarks>
 public static class ObjectiveCRuntime
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";

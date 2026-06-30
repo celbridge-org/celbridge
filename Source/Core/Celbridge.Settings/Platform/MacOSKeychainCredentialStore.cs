@@ -1,7 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using Celbridge.Settings.Services;
 
-namespace Celbridge.Settings.Services;
+namespace Celbridge.Settings.Platform;
 
 /// <summary>
 /// macOS credential store backed by the login Keychain via Security.framework. The secret is kept as a
