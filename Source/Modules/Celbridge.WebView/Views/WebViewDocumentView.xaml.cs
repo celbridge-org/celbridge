@@ -155,10 +155,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             await _webView.EnsureCoreWebView2Async();
 
-            await _webView.CoreWebView2.Profile.ClearBrowsingDataAsync(
-                CoreWebView2BrowsingDataKinds.CacheStorage | CoreWebView2BrowsingDataKinds.DiskCache);
-
-            _webView.CoreWebView2.Reload();
+            await _webViewAdapter.ReloadAsync(_webView.CoreWebView2, clearCache: true);
         }
         catch (Exception ex)
         {
