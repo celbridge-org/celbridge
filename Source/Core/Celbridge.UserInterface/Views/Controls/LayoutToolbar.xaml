@@ -43,7 +43,7 @@
                                      Checked="LayoutModeRadio_Checked">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <controls:Icon
-                                          Symbol="ZenMode"
+                                          Symbol="FocusMode"
                                           FontSize="20"/>
                                 <TextBlock x:Name="FocusModeLabel"/>
                             </StackPanel>
@@ -54,7 +54,7 @@
                                      Checked="LayoutModeRadio_Checked">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <controls:Icon
-                                          Symbol="Presenter"
+                                          Symbol="Presentation"
                                           FontSize="20"/>
                                 <TextBlock x:Name="PresentationModeLabel"/>
                             </StackPanel>

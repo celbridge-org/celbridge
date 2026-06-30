@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.Platform.FullScreen;
 /// Fullscreen controller for the macOS Skia desktop head. macOS owns fullscreen natively through the
 /// title-bar green button (the app adopts the native window chrome), so the app does not emulate it:
 /// EnterFullScreen and ExitFullScreen are no-ops and IsFullScreen reports the OS's native-fullscreen
-/// state. The app's non-windowed layout modes (Zen, Presenter) only change panel visibility on macOS.
+/// state. The app's non-windowed layout modes (Focus, Presentation) only change panel visibility on macOS.
 /// The user fills the screen with the native control.
 /// </summary>
 public sealed class MacDesktopFullScreenController : IFullScreenController

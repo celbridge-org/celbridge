@@ -15,8 +15,7 @@ public class FileServer : IFileServer, IDisposable
 {
     private readonly ILogger<FileServer> _logger;
 
-    // The app-bundled web assets shared by every WebView (the celbridge-client JS, bootstrap-icons,
-    // cascadia-mono fonts), served at /assets/{path}.
+    // The app-bundled web assets shared by every WebView, served at /assets/{path}.
     private PhysicalFileProvider? _assetsFileProvider;
 
     // Per-package asset folders served at /package/{name}/{path}, keyed by package name.
