@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
@@ -19,7 +20,8 @@ public static class EditKeyboard
     {
         var control = IsKeyDown(VirtualKey.Control);
 
-        if (OperatingSystem.IsMacOS())
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (platformInfo.CommandModifier == CommandModifierKey.Command)
         {
             // The macOS head surfaces only the left Command key as a key code; Control stays folded in
             // as the fallback (matching MainPage's undo/redo handling), so this is additive.
@@ -50,7 +52,8 @@ public static class EditKeyboard
             return true;
         }
 
-        return OperatingSystem.IsMacOS() && key == VirtualKey.Back;
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        return platformInfo.TreatsBackspaceAsDeleteKey && key == VirtualKey.Back;
     }
 
     private static bool IsKeyDown(VirtualKey key)

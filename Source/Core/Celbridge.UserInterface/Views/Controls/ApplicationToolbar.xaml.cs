@@ -1,4 +1,5 @@
 using Celbridge.Navigation;
+using Celbridge.Platform;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Microsoft.UI.Dispatching;
 
@@ -44,16 +45,20 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
     {
         this.InitializeComponent();
 
-#if WINDOWS
-        // Reserve space at the right of the toolbar grid for the system caption buttons so the title-bar
-        // background extends behind them. The caption buttons are drawn over this column by the platform.
-        CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(144);
-#else
-        // The native title bar already shows the app icon, so hide the duplicate icon on this toolbar
-        // and reclaim its column.
-        AppIconImage.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-        AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(0);
-#endif
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (platformInfo.ReservesWindowCaptionButtons)
+        {
+            // Reserve space at the right of the toolbar grid for the system caption buttons so the title-bar
+            // background extends behind them. The caption buttons are drawn over this column by the platform.
+            CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(144);
+        }
+        else
+        {
+            // The native title bar already shows the app icon, so hide the duplicate icon on this toolbar
+            // and reclaim its column.
+            AppIconImage.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(0);
+        }
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();

@@ -4,6 +4,7 @@ using Celbridge.Documents;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels;
+using Celbridge.Platform;
 using Celbridge.UserInterface.ContextMenu;
 using Celbridge.Workspace;
 using Windows.Foundation;
@@ -23,6 +24,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private readonly IDocumentsService _documentsService;
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
+    private readonly IPlatformInfo _platformInfo;
     private bool _isPopulating;
     private double _savedScrollOffset;
 
@@ -35,6 +37,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -349,7 +352,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     // immediately. No-op on Windows, where the selection repaints natively.
     private void RepaintSelectionVisuals(SelectionChangedEventArgs e)
     {
-        if (!OperatingSystem.IsMacOS())
+        if (!_platformInfo.RequiresSkiaSelectionRepaint)
         {
             return;
         }

@@ -47,6 +47,18 @@ public interface IPlatformInfo
     CommandModifierKey CommandModifier { get; }
 
     /// <summary>
+    /// Whether the platform treats Backspace as a delete key in addition to Delete, following the macOS
+    /// keyboard convention where the main Delete key is Backspace.
+    /// </summary>
+    bool TreatsBackspaceAsDeleteKey { get; }
+
+    /// <summary>
+    /// Whether list controls should clear their item-container transitions because the platform's add and
+    /// remove animations are distracting (the packaged WinAppSDK head).
+    /// </summary>
+    bool SuppressListItemTransitions { get; }
+
+    /// <summary>
     /// Whether the Uno Skia head needs a list row's selection visual re-asserted after selection changes
     /// because it does not repaint the highlight until a later pointer event.
     /// </summary>

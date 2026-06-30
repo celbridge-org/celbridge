@@ -40,6 +40,20 @@ public sealed class PlatformInfo : IPlatformInfo
         ? CommandModifierKey.Command
         : CommandModifierKey.Control;
 
+    public bool TreatsBackspaceAsDeleteKey => OperatingSystem.IsMacOS();
+
+    public bool SuppressListItemTransitions
+    {
+        get
+        {
+#if WINDOWS
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
     public bool RequiresSkiaSelectionRepaint => OperatingSystem.IsMacOS();
 
     public bool RequiresSkiaLayoutRetry => OperatingSystem.IsMacOS();

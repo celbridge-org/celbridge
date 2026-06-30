@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.WebHost;
 
@@ -10,6 +11,7 @@ public class UserInterfaceService : IUserInterfaceService
     private IMessengerService _messengerService;
     private ISettingsService _settingsService;
     private IWebViewStateService _webViewStateService;
+    private readonly IPlatformInfo _platformInfo;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -28,13 +30,15 @@ public class UserInterfaceService : IUserInterfaceService
         IMessengerService messengerService,
         ISettingsService settingsService,
         IWebViewStateService webViewStateService,
-        Helpers.WindowStateHelper windowStateHelper)
+        Helpers.WindowStateHelper windowStateHelper,
+        IPlatformInfo platformInfo)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
         _webViewStateService = webViewStateService;
         _windowStateHelper = windowStateHelper;
+        _platformInfo = platformInfo;
     }
 
     public Result Initialize(object mainWindow, object xamlRoot)
@@ -86,10 +90,9 @@ public class UserInterfaceService : IUserInterfaceService
 
         ApplyCurrentTheme();
 
-#if !WINDOWS
         // The macOS Skia head ships only a minimal default app menu, so populate the native menubar with
-        // the standard App/File/Edit/Window/Help menus. No-op on non-macOS desktop platforms.
-        if (OperatingSystem.IsMacOS())
+        // the standard App/File/Edit/Window/Help menus. No-op on platforms without a native menu bar.
+        if (_platformInfo.UsesNativeMenuBar)
         {
             var menuInstalled = Platform.MacOSMainMenu.Install();
             if (!menuInstalled)
@@ -97,7 +100,6 @@ public class UserInterfaceService : IUserInterfaceService
                 _logger.LogWarning("Failed to install the native macOS menubar");
             }
         }
-#endif
 
         _logger.LogDebug("UserInterfaceService initialized successfully");
         return Result.Ok();

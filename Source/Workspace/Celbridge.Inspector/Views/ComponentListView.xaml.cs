@@ -1,6 +1,7 @@
 using Celbridge.Inspector.Models;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
@@ -42,10 +43,12 @@ public partial class ComponentListView : UserControl, IInspector
         // Listen for root component form updates
         ViewModel.OnUpdateRootComponentForm += ViewModel_OnUpdateRootComponentForm;
 
-#if WINDOWS
-        // Remove the distracting animations when items are added or removed from the list
-        ComponentList.ItemContainerTransitions.Clear();
-#endif
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (platformInfo.SuppressListItemTransitions)
+        {
+            // Remove the distracting animations when items are added or removed from the list
+            ComponentList.ItemContainerTransitions.Clear();
+        }
     }
 
     private void ViewModel_OnUpdateRootComponentForm(object? rootComponentForm)

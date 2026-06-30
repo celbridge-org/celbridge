@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Workspace;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
@@ -19,6 +20,7 @@ public sealed partial class DocumentSection : UserControl
     private readonly IDocumentSectionLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IFocusService _focusService;
+    private readonly IPlatformInfo _platformInfo;
     private bool _isShuttingDown = false;
 
     /// <summary>
@@ -77,6 +79,7 @@ public sealed partial class DocumentSection : UserControl
         _logger = ServiceLocator.AcquireService<IDocumentSectionLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
         // Disable tab add/remove animations so tabs snap into place immediately
         TabView.Loaded += (s, e) => DisableTabViewAnimations();
@@ -260,7 +263,7 @@ public sealed partial class DocumentSection : UserControl
         {
             TabView.SelectedItem = tab;
         }
-        catch (InvalidOperationException) when (OperatingSystem.IsMacOS())
+        catch (InvalidOperationException) when (_platformInfo.RequiresSkiaLayoutRetry)
         {
             // On the macOS Skia head, selecting a tab in an overflowing strip that has not been measured
             // yet (as happens when the active document is restored after all tabs are added) makes Uno

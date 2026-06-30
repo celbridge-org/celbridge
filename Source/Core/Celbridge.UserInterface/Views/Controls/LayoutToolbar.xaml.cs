@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -21,11 +22,13 @@ public sealed partial class LayoutToolbar : UserControl
     {
         InitializeComponent();
 
-#if !WINDOWS
-        // macOS provides fullscreen natively through the title-bar green button, so the app does not
-        // offer its own Full Screen toggle. The Default/Focus/Presentation layout modes remain available.
-        FullScreenToggle.Visibility = Visibility.Collapsed;
-#endif
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (platformInfo.HasNativeFullScreenAffordance)
+        {
+            // macOS provides fullscreen natively through the title-bar green button, so the app does not
+            // offer its own Full Screen toggle. The Default/Focus/Presentation layout modes remain available.
+            FullScreenToggle.Visibility = Visibility.Collapsed;
+        }
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
