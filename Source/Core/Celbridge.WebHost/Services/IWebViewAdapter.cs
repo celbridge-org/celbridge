@@ -87,4 +87,12 @@ public interface IWebViewAdapter
     /// virtual-host mapping, used on the Skia heads where SupportsVirtualHostMapping is false.
     /// </summary>
     void LoadHtmlString(CoreWebView2 coreWebView2, string html, string baseUrl);
+
+    /// <summary>
+    /// Sets the WebView's User-Agent to a browser-recognised string that also identifies the application by the
+    /// given token (e.g. "Celbridge/0.3.0"). The Skia macOS head's default WKWebView UA omits the Safari token
+    /// some sites sniff for and flag as unsupported, so it is replaced with a Safari-compatible UA carrying the
+    /// token; the Windows head appends the token to its already-recognised UA. Must be set before navigation.
+    /// </summary>
+    void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken);
 }

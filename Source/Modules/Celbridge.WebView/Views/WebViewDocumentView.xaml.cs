@@ -1,3 +1,4 @@
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents;
@@ -230,6 +231,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _webView.GotFocus += WebView_GotFocus;
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
+
+            // Present a browser-recognised User-Agent that still identifies Celbridge, set before navigation.
+            // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
+            var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
+            _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");
 
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {

@@ -153,6 +153,48 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
+    /// Sets the native WKWebView's customUserAgent. WKWebView's default User-Agent omits the Safari token that
+    /// some sites (e.g. Gmail) require, so they flag it as an unsupported browser even though the engine is the
+    /// current system WebKit. Must be set before navigation to take effect.
+    /// </summary>
+    public static void SetCustomUserAgent(IntPtr webView, string userAgent)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var userAgentString = CreateNSString(userAgent);
+        var customUserAgentSelector = GetSelector("setCustomUserAgent:");
+        SendMessage(webView, customUserAgentSelector, userAgentString);
+    }
+
+    /// <summary>
+    /// Reads the installed Safari's marketing version (CFBundleShortVersionString) so the WebView can report the
+    /// real Safari "Version/" token in its User-Agent rather than a hardcoded value that would go stale. Returns
+    /// an empty string if Safari cannot be read.
+    /// </summary>
+    public static string GetSafariVersion()
+    {
+        var safariPath = CreateNSString("/Applications/Safari.app");
+        var bundle = SendMessage(GetClass("NSBundle"), GetSelector("bundleWithPath:"), safariPath);
+        if (bundle == IntPtr.Zero)
+        {
+            return string.Empty;
+        }
+
+        var versionKey = CreateNSString("CFBundleShortVersionString");
+        var versionString = SendMessage(bundle, GetSelector("objectForInfoDictionaryKey:"), versionKey);
+        if (versionString == IntPtr.Zero)
+        {
+            return string.Empty;
+        }
+
+        var utf8 = SendMessage(versionString, GetSelector("UTF8String"));
+        return Marshal.PtrToStringUTF8(utf8) ?? string.Empty;
+    }
+
+    /// <summary>
     /// Calls -[WKWebView loadHTMLString:baseURL:] directly so the loaded document reports the given
     /// base URL as its origin. This is the macOS replacement for SetVirtualHostNameToFolderMapping,
     /// which is a silent no-op on the Skia head: assets are served from a loopback server and the
