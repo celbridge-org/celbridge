@@ -9,7 +9,6 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
-using Celbridge.WebHost.Platform;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
@@ -35,6 +34,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
     private readonly IFocusService _focusService;
+    private readonly IWebViewAdapter _webViewAdapter;
 
     private WebView2? _webView;
     private WebViewHostChannel? _hostChannel;
@@ -82,6 +82,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
         _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
@@ -396,29 +397,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             _webView.GotFocus -= WebView_GotFocus;
 
-#if WINDOWS
-            AppWebViewContainer.Children.Remove(_webView);
-            _webView.Close();
-#else
-            // The Skia (macOS) head leaks the WKWebView with no native destroy, and WebKit relaunches a
-            // renderer for the still-alive view if its process is merely killed. Capture the native handle,
-            // then call WKWebView's _close teardown SPI after the control leaves the tree: it terminates the
-            // renderer and marks the view closed so it will not relaunch, reclaiming the per-renderer process.
-            IntPtr nativeWebViewHandle = IntPtr.Zero;
-            if (OperatingSystem.IsMacOS()
-                && _webView.CoreWebView2 is not null)
-            {
-                MacOSWebViewInterop.TryGetNativeWebViewHandle(_webView.CoreWebView2, out nativeWebViewHandle, out _);
-            }
-
-            AppWebViewContainer.Children.Remove(_webView);
-            _webView.Close();
-
-            if (nativeWebViewHandle != IntPtr.Zero)
-            {
-                MacOSWebViewInterop.CloseNativeWebView(nativeWebViewHandle);
-            }
-#endif
+            _webViewAdapter.CloseWebView(_webView, AppWebViewContainer);
 
             _webView = null;
         }
@@ -453,7 +432,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         try
         {
             var script = toolBridge.GetShimScript();
-            await coreWebView2.InstallDocumentStartScriptAsync(script);
+            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView2, script);
         }
         catch (Exception ex)
         {
@@ -472,7 +451,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         try
         {
             var script = _toolBridge.GetShimScript();
-            await coreWebView2.ReinjectDocumentStartScriptAsync(script);
+            await _webViewAdapter.ReinjectDocumentStartScriptAsync(coreWebView2, script);
         }
         catch (Exception ex)
         {
@@ -500,7 +479,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             return;
         }
 
-        toolBridge.RegisterWebView2(resource, webView);
+        toolBridge.RegisterWebView2(resource, webView, _webViewAdapter);
 
         _toolBridge = toolBridge;
     }
@@ -819,7 +798,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     // is removed. Windows disposes the WebView2 on Close(), so this is only needed on the Skia heads.
     private async Task UnloadWebViewPageAsync()
     {
-        if (OperatingSystem.IsWindows())
+        if (!_webViewAdapter.RequiresPageUnloadBeforeClose)
         {
             return;
         }

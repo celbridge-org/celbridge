@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.UserInterface;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Services;
@@ -11,19 +10,13 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
 
     private readonly ILogger<WebViewFactory> _logger;
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly Queue<WebView2> _pool;
     private readonly int _maxPoolSize;
     private readonly object _lock = new();
     private bool _isShuttingDown = false;
 
     private Task? _initializationTask = null;
-
-#if !WINDOWS
-    // Hidden, window-rooted host used to initialize WebView2 controls on the Skia
-    // desktop head, where EnsureCoreWebView2Async never completes for a control
-    // that has not been parented to a window.
-    private Panel? _initHost;
-#endif
 
     public WebViewFactory()
         : this(DefaultPoolSize)
@@ -33,14 +26,16 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     public WebViewFactory(int poolSize)
     {
         _logger = ServiceLocator.AcquireService<ILogger<WebViewFactory>>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _maxPoolSize = poolSize;
         _pool = new Queue<WebView2>();
 
-#if WINDOWS
-        // Start initialization but don't await it.
-        // This allows the WebView pool to be populated in the background.
-        _initializationTask = InitializePoolAsync();
-#endif
+        if (_webViewAdapter.UsesPrewarmedPool)
+        {
+            // Start initialization but don't await it.
+            // This allows the WebView pool to be populated in the background.
+            _initializationTask = InitializePoolAsync();
+        }
     }
 
     private async Task InitializePoolAsync()
@@ -250,7 +245,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
         webView.DefaultBackgroundColor = Colors.Transparent;
 
-        await InitializeCoreWebView2Async(webView);
+        await _webViewAdapter.EnsureCoreWebView2Async(webView);
 
         // Map shared assets (Bootstrap Icons, etc.) for all factory-created WebViews
         webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -260,75 +255,4 @@ public class WebViewFactory : IWebViewFactory, IDisposable
 
         return webView;
     }
-
-#if WINDOWS
-    // The packaged WinAppSDK WebView2 initializes without being attached to the
-    // visual tree, so detached controls (including the pre-warmed pool) work.
-    private static async Task InitializeCoreWebView2Async(WebView2 webView)
-    {
-        await webView.EnsureCoreWebView2Async();
-    }
-#else
-    // On the Uno Skia desktop head EnsureCoreWebView2Async never completes for a
-    // control that is not parented to a window. Parent the control in a hidden,
-    // window-rooted host for the duration of initialization, then detach it so the
-    // consumer can place it in its own container with the CoreWebView2 already live.
-    private async Task InitializeCoreWebView2Async(WebView2 webView)
-    {
-        var host = EnsureInitHost();
-        host.Children.Add(webView);
-        try
-        {
-            if (!webView.IsLoaded)
-            {
-                var loadedCompletionSource = new TaskCompletionSource();
-                RoutedEventHandler? onLoaded = null;
-                onLoaded = (sender, args) =>
-                {
-                    webView.Loaded -= onLoaded;
-                    loadedCompletionSource.TrySetResult();
-                };
-                webView.Loaded += onLoaded;
-                await loadedCompletionSource.Task;
-            }
-
-            await webView.EnsureCoreWebView2Async();
-        }
-        finally
-        {
-            host.Children.Remove(webView);
-        }
-    }
-
-    private Panel EnsureInitHost()
-    {
-        if (_initHost is not null)
-        {
-            return _initHost;
-        }
-
-        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        if (userInterfaceService.MainWindow is not Window mainWindow ||
-            mainWindow.Content is not Grid rootGrid)
-        {
-            throw new InvalidOperationException(
-                "Cannot initialize WebView2: the application root grid is not available yet");
-        }
-
-        var host = new Grid
-        {
-            Width = 1,
-            Height = 1,
-            Opacity = 0,
-            IsHitTestVisible = false,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
-        };
-
-        rootGrid.Children.Add(host);
-        _initHost = host;
-
-        return host;
-    }
-#endif
 }

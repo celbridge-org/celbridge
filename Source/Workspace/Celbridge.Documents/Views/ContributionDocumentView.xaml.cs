@@ -11,7 +11,6 @@ using Celbridge.Packages;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
-using Celbridge.WebHost.Platform;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -47,6 +46,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
     private readonly IFocusService _focusService;
+    private readonly IWebViewAdapter _webViewAdapter;
 
     // Latest edit availability reported by the editor over the bridge; drives CanPerformEdit.
     private EditAvailability _editAvailability = EditAvailability.None;
@@ -137,6 +137,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
         _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
@@ -255,7 +256,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         // In-place vs. pooled is a platform decision, not a loader one: re-parenting a pooled control resets
         // the WebKit context on the Skia heads, so those create the WebView in place; Windows reuses the
         // pre-warmed pool, where re-parenting is harmless.
-        if (OperatingSystem.IsWindows())
+        if (!_webViewAdapter.CreatesWebViewInPlace)
         {
             await InitPooledWebViewAsync(editorLoader);
         }
@@ -488,7 +489,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     // Windows disposes the WebView2 on Close(), so this is only needed on the Skia heads.
     private async Task UnloadWebViewPageAsync()
     {
-        if (OperatingSystem.IsWindows())
+        if (!_webViewAdapter.RequiresPageUnloadBeforeClose)
         {
             return;
         }
@@ -549,29 +550,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         {
             WebView.GotFocus -= WebView_GotFocus;
 
-#if WINDOWS
-            ContributionWebViewContainer.Children.Remove(WebView);
-            WebView.Close();
-#else
-            // The Skia (macOS) head leaks the WKWebView with no native destroy, and WebKit relaunches a
-            // renderer for the still-alive view if the process is merely killed. Capture the native handle,
-            // then call WKWebView's _close teardown SPI after the control leaves the tree: it terminates the
-            // renderer and marks the view closed so it will not relaunch, reclaiming the per-renderer process.
-            IntPtr nativeWebViewHandle = IntPtr.Zero;
-            if (OperatingSystem.IsMacOS()
-                && WebView.CoreWebView2 is not null)
-            {
-                MacOSWebViewInterop.TryGetNativeWebViewHandle(WebView.CoreWebView2, out nativeWebViewHandle, out _);
-            }
-
-            ContributionWebViewContainer.Children.Remove(WebView);
-            WebView.Close();
-
-            if (nativeWebViewHandle != IntPtr.Zero)
-            {
-                MacOSWebViewInterop.CloseNativeWebView(nativeWebViewHandle);
-            }
-#endif
+            _webViewAdapter.CloseWebView(WebView, ContributionWebViewContainer);
 
             WebView = null;
         }
@@ -608,7 +587,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         try
         {
             var script = toolBridge.GetShimScript();
-            await coreWebView2.InstallDocumentStartScriptAsync(script);
+            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView2, script);
         }
         catch (Exception ex)
         {
@@ -631,7 +610,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         try
         {
             var script = _toolBridge.GetShimScript();
-            await sender.ReinjectDocumentStartScriptAsync(script);
+            await _webViewAdapter.ReinjectDocumentStartScriptAsync(sender, script);
         }
         catch (Exception ex)
         {
@@ -659,7 +638,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             return;
         }
 
-        toolBridge.RegisterWebView2(resource, webView);
+        toolBridge.RegisterWebView2(resource, webView, _webViewAdapter);
 
         _toolBridge = toolBridge;
         _toolBridgeRegisteredResource = resource;

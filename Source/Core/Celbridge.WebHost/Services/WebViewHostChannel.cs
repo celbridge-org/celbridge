@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
@@ -13,6 +12,7 @@ public class WebViewHostChannel : IHostChannel
     private readonly CoreWebView2 _coreWebView2;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly ILogger<WebViewHostChannel> _logger;
+    private readonly IWebViewAdapter _webViewAdapter;
     private bool _isDetached;
 
     public WebViewHostChannel(CoreWebView2 coreWebView2)
@@ -20,6 +20,7 @@ public class WebViewHostChannel : IHostChannel
         _coreWebView2 = coreWebView2;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _logger = ServiceLocator.AcquireService<ILogger<WebViewHostChannel>>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _coreWebView2.WebMessageReceived += OnWebMessageReceived;
     }
 
@@ -27,34 +28,7 @@ public class WebViewHostChannel : IHostChannel
     {
         try
         {
-#if WINDOWS
-            _coreWebView2.PostWebMessageAsString(json);
-#else
-            // PostWebMessageAsString does not deliver on the Uno Skia WebView2 (the C#->JS
-            // half of web messaging is unimplemented). Push the message by invoking a JS
-            // dispatch function via ExecuteScriptAsync, which the client transport registers.
-            // The JS->C# direction (chrome.webview.postMessage -> WebMessageReceived) works
-            // and is unchanged. Serializing the JSON yields a safely-escaped JS string literal.
-            var encodedJson = JsonSerializer.Serialize(json);
-            var script = $"window.__celbridgeReceiveHostMessage && window.__celbridgeReceiveHostMessage({encodedJson});";
-
-            // ExecuteScriptAsync is the C#->JS push on Skia. Observe the operation instead of discarding
-            // it, so a delivery fault (the script never ran) is surfaced rather than lost silently.
-            var executeScriptOperation = _coreWebView2.ExecuteScriptAsync(script);
-            _ = ObserveExecuteScriptAsync();
-
-            async Task ObserveExecuteScriptAsync()
-            {
-                try
-                {
-                    await executeScriptOperation;
-                }
-                catch (Exception observeException)
-                {
-                    _logger.LogError(observeException, "Failed to deliver host->editor message via ExecuteScriptAsync");
-                }
-            }
-#endif
+            _webViewAdapter.PostMessageToWeb(_coreWebView2, json);
         }
         catch (Exception ex)
         {

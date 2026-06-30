@@ -2,7 +2,6 @@ using System.Text.Json;
 using Celbridge.Packages;
 using Celbridge.Server;
 using Celbridge.WebHost;
-using Celbridge.WebHost.Platform;
 using Celbridge.WebHost.Services;
 using Microsoft.Web.WebView2.Core;
 
@@ -20,69 +19,72 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
     private readonly IFileServer _fileServer;
     private readonly ILocalFileSystem _localFileSystem;
+    private readonly IWebViewAdapter _webViewAdapter;
 
-    public SyntheticOriginEditorLoader(IFileServer fileServer, ILocalFileSystem localFileSystem)
+    public SyntheticOriginEditorLoader(
+        IFileServer fileServer,
+        ILocalFileSystem localFileSystem,
+        IWebViewAdapter webViewAdapter)
     {
         _fileServer = fileServer;
         _localFileSystem = localFileSystem;
+        _webViewAdapter = webViewAdapter;
     }
 
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
 
     public HostChannelTransport GetTransport(PackageInfo package)
     {
-#if WINDOWS
-        // The virtual-host page is not same-origin with the loopback server and cannot open the insecure
-        // loopback WebSocket, so it falls back to the WebView2 message channel.
-        return HostChannelTransport.WebView2Message;
-#else
+        if (_webViewAdapter.SupportsVirtualHostMapping)
+        {
+            // The virtual-host page is not same-origin with the loopback server and cannot open the insecure
+            // loopback WebSocket, so it falls back to the WebView2 message channel.
+            return HostChannelTransport.WebView2Message;
+        }
+
         // The loadHTMLString page gets the bridge URL injected, so it still uses the WebSocket.
         return HostChannelTransport.LoopbackWebSocket;
-#endif
     }
 
-    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request) =>
-#if WINDOWS
-        // Windows navigates to the https virtual host.
-        $"https://{SyntheticHost}/";
-#else
+    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request)
+    {
+        if (_webViewAdapter.SupportsVirtualHostMapping)
+        {
+            // Windows navigates to the https virtual host.
+            return $"https://{SyntheticHost}/";
+        }
+
         // The Skia heads load under the http synthetic origin via loadHTMLString.
-        $"http://{SyntheticHost}/";
-#endif
+        return $"http://{SyntheticHost}/";
+    }
 
     public async Task LoadAsync(ContributionEditorLoadRequest request)
     {
-#if WINDOWS
-        await Task.CompletedTask;
+        if (_webViewAdapter.SupportsVirtualHostMapping)
+        {
+            // Map the package folder to the synthetic-origin virtual host, then navigate to it. The licence
+            // validates on the hostname.
+            request.WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                SyntheticHost,
+                request.Package.PackageFolder,
+                CoreWebView2HostResourceAccessKind.Allow);
 
-        // Map the package folder to the synthetic-origin virtual host, then navigate to it. The licence
-        // validates on the hostname.
-        request.WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-            SyntheticHost,
-            request.Package.PackageFolder,
-            CoreWebView2HostResourceAccessKind.Allow);
+            var entryUrl = $"https://{SyntheticHost}/{request.EntryPoint}";
+            entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
+            request.WebView.CoreWebView2.Navigate(entryUrl);
+            return;
+        }
 
-        var entryUrl = $"https://{SyntheticHost}/{request.EntryPoint}";
-        entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
-        request.WebView.CoreWebView2.Navigate(entryUrl);
-#else
         // The Skia heads create the WebView in place, so it is window-rooted and never re-parented: its
         // context is stable and the page can be loaded directly.
         var html = await BuildSyntheticOriginHtmlAsync(request);
 
-        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(request.WebView.CoreWebView2, out var handle, out var detail))
-        {
-            throw new InvalidOperationException($"Could not reach the native WKWebView handle for the synthetic-origin editor: {detail}");
-        }
-
         // http (not https) origin so the cross-origin http loopback resource fetches are not blocked as mixed
         // content. The licence validates on the hostname, not the scheme.
         var syntheticOriginUrl = $"http://{SyntheticHost}/";
-        MacOSWebViewInterop.LoadHtmlString(handle, html, syntheticOriginUrl);
-#endif
+        _webViewAdapter.LoadHtmlString(request.WebView.CoreWebView2, html, syntheticOriginUrl);
     }
 
-#if !WINDOWS
     /// <summary>
     /// Builds the entry page for native loadHTMLString:baseURL:. The entry HTML is rewritten so its lib and
     /// shared-client references resolve cross-origin to the loopback file server (absolute URLs, since
@@ -117,5 +119,4 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
         return entryHtml.Replace("<head>", "<head>" + injectedHead);
     }
-#endif
 }

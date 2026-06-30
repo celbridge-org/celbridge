@@ -16,6 +16,9 @@ public static class ServiceConfiguration
         // The loopback default is registered first, so it is the fallback loader; a module may register a
         // custom loader, which resolves ahead of it (the view picks the last matching loader).
         services.AddSingleton<IContributionEditorLoader, LoopbackContributionEditorLoader>();
+
+        // The per-platform WebView adapter (WebView2 SDK on Windows, Skia/native fallbacks elsewhere).
+        Platform.PlatformServiceConfiguration.ConfigureServices(services);
     }
 
     /// <summary>
