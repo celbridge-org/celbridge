@@ -192,6 +192,52 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         await coreWebView2.ExecuteScriptAsync(script);
     }
 
+    // The macOS WKWebView UA prefix (the OS and AppleWebKit build tokens) is frozen by Apple for fingerprinting
+    // resistance, so it is stable to hardcode. The Version and Safari tokens are appended to match Safari's UA:
+    // Gmail and similar sniffers reject the bare WKWebView UA (which omits both) as an unsupported browser. The
+    // Version value is the installed Safari's real version, read at runtime so it never goes stale.
+    private const string MacOSUserAgentPrefix =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
+
+    // Used only when the installed Safari version cannot be read. Kept comfortably above Gmail's minimum so the
+    // UA still passes; the real version is preferred whenever available.
+    private const string FallbackSafariVersion = "18.0";
+
+    private string? _safariVersion;
+
+    public void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            // The Linux/X11 Skia head's WebKitGTK UA is recognised as-is; only the macOS WKWebView UA needs the
+            // Safari tokens, so leave the other Skia heads on their default.
+            return;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out var detail))
+        {
+            _logger.LogWarning("Could not set the WebView User-Agent: {Detail}", detail);
+            return;
+        }
+
+        _safariVersion ??= ResolveSafariVersion();
+
+        var userAgent = $"{MacOSUserAgentPrefix} Version/{_safariVersion} Safari/605.1.15 {applicationToken}";
+        MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, userAgent);
+    }
+
+    private string ResolveSafariVersion()
+    {
+        var version = MacOSWebViewInterop.GetSafariVersion();
+        if (string.IsNullOrEmpty(version))
+        {
+            _logger.LogWarning("Could not read the installed Safari version; falling back to {Fallback}", FallbackSafariVersion);
+            return FallbackSafariVersion;
+        }
+
+        return version;
+    }
+
     public void LoadHtmlString(CoreWebView2 coreWebView2, string html, string baseUrl)
     {
         // Calls -[WKWebView loadHTMLString:baseURL:] so the loaded document reports the given base URL as its

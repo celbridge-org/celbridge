@@ -112,6 +112,13 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         throw new NotSupportedException("LoadHtmlString is not used on the virtual-host-mapping head.");
     }
 
+    public void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken)
+    {
+        // The Chromium-based WebView2 UA is already recognised by sites, so only append the application token
+        // for identification rather than replacing the UA.
+        coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
+    }
+
     private static string BuildCaptureScreenshotParams(ScreenshotRequest request)
     {
         var payload = new Dictionary<string, object>
