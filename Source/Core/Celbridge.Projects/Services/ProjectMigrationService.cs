@@ -93,9 +93,6 @@ public class ProjectMigrationService : IProjectMigrationService
         return await MigrateProjectAsync(projectFilePath, versionInfo.ProjectVersion, versionInfo.ApplicationVersion, versionInfo.Root);
     }
 
-    /// <summary>
-    /// Parses the project file and extracts version information.
-    /// </summary>
     private async Task<ParseResult> ParseProjectVersionInfoAsync(string projectFilePath)
     {
         try
@@ -159,7 +156,6 @@ public class ProjectMigrationService : IProjectMigrationService
     private MigrationResult ResolveMigrationStatus(string projectVersion, string applicationVersion)
     {
         // The sentinel value "<application-version>" means "use current version" without updating the file.
-        // This is for dev team use with example projects during development.
         bool usingSentinelVersion = projectVersion == ApplicationVersionSentinel;
 
         // Compare versions to determine if migration is needed
@@ -344,15 +340,12 @@ public class ProjectMigrationService : IProjectMigrationService
     }
 
     /// <summary>
-    /// Compare two version strings in the format "major.minor.patch".
-    /// Returns a VersionComparisonState indicating the relationship between the versions.
-    /// The sentinel value "<application-version>" for projectVersion is treated as "use current version".
-    /// This is useful for the Celbridge dev team working with example projects.
+    /// Compares two version strings in the format "major.minor.patch". The sentinel value
+    /// "<application-version>" for projectVersion is treated as "use current version".
     /// </summary>
     private VersionComparisonState CompareVersions(string projectVersion, string applicationVersion)
     {
         // Handle the sentinel value "<application-version>" meaning "use current version"
-        // This allows the Celbridge dev team to work with example projects during development without modifying the version in the file.
         if (projectVersion == ApplicationVersionSentinel)
         {
             _logger.LogInformation("Project version '<application-version>' - using current application version");

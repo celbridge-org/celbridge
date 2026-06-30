@@ -5,7 +5,7 @@ namespace Celbridge.Resources.Helpers;
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for a single
 /// root, checking that paths stay within the backing folder. Reparse points
-/// (symlinks, junctions) are rejected best-effort via File.GetAttributes; the
+/// (symlinks, junctions) are rejected best-effort via File.GetAttributes. The
 /// check is not atomic with the following I/O, so it is a containment filter,
 /// not a hardened boundary against symlink races.
 /// </summary>
@@ -45,7 +45,7 @@ public class RootPathResolver
                 $"Resource key '{resource}' failed format validation.");
         }
 
-        // Resolution operates on the path portion of the key; the root portion has
+        // Resolution operates on the path portion of the key. The root portion has
         // already been used to select the handler and its backing location.
         var pathPortion = resource.Path;
 

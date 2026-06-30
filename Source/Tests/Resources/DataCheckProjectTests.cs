@@ -168,7 +168,7 @@ public class DataCheckProjectTests
     [Test]
     public async Task OrphanCelFile_AppearsInReport()
     {
-        // foo.png is the would-be parent; only the sidecar exists.
+        // foo.png is the would-be parent. Only the sidecar exists.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "_tags = [\"orphaned\"]\n");
 
@@ -222,7 +222,7 @@ public class DataCheckProjectTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        // Three entries: aaa.json from a.json; zzz.json from a.json and b.json.
+        // Three entries: aaa.json from a.json. zzz.json from a.json and b.json.
         // The ordering is by missingTarget then by source.
         _command.ResultValue.BrokenReferences.Should().HaveCount(3);
 

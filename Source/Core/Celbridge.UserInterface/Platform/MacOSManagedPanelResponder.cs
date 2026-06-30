@@ -34,7 +34,7 @@ internal static class MacOSManagedPanelResponder
 
     private static void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
     {
-        // Documents and Console host WebViews that should keep first-responder status; the other panels
+        // Documents and Console host WebViews that should keep first-responder status. The other panels
         // are managed Uno controls that are not AppKit responders.
         switch (message.FocusedPanel)
         {

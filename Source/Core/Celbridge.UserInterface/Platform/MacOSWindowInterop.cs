@@ -49,7 +49,7 @@ internal static class MacOSWindowInterop
     }
 
     // NSRect is a homogeneous aggregate of four doubles, so the ARM64 ABI returns it in the floating
-    // point registers; the CGRect struct marshals directly. The struct-by-value return keeps this
+    // point registers. The CGRect struct marshals directly. The struct-by-value return keeps this
     // declaration local rather than in the shared runtime.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern CGRect SendMessageReturnCGRect(IntPtr receiver, IntPtr selector);

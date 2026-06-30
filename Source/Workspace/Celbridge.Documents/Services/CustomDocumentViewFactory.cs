@@ -40,7 +40,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     {
         // The manifest loader requires every document contribution to set
         // display_name, so _contribution.DisplayName is guaranteed non-empty
-        // here. The value may be a localization key or a plain string; run it
+        // here. The value may be a localization key or a plain string. Run it
         // through the package's localization dictionary and return the raw
         // value when the key is not present (which also handles plain strings).
         var displayKey = _contribution.DisplayName;

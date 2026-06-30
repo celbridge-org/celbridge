@@ -27,7 +27,7 @@ public partial class ExplorerPanelViewModel : ObservableObject
         var project = projectService.CurrentProject!;
 
         // When the host chrome (the custom title bar) shows the project name, the banner shows a generic
-        // title instead of duplicating it; otherwise the banner carries the project name.
+        // title instead of duplicating it. Otherwise the banner carries the project name.
         if (platformInfo.HostShowsProjectTitleInChrome)
         {
             TitleText = _stringLocalizer.GetString("ExplorerPanel_Title");

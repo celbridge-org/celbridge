@@ -33,7 +33,7 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Copy"),
-            Icon: IconSymbol.Copy); // Copy icon
+            Icon: IconSymbol.Copy);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

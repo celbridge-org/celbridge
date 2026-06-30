@@ -48,7 +48,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private readonly IFocusService _focusService;
     private readonly IWebViewAdapter _webViewAdapter;
 
-    // Latest edit availability reported by the editor over the bridge; drives CanPerformEdit.
+    // Latest edit availability reported by the editor over the bridge. Drives CanPerformEdit.
     private EditAvailability _editAvailability = EditAvailability.None;
 
     private readonly ContributionDocumentViewModel _viewModel;
@@ -66,7 +66,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private Action? _hostChannelTeardown;
 
     // WebView tool bridge registration tracking. Only set when the package allows the
-    // webview_* tools and the registration has succeeded; the field doubles as a guard
+    // webview_* tools and the registration has succeeded. The field doubles as a guard
     // for unregistration.
     private IDocumentWebViewToolBridge? _toolBridge;
     private ResourceKey _toolBridgeRegisteredResource;
@@ -223,7 +223,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
     private IContributionEditorLoader ResolveContributionEditorLoader(PackageInfo package)
     {
-        // The loopback default is registered first and matches every package, so it is the fallback; a
+        // The loopback default is registered first and matches every package, so it is the fallback. A
         // module's custom loader is registered later and wins as the last matching loader.
         IContributionEditorLoader? selected = null;
         foreach (var candidate in _serviceProvider.GetServices<IContributionEditorLoader>())
@@ -254,7 +254,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         var editorLoader = ResolveContributionEditorLoader(Contribution.Package);
 
         // In-place vs. pooled is a platform decision, not a loader one: re-parenting a pooled control resets
-        // the WebKit context on the Skia heads, so those create the WebView in place; Windows reuses the
+        // the WebKit context on the Skia heads, so those create the WebView in place. Windows reuses the
         // pre-warmed pool, where re-parenting is harmless.
         if (!_webViewAdapter.CreatesWebViewInPlace)
         {
@@ -652,7 +652,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
     protected override void OnWritableStateChanged()
     {
-        // The store may not exist yet (SetWritableState runs before LoadContent); the seed at registration
+        // The store may not exist yet (SetWritableState runs before LoadContent). The seed at registration
         // captures the current value, so an early change before connect is not lost.
         _viewState?.SetValue("writable", WritableState.ToString());
     }
@@ -817,7 +817,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         if (completedTask != restoreStateTask)
         {
-            // Best-effort restore; an unresponsive editor should not stall the caller. Abandon and move on.
+            // Best-effort restore. An unresponsive editor should not stall the caller. Abandon and move on.
             _logger.LogWarning("Editor did not acknowledge restoreState within {Seconds}s; continuing.", EditorStateRequestTimeoutSeconds);
             ObserveAbandonedRequest(restoreStateTask);
             return;
@@ -897,7 +897,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         // Loaded-driven init would not fire in time to navigate the WebView.
         // We wait for init (host ready, navigation started) but do not block
         // on the editor's own notifyContentLoaded signal. Some heavyweight
-        // editors can take seconds to finish importingcontent. Forcing callers
+        // editors can take seconds to finish importing content. Forcing callers
         // to wait for that would make document open feel slow.
         if (_initTcs is null)
         {
@@ -976,7 +976,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     {
         // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
         // reports DOM focus over the bridge. Marshal to the UI thread and register this editor as the
-        // active surface; on Windows this is redundant with WebView_GotFocus and harmless.
+        // active surface. On Windows this is redundant with WebView_GotFocus and harmless.
         DispatcherQueue.TryEnqueue(() =>
         {
             var message = new DocumentViewFocusedMessage(FileResource);
@@ -1103,7 +1103,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
         // Coalesce concurrent reload requests. FileSystemWatcher commonly emits
-        // duplicate Changed events for one logical write; a second reload arriving
+        // duplicate Changed events for one logical write. A second reload arriving
         // mid-flight folds into one follow-up pass instead of racing the first.
         lock (_reloadLock)
         {

@@ -35,13 +35,13 @@ public interface IFileServer
 
     /// <summary>
     /// Registers the folder of app-bundled web assets shared by every WebView (the celbridge-client
-    /// JS, icons, fonts), served at /assets/{path}. Replaces the shared.celbridge virtual host.
+    /// JS, icons, fonts), served at /assets/{path}.
     /// </summary>
     void RegisterAssetsFolder(string folderPath);
 
     /// <summary>
     /// Registers a package's asset folder, served at /package/{name}/{path}. Re-registering a name
-    /// replaces the previous folder. Replaces the pkg-{name}.celbridge virtual host.
+    /// replaces the previous folder.
     /// </summary>
     void RegisterPackageFolder(string packageName, string folderPath);
 

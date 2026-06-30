@@ -25,7 +25,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
 
     // ioctl is variadic. Apple's ARM64 ABI passes all variadic arguments on the stack, whereas every
     // other target (x86_64, and ARM64 on Linux) passes them in registers like fixed arguments. So only
-    // on Apple Silicon does the winsize pointer need the stack-spilling shim below; elsewhere the plain
+    // on Apple Silicon does the winsize pointer need the stack-spilling shim below. Elsewhere the plain
     // ref overload is correct.
     private static readonly bool UseDarwinArm64IoctlShim =
         OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
@@ -104,7 +104,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
                 posix_spawnattr_destroy(ref spawnAttributes);
             }
 
-            // The child holds its own dup'd copies of the slave; the parent does not need it.
+            // The child holds its own dup'd copies of the slave. The parent does not need it.
             close(slaveFd);
         }
 
@@ -137,7 +137,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
             {
                 nint bytesRead = read(_masterFd, buffer, (nint)buffer.Length);
 
-                // 0 = the slave closed (child exited); -1 = read error (EIO on macOS once the child is
+                // 0 = the slave closed (child exited). -1 = read error (EIO on macOS once the child is
                 // gone, or EBADF when the master is closed during disposal). Either way the stream ends.
                 if (bytesRead <= 0)
                 {
@@ -159,7 +159,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
         try
         {
             // Blocks until the child exits, reaping it (so it does not linger as a zombie). On disposal
-            // the child is killed, which unblocks this; the cancellation check then suppresses the event.
+            // the child is killed, which unblocks this. The cancellation check then suppresses the event.
             waitpid(_childPid, out _, 0);
 
             lock (_processLock)
@@ -212,7 +212,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
 
         if (_masterFd < 0)
         {
-            // The pty has not been allocated yet; the size is applied when Start() opens it.
+            // The pty has not been allocated yet. The size is applied when Start() opens it.
             return;
         }
 
@@ -298,7 +298,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
         _cancellationTokenSource?.Cancel();
 
         // Terminate the child first. Closing the master alone does not interrupt the reader's pending
-        // read on macOS; killing the child closes the slave, so the read returns and the loop ends. The
+        // read on macOS. Killing the child closes the slave, so the read returns and the loop ends. The
         // lock pairs the kill with the monitor's reap so an already-reaped (and possibly reused) pid is
         // never signalled.
         lock (_processLock)

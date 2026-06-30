@@ -32,7 +32,7 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Rename"),
-            Icon: IconSymbol.Rename); // pencil (edit) icon
+            Icon: IconSymbol.Rename);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

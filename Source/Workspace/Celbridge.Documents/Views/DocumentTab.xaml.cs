@@ -28,9 +28,8 @@ public enum DocumentTabMenuAction
     ReopenWith
 }
 
-// I've tried writing this class using a C# Markup class subclassed from TabViewItem, but it didn't work.
-// No matter how simple I make the derived class, an exception is thrown when the class is instantiated.
-// I've given up for now and am using a XAML file instead.
+// Defined in XAML rather than as a C# Markup subclass of TabViewItem: a derived Markup class throws on
+// instantiation, however simple the derived class is.
 public partial class DocumentTab : TabViewItem
 {
     private readonly IStringLocalizer _stringLocalizer;

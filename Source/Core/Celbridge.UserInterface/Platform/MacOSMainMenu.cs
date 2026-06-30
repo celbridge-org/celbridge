@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.Platform;
 /// <summary>
 /// Defines and installs Celbridge's native macOS menubar. Mirrors the in-window hamburger menu's project
 /// commands (dispatched to the same MainMenuViewModel) and adds the standard App, Edit, and Window menus
-/// macOS users expect. macOS-only; call once at startup on the UI thread.
+/// macOS users expect. macOS-only. Call once at startup on the UI thread.
 /// </summary>
 internal static class MacOSMainMenu
 {
@@ -172,10 +172,10 @@ internal static class MacOSMainMenu
     private static bool Validate(long tag)
     {
         // The standard Edit verbs are responder-chain Selector items (see the Edit menu in Install), so
-        // AppKit handles their enable state; this validation only covers the Command items below.
+        // AppKit handles their enable state. This validation only covers the Command items below.
 
-        // Reload and Close act on the open project, so they are enabled only while a workspace is loaded;
-        // every other command is always available. Mirrors the hamburger menu's IsWorkspaceLoaded gating.
+        // Reload and Close act on the open project, so they are enabled only while a workspace is loaded.
+        // Every other command is always available. Mirrors the hamburger menu's IsWorkspaceLoaded gating.
         switch (tag)
         {
             case TagReloadProject:
@@ -195,13 +195,13 @@ internal static class MacOSMainMenu
     private static void OnCommand(long tag)
     {
         // The standard Edit verbs are responder-chain Selector items handled by AppKit, so they never
-        // reach this callback; only the Command items (project, help, about) below are dispatched here.
+        // reach this callback. Only the Command items (project, help, about) below are dispatched here.
 
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
-        // stay in lockstep. Resolved per invocation; the methods only dispatch commands or open dialogs.
+        // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
         var viewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
 
-        // Recent project items carry generated tags above the fixed range; open the project they map to.
+        // Recent project items carry generated tags above the fixed range. Open the project they map to.
         if (tag >= TagRecentProjectBase)
         {
             if (_recentProjectPaths.TryGetValue(tag, out var recentProjectFilePath))

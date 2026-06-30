@@ -53,7 +53,7 @@ public static class PackageManifestLoader
     /// secrets populates PackageInfo.Secrets for WebView injection.
     /// devToolsBlocked permanently disables DevTools on the package's WebViews.
     /// origin tags PackageInfo so downstream read sites pick the right IO path.
-    /// reader is the file-read primitive; null selects DirectPackageReader (direct disk), the legacy
+    /// reader is the file-read primitive. Null selects DirectPackageReader (direct disk), the legacy
     /// behaviour for callers (tests, bundled discovery) with no IResourceFileSystem to route through.
     /// </summary>
     public static Result<Package> LoadPackage(

@@ -16,10 +16,9 @@ public record class LayoutModeInfo(
     bool ConsoleMaximized);
 
 /// <summary>
-/// Result returned by app_get_state. version is the running Celbridge version.
-/// featureFlags maps each public flag name declared in FeatureFlagConstants to
-/// its current enabled state. focusedPanel is the WorkspacePanel currently
-/// holding focus (or "None"). layoutMode reports current panel visibility.
+/// Result returned by app_get_state, reporting the running version, project load
+/// state, feature flag states, the focused panel ("None" when unfocused), and the
+/// current panel layout.
 /// </summary>
 public record class AppStateResult(
     string Version,
@@ -30,8 +29,7 @@ public record class AppStateResult(
     LayoutModeInfo LayoutMode);
 
 /// <summary>
-/// Builds the AppStateResult snapshot consumed by both the app_get_state
-/// tool and AgentResponseFilter's session-start auto-attach.
+/// Builds the AppStateResult snapshot describing current app and workspace state.
 /// </summary>
 public interface IAppStateProvider
 {

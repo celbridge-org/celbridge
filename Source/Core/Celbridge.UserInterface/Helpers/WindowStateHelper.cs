@@ -286,7 +286,7 @@ public sealed class WindowStateHelper
         // The saved bounds come from AppWindow, whose coordinate unit on the Skia head is ambiguous
         // (points or physical pixels). NSScreen frames are in points with a bottom-left origin, so each
         // screen is converted to a top-left rect and the saved title-bar strip is tested against it in
-        // both point space and pixel space; a hit in either accepts the restore. This keeps the unit
+        // both point space and pixel space. A hit in either accepts the restore. This keeps the unit
         // ambiguity from silently rejecting a valid placement, and the values are logged so the
         // interpretation can be tightened once confirmed on device.
         const int titleBarHeight = 40;

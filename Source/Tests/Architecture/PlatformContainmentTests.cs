@@ -55,7 +55,7 @@ public class PlatformContainmentTests
 
     private static IEnumerable<string> EnumerateProductionSourceFiles(string sourceFolder)
     {
-        // The convention governs production code; the Tests project legitimately names platform concepts.
+        // The convention governs production code. The Tests project legitimately names platform concepts.
         var testsFolder = Path.Combine(sourceFolder, "Tests");
 
         foreach (var filePath in Directory.EnumerateFiles(sourceFolder, "*.cs", SearchOption.AllDirectories))

@@ -12,12 +12,12 @@ public enum LayoutMode
     Default,
 
     /// <summary>
-    /// The side panels are hidden; the application toolbar and document tabs remain visible.
+    /// The side panels are hidden. The application toolbar and document tabs remain visible.
     /// </summary>
     Focus,
 
     /// <summary>
-    /// Only the selected document content is visible; side panels, the toolbar, and document tabs
+    /// Only the selected document content is visible. Side panels, the toolbar, and document tabs
     /// are all hidden.
     /// </summary>
     Presentation
@@ -51,7 +51,7 @@ public enum LayoutTransition
 
     /// <summary>
     /// Toggle the window's fullscreen state. Used on platforms without native window-chrome fullscreen
-    /// controls; on macOS the OS provides fullscreen through the native title bar.
+    /// controls. On macOS the OS provides fullscreen through the native title bar.
     /// </summary>
     ToggleFullScreen,
 

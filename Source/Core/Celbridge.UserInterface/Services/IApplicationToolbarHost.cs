@@ -7,8 +7,7 @@ namespace Celbridge.UserInterface.Services;
 internal interface IApplicationToolbarHost
 {
     /// <summary>
-    /// Creates the toolbar host, adds it to the layout, wires any window title-bar integration, and returns
-    /// it as the title bar to register.
+    /// Installs the toolbar host into the layout and returns the title bar to register.
     /// </summary>
     ITitleBar Install(Window window, Panel layoutRoot);
 }

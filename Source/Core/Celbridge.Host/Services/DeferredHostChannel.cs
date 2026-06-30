@@ -6,8 +6,7 @@ namespace Celbridge.Host;
 /// <summary>
 /// IHostChannel that a view constructs synchronously, before the WebView page has opened its
 /// WebSocket back to the host. Outbound messages are buffered until the real socket channel binds,
-/// and inbound messages are re-raised from the bound channel once it connects. This keeps the
-/// per-view CelbridgeHost construction order identical to the synchronous WebViewHostChannel path.
+/// and inbound messages are re-raised from the bound channel once it connects.
 /// </summary>
 public sealed class DeferredHostChannel : IHostChannel, IDisposable
 {

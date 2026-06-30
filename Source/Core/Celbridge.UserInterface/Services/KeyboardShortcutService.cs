@@ -4,8 +4,7 @@ using Windows.System;
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Centralized service for handling global keyboard shortcuts.
-/// Handles shortcuts from both WinUI controls and WebView2-hosted content.
+/// Handles global keyboard shortcuts from both WinUI controls and WebView2-hosted content.
 /// </summary>
 public class KeyboardShortcutService : IKeyboardShortcutService
 {

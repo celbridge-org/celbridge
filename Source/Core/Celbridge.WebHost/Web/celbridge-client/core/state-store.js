@@ -1,5 +1,5 @@
 // State store: a read-only mirror of host state. The host is the sole writer and pushes a full snapshot to
-// every connected WebView — on connect and on every change. The client never asks; registering the change
+// every connected WebView — on connect and on every change. The client never asks. Registering the change
 // listener (in the constructor) is the whole subscription. There is no per-key subscription or delta
 // protocol — each update is the whole (small) state object. Only the latest snapshot is retained.
 //

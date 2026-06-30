@@ -22,7 +22,7 @@ public static class ProjectConstants
 
     /// <summary>
     /// Sub-folder of .celbridge/ that backs the temp: virtual root. Wiped on
-    /// workspace load; consumers needing persistence write under project:.
+    /// workspace load.
     /// </summary>
     public const string TempFolder = "temp";
 

@@ -117,7 +117,7 @@ export class EditorController {
     }
 
     // Runs one of Monaco's own edit commands in response to a host edit intent (e.g. a host menu or
-    // shortcut). The outcome equals Monaco handling the keystroke itself; we never reimplement the command.
+    // shortcut). The outcome equals Monaco handling the keystroke itself. We never reimplement the command.
     performEdit(intent) {
         if (!this.#editor) {
             return;
@@ -204,11 +204,10 @@ export class EditorController {
      * if the editor isn't laid out yet.
      *
      * Word-wrap-aware: locates the model line whose rendered extent brackets
-     * the current scrollTop via binary search over `getTopForLineNumber`. The
-     * previous implementation used `floor(scrollTop / lineHeight)` which
-     * returns a *view* line index - treating it as a model line overshoots
-     * into the preview's past-last-block region in any document with long
-     * wrapped paragraphs.
+     * the current scrollTop via binary search over `getTopForLineNumber`. A
+     * plain `floor(scrollTop / lineHeight)` would return a *view* line index,
+     * which treated as a model line overshoots in documents with long wrapped
+     * paragraphs.
      */
     getTopSourceLine() {
         if (!this.#editor) {
@@ -251,7 +250,7 @@ export class EditorController {
 
     /**
      * Rendered height of a model line, accounting for word wrap. The last
-     * model line has no next line to subtract against; fall back to the
+     * model line has no next line to subtract against, so fall back to the
      * editor's configured lineHeight (unwrapped last lines are the common
      * case).
      */
@@ -433,7 +432,7 @@ export class EditorController {
         celbridge.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
 
         // Restore editor state after setValue. One requestAnimationFrame is
-        // enough to let Monaco flush its internal view-layout scheduler;
+        // enough to let Monaco flush its internal view-layout scheduler.
         // setValue itself updates the model synchronously. Keep
         // isReloadingExternally true until restoration is complete.
         // Note: this callback is throttled when Monaco is collapsed, but that's
@@ -544,15 +543,15 @@ export class EditorController {
             }
 
             // Fire unconditionally so the preview stays in sync with in-flight
-            // edits; the gating above is only for host-direction notifications.
+            // edits. The gating above is only for host-direction notifications.
             this.#onContentChanged();
         });
     }
 
     #setupSelectionListener() {
         // Report edit availability to the host whenever the selection or focus changes, so a host
-        // menu enables Copy/Cut only when there is a selection. Copy is the discriminating verb;
-        // paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
+        // menu enables Copy/Cut only when there is a selection. Copy is the discriminating verb.
+        // Paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
         this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
         this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
     }

@@ -12,7 +12,7 @@ namespace Celbridge.Packages;
 /// </summary>
 public class PackageRegistry
 {
-    // Editors like the code editor can handle 150+ extensions; listing them all
+    // Editors like the code editor can handle 150+ extensions. Listing them all
     // makes the discovery log unreadable. Above this count we elide to a count.
     private const int MaxInlineExtensionsInLog = 20;
 
@@ -240,7 +240,7 @@ public class PackageRegistry
     }
 
     // Selects the file-read primitive that matches a package's discovery origin.
-    // Project packages are read through the gateway; bundled packages stay on
+    // Project packages are read through the gateway. Bundled packages stay on
     // direct File.* IO. The project reader is constructed on demand because the
     // workspace-scoped IResourceFileSystem and IResourceRegistry must be looked up at
     // call time rather than cached.
@@ -381,7 +381,7 @@ public class PackageRegistry
             var manifestPath = resolveResult.Value;
             var packageFolder = Path.GetDirectoryName(manifestPath)!;
 
-            // Project packages are served over the loopback file server; their contribution editors run on
+            // Project packages are served over the loopback file server. Their contribution editors run on
             // every head.
             var loadResult = PackageManifestLoader.LoadPackage(
                 manifestPath,

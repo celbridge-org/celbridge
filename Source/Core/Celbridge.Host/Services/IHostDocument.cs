@@ -5,9 +5,8 @@ namespace Celbridge.Host;
 
 /// <summary>
 /// Reason values passed with document/contentLoaded notifications so consumers can distinguish
-/// the initial content load from subsequent reloads triggered by external file changes.
-/// The enum is serialized as a JSON string via JsonStringEnumConverter; the exact wire strings
-/// are declared via JsonStringEnumMemberName so the JSON format is decoupled from the identifiers.
+/// the initial content load from subsequent reloads triggered by external file changes. Serialized
+/// as a JSON string, with the wire strings declared via JsonStringEnumMemberName.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ContentLoadedReason>))]
 public enum ContentLoadedReason
@@ -20,8 +19,7 @@ public enum ContentLoadedReason
 
     /// <summary>
     /// Fired each time the editor finishes processing an external file change (setValue plus
-    /// any state restoration). Used by consumers that need to refresh dependent views once the
-    /// reload cycle is fully complete.
+    /// any state restoration).
     /// </summary>
     [JsonStringEnumMemberName("external-reload")]
     ExternalReload,
@@ -85,21 +83,18 @@ public interface IHostDocument
 
     /// <summary>
     /// Called when the document content has changed in the WebView.
-    /// Override to handle document changes.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.Changed)]
     void OnDocumentChanged() { }
 
     /// <summary>
     /// Called when an import operation completes in the WebView.
-    /// Override to handle import completion.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ImportComplete)]
     void OnImportComplete(bool success, string? error = null) { }
 
     /// <summary>
     /// Called when the JavaScript client has finished initializing and is ready for communication.
-    /// Override to handle client ready notification.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ClientReady)]
     void OnClientReady() { }
@@ -107,7 +102,6 @@ public interface IHostDocument
     /// <summary>
     /// Called every time the editor has finished loading (or reloading) content and is ready for edits.
     /// The reason parameter distinguishes the initial load from reloads triggered by external file changes.
-    /// Defaults to Initial so older JS clients that send no payload continue to behave as before.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ContentLoaded)]
     void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial) { }

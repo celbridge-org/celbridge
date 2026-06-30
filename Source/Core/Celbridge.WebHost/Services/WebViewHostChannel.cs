@@ -4,9 +4,6 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Services;
 
-/// <summary>
-/// Implementation of IHostChannel that wraps CoreWebView2.
-/// </summary>
 public class WebViewHostChannel : IHostChannel
 {
     private readonly CoreWebView2 _coreWebView2;

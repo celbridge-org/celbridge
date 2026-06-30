@@ -43,19 +43,11 @@ public class CreateResourceHelper
         var resourceRegistry = resourceService.Registry;
         var resourceOpService = resourceService.Operations;
 
-        //
-        // Validate the resource key
-        //
-
         var validationResult = ValidateDestResource(destResource);
         if (validationResult.IsFailure)
         {
             return validationResult;
         }
-
-        //
-        // Create the resource on disk
-        //
 
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
@@ -67,10 +59,6 @@ public class CreateResourceHelper
         {
             return createResult;
         }
-
-        //
-        // Expand the folder containing the newly created resource
-        //
 
         ExpandParentFolder(destResource);
 
@@ -108,7 +96,7 @@ public class CreateResourceHelper
         if (string.IsNullOrEmpty(sourcePath))
         {
             // Create a new empty file. The template service still consumes a
-            // path to discriminate by file extension; the gateway write
+            // path to discriminate by file extension. The gateway write
             // takes the resource key.
             var destPathResult = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ResolveResourcePath(destResource);
             if (destPathResult.IsFailure)

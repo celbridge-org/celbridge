@@ -4,7 +4,7 @@ namespace Celbridge.UserInterface.Helpers;
 /// Shared state for resource drags that cross UI control boundaries (e.g. Explorer to a document
 /// section). The DataPackage.Properties channel that carries the payload on Windows does not
 /// round-trip on the Uno Skia desktop head, so the source publishes the in-flight resources here
-/// alongside the DataPackage; consumers read this as a fallback when the payload is empty. A stale
+/// alongside the DataPackage. Consumers read this as a fallback when the payload is empty. A stale
 /// value is harmless because DragOver only fires while a drag is in flight, and the next drag
 /// overwrites it.
 /// </summary>

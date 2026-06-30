@@ -33,7 +33,7 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Cut"),
-            Icon: IconSymbol.Cut); // scissors (cut) icon
+            Icon: IconSymbol.Cut);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

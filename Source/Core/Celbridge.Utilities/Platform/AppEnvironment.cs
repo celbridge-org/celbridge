@@ -7,7 +7,7 @@ namespace Celbridge.Utilities.Platform;
 /// <summary>
 /// Resolves application-environment facts from the packaging model and the build head, keeping the
 /// packaged-versus-unpackaged branching in one place. On the packaged Windows head the version, folders, and
-/// bundled assets come from the app package; on the Skia heads they come from the entry assembly and the
+/// bundled assets come from the app package. On the Skia heads they come from the entry assembly and the
 /// app's library-layout folders.
 /// </summary>
 public sealed class AppEnvironment : IAppEnvironment
@@ -58,7 +58,7 @@ public sealed class AppEnvironment : IAppEnvironment
 
     public string GetBundledAssetPath(string moduleFolder, string relativePath)
     {
-        // Callers pass forward-slashed relative paths; normalize to this platform's separator.
+        // Callers pass forward-slashed relative paths. Normalize to this platform's separator.
         var normalizedRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
 
 #if WINDOWS
@@ -79,7 +79,7 @@ public sealed class AppEnvironment : IAppEnvironment
         var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
         return $"{packageVersion.Major}.{packageVersion.Minor}.{packageVersion.Build}";
 #else
-        // The Uno.Sdk maps ApplicationDisplayVersion onto the app assembly version; GetExecutingAssembly
+        // The Uno.Sdk maps ApplicationDisplayVersion onto the app assembly version. GetExecutingAssembly
         // would return this utilities library, whose version is unset. Fall back to the executing assembly
         // if there is no entry assembly.
         var appAssembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();

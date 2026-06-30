@@ -32,7 +32,7 @@ public class NewFolderMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_NewFolder"),
-            Icon: IconSymbol.FolderAdd); // folder-plus icon
+            Icon: IconSymbol.FolderAdd);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

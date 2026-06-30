@@ -13,7 +13,7 @@ namespace Celbridge.Settings.Platform;
 /// </summary>
 internal sealed class MacOSKeychainCredentialStore : ICredentialStore
 {
-    // The Keychain service all Celbridge credential items are grouped under; the credential key is the
+    // The Keychain service all Celbridge credential items are grouped under. The credential key is the
     // account, so each stored credential is a distinct item.
     private const string KeychainService = "Celbridge";
 
@@ -181,7 +181,7 @@ internal sealed class MacOSKeychainCredentialStore : ICredentialStore
         try
         {
             // No kSecReturnData and a null result pointer, so this matches on existence without copying out
-            // (or decrypting) the secret. The null result is the documented existence-check form; passing a
+            // (or decrypting) the secret. The null result is the documented existence-check form. Passing a
             // non-null result pointer with no requested return type can return errSecParam.
             var keys = new[] { _kSecClass, _kSecAttrService, _kSecAttrAccount, _kSecMatchLimit };
             var values = new[] { _kSecClassGenericPassword, serviceString, accountString, _kSecMatchLimitOne };
@@ -273,7 +273,7 @@ internal sealed class MacOSKeychainCredentialStore : ICredentialStore
 
     // CFStringRef / CFBooleanRef constants (pointer values stored at the exported symbol) and the dictionary
     // callback structs (the exported symbol is the struct, so its address is passed by reference). Resolved
-    // once from the frameworks; left zero off macOS, where the store is never invoked.
+    // once from the frameworks. Left zero off macOS, where the store is never invoked.
     private static readonly IntPtr _kSecClass;
     private static readonly IntPtr _kSecClassGenericPassword;
     private static readonly IntPtr _kSecAttrService;

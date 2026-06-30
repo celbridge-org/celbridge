@@ -15,7 +15,7 @@ public static class StateRpcMethods
 /// <summary>
 /// State store kernel: holds the values and the active WebView connections, and broadcasts the full snapshot
 /// on connect and on every change. A single lock guards the shared collections (values are set from the UI
-/// thread). One instance backs the app-global store; CreateViewState mints one more per document view.
+/// thread). One instance backs the app-global store. CreateViewState mints one more per document view.
 /// </summary>
 public sealed class StateStore : IStateStore
 {
@@ -47,7 +47,7 @@ public sealed class StateStore : IStateStore
         }
 
         // Push the current snapshot immediately so a freshly-connected WebView gets the initial state
-        // without asking. Callers register after StartListening, so this notification is valid; the
+        // without asking. Callers register after StartListening, so this notification is valid. The
         // host channel buffers it until the page's socket binds.
         _ = connection.PushAsync();
 

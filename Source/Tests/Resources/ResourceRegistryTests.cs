@@ -203,7 +203,7 @@ public class ResourceRegistryTests
         var updateResult = await resourceRegistry.UpdateResourceRegistryAsync();
         updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
 
-        // FileA.txt exists on disk (created in Setup); request it as "filea.txt".
+        // FileA.txt exists on disk (created in Setup). Request it as "filea.txt".
         var wrongCaseKey = ResourceKey.Create(FileNameA.ToLowerInvariant());
         var resolveResult = resourceRegistry.ResolveResourcePath(wrongCaseKey);
 
@@ -382,7 +382,7 @@ public class ResourceRegistryTests
         explicitProject.Count.Should().Be(defaultResults.Count);
 
         // Other roots return empty because the registry indexes only the project
-        // tree; temp and logs are reachable through their root handlers, not here.
+        // tree. Temp and logs are reachable through their root handlers, not here.
         resourceRegistry.GetAllFileResources("temp").Should().BeEmpty();
     }
 

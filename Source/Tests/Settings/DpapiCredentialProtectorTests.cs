@@ -5,7 +5,7 @@ namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// Unit tests for the Windows DPAPI credential protector. The DPAPI tests
-/// only run on Windows; the protector reports itself unavailable elsewhere.
+/// only run on Windows. The protector reports itself unavailable elsewhere.
 /// </summary>
 [TestFixture]
 public class DpapiCredentialProtectorTests

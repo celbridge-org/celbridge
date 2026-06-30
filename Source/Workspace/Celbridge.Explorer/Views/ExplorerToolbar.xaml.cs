@@ -16,19 +16,10 @@ public sealed partial class ExplorerToolbar : UserControl
     private string CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
     private string ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
 
-    /// <summary>
-    /// Event raised when the Add File button is clicked.
-    /// </summary>
     public event EventHandler? NewFileClicked;
 
-    /// <summary>
-    /// Event raised when the Add Folder button is clicked.
-    /// </summary>
     public event EventHandler? NewFolderClicked;
 
-    /// <summary>
-    /// Event raised when the Collapse Folders button is clicked.
-    /// </summary>
     public event EventHandler? CollapseFoldersClicked;
 
     public ExplorerToolbar()
@@ -39,9 +30,6 @@ public sealed partial class ExplorerToolbar : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
     }
 
-    /// <summary>
-    /// Sets the visibility of the toolbar based on whether the panel is active (has focus or mouse is over it).
-    /// </summary>
     public void SetToolbarVisible(bool isVisible)
     {
         if (isVisible)

@@ -72,9 +72,9 @@ public class AppToolTests
     [Test]
     public void GetState_DoesNotIncludeAgentDocs()
     {
-        // Phase 3 of tool_guide_auto_attach removes the agentDocs pointer because
-        // the orientation guide auto-attaches on first tool use. Pin the absence
-        // so a regression that re-introduces the field surfaces here.
+        // The agentDocs pointer is intentionally absent because the orientation
+        // guide auto-attaches on first tool use. Pin the absence so a regression
+        // that re-introduces the field surfaces here.
         WireAppStateDependencies();
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
@@ -169,7 +169,7 @@ public class AppToolTests
         _services.GetRequiredService<IFocusService>().Returns(focusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 
-        // AppTools.GetState resolves IAppStateProvider; build a real provider
+        // AppTools.GetState resolves IAppStateProvider. Build a real provider
         // that wraps the substituted underlying services so the existing
         // JSON-shape assertions continue to exercise the full build path. The
         // factory re-resolves IProjectService at call time so tests that

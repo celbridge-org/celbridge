@@ -4,7 +4,7 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// Per-platform WebView2 operations for the document editor stack. The packaged Windows head drives the
-/// WebView2 SDK directly; the Uno Skia heads fall back to ExecuteScriptAsync where the managed surface is
+/// WebView2 SDK directly. The Uno Skia heads fall back to ExecuteScriptAsync where the managed surface is
 /// unimplemented and, on macOS, to the native WKWebView interop. Selecting the implementation in DI keeps the
 /// editor views and host plumbing free of platform branching.
 /// </summary>
@@ -65,7 +65,7 @@ public interface IWebViewAdapter
     Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request);
 
     /// <summary>
-    /// Posts a host-to-page message. Uses CoreWebView2 web messaging on Windows; on the Skia heads, where that
+    /// Posts a host-to-page message. Uses CoreWebView2 web messaging on Windows. On the Skia heads, where that
     /// direction is unimplemented, it invokes the client's receive function via ExecuteScriptAsync.
     /// </summary>
     void PostMessageToWeb(CoreWebView2 coreWebView2, string json);
@@ -78,7 +78,7 @@ public interface IWebViewAdapter
 
     /// <summary>
     /// Re-delivers a document-start script after a navigation completes. A no-op on Windows, where the managed
-    /// document-start script persists across navigations; on the Skia heads it re-runs the script.
+    /// document-start script persists across navigations. On the Skia heads it re-runs the script.
     /// </summary>
     Task ReinjectDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script);
 

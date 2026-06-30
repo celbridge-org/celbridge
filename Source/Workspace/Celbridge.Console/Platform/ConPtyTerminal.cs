@@ -357,8 +357,6 @@ public sealed class ConPtyTerminal : IPtyBackend
         return blockPointer;
     }
 
-    #region Win32 Interop
-
     private const int PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
     private const int EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
     private const int CREATE_UNICODE_ENVIRONMENT = 0x00000400;
@@ -474,6 +472,4 @@ public sealed class ConPtyTerminal : IPtyBackend
         public IntPtr lpSecurityDescriptor;
         public bool bInheritHandle;
     }
-
-    #endregion
 }

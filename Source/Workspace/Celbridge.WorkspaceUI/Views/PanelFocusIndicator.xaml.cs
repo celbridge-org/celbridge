@@ -2,7 +2,6 @@ namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
 /// A focus indicator control that displays a colored bar to indicate panel focus state.
-/// Shows accent color when the associated panel is focused, grey otherwise.
 /// </summary>
 public sealed partial class PanelFocusIndicator : UserControl
 {

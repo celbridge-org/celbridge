@@ -78,7 +78,7 @@ export class Celbridge {
 
     /**
      * Package-defined options parsed from the `[options]` table of the editor's
-     * document manifest. Keys and values are opaque to the Celbridge host; the
+     * document manifest. Keys and values are opaque to the Celbridge host. The
      * editor decides how to interpret them.
      * @type {Readonly<Object<string, string>>}
      */
@@ -132,7 +132,7 @@ export class Celbridge {
 
         // Report focus to the host, and clear the report when the host blurs us. On the Skia heads the
         // WinUI WebView.GotFocus event does not fire for clicks inside the WebView, so DOM focus is the
-        // reliable signal that this surface became active; the host uses it to set the active edit target
+        // reliable signal that this surface became active. The host uses it to set the active edit target
         // and register the blur callback.
         let hasReportedFocusReceived = false;
         if (typeof document !== 'undefined') {
@@ -291,10 +291,10 @@ export class Celbridge {
      * is always called after content loading and handler registration complete.
      *
      * Editor state contract: the string returned by `onRequestState` must survive both
-     * external-reload cycles (host calls `onRequestState` → replaces content → calls
+     * external-reload cycles (host calls `onRequestState` -> replaces content -> calls
      * `onRestoreState` with the same string) and session restore (host persists the string
      * as EditorStateJson and replays it on the next session). Contributions define their
-     * own schema for this string; the host treats it as opaque. Anything the editor needs
+     * own schema for this string. The host treats it as opaque. Anything the editor needs
      * to reconstruct view state (scroll position, selection, pending unsaved edits, etc.)
      * must be encoded here.
      *

@@ -38,21 +38,18 @@ public interface IHostInput
 
     /// <summary>
     /// Called when a link is clicked in the WebView.
-    /// Override to handle link clicks.
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.LinkClicked)]
     void OnLinkClicked(string href) { }
 
     /// <summary>
     /// Called when the scroll position changes in the editor.
-    /// Override to handle scroll position changes.
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.EditorScrollChanged)]
     void OnScrollPositionChanged(double scrollPercentage) { }
 
     /// <summary>
     /// Called when the scroll position changes in a preview pane.
-    /// Override to track preview scroll for state preservation.
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.PreviewScrollChanged)]
     void OnPreviewScrollChanged(double scrollPercentage) { }
@@ -73,8 +70,7 @@ public interface IHostInput
 
     /// <summary>
     /// Called when a WebView editor reports which edit verbs it can currently perform, so the host can
-    /// drive menu enable state. Override to cache the availability. Defaults to a no-op for editors and
-    /// other WebView surfaces that report nothing.
+    /// drive menu enable state.
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.EditAvailabilityChanged)]
     void OnEditAvailabilityChanged(
@@ -89,7 +85,7 @@ public interface IHostInput
     /// <summary>
     /// Called when the WebView content gains focus. The host marshals to the UI thread and reports the
     /// surface to the focus service. This is the focus signal on the Skia heads (where WebView.GotFocus
-    /// does not fire). Override on WebView-hosting surfaces; defaults to a no-op.
+    /// does not fire).
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.FocusReceived)]
     void OnFocusReceived() { }
@@ -107,7 +103,7 @@ public static class HostInputExtensions
 
     /// <summary>
     /// Asks the editor to run one of its own edit commands. The command is the editor command name
-    /// (selectAll, undo, redo); copy, cut, and paste are host-mediated and not sent here.
+    /// (selectAll, undo, redo). Copy, cut, and paste are host-mediated and not sent here.
     /// </summary>
     public static Task NotifyPerformEditAsync(this CelbridgeHost host, string command)
         => host.Rpc.NotifyWithParameterObjectAsync(InputRpcMethods.PerformEdit, new { command });

@@ -102,7 +102,7 @@ internal sealed class ApplicationStore : ISettingsStore
     }
 
     // Reads the store once at construction. Settings are read synchronously
-    // throughout, so the file must be loaded before the first read; SyncRunner
+    // throughout, so the file must be loaded before the first read. SyncRunner
     // offloads to the thread pool, so blocking here cannot deadlock on a captured
     // UI context. A missing or unreadable file loads as an empty store.
     private KeyValueStore Load()

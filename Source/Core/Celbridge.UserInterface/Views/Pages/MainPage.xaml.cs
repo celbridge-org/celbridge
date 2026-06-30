@@ -65,7 +65,7 @@ public partial class MainPage : Page
         _userInterfaceService.RegisterTitleBar(titleBar);
 
         // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
-        // shortcuts fall through to Uno's keyboard handling. macOS-only; a no-op elsewhere.
+        // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
         Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
 
         // Register for layout mode changes

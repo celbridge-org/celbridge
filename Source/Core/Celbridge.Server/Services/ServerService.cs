@@ -109,8 +109,8 @@ public class ServerService : IServerService, IDisposable
 
             _webApplication = builder.Build();
 
-            // The JSON-RPC host bridge runs over a WebSocket on this server (the cross-platform
-            // replacement for WebView2 messaging), so the WebSocket middleware must be in the pipeline.
+            // The JSON-RPC host bridge runs over a WebSocket on this server, so the WebSocket
+            // middleware must be in the pipeline.
             _webApplication.UseWebSockets();
 
             // Let AgentServer and FileServer configure their endpoints
@@ -142,7 +142,7 @@ public class ServerService : IServerService, IDisposable
             _fileServer.Enable(currentProject.ProjectFolderPath, Port);
 
             // Serve the app-bundled web assets (celbridge-client JS, bootstrap-icons, cascadia-mono)
-            // at /assets/. This is the loopback replacement for the shared.celbridge virtual host.
+            // at /assets/.
             var sharedAssetsFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
             _fileServer.RegisterAssetsFolder(sharedAssetsFolder);
 

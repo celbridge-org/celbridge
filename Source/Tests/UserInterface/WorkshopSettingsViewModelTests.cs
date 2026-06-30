@@ -14,8 +14,8 @@ namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// Unit tests for the WorkshopSettingsView view model. The Workshop Key
-/// round-trips through the real SettingsService over an in-memory credential store fake;
-/// the secret is entered through a substitute IDialogService standing in for the
+/// round-trips through the real SettingsService over an in-memory credential store fake.
+/// The secret is entered through a substitute IDialogService standing in for the
 /// masked input dialog. The non-secret URL and Author are ordinary settings, read
 /// back through the same service.
 /// </summary>

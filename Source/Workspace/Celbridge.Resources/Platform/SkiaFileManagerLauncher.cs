@@ -108,7 +108,7 @@ public sealed class SkiaFileManagerLauncher : IFileManagerLauncher
     }
 
     // Starts a process with raw (unquoted) arguments via ArgumentList, which quotes each argument
-    // per-platform; this avoids the shell-quoting pitfalls of a single arguments string.
+    // per-platform. This avoids the shell-quoting pitfalls of a single arguments string.
     private static Result StartProcess(string fileName, params string[] arguments)
     {
         try

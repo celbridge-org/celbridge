@@ -59,8 +59,6 @@ public class LayoutManagerTests
         (_serviceProvider as IDisposable)?.Dispose();
     }
 
-    #region Initial State Tests
-
     [Test]
     public void InitialState_LayoutModeIsDefault()
     {
@@ -86,10 +84,6 @@ public class LayoutManagerTests
         _layoutManager.IsInspectorPanelVisible.Should().BeTrue();
         _layoutManager.IsConsolePanelVisible.Should().BeTrue();
     }
-
-    #endregion
-
-    #region Layout Mode Transition Tests
 
     [Test]
     public void TransitionToFocus_FromDefault_HidesSidePanels()
@@ -170,10 +164,6 @@ public class LayoutManagerTests
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 
-    #endregion
-
-    #region Fullscreen Tests
-
     [Test]
     public void ToggleFullScreen_FromWindowed_EntersFullScreen()
     {
@@ -218,10 +208,6 @@ public class LayoutManagerTests
         _layoutManager.IsFullScreen.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
     }
-
-    #endregion
-
-    #region Panel Visibility Tests
 
     [Test]
     public void SetRegionVisibility_HideSinglePanel_UpdatesVisibility()
@@ -281,10 +267,6 @@ public class LayoutManagerTests
         messageReceived.Should().BeFalse();
     }
 
-    #endregion
-
-    #region Reset Layout Tests
-
     [Test]
     public void ResetLayout_RestoresAllPanelsVisible()
     {
@@ -338,10 +320,6 @@ public class LayoutManagerTests
         _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.All;
     }
 
-    #endregion
-
-    #region Messaging Tests
-
     [Test]
     public void LayoutModeChange_SendsLayoutModeChangedMessage()
     {
@@ -381,10 +359,6 @@ public class LayoutManagerTests
         receivedMessage!.RegionVisibility.Should().Be(LayoutRegion.Secondary | LayoutRegion.Console);
     }
 
-    #endregion
-
-    #region Settings Persistence Tests
-
     [Test]
     public void SetRegionVisibility_InDefaultMode_UpdatesPreferredRegionVisibility()
     {
@@ -422,10 +396,6 @@ public class LayoutManagerTests
         _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.None;
     }
 
-    #endregion
-
-    #region Edge Cases
-
     [Test]
     public void MultipleQuickTransitions_MaintainsConsistentState()
     {
@@ -448,6 +418,4 @@ public class LayoutManagerTests
         _layoutManager.IsInspectorPanelVisible.Should().BeFalse();
         _layoutManager.IsConsolePanelVisible.Should().BeTrue();
     }
-
-    #endregion
 }

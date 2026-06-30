@@ -1,8 +1,7 @@
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Watches the main window's activation state and broadcasts activation changes. Drives the custom title
-/// bar's active/inactive tint on heads that draw one.
+/// Watches the main window's activation state and broadcasts activation changes.
 /// </summary>
 public interface IWindowActivationMonitor
 {

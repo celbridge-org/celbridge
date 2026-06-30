@@ -33,7 +33,7 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Paste"),
-            Icon: IconSymbol.Paste); // Paste icon
+            Icon: IconSymbol.Paste);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

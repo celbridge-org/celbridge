@@ -12,7 +12,7 @@ public static class PlatformServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         // The fullscreen mechanism is platform-specific. The packaged WinAppSDK head uses the native
-        // fullscreen presenter; the Skia desktop heads emulate fullscreen because the WPF shell's
+        // fullscreen presenter. The Skia desktop heads emulate fullscreen because the WPF shell's
         // fullscreen presenter has no visual effect.
 #if WINDOWS
         services.AddSingleton<IFullScreenController, WinAppSdkFullScreenController>();
@@ -27,7 +27,7 @@ public static class PlatformServiceConfiguration
         }
 #endif
 
-        // Window activation tinting is only meaningful on the head that draws the custom title bar; the
+        // Window activation tinting is only meaningful on the head that draws the custom title bar. The
         // Skia heads draw a native title bar that the OS tints, so they use the no-op monitor.
 #if WINDOWS
         services.AddSingleton<IWindowActivationMonitor, WindowActivationMonitor>();

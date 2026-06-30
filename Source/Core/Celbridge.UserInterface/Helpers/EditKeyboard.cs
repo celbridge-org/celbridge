@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.Helpers;
 /// <summary>
 /// Resolves the platform-specific keyboard modifiers and keys for the standard edit shortcuts, so no
 /// surface checks them itself. The command modifier is Control on Windows and Linux, and Command (which
-/// the macOS Skia head surfaces as the left Windows key) on macOS; the delete key is Delete on every
+/// the macOS Skia head surfaces as the left Windows key) on macOS. The delete key is Delete on every
 /// head, plus Backspace on macOS.
 /// </summary>
 public static class EditKeyboard
@@ -23,8 +23,8 @@ public static class EditKeyboard
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (platformInfo.CommandModifier == CommandModifierKey.Command)
         {
-            // The macOS head surfaces only the left Command key as a key code; Control stays folded in
-            // as the fallback (matching MainPage's undo/redo handling), so this is additive.
+            // The macOS head surfaces only the left Command key as a key code. Control stays folded in
+            // as the fallback, so this is additive.
             var command = IsKeyDown(VirtualKey.LeftWindows);
             return control || command;
         }

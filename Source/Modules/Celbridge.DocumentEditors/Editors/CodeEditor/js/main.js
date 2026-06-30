@@ -49,7 +49,7 @@ function resolveRendererUrl(rawUrl) {
 
 async function initialize() {
     // Resolve the host capability context before reading celbridge.options. On the Skia head
-    // this fetches the context over the bridge (host/getContext); on the packaged WinUI head
+    // this fetches the context over the bridge (host/getContext). On the packaged WinUI head
     // it resolves immediately from the pre-injected global.
     await celbridge.ready();
     const options = parseOptions();
@@ -109,7 +109,7 @@ async function initialize() {
             p.endColumn ?? 0);
     });
 
-    // The host (a menu or keyboard shortcut) routes an edit verb here when the editor holds focus;
+    // The host (a menu or keyboard shortcut) routes an edit verb here when the editor holds focus.
     // Monaco runs its own command.
     celbridge.onNotification('input/performEdit', (params) => {
         editorController.performEdit(params?.command);

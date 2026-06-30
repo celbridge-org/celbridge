@@ -79,7 +79,7 @@ public partial class NewFileDialogViewModel : ObservableObject
             !string.IsNullOrEmpty(ft.Extension) &&
             ft.Extension.Equals(previousExtension, StringComparison.OrdinalIgnoreCase));
 
-        // If extension matches a known type, select it; otherwise select "Other"
+        // If extension matches a known type, select it. Otherwise select "Other"
         _selectedFileTypeIndex = index >= 0 ? index : OtherFileTypeIndex;
 
         PropertyChanged += NewFileDialogViewModel_PropertyChanged;

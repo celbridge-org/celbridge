@@ -33,7 +33,7 @@ public class NewFileMenuOption : IMenuOption<ExplorerMenuContext>
         var label = _stringLocalizer.GetString("ResourceTree_NewFile");
         return new MenuItemDisplayInfo(
             LocalizedText: label,
-            Icon: IconSymbol.FileAdd); // file-earmark icon
+            Icon: IconSymbol.FileAdd);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

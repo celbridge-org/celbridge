@@ -322,7 +322,7 @@ public class CommandService : ICommandService
 
     // Awaits a command-loop operation while a watchdog logs a warning if it runs unusually long.
     // The serial queue cannot advance until the awaited operation returns, so a genuine hang would
-    // otherwise leave no trace. The operation is never cancelled; the watchdog only emits a warning,
+    // otherwise leave no trace. The operation is never cancelled. The watchdog only emits a warning,
     // and repeats it while the operation stays blocked so a permanent hang keeps reporting itself.
     private async Task<Result> ExecuteWithWatchdogAsync(Task<Result> operation, string operationName)
     {

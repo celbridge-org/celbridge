@@ -6,7 +6,7 @@ import { consoleClient } from './console-client.js';
 const darkTheme = window.VSCodeTerminalThemes.dark;
 const lightTheme = window.VSCodeTerminalThemes.light;
 
-// Default to the OS theme so the first paint matches the system; the host delivers the app's effective
+// Default to the OS theme so the first paint matches the system. The host delivers the app's effective
 // theme (which may be an in-app override) over the app-state store, pushed on connect.
 const initialIsDark = typeof window !== 'undefined' && window.matchMedia
     ? window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -127,7 +127,7 @@ term.attachCustomKeyEventHandler((ev) => {
 
     // Swallow Ctrl+D and Ctrl+Z so they do not reach the PTY. On Windows, IPython treats
     // Ctrl+D as quit-with-confirmation and the shell layer treats Ctrl+Z as the legacy
-    // MS-DOS EOF marker; prompt_toolkit's default Ctrl+Z handler just inserts a literal
+    // MS-DOS EOF marker. prompt_toolkit's default Ctrl+Z handler just inserts a literal
     // ^Z into the line buffer. Neither behaviour is what a user pressing these keys in
     // the Celbridge console expects, and there is no undo binding to forward to anyway.
     if (ev.ctrlKey && (ev.key === 'd' || ev.key === 'z')) {
@@ -166,7 +166,7 @@ consoleClient.onInjectCommand((command) => {
     consoleClient.sendInput('\x15' + command + '\r');
 });
 
-// Reports which edit verbs the console can do. Copy needs a selection; paste and select-all are always
+// Reports which edit verbs the console can do. Copy needs a selection. Paste and select-all are always
 // available. Sent on focus and whenever the selection changes so the Edit menu enables correctly.
 function reportConsoleEditAvailability() {
     consoleClient.notifyEditAvailability({

@@ -27,7 +27,6 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
-    // Panel width/height properties now use Primary/Secondary naming
     public float PrimaryPanelWidth
     {
         get => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth;
@@ -46,7 +45,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight = value;
     }
 
-    // Panel visibility properties now use Primary/Secondary naming
     public bool IsPrimaryPanelVisible => _layoutService.IsContextPanelVisible;
 
     public bool IsSecondaryPanelVisible => _layoutService.IsInspectorPanelVisible;

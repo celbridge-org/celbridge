@@ -32,7 +32,7 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_CreateArchive"),
-            Icon: IconSymbol.Archive); // archive icon
+            Icon: IconSymbol.Archive);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

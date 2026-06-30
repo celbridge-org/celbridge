@@ -25,7 +25,7 @@ let pendingScrollSourceLine = null;
 let scrollResizeObserver = null;
 
 // Total number of source lines in the markdown currently rendered. Populated
-// by annotateTokensWithSourceLines; used by the bidirectional scroll sync to
+// by annotateTokensWithSourceLines and used by the bidirectional scroll sync to
 // interpolate scroll positions past the last source-mapped block (where the
 // preview's rendered blocks stop but the source still has trailing lines,
 // and vice versa). Without this, scrolling past the last block produced a
@@ -319,7 +319,7 @@ export async function initialize(iframe, handlers) {
     applyPreviewTheme(celbridge.appState.current.theme);
     if (!previewThemeListenerRegistered) {
         previewThemeListenerRegistered = true;
-        // One listener for the page's lifetime; it always targets the current iframe document.
+        // One listener for the page's lifetime. It always targets the current iframe document.
         celbridge.appState.onChanged((appState) => applyPreviewTheme(appState.theme));
     }
 
@@ -420,7 +420,7 @@ export function render(markdown) {
 
 /**
  * Scrolls the preview to the given percentage (0-1).
- * Used only for session-state restoration; live bidirectional scroll sync
+ * Used only for session-state restoration. Live bidirectional scroll sync
  * goes through scrollToSourceLine, which uses the marked source map.
  * Returns true if the scroll was applied, false if it was queued for retry.
  */
@@ -472,7 +472,7 @@ export function scrollToSourceLine(line, fraction = 0) {
 /**
  * Returns {line, fraction} for the source position corresponding to the
  * topmost visible point in the preview. `line` is an integer 1-based source
- * line; `fraction` is 0-1 into that line. Combined they describe a
+ * line. `fraction` is 0-1 into that line. Combined they describe a
  * sub-line-precision source position so the editor can reveal it without
  * quantising to block boundaries.
  *
@@ -480,9 +480,7 @@ export function scrollToSourceLine(line, fraction = 0) {
  *   (a) Above the first block — line 1, fraction 0.
  *   (b) Between two blocks — lerp between their source lines by scroll progress.
  *   (c) Past the last block — lerp from that block's line to totalSourceLines
- *       by how far into the trailing scroll range we are. Without this the
- *       editor stalled at the last block's line regardless of further preview
- *       scrolling.
+ *       by how far into the trailing scroll range we are.
  */
 export function getTopSourceLine() {
     if (!previewContainerElement) {
@@ -524,8 +522,7 @@ export function getTopSourceLine() {
 
     // Past the last block: project onto the remaining source lines using the
     // preview's remaining scroll range. When totalSourceLines is unknown
-    // (never rendered), fall back to the pre-fix behaviour of parking on the
-    // current block — safer than extrapolating.
+    // (never rendered), park on the current block rather than extrapolating.
     if (totalSourceLines <= current.line) {
         return { line: current.line, fraction: 0 };
     }
@@ -567,7 +564,7 @@ function applyScrollTop(scrollTop) {
     suppressScrollSync = true;
     previewContainerElement.scrollTop = Math.max(0, scrollTop);
     // Two rAFs to cover the case where the scroll event dispatches on the
-    // frame after the assignment; clearing suppressScrollSync any sooner can
+    // frame after the assignment. Clearing suppressScrollSync any sooner can
     // leak the programmatic scroll back as an onSyncToEditor callback.
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -630,7 +627,7 @@ function resolveSourceLineToTop(line, fraction) {
         return 0;
     }
 
-    // Binary search would be marginal at our sizes; walk is fine.
+    // Binary search would be marginal at our sizes. Walk is fine.
     let before = map[0];
     let after = null;
     for (const entry of map) {
@@ -650,9 +647,8 @@ function resolveSourceLineToTop(line, fraction) {
 
     // Past the last mapped block: interpolate from that block's top to the
     // preview's maxScroll, based on how many source lines remain beyond the
-    // last block. Without `totalSourceLines` this is the drift zone that
-    // earlier implementations parked on — the editor continued but the
-    // preview stalled.
+    // last block. Using totalSourceLines maps the source tail onto the preview
+    // tail rather than stalling the preview while the editor keeps scrolling.
     const maxScroll = Math.max(0, previewContainerElement.scrollHeight - previewContainerElement.clientHeight);
     const remainingLines = Math.max(1, totalSourceLines - before.line);
     const linesPastBefore = Math.max(0, sourcePosition - before.line);

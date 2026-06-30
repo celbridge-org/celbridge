@@ -3,7 +3,7 @@ using Celbridge.Settings.Services;
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
-/// In-memory credential store for tests. Round-trips the secret bytes without encryption; presence and
+/// In-memory credential store for tests. Round-trips the secret bytes without encryption. Presence and
 /// delete operate on the dictionary. The Available and FailRetrieve flags simulate an unavailable store and
 /// a read failure.
 /// </summary>

@@ -52,7 +52,7 @@ public interface IPlatformInfo
     bool HostShowsProjectTitleInChrome { get; }
 
     /// <summary>
-    /// The keyboard modifier that issues application commands. Command on macOS; Control on Windows and Linux.
+    /// The keyboard modifier that issues application commands. Command on macOS. Control on Windows and Linux.
     /// </summary>
     CommandModifierKey CommandModifier { get; }
 

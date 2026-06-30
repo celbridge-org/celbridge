@@ -12,8 +12,8 @@ public interface IWindowModeService
     LayoutMode LayoutMode { get; }
 
     /// <summary>
-    /// Whether the window is currently filling the screen. On macOS this reflects native fullscreen;
-    /// on platforms without native window-chrome controls it reflects the app-driven fullscreen state.
+    /// Whether the window is currently filling the screen. On macOS this reflects native fullscreen.
+    /// On platforms without native window-chrome controls it reflects the app-driven fullscreen state.
     /// </summary>
     bool IsFullScreen { get; }
 

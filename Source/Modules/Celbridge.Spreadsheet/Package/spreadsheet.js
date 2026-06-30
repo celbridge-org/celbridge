@@ -184,7 +184,7 @@ function listenForChanges() {
         client.document.notifyChanged();
     });
 
-    // ActiveSheetChanged is workbook-scoped and survives spread.import();
+    // ActiveSheetChanged is workbook-scoped and survives spread.import().
     // SelectionChanged is per-sheet and gets dropped on import, so it's
     // re-bound from bindSheetEvents.
     workbook.bind(GC.Spread.Sheets.Events.ActiveSheetChanged, () => {
@@ -291,7 +291,7 @@ async function initializeEditor() {
             // Still complete the document handshake so the host's load flow
             // doesn't hang waiting for onContent/notifyImportComplete. The
             // WebView either shows an empty gc-designer-container or SpreadJS's
-            // own rejection dialog; either way we refuse to accept content
+            // own rejection dialog. Either way we refuse to accept content
             // or produce saves.
             await client.initializeDocument({
                 onContent: async () => {
@@ -349,7 +349,7 @@ async function initializeEditor() {
                 // is still settling and showRow/showColumn calls from it do not take effect.
                 //
                 // The host passes preserveViewState=true for watcher-driven reloads and for
-                // data-changing commands; view-changing commands like set_active_view set
+                // data-changing commands. View-changing commands like set_active_view set
                 // preserveViewState=false so disk's selection and scroll win.
                 const preserveView = args?.preserveViewState ?? true;
                 const savedViewState = captureViewState();

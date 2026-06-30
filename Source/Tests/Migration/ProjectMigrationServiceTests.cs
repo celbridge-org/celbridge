@@ -28,8 +28,6 @@ public class ProjectMigrationServiceTests
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
     }
 
-    #region File Validation Tests
-
     [Test]
     public async Task CheckMigrationAsync_NonExistentFile_ReturnsFailedStatus()
     {
@@ -101,10 +99,6 @@ public class ProjectMigrationServiceTests
         }
     }
 
-    #endregion
-
-    #region Same Version Tests
-
     [Test]
     public async Task CheckMigrationAsync_SameVersion_ReturnsComplete()
     {
@@ -164,10 +158,6 @@ public class ProjectMigrationServiceTests
         }
     }
 
-    #endregion
-
-    #region Newer Version Tests
-
     [Test]
     public async Task CheckMigrationAsync_NewerProjectVersion_ReturnsIncompatibleVersion()
     {
@@ -193,10 +183,6 @@ public class ProjectMigrationServiceTests
             MigrationTestHelper.CleanupTempFile(projectPath);
         }
     }
-
-    #endregion
-
-    #region Invalid Version Tests
 
     [Test]
     public async Task CheckMigrationAsync_EmptyProjectVersion_ReturnsInvalidVersion()
@@ -243,10 +229,6 @@ public class ProjectMigrationServiceTests
             MigrationTestHelper.CleanupTempFile(projectPath);
         }
     }
-
-    #endregion
-
-    #region Version Update Tests
 
     [Test]
     public async Task CheckMigrationAsync_OlderVersion_ReturnsUpgradeRequired()
@@ -310,10 +292,6 @@ public class ProjectMigrationServiceTests
         }
     }
 
-    #endregion
-
-    #region Migration Step Execution Tests
-
     [Test]
     public async Task PerformMigrationUpgradeAsync_RunsApplicableStep_AndUpdatesVersion()
     {
@@ -373,8 +351,6 @@ public class ProjectMigrationServiceTests
             MigrationTestHelper.CleanupTempFile(projectPath);
         }
     }
-
-    #endregion
 }
 
 

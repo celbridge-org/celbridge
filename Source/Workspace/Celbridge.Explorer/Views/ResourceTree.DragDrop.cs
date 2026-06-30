@@ -84,7 +84,7 @@ public sealed partial class ResourceTree
             // External drag - allow drop on folder, file (uses parent), or empty space (project folder).
             // The dropped item names are not available synchronously here, so the
             // folder-level policy check covers read-only roots, hidden folders, and
-            // fully-locked folders; the per-item visibility gate enforces the rest
+            // fully-locked folders. The per-item visibility gate enforces the rest
             // when the transfer runs.
             var destFolder = ResolveDropTargetFolder(targetItem?.Resource);
             var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
@@ -263,7 +263,7 @@ public sealed partial class ResourceTree
         }
 
         // A lone .cel file drop can only be an intentional creation in the
-        // reserved namespace; refuse it. Multi-item and folder drops pass
+        // reserved namespace. Refuse it. Multi-item and folder drops pass
         // through so the "copy resources from another Celbridge project"
         // workflow still works — any orphan .cel files that arrive surface
         // through the project-check reporter.

@@ -167,7 +167,7 @@ public class PythonInstaller : IPythonInstaller
     }
 
     // Returns the uv release archive filename for the running OS and architecture, matching the DownloadUv
-    // MSBuild target in Celbridge.Python.csproj. Windows ships a .zip with the binaries at the root; macOS
+    // MSBuild target in Celbridge.Python.csproj. Windows ships a .zip with the binaries at the root. macOS
     // and Linux ship a .tar.gz whose binaries live under a single top-level folder.
     private static string GetUvArchiveFileName()
     {
@@ -192,7 +192,7 @@ public class PythonInstaller : IPythonInstaller
 
     // Extracts the bundled uv archive into the Python folder. On Windows (the Skia desktop head can run
     // there too) the archive is a .zip with the binaries at the root. On macOS and Linux it is a .tar.gz
-    // whose binaries sit under a single top-level folder (e.g. uv-aarch64-apple-darwin/uv); that folder is
+    // whose binaries sit under a single top-level folder (e.g. uv-aarch64-apple-darwin/uv). That folder is
     // stripped so the binary lands directly in the Python folder, matching the layout the rest of the
     // service expects. TarFile preserves the Unix executable mode and the flattening move is a rename that
     // preserves it, so no explicit chmod is needed.

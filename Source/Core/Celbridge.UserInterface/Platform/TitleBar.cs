@@ -7,7 +7,7 @@ namespace Celbridge.UserInterface.Platform;
 /// Windows title-bar chrome wrapper. Hosts the platform-neutral ApplicationToolbar inside the custom
 /// title bar (MainPage extends content into the title bar and assigns this control as the drag region)
 /// and carves out interactive passthrough regions so the toolbar's buttons receive clicks instead of
-/// the window-drag chrome. Used only on Windows; the Skia desktop heads host the ApplicationToolbar
+/// the window-drag chrome. Used only on Windows. The Skia desktop heads host the ApplicationToolbar
 /// directly beneath the native title bar.
 /// </summary>
 public sealed class TitleBar : UserControl, ITitleBar

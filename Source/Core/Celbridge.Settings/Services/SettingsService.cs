@@ -173,7 +173,7 @@ internal sealed class SettingsService : ISettingsService
     public Task<Result> FlushAsync()
     {
         // The Workspace store is flushed through the workspace save path. The Application store also backs
-        // the Windows credential store (DPAPI ciphertext), so flushing it persists those too; the macOS
+        // the Windows credential store (DPAPI ciphertext), so flushing it persists those too. The macOS
         // Keychain writes are immediate and need no flush.
         return _applicationStore.FlushAsync();
     }

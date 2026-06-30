@@ -6,7 +6,7 @@ namespace Celbridge.UserInterface.Platform.FullScreen;
 
 /// <summary>
 /// Fullscreen controller for the packaged WinAppSDK head, where the native fullscreen presenter works
-/// as documented. Entering switches to the fullscreen presenter; exiting returns to the overlapped
+/// as documented. Entering switches to the fullscreen presenter. Exiting returns to the overlapped
 /// presenter and restores the prior maximized state.
 /// </summary>
 public sealed class WinAppSdkFullScreenController : IFullScreenController

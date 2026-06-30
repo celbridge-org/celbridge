@@ -281,7 +281,7 @@ public class PythonService : IPythonService, IDisposable
                 .ToString();
 
             // Keep the terminal alive after the REPL exits so the user can type 'celbridge-py' to start a
-            // new session. On Windows the ConPty backend runs the command line via cmd.exe; the Unix
+            // new session. On Windows the ConPty backend runs the command line via cmd.exe. The Unix
             // backend already runs the command line through /bin/sh -c, so the uv command is appended with
             // 'exec bash' rather than wrapped in another shell (a second 'bash -c' would collide with the
             // single quotes uvCommand already uses to quote its own arguments).
@@ -510,7 +510,7 @@ public class PythonService : IPythonService, IDisposable
         var sb = new StringBuilder();
 
         // uv binary file size catches an app update that bundles a new uv. The binary is
-        // shared at the application level; the interpreter and cache below are per-project.
+        // shared at the application level. The interpreter and cache below are per-project.
         var uvExeName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
         var uvExePath = Path.Combine(appPythonFolder, uvExeName);
         var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
@@ -648,9 +648,6 @@ public class PythonService : IPythonService, IDisposable
         await _fileSystem.WriteAllTextAsync(filePath, fingerprint);
     }
 
-    /// <summary>
-    /// Finds a wheel file for the specified package in the given folder.
-    /// </summary>
     private async Task<Result<string>> FindWheelFileAsync(string folderPath, string packageName)
     {
         var searchPattern = $"{packageName}-*.whl";

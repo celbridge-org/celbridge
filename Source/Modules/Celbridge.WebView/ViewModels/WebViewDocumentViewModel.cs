@@ -29,7 +29,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     /// <summary>
     /// The URL the view should navigate to. For .webview documents this is the configured source URL
-    /// verbatim; for the HTML viewer it is the loopback /project/ URL on the Skia heads, or the project
+    /// verbatim. For the HTML viewer it is the loopback /project/ URL on the Skia heads, or the project
     /// virtual-host URL on Windows.
     /// </summary>
     public string NavigateUrl
@@ -43,8 +43,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
                     return string.Empty;
                 }
 
-                // URL path is the bare resource path; the "project:" prefix that
-                // ResourceKey.ToString() now emits is for serialised diagnostics,
+                // URL path is the bare resource path. The "project:" prefix that
+                // ResourceKey.ToString() emits is for serialised diagnostics,
                 // not URL construction.
 
                 // Served over the loopback file server's /project/ route. Relative asset
@@ -79,7 +79,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         if (Role == WebViewDocumentRole.HtmlViewer)
         {
             // HTML viewer content is served by the file server (loopback /project/ route, or the project
-            // virtual host on Windows). Nothing to parse; succeeding here lets TryNavigate run.
+            // virtual host on Windows). Nothing to parse. Succeeding here lets TryNavigate run.
             await Task.CompletedTask;
             return Result.Ok();
         }

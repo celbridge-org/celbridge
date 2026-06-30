@@ -3,7 +3,7 @@
 //
 // Transport hierarchy: one transport carries the bridge on every head -- a WebSocket to the loopback file
 // server. It is learned two ways: a loopback page derives a same-origin ws(s):// URL from a connection
-// token in its own URL; a synthetic-origin page (a faked origin that is not the loopback server) instead
+// token in its own URL. A synthetic-origin page (a faked origin that is not the loopback server) instead
 // reads the full ws:// URL injected as window.__celbridgeBridgeUrl. The only non-WebSocket path is a
 // WebView2 native-message fallback (chrome.webview / webkit.messageHandlers), and it serves the single page
 // that cannot open that socket: a synthetic-origin editor on the Windows virtual host, whose https origin
@@ -67,7 +67,7 @@ export class RpcTransport {
     constructor(options = {}) {
         this.#timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
 
-        // Tests inject their own transport via postMessage/onMessage; that always wins.
+        // Tests inject their own transport via postMessage/onMessage. That always wins.
         if (options.postMessage || options.onMessage) {
             this.#postMessage = options.postMessage ?? defaultWebViewPostMessage;
             const setupListener = options.onMessage ?? defaultWebViewSetupListener;
@@ -80,7 +80,7 @@ export class RpcTransport {
             // loopback page instead carries a connection token in its URL and derives the same-origin
             // ws:// URL from it. Either way the WebSocket survives the WebView's view attachment. With
             // neither present, fall back to the WebView2 messaging transport if a native messaging bridge
-            // is present; otherwise this page is running standalone (outside the Celbridge host).
+            // is present. Otherwise this page is running standalone (outside the Celbridge host).
             const injectedBridgeUrl = options.wsUrl ?? readInjectedBridgeUrl();
             const webSocketToken = options.wsToken ?? readWebSocketToken();
             if (injectedBridgeUrl) {
@@ -154,7 +154,7 @@ export class RpcTransport {
     /**
      * Whether a Celbridge host transport is present (a WebSocket bridge, or a native WebView messaging
      * bridge). False when the page is running standalone in a plain browser. Determined synchronously at
-     * construction; the basis for `celbridge.isHosted`.
+     * construction. The basis for `celbridge.isHosted`.
      * @returns {boolean}
      */
     get isHosted() {

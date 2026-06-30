@@ -1,9 +1,8 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// The standard editing verbs, platform- and surface-agnostic. Copy, Cut, Paste, Select All, and the
-/// undo pair are the common verbs every surface understands; Delete, Duplicate, and Rename are extensions
-/// offered by surfaces that support them.
+/// The standard editing verbs, platform- and surface-agnostic. Every surface understands the common verbs.
+/// Delete, Duplicate, and Rename are extensions offered by surfaces that support them.
 /// </summary>
 public enum EditIntent
 {
@@ -19,16 +18,14 @@ public enum EditIntent
 }
 
 /// <summary>
-/// A focusable surface that performs the standard editing verbs on its own selection. The focus service
-/// exposes the surface that currently holds focus as IFocusService.EditTarget; keyboard handlers and the
-/// menus route an EditIntent to it. A native panel acts on its domain selection (e.g. the Explorer copies
-/// resources); a WebView editor forwards the intent to its own editor command.
+/// A focusable surface that performs the standard editing verbs on its own selection. A native panel acts
+/// on its domain selection (e.g. the Explorer copies resources). A WebView editor forwards the intent to
+/// its own editor command.
 /// </summary>
 public interface IEditTarget
 {
     /// <summary>
     /// Whether the surface can currently perform the intent (e.g. Copy requires a non-empty selection).
-    /// Drives menu enable state and keyboard shortcut gating.
     /// </summary>
     bool CanPerformEdit(EditIntent intent);
 
@@ -40,8 +37,7 @@ public interface IEditTarget
 
 /// <summary>
 /// Which edit verbs a WebView editor can currently perform, reported by the editor over the bridge
-/// whenever its selection changes. The host caches the latest set so IEditTarget.CanPerformEdit can answer
-/// menu enable state and shortcut gating without a round-trip.
+/// whenever its selection changes.
 /// </summary>
 public record EditAvailability(
     bool CanCopy,
@@ -52,8 +48,7 @@ public record EditAvailability(
     bool CanRedo)
 {
     /// <summary>
-    /// The default for an editor that has reported nothing yet: nothing is allowed, so the menu greys out
-    /// and the keyboard shortcut falls through to the editor's own native handling.
+    /// The default for an editor that has reported nothing yet: nothing is allowed.
     /// </summary>
     public static EditAvailability None { get; } = new(false, false, false, false, false, false);
 

@@ -8,7 +8,7 @@ namespace Celbridge.Tests.Settings;
 /// <summary>
 /// Covers the Protected scope of SettingsService: the Workshop Key round-trip through the credential store,
 /// presence checks that do not retrieve, reset, and the failure modes (unavailable store, retrieve failure).
-/// The credential store is an in-memory fake; the encrypt-and-persist behaviour of the real Windows store is
+/// The credential store is an in-memory fake. The encrypt-and-persist behaviour of the real Windows store is
 /// covered by DpapiCredentialStoreTests.
 /// </summary>
 [TestFixture]

@@ -18,7 +18,7 @@ UNOPENED_RESOURCE = "TestWebView/unopened.html"
 
 
 # HTML content used by every TestWebView case. Self-contained so the test
-# does not depend on any project-shipped page; the inline <script> emits
+# does not depend on any project-shipped page. The inline <script> emits
 # entries at every console level so get_console can be exercised.
 _WEBVIEW_TEST_HTML = """<!doctype html>
 <html lang="en">
@@ -406,7 +406,7 @@ class TestWebView:
     # webview.get_network
 
     def test_get_network_captures_test_page_fetch(self, webview):
-        # The inline <script> issues a fetch on load; capture records it
+        # The inline <script> issues a fetch on load. Capture records it
         # regardless of response status.
         result = webview.get_network(TEST_RESOURCE, tail=50)
         assert "entries" in result
@@ -455,7 +455,7 @@ class TestWebView:
     # webview.screenshot
 
     def test_screenshot_default_returns_metadata_only(self, webview):
-        # The proxy strips the typed image block; only metadata reaches Python.
+        # The proxy strips the typed image block. Only metadata reaches Python.
         result = webview.screenshot(TEST_RESOURCE)
         assert result["format"] == "jpeg"
         assert result["sizeBytes"] > 0

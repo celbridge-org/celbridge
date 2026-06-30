@@ -216,7 +216,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
             return Result.Ok();
         }
 
-        // Default restores the user's preferred panels; Focus and Presentation both hide the side
+        // Default restores the user's preferred panels. Focus and Presentation both hide the side
         // panels (keeping a maximized console so the user can keep working in it). They differ only in
         // the toolbar and document tabs, which the views hide based on the layout mode.
         LayoutRegion targetVisibility;

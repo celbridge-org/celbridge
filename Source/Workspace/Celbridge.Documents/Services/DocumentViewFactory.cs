@@ -35,7 +35,7 @@ public class DocumentViewFactory
 
     /// <summary>
     /// Selects an editor for the given resource and constructs its document view.
-    /// The view is returned without content loaded; the caller drives
+    /// The view is returned without content loaded. The caller drives
     /// SetFileResource and LoadContent.
     /// </summary>
     public async Task<Result<IDocumentView>> CreateAsync(
@@ -81,7 +81,7 @@ public class DocumentViewFactory
 
     // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins
     // over per-extension preference and priority fallback. Returns the view
-    // on success; null when no preference is set, the editor is unregistered,
+    // on success, or null when no preference is set, the editor is unregistered,
     // it cannot handle the resource, or construction fails (logged before
     // fall-through).
     private async Task<IDocumentView?> CreateFromSidecarPreferenceAsync(ResourceKey fileResource)
@@ -182,7 +182,7 @@ public class DocumentViewFactory
 
         // Markdown is plain text, so when no Markdown editor is available it can still be edited as
         // text. This is the path taken on the Skia heads where the WebView-backed Markdown editor is
-        // gated off; the plain TextBox is the built-in fallback. WebViewDocument and FileViewer are
+        // gated off. The plain TextBox is the built-in fallback. WebViewDocument and FileViewer are
         // not text-representable, so they correctly fail here rather than opening as text.
         if (viewType != DocumentViewType.TextDocument
             && viewType != DocumentViewType.Markdown)
@@ -204,7 +204,7 @@ public class DocumentViewFactory
         var requestedFactory = getFactoryResult.Value;
 
         // The code editor is the "view as text" option in Open With and may be
-        // requested for any file; skip the extension check for that one id.
+        // requested for any file, so the extension check is skipped for that one id.
         // Other editors still go through CanHandleResource.
         if (!IsCodeEditor(requestedEditorId)
             && !requestedFactory.CanHandleResource(fileResource))

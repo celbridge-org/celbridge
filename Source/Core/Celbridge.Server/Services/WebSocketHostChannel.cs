@@ -8,8 +8,7 @@ namespace Celbridge.Server.Services;
 /// <summary>
 /// IHostChannel implementation over a WebSocket accepted on the loopback server. Outbound messages are
 /// drained by a single send pump so they are written in order and never overlap, and the receive loop
-/// reassembles multi-frame text messages before raising MessageReceived. This is the cross-platform
-/// replacement for the WebView2 messaging used by WebViewHostChannel.
+/// reassembles multi-frame text messages before raising MessageReceived.
 /// </summary>
 public sealed class WebSocketHostChannel : IHostChannel, IDisposable
 {
@@ -138,7 +137,7 @@ public sealed class WebSocketHostChannel : IHostChannel, IDisposable
         }
         catch (WebSocketException ex)
         {
-            // A client that closes its tab drops the socket without a close handshake; this is expected.
+            // A client that closes its tab drops the socket without a close handshake. This is expected.
             _logger.LogDebug(ex, "WebSocket host channel receive loop ended");
         }
         catch (Exception ex)

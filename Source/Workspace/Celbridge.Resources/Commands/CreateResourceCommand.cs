@@ -34,9 +34,9 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        // .cel is reserved for project metadata sidecars; refuse to create
+        // .cel is reserved for project metadata sidecars. Refuse to create
         // files in the namespace. The dialog-level validator catches the same
-        // case through the UI; this guard catches programmatic / scripted
+        // case through the UI. This guard catches programmatic / scripted
         // callers that bypass the dialog.
         if (ResourceType == ResourceType.File
             && _workspaceWrapper.WorkspaceService.ResourceService.Sidecars.IsSidecarFileName(DestResource.ResourceName))
@@ -84,10 +84,6 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
 
     public static async void NewFile(string sourcePath, ResourceKey destResource)
     {

@@ -18,10 +18,7 @@ public sealed record BundledPackageDescriptor
 
     /// <summary>
     /// When true, DevTools are permanently disabled on any WebView hosting this package,
-    /// regardless of the user's feature flag or build configuration. Intended for bundled
-    /// packages that embed sensitive material (e.g. licensed assets, secret keys) that
-    /// must not be exposed through browser DevTools. Because this lives on the descriptor
-    /// and not the public manifest, third-party packages cannot set it.
+    /// regardless of the user's feature flag or build configuration.
     /// </summary>
     public bool DevToolsBlocked { get; init; }
 }

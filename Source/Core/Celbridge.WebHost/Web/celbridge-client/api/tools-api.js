@@ -14,7 +14,7 @@
 //   - Extra positional arguments throw CelToolError(InvalidArgs).
 //   - Arrays and plain objects passed to `string`-typed parameters are JSON-stringified
 //     automatically (for editsJson, resources, files, etc.).
-//   - Each argument is type-checked against the descriptor's parameter type; a mismatch
+//   - Each argument is type-checked against the descriptor's parameter type. A mismatch
 //     throws CelToolError(InvalidArgs). `undefined` and `null` skip validation.
 
 /**
@@ -177,7 +177,7 @@ function describeTypeMismatch(expectedType, value) {
 }
 
 /**
- * Short type name used in error messages; distinguishes arrays and null from object.
+ * Short type name used in error messages. Distinguishes arrays and null from object.
  * @param {*} value
  * @returns {string}
  */
@@ -356,7 +356,7 @@ export class ToolsAPI {
     /**
      * Fetches tools/list from the host, filters by the allowlist, and stores
      * the descriptors so `cel.*` becomes callable. Invoked by Celbridge.initialize().
-     * Safe to call multiple times; subsequent calls refresh the descriptor list.
+     * Safe to call multiple times. Subsequent calls refresh the descriptor list.
      *
      * When the allowlist is empty the fetch is skipped — no tool can pass the
      * gate, so there is nothing to discover. Packages that do not declare

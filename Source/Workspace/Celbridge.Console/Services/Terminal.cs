@@ -4,7 +4,7 @@ namespace Celbridge.Console.Services;
 
 public class Terminal : ITerminal, IDisposable
 {
-    // Null on a platform with no pty backend; the terminal operations then report it as unsupported.
+    // Null on a platform with no pty backend. The terminal operations then report it as unsupported.
     private readonly IPtyBackend? _backend;
 
     public event EventHandler<string>? OutputReceived;

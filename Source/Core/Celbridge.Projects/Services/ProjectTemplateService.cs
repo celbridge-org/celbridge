@@ -54,7 +54,7 @@ public class ProjectTemplateService : IProjectTemplateService
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
         // Use a temporary staging folder to prevent leftover files on failure.
-        // The project doesn't exist yet, so temp: isn't available; fall back to
+        // The project doesn't exist yet, so temp: isn't available. Fall back to
         // the application's temp folder.
         var tempRootPath = _appEnvironment.TemporaryFolderPath;
         var tempStagingPath = Path.Combine(
@@ -189,7 +189,7 @@ public class ProjectTemplateService : IProjectTemplateService
             var stagingInfo = await _fileSystem.GetInfoAsync(tempStagingPath);
             if (stagingInfo.IsSuccess && stagingInfo.Value.Kind == StorageItemKind.Folder)
             {
-                // Best-effort cleanup; failures here should not mask the primary outcome.
+                // Best-effort cleanup. Failures here should not mask the primary outcome.
                 await _fileSystem.DeleteFolderAsync(tempStagingPath, recursive: true);
             }
         }

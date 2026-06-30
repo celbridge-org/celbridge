@@ -62,9 +62,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
-        //
-        // Set the data context
-        //
         this.DataContext = ViewModel;
 
         // Wire up section container events
@@ -708,7 +705,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // Clean up the old DocumentView state
             await oldDocumentView.PrepareToClose();
 
-            // Resource (and possibly extension) changed; refresh content and label.
+            // Resource (and possibly extension) changed. Refresh content and label.
             documentTab.ViewModel.DocumentView = newDocumentView;
             documentTab.Content = newDocumentView;
             UpdateEditorDisplayName(documentTab, newDocumentView.EditorId);

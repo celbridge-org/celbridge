@@ -16,9 +16,6 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
     public IExplorerPanel ExplorerPanel { get; }
     public ISearchPanel SearchPanel { get; }
 
-    /// <summary>
-    /// Gets the currently active panel tab.
-    /// </summary>
     public ActivityPanelTab CurrentTab => ViewModel.CurrentTab;
 
     public ActivityPanelViewModel ViewModel { get; }
@@ -74,9 +71,6 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         ToolTipService.SetPlacement(SourceControlNavItem, PlacementMode.Right);
     }
 
-    /// <summary>
-    /// Shows the specified panel tab and hides all others.
-    /// </summary>
     public void ShowTab(ActivityPanelTab tab)
     {
         if (tab == ActivityPanelTab.None)

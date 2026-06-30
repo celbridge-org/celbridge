@@ -287,10 +287,6 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
         return Result<string>.Ok(defaultFileName);
     }
 
-    //
-    // Static methods for scripting support.
-    //
-
     public static void NewFileDialog(ResourceKey parentFolderResource)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();

@@ -6,8 +6,7 @@ namespace Celbridge.Tests.Resources;
 /// <summary>
 /// Direct tests for the cross-root dispatch logic: longest-prefix-wins match,
 /// IsResolvable across roots, raw resolve via the matched handler, and
-/// InvalidatePathCache propagation. Pulled out of ResourceRegistryTests so
-/// the root-registration concern can be exercised on its own surface.
+/// InvalidatePathCache propagation.
 /// </summary>
 [TestFixture]
 public class RootHandlerRegistryTests
@@ -122,7 +121,7 @@ public class RootHandlerRegistryTests
 
         // A path whose backing-location portion differs only in case from how the
         // root was registered. On a case-insensitive volume (Windows, default APFS)
-        // the dispatch must still recognise it as under the project root; a
+        // the dispatch must still recognise it as under the project root. A
         // case-sensitive volume (Linux) correctly rejects it.
         var differentlyCasedBacking = _projectFolderPath.ToUpperInvariant();
         var fullPath = Path.Combine(differentlyCasedBacking, "Notes", "todo.txt");

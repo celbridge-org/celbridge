@@ -1,9 +1,5 @@
 namespace Celbridge.Host;
 
-// =============================================================================
-// Initialize Result
-// =============================================================================
-
 /// <summary>
 /// Metadata about the document being edited.
 /// Includes the locale for JS-side localization loading.
@@ -17,17 +13,12 @@ public record InitializeResult(string Content, DocumentMetadata Metadata, string
 
 /// <summary>
 /// The host capability context for a contribution editor: the resolved tool allowlist, the package's
-/// secrets, and its options. Delivered to the WebView client over the bridge via host/getContext, on every
-/// head.
+/// secrets, and its options.
 /// </summary>
 public record CelbridgeContext(
     IReadOnlyList<string> PermittedTools,
     IReadOnlyDictionary<string, string> Secrets,
     IReadOnlyDictionary<string, string> Options);
-
-// =============================================================================
-// Document Operation Results
-// =============================================================================
 
 /// <summary>
 /// Result of the document/load request.
@@ -39,10 +30,6 @@ public record LoadResult(string Content, DocumentMetadata Metadata);
 /// Result of the document/save request.
 /// </summary>
 public record SaveResult(bool Success, string? Error = null);
-
-// =============================================================================
-// Dialog Operation Results
-// =============================================================================
 
 /// <summary>
 /// Result of the dialog/pickImage request.

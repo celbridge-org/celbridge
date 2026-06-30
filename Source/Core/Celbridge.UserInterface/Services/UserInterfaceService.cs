@@ -195,7 +195,7 @@ public class UserInterfaceService : IUserInterfaceService
         _messengerService.Send(message);
 
         // Publish to WebView clients (editors + console) via the app-state store. New WebViews pick
-        // this up in their connect snapshot; open ones receive the broadcast.
+        // this up in their connect snapshot. Open ones receive the broadcast.
         _webViewStateService.AppState.SetValue("theme", UserInterfaceTheme.ToString());
 
         // Update titlebar buttons

@@ -19,8 +19,8 @@ public class IconService : IIconService
     private Dictionary<string, string> _glyphsByName = new();
 
     // Maps each IconSymbol to its glyph name in the bundled icon font (Bootstrap Icons). The name is
-    // resolved to a glyph code via the bundled icon-glyphs.json map. Add new common icons here;
-    // anything not listed is still resolvable by glyph name.
+    // resolved to a glyph code via the bundled icon-glyphs.json map. Add new common icons here.
+    // Anything not listed is still resolvable by glyph name.
     private static readonly Dictionary<IconSymbol, string> _kindToGlyphName = new()
     {
         { IconSymbol.Close, "x-lg" },

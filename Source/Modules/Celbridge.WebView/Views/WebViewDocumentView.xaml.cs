@@ -21,7 +21,7 @@ namespace Celbridge.WebView.Views;
 /// <summary>
 /// Hosts an arbitrary user URL from a .webview document (JSON storage), or a
 /// project-served HTML page from a .html / .htm document. The role is selected
-/// per-instance via Options before LoadContent runs; the two paths share a
+/// per-instance via Options before LoadContent runs. The two paths share a
 /// single WebView2 lifecycle and differ only in URL source and navigation
 /// policy.
 /// </summary>
@@ -56,7 +56,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
     /// <summary>
     /// Per-instance options supplied by the editor factory. Defaults to the .webview
-    /// external-URL behaviour; the HTML viewer factory overrides this before LoadContent
+    /// external-URL behaviour. The HTML viewer factory overrides this before LoadContent
     /// runs so the view's first init applies HtmlViewer options from the start.
     /// </summary>
     internal WebViewDocumentOptions Options { get; set; } = DefaultOptions;
@@ -302,7 +302,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         return async (destination) =>
         {
-            // The HTML viewer is pinned to the project virtual-host URL; allow the
+            // The HTML viewer is pinned to the project virtual-host URL. Allow the
             // initial navigation, reloads, and any same-document scrolling, but prompt
             // the user for any other top-frame destination so the page cannot redirect
             // out from under them.
@@ -424,7 +424,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
         // Install the shim as a document-start script so it wraps console/fetch before page scripts run --
         // required for get_console / get_network capture. This runs before the first navigation, so the
-        // initial page's boot output is captured; CoreWebView2_NavigationCompleted re-delivers it per
+        // initial page's boot output is captured. CoreWebView2_NavigationCompleted re-delivers it per
         // navigation on the Skia heads.
         try
         {

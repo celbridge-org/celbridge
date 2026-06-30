@@ -5,7 +5,7 @@ namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// Unit tests for the Windows DPAPI credential store: the encrypt-and-persist behaviour over an in-memory
-/// settings store. These only run on Windows; the store reports itself unavailable elsewhere.
+/// settings store. These only run on Windows. The store reports itself unavailable elsewhere.
 /// </summary>
 [TestFixture]
 public class DpapiCredentialStoreTests

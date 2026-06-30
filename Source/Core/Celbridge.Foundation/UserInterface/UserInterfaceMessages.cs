@@ -33,7 +33,6 @@ public record RestoreWindowStateMessage();
 
 /// <summary>
 /// Message sent when the user exits fullscreen mode by dragging the window.
-/// This allows the UI to synchronize its state with the actual window state.
 /// </summary>
 public record ExitedFullscreenViaDragMessage();
 

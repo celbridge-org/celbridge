@@ -4,14 +4,14 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// Loads a contribution editor's entry page into its WebView and declares the host-channel transport and
-/// navigation origin that page can reach. The default loads every editor over the loopback file server; a
+/// navigation origin that page can reach. The default loads every editor over the loopback file server. A
 /// package may supply a custom loader for content that must load under a different origin.
 /// </summary>
 public interface IContributionEditorLoader
 {
     /// <summary>
     /// True when this loader handles the given package. The loopback default matches every package and is
-    /// resolved as the fallback; a custom loader matches only its own package and is resolved ahead of it.
+    /// resolved as the fallback. A custom loader matches only its own package and is resolved ahead of it.
     /// </summary>
     bool CanLoad(PackageInfo package);
 
@@ -21,7 +21,7 @@ public interface IContributionEditorLoader
     HostChannelTransport GetTransport(PackageInfo package);
 
     /// <summary>
-    /// The origin prefix the editor is pinned to; the view cancels any navigation outside it.
+    /// The origin prefix the editor is pinned to. The view cancels any navigation outside it.
     /// </summary>
     string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request);
 

@@ -2,7 +2,7 @@
 // snippet insertion menu. Both are plain DOM — no framework.
 //
 // The toolbar elements are declared in index.html and are hidden by default
-// via CSS; initializeToolbar() reveals whichever sections the package options
+// via CSS. initializeToolbar() reveals whichever sections the package options
 // have activated and attaches click handlers.
 
 import { ViewMode } from './view-mode-controller.js';
@@ -73,7 +73,7 @@ export function syncSnippetButtonForViewMode(activeMode) {
 
 /**
  * Updates the toolbar's gating on the document's writable state. The snippet
- * inserter mutates the editor buffer; when the document is read-only the
+ * inserter mutates the editor buffer. When the document is read-only the
  * button must visibly match the editor's actual behaviour. Pair the menu
  * close with the disable so an open menu doesn't strand an active popup over
  * a now-disabled trigger.

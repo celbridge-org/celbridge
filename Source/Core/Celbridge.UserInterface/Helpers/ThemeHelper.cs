@@ -61,7 +61,7 @@ public class ThemeHelper
 
     public void UpdateTitleBar(UserInterfaceTheme theme)
     {
-        // The caption-button colors apply only to the integrated WinUI title bar; other heads draw a
+        // The caption-button colors apply only to the integrated WinUI title bar. Other heads draw a
         // native title bar that the OS themes on its own, so this is a no-op there.
         if (!_platformInfo.ReservesWindowCaptionButtons)
         {
@@ -76,10 +76,8 @@ public class ThemeHelper
         var titleBar = _mainWindow.AppWindow.TitleBar;
         var backgroundColor = GetTitleBarColor(theme);
 
-        // Explicitly set all button colors based on the current theme.
-        // I tried several approaches using the built-in color switching behaviour, but there
-        // were lots of edge cases that didn't work correctly. In the ended up just setting all the
-        // colors explicitly, which is hacky but works reliably across all themes and system settings.
+        // Set every button color explicitly. The built-in color switching behaviour has edge cases
+        // that render incorrectly, so all colors are pinned per theme instead.
         if (theme == UserInterfaceTheme.Dark)
         {
             titleBar.ButtonForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);

@@ -90,7 +90,7 @@ public class MainMenu
         _menuNavItem.MenuItems.Add(newProjectNavItem);
 
         // New File, surfaced for parity with the macOS File menu. Creates a file in the Explorer's selected
-        // folder (or the project root); enabled only while a workspace is loaded.
+        // folder (or the project root). Enabled only while a workspace is loaded.
         var newFileNavItem = CreateMenuItem(
             tag: NewFileTag,
             icon: new Icon { Symbol = IconSymbol.FileAdd },
@@ -142,7 +142,7 @@ public class MainMenu
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
 
         // Edit verbs, surfaced for parity with the macOS Edit menu. Each routes to the focused surface
-        // through the edit-intent command; enable state reflects what that surface can currently do.
+        // through the edit-intent command. Enable state reflects what that surface can currently do.
         var editNavItem = CreateEditMenuItem();
         _menuNavItem.MenuItems.Add(editNavItem);
 

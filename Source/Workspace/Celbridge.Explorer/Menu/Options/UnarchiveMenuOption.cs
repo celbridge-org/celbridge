@@ -32,7 +32,7 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_ExtractArchive"),
-            Icon: IconSymbol.Unarchive); // box-arrow-up icon
+            Icon: IconSymbol.Unarchive);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

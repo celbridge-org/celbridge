@@ -11,11 +11,8 @@ import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
 import { hideAllPopovers } from './popover-utils.js';
 
-// ---------------------------------------------------------------------------
-// Table clipboard handling
-// When all cells in a table are selected, copy/cut the entire table
-// ---------------------------------------------------------------------------
-
+// Table clipboard handling: when all cells in a table are selected, copy/cut
+// the entire table.
 
 function findTableFromCellSelection(state) {
     const { selection } = state;
@@ -390,7 +387,7 @@ document.getElementById('toc-close').addEventListener('click', () => {
 
 // Applies the document's writable state to the TipTap editor and the
 // toolbar. TipTap's setEditable disables typing, paste, and drop on the
-// content surface; the toolbar handler short-circuits separately so the
+// content surface. The toolbar handler short-circuits separately so the
 // mutating buttons can't smuggle commands past the editable flag. Open
 // mutating popovers are dismissed so a previously-spawned link/image/table
 // editor doesn't strand over a now-read-only document.

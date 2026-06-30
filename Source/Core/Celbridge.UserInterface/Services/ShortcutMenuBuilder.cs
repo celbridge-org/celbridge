@@ -24,17 +24,11 @@ public class ShortcutMenuBuilder
         _logger = logger;
     }
 
-    /// <summary>
-    /// Tries to get the script associated with a shortcut tag.
-    /// </summary>
     public bool TryGetScript(string tag, out string? script)
     {
         return _tagsToScriptDictionary.TryGetValue(tag, out script);
     }
 
-    /// <summary>
-    /// Builds shortcut buttons from the given shortcuts.
-    /// </summary>
     public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, StackPanel panel)
     {
         if (shortcuts.Count == 0)
@@ -61,9 +55,6 @@ public class ShortcutMenuBuilder
         public List<Shortcut> LeafItems { get; } = new();
     }
 
-    /// <summary>
-    /// Build a tree structure from the flat list of shortcuts.
-    /// </summary>
     private ShortcutTreeNode BuildTreeFromDefinitions(IReadOnlyList<Shortcut> shortcuts)
     {
         var root = new ShortcutTreeNode();
@@ -115,9 +106,6 @@ public class ShortcutMenuBuilder
         return root;
     }
 
-    /// <summary>
-    /// Get or create a node at the specified path.
-    /// </summary>
     private ShortcutTreeNode GetOrCreateNodeAtPath(ShortcutTreeNode root, string? path)
     {
         if (string.IsNullOrEmpty(path))
@@ -141,9 +129,6 @@ public class ShortcutMenuBuilder
         return current;
     }
 
-    /// <summary>
-    /// Get a node at the specified path, or null if not found.
-    /// </summary>
     private ShortcutTreeNode? GetNodeAtPath(ShortcutTreeNode root, string path)
     {
         var segments = path.Split(PathSeparator);
@@ -161,9 +146,6 @@ public class ShortcutMenuBuilder
         return current;
     }
 
-    /// <summary>
-    /// Add shortcut buttons from the tree structure.
-    /// </summary>
     private void AddShortcutButtonsFromTree(ShortcutTreeNode node, StackPanel panel)
     {
         // Add group nodes as buttons with flyout menus
@@ -206,9 +188,6 @@ public class ShortcutMenuBuilder
         }
     }
 
-    /// <summary>
-    /// Add menu items from the tree structure recursively.
-    /// </summary>
     private void AddMenuItemsFromTree(ShortcutTreeNode node, IList<MenuFlyoutItemBase> menuItems)
     {
         // Add sub-groups as sub-menus

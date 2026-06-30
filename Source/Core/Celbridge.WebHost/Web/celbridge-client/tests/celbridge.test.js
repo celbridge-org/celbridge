@@ -13,7 +13,7 @@ function createTestClient(options = {}) {
         postMessage: (msg) => sentMessages.push(msg),
         onMessage: (handler) => { messageHandler = handler; },
         timeout: options.timeout ?? 1000,
-        // Provide a context so ready() resolves synchronously; these tests exercise the
+        // Provide a context so ready() resolves synchronously. These tests exercise the
         // request/response machinery, not the host/getContext bridge fallback (covered
         // separately). Callers can override via options.context.
         context: { permittedTools: [], secrets: {}, options: {} },

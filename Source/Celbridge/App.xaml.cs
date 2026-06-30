@@ -271,11 +271,8 @@ public partial class App : Application
         {
             contentFrame.Loaded += (s, e) =>
             {
-                //
                 // Initialize the user interface and page navigation services
                 // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
-                //
-
                 var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
                 Guard.IsNotNull(userInterfaceService);
 

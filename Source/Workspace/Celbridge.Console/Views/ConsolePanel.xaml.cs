@@ -339,8 +339,6 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         });
     }
 
-    #region IConsoleNotifications
-
     public void OnConsoleInput(string data)
     {
         _terminal?.Write(data);
@@ -351,16 +349,10 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _terminal?.SetSize(cols, rows);
     }
 
-    #endregion
-
-    #region IHostInput
-
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {
         _keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
-
-    #endregion
 
     private void OnTerminalProcessExited(object? sender, EventArgs e)
     {

@@ -6,8 +6,7 @@ namespace Celbridge.Resources.Services;
 /// <summary>
 /// Builds the in-memory project tree by enumerating the project root through the
 /// resource file-system gateway. Visibility filtering lives in the gateway's
-/// policy evaluation, so the builder no longer touches the file system directly
-/// or applies its own filters.
+/// policy evaluation, not in the builder.
 /// </summary>
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {

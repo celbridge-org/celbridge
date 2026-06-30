@@ -1694,7 +1694,7 @@ public class SpreadsheetCommandTests
         //   set_active_view("Summary", range="B2:D4", activeCell="C3", topLeftCell="A1")
         //   get_active_view -> {sheet:"Summary", range:"B2:D4", activeCell:"C3", topLeftCell:"A1"}
         // ClosedXML omits topLeftCell from OOXML when it equals the A1 default and
-        // returns a zeroed address on reload; the reader treats that as "A1".
+        // returns a zeroed address on reload. The reader treats that as "A1".
         CreateWorkbook(workbook =>
         {
             workbook.Worksheets.Add("Sheet1");
@@ -2517,7 +2517,7 @@ public class SpreadsheetCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        // B2 (value) and C3 (formatting-only) both count; D4 was already default.
+        // B2 (value) and C3 (formatting-only) both count. D4 was already default.
         command.ResultValue.CellCount.Should().Be(2);
 
         using var workbook = new XLWorkbook(_workbookPath);

@@ -18,7 +18,7 @@ export const ContentLoadedReason = Object.freeze({
 
 // Base URL for project files. Every head serves the document over the loopback file server, so
 // project files are addressed root-relative under /project/, resolved against the page's own loopback
-// origin. Synthetic-origin editors do not load project files; one that did would need the same
+// origin. Synthetic-origin editors do not load project files. One that did would need the same
 // cross-origin remapping the shared client gets, not a root-relative path.
 const PROJECT_BASE_URL = '/project/';
 

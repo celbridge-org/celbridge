@@ -89,10 +89,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         }
     }
 
-    //
-    // IResourceTree implementation
-    //
-
     public async Task<Result> PopulateResourceTree(IResourceRegistry resourceRegistry)
     {
         // Prevent concurrent population which causes duplicate resources.
@@ -211,10 +207,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         return await Task.FromResult(Result.Ok());
     }
 
-    //
-    // Scroll position helpers
-    //
-
     private double GetScrollOffset()
     {
         try
@@ -266,10 +258,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         }
         return null;
     }
-
-    //
-    // Event handlers
-    //
 
     private void ListView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
@@ -369,7 +357,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
                     VisualStateManager.GoToState(container, state, false);
 
                     // GoToState alone sets the brush but the Skia row is not repainted until a pointer
-                    // event; forcing a re-measure re-renders the container with its current visual now.
+                    // event. Forcing a re-measure re-renders the container with its current visual now.
                     container.InvalidateMeasure();
                     container.InvalidateArrange();
                 }
@@ -391,10 +379,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Ensure ListView keeps focus for keyboard navigation
         ResourceListView.Focus(FocusState.Programmatic);
     }
-
-    //
-    // Helper methods
-    //
 
     private IFolderResource ResolveDropTargetFolder(IResource? resource)
     {
@@ -427,10 +411,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         return null;
     }
 
-    //
-    // Public methods for toolbar actions (called from ExplorerPanel)
-    //
-
     /// <summary>
     /// Adds a file to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
@@ -461,9 +441,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         });
     }
 
-    /// <summary>
-    /// Collapses all folders in the tree view.
-    /// </summary>
     public void CollapseAllFolders()
     {
         ViewModel.CollapseAllFolders();

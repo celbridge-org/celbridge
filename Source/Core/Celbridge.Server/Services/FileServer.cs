@@ -16,12 +16,10 @@ public class FileServer : IFileServer, IDisposable
     private readonly ILogger<FileServer> _logger;
 
     // The app-bundled web assets shared by every WebView (the celbridge-client JS, bootstrap-icons,
-    // cascadia-mono fonts), served at /assets/{path}. The loopback replacement for the
-    // shared.celbridge virtual host.
+    // cascadia-mono fonts), served at /assets/{path}.
     private PhysicalFileProvider? _assetsFileProvider;
 
-    // Per-package asset folders served at /package/{name}/{path}, keyed by package name. The loopback
-    // replacement for the pkg-<name>.celbridge virtual hosts.
+    // Per-package asset folders served at /package/{name}/{path}, keyed by package name.
     private readonly ConcurrentDictionary<string, PhysicalFileProvider> _packageFileProviders = new();
 
     private PhysicalFileProvider? _projectFileProvider;
@@ -115,7 +113,7 @@ public class FileServer : IFileServer, IDisposable
         // Loopback-served pages are same-origin and need no CORS. The exception is a synthetic-origin
         // editor (loaded under a faked origin for a domain-locked library): it pulls its lib and the
         // shared client cross-origin from this server, so the routes must allow any origin and be
-        // embeddable cross-origin. Validated on the macOS Skia head with exactly these headers.
+        // embeddable cross-origin.
         context.Response.Headers["Access-Control-Allow-Origin"] = "*";
         context.Response.Headers["Cross-Origin-Resource-Policy"] = "cross-origin";
 

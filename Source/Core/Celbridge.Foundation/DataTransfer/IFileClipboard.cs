@@ -2,7 +2,7 @@ namespace Celbridge.DataTransfer;
 
 /// <summary>
 /// A file or folder to place on the system clipboard, identified by its full path. IsFolder lets a
-/// platform that distinguishes the two (the WinRT storage-item API) pick the right item kind; platforms
+/// platform that distinguishes the two (the WinRT storage-item API) pick the right item kind. Platforms
 /// that address files and folders uniformly (file URLs) can ignore it.
 /// </summary>
 public record ClipboardFile(string Path, bool IsFolder);
@@ -15,9 +15,7 @@ public record ClipboardFiles(IReadOnlyList<string> Paths, DataTransferMode Trans
 
 /// <summary>
 /// The system clipboard for files and folders. Abstracts the platform clipboard so the resource
-/// copy/paste flow does not depend on one implementation: Windows uses the WinRT data-transfer
-/// clipboard, while macOS writes file URLs to NSPasteboard directly because the WinRT storage-item
-/// clipboard does not round-trip on the Skia head.
+/// copy/paste flow does not depend on one implementation.
 /// </summary>
 public interface IFileClipboard
 {

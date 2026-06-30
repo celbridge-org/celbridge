@@ -13,7 +13,6 @@ public interface IFocusService
 
     /// <summary>
     /// The edit target for the focused surface, or null when the focused surface performs no edit verbs.
-    /// The edit-intent router and the menus dispatch to this target.
     /// </summary>
     IEditTarget? EditTarget { get; }
 

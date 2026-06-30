@@ -1,8 +1,7 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Identifies a commonly used UI icon. IIconService resolves each value to a glyph in the bundled
-/// icon font. For an icon not listed here, resolve it by glyph name via IIconService.GetGlyph(string).
+/// Identifies a commonly used UI icon, resolved to a glyph in the bundled icon font.
 /// </summary>
 public enum IconSymbol
 {

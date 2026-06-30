@@ -136,7 +136,7 @@ public class WebViewDocumentViewModelTests
     public async Task LoadContent_HtmlViewer_IgnoresFileContents_AndSucceeds()
     {
         // The HtmlViewer role serves the HTML file directly via the project virtual
-        // host without consulting any .webview file; the resource file system is
+        // host without consulting any .webview file. The resource file system is
         // never called for this role.
         var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
         {

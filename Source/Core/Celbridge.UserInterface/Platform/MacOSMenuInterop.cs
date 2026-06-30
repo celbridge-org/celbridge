@@ -4,9 +4,9 @@ using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// One item in a native macOS menu. A Command item dispatches back to managed code by Tag; a Selector item
+/// One item in a native macOS menu. A Command item dispatches back to managed code by Tag. A Selector item
 /// targets the AppKit responder chain by selector name (e.g. "copy:") and is auto-enabled only when some
-/// responder handles it; a Separator is a divider; a Submenu item opens a nested menu whose contents are
+/// responder handles it. A Separator is a divider. A Submenu item opens a nested menu whose contents are
 /// rebuilt by SubmenuItemsProvider each time it is shown, so a changing list (e.g. recent projects) stays
 /// current.
 /// </summary>
@@ -42,7 +42,7 @@ internal enum MacMenuItemKind
 }
 
 /// <summary>
-/// Modifier keys for a menu item's keyboard shortcut. A shortcut carries Command by default; combine flags
+/// Modifier keys for a menu item's keyboard shortcut. A shortcut carries Command by default. Combine flags
 /// for the less common chords (e.g. Hide Others is Option+Command).
 /// </summary>
 [Flags]
@@ -73,14 +73,14 @@ internal sealed record MacAboutLink(string Label, string Url);
 /// <summary>
 /// Builds and installs a native AppKit menubar (NSMenu) behind Uno's macOS Skia head, which provides only a
 /// minimal default app menu. Command items dispatch back to managed code through a single callback keyed by
-/// the item's tag; selector items ride the responder chain. macOS-only; callers gate on
+/// the item's tag. Selector items ride the responder chain. macOS-only. Callers gate on
 /// OperatingSystem.IsMacOS() and must invoke on the main (UI) thread, where AppKit is safe.
 /// </summary>
 internal static class MacOSMenuInterop
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
 
-    // The custom NSObject subclass that receives every Command item's action. Created once per process; the
+    // The custom NSObject subclass that receives every Command item's action. Created once per process. The
     // instance is never released so it stays alive as each NSMenuItem's (unretained) target.
     private static IntPtr _commandTarget;
     private static IntPtr _commandActionSelector;
@@ -122,7 +122,7 @@ internal static class MacOSMenuInterop
     /// <summary>
     /// Builds the menubar from the given menus and installs it as the application's main menu. The first
     /// menu is the application menu (its title is replaced by the app name). onCommand runs a chosen Command
-    /// item by tag; onValidate decides, by tag, whether a Command item is currently enabled. Returns false
+    /// item by tag. onValidate decides, by tag, whether a Command item is currently enabled. Returns false
     /// off macOS or if the AppKit application cannot be reached.
     /// </summary>
     public static bool Install(IReadOnlyList<MacMenu> menus, Action<long> onCommand, Func<long, bool> onValidate)
@@ -181,7 +181,7 @@ internal static class MacOSMenuInterop
 
     /// <summary>
     /// Shows the standard macOS About panel. The app icon, name, version, and copyright come from the
-    /// bundle (Info.plist); the supplied links are added to the panel's credits area as clickable links.
+    /// bundle (Info.plist). The supplied links are added to the panel's credits area as clickable links.
     /// </summary>
     public static void ShowAboutPanel(IReadOnlyList<MacAboutLink> links)
     {
@@ -259,18 +259,18 @@ internal static class MacOSMenuInterop
         {
             _menuActionDelegate = HandleMenuAction;
             var actionImplementation = Marshal.GetFunctionPointerForDelegate(_menuActionDelegate);
-            // "v@:@" = void return; arguments self (id), _cmd (SEL), sender (id).
+            // "v@:@" = void return. Arguments self (id), _cmd (SEL), sender (id).
             class_addMethod(newClass, _commandActionSelector, actionImplementation, "v@:@");
 
             _menuValidateDelegate = HandleValidateMenuItem;
             var validateImplementation = Marshal.GetFunctionPointerForDelegate(_menuValidateDelegate);
-            // "c@:@" = BOOL (signed char) return; arguments self (id), _cmd (SEL), menuItem (id). AppKit
+            // "c@:@" = BOOL (signed char) return. Arguments self (id), _cmd (SEL), menuItem (id). AppKit
             // sends this to a Command item's target before the menu shows, to set the item's enabled state.
             class_addMethod(newClass, GetSelector("validateMenuItem:"), validateImplementation, "c@:@");
 
             _menuNeedsUpdateDelegate = HandleMenuNeedsUpdate;
             var needsUpdateImplementation = Marshal.GetFunctionPointerForDelegate(_menuNeedsUpdateDelegate);
-            // "v@:@" = void return; arguments self (id), _cmd (SEL), menu (id). AppKit sends this to a dynamic
+            // "v@:@" = void return. Arguments self (id), _cmd (SEL), menu (id). AppKit sends this to a dynamic
             // submenu's delegate (this same object) just before the submenu is displayed, so it can be rebuilt.
             class_addMethod(newClass, GetSelector("menuNeedsUpdate:"), needsUpdateImplementation, "v@:@");
 
@@ -278,7 +278,7 @@ internal static class MacOSMenuInterop
         }
         else
         {
-            // The class already exists (Install ran before in this process); reuse the registered one.
+            // The class already exists (Install ran before in this process). Reuse the registered one.
             newClass = GetClass("CelbridgeMenuTarget");
         }
 
@@ -303,7 +303,7 @@ internal static class MacOSMenuInterop
     private static byte HandleValidateMenuItem(IntPtr self, IntPtr selector, IntPtr menuItem)
     {
         // Runs on the AppKit main thread before a menu shows (and before a key equivalent fires). Defaults
-        // to enabled on any failure; never let an exception cross back into native code.
+        // to enabled on any failure. Never let an exception cross back into native code.
         try
         {
             var tag = SendMessageReturnNint(menuItem, GetSelector("tag"));
@@ -360,7 +360,7 @@ internal static class MacOSMenuInterop
             SendMessageVoid(menuItem, GetSelector("setTag:"), (nint)item.Tag);
         }
 
-        // A shortcut carries Command by default; override the mask only for other chords (e.g. Hide Others
+        // A shortcut carries Command by default. Override the mask only for other chords (e.g. Hide Others
         // is Option+Command+H, which must differ from Hide's Command+H).
         if (item.KeyEquivalent.Length > 0
             && item.KeyModifiers != MacKeyModifier.Command)
@@ -375,7 +375,7 @@ internal static class MacOSMenuInterop
     {
         var submenu = CreateMenu(item.Title);
 
-        // The parent is a titled item with no action; clicking it just opens the submenu.
+        // The parent is a titled item with no action. Clicking it just opens the submenu.
         var parentItem = CreateMenuItem(item.Title, IntPtr.Zero, string.Empty);
         SendMessage(parentItem, GetSelector("setSubmenu:"), submenu);
         SendMessage(menu, GetSelector("addItem:"), parentItem);
@@ -404,7 +404,7 @@ internal static class MacOSMenuInterop
         }
         catch
         {
-            // A throw here would unwind through AppKit; leave the submenu empty rather than crash.
+            // A throw here would unwind through AppKit. Leave the submenu empty rather than crash.
             return;
         }
 

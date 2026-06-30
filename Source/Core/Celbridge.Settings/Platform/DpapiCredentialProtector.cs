@@ -3,9 +3,8 @@ using System.Security.Cryptography;
 namespace Celbridge.Settings.Platform;
 
 /// <summary>
-/// Windows DPAPI encryption helper (CurrentUser scope). This is the internal crypto primitive composed by
-/// DpapiCredentialStore; it encrypts and decrypts a blob but does not store it. Reports itself unavailable
-/// on other platforms.
+/// Windows DPAPI encryption helper (CurrentUser scope). Encrypts and decrypts a blob but does not store it.
+/// Reports itself unavailable on other platforms.
 /// </summary>
 internal sealed class DpapiCredentialProtector
 {
