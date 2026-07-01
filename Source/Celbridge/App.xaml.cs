@@ -180,6 +180,8 @@ public partial class App : Application
         // The macOS counterpart to the Windows file activation above is not implemented yet: a double-clicked
         // .celbridge launches the app (the bundle declares the association), but macOS delivers the opened
         // path via an Apple Event that Uno does not surface on this head. The app auto-opens the previous project.
+        // No async file-activation work on this head; the await keeps OnLaunched awaiting on non-Windows heads.
+        await Task.CompletedTask;
 #endif
 
         // Initialize the Core Services

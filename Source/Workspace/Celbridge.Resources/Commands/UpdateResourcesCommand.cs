@@ -14,6 +14,8 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 
     public override async Task<Result> ExecuteAsync()
     {
+        await Task.CompletedTask;
+
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         resourceService.ScheduleResourceUpdate();
 
