@@ -96,7 +96,7 @@ public static class HostInputExtensions
     /// <summary>
     /// Asks the WebView to release its DOM focus when focus moves to another panel, so the editor
     /// caret stops on heads where WebView and host focus are not integrated. The client handles this
-    /// generically by blurring document.activeElement.
+    /// generically by releasing focus from document.activeElement.
     /// </summary>
     public static Task NotifyReleaseFocusAsync(this CelbridgeHost host)
         => host.Rpc.NotifyAsync(InputRpcMethods.ReleaseFocus);

@@ -11,7 +11,7 @@ public sealed record HostChannelSetup(IHostChannel Channel, string? ConnectionTo
 
 /// <summary>
 /// Builds the host channel for a WebView consumer, selecting between the WebView2 messaging transport
-/// (WebViewHostChannel) and the loopback WebSocket transport (a DeferredHostChannel bound by the
+/// (WebViewHostChannel) and the loopback WebSocket transport (a ProxyHostChannel bound by the
 /// host channel broker once the page connects). The caller picks the transport structurally: WebSocket
 /// for first-party content served over loopback or under a synthetic origin (which loads the celbridge
 /// client and opens the socket), WebView2 messaging for virtual-host or external content that cannot.
@@ -26,9 +26,9 @@ public static class HostChannelFactory
         if (useWebSocketChannel)
         {
             var pendingConnection = hostChannelBroker.CreatePendingConnection();
-            var deferredChannel = pendingConnection.Channel;
+            var proxyChannel = pendingConnection.Channel;
 
-            return new HostChannelSetup(deferredChannel, pendingConnection.Token, deferredChannel.Dispose);
+            return new HostChannelSetup(proxyChannel, pendingConnection.Token, proxyChannel.Dispose);
         }
 
         var webViewChannel = new WebViewHostChannel(coreWebView2);

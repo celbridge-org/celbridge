@@ -1,7 +1,7 @@
 namespace Celbridge.Host;
 
 /// <summary>
-/// Brokers the connection between a view's DeferredHostChannel, created synchronously before the
+/// Brokers the connection between a view's ProxyHostChannel, created synchronously before the
 /// WebView page loads, and the WebSocket the page later opens back to the host. The view registers a
 /// pending connection and embeds the returned token in the page's navigation URL. The host's WebSocket
 /// endpoint binds the accepted socket to the matching pending channel by that token.
@@ -9,7 +9,7 @@ namespace Celbridge.Host;
 public interface IHostChannelBroker
 {
     /// <summary>
-    /// Creates a deferred channel registered under a fresh, unguessable token. The view builds its
+    /// Creates a proxy channel registered under a fresh, unguessable token. The view builds its
     /// CelbridgeHost on the returned channel and embeds the token in the page's navigation URL.
     /// </summary>
     PendingHostConnection CreatePendingConnection();
@@ -23,8 +23,8 @@ public interface IHostChannelBroker
 }
 
 /// <summary>
-/// A pending host channel awaiting its WebView page's WebSocket connection. Channel is the deferred
+/// A pending host channel awaiting its WebView page's WebSocket connection. Channel is the proxy
 /// channel the view builds its CelbridgeHost on. Token identifies the connection in the page's
 /// navigation URL.
 /// </summary>
-public sealed record PendingHostConnection(DeferredHostChannel Channel, string Token);
+public sealed record PendingHostConnection(ProxyHostChannel Channel, string Token);

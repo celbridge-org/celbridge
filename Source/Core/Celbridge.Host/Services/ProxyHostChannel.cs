@@ -4,25 +4,27 @@ using Celbridge.Logging;
 namespace Celbridge.Host;
 
 /// <summary>
-/// IHostChannel that a view constructs synchronously, before the WebView page has opened its
-/// WebSocket back to the host. Outbound messages are buffered until the real socket channel binds,
-/// and inbound messages are re-raised from the bound channel once it connects.
+/// A proxy IHostChannel a view constructs synchronously, before the WebView page has opened its
+/// WebSocket back to the host. It forwards to a real transport channel once one is bound: outbound
+/// messages are buffered until then, and inbound messages are re-raised from the bound channel.
+/// Re-binding is supported, so a reloaded page reconnecting swaps in a fresh transport without the
+/// view rebuilding its CelbridgeHost.
 /// </summary>
-public sealed class DeferredHostChannel : IHostChannel, IDisposable
+public sealed class ProxyHostChannel : IHostChannel, IDisposable
 {
     private readonly object _gate = new();
     private readonly List<string> _pendingOutbound = new();
     private readonly Action _onDisposed;
-    private readonly ILogger<DeferredHostChannel> _logger;
+    private readonly ILogger<ProxyHostChannel> _logger;
     private IHostChannel? _boundChannel;
     private bool _disposed;
 
     public event EventHandler<string>? MessageReceived;
 
-    internal DeferredHostChannel(Action onDisposed)
+    internal ProxyHostChannel(Action onDisposed)
     {
         _onDisposed = onDisposed;
-        _logger = ServiceLocator.AcquireService<ILogger<DeferredHostChannel>>();
+        _logger = ServiceLocator.AcquireService<ILogger<ProxyHostChannel>>();
     }
 
     public void PostMessage(string json)

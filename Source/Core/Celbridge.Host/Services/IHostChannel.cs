@@ -1,9 +1,9 @@
 namespace Celbridge.Host;
 
 /// <summary>
-/// Abstraction over WebView2 message passing for testability.
-/// Production code uses HostChannel which wraps CoreWebView2.
-/// Tests inject a mock implementation.
+/// Bidirectional JSON message pipe between the host and a WebView page, carrying the JSON-RPC bridge.
+/// Implementations vary by transport: the native WebView2 message bus, a loopback WebSocket, or the
+/// proxy channel that binds one of those once the page connects. Tests inject a mock.
 /// </summary>
 public interface IHostChannel
 {

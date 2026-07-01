@@ -38,6 +38,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private readonly IWebViewAdapter _webViewAdapter;
 
     private WebView2? _webView;
+    // Host RPC channel. Only created for the HtmlViewer role; external-URL documents run without one.
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
@@ -237,21 +238,20 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
             _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");
 
+            // Only the HtmlViewer role runs a host RPC channel. External-URL .webview documents load
+            // untrusted third-party content and get no injected client, so they are given no channel or
+            // RPC target at all: the native message bus is unauthenticated, and a channel there would let
+            // a page drive host RPC methods.
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {
-                // The HTML viewer renders project-served content (over the loopback /project/ route) and
-                // supports the webview_* MCP tool namespace. External-URL .webview documents intentionally
-                // skip both the shim and the tool bridge registration.
+                // The HTML viewer renders loopback project content and supports the webview_* MCP tools.
                 await TryInjectToolBridgeShimAsync();
-            }
 
-            _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
-            _host = new CelbridgeHost(_hostChannel);
-            _host.AddLocalRpcTarget<IHostInput>(this);
-            _host.StartListening();
+                _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
+                _host = new CelbridgeHost(_hostChannel);
+                _host.AddLocalRpcTarget<IHostInput>(this);
+                _host.StartListening();
 
-            if (Options.Role == WebViewDocumentRole.HtmlViewer)
-            {
                 TryRegisterWithToolBridge();
             }
 

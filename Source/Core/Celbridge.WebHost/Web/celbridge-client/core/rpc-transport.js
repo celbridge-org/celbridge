@@ -98,9 +98,9 @@ export class RpcTransport {
             }
         }
 
-        // Expose the active transport's raw send so client-independent injected scripts (e.g. the F11
-        // keyboard-shortcut script) can reach the host over whichever transport this page uses, rather
-        // than assuming chrome.webview. Pages that never load this client fall back to chrome.webview.
+        // Expose the active transport's raw send so a client-independent injected script can reach the
+        // host over whichever transport this page uses, rather than assuming chrome.webview. Pages that
+        // never load this client fall back to chrome.webview.
         if (typeof globalThis !== 'undefined') {
             globalThis.__celbridgeSendHostMessage = (json) => this.#postMessage(json);
         }
