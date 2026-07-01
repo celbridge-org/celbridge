@@ -77,7 +77,12 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
                 }
                 if (resource is IFileResource fileResource)
                 {
-                    return resourceRegistry.GetResourceKey(fileResource.ParentFolder);
+                    // ParentFolder is nullable; fall back to the project folder default below when absent.
+                    var parentFolder = fileResource.ParentFolder;
+                    if (parentFolder is not null)
+                    {
+                        return resourceRegistry.GetResourceKey(parentFolder);
+                    }
                 }
             }
         }
