@@ -866,8 +866,8 @@ Do you wish to continue?</value>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
     <value>Show only the document content</value>
   </data>
-  <data name="FullScreenToolbar_ShowToolbar" xml:space="preserve">
-    <value>Show Toolbar</value>
+  <data name="FullScreenToolbar_ExitPresentation" xml:space="preserve">
+    <value>Exit Presentation</value>
   </data>
   <data name="TitleBar_SettingsTooltip" xml:space="preserve">
     <value>Open Application Settings</value>
