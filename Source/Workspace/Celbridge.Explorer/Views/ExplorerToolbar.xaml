@@ -2,6 +2,7 @@
     x:Class="Celbridge.Explorer.Views.ExplorerToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <UserControl.Resources>
@@ -34,30 +35,30 @@
       <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
       <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
     </StackPanel.Resources>
-    <Button x:Name="AddFileButton"
+    <Button x:Name="NewFileButton"
             AutomationProperties.AutomationId="landmark.add-file"
-            ToolTipService.ToolTip="{x:Bind AddFileTooltipString}"
+            ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
             Padding="4"
-            Click="AddFileButton_Click">
-      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                Glyph="&#xE710;"
+            Click="NewFileButton_Click">
+      <controls:Icon
+                Symbol="FileAdd"
                 FontSize="20" />
     </Button>
-    <Button x:Name="AddFolderButton"
+    <Button x:Name="NewFolderButton"
             AutomationProperties.AutomationId="landmark.add-folder"
-            ToolTipService.ToolTip="{x:Bind AddFolderTooltipString}"
+            ToolTipService.ToolTip="{x:Bind NewFolderTooltipString}"
             Padding="4"
-            Click="AddFolderButton_Click">
-      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                Glyph="&#xE8F4;"
+            Click="NewFolderButton_Click">
+      <controls:Icon
+                Symbol="FolderAdd"
                 FontSize="20" />
     </Button>
     <Button x:Name="CollapseFoldersButton"
             ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
             Padding="4"
             Click="CollapseFoldersButton_Click">
-      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                Glyph="&#xF165;"
+      <controls:Icon
+                Symbol="Collapse"
                 FontSize="20" />
     </Button>
     <Button x:Name="ProjectSettingsButton"
@@ -65,8 +66,8 @@
             ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
             Padding="4"
             Click="ProjectSettingsButton_Click">
-      <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                Glyph="&#xF259;"
+      <controls:Icon
+                Symbol="Settings"
                 FontSize="20" />
     </Button>
   </StackPanel>

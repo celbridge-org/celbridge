@@ -50,9 +50,9 @@ public class ResourceCommandTests
         File.WriteAllText(Path.Combine(subFolder, NestedFileName), FileContents);
 
         var messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
+        var iconService = new IconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
         await _resourceRegistry.UpdateResourceRegistryAsync();
 
@@ -86,8 +86,6 @@ public class ResourceCommandTests
             Directory.Delete(_projectFolderPath, recursive: true);
         }
     }
-
-    // ---- GetFileInfoCommand ----------------------------------------------------------------
 
     [Test]
     public async Task GetFileInfo_ForTextFile_ReportsTextAndLineCount()
@@ -148,8 +146,6 @@ public class ResourceCommandTests
         snapshot.LineCount.Should().BeNull();
     }
 
-    // ---- ListFolderContentsCommand --------------------------------------------------------
-
     [Test]
     public async Task ListFolderContents_ForRoot_ReturnsAllChildren()
     {
@@ -185,8 +181,6 @@ public class ResourceCommandTests
 
         result.IsFailure.Should().BeTrue();
     }
-
-    // ---- GetFileTreeCommand ---------------------------------------------------------------
 
     [Test]
     public async Task GetFileTree_ForRoot_ReturnsFullTreeWithinDepth()
@@ -276,10 +270,8 @@ public class ResourceCommandTests
         root.Children.Should().OnlyContain(childNode => !childNode.IsFolder);
     }
 
-    // ---- Non-project root coverage --------------------------------------------------------
-
     // Registers a logs: root backed by a fresh temp folder pre-populated with the
-    // supplied entries (string == file with that name; ending in "/" == folder).
+    // supplied entries (string == file with that name, ending in "/" == folder).
     // Returns the backing path so the caller can clean up.
     private string SetupLogsRoot(params string[] entries)
     {

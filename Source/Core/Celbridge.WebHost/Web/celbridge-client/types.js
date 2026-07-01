@@ -17,6 +17,7 @@
  * @typedef {Object} InitializeResult
  * @property {string} content - The document content.
  * @property {DocumentMetadata} metadata - Document metadata including locale.
+ * @property {string} [editorStateJson] - Opaque editor state persisted from a previous session, if any.
  */
 
 /**

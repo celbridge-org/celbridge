@@ -6,8 +6,12 @@ import { consoleClient } from './console-client.js';
 const darkTheme = window.VSCodeTerminalThemes.dark;
 const lightTheme = window.VSCodeTerminalThemes.light;
 
-// Default to dark theme, will be updated by host
-const initialTheme = darkTheme;
+// Default to the OS theme so the first paint matches the system. The host delivers the app's effective
+// theme (which may be an in-app override) over the app-state store, pushed on connect.
+const initialIsDark = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : true;
+const initialTheme = initialIsDark ? darkTheme : lightTheme;
 
 const term = new Terminal({
     theme: initialTheme,
@@ -54,12 +58,11 @@ term.open(terminalElement);
 // name. DevTools flags this as an a11y warning, so set a name after open.
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
-// Function to apply theme based on host application
+// Apply the xterm color theme. The page background (and the 8px margin around the terminal) follows
+// html[data-theme] via CSS, set by the celbridge client, so it is not set here.
 function applyTheme(isDark) {
     try {
-        const theme = isDark ? darkTheme : lightTheme;
-        term.options.theme = theme;
-        document.body.style.background = theme.background;
+        term.options.theme = isDark ? darkTheme : lightTheme;
     } catch (e) {
         // ignore if term.options isn't available yet
     }
@@ -103,12 +106,6 @@ term.onResize(({ cols, rows }) => {
 fitAddon.fit();
 
 term.attachCustomKeyEventHandler((ev) => {
-    // F11 is handled by WebViewFactory's injected script via JSON-RPC
-    // Just consume the event here to prevent default browser behavior
-    if (ev.key === 'F11') {
-        return false;
-    }
-
     // Copy: if there's a selection, ctl-c copies it to the clipboard
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c') {
         if (term.hasSelection()) {
@@ -119,14 +116,20 @@ term.attachCustomKeyEventHandler((ev) => {
         return true; // no selection, ctrl-c clears the input buffer
     }
 
-    // Paste: ctrl+v pastes clipboard into the terminal
+    // Paste: ctrl+v is delivered as a native paste event on xterm's hidden
+    // textarea, which xterm.js handles internally. Returning false stops xterm
+    // from also sending the Ctrl+V control char to the PTY. We deliberately do
+    // not call navigator.clipboard.readText() here as that would prompt the
+    // user for clipboard read permission when the WebView is served over http.
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'v') {
-        navigator.clipboard.readText().then(text => term.paste(text));
-        ev.preventDefault?.();
-        return false;  // consume the event
+        return false;
     }
 
-    // No exit: Block Ctrl+D and Ctrl+Z (Windows EOF)
+    // Swallow Ctrl+D and Ctrl+Z so they do not reach the PTY. On Windows, IPython treats
+    // Ctrl+D as quit-with-confirmation and the shell layer treats Ctrl+Z as the legacy
+    // MS-DOS EOF marker. prompt_toolkit's default Ctrl+Z handler just inserts a literal
+    // ^Z into the line buffer. Neither behaviour is what a user pressing these keys in
+    // the Celbridge console expects, and there is no undo binding to forward to anyway.
     if (ev.ctrlKey && (ev.key === 'd' || ev.key === 'z')) {
         return false;
     }
@@ -148,9 +151,12 @@ consoleClient.onFocus(() => {
     term.focus();
 });
 
-consoleClient.onSetTheme((theme) => {
-    applyTheme(theme === 'dark');
+consoleClient.appState.onChanged((appState) => {
+    if (appState.theme) {
+        applyTheme(appState.theme === 'Dark');
+    }
 });
+// No subscribe call: the host pushes the current theme on connect, caught by the handler above.
 
 consoleClient.onInjectCommand((command) => {
     // Send Ctrl+U (erase-line) to clear any partial input at the readline prompt,
@@ -159,3 +165,46 @@ consoleClient.onInjectCommand((command) => {
     // Use \r (carriage return) as this is what terminals send for Enter.
     consoleClient.sendInput('\x15' + command + '\r');
 });
+
+// Reports which edit verbs the console can do. Copy needs a selection. Paste and select-all are always
+// available. Sent on focus and whenever the selection changes so the Edit menu enables correctly.
+function reportConsoleEditAvailability() {
+    consoleClient.notifyEditAvailability({
+        canCopy: term.hasSelection(),
+        canPaste: true,
+        canSelectAll: true
+    });
+}
+
+// Report focus + edit availability to the host, and clear focus on blur. On the Skia heads GotFocus does not
+// fire for clicks inside the console WebView, so DOM focus is the reliable signal it became active.
+let hasReportedConsoleFocus = false;
+document.addEventListener('focusin', () => {
+    if (!hasReportedConsoleFocus) {
+        hasReportedConsoleFocus = true;
+        consoleClient.notifyFocusReceived();
+    }
+    reportConsoleEditAvailability();
+});
+
+// Release the terminal's focus when the host signals focus moved to another panel, so its caret stops
+// on heads where WebView and host focus are not integrated (Skia).
+consoleClient.onReleaseFocus(() => {
+    hasReportedConsoleFocus = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.blur === 'function') {
+        active.blur();
+    }
+});
+
+// Copy and paste are host-mediated: the WebView's own JS clipboard is blocked on the Skia WKWebView, so
+// the host fetches the selection for copy and writes clipboard text straight to the pty for paste.
+// Select-all runs here.
+consoleClient.onGetSelection(() => term.getSelection());
+consoleClient.onPerformEdit((command) => {
+    if (command === 'selectAll') {
+        term.selectAll();
+    }
+});
+
+term.onSelectionChange(() => reportConsoleEditAvailability());

@@ -1,5 +1,10 @@
+using Celbridge.Commands;
+using Celbridge.Explorer;
+using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -10,6 +15,8 @@ public class MainMenu
 {
     private const string MenuTag = "Menu";
     private const string NewProjectTag = "NewProject";
+    private const string NewFileTag = "NewFile";
+    private const string NewFolderTag = "NewFolder";
     private const string OpenProjectTag = "OpenProject";
     private const string OpenRecentTag = "OpenRecent";
     private const string RecentProjectTagPrefix = "RecentProject_";
@@ -17,6 +24,14 @@ public class MainMenu
     private const string ReloadProjectTag = "ReloadProject";
     private const string CloseProjectTag = "CloseProject";
     private const string ExitTag = "Exit";
+
+    private const string EditMenuTag = "EditMenu";
+    private const string EditUndoTag = "EditUndo";
+    private const string EditRedoTag = "EditRedo";
+    private const string EditCutTag = "EditCut";
+    private const string EditCopyTag = "EditCopy";
+    private const string EditPasteTag = "EditPaste";
+    private const string EditSelectAllTag = "EditSelectAll";
 
     private readonly IStringLocalizer _stringLocalizer;
     private readonly NavigationViewItem _menuNavItem;
@@ -36,7 +51,7 @@ public class MainMenu
         _menuNavItem = new NavigationViewItem
         {
             Tag = MenuTag,
-            Icon = new SymbolIcon(Symbol.GlobalNavigationButton)
+            Icon = new Icon { Symbol = IconSymbol.Menu }
         };
         _menuNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
 
@@ -69,16 +84,35 @@ public class MainMenu
         // New Project
         var newProjectNavItem = CreateMenuItem(
             tag: NewProjectTag,
-            icon: new SymbolIcon(Symbol.NewFolder),
+            icon: new Icon { Symbol = IconSymbol.FolderAdd },
             label: _stringLocalizer.GetString("MainMenu_NewProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_NewProjectTooltip"),
             isEnabled: true);
         _menuNavItem.MenuItems.Add(newProjectNavItem);
 
+        // New File, surfaced for parity with the macOS File menu. Creates a file in the Explorer's selected
+        // folder (or the project root). Enabled only while a workspace is loaded.
+        var newFileNavItem = CreateMenuItem(
+            tag: NewFileTag,
+            icon: new Icon { Symbol = IconSymbol.FileAdd },
+            label: _stringLocalizer.GetString("MainMenu_NewFile"),
+            tooltip: _stringLocalizer.GetString("MainMenu_NewFileTooltip"),
+            isEnabled: isWorkspaceLoaded);
+        _menuNavItem.MenuItems.Add(newFileNavItem);
+
+        // New Folder
+        var newFolderNavItem = CreateMenuItem(
+            tag: NewFolderTag,
+            icon: new Icon { Symbol = IconSymbol.FolderAdd },
+            label: _stringLocalizer.GetString("MainMenu_NewFolder"),
+            tooltip: _stringLocalizer.GetString("MainMenu_NewFolderTooltip"),
+            isEnabled: isWorkspaceLoaded);
+        _menuNavItem.MenuItems.Add(newFolderNavItem);
+
         // Open Project
         var openProjectNavItem = CreateMenuItem(
             tag: OpenProjectTag,
-            icon: new SymbolIcon(Symbol.OpenLocal),
+            icon: new Icon { Symbol = IconSymbol.FolderOpen },
             label: _stringLocalizer.GetString("MainMenu_OpenProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_OpenProjectTooltip"),
             isEnabled: true);
@@ -91,7 +125,7 @@ public class MainMenu
         // Reload Project
         var reloadProjectNavItem = CreateMenuItem(
             tag: ReloadProjectTag,
-            icon: new SymbolIcon(Symbol.Refresh),
+            icon: new Icon { Symbol = IconSymbol.Refresh },
             label: _stringLocalizer.GetString("MainMenu_ReloadProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_ReloadProjectTooltip"),
             isEnabled: isWorkspaceLoaded);
@@ -100,7 +134,7 @@ public class MainMenu
         // Close Project
         var closeProjectNavItem = CreateMenuItem(
             tag: CloseProjectTag,
-            icon: new SymbolIcon(Symbol.Cancel),
+            icon: new Icon { Symbol = IconSymbol.Close },
             label: _stringLocalizer.GetString("MainMenu_CloseProject"),
             tooltip: _stringLocalizer.GetString("MainMenu_CloseProjectTooltip"),
             isEnabled: isWorkspaceLoaded);
@@ -108,10 +142,17 @@ public class MainMenu
 
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
 
+        // Edit verbs, surfaced for parity with the macOS Edit menu. Each routes to the focused surface
+        // through the edit-intent command. Enable state reflects what that surface can currently do.
+        var editNavItem = CreateEditMenuItem();
+        _menuNavItem.MenuItems.Add(editNavItem);
+
+        _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+
         // Settings
         var settingsNavItem = CreateMenuItem(
             tag: NavigationConstants.SettingsTag,
-            icon: new SymbolIcon(Symbol.Setting),
+            icon: new Icon { Symbol = IconSymbol.Settings },
             label: _stringLocalizer.GetString("MainMenu_Settings"),
             tooltip: _stringLocalizer.GetString("MainMenu_SettingsTooltip"),
             isEnabled: true);
@@ -119,16 +160,10 @@ public class MainMenu
 
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
 
-
-
         // Exit
         var exitNavItem = CreateMenuItem(
             tag: ExitTag,
-            icon: new FontIcon 
-            { 
-                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                Glyph = "\uE7E8"
-            },
+            icon: new Icon { Symbol = IconSymbol.Exit },
             label: _stringLocalizer.GetString("MainMenu_Exit"),
             tooltip: _stringLocalizer.GetString("MainMenu_ExitTooltip"),
             isEnabled: true);
@@ -143,7 +178,7 @@ public class MainMenu
         var openRecentNavItem = new NavigationViewItem
         {
             Tag = OpenRecentTag,
-            Icon = new SymbolIcon(Symbol.Clock),
+            Icon = new Icon { Symbol = IconSymbol.Recent },
             Content = _stringLocalizer.GetString("MainMenu_OpenRecent"),
             IsEnabled = hasRecentProjects
         };
@@ -178,7 +213,7 @@ public class MainMenu
             var clearRecentNavItem = new NavigationViewItem
             {
                 Tag = ClearRecentProjectsTag,
-                Icon = new SymbolIcon(Symbol.Delete),
+                Icon = new Icon { Symbol = IconSymbol.Delete },
                 Content = _stringLocalizer.GetString("MainMenu_ClearRecentProjects")
             };
             clearRecentNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
@@ -190,6 +225,58 @@ public class MainMenu
         }
 
         return openRecentNavItem;
+    }
+
+    private NavigationViewItem CreateEditMenuItem()
+    {
+        var focusService = ServiceLocator.AcquireService<IFocusService>();
+        var activeTarget = focusService.EditTarget;
+
+        var editNavItem = new NavigationViewItem
+        {
+            Tag = EditMenuTag,
+            Content = _stringLocalizer.GetString("Menu_Edit")
+        };
+        editNavItem.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+        ToolTipService.SetPlacement(editNavItem, PlacementMode.Right);
+
+        void AddEditItem(string tag, string labelKey, EditIntent intent)
+        {
+            var item = new NavigationViewItem
+            {
+                Tag = tag,
+                Content = _stringLocalizer.GetString(labelKey),
+                IsEnabled = activeTarget is not null
+                    && activeTarget.CanPerformEdit(intent)
+            };
+            item.SetValue(NavigationViewItem.SelectsOnInvokedProperty, false);
+            ToolTipService.SetPlacement(item, PlacementMode.Right);
+            editNavItem.MenuItems.Add(item);
+        }
+
+        AddEditItem(EditUndoTag, "Menu_Undo", EditIntent.Undo);
+        AddEditItem(EditRedoTag, "Menu_Redo", EditIntent.Redo);
+        editNavItem.MenuItems.Add(new NavigationViewItemSeparator());
+        AddEditItem(EditCutTag, "Menu_Cut", EditIntent.Cut);
+        AddEditItem(EditCopyTag, "Menu_Copy", EditIntent.Copy);
+        AddEditItem(EditPasteTag, "Menu_Paste", EditIntent.Paste);
+        AddEditItem(EditSelectAllTag, "Menu_SelectAll", EditIntent.SelectAll);
+
+        return editNavItem;
+    }
+
+    private static EditIntent? EditIntentForTag(string tag)
+    {
+        return tag switch
+        {
+            EditUndoTag => EditIntent.Undo,
+            EditRedoTag => EditIntent.Redo,
+            EditCutTag => EditIntent.Cut,
+            EditCopyTag => EditIntent.Copy,
+            EditPasteTag => EditIntent.Paste,
+            EditSelectAllTag => EditIntent.SelectAll,
+            _ => null
+        };
     }
 
     private NavigationViewItem CreateMenuItem(string tag, IconElement icon, string label, string tooltip, bool isEnabled)
@@ -235,7 +322,30 @@ public class MainMenu
         if (tag.StartsWith(RecentProjectTagPrefix))
         {
             var projectFilePath = tag.Substring(RecentProjectTagPrefix.Length);
-            await ViewModel.OpenRecentProjectAsync(projectFilePath);
+
+            // async void: observe exceptions here so a failed open (e.g. the recent project moved or was
+            // deleted) cannot crash on the UI thread.
+            try
+            {
+                await ViewModel.OpenRecentProjectAsync(projectFilePath);
+            }
+            catch (Exception ex)
+            {
+                var logger = ServiceLocator.AcquireService<ILogger<MainMenu>>();
+                logger.LogError(ex, "Failed to open recent project");
+            }
+
+            MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        // Edit verbs route to the focused surface through the edit-intent command, the same path the
+        // keyboard and the macOS Edit menu use.
+        var editIntent = EditIntentForTag(tag);
+        if (editIntent is not null)
+        {
+            var commandService = ServiceLocator.AcquireService<ICommandService>();
+            commandService.Execute<IPerformEditCommand>(command => command.Intent = editIntent.Value);
             MenuItemInvoked?.Invoke(this, EventArgs.Empty);
             return;
         }
@@ -253,6 +363,22 @@ public class MainMenu
 
             case OpenProjectTag:
                 ViewModel.OpenProject();
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case NewFileTag:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICreateResourceDialogCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.File;
+                });
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case NewFolderTag:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICreateResourceDialogCommand>(command =>
+                {
+                    command.ResourceType = ResourceType.Folder;
+                });
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 

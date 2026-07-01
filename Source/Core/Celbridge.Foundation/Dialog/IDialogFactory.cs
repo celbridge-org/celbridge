@@ -40,12 +40,11 @@ public interface IDialogFactory
     /// <summary>
     /// Create an Add File Dialog.
     /// </summary>
-    IAddFileDialog CreateAddFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
+    INewFileDialog CreateNewFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
 
     /// <summary>
     /// Create a Resource Picker Dialog filtered to the specified file extensions.
-    /// Requires a loaded workspace; the dialog's view model resolves the
-    /// resource registry and file system from the workspace wrapper.
+    /// Requires a loaded workspace.
     /// </summary>
     IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 

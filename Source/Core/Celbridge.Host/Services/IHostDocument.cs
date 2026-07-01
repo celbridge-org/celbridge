@@ -1,14 +1,12 @@
 using System.Text.Json.Serialization;
-using Celbridge.Resources;
 using StreamJsonRpc;
 
 namespace Celbridge.Host;
 
 /// <summary>
 /// Reason values passed with document/contentLoaded notifications so consumers can distinguish
-/// the initial content load from subsequent reloads triggered by external file changes.
-/// The enum is serialized as a JSON string via JsonStringEnumConverter; the exact wire strings
-/// are declared via JsonStringEnumMemberName so the JSON format is decoupled from the identifiers.
+/// the initial content load from subsequent reloads triggered by external file changes. Serialized
+/// as a JSON string, with the wire strings declared via JsonStringEnumMemberName.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ContentLoadedReason>))]
 public enum ContentLoadedReason
@@ -21,8 +19,7 @@ public enum ContentLoadedReason
 
     /// <summary>
     /// Fired each time the editor finishes processing an external file change (setValue plus
-    /// any state restoration). Used by consumers that need to refresh dependent views once the
-    /// reload cycle is fully complete.
+    /// any state restoration).
     /// </summary>
     [JsonStringEnumMemberName("external-reload")]
     ExternalReload,
@@ -43,7 +40,6 @@ public static class DocumentRpcMethods
     public const string ContentLoaded = "document/contentLoaded";
     public const string RequestState = "document/requestState";
     public const string RestoreState = "document/restoreState";
-    public const string WritableStateChanged = "document/writableStateChanged";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -87,21 +83,18 @@ public interface IHostDocument
 
     /// <summary>
     /// Called when the document content has changed in the WebView.
-    /// Override to handle document changes.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.Changed)]
     void OnDocumentChanged() { }
 
     /// <summary>
     /// Called when an import operation completes in the WebView.
-    /// Override to handle import completion.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ImportComplete)]
     void OnImportComplete(bool success, string? error = null) { }
 
     /// <summary>
     /// Called when the JavaScript client has finished initializing and is ready for communication.
-    /// Override to handle client ready notification.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ClientReady)]
     void OnClientReady() { }
@@ -109,7 +102,6 @@ public interface IHostDocument
     /// <summary>
     /// Called every time the editor has finished loading (or reloading) content and is ready for edits.
     /// The reason parameter distinguishes the initial load from reloads triggered by external file changes.
-    /// Defaults to Initial so older JS clients that send no payload continue to behave as before.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ContentLoaded)]
     void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial) { }
@@ -134,6 +126,8 @@ public static class HostDocumentExtensions
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.
+    /// Callers must impose their own hard timeout: StreamJsonRpc cancellation is cooperative (it waits
+    /// for the editor to acknowledge), so it cannot unblock a caller when the editor never replies.
     /// </summary>
     public static Task<string?> RequestStateAsync(this CelbridgeHost host)
         => host.Rpc.InvokeAsync<string?>(DocumentRpcMethods.RequestState);
@@ -144,13 +138,4 @@ public static class HostDocumentExtensions
     /// </summary>
     public static Task RestoreStateAsync(this CelbridgeHost host, string state)
         => host.Rpc.InvokeAsync(DocumentRpcMethods.RestoreState, state);
-
-    /// <summary>
-    /// Notifies the WebView that the document's writable state has changed.
-    /// The state is sent as its string name ("Writable", "Locked",
-    /// "ReadOnlyAttribute", "ReadOnlyRoot"); the JS client treats anything
-    /// other than "Writable" as read-only.
-    /// </summary>
-    public static Task NotifyWritableStateChangedAsync(this CelbridgeHost host, WritableState state)
-        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.WritableStateChanged, new { state = state.ToString() });
 }

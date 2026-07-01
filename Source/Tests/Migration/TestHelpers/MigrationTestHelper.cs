@@ -1,4 +1,4 @@
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 
 namespace Celbridge.Tests.Migration.TestHelpers;
 
@@ -16,11 +16,11 @@ public static class MigrationTestHelper
     }
 
     /// <summary>
-    /// Creates a mock IEnvironmentService with the specified application version.
+    /// Creates a mock IAppEnvironment with the specified application version.
     /// </summary>
-    public static IEnvironmentService CreateMockEnvironmentService(string appVersion)
+    public static IAppEnvironment CreateMockEnvironmentService(string appVersion)
     {
-        var mock = Substitute.For<IEnvironmentService>();
+        var mock = Substitute.For<IAppEnvironment>();
         mock.GetEnvironmentInfo().Returns(new EnvironmentInfo(appVersion, "Test", "Debug"));
         return mock;
     }

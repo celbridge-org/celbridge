@@ -47,8 +47,8 @@
               Padding="1"
               Command="{x:Bind ViewModel.NavigateToResourceCommand}"
               ToolTipService.ToolTip="{x:Bind SelectFileString}">
-        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                    Glyph="&#xE8DA;"
+        <controls:Icon
+                    Symbol="Reveal"
                     FontSize="20" />
       </Button>
     </Grid>

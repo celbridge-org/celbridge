@@ -5,7 +5,7 @@ namespace Celbridge.UserInterface.Views.Controls;
 /// </summary>
 public sealed partial class FileIcon : UserControl
 {
-    private readonly IFileIconService _fileIconService;
+    private readonly IIconService _iconService;
     private bool _isIconDefinitionSetExternally;
 
     /// <summary>
@@ -37,14 +37,14 @@ public sealed partial class FileIcon : UserControl
 
     public FileIcon()
     {
-        _fileIconService = ServiceLocator.AcquireService<IFileIconService>();
+        _iconService = ServiceLocator.AcquireService<IIconService>();
 
         this.InitializeComponent();
 
         // Set default icon after InitializeComponent so bindings can override
         if (IconDefinition is null)
         {
-            IconDefinition = _fileIconService.DefaultFileIcon;
+            IconDefinition = _iconService.DefaultFileIcon;
         }
     }
 
@@ -105,20 +105,20 @@ public sealed partial class FileIcon : UserControl
                 !Source.StartsWith('_') && 
                 Source.All(c => char.IsLetterOrDigit(c))))
             {
-                var result = _fileIconService.GetFileIconForExtension(Source);
-                IconDefinition = result.IsSuccess ? result.Value : _fileIconService.DefaultFileIcon;
+                var result = _iconService.GetFileIconForExtension(Source);
+                IconDefinition = result.IsSuccess ? result.Value : _iconService.DefaultFileIcon;
             }
             else
             {
                 // Treat as icon name
-                var result = _fileIconService.GetFileIcon(Source);
-                IconDefinition = result.IsSuccess ? result.Value : _fileIconService.DefaultFileIcon;
+                var result = _iconService.GetFileIcon(Source);
+                IconDefinition = result.IsSuccess ? result.Value : _iconService.DefaultFileIcon;
             }
         }
         else if (!_isIconDefinitionSetExternally)
         {
             // Only set default if IconDefinition wasn't set externally
-            IconDefinition = _fileIconService.DefaultFileIcon;
+            IconDefinition = _iconService.DefaultFileIcon;
         }
     }
 }

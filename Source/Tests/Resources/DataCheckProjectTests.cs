@@ -35,12 +35,12 @@ public class DataCheckProjectTests
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
+        var iconService = new IconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService),
             ResourceClassifierTestHelper.BuildClassifier(),
             _rootHandlerRegistry,
             TestFileSystem.CreateLocal());
@@ -168,7 +168,7 @@ public class DataCheckProjectTests
     [Test]
     public async Task OrphanCelFile_AppearsInReport()
     {
-        // foo.png is the would-be parent; only the sidecar exists.
+        // foo.png is the would-be parent. Only the sidecar exists.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "_tags = [\"orphaned\"]\n");
 
@@ -222,7 +222,7 @@ public class DataCheckProjectTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        // Three entries: aaa.json from a.json; zzz.json from a.json and b.json.
+        // Three entries: aaa.json from a.json. zzz.json from a.json and b.json.
         // The ordering is by missingTarget then by source.
         _command.ResultValue.BrokenReferences.Should().HaveCount(3);
 

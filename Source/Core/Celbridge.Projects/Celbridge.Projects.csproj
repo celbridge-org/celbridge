@@ -9,6 +9,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- The template zips under Assets/Templates are generated during the build by Celbridge.Templates,
+         so they do not exist when the SDK evaluates the default Assets glob on a clean checkout. Exclude
+         them from that glob and re-include them in IncludeGeneratedTemplateZips once they have been
+         produced, so they reliably reach consumers' output. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Templates\*.zip</DefaultItemExcludes>
+
     <UnoFeatures>
       CSharpMarkup;
       Lottie;
@@ -30,7 +36,18 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" />
+    <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net9.0-desktop)
+         from forcing net9.0-desktop onto this net9.0 NoTargets project (NETSDK1139). -->
+    <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" UndefineProperties="TargetFramework" />
   </ItemGroup>
-  
+
+  <!-- Runs after the referenced Celbridge.Templates project has generated the zips and before MSBuild
+       assigns content target paths, so the freshly built zips flow through the normal Uno content
+       pipeline (library layout on the Skia heads, package root on the packaged Windows head). -->
+  <Target Name="IncludeGeneratedTemplateZips" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <Content Include="Assets\Templates\*.zip" />
+    </ItemGroup>
+  </Target>
+
 </Project>

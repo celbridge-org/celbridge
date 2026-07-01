@@ -1,12 +1,13 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Celbridge.Modules.Services;
 using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
@@ -30,9 +31,7 @@ public partial class App : Application
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
-#if WINDOWS
     private FullscreenToolbar? _fullscreenToolbar;
-#endif
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -149,7 +148,7 @@ public partial class App : Application
         ServiceLocator.Initialize(Host.Services);
 
         var logger = Host.Services.GetRequiredService<ILogger<App>>();
-        var environmentService = Host.Services.GetRequiredService<IEnvironmentService>();
+        var environmentService = Host.Services.GetRequiredService<IAppEnvironment>();
         var environmentInfo = environmentService.GetEnvironmentInfo();
         logger.LogDebug(environmentInfo.ToString());
 
@@ -177,6 +176,12 @@ public partial class App : Application
                 }
             }
         }
+#else
+        // The macOS counterpart to the Windows file activation above is not implemented yet: a double-clicked
+        // .celbridge launches the app (the bundle declares the association), but macOS delivers the opened
+        // path via an Apple Event that Uno does not surface on this head. The app auto-opens the previous project.
+        // No async file-activation work on this head; the await keeps OnLaunched awaiting on non-Windows heads.
+        await Task.CompletedTask;
 #endif
 
         // Initialize the Core Services
@@ -208,14 +213,13 @@ public partial class App : Application
             };
             rootGrid.Children.Add(rootFrame);
 
-#if WINDOWS
-            // Add the Fullscreen toolbar overlay (appears in fullscreen modes)
+            // Add the Fullscreen toolbar overlay (appears in fullscreen modes). The control and its
+            // pointer-tracking use only cross-platform APIs, so it runs on every head.
             _fullscreenToolbar = new FullscreenToolbar();
             rootGrid.Children.Add(_fullscreenToolbar);
 
             // Track mouse movement for Fullscreen toolbar
             rootGrid.PointerMoved += OnRootGrid_PointerMoved;
-#endif
 
             // Place the grid in the current Window
             MainWindow.Content = rootGrid;
@@ -248,24 +252,19 @@ public partial class App : Application
             var appLogger = Host.Services.GetRequiredService<Logging.ILogger<App>>();
             appLogger.Shutdown();
 
-#if WINDOWS
             // Clean up mouse tracking
             if (MainWindow.Content is Grid grid)
             {
                 grid.PointerMoved -= OnRootGrid_PointerMoved;
             }
-#endif
         };
 
         if (contentFrame != null)
         {
             contentFrame.Loaded += (s, e) =>
             {
-                //
                 // Initialize the user interface and page navigation services
                 // We use the concrete classes here to avoid exposing the Initialize() methods in the public interface.
-                //
-
                 var userInterfaceService = Host.Services.GetRequiredService<IUserInterfaceService>() as UserInterfaceService;
                 Guard.IsNotNull(userInterfaceService);
 
@@ -353,7 +352,6 @@ public partial class App : Application
         logger.LogError(exception, "An unhandled exception occurred");
     }
 
-#if WINDOWS
     private void OnRootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         if (_fullscreenToolbar != null && MainWindow?.Content != null)
@@ -362,7 +360,6 @@ public partial class App : Application
             _fullscreenToolbar.OnPointerMoved(position.Y);
         }
     }
-#endif
 
 
     /// <summary>

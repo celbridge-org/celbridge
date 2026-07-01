@@ -4,13 +4,13 @@
 (function () {
     'use strict';
 
-    // Bail out in cross-origin frames. The Celbridge WebView2 instance only
-    // ever serves content from .celbridge virtual hosts (project.celbridge for
-    // HTML viewers, {package}.celbridge for contribution editors), so any other
-    // origin is an embedded iframe loading external content and the shim must
-    // not activate there.
+    // Bail out in cross-origin frames. The Celbridge WebView serves editor content from the loopback
+    // file server (127.0.0.1) on every head, except a synthetic-origin editor, which runs under its own
+    // {package}.celbridge host. Any other origin is an embedded iframe loading external content and the
+    // shim must not activate there.
     var hostname = (typeof location !== 'undefined' && location && location.hostname) || '';
-    if (hostname !== 'project.celbridge' && !/\.celbridge$/.test(hostname)) {
+    if (hostname !== '127.0.0.1'
+        && !/\.celbridge$/.test(hostname)) {
         return;
     }
 

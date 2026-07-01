@@ -1,22 +1,24 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Manages window mode state and transitions.
+/// Manages the window's layout mode and fullscreen state. The two are independent: the layout mode
+/// controls which chrome is visible, while fullscreen controls whether the window fills the screen.
 /// </summary>
 public interface IWindowModeService
 {
     /// <summary>
-    /// Current window mode.
+    /// The current layout mode (chrome level).
     /// </summary>
-    WindowMode WindowMode { get; }
+    LayoutMode LayoutMode { get; }
 
     /// <summary>
-    /// Requests a window mode transition.
-    /// </summary>
-    Result RequestWindowModeTransition(WindowModeTransition transition);
-
-    /// <summary>
-    /// Whether the window is currently in a fullscreen mode.
+    /// Whether the window is currently filling the screen. On macOS this reflects native fullscreen.
+    /// On platforms without native window-chrome controls it reflects the app-driven fullscreen state.
     /// </summary>
     bool IsFullScreen { get; }
+
+    /// <summary>
+    /// Requests a layout transition (a layout-mode change or the fullscreen toggle).
+    /// </summary>
+    Result RequestLayoutTransition(LayoutTransition transition);
 }

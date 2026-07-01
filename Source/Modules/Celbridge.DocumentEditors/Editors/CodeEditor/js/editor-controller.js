@@ -6,8 +6,8 @@
 // The module expects the global `monaco` AMD namespace to be loaded before
 // create() is called.
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { log } from './logger.js';
 
 export class EditorController {
@@ -24,9 +24,9 @@ export class EditorController {
     create(containerElement) {
         this.#containerElement = containerElement;
 
-        // Determine initial theme from system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initialTheme = prefersDark ? 'vs-dark' : 'vs-light';
+        // Determine the initial Monaco theme from the app's effective theme. appState may be empty this
+        // early (before the snapshot arrives); #setupThemeListener corrects it as soon as it does.
+        const initialTheme = celbridge.appState.current.theme === 'Dark' ? 'vs-dark' : 'vs-light';
 
         this.#editor = monaco.editor.create(containerElement, {
             language: 'plaintext',
@@ -40,6 +40,7 @@ export class EditorController {
         this.#setupContentChangeListener();
         this.#setupScrollListener();
         this.#setupThemeListener();
+        this.#setupSelectionListener();
     }
 
     getValue() {
@@ -100,6 +101,51 @@ export class EditorController {
         this.#editor.focus();
     }
 
+    // Returns the currently selected text. The host fetches this for clipboard copy/cut, because the
+    // WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView.
+    getSelectedText() {
+        if (!this.#editor) {
+            return '';
+        }
+
+        const selection = this.#editor.getSelection();
+        if (!selection) {
+            return '';
+        }
+
+        return this.#editor.getModel().getValueInRange(selection);
+    }
+
+    // Runs one of Monaco's own edit commands in response to a host edit intent (e.g. a host menu or
+    // shortcut). The outcome equals Monaco handling the keystroke itself. We never reimplement the command.
+    performEdit(intent) {
+        if (!this.#editor) {
+            return;
+        }
+
+        this.#editor.focus();
+
+        if (intent === 'selectAll') {
+            const model = this.#editor.getModel();
+            if (model) {
+                this.#editor.setSelection(model.getFullModelRange());
+            }
+            return;
+        }
+
+        const actionId = {
+            copy: 'editor.action.clipboardCopyAction',
+            cut: 'editor.action.clipboardCutAction',
+            paste: 'editor.action.clipboardPasteAction',
+            undo: 'undo',
+            redo: 'redo'
+        }[intent];
+
+        if (actionId) {
+            this.#editor.trigger('celbridge', actionId, null);
+        }
+    }
+
     scrollToPercentage(percentage) {
         if (!this.#editor) {
             return;
@@ -158,11 +204,10 @@ export class EditorController {
      * if the editor isn't laid out yet.
      *
      * Word-wrap-aware: locates the model line whose rendered extent brackets
-     * the current scrollTop via binary search over `getTopForLineNumber`. The
-     * previous implementation used `floor(scrollTop / lineHeight)` which
-     * returns a *view* line index - treating it as a model line overshoots
-     * into the preview's past-last-block region in any document with long
-     * wrapped paragraphs.
+     * the current scrollTop via binary search over `getTopForLineNumber`. A
+     * plain `floor(scrollTop / lineHeight)` would return a *view* line index,
+     * which treated as a model line overshoots in documents with long wrapped
+     * paragraphs.
      */
     getTopSourceLine() {
         if (!this.#editor) {
@@ -205,7 +250,7 @@ export class EditorController {
 
     /**
      * Rendered height of a model line, accounting for word wrap. The last
-     * model line has no next line to subtract against; fall back to the
+     * model line has no next line to subtract against, so fall back to the
      * editor's configured lineHeight (unwrapped last lines are the common
      * case).
      */
@@ -288,6 +333,24 @@ export class EditorController {
         onWritableStateChanged
     } = {}) {
         log('editor: initializeHost starting');
+
+        // Forwards {state, readOnly} to the caller, not the raw snapshot, so Code Editor consumers can
+        // destructure either.
+        celbridge.viewState.onChanged((viewState) => {
+            const state = viewState.writable;
+            if (!state) {
+                return;
+            }
+            const readOnly = state !== 'Writable';
+            // Logged so a user-reported "stuck read-only" can be diagnosed from the WebView2 console
+            // without re-running with extra instrumentation.
+            log('editor: writable state', { state, readOnly });
+            this.#editor.updateOptions({ readOnly });
+            if (onWritableStateChanged) {
+                onWritableStateChanged({ state, readOnly });
+            }
+        });
+
         await celbridge.initializeDocument({
             onContent: (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
@@ -304,21 +367,6 @@ export class EditorController {
             },
             onExternalChange: async () => {
                 await this.#handleExternalChange(onExternalReloadContent);
-            },
-            onWritableStateChanged: ({ state }) => {
-                // Derive readOnly once and forward both fields so Code Editor
-                // consumers can destructure either without recomputing the
-                // predicate. Diverges from the celbridge.js contract, which
-                // forwards {state} only.
-                const readOnly = state !== 'Writable';
-                // Logged so a user-reported "stuck read-only" can be diagnosed
-                // from the WebView2 console without re-running with extra
-                // instrumentation.
-                log('editor: writable state', { state, readOnly });
-                this.#editor.updateOptions({ readOnly });
-                if (onWritableStateChanged) {
-                    onWritableStateChanged({ state, readOnly });
-                }
             },
             onRequestState,
             onRestoreState
@@ -384,7 +432,7 @@ export class EditorController {
         celbridge.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
 
         // Restore editor state after setValue. One requestAnimationFrame is
-        // enough to let Monaco flush its internal view-layout scheduler;
+        // enough to let Monaco flush its internal view-layout scheduler.
         // setValue itself updates the model synchronously. Keep
         // isReloadingExternally true until restoration is complete.
         // Note: this callback is throttled when Monaco is collapsed, but that's
@@ -469,7 +517,7 @@ export class EditorController {
     }
 
     #shouldNotifyHost() {
-        return window.isWebView &&
+        return celbridge.isHosted &&
             this.#isInitialized &&
             !this.#isReloadingExternally;
     }
@@ -495,8 +543,34 @@ export class EditorController {
             }
 
             // Fire unconditionally so the preview stays in sync with in-flight
-            // edits; the gating above is only for host-direction notifications.
+            // edits. The gating above is only for host-direction notifications.
             this.#onContentChanged();
+        });
+    }
+
+    #setupSelectionListener() {
+        // Report edit availability to the host whenever the selection or focus changes, so a host
+        // menu enables Copy/Cut only when there is a selection. Copy is the discriminating verb.
+        // Paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
+        this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
+        this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
+    }
+
+    #notifyEditAvailability() {
+        if (!this.#shouldNotifyHost()) {
+            return;
+        }
+
+        const selection = this.#editor.getSelection();
+        const hasSelection = selection !== null && !selection.isEmpty();
+
+        celbridge.input.notifyEditAvailability({
+            canCopy: hasSelection,
+            canCut: hasSelection,
+            canPaste: true,
+            canSelectAll: true,
+            canUndo: true,
+            canRedo: true
         });
     }
 
@@ -532,19 +606,16 @@ export class EditorController {
     }
 
     #setupThemeListener() {
-        // Listen for color scheme changes (triggered by WebView2's
-        // PreferredColorScheme). The CSS @media (prefers-color-scheme) queries
-        // don't consistently re-evaluate on WebView2 theme swaps, so we drive
-        // theme-dependent CSS via a data-theme attribute on <html> and toggle
-        // it from this listener alongside Monaco's built-in theme.
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-        const applyTheme = (isDark) => {
-            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-            monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs-light');
+        // Drive Monaco's built-in theme from the celbridge client's effective theme (a host override,
+        // or the OS theme for the System setting). The client mirrors that theme onto html[data-theme],
+        // which the editor and preview CSS key off, so this only sets Monaco's theme. We deliberately
+        // do not read prefers-color-scheme here: it follows only the OS and would ignore an in-app
+        // override, and the @media query was unreliable on WebView2 theme swaps anyway.
+        const applyMonacoTheme = (theme) => {
+            monaco.editor.setTheme(theme === 'Dark' ? 'vs-dark' : 'vs-light');
         };
 
-        applyTheme(mediaQuery.matches);
-        mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
+        applyMonacoTheme(celbridge.appState.current.theme);
+        celbridge.appState.onChanged((appState) => applyMonacoTheme(appState.theme));
     }
 }

@@ -6,10 +6,10 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
-/// Covers the Protected scope of SettingsService: the Workshop Key round-trip
-/// through encryption, presence checks that do not decrypt, reset, and the
-/// failure modes (unavailable store, unprotect failure, corrupt ciphertext). The
-/// protector is a reversing fake, so the assertions hold without DPAPI.
+/// Covers the Protected scope of SettingsService: the Workshop Key round-trip through the credential store,
+/// presence checks that do not retrieve, reset, and the failure modes (unavailable store, retrieve failure).
+/// The credential store is an in-memory fake. The encrypt-and-persist behaviour of the real Windows store is
+/// covered by DpapiCredentialStoreTests.
 /// </summary>
 [TestFixture]
 public class ProtectedScopeTests
@@ -17,14 +17,14 @@ public class ProtectedScopeTests
     private const string TestWorkshopKey = "kpf_abc123_supersecretvalue";
 
     private FakeSettingsStore _settingsStore = null!;
-    private FakeCredentialProtector _protector = null!;
+    private FakeCredentialStore _credentialStore = null!;
     private SettingsService _settingsService = null!;
 
     [SetUp]
     public void Setup()
     {
         _settingsStore = new FakeSettingsStore();
-        _protector = new FakeCredentialProtector();
+        _credentialStore = new FakeCredentialStore();
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
@@ -32,17 +32,17 @@ public class ProtectedScopeTests
         _settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
             _settingsStore,
-            _protector,
+            _credentialStore,
             workspaceWrapper);
     }
 
     [Test]
-    public void IsScopeAvailable_Protected_MirrorsProtectorAvailability()
+    public void IsScopeAvailable_Protected_MirrorsStoreAvailability()
     {
-        _protector.Available = true;
+        _credentialStore.Available = true;
         _settingsService.IsScopeAvailable(SettingScope.Protected).Should().BeTrue();
 
-        _protector.Available = false;
+        _credentialStore.Available = false;
         _settingsService.IsScopeAvailable(SettingScope.Protected).Should().BeFalse();
     }
 
@@ -58,15 +58,12 @@ public class ProtectedScopeTests
     }
 
     [Test]
-    public void Set_WritesCiphertextThatDoesNotContainPlaintext()
+    public void Set_DoesNotWriteSecretToTheSettingsStore()
     {
         _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
 
-        // The protected value is stored under the descriptor key in the
-        // application store; it must be base64 ciphertext, never the plaintext.
-        _settingsStore.TryGetValue<string>(SettingCatalog.Workshop.Key.Key, out var storedValue).Should().BeTrue();
-        storedValue.Should().NotBeEmpty();
-        storedValue.Should().NotContain(TestWorkshopKey);
+        // Protected secrets live in the credential store, never in the application settings store.
+        _settingsStore.ContainsKey(SettingCatalog.Workshop.Key.Key).Should().BeFalse();
     }
 
     [Test]
@@ -82,13 +79,12 @@ public class ProtectedScopeTests
     }
 
     [Test]
-    public void IsConfigured_DoesNotInvokeProtector()
+    public void IsConfigured_DoesNotRetrieve()
     {
         _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
 
-        // An unprotect failure must not affect a presence check, since the check
-        // never decrypts.
-        _protector.FailUnprotect = true;
+        // A retrieve failure must not affect a presence check, since the check never retrieves the secret.
+        _credentialStore.FailRetrieve = true;
 
         _settingsService.IsConfigured(SettingCatalog.Workshop.Key).Should().BeTrue();
     }
@@ -97,7 +93,7 @@ public class ProtectedScopeTests
     public void TryGet_Unavailable_Fails()
     {
         _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
-        _protector.Available = false;
+        _credentialStore.Available = false;
 
         var getResult = _settingsService.TryGet(SettingCatalog.Workshop.Key);
 
@@ -113,10 +109,10 @@ public class ProtectedScopeTests
     }
 
     [Test]
-    public void TryGet_UnprotectFailure_FailsWithoutEchoingKey()
+    public void TryGet_RetrieveFailure_FailsWithoutEchoingSecret()
     {
         _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
-        _protector.FailUnprotect = true;
+        _credentialStore.FailRetrieve = true;
 
         var getResult = _settingsService.TryGet(SettingCatalog.Workshop.Key);
 
@@ -125,21 +121,10 @@ public class ProtectedScopeTests
     }
 
     [Test]
-    public void TryGet_InvalidBase64_FailsCleanly()
-    {
-        _settingsStore.SetValue(SettingCatalog.Workshop.Key.Key, "@@not-valid-base64@@");
-
-        var getResult = _settingsService.TryGet(SettingCatalog.Workshop.Key);
-
-        getResult.IsFailure.Should().BeTrue();
-        getResult.FirstErrorMessage.Should().Contain("could not be read");
-    }
-
-    [Test]
-    public void Get_UnprotectFailure_FallsBackToDefault()
+    public void Get_RetrieveFailure_FallsBackToDefault()
     {
         _settingsService.Set(SettingCatalog.Workshop.Key, TestWorkshopKey);
-        _protector.FailUnprotect = true;
+        _credentialStore.FailRetrieve = true;
 
         var value = _settingsService.Get(SettingCatalog.Workshop.Key);
 

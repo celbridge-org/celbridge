@@ -1,19 +1,15 @@
-using System.Text.Json;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// WebView2 platform helpers for IDocumentWebViewToolBridge. Marshals eval,
-/// reload, and screenshot calls onto the UI thread.
+/// Registers a WebView2 with the tool bridge, marshalling its eval, reload, and
+/// screenshot calls onto the UI thread before delegating the per-platform work to
+/// the WebView adapter.
 /// </summary>
 public static class DocumentWebViewToolBridgeExtensions
 {
-    // Bounds the wait for Page.captureScreenshot. Inactive WinUI tabs pause the
-    // WebView2 renderer, which would otherwise leave the CDP call hanging.
-    private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
-
     // ~2 frames at 60fps. Content-ready can fire before the first paint commits,
     // so this gives every capture a minimum of one frame of paint headroom.
     private const int PaintBackstopMs = 50;
@@ -26,7 +22,8 @@ public static class DocumentWebViewToolBridgeExtensions
     public static void RegisterWebView2(
         this IDocumentWebViewToolBridge bridge,
         ResourceKey resource,
-        WebView2 webView)
+        WebView2 webView,
+        IWebViewAdapter webViewAdapter)
     {
         var dispatcherQueue = DispatcherQueue.GetForCurrentThread()
             ?? throw new InvalidOperationException(
@@ -36,12 +33,16 @@ public static class DocumentWebViewToolBridgeExtensions
 
         bridge.Register(
             resource,
-            expression => DispatchEvalAsync(coreWebView2, dispatcherQueue, expression),
-            clearCache => DispatchReloadAsync(coreWebView2, dispatcherQueue, clearCache),
-            request => DispatchScreenshotAsync(webView, dispatcherQueue, request));
+            expression => DispatchEvalAsync(coreWebView2, dispatcherQueue, expression, webViewAdapter),
+            clearCache => DispatchReloadAsync(coreWebView2, dispatcherQueue, clearCache, webViewAdapter),
+            request => DispatchScreenshotAsync(webView, dispatcherQueue, request, webViewAdapter));
     }
 
-    private static Task<string> DispatchEvalAsync(CoreWebView2 coreWebView2, DispatcherQueue dispatcherQueue, string expression)
+    private static Task<string> DispatchEvalAsync(
+        CoreWebView2 coreWebView2,
+        DispatcherQueue dispatcherQueue,
+        string expression,
+        IWebViewAdapter webViewAdapter)
     {
         var tcs = new TaskCompletionSource<string>();
 
@@ -49,7 +50,7 @@ public static class DocumentWebViewToolBridgeExtensions
         {
             try
             {
-                var result = await coreWebView2.ExecuteScriptAsync(expression);
+                var result = await webViewAdapter.EvalAsync(coreWebView2, expression);
                 tcs.TrySetResult(result);
             }
             catch (Exception ex)
@@ -66,7 +67,11 @@ public static class DocumentWebViewToolBridgeExtensions
         return tcs.Task;
     }
 
-    private static Task DispatchReloadAsync(CoreWebView2 coreWebView2, DispatcherQueue dispatcherQueue, bool clearCache)
+    private static Task DispatchReloadAsync(
+        CoreWebView2 coreWebView2,
+        DispatcherQueue dispatcherQueue,
+        bool clearCache,
+        IWebViewAdapter webViewAdapter)
     {
         var tcs = new TaskCompletionSource();
 
@@ -74,13 +79,7 @@ public static class DocumentWebViewToolBridgeExtensions
         {
             try
             {
-                if (clearCache)
-                {
-                    await coreWebView2.Profile.ClearBrowsingDataAsync(
-                        CoreWebView2BrowsingDataKinds.CacheStorage | CoreWebView2BrowsingDataKinds.DiskCache);
-                }
-
-                coreWebView2.Reload();
+                await webViewAdapter.ReloadAsync(coreWebView2, clearCache);
                 tcs.TrySetResult();
             }
             catch (Exception ex)
@@ -100,7 +99,8 @@ public static class DocumentWebViewToolBridgeExtensions
     private static Task<ScreenshotData> DispatchScreenshotAsync(
         WebView2 webView,
         DispatcherQueue dispatcherQueue,
-        ScreenshotRequest request)
+        ScreenshotRequest request,
+        IWebViewAdapter webViewAdapter)
     {
         var tcs = new TaskCompletionSource<ScreenshotData>();
 
@@ -108,8 +108,8 @@ public static class DocumentWebViewToolBridgeExtensions
         {
             try
             {
-                // Inactive tabs pause the renderer, so Page.captureScreenshot
-                // would hang. Fail fast both before and after the settle delay.
+                // Inactive tabs pause the renderer, so the capture would hang. Fail
+                // fast both before and after the settle delay.
                 if (!IsRenderableNow(webView))
                 {
                     throw new InvalidOperationException(
@@ -132,44 +132,8 @@ public static class DocumentWebViewToolBridgeExtensions
                         "Re-activate the document tab and retry.");
                 }
 
-                var coreWebView2 = webView.CoreWebView2;
-                var paramsJson = BuildCaptureScreenshotParams(request);
-                var captureTask = coreWebView2
-                    .CallDevToolsProtocolMethodAsync("Page.captureScreenshot", paramsJson)
-                    .AsTask();
-
-                // Bounded wait so a tab switch mid-capture surfaces as a timeout
-                // instead of an indefinite hang.
-                var winner = await Task.WhenAny(captureTask, Task.Delay(ScreenshotCaptureTimeout));
-                if (winner != captureTask)
-                {
-                    throw new TimeoutException(
-                        $"Screenshot timed out after {ScreenshotCaptureTimeout.TotalSeconds:0}s. " +
-                        "The document tab likely became inactive during capture, which pauses " +
-                        "WebView2 rendering. Re-activate the tab and retry.");
-                }
-
-                var resultJson = await captureTask;
-                using var doc = JsonDocument.Parse(resultJson);
-                var base64 = doc.RootElement.GetProperty("data").GetString() ?? string.Empty;
-                // Decode at the platform boundary so downstream stages carry raw
-                // bytes. JSON envelopes can otherwise escape '+' and corrupt the payload.
-                var bytes = Convert.FromBase64String(base64);
-
-                int width;
-                int height;
-                if (request.Clip is not null)
-                {
-                    width = (int)Math.Round(request.Clip.Width * request.Clip.Scale);
-                    height = (int)Math.Round(request.Clip.Height * request.Clip.Scale);
-                }
-                else
-                {
-                    width = 0;
-                    height = 0;
-                }
-
-                tcs.TrySetResult(new ScreenshotData(request.Format, width, height, bytes));
+                var data = await webViewAdapter.CaptureScreenshotAsync(webView, request);
+                tcs.TrySetResult(data);
             }
             catch (Exception ex)
             {
@@ -194,29 +158,5 @@ public static class DocumentWebViewToolBridgeExtensions
             && webView.Visibility == Microsoft.UI.Xaml.Visibility.Visible
             && webView.ActualWidth > 0
             && webView.ActualHeight > 0;
-    }
-
-    private static string BuildCaptureScreenshotParams(ScreenshotRequest request)
-    {
-        var payload = new Dictionary<string, object>
-        {
-            ["format"] = request.Format
-        };
-        if (request.Format == "jpeg")
-        {
-            payload["quality"] = request.Quality;
-        }
-        if (request.Clip is not null)
-        {
-            payload["clip"] = new Dictionary<string, object>
-            {
-                ["x"] = request.Clip.X,
-                ["y"] = request.Clip.Y,
-                ["width"] = request.Clip.Width,
-                ["height"] = request.Clip.Height,
-                ["scale"] = request.Clip.Scale
-            };
-        }
-        return JsonSerializer.Serialize(payload);
     }
 }

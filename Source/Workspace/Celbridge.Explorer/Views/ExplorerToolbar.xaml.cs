@@ -11,24 +11,15 @@ public sealed partial class ExplorerToolbar : UserControl
     private readonly ICommandService _commandService;
 
     // Toolbar tooltip strings
-    private string AddFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFileTooltip");
-    private string AddFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_AddFolderTooltip");
+    private string NewFileTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_NewFileTooltip");
+    private string NewFolderTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_NewFolderTooltip");
     private string CollapseFoldersTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_CollapseFoldersTooltip");
     private string ProjectSettingsTooltipString => _stringLocalizer.GetString("ResourceTreeToolbar_ProjectSettingsTooltip");
 
-    /// <summary>
-    /// Event raised when the Add File button is clicked.
-    /// </summary>
-    public event EventHandler? AddFileClicked;
+    public event EventHandler? NewFileClicked;
 
-    /// <summary>
-    /// Event raised when the Add Folder button is clicked.
-    /// </summary>
-    public event EventHandler? AddFolderClicked;
+    public event EventHandler? NewFolderClicked;
 
-    /// <summary>
-    /// Event raised when the Collapse Folders button is clicked.
-    /// </summary>
     public event EventHandler? CollapseFoldersClicked;
 
     public ExplorerToolbar()
@@ -39,9 +30,6 @@ public sealed partial class ExplorerToolbar : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
     }
 
-    /// <summary>
-    /// Sets the visibility of the toolbar based on whether the panel is active (has focus or mouse is over it).
-    /// </summary>
     public void SetToolbarVisible(bool isVisible)
     {
         if (isVisible)
@@ -54,14 +42,14 @@ public sealed partial class ExplorerToolbar : UserControl
         }
     }
 
-    private void AddFileButton_Click(object sender, RoutedEventArgs e)
+    private void NewFileButton_Click(object sender, RoutedEventArgs e)
     {
-        AddFileClicked?.Invoke(this, EventArgs.Empty);
+        NewFileClicked?.Invoke(this, EventArgs.Empty);
     }
 
-    private void AddFolderButton_Click(object sender, RoutedEventArgs e)
+    private void NewFolderButton_Click(object sender, RoutedEventArgs e)
     {
-        AddFolderClicked?.Invoke(this, EventArgs.Empty);
+        NewFolderClicked?.Invoke(this, EventArgs.Empty);
     }
 
     private void CollapseFoldersButton_Click(object sender, RoutedEventArgs e)

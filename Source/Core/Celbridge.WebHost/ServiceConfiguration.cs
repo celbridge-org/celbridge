@@ -12,12 +12,18 @@ public static class ServiceConfiguration
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
         services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
+
+        // The loopback default is registered first, so it is the fallback loader. A module may register a
+        // custom loader, which resolves ahead of it (the view picks the last matching loader).
+        services.AddSingleton<IContributionEditorLoader, LoopbackContributionEditorLoader>();
+
+        // The per-platform WebView adapter (WebView2 SDK on Windows, Skia/native fallbacks elsewhere).
+        Platform.PlatformServiceConfiguration.ConfigureServices(services);
     }
 
     /// <summary>
-    /// Initialize the WebView services.
-    /// This forces the WebViewFactory to be instantiated early, allowing it to 
-    /// pre-warm the WebView2 pool in the background while the application starts up.
+    /// Instantiates the WebViewFactory early so it can pre-warm the WebView2 pool in the background while
+    /// the application starts up.
     /// </summary>
     public static void Initialize()
     {

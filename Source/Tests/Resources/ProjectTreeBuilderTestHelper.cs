@@ -11,7 +11,7 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Builds a ProjectTreeBuilder wired to a real LocalResourceFileSystem over the
-/// supplied project folder. By default the [resources] policy is permissive; pass
+/// supplied project folder. By default the [resources] policy is permissive. Pass
 /// useProjectIgnoreFile to build a real policy that reads the project's ignore-file
 /// from disk (write the file before calling Build, since the policy compiles once).
 /// The builder enumerates through the gateway, so the helper stands up the resource
@@ -21,7 +21,7 @@ internal static class ProjectTreeBuilderTestHelper
 {
     public static ProjectTreeBuilder Build(
         string projectFolderPath,
-        IFileIconService? fileIconService = null,
+        IIconService? iconService = null,
         bool useProjectIgnoreFile = false,
         string[]? lockPatterns = null)
     {
@@ -60,7 +60,7 @@ internal static class ProjectTreeBuilderTestHelper
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
 
-        return new ProjectTreeBuilder(fileIconService ?? new FileIconService(), workspaceWrapper);
+        return new ProjectTreeBuilder(iconService ?? new IconService(), workspaceWrapper);
     }
 
     private static IResourcePolicy BuildPolicy(string projectFolderPath, bool useProjectIgnoreFile, string[]? lockPatterns)

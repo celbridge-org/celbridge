@@ -2,22 +2,17 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Discovery origin of a package. Determines whether file reads cross the
-/// IResourceFileSystem gateway (Project) or stay on direct File.* IO (Bundled,
-/// until the bundled-from-assembly migration lands).
+/// IResourceFileSystem gateway (Project) or stay on direct File.* IO (Bundled).
 /// </summary>
 public enum PackageOrigin
 {
     /// <summary>
-    /// First-party package shipped inside a Celbridge module DLL. Read sites
-    /// stay on direct File.* IO against the install folder.
+    /// First-party package shipped inside a Celbridge module DLL.
     /// </summary>
     Bundled,
 
     /// <summary>
-    /// User package discovered under the project's packages/ folder. Read
-    /// sites resolve a ResourceKey via IResourceRegistry and read through
-    /// IResourceFileSystem so the gateway contract holds for every project-tree
-    /// byte.
+    /// User package discovered under the project's packages/ folder.
     /// </summary>
     Project
 }
@@ -51,33 +46,25 @@ public partial record PackageInfo
     public IReadOnlyList<string> PermittedTools { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// Named secrets supplied by the module that bundles this package. Populated
-    /// only via BundledPackageDescriptor. Always empty for non-bundled packages.
+    /// Named secrets supplied by the module that bundles this package. Always empty for non-bundled packages.
     /// </summary>
     public IReadOnlyDictionary<string, string> Secrets { get; init; } = new Dictionary<string, string>();
 
     /// <summary>
     /// When true, DevTools are permanently disabled on any WebView hosting this
     /// package, regardless of the user's feature flag or build configuration.
-    /// Populated only via BundledPackageDescriptor; always false for non-bundled
-    /// packages.
+    /// Always false for non-bundled packages.
     /// </summary>
     public bool DevToolsBlocked { get; init; }
 
     /// <summary>
     /// Whether the package was discovered as a bundled (in-module) or project
-    /// (project-tree) package. Drives the read path selection at every site
-    /// that loads bytes for the package.
+    /// (project-tree) package.
     /// </summary>
     public PackageOrigin Origin { get; init; }
 
     /// <summary>
-    /// The folder containing the package (set during loading, not from TOML).
+    /// The folder containing the package.
     /// </summary>
     public string PackageFolder { get; init; } = string.Empty;
-
-    /// <summary>
-    /// A unique virtual host name for this package's assets (set during loading, not from TOML).
-    /// </summary>
-    public string HostName { get; init; } = string.Empty;
 }

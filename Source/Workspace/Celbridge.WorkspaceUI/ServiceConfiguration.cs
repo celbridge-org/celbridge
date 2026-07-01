@@ -2,6 +2,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Navigation;
 using Celbridge.UserInterface;
 using Celbridge.WorkspaceUI.Commands;
+using Celbridge.WorkspaceUI.Platform;
 using Celbridge.WorkspaceUI.Services;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views;
@@ -16,7 +17,10 @@ public static class ServiceConfiguration
         // Register services
         //
 
-        services.AddSingleton<IPanelFocusService, PanelFocusService>();
+        services.AddSingleton<IFocusService, FocusService>();
+
+        PlatformServiceConfiguration.ConfigureServices(services);
+
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IBindableWorkspaceSettings, BindableWorkspaceSettings>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
@@ -47,6 +51,7 @@ public static class ServiceConfiguration
         services.AddTransient<ISetRegionVisibilityCommand, SetRegionVisibilityCommand>();
         services.AddTransient<ISetConsoleMaximizedCommand, SetConsoleMaximizedCommand>();
         services.AddTransient<IResetPanelCommand, ResetPanelCommand>();
+        services.AddTransient<IPerformEditCommand, PerformEditCommand>();
     }
 
     public static void Initialize()

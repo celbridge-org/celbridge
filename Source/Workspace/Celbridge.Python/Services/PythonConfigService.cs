@@ -1,3 +1,6 @@
+using Celbridge.Platform;
+using Celbridge.FileSystem;
+
 namespace Celbridge.Python.Services;
 
 /// <summary>
@@ -5,10 +8,19 @@ namespace Celbridge.Python.Services;
 /// </summary>
 public class PythonConfigService : IPythonConfigService
 {
-    private const string PythonVersionAssetPath = "ms-appx:///Assets/Python/python_version.txt";
     private const string FallbackPythonVersion = "3.12";
+    private const string PythonModuleFolder = "Celbridge.Python";
+
+    private readonly ILocalFileSystem _fileSystem;
+    private readonly IAppEnvironment _appEnvironment;
 
     private string? _cachedDefaultPythonVersion;
+
+    public PythonConfigService(ILocalFileSystem fileSystem, IAppEnvironment appEnvironment)
+    {
+        _fileSystem = fileSystem;
+        _appEnvironment = appEnvironment;
+    }
 
     public string DefaultPythonVersion
     {
@@ -21,14 +33,14 @@ public class PythonConfigService : IPythonConfigService
 
             try
             {
-                var file = StorageFile.GetFileFromApplicationUriAsync(new Uri(PythonVersionAssetPath))
-                    .AsTask()
-                    .GetAwaiter()
-                    .GetResult();
-
-                using var stream = file.OpenStreamForReadAsync().GetAwaiter().GetResult();
-                using var reader = new StreamReader(stream);
-                var version = reader.ReadToEnd().Trim();
+                var versionFilePath = _appEnvironment.GetBundledAssetPath(
+                    PythonModuleFolder, "Assets/Python/python_version.txt");
+                var readResult = _fileSystem.ReadAllTextAsync(versionFilePath).GetAwaiter().GetResult();
+                var version = string.Empty;
+                if (readResult.IsSuccess)
+                {
+                    version = readResult.Value.Trim();
+                }
 
                 if (!string.IsNullOrWhiteSpace(version))
                 {

@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Workspace;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
@@ -18,7 +19,8 @@ public sealed partial class DocumentSection : UserControl
 {
     private readonly IDocumentSectionLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
+    private readonly IPlatformInfo _platformInfo;
     private bool _isShuttingDown = false;
 
     /// <summary>
@@ -76,7 +78,8 @@ public sealed partial class DocumentSection : UserControl
 
         _logger = ServiceLocator.AcquireService<IDocumentSectionLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
         // Disable tab add/remove animations so tabs snap into place immediately
         TabView.Loaded += (s, e) => DisableTabViewAnimations();
@@ -84,7 +87,7 @@ public sealed partial class DocumentSection : UserControl
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Documents);
+        _focusService.OnFocusReceived(WorkspacePanel.Documents);
     }
 
     /// <summary>
@@ -256,7 +259,23 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public void SelectTab(DocumentTab tab)
     {
-        TabView.SelectedItem = tab;
+        try
+        {
+            TabView.SelectedItem = tab;
+        }
+        catch (InvalidOperationException) when (_platformInfo.RequiresMacOSLayoutRetry)
+        {
+            // On the macOS Skia head, selecting a tab in an overflowing strip that has not been measured
+            // yet (as happens when the active document is restored after all tabs are added) makes Uno
+            // throw a layout exception for the selected tab's corner render (an invalid NaN/Infinity
+            // frame size), which wedges the workspace load. Retry on the next dispatcher cycle, once the
+            // strip has a valid layout. The common path stays synchronous so tab selection order during
+            // restore is preserved.
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                TabView.SelectedItem = tab;
+            });
+        }
     }
 
     /// <summary>
@@ -468,11 +487,7 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Accept file drags from ResourceTree (check both Data and DataView for cross-control drags)
-        var hasDataProps = e.Data?.Properties?.ContainsKey("DraggedResources") == true;
-        var hasDataViewProps = e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
-
-        if (hasDataProps || hasDataViewProps)
+        if (IsResourceDragInFlight(e))
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
@@ -504,17 +519,7 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Handle file drop from ResourceTree (check both Data and DataView for cross-control drags)
-        List<IResource>? draggedResources = null;
-        if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
-        {
-            draggedResources = draggedObj as List<IResource>;
-        }
-        else if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
-        {
-            draggedResources = draggedViewObj as List<IResource>;
-        }
-
+        var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
             FilesDropped?.Invoke(this, draggedResources);
@@ -534,11 +539,7 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Accept file drags from ResourceTree (check both Data and DataView for cross-control drags)
-        var hasDataProps = e.Data?.Properties?.ContainsKey("DraggedResources") == true;
-        var hasDataViewProps = e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
-
-        if (hasDataProps || hasDataViewProps)
+        if (IsResourceDragInFlight(e))
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
@@ -570,7 +571,34 @@ public sealed partial class DocumentSection : UserControl
             return;
         }
 
-        // Handle file drop from ResourceTree (check both Data and DataView for cross-control drags)
+        var draggedResources = TakeResourceDragPayload(e);
+        if (draggedResources != null)
+        {
+            FilesDropped?.Invoke(this, draggedResources);
+            e.Handled = true;
+        }
+    }
+
+    // Resource drags from ResourceTree can arrive via the DataPackage's custom properties on Windows
+    // or via ResourceDragState on the Uno Skia desktop head (where managed properties do not
+    // round-trip).
+    private static bool IsResourceDragInFlight(DragEventArgs e)
+    {
+        if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
+        {
+            return true;
+        }
+
+        if (e.DataView?.Properties?.ContainsKey("DraggedResources") == true)
+        {
+            return true;
+        }
+
+        return ResourceDragState.Current is not null;
+    }
+
+    private static List<IResource>? TakeResourceDragPayload(DragEventArgs e)
+    {
         List<IResource>? draggedResources = null;
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
         {
@@ -580,12 +608,17 @@ public sealed partial class DocumentSection : UserControl
         {
             draggedResources = draggedViewObj as List<IResource>;
         }
-
-        if (draggedResources != null)
+        else if (ResourceDragState.Current is { } sharedResources)
         {
-            FilesDropped?.Invoke(this, draggedResources);
-            e.Handled = true;
+            draggedResources = sharedResources.ToList();
         }
+
+        if (draggedResources is not null)
+        {
+            ResourceDragState.End();
+        }
+
+        return draggedResources;
     }
 
     /// <summary>

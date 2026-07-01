@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Celbridge } from './celbridge.js';
 
 /**
@@ -13,6 +13,10 @@ function createTestClient(options = {}) {
         postMessage: (msg) => sentMessages.push(msg),
         onMessage: (handler) => { messageHandler = handler; },
         timeout: options.timeout ?? 1000,
+        // Provide a context so ready() resolves synchronously. These tests exercise the
+        // request/response machinery, not the host/getContext bridge fallback (covered
+        // separately). Callers can override via options.context.
+        context: { permittedTools: [], secrets: {}, options: {} },
         ...options
     });
 
@@ -80,6 +84,38 @@ describe('Celbridge', () => {
             await initPromise;
 
             await expect(client.initialize()).rejects.toThrow('Client already initialized');
+        });
+    });
+
+    describe('ready (capability context)', () => {
+        it('fetches context over the bridge via host/getContext when no global is injected', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient({ context: null });
+
+            const readyPromise = client.ready();
+
+            // The first request is host/getContext, sent synchronously.
+            expect(sentMessages).toHaveLength(1);
+            const sent = JSON.parse(sentMessages[0]);
+            expect(sent.method).toBe('host/getContext');
+
+            simulateResponse(sent.id, {
+                permittedTools: ['app.*'],
+                secrets: { license: 'abc' },
+                options: { preview_renderer_url: 'https://x/y.js' }
+            });
+
+            await readyPromise;
+
+            expect(client.tools.allowedPatterns).toEqual(['app.*']);
+            expect(client.secrets.license).toBe('abc');
+            expect(client.options.preview_renderer_url).toBe('https://x/y.js');
+            expect(client.isHosted).toBe(true);
+        });
+
+        it('resolves immediately and sends no request when context was injected', async () => {
+            const { client, sentMessages } = createTestClient();
+            await client.ready();
+            expect(sentMessages).toHaveLength(0);
         });
     });
 
@@ -191,60 +227,42 @@ describe('Celbridge', () => {
             expect(handler).toHaveBeenCalledOnce();
         });
 
-        it('should dispatch writable-state-changed notifications with the state payload', async () => {
-            const { client, simulateResponse, simulateNotification } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+        it('cel.viewState mirrors per-view state pushed by the host', () => {
+            const { client, simulateNotification } = createTestClient();
 
             const handler = vi.fn();
-            client.document.onWritableStateChanged(handler);
+            client.viewState.onChanged(handler);
 
-            simulateNotification('document/writableStateChanged', { state: 'Locked' });
+            simulateNotification('viewState/changed', { writable: 'Locked' });
 
             expect(handler).toHaveBeenCalledOnce();
-            expect(handler).toHaveBeenCalledWith({ state: 'Locked' });
+            expect(handler).toHaveBeenCalledWith({ writable: 'Locked' });
+            expect(client.viewState.current).toEqual({ writable: 'Locked' });
         });
 
-        it('initializeDocument seeds onWritableStateChanged from the initialize response before applying content', async () => {
-            const { client, simulateResponse } = createTestClient();
+        it('cel.viewState replays the latest snapshot to a late subscriber', () => {
+            const { client, simulateNotification } = createTestClient();
 
-            const onWritableStateChanged = vi.fn();
-            const onContent = vi.fn();
-            const initPromise = client.initializeDocument({ onContent, onWritableStateChanged });
+            // The host seeds the store with a connect-time push before the editor subscribes.
+            simulateNotification('viewState/changed', { writable: 'Writable' });
 
-            simulateResponse(1, {
-                content: '# Locked file',
-                metadata: { filePath: '/locked.md', resourceKey: 'locked.md', fileName: 'locked.md' },
-                writableState: 'Locked',
-            });
+            const handler = vi.fn();
+            client.viewState.onChanged(handler);
 
-            await initPromise;
-
-            expect(onWritableStateChanged).toHaveBeenCalledOnce();
-            expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'Locked' });
-
-            // Ordering: the writable-state seed runs before content is applied, so the
-            // editor enters read-only mode before its first setValue.
-            expect(onWritableStateChanged.mock.invocationCallOrder[0])
-                .toBeLessThan(onContent.mock.invocationCallOrder[0]);
+            expect(handler).toHaveBeenCalledOnce();
+            expect(handler).toHaveBeenCalledWith({ writable: 'Writable' });
         });
 
-        it('initializeDocument omits the writable-state seed when the response carries no value', async () => {
-            const { client, simulateResponse } = createTestClient();
+        it('cel.appState mirrors app-global state pushed by the host', () => {
+            const { client, simulateNotification } = createTestClient();
 
-            const onWritableStateChanged = vi.fn();
-            const initPromise = client.initializeDocument({ onWritableStateChanged });
+            const handler = vi.fn();
+            client.appState.onChanged(handler);
 
-            simulateResponse(1, {
-                content: '',
-                metadata: {},
-            });
+            simulateNotification('appState/changed', { theme: 'Dark' });
 
-            await initPromise;
-
-            expect(onWritableStateChanged).not.toHaveBeenCalled();
+            expect(handler).toHaveBeenCalledWith({ theme: 'Dark' });
+            expect(client.appState.current.theme).toBe('Dark');
         });
 
         it('should handle language change notifications', async () => {
@@ -402,6 +420,35 @@ describe('Celbridge', () => {
             expect(notification.method).toBe('input/scrollChanged');
             expect(notification.params.scrollPercentage).toBe(0.75);
             expect(notification.id).toBeUndefined();
+        });
+    });
+
+    describe('input/releaseFocus handling', () => {
+        afterEach(() => {
+            delete globalThis.document;
+        });
+
+        it('blurs the active element when the host sends input/releaseFocus', () => {
+            const { simulateNotification } = createTestClient();
+
+            const blur = vi.fn();
+            const activeElement = { blur };
+            globalThis.document = { body: {}, activeElement };
+
+            simulateNotification('input/releaseFocus', {});
+
+            expect(blur).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not blur when nothing is focused (active element is the body)', () => {
+            const { simulateNotification } = createTestClient();
+
+            const body = { blur: vi.fn() };
+            globalThis.document = { body, activeElement: body };
+
+            simulateNotification('input/releaseFocus', {});
+
+            expect(body.blur).not.toHaveBeenCalled();
         });
     });
 

@@ -47,9 +47,7 @@ public class WorkspaceLoader
             return Result.Fail("Workspace service is not initialized");
         }
 
-        //
-        // Apply project-level feature flag overrides
-        //
+        // Apply project-level feature flag overrides.
         var currentProject = _projectService.CurrentProject;
         if (currentProject is not null)
         {
@@ -57,27 +55,20 @@ public class WorkspaceLoader
             _featureFlags.ApplyProjectOverrides(projectFeatures);
         }
 
-        //
-        // Start a fresh server instance for this workspace.
-        // The same port is reused for the lifetime of the application so URLs
-        // resolved by the file server remain stable across project switches.
-        //
+        // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
+        // the application so URLs resolved by the file server remain stable across project switches.
         await _serverService.StartAsync();
         if (_serverService.Status == ServerStatus.Error)
         {
             return Result.Fail("Failed to start the server for the workspace");
         }
 
-        //
-        // Set the current directory to the workspace project folder
-        //
+        // Set the current directory to the workspace project folder.
         var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
         projectFolderPath = Path.GetFullPath(projectFolderPath);
         SetProcessWorkingFolder(projectFolderPath);
 
-        //
-        // Acquire the workspace settings
-        //
+        // Acquire the workspace settings.
         var workspaceSettingsService = workspaceService.WorkspaceSettings;
         var acquireResult = await workspaceSettingsService.AcquireWorkspaceSettingsAsync();
         if (acquireResult.IsFailure)
@@ -89,9 +80,7 @@ public class WorkspaceLoader
         var propertyBag = workspaceSettingsService.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        //
         // Initialize the entity service.
-        //
         var entityService = workspaceService.EntityService;
         var initEntitiesResult = await entityService.InitializeAsync();
         if (initEntitiesResult.IsFailure)
@@ -100,10 +89,7 @@ public class WorkspaceLoader
                 .WithErrors(initEntitiesResult);
         }
 
-        //
         // Populate the resource registry.
-        //
-
         var explorerService = workspaceService.ExplorerService;
         var folderStateService = explorerService.FolderStateService;
 
@@ -164,10 +150,7 @@ public class WorkspaceLoader
                 .WithException(ex);
         }
 
-        //
-        // Initialize the activities service
-        //
-
+        // Initialize the activities service.
         var activityService = workspaceService.ActivityService;
         var initActivities = await activityService.Initialize();
         if (initActivities.IsFailure)
@@ -176,10 +159,8 @@ public class WorkspaceLoader
                 .WithErrors(initActivities);
         }
 
-        //
-        // Restore the previous state of the workspace.
-        // Any failures that occur here are logged as warnings and do not prevent the workspace from loading.
-        //
+        // Restore the previous state of the workspace. Any failures that occur here are logged as
+        // warnings and do not prevent the workspace from loading.
 
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
@@ -188,32 +169,23 @@ public class WorkspaceLoader
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
-        //
         // Update the current stored state of the workspace in preparation for the next session.
-        //
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
 
-        //
-        // Populate title bar shortcut buttons from project config
-        //
+        // Populate title bar shortcut buttons from project config.
         PopulateTitleBarShortcuts();
 
-        //
         // Notify that the workspace has loaded.
-        //
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
 
-        //
-        // Initialize terminal window and Python scripting
-        // These run after the workspace is considered "loaded" because they don't block
-        // the workspace UI from being functional.
-        //
+        // Initialize terminal window and Python scripting. These run after the workspace is considered
+        // "loaded" because they don't block the workspace UI from being functional.
 
-        // Only initialize console and Python if the console-panel feature is enabled
+        // Only initialize console and Python if the console-panel feature is enabled.
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (isConsolePanelEnabled)
         {
@@ -234,9 +206,8 @@ public class WorkspaceLoader
             _logger.LogInformation("Console panel is disabled by feature flag");
         }
 
-        // Runs after WorkspaceLoadedMessage, on the load thread: the banner it
-        // raises needs a live panel subscriber, and a full project scan would
-        // otherwise delay the visible load.
+        // Awaited so the consistency check completes before any project script that runs on load can
+        // modify the structure the scan reads.
         await RunProjectCheckAsync();
 
         return Result.Ok();
@@ -261,7 +232,10 @@ public class WorkspaceLoader
         try
         {
             var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
-            var reportResult = await commandService.ExecuteAsync<IProjectCheckCommand, ProjectCheckReport>();
+
+            // ExecuteImmediate, not ExecuteAsync: this runs inside the in-flight LoadProjectCommand, so
+            // enqueuing and awaiting a command would deadlock the serial queue.
+            var reportResult = await commandService.ExecuteImmediate<IProjectCheckCommand, ProjectCheckReport>();
             if (reportResult.IsFailure)
             {
                 _logger.LogWarning(reportResult, "Project consistency check failed.");
@@ -360,9 +334,6 @@ public class WorkspaceLoader
         });
     }
 
-    /// <summary>
-    /// Clears shortcut buttons from the title bar. Called during workspace unload.
-    /// </summary>
     public void ClearTitleBarShortcuts()
     {
         _userInterfaceService.TitleBar?.ClearShortcutButtons();

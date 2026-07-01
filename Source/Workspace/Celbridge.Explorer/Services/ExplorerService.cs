@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Celbridge.Logging;
+using Celbridge.Resources.Services;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
+using Windows.System;
 
 namespace Celbridge.Explorer.Services;
 
@@ -12,8 +14,9 @@ public class ExplorerService : IExplorerService, IDisposable
 
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IFileIconService _fileIconService;
+    private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileManagerLauncher _fileManagerLauncher;
 
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry =>
@@ -32,16 +35,18 @@ public class ExplorerService : IExplorerService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
-        IFileIconService fileIconService,
-        IWorkspaceWrapper workspaceWrapper)
+        IIconService iconService,
+        IWorkspaceWrapper workspaceWrapper,
+        IFileManagerLauncher fileManagerLauncher)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
         _logger = logger;
         _messengerService = messengerService;
-        _fileIconService = fileIconService;
+        _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
+        _fileManagerLauncher = fileManagerLauncher;
 
         FolderStateService = serviceProvider.GetRequiredService<IFolderStateService>();
 
@@ -141,7 +146,7 @@ public class ExplorerService : IExplorerService, IDisposable
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
-        var openResult = await ResourceUtils.OpenFileManager(resolveResult.Value);
+        var openResult = await _fileManagerLauncher.OpenFileManagerAsync(resolveResult.Value);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open file manager for resource: {resource}")
@@ -159,7 +164,7 @@ public class ExplorerService : IExplorerService, IDisposable
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
-        var openResult = await ResourceUtils.OpenApplication(resolveResult.Value);
+        var openResult = await _fileManagerLauncher.OpenApplicationAsync(resolveResult.Value);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open associated application for resource: {resource}")
@@ -171,11 +176,23 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenBrowser(string url)
     {
-        var openResult = await ResourceUtils.OpenBrowser(url);
-        if (openResult.IsFailure)
+        try
+        {
+            var targetUrl = url.Trim();
+            if (!string.IsNullOrWhiteSpace(targetUrl)
+                && !targetUrl.StartsWith("http")
+                && !targetUrl.StartsWith("file"))
+            {
+                targetUrl = $"https://{targetUrl}";
+            }
+
+            var uri = new Uri(targetUrl);
+            await Launcher.LaunchUriAsync(uri);
+        }
+        catch (Exception ex)
         {
             return Result.Fail($"Failed to open url in system default browser: {url}")
-                .WithErrors(openResult);
+                .WithException(ex);
         }
 
         return Result.Ok();
@@ -190,9 +207,9 @@ public class ExplorerService : IExplorerService, IDisposable
             var r = getResourceResult.Value;
             if (r is IFolderResource)
             {
-                var icon = _fileIconService.DefaultFolderIcon with
+                var icon = _iconService.DefaultFolderIcon with
                 {
-                    FontColor = FileIconService.DefaultFolderColor
+                    FontColor = IconService.DefaultFolderColor
                 };
                 return icon;
             }
@@ -200,14 +217,14 @@ public class ExplorerService : IExplorerService, IDisposable
 
         // If the resource is a file, use the icon matching the file extension
         var fileExtension = Path.GetExtension(resource);
-        var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
+        var getIconResult = _iconService.GetFileIconForExtension(fileExtension);
         if (getIconResult.IsSuccess)
         {
             return getIconResult.Value;
         }
 
         // Return the default file icon if we couldn't find a better match
-        return _fileIconService.DefaultFileIcon;
+        return _iconService.DefaultFileIcon;
     }
 
     private bool _disposed;

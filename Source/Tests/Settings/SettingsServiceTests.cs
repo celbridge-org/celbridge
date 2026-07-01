@@ -34,7 +34,7 @@ public class SettingsServiceTests
         _settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
             _settingsStore,
-            new FakeCredentialProtector(),
+            new FakeCredentialStore(),
             _workspaceWrapper);
     }
 

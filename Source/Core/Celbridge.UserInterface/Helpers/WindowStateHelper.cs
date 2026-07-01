@@ -1,11 +1,8 @@
-#if WINDOWS
-
 using Celbridge.Logging;
 using Celbridge.Settings;
-using Celbridge.Workspace;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
-using WinRT.Interop;
 
 namespace Celbridge.UserInterface.Helpers;
 
@@ -17,6 +14,8 @@ public sealed class WindowStateHelper
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
+    private readonly IFullScreenController _fullScreenController;
+    private readonly IWindowBoundsValidator _windowBoundsValidator;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -26,11 +25,15 @@ public sealed class WindowStateHelper
     public WindowStateHelper(
         ILogger<WindowStateHelper> logger,
         IMessengerService messengerService,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        IFullScreenController fullScreenController,
+        IWindowBoundsValidator windowBoundsValidator)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
+        _fullScreenController = fullScreenController;
+        _windowBoundsValidator = windowBoundsValidator;
     }
 
     /// <summary>
@@ -42,7 +45,9 @@ public sealed class WindowStateHelper
 
         try
         {
-            _appWindow = GetAppWindow(mainWindow);
+            // Window.AppWindow is the cross-platform Microsoft.UI.Windowing entry point and works on
+            // both the packaged WinUI head and the Skia desktop head, so no Win32 interop is needed.
+            _appWindow = mainWindow.AppWindow;
             if (_appWindow == null)
             {
                 return Result.Fail("Failed to get AppWindow from main window");
@@ -57,6 +62,9 @@ public sealed class WindowStateHelper
             // Track the initial presenter kind
             _previousPresenterKind = _appWindow.Presenter.Kind;
 
+            // Bind the platform-specific fullscreen controller to this window.
+            _fullScreenController.Initialize(_appWindow);
+
             // This is a "best-effort" restore. If it doesn't work, the default window state will be applied automatically.
             TryRestoreWindowState();
 
@@ -68,8 +76,8 @@ public sealed class WindowStateHelper
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
 
-            // Listen for window mode changes to handle fullscreen
-            _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+            // Listen for fullscreen state changes to drive the platform fullscreen controller
+            _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
 
             // Listen for requests to restore window state (e.g., after layout reset)
             _messengerService.Register<RestoreWindowStateMessage>(this, OnRestoreWindowState);
@@ -83,9 +91,9 @@ public sealed class WindowStateHelper
         }
     }
 
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    private void OnFullScreenChanged(object recipient, FullScreenChangedMessage message)
     {
-        ApplyWindowMode(message.WindowMode);
+        ApplyFullScreen(message.IsFullScreen);
     }
 
     private void OnRestoreWindowState(object recipient, RestoreWindowStateMessage message)
@@ -127,9 +135,9 @@ public sealed class WindowStateHelper
     }
 
     /// <summary>
-    /// Applies the specified window mode to the window.
+    /// Enters or exits fullscreen via the platform-specific controller.
     /// </summary>
-    public void ApplyWindowMode(WindowMode windowMode)
+    public void ApplyFullScreen(bool isFullScreen)
     {
         if (_appWindow == null)
         {
@@ -140,40 +148,31 @@ public sealed class WindowStateHelper
         {
             _isApplyingWindowMode = true;
 
-            switch (windowMode)
+            // The platform-specific controller owns the fullscreen mechanism and remembers the prior
+            // windowed placement, so it restores maximized/bounds itself when leaving fullscreen.
+            Result transitionResult;
+            if (isFullScreen)
             {
-                case WindowMode.Windowed:
-                    // Exit fullscreen - restore to overlapped presenter
-                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.Overlapped)
-                    {
-                        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-                        
-                        // Get the new presenter and restore maximized state if needed
-                        _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
-                        if (_overlappedPresenter != null && _settingsService.Get(SettingCatalog.Window.IsMaximized))
-                        {
-                            _overlappedPresenter.Maximize();
-                        }
-                    }
-                    break;
-
-                case WindowMode.FullScreen:
-                case WindowMode.ZenMode:
-                case WindowMode.Presenter:
-                    // Enter fullscreen mode
-                    if (_appWindow.Presenter.Kind != AppWindowPresenterKind.FullScreen)
-                    {
-                        _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
-                    }
-                    break;
+                transitionResult = _fullScreenController.EnterFullScreen();
+            }
+            else
+            {
+                transitionResult = _fullScreenController.ExitFullScreen();
             }
 
-            // Update the tracked presenter kind after applying the mode
+            if (transitionResult.IsFailure)
+            {
+                _logger.LogError(transitionResult, $"Failed to apply fullscreen: {isFullScreen}");
+            }
+
+            // The controller may have re-created the presenter when switching presenter kinds, so
+            // refresh the cached reference and the tracked kind for window-state tracking.
+            _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
             _previousPresenterKind = _appWindow.Presenter.Kind;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to apply window mode: {windowMode}");
+            _logger.LogError(ex, $"Failed to apply fullscreen: {isFullScreen}");
         }
         finally
         {
@@ -200,75 +199,34 @@ public sealed class WindowStateHelper
         int width = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
         int height = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
 
-        // Validate that the title bar area is visible on screen
-        if (!IsTitleBarVisible(x, y, width, height))
+        // Object-initializer syntax is used for the Windows.Graphics structs because the Skia desktop
+        // head's projection does not expose their positional constructors.
+        var bounds = new RectInt32
+        {
+            X = x,
+            Y = y,
+            Width = width,
+            Height = height
+        };
+
+        // Validate that the title bar area is visible on screen.
+        if (!_windowBoundsValidator.IsTitleBarVisible(bounds))
         {
             _logger.LogDebug("Saved window position is off-screen, using default placement");
             return;
         }
 
-        // Apply the saved bounds
-        var position = new PointInt32(x, y);
-        var size = new SizeInt32(width, height);
-
-        _appWindow.MoveAndResize(new RectInt32(position.X, position.Y, size.Width, size.Height));
-    }
-
-    private bool IsTitleBarVisible(int x, int y, int width, int height)
-    {
-        try
-        {
-            // Check if any part of the title bar area (top ~40 pixels of window) is visible on any display
-            const int titleBarHeight = 40;
-            var titleBarRect = new RectInt32(x, y, width, titleBarHeight);
-
-            var displayAreas = DisplayArea.FindAll();
-            if (displayAreas == null || displayAreas.Count == 0)
-            {
-                return false;
-            }
-
-            // Using foreach here causes an exception, using the workaround described here:
-            // https://github.com/microsoft/microsoft-ui-xaml/issues/6454#issuecomment-2188377618
-            for (int i = 0; i < displayAreas.Count; i++)
-            {
-                var displayArea = displayAreas[i];
-                if (displayArea == null)
-                {
-                    continue;
-                }
-
-                var workArea = displayArea.WorkArea;
-
-                // Check if the title bar intersects with this display's work area
-                if (RectanglesIntersect(titleBarRect, workArea))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Exception occurred while checking display areas");
-            return false;
-        }
-    }
-
-    private bool RectanglesIntersect(RectInt32 rect1, RectInt32 rect2)
-    {
-        return rect1.X < rect2.X + rect2.Width &&
-               rect1.X + rect1.Width > rect2.X &&
-               rect1.Y < rect2.Y + rect2.Height &&
-               rect1.Y + rect1.Height > rect2.Y;
+        _appWindow.MoveAndResize(bounds);
     }
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
-        // Ignore changes while we're in the middle of applying a window mode change
-        // to avoid saving fullscreen dimensions as the preferred window bounds.
-        if (_isApplyingWindowMode)
+        // Ignore changes while we're in the middle of applying a window mode change, or while a
+        // fullscreen mode is active, to avoid saving fullscreen dimensions as the preferred window
+        // bounds. The desktop emulation keeps an overlapped presenter, so IsFullScreen is the only
+        // reliable signal that the window is currently covering the screen.
+        if (_isApplyingWindowMode ||
+            _fullScreenController.IsFullScreen)
         {
             return;
         }
@@ -348,14 +306,4 @@ public sealed class WindowStateHelper
         // Mark that we now have valid saved geometry to restore on next startup
         _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, true);
     }
-
-    private static AppWindow? GetAppWindow(Window? window)
-    {
-        if (window == null) return null;
-
-        var windowHandle = WindowNative.GetWindowHandle(window);
-        var windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
-        return AppWindow.GetFromWindowId(windowId);
-    }
 }
-#endif

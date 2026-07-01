@@ -1,0 +1,53 @@
+namespace Celbridge.UserInterface;
+
+/// <summary>
+/// Identifies a commonly used UI icon, resolved to a glyph in the bundled icon font.
+/// </summary>
+public enum IconSymbol
+{
+    Close,
+    Search,
+    Folder,
+    FolderOpen,
+    FolderFilled,
+    FolderAdd,
+    FileAdd,
+    File,
+    Bug,
+    Back,
+    Forward,
+    Home,
+    Refresh,
+    Reveal,
+    Delete,
+    Error,
+    Warning,
+    More,
+    Collapse,
+    Settings,
+    Windowed,
+    FullScreen,
+    FocusMode,
+    Presentation,
+    Save,
+    ExitFullScreen,
+    People,
+    Upload,
+    ChevronDown,
+    ChevronRight,
+    ChevronUp,
+    MatchCase,
+    Replace,
+    Add,
+    Copy,
+    Cut,
+    Paste,
+    Rename,
+    Archive,
+    Unarchive,
+    Recent,
+    Menu,
+    Play,
+    Examples,
+    Exit
+}

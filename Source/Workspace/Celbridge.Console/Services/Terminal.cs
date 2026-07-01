@@ -1,64 +1,60 @@
+using Celbridge.Console.Platform;
+
 namespace Celbridge.Console.Services;
 
 public class Terminal : ITerminal, IDisposable
 {
-#if WINDOWS
-    private ConPtyTerminal _terminal = new ConPtyTerminal();
-#endif
+    // Null on a platform with no pty backend. The terminal operations then report it as unsupported.
+    private readonly IPtyBackend? _backend;
 
-#pragma warning disable CS0067 // Event is used in Windows platform-specific code
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
-#pragma warning restore CS0067
 
     public Terminal()
     {
-#if WINDOWS
-        _terminal.OutputReceived += (sender, output) =>
-        {
-            OutputReceived?.Invoke(sender, output);
-        };
+        _backend = PtyBackendFactory.Create();
 
-        _terminal.ProcessExited += (sender, e) =>
+        if (_backend is not null)
         {
-            ProcessExited?.Invoke(sender, e);
-        };
-#else
-        throw new NotImplementedException();
-#endif
+            _backend.OutputReceived += (sender, output) =>
+            {
+                OutputReceived?.Invoke(sender, output);
+            };
+
+            _backend.ProcessExited += (sender, e) =>
+            {
+                ProcessExited?.Invoke(sender, e);
+            };
+        }
     }
 
     public void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null)
     {
-#if WINDOWS
-        _terminal.Start(commandLine, workingDir, environmentVariables);
-#else
-        throw new NotImplementedException();
-#endif
+        GetBackend().Start(commandLine, workingDir, environmentVariables);
     }
 
     public void Write(string input)
     {
-#if WINDOWS
-        _terminal.Write(input);
-#else
-        throw new NotImplementedException();
-#endif
+        GetBackend().Write(input);
     }
 
     public void SetSize(int cols, int rows)
     {
-#if WINDOWS
-        _terminal.SetSize(cols, rows);
-#else
-        throw new NotImplementedException();
-#endif
+        GetBackend().SetSize(cols, rows);
+    }
+
+    private IPtyBackend GetBackend()
+    {
+        if (_backend is null)
+        {
+            throw new PlatformNotSupportedException("The terminal is not supported on this platform yet.");
+        }
+
+        return _backend;
     }
 
     public void Dispose()
     {
-#if WINDOWS
-        _terminal?.Dispose();
-#endif
+        _backend?.Dispose();
     }
 }

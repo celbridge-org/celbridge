@@ -2,6 +2,8 @@ using System.Buffers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using Celbridge.Core;
+using Celbridge.Logging;
 using StreamJsonRpc;
 using StreamJsonRpc.Protocol;
 
@@ -16,6 +18,7 @@ internal class RpcMessageHandler : IJsonRpcMessageHandler, IDisposable
 {
     private readonly IHostChannel _channel;
     private readonly Channel<JsonRpcMessage> _incomingMessages;
+    private readonly ILogger<RpcMessageHandler> _logger;
     private bool _disposed;
 
     public IJsonRpcMessageFormatter Formatter { get; }
@@ -25,6 +28,7 @@ internal class RpcMessageHandler : IJsonRpcMessageHandler, IDisposable
     public RpcMessageHandler(IHostChannel channel)
     {
         _channel = channel;
+        _logger = ServiceLocator.AcquireService<ILogger<RpcMessageHandler>>();
 
         // Configure JSON serialization for JavaScript interop (camelCase)
         var jsonOptions = new JsonSerializerOptions
@@ -54,10 +58,16 @@ internal class RpcMessageHandler : IJsonRpcMessageHandler, IDisposable
             {
                 _incomingMessages.Writer.TryWrite(message);
             }
+            else
+            {
+                _logger.LogWarning("Web message deserialized to null and was dropped: {Json}", json);
+            }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[RpcMessageHandler] Failed to deserialize message: {ex.Message}");
+            // A deserialization failure here silently drops the message, which strands any
+            // outstanding host->editor request (the InvokeAsync never sees its response).
+            _logger.LogError(ex, "Failed to deserialize web message; message dropped: {Json}", json);
         }
     }
 

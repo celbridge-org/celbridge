@@ -9,34 +9,8 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     private const string SharedAssetsHostName = "shared.celbridge";
     private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
 
-    private const string KeyboardShortcutScript = """
-        (function() {
-            window.addEventListener('keydown', function(event) {
-                // Handle F11 for fullscreen toggle
-                if (event.key === 'F11') {
-                    // Prevent default browser fullscreen and stop all propagation
-                    event.preventDefault();
-                    event.stopPropagation();
-                    event.stopImmediatePropagation();
-                    if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(JSON.stringify({
-                            jsonrpc: '2.0',
-                            method: 'host/keyboardShortcut',
-                            params: {
-                                key: 'F11',
-                                ctrlKey: event.ctrlKey,
-                                shiftKey: event.shiftKey,
-                                altKey: event.altKey
-                            }
-                        }));
-                    }
-                    return false;
-                }
-            }, true); // Use capture phase to intercept before other handlers
-        })();
-        """;
-
     private readonly ILogger<WebViewFactory> _logger;
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly Queue<WebView2> _pool;
     private readonly int _maxPoolSize;
     private readonly object _lock = new();
@@ -52,14 +26,16 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     public WebViewFactory(int poolSize)
     {
         _logger = ServiceLocator.AcquireService<ILogger<WebViewFactory>>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _maxPoolSize = poolSize;
         _pool = new Queue<WebView2>();
 
-#if WINDOWS
-        // Start initialization but don't await it.
-        // This allows the WebView pool to be populated in the background.
-        _initializationTask = InitializePoolAsync();
-#endif
+        if (_webViewAdapter.UsesPrewarmedPool)
+        {
+            // Start initialization but don't await it.
+            // This allows the WebView pool to be populated in the background.
+            _initializationTask = InitializePoolAsync();
+        }
     }
 
     private async Task InitializePoolAsync()
@@ -261,7 +237,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         }
     }
 
-    private static async Task<WebView2> CreateWebViewAsync()
+    private async Task<WebView2> CreateWebViewAsync()
     {
         var webView = new WebView2();
 
@@ -269,19 +245,13 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
         webView.DefaultBackgroundColor = Colors.Transparent;
 
-        await webView.EnsureCoreWebView2Async();
+        await _webViewAdapter.EnsureCoreWebView2Async(webView);
 
         // Map shared assets (Bootstrap Icons, etc.) for all factory-created WebViews
         webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
             SharedAssetsHostName,
             SharedAssetsFolderPath,
             CoreWebView2HostResourceAccessKind.Allow);
-
-        // Mark this as a WebView running in the Celbridge host
-        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
-
-        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
 
         return webView;
     }

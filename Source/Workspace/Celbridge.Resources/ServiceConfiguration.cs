@@ -1,5 +1,6 @@
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Helpers;
+using Celbridge.Resources.Platform;
 using Celbridge.Resources.Services;
 
 namespace Celbridge.Resources;
@@ -11,6 +12,8 @@ public static class ServiceConfiguration
         //
         // Register services
         //
+
+        PlatformServiceConfiguration.ConfigureServices(services);
 
         services.AddSingleton<IResourceOperationService, ResourceOperationService>();
         services.AddSingleton<IFileTemplateService, FileTemplateService>();
@@ -26,14 +29,14 @@ public static class ServiceConfiguration
         services.AddTransient<ISidecarService, SidecarService>();
         services.AddTransient<IResourceClassifier, ResourceClassifier>();
         services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();
-        services.AddTransient<AddResourceHelper>();
+        services.AddTransient<CreateResourceHelper>();
 
         //
         // Register commands
         //
 
         services.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
-        services.AddTransient<IAddResourceCommand, AddResourceCommand>();
+        services.AddTransient<ICreateResourceCommand, CreateResourceCommand>();
         services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
         services.AddTransient<ITransferResourcesCommand, TransferResourcesCommand>();

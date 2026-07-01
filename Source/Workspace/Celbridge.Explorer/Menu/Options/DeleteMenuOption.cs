@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -31,7 +32,7 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Delete"),
-            IconGlyph: "\uE74D"); // Delete icon
+            Icon: IconSymbol.Delete);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

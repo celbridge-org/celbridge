@@ -16,25 +16,22 @@ export const ContentLoadedReason = Object.freeze({
     ExternalReload: 'external-reload',
 });
 
-/**
- * Base URL of the project virtual host. Project files are addressable at
- * `${PROJECT_HOST_URL}<path>` where <path> is the resource key with the
- * "project:" prefix stripped.
- */
-export const PROJECT_HOST_URL = 'https://project.celbridge/';
+// Base URL for project files. Every head serves the document over the loopback file server, so
+// project files are addressed root-relative under /project/, resolved against the page's own loopback
+// origin. Synthetic-origin editors do not load project files. One that did would need the same
+// cross-origin remapping the shared client gets, not a root-relative path.
+const PROJECT_BASE_URL = '/project/';
 
 /**
- * Converts a project resource key to a full URL under the project virtual host.
- * Strips the "project:" prefix so the URL path lines up with WebView2's virtual
- * host mapping (which serves paths relative to the project folder). Returns the
- * bare PROJECT_HOST_URL when the resource key is empty.
+ * Converts a project resource key to a full URL. Strips the "project:" prefix so the path lines up
+ * with the project folder root. Returns the bare base URL when the resource key is empty.
  */
 export function projectUrl(resourceKey) {
     const key = resourceKey || '';
     const path = key.startsWith('project:')
         ? key.substring('project:'.length)
         : key;
-    return `${PROJECT_HOST_URL}${path}`;
+    return `${PROJECT_BASE_URL}${path}`;
 }
 
 /**
@@ -145,17 +142,5 @@ export class DocumentAPI {
             const state = Array.isArray(params) ? params[0] : params;
             handler(state);
         });
-    }
-
-    /**
-     * Registers a handler for writable-state change notifications from the host.
-     * The handler receives a params object {state} where state is one of "Writable",
-     * "Locked", "ReadOnlyAttribute", or "ReadOnlyRoot". Anything other than "Writable"
-     * means the document must refuse edits; the specific reason is for tooltips and
-     * status text, not for behaviour branching.
-     * @param {Function} handler - Called with the notification params object.
-     */
-    onWritableStateChanged(handler) {
-        this.#transport.addEventListener('document/writableStateChanged', handler);
     }
 }

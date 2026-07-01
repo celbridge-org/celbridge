@@ -211,6 +211,35 @@ public class RootPathResolverTests
     }
 
     [Test]
+    public void GetResourceKeyMatchesCaseInsensitivelyWhenTheFileSystemIgnoresCase()
+    {
+        Guard.IsNotNull(_projectFolder);
+
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+
+        // A path whose backing-location portion differs only in case from how the
+        // root was registered. On a case-insensitive volume (Windows, default APFS)
+        // this is the same location, so it must still resolve under the root. The
+        // relative segments keep their supplied casing. A case-sensitive volume
+        // (Linux) correctly treats it as a different, out-of-root path.
+        var differentlyCasedBacking = _projectFolder!.ToUpperInvariant();
+        var fullPath = Path.Combine(differentlyCasedBacking, "folder", "file.txt");
+
+        var keyResult = resolver.GetResourceKey(fullPath);
+
+        if (OperatingSystem.IsLinux())
+        {
+            keyResult.IsFailure.Should().BeTrue();
+            keyResult.FirstErrorMessage.Should().Contain("not under root");
+        }
+        else
+        {
+            keyResult.IsSuccess.Should().BeTrue();
+            keyResult.Value.Path.Should().Be("folder/file.txt");
+        }
+    }
+
+    [Test]
     public void ValidateAndResolveRejectsIntermediateReparsePoint()
     {
         Guard.IsNotNull(_projectFolder);

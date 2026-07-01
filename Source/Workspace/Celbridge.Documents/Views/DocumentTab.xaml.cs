@@ -28,9 +28,8 @@ public enum DocumentTabMenuAction
     ReopenWith
 }
 
-// I've tried writing this class using a C# Markup class subclassed from TabViewItem, but it didn't work.
-// No matter how simple I make the derived class, an exception is thrown when the class is instantiated.
-// I've given up for now and am using a XAML file instead.
+// Defined in XAML rather than as a C# Markup subclass of TabViewItem: a derived Markup class throws on
+// instantiation, however simple the derived class is.
 public partial class DocumentTab : TabViewItem
 {
     private readonly IStringLocalizer _stringLocalizer;
@@ -235,10 +234,10 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        // Double-clicking a document tab toggles Zen Mode (fullscreen with panels hidden)
+        // Double-clicking a document tab toggles the Focus layout (side panels hidden)
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = WindowModeTransition.ToggleZenMode;
+            command.Transition = LayoutTransition.ToggleFocus;
         });
         e.Handled = true;
     }

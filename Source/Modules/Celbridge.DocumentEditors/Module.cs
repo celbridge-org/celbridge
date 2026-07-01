@@ -35,6 +35,8 @@ public class Module : IModule
 
         return new[]
         {
+            // Served over the loopback file server and driven over the WebSocket host channel, so they run on
+            // every head.
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },

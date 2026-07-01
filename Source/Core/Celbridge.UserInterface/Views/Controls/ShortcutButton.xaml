@@ -1,7 +1,8 @@
 ﻿<UserControl
     x:Class="Celbridge.UserInterface.Views.Controls.ShortcutButton"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
     <Button x:Name="ButtonElement"
             Width="48"
@@ -15,7 +16,7 @@
             CornerRadius="4"
             Click="ButtonElement_Click">
 
-        <SymbolIcon x:Name="IconElement"
-                    Symbol="Play"/>
+        <controls:Icon x:Name="IconElement"
+                  Symbol="Play"/>
     </Button>
 </UserControl>

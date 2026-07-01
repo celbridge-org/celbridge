@@ -45,7 +45,7 @@ public class ResourceClassifierTests
     [Test]
     public async Task ParentlessCelWithMultiPartExtension_IsOrphan()
     {
-        // The .cel namespace is reserved for sidecars; a parentless .cel with
+        // The .cel namespace is reserved for sidecars. A parentless .cel with
         // any extension shape is an orphan, including multi-part forms that a
         // document type might otherwise have claimed.
         File.WriteAllText(Path.Combine(_projectFolderPath, "feature.note.cel"),
@@ -160,7 +160,7 @@ public class ResourceClassifierTests
         var registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new Celbridge.Messaging.Services.MessengerService(),
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new Celbridge.UserInterface.Services.FileIconService()),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new Celbridge.UserInterface.Services.IconService()),
             classifier,
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());

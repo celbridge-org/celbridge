@@ -6,8 +6,7 @@ namespace Celbridge.Tests.Resources;
 /// <summary>
 /// Direct tests for the cross-root dispatch logic: longest-prefix-wins match,
 /// IsResolvable across roots, raw resolve via the matched handler, and
-/// InvalidatePathCache propagation. Pulled out of ResourceRegistryTests so
-/// the root-registration concern can be exercised on its own surface.
+/// InvalidatePathCache propagation.
 /// </summary>
 [TestFixture]
 public class RootHandlerRegistryTests
@@ -112,6 +111,34 @@ public class RootHandlerRegistryTests
         projectKey.IsSuccess.Should().BeTrue();
         projectKey.Value.Root.Should().Be(ResourceKey.DefaultRoot);
         projectKey.Value.Path.Should().Be("root.txt");
+    }
+
+    [Test]
+    public void GetResourceKey_MatchesCaseInsensitivelyOnCaseInsensitiveFileSystems()
+    {
+        _rootRegistry.RegisterRootHandler(
+            new ProjectRootHandler(_projectFolderPath));
+
+        // A path whose backing-location portion differs only in case from how the
+        // root was registered. On a case-insensitive volume (Windows, default APFS)
+        // the dispatch must still recognise it as under the project root. A
+        // case-sensitive volume (Linux) correctly rejects it.
+        var differentlyCasedBacking = _projectFolderPath.ToUpperInvariant();
+        var fullPath = Path.Combine(differentlyCasedBacking, "Notes", "todo.txt");
+
+        var result = _rootRegistry.GetResourceKey(fullPath);
+
+        if (OperatingSystem.IsLinux())
+        {
+            result.IsFailure.Should().BeTrue();
+            result.FirstErrorMessage.Should().Contain("not under any registered resource root");
+        }
+        else
+        {
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Root.Should().Be(ResourceKey.DefaultRoot);
+            result.Value.Path.Should().Be("Notes/todo.txt");
+        }
     }
 
     [Test]

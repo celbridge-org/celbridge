@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.Host\Celbridge.Host.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
   </ItemGroup>
 

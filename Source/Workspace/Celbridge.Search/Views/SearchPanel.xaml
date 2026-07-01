@@ -79,7 +79,7 @@
               Margin="0"
               VerticalAlignment="Stretch"
               ToolTipService.ToolTip="{x:Bind ViewModel.SearchHistoryTooltip, Mode=OneWay}">
-        <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        <controls:Icon Symbol="ChevronDown" FontSize="12"/>
         <Button.Flyout>
           <MenuFlyout x:Name="SearchHistoryFlyout" Placement="BottomEdgeAlignedRight">
             <MenuFlyoutSeparator/>
@@ -87,7 +87,7 @@
                             Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
                             IsEnabled="{x:Bind ViewModel.SearchHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}">
               <MenuFlyoutItem.Icon>
-                <SymbolIcon Symbol="Delete"/>
+                <controls:Icon Symbol="Delete"/>
               </MenuFlyoutItem.Icon>
             </MenuFlyoutItem>
           </MenuFlyout>
@@ -102,7 +102,7 @@
               Margin="4,0,0,0"
               VerticalAlignment="Stretch"
               ToolTipService.ToolTip="{x:Bind ViewModel.SearchTooltip, Mode=OneWay}">
-        <FontIcon Glyph="&#xE721;" FontSize="14"/>
+        <controls:Icon Symbol="Search" FontSize="14"/>
       </Button>
     </Grid>
 
@@ -118,7 +118,7 @@
                     Padding="8,6"
                     MinWidth="36"
                     MinHeight="32">
-        <FontIcon Glyph="&#xE8E9;" FontSize="14"/>
+        <controls:Icon Symbol="MatchCase" FontSize="14"/>
       </ToggleButton>
 
       <!-- Whole Word toggle button -->
@@ -139,7 +139,7 @@
               Padding="8,6"
               MinWidth="36"
               MinHeight="32">
-        <FontIcon Glyph="&#xF165;" FontSize="14"/>
+        <controls:Icon Symbol="Collapse" FontSize="14"/>
       </Button>
 
       <!-- Replace Mode toggle button -->
@@ -148,7 +148,7 @@
                     Padding="8,6"
                     MinWidth="36"
                     MinHeight="32">
-        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
+        <controls:Icon Symbol="Replace" FontSize="14"/>
       </ToggleButton>
     </StackPanel>
 
@@ -175,7 +175,7 @@
               VerticalAlignment="Bottom"
               Height="32"
               ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceHistoryTooltip, Mode=OneWay}">
-        <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        <controls:Icon Symbol="ChevronDown" FontSize="12"/>
         <Button.Flyout>
           <MenuFlyout x:Name="ReplaceHistoryFlyout" Placement="BottomEdgeAlignedRight">
             <MenuFlyoutSeparator/>
@@ -183,7 +183,7 @@
                             Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
                             IsEnabled="{x:Bind ViewModel.ReplaceHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}">
               <MenuFlyoutItem.Icon>
-                <SymbolIcon Symbol="Delete"/>
+                <controls:Icon Symbol="Delete"/>
               </MenuFlyoutItem.Icon>
             </MenuFlyoutItem>
           </MenuFlyout>
@@ -199,7 +199,7 @@
               Height="32"
               IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
               ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceAllTooltip, Mode=OneWay}">
-        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
+        <controls:Icon Symbol="Replace" FontSize="14"/>
       </Button>
     </Grid>
 
@@ -261,7 +261,7 @@
                           VerticalAlignment="Stretch"
                           HorizontalContentAlignment="Center"
                           VerticalContentAlignment="Center">
-                    <FontIcon Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpandCollapseGlyphConverter}}"
+                    <controls:Icon Symbol="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpandCollapseGlyphConverter}}"
                               FontSize="14"/>
                   </Button>
 
@@ -290,7 +290,7 @@
                           MinHeight="0"
                           VerticalAlignment="Stretch"
                           ToolTipService.ToolTip="{x:Bind ReplaceInFileTooltip}">
-                    <FontIcon Glyph="&#xE8AB;" FontSize="12"/>
+                    <controls:Icon Symbol="Replace" FontSize="12"/>
                   </Button>
 
                   <!-- Match Count Badge -->
@@ -347,7 +347,7 @@
                                 MinHeight="0"
                                 VerticalAlignment="Stretch"
                                 ToolTipService.ToolTip="{x:Bind ReplaceMatchTooltip}">
-                          <FontIcon Glyph="&#xE8AB;" FontSize="12"/>
+                          <controls:Icon Symbol="Replace" FontSize="12"/>
                         </Button>
                       </Grid>
                     </DataTemplate>

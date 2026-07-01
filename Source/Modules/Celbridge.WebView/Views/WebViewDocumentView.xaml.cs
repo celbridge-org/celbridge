@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents;
@@ -12,6 +13,7 @@ using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
@@ -20,7 +22,7 @@ namespace Celbridge.WebView.Views;
 /// <summary>
 /// Hosts an arbitrary user URL from a .webview document (JSON storage), or a
 /// project-served HTML page from a .html / .htm document. The role is selected
-/// per-instance via Options before LoadContent runs; the two paths share a
+/// per-instance via Options before LoadContent runs. The two paths share a
 /// single WebView2 lifecycle and differ only in URL source and navigation
 /// policy.
 /// </summary>
@@ -32,8 +34,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
+    private readonly IFocusService _focusService;
+    private readonly IWebViewAdapter _webViewAdapter;
 
     private WebView2? _webView;
+    // Host RPC channel. Only created for the HtmlViewer role; external-URL documents run without one.
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
@@ -49,7 +54,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
     /// <summary>
     /// Per-instance options supplied by the editor factory. Defaults to the .webview
-    /// external-URL behaviour; the HTML viewer factory overrides this before LoadContent
+    /// external-URL behaviour. The HTML viewer factory overrides this before LoadContent
     /// runs so the view's first init applies HtmlViewer options from the start.
     /// </summary>
     internal WebViewDocumentOptions Options { get; set; } = DefaultOptions;
@@ -74,6 +79,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
@@ -146,10 +153,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             await _webView.EnsureCoreWebView2Async();
 
-            await _webView.CoreWebView2.Profile.ClearBrowsingDataAsync(
-                CoreWebView2BrowsingDataKinds.CacheStorage | CoreWebView2BrowsingDataKinds.DiskCache);
-
-            _webView.CoreWebView2.Reload();
+            await _webViewAdapter.ReloadAsync(_webView.CoreWebView2, clearCache: true);
         }
         catch (Exception ex)
         {
@@ -225,23 +229,25 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
+            // Present a browser-recognised User-Agent that still identifies Celbridge, set before navigation.
+            // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
+            var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
+            _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");
+
+            // Only the HtmlViewer role runs a host RPC channel. External-URL .webview documents load
+            // untrusted third-party content and get no injected client, so they are given no channel or
+            // RPC target at all: the native message bus is unauthenticated, and a channel there would let
+            // a page drive host RPC methods.
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {
-                MapProjectVirtualHost(_webView.CoreWebView2);
-
-                // The HTML viewer renders project-served content and supports the
-                // webview_* MCP tool namespace. External-URL .webview documents
-                // intentionally skip both the shim and the tool bridge registration.
+                // The HTML viewer renders loopback project content and supports the webview_* MCP tools.
                 await TryInjectToolBridgeShimAsync();
-            }
 
-            _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
-            _host = new CelbridgeHost(_hostChannel);
-            _host.AddLocalRpcTarget<IHostInput>(this);
-            _host.StartListening();
+                _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
+                _host = new CelbridgeHost(_hostChannel);
+                _host.AddLocalRpcTarget<IHostInput>(this);
+                _host.StartListening();
 
-            if (Options.Role == WebViewDocumentRole.HtmlViewer)
-            {
                 TryRegisterWithToolBridge();
             }
 
@@ -277,21 +283,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         }
     }
 
-    private void MapProjectVirtualHost(CoreWebView2 coreWebView)
-    {
-        var projectFolder = ResourceRegistry.ProjectFolderPath;
-        if (string.IsNullOrEmpty(projectFolder))
-        {
-            _logger.LogWarning("Cannot map project virtual host: project folder path is empty");
-            return;
-        }
-
-        coreWebView.SetVirtualHostNameToFolderMapping(
-            "project.celbridge",
-            projectFolder,
-            CoreWebView2HostResourceAccessKind.Allow);
-    }
-
     private void AttachNavigationPolicy(CoreWebView2 coreWebView)
     {
         _navigationPolicy = _serviceProvider.GetRequiredService<IWebViewNavigationPolicy>();
@@ -313,7 +304,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         return async (destination) =>
         {
-            // The HTML viewer is pinned to the project virtual-host URL; allow the
+            // The HTML viewer is pinned to the project virtual-host URL. Allow the
             // initial navigation, reloads, and any same-document scrolling, but prompt
             // the user for any other top-frame destination so the page cannot redirect
             // out from under them.
@@ -404,8 +395,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         if (_webView is not null)
         {
             _webView.GotFocus -= WebView_GotFocus;
-            AppWebViewContainer.Children.Remove(_webView);
-            _webView.Close();
+
+            _webViewAdapter.CloseWebView(_webView, AppWebViewContainer);
+
             _webView = null;
         }
 
@@ -432,14 +424,37 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             return;
         }
 
+        // Install the shim as a document-start script so it wraps console/fetch before page scripts run --
+        // required for get_console / get_network capture. This runs before the first navigation, so the
+        // initial page's boot output is captured. CoreWebView2_NavigationCompleted re-delivers it per
+        // navigation on the Skia heads.
         try
         {
             var script = toolBridge.GetShimScript();
-            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView2, script);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into HTML viewer WebView");
+            _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim into the HTML viewer");
+        }
+    }
+
+    private async Task ReinjectToolBridgeShimAsync()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        if (coreWebView2 is null || _toolBridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = _toolBridge.GetShimScript();
+            await _webViewAdapter.ReinjectDocumentStartScriptAsync(coreWebView2, script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim");
         }
     }
 
@@ -463,7 +478,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             return;
         }
 
-        toolBridge.RegisterWebView2(resource, webView);
+        toolBridge.RegisterWebView2(resource, webView, _webViewAdapter);
 
         _toolBridge = toolBridge;
     }
@@ -483,6 +498,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             if (e.IsSuccess)
             {
+                // Re-deliver the shim before opening the content-ready gate (no-op on Windows). ExecuteScriptAsync
+                // calls are serialised in invocation order, so this fire-and-forget eval is queued ahead of any
+                // later webview_* tool eval even without awaiting it here.
+                _ = ReinjectToolBridgeShimAsync();
                 _toolBridge?.NotifyContentReady(FileResource);
             }
             else
@@ -621,7 +640,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
                 {
                     if (s.State == CoreWebView2DownloadState.Completed)
                     {
-                        var importResult = await _commandService.ExecuteAsync<IAddResourceCommand>(command =>
+                        var importResult = await _commandService.ExecuteAsync<ICreateResourceCommand>(command =>
                         {
                             command.ResourceType = ResourceType.File;
                             command.SourcePath = tempPath;
@@ -635,7 +654,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
                         if (importResult.IsFailure)
                         {
-                            // The user-facing toast is raised by AddResourceCommand.
+                            // The user-facing toast is raised by CreateResourceCommand.
                             _logger.LogError(
                                 $"Failed to import downloaded file to '{saveResourceKey}'. {importResult.DiagnosticReport}");
                         }
@@ -739,6 +758,26 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         var message = new DocumentViewFocusedMessage(FileResource);
         _messengerService.Send(message);
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
+    }
+
+    public void OnFocusReceived()
+    {
+        // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
+        // reports DOM focus over the bridge. Marshal to the UI thread and record the focus.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var message = new DocumentViewFocusedMessage(FileResource);
+            _messengerService.Send(message);
+
+            _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
+        });
+    }
+
+    private void ReleaseFocus()
+    {
+        _ = _host?.NotifyReleaseFocusAsync();
     }
 
     public override async Task PrepareToClose()

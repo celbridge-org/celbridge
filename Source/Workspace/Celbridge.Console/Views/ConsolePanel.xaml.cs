@@ -1,10 +1,12 @@
 using Celbridge.Commands;
 using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
+using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -12,28 +14,34 @@ using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostInput
+public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostInput, IEditTarget
 {
     private readonly ILogger<ConsolePanel> _logger;
     private readonly ICommandService _commandService;
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IKeyboardShortcutService _keyboardShortcutService;
+    private readonly IWebViewStateService _webViewStateService;
 
     private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
     public ConsolePanelViewModel ViewModel { get; }
 
+    // The console's Terminal web folder is served over the loopback file server under this package name.
+    private const string ConsolePackageName = "console";
+
+    private EditAvailability _editAvailability = EditAvailability.None;
     private ITerminal? _terminal;
-    private UserInterfaceTheme _currentTheme;
     private WebView2? _consoleWebView;
-    private WebViewHostChannel? _hostChannel;
+    private IDisposable? _appStateConnection;
+    private Action? _hostChannelTeardown;
     private ConsoleHost? _consoleHost;
     private DispatcherQueue? _dispatcher;
 
@@ -46,45 +54,129 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        _webViewStateService = ServiceLocator.AcquireService<IWebViewStateService>();
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
-        // Monitor theme changes via messenger
-        _currentTheme = _userInterfaceService.UserInterfaceTheme;
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
-
         // Listen for console focus requests
         _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
-
-        this.Loaded += ConsolePanel_Loaded;
-    }
-
-    private void ConsolePanel_Loaded(object sender, RoutedEventArgs e)
-    {
-        // Sync theme when control becomes visible again in case it changed while invisible
-        var currentTheme = _userInterfaceService.UserInterfaceTheme;
-        if (_currentTheme != currentTheme)
-        {
-            _currentTheme = currentTheme;
-            SendThemeToConsole();
-        }
     }
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(WorkspacePanel.Console);
+        _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
     }
 
-    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    public void OnFocusReceived()
     {
-        if (_currentTheme != message.Theme)
+        // The Skia head does not raise GotFocus for clicks inside the console WebView, so its JS client
+        // reports DOM focus over the bridge. Marshal to the UI thread and record the focus.
+        DispatcherQueue.TryEnqueue(() =>
         {
-            _currentTheme = message.Theme;
-            SendThemeToConsole();
+            _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
+        });
+    }
+
+    private void ReleaseFocus()
+    {
+        _ = _consoleHost?.ReleaseFocusAsync();
+    }
+
+    public bool CanPerformEdit(EditIntent intent)
+    {
+        return _editAvailability.Allows(intent);
+    }
+
+    public void PerformEdit(EditIntent intent)
+    {
+        // Copy and paste are host-mediated: the WebView's own JS clipboard is blocked on the Skia
+        // WKWebView, so the host fetches the terminal selection for copy and writes the clipboard text
+        // straight to the pty for paste. Select-all runs in the terminal itself.
+        if (intent == EditIntent.Copy)
+        {
+            _ = CopyConsoleSelectionAsync();
+            return;
         }
+
+        if (intent == EditIntent.Paste)
+        {
+            _ = PasteIntoConsoleAsync();
+            return;
+        }
+
+        if (intent == EditIntent.SelectAll)
+        {
+            _ = _consoleHost?.NotifyPerformEditAsync("selectAll");
+        }
+    }
+
+    private async Task CopyConsoleSelectionAsync()
+    {
+        var consoleHost = _consoleHost;
+        if (consoleHost is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var text = await consoleHost.GetSelectionAsync();
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            _commandService.Execute<ICopyTextToClipboardCommand>(command => command.Text = text);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to copy the console selection to the clipboard");
+        }
+    }
+
+    private async Task PasteIntoConsoleAsync()
+    {
+        try
+        {
+            var dataPackageView = Clipboard.GetContent();
+            if (!dataPackageView.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+
+            var text = await dataPackageView.GetTextAsync();
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            // Pasting into a terminal is writing the text to the pty's input, as if the user typed it.
+            _terminal?.Write(text);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to paste the clipboard into the console");
+        }
+    }
+
+    public void OnEditAvailabilityChanged(
+        bool canCopy,
+        bool canCut,
+        bool canPaste,
+        bool canSelectAll,
+        bool canUndo,
+        bool canRedo)
+    {
+        _editAvailability = new EditAvailability(
+            canCopy,
+            canCut,
+            canPaste,
+            canSelectAll,
+            canUndo,
+            canRedo);
     }
 
     private void OnRequestConsoleFocus(object recipient, RequestConsoleFocusMessage message)
@@ -121,17 +213,6 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _ = _consoleHost.FocusAsync();
     }
 
-    private void SendThemeToConsole()
-    {
-        if (_consoleHost is null)
-        {
-            return;
-        }
-
-        var themeName = _currentTheme == UserInterfaceTheme.Dark ? "dark" : "light";
-        _ = _consoleHost.SetThemeAsync(themeName);
-    }
-
     public void RunCommand(string command)
     {
         if (_consoleHost is null)
@@ -163,15 +244,27 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         settings.AreDevToolsEnabled = false;
         settings.AreDefaultContextMenusEnabled = true;
 
-        // Set up JSON-RPC host channel
-        _hostChannel = new WebViewHostChannel(_consoleWebView.CoreWebView2);
-        var celbridgeHost = new CelbridgeHost(_hostChannel);
+        // Set up the JSON-RPC host channel. The console is always served over the loopback file server
+        // (all heads) and loads the celbridge client, so it always uses the WebSocket transport, which
+        // returns a connection token to embed in the page navigation URL.
+        var hostChannelBroker = ServiceLocator.AcquireService<IHostChannelBroker>();
+        var hostChannelSetup = HostChannelFactory.Create(_consoleWebView.CoreWebView2, useWebSocketChannel: true, hostChannelBroker);
+        _hostChannelTeardown = hostChannelSetup.Teardown;
+        var connectionToken = hostChannelSetup.ConnectionToken;
+
+        var celbridgeHost = new CelbridgeHost(hostChannelSetup.Channel);
         _consoleHost = new ConsoleHost(celbridgeHost);
 
         // Register this panel as handler for console notifications
         _consoleHost.AddLocalRpcTarget<IConsoleNotifications>(this);
         _consoleHost.AddLocalRpcTarget<IHostInput>(this);
+
         _consoleHost.StartListening();
+
+        // Connect the console to the app-state channel so it receives the app theme on connect and on
+        // change, over the same mechanism the editors use. Registering pushes the current snapshot
+        // immediately, so it must run after StartListening.
+        _appStateConnection = _consoleHost.RegisterAppState(_webViewStateService);
 
         var tcs = new TaskCompletionSource<bool>();
         void Handler(object? sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -181,11 +274,17 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         }
         _consoleWebView.NavigationCompleted += Handler;
 
-        _consoleWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("console.celbridge",
-            "Celbridge.Console/Web/Terminal",
-            CoreWebView2HostResourceAccessKind.Allow);
+        // Serve the console's Terminal folder over the loopback file server. This is the cross-platform
+        // replacement for the console.celbridge virtual host (SetVirtualHostNameToFolderMapping is a
+        // no-op on the Skia heads). The server is started and ready before the console initializes (see
+        // WorkspaceLoader, which awaits ServerService.StartAsync first).
+        var fileServer = ServiceLocator.AcquireService<IFileServer>();
+        var terminalFolderPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.Console", "Web", "Terminal");
+        fileServer.RegisterPackageFolder(ConsolePackageName, terminalFolderPath);
 
-        _consoleWebView.CoreWebView2.Navigate("http://console.celbridge/index.html");
+        var entryUrl = fileServer.GetPackageUrl(ConsolePackageName, "index.html");
+        entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, connectionToken);
+        _consoleWebView.CoreWebView2.Navigate(entryUrl);
 
         // Wait for navigation to complete
         bool success = await tcs.Task;
@@ -198,8 +297,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         _logger.LogDebug("Console WebView initialized successfully");
 
-        // Send initial theme to console after navigation completes
-        SendThemeToConsole();
+        // The theme arrives over the app-state store: the host pushes the current snapshot when the
+        // console connection registers (see RegisterAppState), so there is no theme push to send from here.
 
         // Clicking weblinks in the console triggers a navigation event.
         // We intercept those navigation events here and instead open the URI in the system browser.
@@ -240,8 +339,6 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         });
     }
 
-    #region IConsoleNotifications
-
     public void OnConsoleInput(string data)
     {
         _terminal?.Write(data);
@@ -252,16 +349,10 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _terminal?.SetSize(cols, rows);
     }
 
-    #endregion
-
-    #region IHostInput
-
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {
         _keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
-
-    #endregion
 
     private void OnTerminalProcessExited(object? sender, EventArgs e)
     {
@@ -282,19 +373,20 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
             _terminal.ProcessExited -= OnTerminalProcessExited;
         }
 
+        _appStateConnection?.Dispose();
+        _appStateConnection = null;
+
         _consoleHost?.Dispose();
         _consoleHost = null;
 
-        _hostChannel?.Detach();
-        _hostChannel = null;
+        _hostChannelTeardown?.Invoke();
+        _hostChannelTeardown = null;
 
         if (_consoleWebView != null)
         {
             _consoleWebView.Close();
             _consoleWebView = null;
         }
-
-        this.Loaded -= ConsolePanel_Loaded;
 
         // Cleanup ViewModel
         ViewModel.Cleanup();

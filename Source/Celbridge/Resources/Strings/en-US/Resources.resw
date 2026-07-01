@@ -129,7 +129,7 @@
   <data name="DocumentsPanel_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
-  <data name="AddFolderDialog_FolderName" xml:space="preserve">
+  <data name="NewFolderDialog_FolderName" xml:space="preserve">
     <value>Name</value>
   </data>
   <data name="InspectorPanel_Title" xml:space="preserve">
@@ -336,8 +336,8 @@
   <data name="ResourceTree_Paste" xml:space="preserve">
     <value>Paste</value>
   </data>
-  <data name="ResourceTree_AddFile" xml:space="preserve">
-    <value>Add File</value>
+  <data name="ResourceTree_NewFile" xml:space="preserve">
+    <value>New File</value>
   </data>
   <data name="ResourceTree_UndoDeleteFileFailed" xml:space="preserve">
     <value>Failed to undo delete file '{0}'</value>
@@ -389,6 +389,12 @@
   </data>
   <data name="MainMenu_NewProject" xml:space="preserve">
     <value>New Project</value>
+  </data>
+  <data name="MainMenu_NewFile" xml:space="preserve">
+    <value>New File</value>
+  </data>
+  <data name="MainMenu_NewFolder" xml:space="preserve">
+    <value>New Folder</value>
   </data>
   <data name="MainMenu_OpenProject" xml:space="preserve">
     <value>Open Project</value>
@@ -632,6 +638,12 @@ Do you wish to continue?</value>
   <data name="MainMenu_NewProjectTooltip" xml:space="preserve">
     <value>Create a New Project</value>
   </data>
+  <data name="MainMenu_NewFileTooltip" xml:space="preserve">
+    <value>Create a new file in the selected folder</value>
+  </data>
+  <data name="MainMenu_NewFolderTooltip" xml:space="preserve">
+    <value>Create a new folder in the selected folder</value>
+  </data>
   <data name="MainMenu_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing project</value>
   </data>
@@ -752,11 +764,11 @@ Do you wish to continue?</value>
   <data name="ResourceTree_Open" xml:space="preserve">
     <value>Open</value>
   </data>
-  <data name="ResourceTreeToolbar_AddFileTooltip" xml:space="preserve">
-    <value>Add File</value>
+  <data name="ResourceTreeToolbar_NewFileTooltip" xml:space="preserve">
+    <value>New File</value>
   </data>
-  <data name="ResourceTreeToolbar_AddFolderTooltip" xml:space="preserve">
-    <value>Add Folder</value>
+  <data name="ResourceTreeToolbar_NewFolderTooltip" xml:space="preserve">
+    <value>New Folder</value>
   </data>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse All Folders</value>
@@ -764,29 +776,29 @@ Do you wish to continue?</value>
   <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
     <value>Open Project Settings</value>
   </data>
-  <data name="AddFileDialog_FileType" xml:space="preserve">
+  <data name="NewFileDialog_FileType" xml:space="preserve">
     <value>Type</value>
   </data>
-  <data name="AddFileDialog_FileType_Python" xml:space="preserve">
+  <data name="NewFileDialog_FileType_Python" xml:space="preserve">
     <value>Python Script (.py)</value>
   </data>
-  <data name="AddFileDialog_FileType_Excel" xml:space="preserve">
+  <data name="NewFileDialog_FileType_Excel" xml:space="preserve">
     <value>Excel File (.xlsx)</value>
   </data>
-  <data name="AddFileDialog_FileType_Markdown" xml:space="preserve">
+  <data name="NewFileDialog_FileType_Markdown" xml:space="preserve">
     <value>Markdown (.md)</value>
   </data>
-  <data name="AddFileDialog_FileType_WebView" xml:space="preserve">
+  <data name="NewFileDialog_FileType_WebView" xml:space="preserve">
     <value>Web View File (.webview)</value>
   </data>
-  <data name="AddFileDialog_FileType_Text" xml:space="preserve">
+  <data name="NewFileDialog_FileType_Text" xml:space="preserve">
     <value>Text File (.txt)</value>
   </data>
-  <data name="AddFileDialog_FileType_Other" xml:space="preserve">
+  <data name="NewFileDialog_FileType_Other" xml:space="preserve">
     <value>Other File (any extension)</value>
   </data>
-  <data name="ResourceTree_AddFolder" xml:space="preserve">
-    <value>Add Folder</value>
+  <data name="ResourceTree_NewFolder" xml:space="preserve">
+    <value>New Folder</value>
   </data>
   <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
     <value>Copy Resource Key</value>
@@ -809,9 +821,6 @@ Do you wish to continue?</value>
   <data name="LayoutToolbar_ResetLayoutButton" xml:space="preserve">
     <value>Reset Layout</value>
   </data>
-  <data name="LayoutToolbar_ZenModeLabel" xml:space="preserve">
-    <value>Zen Mode</value>
-  </data>
   <data name="LayoutToolbar_WindowModeLabel" xml:space="preserve">
     <value>Window Mode</value>
   </data>
@@ -820,9 +829,6 @@ Do you wish to continue?</value>
   </data>
   <data name="LayoutToolbar_FullScreen" xml:space="preserve">
     <value>Full Screen</value>
-  </data>
-  <data name="LayoutToolbar_PresenterLabel" xml:space="preserve">
-    <value>Presenter</value>
   </data>
   <data name="Theme_Dark" xml:space="preserve">
     <value>Dark</value>
@@ -839,11 +845,29 @@ Do you wish to continue?</value>
   <data name="LayoutToolbar_FullScreenModeTooltip" xml:space="preserve">
     <value>Maximize the window for more working space</value>
   </data>
-  <data name="LayoutToolbar_ZenModeTooltip" xml:space="preserve">
-    <value>Distraction-free mode with only the document editor visible</value>
+  <data name="LayoutToolbar_LayoutModeLabel" xml:space="preserve">
+    <value>Layout</value>
   </data>
-  <data name="LayoutToolbar_PresenterModeTooltip" xml:space="preserve">
-    <value>Full screen presentation mode for displaying content</value>
+  <data name="LayoutToolbar_DefaultLabel" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="LayoutToolbar_FocusLabel" xml:space="preserve">
+    <value>Focus</value>
+  </data>
+  <data name="LayoutToolbar_PresentationLabel" xml:space="preserve">
+    <value>Presentation</value>
+  </data>
+  <data name="LayoutToolbar_DefaultModeTooltip" xml:space="preserve">
+    <value>The full editor with all panels visible</value>
+  </data>
+  <data name="LayoutToolbar_FocusModeTooltip" xml:space="preserve">
+    <value>Hide the side panels to focus on the document</value>
+  </data>
+  <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
+    <value>Show only the document content</value>
+  </data>
+  <data name="FullScreenToolbar_ExitPresentation" xml:space="preserve">
+    <value>Exit Presentation</value>
   </data>
   <data name="TitleBar_SettingsTooltip" xml:space="preserve">
     <value>Open Application Settings</value>
@@ -874,6 +898,72 @@ Do you wish to continue?</value>
   </data>
   <data name="MainMenu_SettingsTooltip" xml:space="preserve">
     <value>Open Application Settings</value>
+  </data>
+  <data name="Menu_About" xml:space="preserve">
+    <value>About Celbridge</value>
+  </data>
+  <data name="Menu_About_Website" xml:space="preserve">
+    <value>Website</value>
+  </data>
+  <data name="Menu_About_GitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="Menu_Hide" xml:space="preserve">
+    <value>Hide Celbridge</value>
+  </data>
+  <data name="Menu_HideOthers" xml:space="preserve">
+    <value>Hide Others</value>
+  </data>
+  <data name="Menu_ShowAll" xml:space="preserve">
+    <value>Show All</value>
+  </data>
+  <data name="Menu_Quit" xml:space="preserve">
+    <value>Quit Celbridge</value>
+  </data>
+  <data name="Menu_File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Menu_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Menu_Undo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="Menu_Redo" xml:space="preserve">
+    <value>Redo</value>
+  </data>
+  <data name="Menu_Cut" xml:space="preserve">
+    <value>Cut</value>
+  </data>
+  <data name="Menu_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Menu_Paste" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="Menu_SelectAll" xml:space="preserve">
+    <value>Select All</value>
+  </data>
+  <data name="Menu_Window" xml:space="preserve">
+    <value>Window</value>
+  </data>
+  <data name="Menu_Minimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="Menu_Zoom" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="Menu_BringAllToFront" xml:space="preserve">
+    <value>Bring All to Front</value>
+  </data>
+  <data name="Menu_Help" xml:space="preserve">
+    <value>Help</value>
+  </data>
+  <data name="Menu_HelpWebsite" xml:space="preserve">
+    <value>Celbridge Website</value>
+  </data>
+  <data name="Menu_NoRecentProjects" xml:space="preserve">
+    <value>No Recent Projects</value>
   </data>
   <data name="MainMenu_OpenRecent" xml:space="preserve">
     <value>Open Recent</value>
@@ -911,16 +1001,13 @@ Do you wish to continue?</value>
   <data name="ProjectConfigErrorAlert_Message" xml:space="preserve">
     <value>The project "{0}" has a configuration error. See the project load report for details.</value>
   </data>
-  <data name="DialogButton_Add" xml:space="preserve">
-    <value>Add</value>
-  </data>
   <data name="DialogButton_Create" xml:space="preserve">
     <value>Create</value>
   </data>
-  <data name="AddFileDialog_AddFile" xml:space="preserve">
-    <value>Add File</value>
+  <data name="NewFileDialog_NewFile" xml:space="preserve">
+    <value>New File</value>
   </data>
-  <data name="AddFileDialog_FileName" xml:space="preserve">
+  <data name="NewFileDialog_FileName" xml:space="preserve">
     <value>Name</value>
   </data>
   <data name="ResourcePickerDialog_Title" xml:space="preserve">
@@ -998,16 +1085,16 @@ Do you wish to continue?</value>
   <data name="SearchPanel_StatusResultsCapped" xml:space="preserve">
     <value>{0} (results capped)</value>
   </data>
-  <data name="ProjectPanel_ExplorerTooltip" xml:space="preserve">
+  <data name="ActivityPanel_ExplorerTooltip" xml:space="preserve">
     <value>Explorer</value>
   </data>
-  <data name="ProjectPanel_SearchTooltip" xml:space="preserve">
+  <data name="ActivityPanel_SearchTooltip" xml:space="preserve">
     <value>Search</value>
   </data>
-  <data name="ProjectPanel_DebugTooltip" xml:space="preserve">
+  <data name="ActivityPanel_DebugTooltip" xml:space="preserve">
     <value>Debug</value>
   </data>
-  <data name="ProjectPanel_SourceControlTooltip" xml:space="preserve">
+  <data name="ActivityPanel_SourceControlTooltip" xml:space="preserve">
     <value>Source Control</value>
   </data>
   <data name="NewProjectDialog_InvalidProjectName" xml:space="preserve">

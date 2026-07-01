@@ -6,19 +6,18 @@ namespace Celbridge.Resources.Services;
 /// <summary>
 /// Builds the in-memory project tree by enumerating the project root through the
 /// resource file-system gateway. Visibility filtering lives in the gateway's
-/// policy evaluation, so the builder no longer touches the file system directly
-/// or applies its own filters.
+/// policy evaluation, not in the builder.
 /// </summary>
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
-    private readonly IFileIconService _fileIconService;
+    private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ProjectTreeBuilder(
-        IFileIconService fileIconService,
+        IIconService iconService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _fileIconService = fileIconService;
+        _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -82,10 +81,10 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
             {
                 var fileExtension = GetFileExtension(childName);
 
-                var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
+                var getIconResult = _iconService.GetFileIconForExtension(fileExtension);
                 var iconDefinition = getIconResult.IsSuccess
                     ? getIconResult.Value
-                    : _fileIconService.DefaultFileIcon;
+                    : _iconService.DefaultFileIcon;
 
                 var fileResource = new FileResource(childName, folderResource, iconDefinition);
                 fileResource.WritableState = writableState;

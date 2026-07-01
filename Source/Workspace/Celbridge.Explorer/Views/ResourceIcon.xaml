@@ -6,9 +6,8 @@
 
     <Grid VerticalAlignment="Center">
         <!-- Folder icon (FontIcon) - shown when resource is a folder -->
-        <FontIcon x:Name="FolderIcon"
-                  FontFamily="{StaticResource SymbolThemeFontFamily}"
-                  Glyph="&#xE8D5;"
+        <controls:Icon x:Name="FolderIcon"
+                  Symbol="FolderFilled"
                   FontSize="16"
                   Margin="0"
                   VerticalAlignment="Center"

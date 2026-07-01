@@ -1,5 +1,14 @@
 // RPC Transport: JSON-RPC 2.0 communication layer for Celbridge.
 // Handles low-level message passing between JavaScript clients and the .NET host.
+//
+// Transport hierarchy: the host channel is normally a WebSocket to the loopback file server, learned two
+// ways. A loopback page derives a same-origin ws(s):// URL from a connection token in its own URL. A
+// synthetic-origin page (a faked origin that is not the loopback server) cannot derive it, so it reads the
+// full ws:// URL the host provides -- from window.__hostChannelUrl (injected into the loadHTMLString page)
+// or a __hostChannelUrl query parameter (on the virtual-host page). The other path is a WebView2
+// native-message fallback (chrome.webview / webkit.messageHandlers), used by a page that loads this client
+// over the native message channel rather than a WebSocket. (Tests inject their own postMessage/onMessage
+// pair, which always wins.)
 
 /**
  * @typedef {'none' | 'error' | 'warn' | 'debug'} LogLevel
@@ -31,6 +40,9 @@ export class RpcTransport {
     /** @type {boolean} */
     #initialized = false;
 
+    /** @type {boolean} */
+    #isHosted = false;
+
     /** @type {Object<string, Function[]>} */
     #eventHandlers = {};
 
@@ -55,23 +67,80 @@ export class RpcTransport {
     constructor(options = {}) {
         this.#timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
 
-        // Use provided postMessage or default to WebView2's
-        this.#postMessage = options.postMessage ?? ((msg) => {
-            if (window.chrome?.webview) {
-                window.chrome.webview.postMessage(msg);
+        // Tests inject their own transport via postMessage/onMessage. That always wins.
+        if (options.postMessage || options.onMessage) {
+            this.#postMessage = options.postMessage ?? defaultWebViewPostMessage;
+            const setupListener = options.onMessage ?? defaultWebViewSetupListener;
+            setupListener((data) => this.#handleMessage(data));
+            this.#isHosted = true;
+        } else {
+            // The host selects the WebSocket transport in one of two ways. A synthetic-origin page
+            // (served under its faked origin so its derived URL would not reach the loopback server) reads
+            // the full host channel URL the host provides (a window global or a query parameter). A normal
+            // loopback page instead carries a connection token in its URL and derives the same-origin
+            // ws:// URL from it. Either way the WebSocket survives the WebView's view attachment. With
+            // neither present, fall back to the WebView2 messaging transport if a native messaging bridge
+            // is present. Otherwise this page is running standalone (outside the Celbridge host).
+            const injectedHostChannelUrl = options.wsUrl ?? readInjectedHostChannelUrl();
+            const hostToken = options.wsToken ?? readHostToken();
+            if (injectedHostChannelUrl) {
+                this.#setupWebSocketTransport(injectedHostChannelUrl);
+                this.#isHosted = true;
+            } else if (hostToken) {
+                const scheme = (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss' : 'ws';
+                const host = (typeof location !== 'undefined' && location.host) ? location.host : '127.0.0.1';
+                this.#setupWebSocketTransport(`${scheme}://${host}/ws/host?token=${encodeURIComponent(hostToken)}`);
+                this.#isHosted = true;
+            } else {
+                this.#postMessage = defaultWebViewPostMessage;
+                defaultWebViewSetupListener((data) => this.#handleMessage(data));
+                this.#isHosted = hasNativeWebViewBridge();
+            }
+        }
+
+        // Expose the active transport's raw send so a client-independent injected script can reach the
+        // host over whichever transport this page uses, rather than assuming chrome.webview. Pages that
+        // never load this client fall back to chrome.webview.
+        if (typeof globalThis !== 'undefined') {
+            globalThis.__hostSendMessage = (json) => this.#postMessage(json);
+        }
+    }
+
+    /**
+     * Routes the bridge over a WebSocket on the loopback server at the given URL. The token in the URL
+     * both routes the socket to this document's host channel and authenticates it. Outbound messages
+     * are buffered until the socket opens. No automatic reconnection: the socket lives for the page's
+     * lifetime.
+     * @param {string} url - The full ws:// URL (same-origin-derived, or host-injected for synthetic-origin pages).
+     */
+    #setupWebSocketTransport(url) {
+        const outboundQueue = [];
+        const socket = new WebSocket(url);
+
+        socket.addEventListener('open', () => {
+            this.#log('debug', 'Host WebSocket connected');
+            while (outboundQueue.length > 0 && socket.readyState === WebSocket.OPEN) {
+                socket.send(outboundQueue.shift());
             }
         });
-
-        // Set up message listener
-        const setupListener = options.onMessage ?? ((handler) => {
-            if (window.chrome?.webview) {
-                window.chrome.webview.addEventListener('message', (event) => {
-                    handler(event.data);
-                });
-            }
+        socket.addEventListener('message', (event) => {
+            this.#handleMessage(event.data);
+        });
+        socket.addEventListener('close', () => {
+            this.#log('warn', 'Host WebSocket closed');
+        });
+        socket.addEventListener('error', (event) => {
+            this.#log('error', 'Host WebSocket error', event);
         });
 
-        setupListener((data) => this.#handleMessage(data));
+        this.#postMessage = (message) => {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(message);
+            } else {
+                // Buffer until the socket opens (still connecting), then flush on 'open'.
+                outboundQueue.push(message);
+            }
+        };
     }
 
     /**
@@ -80,6 +149,16 @@ export class RpcTransport {
      */
     get isInitialized() {
         return this.#initialized;
+    }
+
+    /**
+     * Whether a Celbridge host transport is present (a WebSocket bridge, or a native WebView messaging
+     * bridge). False when the page is running standalone in a plain browser. Determined synchronously at
+     * construction. The basis for `celbridge.isHosted`.
+     * @returns {boolean}
+     */
+    get isHosted() {
+        return this.#isHosted;
     }
 
     /**
@@ -341,4 +420,95 @@ export class RpcTransport {
                 break;
         }
     }
+}
+
+/**
+ * Whether a native WebView messaging bridge is present — `chrome.webview` (WebView2) or the Uno Skia
+ * `webkit.messageHandlers.unoWebView` (WKWebView). Absent in a plain browser, so this is how a page with
+ * no WebSocket token tells "inside the Celbridge host" from "running standalone".
+ * @returns {boolean}
+ */
+function hasNativeWebViewBridge() {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+    return Boolean(window.chrome?.webview)
+        || Boolean(window.webkit?.messageHandlers?.unoWebView);
+}
+
+/**
+ * The WebView2 messaging send path (the fallback transport when no WebSocket token is present).
+ * @param {string} message
+ */
+function defaultWebViewPostMessage(message) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(message);
+    } else if (window.webkit?.messageHandlers?.unoWebView) {
+        // macOS WKWebView (Uno Skia): chrome.webview is absent. Route JS->C# through the native
+        // message handler, which surfaces on the host as CoreWebView2.WebMessageReceived (the same
+        // event the chrome.webview path raises).
+        window.webkit.messageHandlers.unoWebView.postMessage(message);
+    }
+}
+
+/**
+ * The WebView2 messaging receive path (the fallback transport when no WebSocket token is present).
+ * @param {Function} handler
+ */
+function defaultWebViewSetupListener(handler) {
+    if (window.chrome?.webview) {
+        window.chrome.webview.addEventListener('message', (event) => {
+            handler(event.data);
+        });
+    }
+
+    // C#->JS dispatch entry point for heads where PostWebMessageAsString does not deliver (Uno Skia):
+    // the host pushes messages by invoking this global via ExecuteScriptAsync. Heads that use
+    // chrome.webview messaging never call it.
+    if (typeof globalThis !== 'undefined') {
+        globalThis.__hostReceiveMessage = (data) => handler(data);
+    }
+}
+
+/**
+ * Reads the host connection token the host embedded in the page URL, or null when absent (the host did
+ * not select the WebSocket transport, or this is a non-browser test environment).
+ * @returns {string|null}
+ */
+function readHostToken() {
+    if (typeof location === 'undefined' || !location.search) {
+        return null;
+    }
+
+    try {
+        return new URLSearchParams(location.search).get('__hostToken');
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Reads the full host channel URL for a synthetic-origin page, whose faked origin means it cannot derive
+ * the loopback ws:// URL from its own location. The macOS loadHTMLString page reads a host-injected global;
+ * the virtual-host page (which cannot receive a document-start global on the Skia WebView2) reads it from a
+ * query parameter on its own URL. Null when absent.
+ * @returns {string|null}
+ */
+function readInjectedHostChannelUrl() {
+    if (typeof globalThis !== 'undefined') {
+        const url = globalThis.__hostChannelUrl;
+        if (typeof url === 'string' && url.length > 0) {
+            return url;
+        }
+    }
+
+    if (typeof location !== 'undefined' && location.search) {
+        try {
+            return new URLSearchParams(location.search).get('__hostChannelUrl');
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
 }

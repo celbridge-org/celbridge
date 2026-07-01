@@ -2,6 +2,7 @@
     x:Class="Celbridge.Inspector.Views.WebInspector"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:local="using:Celbridge.Inspector.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     DataContext="{x:Bind ViewModel}">
@@ -16,32 +17,32 @@
             <Button Command="{x:Bind ViewModel.GoBackCommand}"
                     ToolTipService.ToolTip="{x:Bind GoBackTooltipString}"
                     IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE72B;"
+                <controls:Icon
+                          Symbol="Back"
                           FontSize="16" />
             </Button>
 
             <Button Command="{x:Bind ViewModel.GoForwardCommand}"
                     ToolTipService.ToolTip="{x:Bind GoForwardTooltipString}"
                     IsEnabled="{x:Bind ViewModel.CanGoForward, Mode=OneWay}">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE72A;"
+                <controls:Icon
+                          Symbol="Forward"
                           FontSize="16" />
             </Button>
 
             <Button Command="{x:Bind ViewModel.HomeCommand}"
                     ToolTipService.ToolTip="{x:Bind HomeTooltipString}"
                     IsEnabled="{x:Bind ViewModel.IsUrlValid, Mode=OneWay}">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE80F;"
+                <controls:Icon
+                          Symbol="Home"
                           FontSize="16" />
             </Button>
 
             <Button Command="{x:Bind ViewModel.RefreshCommand}"
                     ToolTipService.ToolTip="{x:Bind RefreshTooltipString}"
                     IsEnabled="{x:Bind ViewModel.CanRefresh, Mode=OneWay}">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE72C;"
+                <controls:Icon
+                          Symbol="Refresh"
                           FontSize="16" />
             </Button>
         </StackPanel>

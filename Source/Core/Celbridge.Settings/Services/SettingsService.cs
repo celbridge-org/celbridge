@@ -17,18 +17,18 @@ internal sealed class SettingsService : ISettingsService
 
     private readonly ILogger<SettingsService> _logger;
     private readonly ISettingsStore _applicationStore;
-    private readonly ICredentialProtector _protector;
+    private readonly ICredentialStore _credentialStore;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public SettingsService(
         ILogger<SettingsService> logger,
         ISettingsStore applicationStore,
-        ICredentialProtector protector,
+        ICredentialStore credentialStore,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _applicationStore = applicationStore;
-        _protector = protector;
+        _credentialStore = credentialStore;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -40,7 +40,7 @@ internal sealed class SettingsService : ISettingsService
                 return true;
 
             case SettingScope.Protected:
-                return _protector.IsAvailable;
+                return _credentialStore.IsAvailable;
 
             case SettingScope.Workspace:
                 return WorkspaceStore is not null;
@@ -109,10 +109,11 @@ internal sealed class SettingsService : ISettingsService
         switch (setting.Scope)
         {
             case SettingScope.Application:
-            case SettingScope.Protected:
-                // Protected ciphertext lives in the application store, so a
-                // presence check never has to decrypt.
                 return _applicationStore.ContainsKey(setting.Key);
+
+            case SettingScope.Protected:
+                // The credential store answers presence without retrieving or decrypting the secret.
+                return _credentialStore.ContainsCredential(setting.Key);
 
             case SettingScope.Workspace:
                 var store = WorkspaceStore;
@@ -156,8 +157,11 @@ internal sealed class SettingsService : ISettingsService
         switch (setting.Scope)
         {
             case SettingScope.Application:
-            case SettingScope.Protected:
                 _applicationStore.RemoveValue(setting.Key);
+                break;
+
+            case SettingScope.Protected:
+                _credentialStore.DeleteCredential(setting.Key);
                 break;
 
             case SettingScope.Workspace:
@@ -168,9 +172,9 @@ internal sealed class SettingsService : ISettingsService
 
     public Task<Result> FlushAsync()
     {
-        // The Workspace store is flushed through the workspace save path, so only
-        // the Application store (which also holds the Protected ciphertext) needs
-        // flushing here.
+        // The Workspace store is flushed through the workspace save path. The Application store also backs
+        // the Windows credential store (DPAPI ciphertext), so flushing it persists those too. The macOS
+        // Keychain writes are immediate and need no flush.
         return _applicationStore.FlushAsync();
     }
 
@@ -192,61 +196,44 @@ internal sealed class SettingsService : ISettingsService
 
     private void SetProtected<T>(SettingDescriptor<T> setting, T value) where T : notnull
     {
-        if (!_protector.IsAvailable)
+        if (!_credentialStore.IsAvailable)
         {
             throw new InvalidOperationException(ProtectedUnavailableMessage);
         }
 
         var json = JsonSerializer.Serialize(value);
         var plainData = Encoding.UTF8.GetBytes(json);
-        var entropy = GetEntropy(setting.Key);
 
-        var protectResult = _protector.Protect(plainData, entropy);
-        if (protectResult.IsFailure)
+        var storeResult = _credentialStore.StoreCredential(setting.Key, plainData);
+        if (storeResult.IsFailure)
         {
             throw new InvalidOperationException(
-                $"Failed to protect setting '{setting.Key}': {protectResult.FirstErrorMessage}");
+                $"Failed to store protected setting '{setting.Key}': {storeResult.FirstErrorMessage}");
         }
-
-        var base64 = Convert.ToBase64String(protectResult.Value);
-        _applicationStore.SetValue(setting.Key, base64);
     }
 
     private Result<T> TryGetProtected<T>(SettingDescriptor<T> setting) where T : notnull
     {
-        if (!_protector.IsAvailable)
+        if (!_credentialStore.IsAvailable)
         {
             return Result<T>.Fail(ProtectedUnavailableMessage);
         }
 
-        if (!_applicationStore.TryGetValue<string>(setting.Key, out var base64)
-            || string.IsNullOrEmpty(base64))
+        if (!_credentialStore.ContainsCredential(setting.Key))
         {
             return Result<T>.Fail($"No value is configured for '{setting.Key}'");
         }
 
-        byte[] protectedData;
-        try
+        var retrieveResult = _credentialStore.RetrieveCredential(setting.Key);
+        if (retrieveResult.IsFailure)
         {
-            protectedData = Convert.FromBase64String(base64);
-        }
-        catch (FormatException)
-        {
-            _logger.LogError($"A stored protected value for '{setting.Key}' is not valid base64");
+            _logger.LogError(retrieveResult, "Failed to read protected setting '{Key}'", setting.Key);
 
-            return Result<T>.Fail("A stored protected value could not be read");
+            return Result<T>.Fail("A stored protected value could not be read")
+                .WithErrors(retrieveResult);
         }
 
-        var entropy = GetEntropy(setting.Key);
-        var unprotectResult = _protector.Unprotect(protectedData, entropy);
-        if (unprotectResult.IsFailure)
-        {
-            _logger.LogError(unprotectResult, $"Failed to unprotect setting '{setting.Key}'");
-
-            return Result<T>.Fail("A stored protected value could not be read");
-        }
-
-        var json = Encoding.UTF8.GetString(unprotectResult.Value);
+        var json = Encoding.UTF8.GetString(retrieveResult.Value);
         try
         {
             var value = JsonSerializer.Deserialize<T>(json);
@@ -261,12 +248,5 @@ internal sealed class SettingsService : ISettingsService
         {
             return Result<T>.Fail("A stored protected value could not be read");
         }
-    }
-
-    // The descriptor key is the DPAPI entropy, so each Protected setting has its
-    // own entropy and rotating a key is a matter of renaming the descriptor.
-    private static byte[] GetEntropy(string key)
-    {
-        return Encoding.UTF8.GetBytes(key);
     }
 }

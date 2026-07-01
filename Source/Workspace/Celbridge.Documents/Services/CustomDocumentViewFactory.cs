@@ -40,7 +40,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     {
         // The manifest loader requires every document contribution to set
         // display_name, so _contribution.DisplayName is guaranteed non-empty
-        // here. The value may be a localization key or a plain string; run it
+        // here. The value may be a localization key or a plain string. Run it
         // through the package's localization dictionary and return the raw
         // value when the key is not present (which also handles plain strings).
         var displayKey = _contribution.DisplayName;
@@ -67,14 +67,10 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
-#if WINDOWS
         var view = _serviceProvider.GetRequiredService<ContributionDocumentView>();
         view.Contribution = _contribution;
         view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);
-#else
-        return Result<IDocumentView>.Fail("Contribution editors are only available on Windows");
-#endif
     }
 }

@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Celbridge.Python;
 using Microsoft.Extensions.Localization;
 
@@ -8,26 +8,27 @@ namespace Celbridge.Projects.Services;
 public class ProjectTemplateService : IProjectTemplateService
 {
     private const string TemplateProjectFileName = "project.celbridge";
+    private const string ProjectsModuleFolder = "Celbridge.Projects";
 
     private readonly List<ProjectTemplate> _templates;
-    private readonly IEnvironmentService _environmentService;
     private readonly IPythonConfigService _pythonConfigService;
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IAppEnvironment _appEnvironment;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
-        IEnvironmentService environmentService,
         IPythonConfigService pythonConfigService,
-        ILocalFileSystem fileSystem)
+        ILocalFileSystem fileSystem,
+        IAppEnvironment appEnvironment)
     {
-        _environmentService = environmentService;
         _pythonConfigService = pythonConfigService;
         _fileSystem = fileSystem;
+        _appEnvironment = appEnvironment;
 
         _templates =
         [
-            CreateTemplate(stringLocalizer, "Empty", "\uE8A5"),
-            CreateTemplate(stringLocalizer, "Examples", "\uE736")
+            CreateTemplate(stringLocalizer, "Empty", "file-earmark"),
+            CreateTemplate(stringLocalizer, "Examples", "collection")
         ];
     }
 
@@ -53,10 +54,11 @@ public class ProjectTemplateService : IProjectTemplateService
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
         // Use a temporary staging folder to prevent leftover files on failure.
-        // The project doesn't exist yet, so temp: isn't available; fall back to
-        // the application's OS temp folder.
+        // The project doesn't exist yet, so temp: isn't available. Fall back to
+        // the application's temp folder.
+        var tempRootPath = _appEnvironment.TemporaryFolderPath;
         var tempStagingPath = Path.Combine(
-            ApplicationData.Current.TemporaryFolder.Path,
+            tempRootPath,
             "NewProject",
             Path.GetFileNameWithoutExtension(Path.GetRandomFileName()));
 
@@ -85,18 +87,15 @@ public class ProjectTemplateService : IProjectTemplateService
             }
 
             // Get Celbridge application version
-            var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
+            var appVersion = _appEnvironment.GetEnvironmentInfo().AppVersion;
 
-            // Extract template zip to staging location
-            var templateAsset = new Uri($"ms-appx:///Assets/Templates/{template.Id}.zip");
-            var sourceZipFile = await StorageFile.GetFileFromApplicationUriAsync(templateAsset);
+            // Extract the bundled template zip to the staging location. The zip is read as a real file
+            // from the install location: the package root on the packaged Windows head, the
+            // Celbridge.Projects content folder beside the app on the Skia heads.
+            var sourceZipPath = _appEnvironment.GetBundledAssetPath(
+                ProjectsModuleFolder, $"Assets/Templates/{template.Id}.zip");
 
-            var tempZipFile = await sourceZipFile.CopyAsync(
-                ApplicationData.Current.TemporaryFolder,
-                "template.zip",
-                NameCollisionOption.ReplaceExisting);
-
-            ZipFile.ExtractToDirectory(tempZipFile.Path, tempStagingPath!, overwriteFiles: true);
+            ZipFile.ExtractToDirectory(sourceZipPath, tempStagingPath!, overwriteFiles: true);
 
             // Update the extracted project file with actual version values
             var extractedProjectFile = Path.Combine(tempStagingPath!, TemplateProjectFileName);
@@ -190,7 +189,7 @@ public class ProjectTemplateService : IProjectTemplateService
             var stagingInfo = await _fileSystem.GetInfoAsync(tempStagingPath);
             if (stagingInfo.IsSuccess && stagingInfo.Value.Kind == StorageItemKind.Folder)
             {
-                // Best-effort cleanup; failures here should not mask the primary outcome.
+                // Best-effort cleanup. Failures here should not mask the primary outcome.
                 await _fileSystem.DeleteFolderAsync(tempStagingPath, recursive: true);
             }
         }

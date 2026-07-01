@@ -1,3 +1,5 @@
+using Celbridge.Resources.Helpers;
+
 namespace Celbridge.Resources.Services;
 
 public sealed class RootHandlerRegistry : IRootHandlerRegistry
@@ -21,15 +23,11 @@ public sealed class RootHandlerRegistry : IRootHandlerRegistry
         try
         {
             // Longest-prefix-wins so a path under .celbridge/temp/ matches the
-            // temp handler rather than the project handler (which has the
-            // shorter <project>/ prefix). Example:
-            //   C:\proj\                  (project root, length 8)
-            //   C:\proj\.celbridge\temp\  (temp root, length 23)
+            // temp handler rather than the project handler, which has the
+            // shorter project root prefix.
             var normalizedPath = Path.GetFullPath(absolutePath);
 
-            var comparison = OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal;
+            var comparison = PathComparison.Comparison;
 
             IResourceRootHandler? bestHandler = null;
             int bestPrefixLength = -1;

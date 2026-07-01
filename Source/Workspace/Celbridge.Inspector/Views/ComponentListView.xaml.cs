@@ -1,11 +1,11 @@
 using Celbridge.Inspector.Models;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Logging;
+using Celbridge.Platform;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
-using Microsoft.UI.Input;
 using System.Collections.ObjectModel;
 using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.Inspector.Views;
 
@@ -43,10 +43,12 @@ public partial class ComponentListView : UserControl, IInspector
         // Listen for root component form updates
         ViewModel.OnUpdateRootComponentForm += ViewModel_OnUpdateRootComponentForm;
 
-#if WINDOWS
-        // Remove the distracting animations when items are added or removed from the list
-        ComponentList.ItemContainerTransitions.Clear();
-#endif
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (platformInfo.SuppressListItemTransitions)
+        {
+            // Remove the distracting animations when items are added or removed from the list
+            ComponentList.ItemContainerTransitions.Clear();
+        }
     }
 
     private void ViewModel_OnUpdateRootComponentForm(object? rootComponentForm)
@@ -70,7 +72,7 @@ public partial class ComponentListView : UserControl, IInspector
         var key = e.Key;
 
         // Delete selected component keyboard shortcut
-        if (key == VirtualKey.Delete)
+        if (EditKeyboard.IsDeleteKey(key))
         {
             int deleteIndex = ComponentList.SelectedIndex;
             if (deleteIndex >= 0)
@@ -95,8 +97,8 @@ public partial class ComponentListView : UserControl, IInspector
         {
             // Duplicate selected component keyboard shortcut
 
-            var controlDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
-            if (controlDown)
+            var commandDown = EditKeyboard.IsCommandModifierDown();
+            if (commandDown)
             {
                 var componentItem = ComponentList.SelectedItem as ComponentItem;
                 if (componentItem is not null)
@@ -107,7 +109,7 @@ public partial class ComponentListView : UserControl, IInspector
         }
         else if (e.Key == VirtualKey.Enter)
         {
-            var shiftDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift).HasFlag(CoreVirtualKeyStates.Down);
+            var shiftDown = EditKeyboard.IsShiftDown();
             if (shiftDown)
             {
                 // Shift + Enter adds a new component after the current component
@@ -136,7 +138,7 @@ public partial class ComponentListView : UserControl, IInspector
         else if (e.Key == VirtualKey.Up || e.Key == VirtualKey.Down)
         {
             // Alt + Up/Down moves the selected component up or down
-            var altDown = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu).HasFlag(CoreVirtualKeyStates.Down);
+            var altDown = EditKeyboard.IsAltDown();
             if (altDown)
             {
                 int componentIndex = ComponentList.SelectedIndex;

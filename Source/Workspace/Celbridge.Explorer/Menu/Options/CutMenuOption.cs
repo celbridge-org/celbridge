@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.UserInterface;
 using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -32,7 +33,7 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Cut"),
-            IconGlyph: "\uE8C6"); // Cut icon
+            Icon: IconSymbol.Cut);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

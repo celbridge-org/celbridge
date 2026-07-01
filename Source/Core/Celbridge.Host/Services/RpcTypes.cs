@@ -1,9 +1,5 @@
 namespace Celbridge.Host;
 
-// =============================================================================
-// Initialize Result
-// =============================================================================
-
 /// <summary>
 /// Metadata about the document being edited.
 /// Includes the locale for JS-side localization loading.
@@ -12,14 +8,17 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 
 /// <summary>
 /// Result of the document/initialize request.
-/// Localization is handled by JS fetching from the extension's localization folder.
-/// WritableState is the string name of the document's writable state at handshake time.
 /// </summary>
-public record InitializeResult(string Content, DocumentMetadata Metadata, string WritableState, string? EditorStateJson = null);
+public record InitializeResult(string Content, DocumentMetadata Metadata, string? EditorStateJson = null);
 
-// =============================================================================
-// Document Operation Results
-// =============================================================================
+/// <summary>
+/// The host capability context for a contribution editor: the resolved tool allowlist, the package's
+/// secrets, and its options.
+/// </summary>
+public record CelbridgeContext(
+    IReadOnlyList<string> PermittedTools,
+    IReadOnlyDictionary<string, string> Secrets,
+    IReadOnlyDictionary<string, string> Options);
 
 /// <summary>
 /// Result of the document/load request.
@@ -31,10 +30,6 @@ public record LoadResult(string Content, DocumentMetadata Metadata);
 /// Result of the document/save request.
 /// </summary>
 public record SaveResult(bool Success, string? Error = null);
-
-// =============================================================================
-// Dialog Operation Results
-// =============================================================================
 
 /// <summary>
 /// Result of the dialog/pickImage request.

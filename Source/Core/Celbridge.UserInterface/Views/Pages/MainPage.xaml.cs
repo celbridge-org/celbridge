@@ -1,9 +1,8 @@
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
-using Microsoft.UI.Input;
 using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -20,10 +19,7 @@ public partial class MainPage : Page
     private Grid _contentArea;
     private readonly Dictionary<Type, Page> _pageCache = new();
     private Page? _currentPage;
-
-#if WINDOWS
-    private TitleBar? _titleBar;
-#endif
+    private FrameworkElement? _titleBar;
 
     public MainPage()
     {
@@ -60,27 +56,20 @@ public partial class MainPage : Page
         var mainWindow = _userInterfaceService.MainWindow as Window;
         Guard.IsNotNull(mainWindow);
 
-#if WINDOWS
-        // Setup the custom title bar (Windows only)
-        _titleBar = new TitleBar();
-        _layoutRoot.Children.Add(_titleBar);
+        // The application toolbar (page navigation, layout toggles, settings) occupies row 0 of the layout
+        // grid. Each platform hosts it differently: inside the custom title bar on the packaged Windows
+        // head, or directly beneath the native title bar on the Skia desktop heads.
+        var applicationToolbarHost = ServiceLocator.AcquireService<IApplicationToolbarHost>();
+        var titleBar = applicationToolbarHost.Install(mainWindow, _layoutRoot);
+        _titleBar = (FrameworkElement)titleBar;
+        _userInterfaceService.RegisterTitleBar(titleBar);
 
-        mainWindow.ExtendsContentIntoTitleBar = true;
-        mainWindow.SetTitleBar(_titleBar);
+        // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
+        // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
+        Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
 
-        // Configure the AppWindow titlebar to use taller caption buttons (48px instead of 32px)
-        // This makes the system minimize/maximize/close buttons larger to match the increased titlebar height
-        var appWindow = mainWindow.AppWindow;
-        if (appWindow?.TitleBar != null)
-        {
-            appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
-        }
-
-        _userInterfaceService.RegisterTitleBar(_titleBar);
-#endif
-
-        // Register for window mode changes
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowLayoutChanged);
+        // Register for layout mode changes
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
         // Register the navigation handler
         var navigationService = _navigationService as Celbridge.UserInterface.Services.NavigationService;
@@ -89,28 +78,19 @@ public partial class MainPage : Page
 
         await ViewModel.OnMainPage_LoadedAsync();
 
-        // Listen for keyboard input events (required for undo / redo)
-#if WINDOWS
-        mainWindow.Content.KeyDown += (s, e) =>
-        {
-            if (OnKeyDown(e.Key))
-            {
-                e.Handled = true;
-            }
-        };
-#else
-        Guard.IsNotNull(mainWindow);
-        if (mainWindow.CoreWindow is not null)
-        {
-            mainWindow.CoreWindow.KeyDown += (s, e) =>
-            {
-                if (OnKeyDown(e.VirtualKey))
-                {
-                    e.Handled = true;
-                }
-            };
-        }
-#endif
+        // Listen for keyboard input events (required for undo / redo and other app shortcuts).
+        // Window.CoreWindow is a legacy UWP API that is null on the Skia desktop head, so the root
+        // content's KeyDown is used on every head.
+        var rootContent = mainWindow.Content;
+        Guard.IsNotNull(rootContent);
+
+        // Register with handledEventsToo so app shortcuts (undo / redo) are received even when the
+        // focused control (the Explorer tree, Inspector, or toolbar) marks the key event handled before
+        // it bubbles to the root. A plain KeyDown += handler is skipped for already-handled events.
+        rootContent.AddHandler(
+            UIElement.KeyDownEvent,
+            new Microsoft.UI.Xaml.Input.KeyEventHandler(OnRootContentKeyDown),
+            handledEventsToo: true);
     }
 
     private void OnMainPage_Unloaded(object sender, RoutedEventArgs e)
@@ -124,34 +104,32 @@ public partial class MainPage : Page
         Unloaded -= OnMainPage_Unloaded;
     }
 
-    private void OnWindowLayoutChanged(object recipient, WindowModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-#if WINDOWS
-        // Show/hide the title bar based on window mode
-        // In Windowed, FullScreen, and ZenMode modes, the title bar is visible
-        // In Presenter mode, the title bar is hidden
+        // Show/hide the application toolbar based on the layout mode. Default and Focus keep the
+        // toolbar; Presentation hides it so only the document content is shown.
         if (_titleBar != null)
         {
-            bool showTitleBar = message.WindowMode == WindowMode.Windowed || 
-                                message.WindowMode == WindowMode.FullScreen ||
-                                message.WindowMode == WindowMode.ZenMode;
-            _titleBar.Visibility = showTitleBar ? Visibility.Visible : Visibility.Collapsed;
+            bool showToolbar = message.LayoutMode != LayoutMode.Presentation;
+            _titleBar.Visibility = showToolbar ? Visibility.Visible : Visibility.Collapsed;
         }
-#endif
+    }
+
+    private void OnRootContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (OnKeyDown(e.Key))
+        {
+            e.Handled = true;
+        }
     }
 
     private bool OnKeyDown(VirtualKey key)
     {
-        // Use the HasFlag method to check if the control key is down.
-        // If you just compare with CoreVirtualKeyStates.Down it doesn't work when the key is held down.
-        var control = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            .HasFlag(CoreVirtualKeyStates.Down);
-
-        var shift = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-            .HasFlag(CoreVirtualKeyStates.Down);
-
-        var alt = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu)
-            .HasFlag(CoreVirtualKeyStates.Down);
+        // The command modifier folds in Cmd on macOS (which the head reports as the left Windows key),
+        // so Cmd+Z / Cmd+Shift+Z drive undo/redo there.
+        var control = EditKeyboard.IsCommandModifierDown();
+        var shift = EditKeyboard.IsShiftDown();
+        var alt = EditKeyboard.IsAltDown();
 
         var shortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         return shortcutService.HandleShortcut(key, control, shift, alt);

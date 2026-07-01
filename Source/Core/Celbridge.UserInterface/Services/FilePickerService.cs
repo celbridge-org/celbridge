@@ -1,4 +1,5 @@
 using Celbridge.FilePicker;
+using Celbridge.Platform;
 using Windows.Storage.Pickers;
 
 namespace Celbridge.UserInterface.Services;
@@ -6,10 +7,12 @@ namespace Celbridge.UserInterface.Services;
 public class FilePickerService : IFilePickerService
 {
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IPlatformInfo _platformInfo;
 
-    public FilePickerService(ILocalFileSystem fileSystem)
+    public FilePickerService(ILocalFileSystem fileSystem, IPlatformInfo platformInfo)
     {
         _fileSystem = fileSystem;
+        _platformInfo = platformInfo;
     }
 
     public async Task<Result<string>> PickSingleFileAsync(IEnumerable<string> extensions)
@@ -24,13 +27,14 @@ public class FilePickerService : IFilePickerService
             fileOpenPicker.FileTypeFilter.Add(extension);
         }
 
-#if WINDOWS
-        // For Uno.WinUI-based apps
-        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        var mainWindow = userInterfaceService.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
-        WinRT.Interop.InitializeWithWindow.Initialize(fileOpenPicker, hwnd);
-#endif
+        // The packaged WinUI head requires the picker to be associated with the owning window handle.
+        if (_platformInfo.PickersRequireWindowHandle)
+        {
+            var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+            var mainWindow = userInterfaceService.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(fileOpenPicker, hwnd);
+        }
 
         StorageFile file = await fileOpenPicker.PickSingleFileAsync();
 
@@ -58,13 +62,14 @@ public class FilePickerService : IFilePickerService
 
         folderPicker.FileTypeFilter.Add("*");
 
-#if WINDOWS
-        // For Uno.WinUI-based apps
-        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        var mainWindow = userInterfaceService.MainWindow;
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
-        WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
-#endif
+        // The packaged WinUI head requires the picker to be associated with the owning window handle.
+        if (_platformInfo.PickersRequireWindowHandle)
+        {
+            var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+            var mainWindow = userInterfaceService.MainWindow;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+        }
 
         StorageFolder folder = await folderPicker.PickSingleFolderAsync();
         if (folder == null)

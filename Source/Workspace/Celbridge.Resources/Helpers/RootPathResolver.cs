@@ -5,7 +5,7 @@ namespace Celbridge.Resources.Helpers;
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for a single
 /// root, checking that paths stay within the backing folder. Reparse points
-/// (symlinks, junctions) are rejected best-effort via File.GetAttributes; the
+/// (symlinks, junctions) are rejected best-effort via File.GetAttributes. The
 /// check is not atomic with the following I/O, so it is a containment filter,
 /// not a hardened boundary against symlink races.
 /// </summary>
@@ -27,7 +27,7 @@ public class RootPathResolver
         _normalizedBackingWithSeparator = NormalizeBackingLocation(backingLocation);
         _normalizedBackingTrimmed = _normalizedBackingWithSeparator
             .TrimEnd(Path.DirectorySeparatorChar);
-        _verifiedFolders = new HashSet<string>(GetPathComparer());
+        _verifiedFolders = new HashSet<string>(PathComparison.Comparer);
     }
 
     /// <summary>
@@ -45,16 +45,16 @@ public class RootPathResolver
                 $"Resource key '{resource}' failed format validation.");
         }
 
-        // Resolution operates on the path portion of the key; the root portion has
+        // Resolution operates on the path portion of the key. The root portion has
         // already been used to select the handler and its backing location.
         var pathPortion = resource.Path;
 
         var combinedPath = Path.Combine(_backingLocation, pathPortion);
         var resolvedPath = Path.GetFullPath(combinedPath);
 
-        var isBackingRoot = resolvedPath.Equals(_normalizedBackingTrimmed, GetPathComparison());
+        var isBackingRoot = resolvedPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison);
 
-        if (!isBackingRoot && !resolvedPath.StartsWith(_normalizedBackingWithSeparator, GetPathComparison()))
+        if (!isBackingRoot && !resolvedPath.StartsWith(_normalizedBackingWithSeparator, PathComparison.Comparison))
         {
             return Result<string>.Fail(
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
@@ -83,7 +83,7 @@ public class RootPathResolver
             // No symlink check here: ValidateAndResolve enforces it at the I/O
             // boundary, and replaying it on every label call would dominate the
             // watcher / enumerate hot path.
-            var comparison = GetPathComparison();
+            var comparison = PathComparison.Comparison;
 
             bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
             bool isUnderBacking = normalizedPath.StartsWith(
@@ -132,7 +132,7 @@ public class RootPathResolver
         try
         {
             var normalizedPath = Path.GetFullPath(absolutePath);
-            var comparison = GetPathComparison();
+            var comparison = PathComparison.Comparison;
 
             bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
             bool isUnderBacking = normalizedPath.StartsWith(_normalizedBackingWithSeparator, comparison);
@@ -172,7 +172,7 @@ public class RootPathResolver
 
         // When resolvedPath is the backing location itself, there's nothing to check
         var backingTrimmed = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
-        if (resolvedPath.Equals(backingTrimmed, GetPathComparison()))
+        if (resolvedPath.Equals(backingTrimmed, PathComparison.Comparison))
         {
             _verifiedFolders.Add(folderPath);
             return Result.Ok();
@@ -225,21 +225,5 @@ public class RootPathResolver
             normalized += Path.DirectorySeparatorChar;
         }
         return normalized;
-    }
-
-    // StringComparison flavour for string ops; StringComparer flavour for
-    // collection keys. Both consult the same Windows / non-Windows selector.
-    private static StringComparison GetPathComparison()
-    {
-        return OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-    }
-
-    private static StringComparer GetPathComparer()
-    {
-        return OperatingSystem.IsWindows()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
     }
 }

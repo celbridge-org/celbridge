@@ -35,12 +35,12 @@ public class ListTagsCommandTests
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
+        var iconService = new IconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService),
             ResourceClassifierTestHelper.BuildClassifier(),
             _rootHandlerRegistry,
             TestFileSystem.CreateLocal());
@@ -139,7 +139,7 @@ public class ListTagsCommandTests
     [Test]
     public async Task OrphanSidecars_AreSkipped()
     {
-        // No parent file on disk; scanner's sidecar enumeration skips orphans.
+        // No parent file on disk. Scanner's sidecar enumeration skips orphans.
         File.WriteAllText(Path.Combine(_projectFolderPath, "orphan.png.cel"),
             "_tags = [\"never-surface\"]\n");
         (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();

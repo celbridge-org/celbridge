@@ -6,11 +6,11 @@ export default defineConfig({
         include: ['tests/**/*.test.js'],
         environment: 'jsdom',
         alias: {
-            'https://shared.celbridge/celbridge-client/celbridge.js':
+            '/assets/celbridge-client/celbridge.js':
                 fileURLToPath(new URL('./tests/fixtures/celbridge-stub.js', import.meta.url)),
-            'https://shared.celbridge/celbridge-client/api/document-api.js':
+            '/assets/celbridge-client/api/document-api.js':
                 fileURLToPath(new URL('./tests/fixtures/document-api-stub.js', import.meta.url)),
-            'https://shared.celbridge/celbridge-client/localization.js':
+            '/assets/celbridge-client/localization.js':
                 fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url))
         }
     }

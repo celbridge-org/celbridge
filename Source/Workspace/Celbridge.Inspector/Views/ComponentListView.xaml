@@ -2,6 +2,7 @@
     x:Class="Celbridge.Inspector.Views.ComponentListView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:local="using:Celbridge.Inspector.Views"
     xmlns:models="using:Celbridge.Inspector.Models"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -15,7 +16,7 @@
                       CommandParameter="{Binding}"
                       ToolTipService.ToolTip="{x:Bind ContextMenuAddTooltipString}">
         <MenuFlyoutItem.Icon>
-          <SymbolIcon Symbol="Add"/>
+          <controls:Icon Symbol="Add"/>
         </MenuFlyoutItem.Icon>
       </MenuFlyoutItem>
 
@@ -24,7 +25,7 @@
                       CommandParameter="{Binding}"
                       ToolTipService.ToolTip="{x:Bind ContextMenuDeleteTooltipString}">
         <MenuFlyoutItem.Icon>
-          <FontIcon Glyph="&#xE107;"/>
+          <controls:Icon Symbol="Delete"/>
         </MenuFlyoutItem.Icon>
       </MenuFlyoutItem>
       <MenuFlyoutItem Text="Duplicate"
@@ -32,7 +33,7 @@
                       CommandParameter="{Binding}"
                       ToolTipService.ToolTip="{x:Bind ContextMenuDuplicateTooltipString}">
         <MenuFlyoutItem.Icon>
-          <SymbolIcon Symbol="Copy"/>
+          <controls:Icon Symbol="Copy"/>
         </MenuFlyoutItem.Icon>
       </MenuFlyoutItem>
     </MenuFlyout>
@@ -109,19 +110,17 @@
               <StackPanel Orientation="Horizontal">
 
                 <!-- Error icon -->
-                <FontIcon Margin="0 0 8 0"
+                <controls:Icon Margin="0 0 8 0"
                           VerticalAlignment="Center"
-                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE783;"
+                          Symbol="Error"
                           FontSize="22"
                           Foreground="{ThemeResource ErrorTextColor}"
                           Visibility="{x:Bind ShowErrorIcon, Mode=OneWay}"/>
 
                 <!-- Warning icon -->
-                <FontIcon Margin="0 0 8 0"
+                <controls:Icon Margin="0 0 8 0"
                           VerticalAlignment="Center"
-                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                          Glyph="&#xE7BA;"
+                          Symbol="Warning"
                           FontSize="22"
                           Foreground="{ThemeResource WarningTextColor}"
                           Visibility="{x:Bind ShowWarningIcon, Mode=OneWay}"/>
@@ -143,8 +142,8 @@
                     Background="Transparent"
                     Click="ComponentMenuButton_Click"
                     Visibility="Visible">
-              <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
-                        Glyph="&#xE712;"/>
+              <controls:Icon
+                        Symbol="More"/>
             </Button>
 
           </Grid>
@@ -158,7 +157,7 @@
             Margin="8"
             Command="{x:Bind ViewModel.AddComponentCommand}"
             ToolTipService.ToolTip="{x:Bind AddComponentTooltipString}">
-      <SymbolIcon Symbol="Add"/>
+      <controls:Icon Symbol="Add"/>
     </Button>
     
   </StackPanel>

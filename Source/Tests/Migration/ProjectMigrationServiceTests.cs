@@ -1,4 +1,4 @@
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
@@ -14,7 +14,7 @@ public class ProjectMigrationServiceTests
 {
     private ILogger<ProjectMigrationService> _mockLogger = null!;
     private ILogger<MigrationStepRegistry> _mockRegistryLogger = null!;
-    private IEnvironmentService _mockEnvironmentService = null!;
+    private IAppEnvironment _mockEnvironmentService = null!;
     private MigrationStepRegistry _registry = null!;
     private ILocalFileSystem _fileSystem = null!;
 
@@ -27,8 +27,6 @@ public class ProjectMigrationServiceTests
         _registry = new MigrationStepRegistry(_mockRegistryLogger);
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
     }
-
-    #region File Validation Tests
 
     [Test]
     public async Task CheckMigrationAsync_NonExistentFile_ReturnsFailedStatus()
@@ -101,10 +99,6 @@ public class ProjectMigrationServiceTests
         }
     }
 
-    #endregion
-
-    #region Same Version Tests
-
     [Test]
     public async Task CheckMigrationAsync_SameVersion_ReturnsComplete()
     {
@@ -164,10 +158,6 @@ public class ProjectMigrationServiceTests
         }
     }
 
-    #endregion
-
-    #region Newer Version Tests
-
     [Test]
     public async Task CheckMigrationAsync_NewerProjectVersion_ReturnsIncompatibleVersion()
     {
@@ -193,10 +183,6 @@ public class ProjectMigrationServiceTests
             MigrationTestHelper.CleanupTempFile(projectPath);
         }
     }
-
-    #endregion
-
-    #region Invalid Version Tests
 
     [Test]
     public async Task CheckMigrationAsync_EmptyProjectVersion_ReturnsInvalidVersion()
@@ -243,10 +229,6 @@ public class ProjectMigrationServiceTests
             MigrationTestHelper.CleanupTempFile(projectPath);
         }
     }
-
-    #endregion
-
-    #region Version Update Tests
 
     [Test]
     public async Task CheckMigrationAsync_OlderVersion_ReturnsUpgradeRequired()
@@ -310,10 +292,6 @@ public class ProjectMigrationServiceTests
         }
     }
 
-    #endregion
-
-    #region Migration Step Execution Tests
-
     [Test]
     public async Task PerformMigrationUpgradeAsync_RunsApplicableStep_AndUpdatesVersion()
     {
@@ -373,8 +351,6 @@ public class ProjectMigrationServiceTests
             MigrationTestHelper.CleanupTempFile(projectPath);
         }
     }
-
-    #endregion
 }
 
 

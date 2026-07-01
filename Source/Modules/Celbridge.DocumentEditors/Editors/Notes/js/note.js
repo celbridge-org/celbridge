@@ -2,20 +2,17 @@
 // TipTap-based rich text editor using native JSON storage format
 
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from '../lib/tiptap.js';
-import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason, PROJECT_HOST_URL, projectUrl } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import { t } from '/assets/celbridge-client/localization.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
 import { hideAllPopovers } from './popover-utils.js';
 
-// ---------------------------------------------------------------------------
-// Table clipboard handling
-// When all cells in a table are selected, copy/cut the entire table
-// ---------------------------------------------------------------------------
-
+// Table clipboard handling: when all cells in a table are selected, copy/cut
+// the entire table.
 
 function findTableFromCellSelection(state) {
     const { selection } = state;
@@ -390,7 +387,7 @@ document.getElementById('toc-close').addEventListener('click', () => {
 
 // Applies the document's writable state to the TipTap editor and the
 // toolbar. TipTap's setEditable disables typing, paste, and drop on the
-// content surface; the toolbar handler short-circuits separately so the
+// content surface. The toolbar handler short-circuits separately so the
 // mutating buttons can't smuggle commands past the editable flag. Open
 // mutating popovers are dismissed so a previously-spawned link/image/table
 // editor doesn't strand over a now-read-only document.
@@ -463,21 +460,17 @@ editor.on('transaction', ({ transaction }) => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// Handle theme changes
-client.theme.onChanged((theme) => {
-    // Theme is handled by CSS prefers-color-scheme via WebView2 settings
-    // but we could add custom handling here if needed
-});
+// Theme needs no JS here: the celbridge client mirrors the effective theme onto html[data-theme],
+// which note.css keys off.
 
 // Handle language changes (for future runtime language switching)
 client.localization.onLanguageChanged(async (locale) => {
-    // Reload localization from the extension's localization folder
-    const hostName = location.hostname;
+    // Reload localization from the package's own localization folder, addressed relative to the
+    // page so it resolves against the page's origin on every head (loopback or virtual host).
     try {
-        const response = await fetch(`https://${hostName}/localization/${locale}.json`);
+        const response = await fetch(`localization/${locale}.json`);
         if (response.ok) {
-            const { setStrings } = await import('https://shared.celbridge/celbridge-client/localization.js');
+            const { setStrings } = await import('/assets/celbridge-client/localization.js');
             const strings = await response.json();
             setStrings(strings);
 
@@ -501,8 +494,9 @@ async function initializeEditor() {
 
         await client.initializeDocument({
             onContent: async (content, metadata) => {
-                // Set base URLs for resolving relative paths
-                projectBaseUrl = PROJECT_HOST_URL;
+                // Set base URLs for resolving relative paths. projectUrl('') yields the project
+                // root for the current head (loopback /project/ or the project virtual host).
+                projectBaseUrl = projectUrl('');
                 const resourceKey = metadata?.resourceKey || '';
                 const lastSlash = resourceKey.lastIndexOf('/');
                 documentBaseUrl = lastSlash >= 0
@@ -585,15 +579,18 @@ async function initializeEditor() {
                 } catch (e) {
                     console.error('[Note] Failed to restore state:', e);
                 }
-            },
-            onWritableStateChanged: ({ state }) => {
-                applyReadOnlyState(state !== 'Writable');
             }
         });
     } catch (e) {
         console.error('[Note] Failed to initialize:', e);
     }
 }
+
+client.viewState.onChanged((viewState) => {
+    if (viewState.writable) {
+        applyReadOnlyState(viewState.writable !== 'Writable');
+    }
+});
 
 // Start initialization
 initializeEditor();

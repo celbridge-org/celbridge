@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
+using Celbridge.UserInterface.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
@@ -9,6 +10,16 @@ namespace Celbridge.Explorer.Views;
 public sealed partial class ResourceTree
 {
     private ResourceViewItem? _dragOverItem;
+
+    // Resources being dragged within this ListView. Tracked in a field rather than via the DataPackage's
+    // custom properties because those managed properties do not round-trip to the DragOver/Drop events on
+    // the Uno Skia head (only OS-serialisable formats survive), so the internal-drag path was never
+    // recognised there. Set when an internal drag starts, read during drag-over and drop, and cleared
+    // after an internal drop. External drags are identified by the StorageItems format and checked first,
+    // so a stale value here never affects them. The DataPackage property and the shared
+    // ResourceDragState are also populated so cross-control consumers (e.g. DocumentSection) can
+    // recognise the drag on Windows and on the Skia head respectively.
+    private List<IResource>? _internalDragResources;
 
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
@@ -29,7 +40,9 @@ public sealed partial class ResourceTree
             return;
         }
 
+        _internalDragResources = draggedResources;
         e.Data.Properties["DraggedResources"] = draggedResources;
+        ResourceDragState.Begin(draggedResources);
         e.Data.RequestedOperation = DataPackageOperation.Move;
 
         // Set text for drag visual - show count of items being dragged
@@ -39,6 +52,16 @@ public sealed partial class ResourceTree
             : $"{count} items";
 
         e.Data.Properties.Add(StandardDataFormats.Text, text);
+    }
+
+    private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    {
+        // Clear the internal-drag tracking once the drag ends, including when it is cancelled (Escape, or
+        // release over a surface where Drop never fires). A successful internal drop already cleared these
+        // in ListView_Drop. ResourceDragState.Current is process-wide, so leaving a stale value here could
+        // leak resources into a later, unrelated drag.
+        _internalDragResources = null;
+        ResourceDragState.End();
     }
 
     private void ListView_DragOver(object sender, DragEventArgs e)
@@ -63,8 +86,24 @@ public sealed partial class ResourceTree
 
     private (bool CanDrop, bool IsInternalDrag) EvaluateDropTarget(DragEventArgs e, ResourceViewItem? targetItem)
     {
-        // Check for internal drag (from our ListView)
-        if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
+        // Check for external drag (from File Explorer, etc.) first, identified by the StorageItems
+        // format. Checking it before the internal-drag field means a stale field can never shadow a
+        // real external drag.
+        if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
+        {
+            // External drag - allow drop on folder, file (uses parent), or empty space (project folder).
+            // The dropped item names are not available synchronously here, so the
+            // folder-level policy check covers read-only roots, hidden folders, and
+            // fully-locked folders. The per-item visibility gate enforces the rest
+            // when the transfer runs.
+            var destFolder = ResolveDropTargetFolder(targetItem?.Resource);
+            var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
+            var canDrop = _operationService.CanAddToFolder(destFolderKey).IsSuccess;
+            return (canDrop, IsInternalDrag: false);
+        }
+
+        // Check for internal drag (from our ListView), tracked via the field.
+        if (_internalDragResources is not null)
         {
             // Internal drag - check if target is valid (folder or file)
             var targetIsValid = targetItem?.Resource is IFolderResource or IFileResource;
@@ -74,23 +113,8 @@ public sealed partial class ResourceTree
             }
 
             var destFolder = ResolveDropTargetFolder(targetItem!.Resource);
-            var draggedResources = e.Data.Properties["DraggedResources"] as List<IResource>;
-            var canDrop = CanDropInto(destFolder, draggedResources);
+            var canDrop = CanDropInto(destFolder, _internalDragResources);
             return (canDrop, IsInternalDrag: true);
-        }
-
-        // Check for external drag (from File Explorer, etc.)
-        if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
-        {
-            // External drag - allow drop on folder, file (uses parent), or empty space (project folder).
-            // The dropped item names are not available synchronously here, so the
-            // folder-level policy check covers read-only roots, hidden folders, and
-            // fully-locked folders; the per-item visibility gate enforces the rest
-            // when the transfer runs.
-            var destFolder = ResolveDropTargetFolder(targetItem?.Resource);
-            var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
-            var canDrop = _operationService.CanAddToFolder(destFolderKey).IsSuccess;
-            return (canDrop, IsInternalDrag: false);
         }
 
         return (CanDrop: false, IsInternalDrag: false);
@@ -181,18 +205,20 @@ public sealed partial class ResourceTree
         var dropTargetItem = FindItemAtPosition(position);
         var destFolder = ResolveDropTargetFolder(dropTargetItem?.Resource);
 
-        // Check if this is an internal drag (from our ListView)
-        if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true &&
-            draggedObj is List<IResource> draggedResources)
-        {
-            MoveResourcesToFolder(draggedResources, destFolder);
-            return;
-        }
-
-        // Handle external drop (from file explorer)
+        // Handle external drop (from file explorer) first, identified by the StorageItems format.
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
             _ = ProcessExternalDrop(e.DataView, destFolder);
+            return;
+        }
+
+        // Handle internal drop (from our ListView), tracked via the field.
+        if (_internalDragResources is not null)
+        {
+            var draggedResources = _internalDragResources;
+            _internalDragResources = null;
+            ResourceDragState.End();
+            MoveResourcesToFolder(draggedResources, destFolder);
         }
     }
 
@@ -247,7 +273,7 @@ public sealed partial class ResourceTree
         }
 
         // A lone .cel file drop can only be an intentional creation in the
-        // reserved namespace; refuse it. Multi-item and folder drops pass
+        // reserved namespace. Refuse it. Multi-item and folder drops pass
         // through so the "copy resources from another Celbridge project"
         // workflow still works — any orphan .cel files that arrive surface
         // through the project-check reporter.

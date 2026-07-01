@@ -1,4 +1,5 @@
 using Celbridge.Host;
+using Celbridge.WebHost;
 
 namespace Celbridge.Console.Services;
 
@@ -10,7 +11,6 @@ public static class ConsoleRpcMethods
     // Host to client (outgoing notifications)
     public const string Write = "console/write";
     public const string Focus = "console/focus";
-    public const string SetTheme = "console/setTheme";
     public const string InjectCommand = "console/injectCommand";
 
     // Client to host (incoming notifications)
@@ -65,11 +65,38 @@ public class ConsoleHost : IDisposable
     }
 
     /// <summary>
-    /// Sets the console theme.
+    /// Releases the console's DOM focus when focus moves to another panel.
     /// </summary>
-    public Task SetThemeAsync(string theme)
+    public Task ReleaseFocusAsync()
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(ConsoleRpcMethods.SetTheme, new { theme });
+        return _host.NotifyReleaseFocusAsync();
+    }
+
+    /// <summary>
+    /// Asks the console to run one of its own edit commands (selectAll) in response to a host menu.
+    /// </summary>
+    public Task NotifyPerformEditAsync(string intent)
+    {
+        return _host.NotifyPerformEditAsync(intent);
+    }
+
+    /// <summary>
+    /// Fetches the terminal's current selection text, so the host can write it to the native clipboard
+    /// (the WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView).
+    /// </summary>
+    public Task<string> GetSelectionAsync()
+    {
+        return _host.Rpc.InvokeAsync<string>("console/getSelection");
+    }
+
+    /// <summary>
+    /// Connects the console WebView to the app-state store so it receives the app theme (and future
+    /// app-global state). Returns the connection, which the caller disposes on teardown.
+    /// </summary>
+    public IDisposable RegisterAppState(IWebViewStateService service)
+    {
+        return service.AppState.RegisterConnection(
+            snapshot => _host.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.AppStateChanged, snapshot));
     }
 
     /// <summary>

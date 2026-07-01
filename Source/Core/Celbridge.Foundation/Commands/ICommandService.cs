@@ -30,6 +30,18 @@ public interface ICommandService
     ) where T : IExecutableCommand;
 
     /// <summary>
+    /// Executes a command immediately without enqueuing it, returning a typed result containing the command's ResultValue on success.
+    /// When you use this method, bear in mind that an enqueued command could execute at the same time.
+    /// Command flags have no effect when you use this method.
+    /// </summary>
+    Task<Result<TResult>> ExecuteImmediate<TCommand, TResult>(
+        Action<TCommand>? configure = null,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+        where TCommand : IExecutableCommand<TResult>
+        where TResult : notnull;
+
+    /// <summary>
     /// Enqueue a command for execution, and then wait for it to execute.
     /// Returns the command execution result.
     /// </summary>

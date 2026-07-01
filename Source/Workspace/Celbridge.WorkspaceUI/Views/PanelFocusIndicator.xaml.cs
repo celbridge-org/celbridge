@@ -2,12 +2,11 @@ namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
 /// A focus indicator control that displays a colored bar to indicate panel focus state.
-/// Shows accent color when the associated panel is focused, grey otherwise.
 /// </summary>
 public sealed partial class PanelFocusIndicator : UserControl
 {
     private readonly IMessengerService _messengerService;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
 
     /// <summary>
     /// The panel this indicator is associated with.
@@ -38,7 +37,7 @@ public sealed partial class PanelFocusIndicator : UserControl
         this.InitializeComponent();
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         Loaded += PanelFocusIndicator_Loaded;
         Unloaded += PanelFocusIndicator_Unloaded;
@@ -62,7 +61,7 @@ public sealed partial class PanelFocusIndicator : UserControl
 
     private void UpdateIndicator()
     {
-        var isFocused = _panelFocusService.FocusedPanel == Panel;
+        var isFocused = _focusService.FocusedPanel == Panel;
         IndicatorBorder.Opacity = isFocused ? 1.0 : 0.0;
     }
 }

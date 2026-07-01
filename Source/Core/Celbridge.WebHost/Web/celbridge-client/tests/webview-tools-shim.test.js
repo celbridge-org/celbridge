@@ -27,7 +27,7 @@ function runShim(hostname) {
 // Build a JSDOM-backed VM context so the shim can run against a real DOM,
 // console, and window. The handlers (getHtml, query, inspect, flushConsole)
 // are exercised end-to-end against this context.
-function runShimInDom(html, hostname = 'project.celbridge') {
+function runShimInDom(html, hostname = '127.0.0.1') {
     const dom = new JSDOM(html, { url: `https://${hostname}/` });
     const context = {
         Symbol,
@@ -63,12 +63,12 @@ describe('webview-tools-shim install', () => {
         expect(context[BRIDGE_KEY]).toBeUndefined();
     });
 
-    it('installs the bridge on project.celbridge', () => {
-        const context = runShim('project.celbridge');
+    it('installs the bridge on the loopback origin', () => {
+        const context = runShim('127.0.0.1');
         expect(context[BRIDGE_KEY]).toBeDefined();
     });
 
-    it('installs the bridge on a package virtual host', () => {
+    it('installs the bridge on a synthetic-origin .celbridge host', () => {
         const context = runShim('my-package.celbridge');
         expect(context[BRIDGE_KEY]).toBeDefined();
     });
@@ -81,7 +81,7 @@ describe('webview-tools-shim install', () => {
     });
 
     it('installed bridge exposes registerHandler, getHandler, and invoke', () => {
-        const context = runShim('project.celbridge');
+        const context = runShim('127.0.0.1');
         const bridge = context[BRIDGE_KEY];
 
         const handler = () => 'result';

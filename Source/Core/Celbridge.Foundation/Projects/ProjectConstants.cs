@@ -22,7 +22,7 @@ public static class ProjectConstants
 
     /// <summary>
     /// Sub-folder of .celbridge/ that backs the temp: virtual root. Wiped on
-    /// workspace load; consumers needing persistence write under project:.
+    /// workspace load.
     /// </summary>
     public const string TempFolder = "temp";
 
@@ -37,8 +37,9 @@ public static class ProjectConstants
     public const string TrashFolder = "trash";
 
     /// <summary>
-    /// Sub-folder of .celbridge/ that holds the Python fingerprint and the
-    /// IPython profile data.
+    /// Sub-folder of .celbridge/ that holds this project's Python environment: uv's
+    /// package cache and interpreter installs, the tool install, the IPython profile,
+    /// and the config fingerprint.
     /// </summary>
     public const string PythonFolder = "python";
 

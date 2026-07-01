@@ -4,10 +4,6 @@
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
-if (!window.isWebView) {
-    console.log('Not running in WebView, skipping client initialization');
-}
-
 const client = celbridge;
 
 let designer = null;
@@ -188,7 +184,7 @@ function listenForChanges() {
         client.document.notifyChanged();
     });
 
-    // ActiveSheetChanged is workbook-scoped and survives spread.import();
+    // ActiveSheetChanged is workbook-scoped and survives spread.import().
     // SelectionChanged is per-sheet and gets dropped on import, so it's
     // re-bound from bindSheetEvents.
     workbook.bind(GC.Spread.Sheets.Events.ActiveSheetChanged, () => {
@@ -284,12 +280,18 @@ function initializeSpreadsheet() {
 
 async function initializeEditor() {
     try {
+        // Resolve the host capability context before initializeSpreadsheet reads the
+        // SpreadJS license keys from client.secrets. On the Skia head the context arrives
+        // over the bridge (host/getContext), so the secrets are empty until ready()
+        // resolves. The packaged WinUI head resolves immediately from the injected global.
+        await client.ready();
+
         const ready = initializeSpreadsheet();
         if (!ready) {
             // Still complete the document handshake so the host's load flow
             // doesn't hang waiting for onContent/notifyImportComplete. The
             // WebView either shows an empty gc-designer-container or SpreadJS's
-            // own rejection dialog; either way we refuse to accept content
+            // own rejection dialog. Either way we refuse to accept content
             // or produce saves.
             await client.initializeDocument({
                 onContent: async () => {
@@ -302,14 +304,16 @@ async function initializeEditor() {
                     client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
                 },
                 onRequestState: () => null,
-                onRestoreState: () => {},
-                // No designer to protect, but the bridge contract still
-                // requires an explicit handler so the editor-unavailable
-                // path matches the live-editor path.
-                onWritableStateChanged: () => {}
+                onRestoreState: () => {}
             });
             return;
         }
+
+        client.viewState.onChanged((viewState) => {
+            if (viewState.writable) {
+                applyWritableState(viewState.writable);
+            }
+        });
 
         await client.initializeDocument({
             onContent: async (content) => {
@@ -345,7 +349,7 @@ async function initializeEditor() {
                 // is still settling and showRow/showColumn calls from it do not take effect.
                 //
                 // The host passes preserveViewState=true for watcher-driven reloads and for
-                // data-changing commands; view-changing commands like set_active_view set
+                // data-changing commands. View-changing commands like set_active_view set
                 // preserveViewState=false so disk's selection and scroll win.
                 const preserveView = args?.preserveViewState ?? true;
                 const savedViewState = captureViewState();
@@ -369,9 +373,6 @@ async function initializeEditor() {
                 } catch (e) {
                     console.warn('[Spreadsheet] Failed to restore view state:', e);
                 }
-            },
-            onWritableStateChanged: ({ state }) => {
-                applyWritableState(state);
             }
         });
     } catch (e) {

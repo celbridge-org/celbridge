@@ -32,8 +32,8 @@
         
         <local:ExplorerToolbar x:Name="ExplorerToolbar"
                                VerticalAlignment="Center"
-                               AddFileClicked="ExplorerToolbar_AddFileClicked"
-                               AddFolderClicked="ExplorerToolbar_AddFolderClicked"
+                               NewFileClicked="ExplorerToolbar_NewFileClicked"
+                               NewFolderClicked="ExplorerToolbar_NewFolderClicked"
                                CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
 
       </controls:PanelHeader.ToolbarContent>

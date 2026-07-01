@@ -18,7 +18,7 @@ public partial class ExplorerTools
 
         if (showDialog)
         {
-            var dialogResult = await ExecuteCommandAsync<IAddResourceDialogCommand>(command =>
+            var dialogResult = await ExecuteCommandAsync<ICreateResourceDialogCommand>(command =>
             {
                 command.ResourceType = ResourceType.File;
                 command.DestFolderResource = resourceKey;
@@ -31,14 +31,14 @@ public partial class ExplorerTools
             return ToolResponse.Success("ok");
         }
 
-        var addResult = await ExecuteCommandAsync<IAddResourceCommand>(command =>
+        var createResult = await ExecuteCommandAsync<ICreateResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.DestResource = resourceKey;
         });
-        if (addResult.IsFailure)
+        if (createResult.IsFailure)
         {
-            return ToolResponse.Error(addResult);
+            return ToolResponse.Error(createResult);
         }
 
         return ToolResponse.Success("ok");

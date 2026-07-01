@@ -1,5 +1,6 @@
 using Celbridge.ContextMenu;
 using Celbridge.Logging;
+using Celbridge.UserInterface.Views.Controls;
 
 namespace Celbridge.UserInterface.ContextMenu;
 
@@ -61,9 +62,9 @@ public class MenuBuilder<TContext> : IMenuBuilder<TContext> where TContext : IMe
             };
 
             // Add icon if specified
-            if (!string.IsNullOrEmpty(item.DisplayInfo.IconGlyph))
+            if (item.DisplayInfo.Icon is IconSymbol iconSymbol)
             {
-                menuItem.Icon = new FontIcon { Glyph = item.DisplayInfo.IconGlyph };
+                menuItem.Icon = new Icon { Symbol = iconSymbol };
             }
 
             // Wire up click handler

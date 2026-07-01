@@ -62,9 +62,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
-        //
-        // Set the data context
-        //
         this.DataContext = ViewModel;
 
         // Wire up section container events
@@ -187,8 +184,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
-        // Listen for window mode changes to show/hide tab strip in Presenter mode
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+        // Listen for layout mode changes to show/hide the tab strip in Presentation mode
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
         // Listen for document view focus to update active document
         _messengerService.Register<DocumentViewFocusedMessage>(this, OnDocumentViewFocused);
@@ -196,8 +193,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for layout reset requests to reset section count
         _messengerService.Register<ResetLayoutRequestedMessage>(this, OnResetLayoutRequested);
 
-        // Apply initial tab strip visibility based on current window mode
-        UpdateTabStripVisibility(_windowModeService.WindowMode);
+        // Apply initial tab strip visibility based on the current layout mode
+        UpdateTabStripVisibility(_windowModeService.LayoutMode);
     }
 
     private void OnDocumentViewFocused(object recipient, DocumentViewFocusedMessage message)
@@ -238,16 +235,36 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
-        UpdateTabStripVisibility(message.WindowMode);
+        UpdateTabStripVisibility(message.LayoutMode);
+
+        // Entering a mode that hides the side panels can leave keyboard focus on a now-hidden panel
+        // (e.g. the Explorer), which stops app shortcuts like F11 from being delivered until the user
+        // clicks back into the content. Move focus to the active document's editor so the shortcuts
+        // keep working. The Default layout keeps the panels, so its focus is unaffected.
+        if (message.LayoutMode == LayoutMode.Focus ||
+            message.LayoutMode == LayoutMode.Presentation)
+        {
+            FocusActiveDocument();
+        }
     }
 
-    private void UpdateTabStripVisibility(WindowMode windowMode)
+    private void FocusActiveDocument()
     {
-        // In Presenter mode, hide the tab strip and toolbar to show only the document content
-        // In all other modes, show the tab strip and toolbar
-        bool showTabStrip = windowMode != WindowMode.Presenter;
+        // Defer so focus is set after the panels have collapsed and layout has settled.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var webView = VisualTreeHelperEx.FindDescendant<WebView2>(SectionContainer);
+            webView?.Focus(FocusState.Programmatic);
+        });
+    }
+
+    private void UpdateTabStripVisibility(LayoutMode layoutMode)
+    {
+        // In Presentation mode, hide the tab strip and toolbar to show only the document content.
+        // In all other modes, show the tab strip and toolbar.
+        bool showTabStrip = layoutMode != LayoutMode.Presentation;
         SectionContainer.UpdateTabStripVisibility(showTabStrip);
         DocumentToolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -688,7 +705,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // Clean up the old DocumentView state
             await oldDocumentView.PrepareToClose();
 
-            // Resource (and possibly extension) changed; refresh content and label.
+            // Resource (and possibly extension) changed. Refresh content and label.
             documentTab.ViewModel.DocumentView = newDocumentView;
             documentTab.Content = newDocumentView;
             UpdateEditorDisplayName(documentTab, newDocumentView.EditorId);

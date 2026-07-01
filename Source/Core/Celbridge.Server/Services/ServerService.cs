@@ -1,3 +1,4 @@
+using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -23,6 +24,7 @@ public class ServerService : IServerService, IDisposable
     private readonly IServiceProvider _applicationServices;
     private readonly IFeatureFlags _featureFlags;
     private readonly AgentMonitor _agentMonitor;
+    private readonly IHostChannelBroker _hostChannelBroker;
     private readonly ILogger<ServerService> _logger;
 
     private WebApplication? _webApplication;
@@ -41,6 +43,7 @@ public class ServerService : IServerService, IDisposable
         IServiceProvider applicationServices,
         IFeatureFlags featureFlags,
         AgentMonitor agentMonitor,
+        IHostChannelBroker hostChannelBroker,
         ILogger<ServerService> logger)
     {
         _agentServer = agentServer;
@@ -50,17 +53,20 @@ public class ServerService : IServerService, IDisposable
         _applicationServices = applicationServices;
         _featureFlags = featureFlags;
         _agentMonitor = agentMonitor;
+        _hostChannelBroker = hostChannelBroker;
         _logger = logger;
     }
 
     public async Task StartAsync()
     {
-        if (!_featureFlags.IsEnabled(FeatureFlagConstants.McpTools))
-        {
-            Status = ServerStatus.Ready;
-            _logger.LogInformation("MCP tools disabled by feature flag. Server will not start.");
-            return;
-        }
+        var mcpToolsEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools);
+
+        // The loopback file server hosts all WebView editor content (the /project/, /assets/, and
+        // /package/ routes) on every head: SetVirtualHostNameToFolderMapping is a no-op on the macOS
+        // Skia head, and the bundled editors are addressed root-relative against the loopback origin
+        // on all heads. The server is therefore a hard dependency for every WebView, independent of
+        // the MCP tools flag, and always starts once a project is loaded. The MCP tools flag only
+        // gates the agent endpoints registered further down.
 
         if (_webApplication is not null)
         {
@@ -89,22 +95,34 @@ public class ServerService : IServerService, IDisposable
                 : $"http://127.0.0.1:{_persistentPort}";
             builder.WebHost.UseUrls(bindUrl);
 
-            // Make the main application's services available to MCP tool classes.
-            // Tools take IApplicationServiceProvider and resolve what they need.
-            var applicationServiceProvider = new ApplicationServiceProvider(_applicationServices);
-            builder.Services.AddSingleton<IApplicationServiceProvider>(applicationServiceProvider);
-
-            // Let AgentServer register MCP SDK services
             var agentServer = (AgentServer)_agentServer;
-            agentServer.ConfigureServices(builder.Services);
+            if (mcpToolsEnabled)
+            {
+                // Make the main application's services available to MCP tool classes.
+                // Tools take IApplicationServiceProvider and resolve what they need.
+                var applicationServiceProvider = new ApplicationServiceProvider(_applicationServices);
+                builder.Services.AddSingleton<IApplicationServiceProvider>(applicationServiceProvider);
+
+                // Let AgentServer register MCP SDK services
+                agentServer.ConfigureServices(builder.Services);
+            }
 
             _webApplication = builder.Build();
 
+            // The JSON-RPC host bridge runs over a WebSocket on this server, so the WebSocket
+            // middleware must be in the pipeline.
+            _webApplication.UseWebSockets();
+
             // Let AgentServer and FileServer configure their endpoints
-            agentServer.ConfigureEndpoints(_webApplication);
+            if (mcpToolsEnabled)
+            {
+                agentServer.ConfigureEndpoints(_webApplication);
+            }
 
             var fileServer = (FileServer)_fileServer;
             fileServer.ConfigureEndpoints(_webApplication);
+
+            HostChannelEndpoint.Map(_webApplication, _hostChannelBroker);
 
             await _webApplication.StartAsync();
 
@@ -122,6 +140,11 @@ public class ServerService : IServerService, IDisposable
             }
 
             _fileServer.Enable(currentProject.ProjectFolderPath, Port);
+
+            // Serve the app-bundled web assets (celbridge-client JS, bootstrap-icons, cascadia-mono)
+            // at /assets/.
+            var sharedAssetsFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
+            _fileServer.RegisterAssetsFolder(sharedAssetsFolder);
 
             Status = ServerStatus.Ready;
             _logger.LogInformation("Server started on port {Port}", Port);

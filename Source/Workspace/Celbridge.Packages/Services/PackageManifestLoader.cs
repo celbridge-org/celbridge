@@ -45,24 +45,19 @@ public static class PackageManifestLoader
     private const string CodeDocumentType = "code";
     private const string GeneralPriorityValue = "general";
     private const string DefaultEntryPoint = "index.html";
-    private const string PackageHostPrefix = "pkg-";
-    private const string HostSuffix = ".celbridge";
 
     private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
 
     /// <summary>
     /// Loads a package from a package.toml file, including all referenced document editor contributions.
-    /// hostNameOverride, when non-null, replaces the default package-name-derived virtual host name.
-    /// secrets, when non-empty, populates PackageInfo.Secrets for WebView injection.
-    /// devToolsBlocked, when true, permanently disables DevTools on WebViews hosting this package.
-    /// origin tags the resulting PackageInfo so downstream read sites can pick the right IO path.
-    /// reader is the file-read primitive used for every byte the loader pulls; when null a
-    /// DirectPackageReader is used, which preserves the legacy direct-disk behaviour for
-    /// callers (tests, bundled discovery) that have no IResourceFileSystem to route through.
+    /// secrets populates PackageInfo.Secrets for WebView injection.
+    /// devToolsBlocked permanently disables DevTools on the package's WebViews.
+    /// origin tags PackageInfo so downstream read sites pick the right IO path.
+    /// reader is the file-read primitive. Null selects DirectPackageReader (direct disk), the legacy
+    /// behaviour for callers (tests, bundled discovery) with no IResourceFileSystem to route through.
     /// </summary>
     public static Result<Package> LoadPackage(
         string packageTomlPath,
-        string? hostNameOverride = null,
         IReadOnlyDictionary<string, string>? secrets = null,
         bool devToolsBlocked = false,
         PackageOrigin origin = PackageOrigin.Bundled,
@@ -113,15 +108,6 @@ public static class PackageManifestLoader
             var packageTitle = GetString(packageTable, TitleKey);
             var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
-            var safeName = packageName.Replace('.', '-');
-            var defaultHostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
-
-            // Bundled packages may pin the virtual host name via the C#-side
-            // BundledPackageDescriptor (e.g. SpreadJS licensing requires `spreadjs.celbridge`).
-            // The override is deliberately not surfaced in package.toml so that non-bundled
-            // packages cannot impersonate a bundled host.
-            var hostName = !string.IsNullOrEmpty(hostNameOverride) ? hostNameOverride : defaultHostName;
-
             var permittedTools = Array.Empty<string>() as IReadOnlyList<string>;
             if (root.TryGetValue(PermissionsSection, out var permissionsObject) &&
                 permissionsObject is TomlTable permissionsTable)
@@ -137,7 +123,6 @@ public static class PackageManifestLoader
                 Title = packageTitle,
                 FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,
-                HostName = hostName,
                 PermittedTools = permittedTools,
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,

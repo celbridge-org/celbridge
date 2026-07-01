@@ -10,8 +10,7 @@ public class Program
         var host = UnoPlatformHostBuilder.Create()
             .App(() => new App())
             .UseX11()
-            .UseLinuxFrameBuffer()
-//            .UseMacOS()
+            .UseMacOS()
             .UseWin32()
             .Build();
 

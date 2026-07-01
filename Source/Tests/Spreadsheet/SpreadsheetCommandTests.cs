@@ -1407,7 +1407,10 @@ public class SpreadsheetCommandTests
 
         using var workbook = new XLWorkbook(_workbookPath);
         var sheet = workbook.Worksheet("Data");
-        sheet.Column("A").Width.Should().Be(workbook.ColumnWidth);
+        // BeApproximately, not Be: ClosedXML's default width (8.38) is not exactly representable as a
+        // double, so the round-trip through the reset can differ by a floating-point epsilon. The exact
+        // comparison passes on Windows but fails on macOS, where the rounding lands differently.
+        sheet.Column("A").Width.Should().BeApproximately(workbook.ColumnWidth, 1e-9);
     }
 
     [Test]
@@ -1436,7 +1439,8 @@ public class SpreadsheetCommandTests
 
         using var workbook = new XLWorkbook(_workbookPath);
         var sheet = workbook.Worksheet("Data");
-        sheet.Row(1).Height.Should().Be(workbook.RowHeight);
+        // BeApproximately for the same floating-point reason as the column-width reset assertion above.
+        sheet.Row(1).Height.Should().BeApproximately(workbook.RowHeight, 1e-9);
     }
 
     [Test]
@@ -1690,7 +1694,7 @@ public class SpreadsheetCommandTests
         //   set_active_view("Summary", range="B2:D4", activeCell="C3", topLeftCell="A1")
         //   get_active_view -> {sheet:"Summary", range:"B2:D4", activeCell:"C3", topLeftCell:"A1"}
         // ClosedXML omits topLeftCell from OOXML when it equals the A1 default and
-        // returns a zeroed address on reload; the reader treats that as "A1".
+        // returns a zeroed address on reload. The reader treats that as "A1".
         CreateWorkbook(workbook =>
         {
             workbook.Worksheets.Add("Sheet1");
@@ -2513,7 +2517,7 @@ public class SpreadsheetCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        // B2 (value) and C3 (formatting-only) both count; D4 was already default.
+        // B2 (value) and C3 (formatting-only) both count. D4 was already default.
         command.ResultValue.CellCount.Should().Be(2);
 
         using var workbook = new XLWorkbook(_workbookPath);

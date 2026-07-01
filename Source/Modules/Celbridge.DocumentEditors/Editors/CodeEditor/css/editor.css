@@ -42,6 +42,14 @@ html, body {
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
+    /* Hidden until first content arrives so the user never sees an empty Monaco buffer
+       before the host's initialize round-trip completes. main.js toggles .is-loaded. */
+    opacity: 0;
+    transition: opacity 0.1s ease-in;
+}
+
+#split-root.is-loaded {
+    opacity: 1;
 }
 
 #editor-pane {

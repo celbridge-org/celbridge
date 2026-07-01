@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Platform;
 using Celbridge.Projects;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -15,7 +16,8 @@ public partial class ExplorerPanelViewModel : ObservableObject
 
     public ExplorerPanelViewModel(
         IProjectService projectService,
-        ICommandService commandService)
+        ICommandService commandService,
+        IPlatformInfo platformInfo)
     {
         _commandService = commandService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
@@ -24,12 +26,15 @@ public partial class ExplorerPanelViewModel : ObservableObject
         // acquire a reference via the ProjectService.
         var project = projectService.CurrentProject!;
 
-        // On Windows, the project title will be shown in the custom title bar. On other platforms, currently, it will not, so continue to show it on the explorer top banner.
-        //  Note : This behaviour is likely to change once we visit how the title bar may work on Mac and Linux.
-#if WINDOWS
-        TitleText = _stringLocalizer.GetString("ExplorerPanel_Title");
-#else
-        TitleText = project.ProjectName;
-#endif
+        // When the host chrome (the custom title bar) shows the project name, the banner shows a generic
+        // title instead of duplicating it. Otherwise the banner carries the project name.
+        if (platformInfo.HostShowsProjectTitleInChrome)
+        {
+            TitleText = _stringLocalizer.GetString("ExplorerPanel_Title");
+        }
+        else
+        {
+            TitleText = project.ProjectName;
+        }
     }
 }

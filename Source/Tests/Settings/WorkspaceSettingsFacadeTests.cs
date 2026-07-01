@@ -65,7 +65,7 @@ public class WorkspaceSettingsFacadeTests
         var settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
             new FakeSettingsStore(),
-            new FakeCredentialProtector(),
+            new FakeCredentialStore(),
             workspaceWrapper);
 
         var facade = new BindableWorkspaceSettings(settingsService);
@@ -136,7 +136,7 @@ public class WorkspaceSettingsFacadeTests
         var settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
             new FakeSettingsStore(),
-            new FakeCredentialProtector(),
+            new FakeCredentialStore(),
             workspaceWrapper);
 
         var facade = new BindableWorkspaceSettings(settingsService);

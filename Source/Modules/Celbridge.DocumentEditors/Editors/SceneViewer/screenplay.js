@@ -1,13 +1,8 @@
 // Screenplay viewer initialization for Celbridge WebView integration.
 // Uses celbridge.js for JSON-RPC communication with the host.
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
-
-// Only proceed if running in WebView
-if (!window.isWebView) {
-    console.log('Not running in WebView, skipping client initialization');
-}
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 
 const client = celbridge;
 
@@ -17,9 +12,10 @@ function applyTheme(theme) {
     document.body.className = isDark ? 'theme-dark' : 'theme-light';
 }
 
-// Listen for theme changes
-client.theme.onChanged((theme) => {
-    applyTheme(theme);
+client.appState.onChanged((appState) => {
+    if (appState.theme) {
+        applyTheme(appState.theme);
+    }
 });
 
 // Initialize the editor
@@ -30,9 +26,6 @@ async function initializeEditor() {
 
         await client.initializeDocument({
             onContent: (content) => {
-                // Apply initial theme
-                applyTheme(client.theme.current);
-
                 // Set the screenplay content
                 document.getElementById('screenplay-container').innerHTML = content;
             },
@@ -48,12 +41,7 @@ async function initializeEditor() {
                 // editor state to preserve, but emitting the signal keeps the reload contract
                 // uniform across editors and avoids the framework's 5s timeout.
                 client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
-            },
-            // Screenplay is a read-only presentation layer with no edit mode,
-            // so writable-state changes have nothing to apply. The explicit
-            // no-op locks in the read-only contract: a future edit-mode
-            // addition has to deliberately remove this handler.
-            onWritableStateChanged: () => {}
+            }
         });
     } catch (e) {
         console.error('[Screenplay] Failed to initialize:', e);

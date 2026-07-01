@@ -40,6 +40,7 @@
     <ProjectReference Include="..\Workspace\Celbridge.Packages\Celbridge.Packages.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
+    <ProjectReference Include="..\Workspace\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -36,12 +36,12 @@ public class InspectCommandTests
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
+        var iconService = new IconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService),
             ResourceClassifierTestHelper.BuildClassifier(),
             _rootHandlerRegistry,
             TestFileSystem.CreateLocal());
@@ -199,7 +199,7 @@ public class InspectCommandTests
     [Test]
     public async Task OrphanSidecar_ReportsOrphanAgainstSidecarKey()
     {
-        // Parent png is absent; only the orphan sidecar exists.
+        // Parent png is absent. Only the orphan sidecar exists.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "_tags = [\"orphan\"]\n");
         (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
@@ -296,7 +296,7 @@ public class InspectCommandTests
         // Regression: PathGlobToRegex produces a regex anchored to the bare
         // path ("foo/bar.md"), not the canonical "project:foo/bar.md" form.
         // Matching against entry.Resource.ToString() left path-anchored
-        // patterns returning empty; switching to entry.Resource.Path fixes it.
+        // patterns returning empty. Switching to entry.Resource.Path fixes it.
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "scoped"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "scoped", "a.md"), "A.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "scoped", "b.md"), "B.\n");

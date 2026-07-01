@@ -1,13 +1,10 @@
 // File viewer initialization for Celbridge WebView integration.
-// Renders an image, audio, video, or PDF file by loading it from the
-// project virtual host.
+// Renders an image, audio, video, or PDF file by loading it from the file server.
+// Served over the loopback file server, so the shared client is addressed root-relative
+// under /assets/ (resolved against the page's own loopback origin).
 
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason, projectUrl } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
-
-if (!window.isWebView) {
-    console.log('Not running in WebView, skipping client initialization');
-}
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
 
 const client = celbridge;
 
@@ -21,8 +18,10 @@ function applyTheme(theme) {
     document.body.className = isDark ? 'theme-dark' : 'theme-light';
 }
 
-client.theme.onChanged((theme) => {
-    applyTheme(theme);
+client.appState.onChanged((appState) => {
+    if (appState.theme) {
+        applyTheme(appState.theme);
+    }
 });
 
 function getExtension(fileName) {
@@ -81,7 +80,6 @@ async function initializeEditor() {
     try {
         await client.initializeDocument({
             onContent: (_content, metadata) => {
-                applyTheme(client.theme.current);
                 renderFile(metadata);
             },
             onExternalChange: async () => {
@@ -93,13 +91,7 @@ async function initializeEditor() {
                 }
 
                 client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
-            },
-            // The file viewer is a read-only presentation layer with no edit
-            // mode, so writable-state changes have nothing to apply. Register
-            // an explicit no-op so adding edit affordances later forces a
-            // deliberate removal of this handler, surfacing the read-only
-            // contract in code review.
-            onWritableStateChanged: () => {}
+            }
         });
     } catch (e) {
         console.error('[FileViewer] Failed to initialize:', e);

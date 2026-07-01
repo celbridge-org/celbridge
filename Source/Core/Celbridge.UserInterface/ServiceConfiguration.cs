@@ -4,6 +4,7 @@ using Celbridge.Forms;
 using Celbridge.Localization;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Commands;
+using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.Services.Forms;
@@ -25,7 +26,7 @@ public static class ServiceConfiguration
         services.AddSingleton<ILocalizerService, LocalizerService>();
         services.AddSingleton<IDialogFactory, DialogFactory>();
         services.AddSingleton<INavigationService, NavigationService>();
-        services.AddSingleton<IFileIconService, FileIconService>();
+        services.AddSingleton<IIconService, IconService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
@@ -42,10 +43,11 @@ public static class ServiceConfiguration
         services.AddSingleton<IWindowModeService>(sp => sp.GetRequiredService<LayoutManager>());
         services.AddSingleton<ILayoutService>(sp => sp.GetRequiredService<LayoutManager>());
 
-#if WINDOWS
-        // Register WindowStateHelper for Windows platform only
+        // Window state management runs on both the packaged WinUI head and the Skia desktop head
+        // via the cross-platform Microsoft.UI.Windowing APIs.
         services.AddSingleton<Helpers.WindowStateHelper>();
-#endif
+
+        PlatformServiceConfiguration.ConfigureServices(services);
 
         //
         // Register commands
@@ -72,7 +74,7 @@ public static class ServiceConfiguration
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
         services.AddTransient<SecretInputDialogViewModel>();
-        services.AddTransient<AddFileDialogViewModel>();
+        services.AddTransient<NewFileDialogViewModel>();
         services.AddTransient<ResourcePickerDialogViewModel>();
         services.AddTransient<StackPanelElement>();
         services.AddTransient<TextBoxElement>();

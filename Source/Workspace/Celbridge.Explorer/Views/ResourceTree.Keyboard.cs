@@ -1,36 +1,140 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
-using Microsoft.UI.Input;
+using Celbridge.UserInterface.Helpers;
+using Celbridge.Workspace;
 using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.Explorer.Views;
 
-public sealed partial class ResourceTree
+public sealed partial class ResourceTree : IEditTarget
 {
     private void ListView_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            .HasFlag(CoreVirtualKeyStates.Down);
+        // Standard edit verbs route to the focus service's active target (this tree) so the keyboard,
+        // the macOS Edit menu, and the in-window menu all share one path.
+        var intent = ResolveEditIntent(e.Key);
+        if (intent is not null)
+        {
+            if (CanPerformEdit(intent.Value))
+            {
+                PerformIntent(intent.Value);
+                e.Handled = true;
+            }
 
+            return;
+        }
+
+        if (EditKeyboard.IsCommandModifierDown())
+        {
+            return;
+        }
+
+        // Tree navigation is Explorer-specific and stays local.
+        var selectedItem = ViewModel.SelectedItem;
+
+        e.Handled = e.Key switch
+        {
+            VirtualKey.Right => HandleExpand(selectedItem),
+            VirtualKey.Left => HandleCollapse(selectedItem),
+            VirtualKey.Enter => HandleOpen(selectedItem),
+            VirtualKey.Escape => HandleClearSelection(),
+            _ => false
+        };
+    }
+
+    public bool CanPerformEdit(EditIntent intent)
+    {
+        var selectedItem = ViewModel.SelectedItem;
+
+        return intent switch
+        {
+            EditIntent.Copy => ViewModel.GetSelectedResources().Count > 0,
+            EditIntent.Cut => ViewModel.GetSelectedResources().Count > 0,
+            EditIntent.Delete => ViewModel.GetSelectedResources().Count > 0,
+            EditIntent.Paste => true,
+            EditIntent.SelectAll => true,
+            EditIntent.Duplicate => selectedItem is not null && !selectedItem.IsProjectFolder,
+            EditIntent.Rename => selectedItem is not null && !selectedItem.IsProjectFolder,
+            _ => false
+        };
+    }
+
+    public void PerformEdit(EditIntent intent)
+    {
         var selectedItem = ViewModel.SelectedItem;
         var selectedResources = ViewModel.GetSelectedResources();
 
-        e.Handled = (ctrl, e.Key) switch
+        switch (intent)
         {
-            (false, VirtualKey.Delete) => HandleDelete(selectedResources),
-            (false, VirtualKey.F2) => HandleRename(selectedItem),
-            (false, VirtualKey.Right) => HandleExpand(selectedItem),
-            (false, VirtualKey.Left) => HandleCollapse(selectedItem),
-            (false, VirtualKey.Enter) => HandleOpen(selectedItem),
-            (false, VirtualKey.Escape) => HandleClearSelection(),
-            (true, VirtualKey.A) => HandleSelectAll(selectedItem),
-            (true, VirtualKey.D) => HandleDuplicate(selectedItem),
-            (true, VirtualKey.C) => HandleCopy(selectedResources),
-            (true, VirtualKey.X) => HandleCut(selectedResources),
-            (true, VirtualKey.V) => HandlePaste(selectedItem),
-            _ => false
+            case EditIntent.Copy:
+                HandleCopy(selectedResources);
+                break;
+
+            case EditIntent.Cut:
+                HandleCut(selectedResources);
+                break;
+
+            case EditIntent.Paste:
+                HandlePaste(selectedItem);
+                break;
+
+            case EditIntent.SelectAll:
+                HandleSelectAll(selectedItem);
+                break;
+
+            case EditIntent.Delete:
+                HandleDelete(selectedResources);
+                break;
+
+            case EditIntent.Duplicate:
+                HandleDuplicate(selectedItem);
+                break;
+
+            case EditIntent.Rename:
+                HandleRename(selectedItem);
+                break;
+        }
+    }
+
+    private static EditIntent? ResolveEditIntent(VirtualKey key)
+    {
+        if (!EditKeyboard.IsCommandModifierDown())
+        {
+            if (EditKeyboard.IsDeleteKey(key))
+            {
+                return EditIntent.Delete;
+            }
+
+            if (key == VirtualKey.F2)
+            {
+                return EditIntent.Rename;
+            }
+
+            return null;
+        }
+
+        if (EditKeyboard.IsShiftDown())
+        {
+            return null;
+        }
+
+        return key switch
+        {
+            VirtualKey.A => EditIntent.SelectAll,
+            VirtualKey.D => EditIntent.Duplicate,
+            VirtualKey.C => EditIntent.Copy,
+            VirtualKey.X => EditIntent.Cut,
+            VirtualKey.V => EditIntent.Paste,
+            _ => null
         };
+    }
+
+    private void PerformIntent(EditIntent intent)
+    {
+        _commandService.Execute<IPerformEditCommand>(command =>
+        {
+            command.Intent = intent;
+        });
     }
 
     private bool HandleDelete(List<IResource> selectedResources)
@@ -71,6 +175,7 @@ public sealed partial class ResourceTree
         }
 
         ViewModel.ExpandItem(selectedItem);
+        RestoreFocusToSelectedItem();
         return true;
     }
 
@@ -84,10 +189,17 @@ public sealed partial class ResourceTree
         if (selectedItem.IsFolder && selectedItem.IsExpanded)
         {
             ViewModel.CollapseItem(selectedItem);
+            RestoreFocusToSelectedItem();
             return true;
         }
 
-        return ViewModel.SelectParentFolder();
+        if (ViewModel.SelectParentFolder())
+        {
+            RestoreFocusToSelectedItem();
+            return true;
+        }
+
+        return false;
     }
 
     private bool HandleOpen(ResourceViewItem? selectedItem)
@@ -99,6 +211,28 @@ public sealed partial class ResourceTree
 
         OpenResource(selectedItem);
         return true;
+    }
+
+    // Expand/collapse rebuilds the tree, replacing every ListView container and discarding keyboard focus,
+    // which leaves subsequent arrow keys with no target. Re-focus the anchor item's new container once the
+    // rebuild has regenerated it, so keyboard navigation continues.
+    private void RestoreFocusToSelectedItem()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var item = ViewModel.SelectedItem;
+            if (item is null)
+            {
+                return;
+            }
+
+            ResourceListView.ScrollIntoView(item);
+
+            if (ResourceListView.ContainerFromItem(item) is ListViewItem container)
+            {
+                container.Focus(FocusState.Programmatic);
+            }
+        });
     }
 
     private bool HandleClearSelection()

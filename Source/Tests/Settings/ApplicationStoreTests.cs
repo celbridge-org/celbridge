@@ -9,7 +9,7 @@ namespace Celbridge.Tests.Settings;
 /// Covers the deferred, gateway-backed Application settings store: round-trip
 /// through a fresh load after flush, deferred durability (a write is lost without
 /// a flush, survives with), removal, and tolerance of a corrupt or missing file.
-/// Folder resolution is exercised through the static path helper.
+/// Settings file placement is exercised through the static path helper.
 /// </summary>
 [TestFixture]
 public class ApplicationStoreTests
@@ -137,12 +137,11 @@ public class ApplicationStoreTests
     }
 
     [Test]
-    public void ResolveDefaultFilePath_ReturnsSettingsFileInPerUserFolder()
+    public void ResolveDefaultFilePath_PlacesSettingsFileInTheGivenFolder()
     {
-        var path = ApplicationStore.ResolveDefaultFilePath();
+        var path = ApplicationStore.ResolveDefaultFilePath(_folderPath);
 
-        path.Should().NotBeNullOrWhiteSpace();
-        Path.IsPathRooted(path).Should().BeTrue();
+        path.Should().Be(Path.Combine(_folderPath, "settings.json"));
         Path.GetFileName(path).Should().Be("settings.json");
     }
 }

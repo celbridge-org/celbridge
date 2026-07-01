@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -21,6 +22,14 @@ public sealed partial class LayoutToolbar : UserControl
     {
         InitializeComponent();
 
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (platformInfo.HasNativeFullScreenAffordance)
+        {
+            // macOS provides fullscreen natively through the title-bar green button, so the app does not
+            // offer its own Full Screen toggle. The Default/Focus/Presentation layout modes remain available.
+            FullScreenToggle.Visibility = Visibility.Collapsed;
+        }
+
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -37,11 +46,13 @@ public sealed partial class LayoutToolbar : UserControl
         ApplyTooltips();
         ApplyLabels();
         UpdatePanelIcons();
-        UpdateWindowModeRadios();
-        UpdatePanelToggleVisibility();
+        UpdateLayoutModeRadios();
+        UpdateFullScreenToggle();
+        UpdateWorkspaceControlsVisibility();
 
         // Register for layout manager state change messages
-        _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
+        _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+        _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
         _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
@@ -55,19 +66,25 @@ public sealed partial class LayoutToolbar : UserControl
         Unloaded -= LayoutToolbar_Unloaded;
     }
 
-    private void UpdatePanelToggleVisibility()
+    private void UpdateWorkspaceControlsVisibility()
     {
-        // Show panel toggle buttons and reset layout controls only on the Workspace page
+        // Panel toggles, layout-mode radios, and the reset button only make sense on the Workspace page.
+        // The Full Screen toggle stays available everywhere because it is a window-level concern.
         var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
 
         PanelToggleButtons.Visibility = visibility;
         ResetLayoutSeparator.Visibility = visibility;
         ResetLayoutButton.Visibility = visibility;
 
+        WindowModeHeader.Visibility = visibility;
+        DefaultModeRadio.Visibility = visibility;
+        FocusModeRadio.Visibility = visibility;
+        PresentationModeRadio.Visibility = visibility;
+
         // Hide console panel toggle button if console-panel feature is disabled
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled) 
-            ? Visibility.Visible 
+        ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled)
+            ? Visibility.Visible
             : Visibility.Collapsed;
     }
 
@@ -89,55 +106,60 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(ToggleSecondaryPanelButton, secondaryTooltip);
         ToolTipService.SetPlacement(ToggleSecondaryPanelButton, PlacementMode.Bottom);
 
-        var windowedModeTooltip = _stringLocalizer.GetString("LayoutToolbar_WindowedModeTooltip");
-        ToolTipService.SetToolTip(WindowedModeRadio, windowedModeTooltip);
-        ToolTipService.SetPlacement(WindowedModeRadio, PlacementMode.Bottom);
+        var defaultModeTooltip = _stringLocalizer.GetString("LayoutToolbar_DefaultModeTooltip");
+        ToolTipService.SetToolTip(DefaultModeRadio, defaultModeTooltip);
+        ToolTipService.SetPlacement(DefaultModeRadio, PlacementMode.Bottom);
 
-        var fullScreenModeTooltip = _stringLocalizer.GetString("LayoutToolbar_FullScreenModeTooltip");
-        ToolTipService.SetToolTip(FullScreenModeRadio, fullScreenModeTooltip);
-        ToolTipService.SetPlacement(FullScreenModeRadio, PlacementMode.Bottom);
+        var focusModeTooltip = _stringLocalizer.GetString("LayoutToolbar_FocusModeTooltip");
+        ToolTipService.SetToolTip(FocusModeRadio, focusModeTooltip);
+        ToolTipService.SetPlacement(FocusModeRadio, PlacementMode.Bottom);
 
-        var zenModeTooltip = _stringLocalizer.GetString("LayoutToolbar_ZenModeTooltip");
-        ToolTipService.SetToolTip(ZenModeRadio, zenModeTooltip);
-        ToolTipService.SetPlacement(ZenModeRadio, PlacementMode.Bottom);
+        var presentationModeTooltip = _stringLocalizer.GetString("LayoutToolbar_PresentationModeTooltip");
+        ToolTipService.SetToolTip(PresentationModeRadio, presentationModeTooltip);
+        ToolTipService.SetPlacement(PresentationModeRadio, PlacementMode.Bottom);
 
-        var presenterModeTooltip = _stringLocalizer.GetString("LayoutToolbar_PresenterModeTooltip");
-        ToolTipService.SetToolTip(PresenterModeRadio, presenterModeTooltip);
-        ToolTipService.SetPlacement(PresenterModeRadio, PlacementMode.Bottom);
+        var fullScreenTooltip = _stringLocalizer.GetString("LayoutToolbar_FullScreenModeTooltip");
+        ToolTipService.SetToolTip(FullScreenToggle, fullScreenTooltip);
+        ToolTipService.SetPlacement(FullScreenToggle, PlacementMode.Bottom);
     }
 
     private void ApplyLabels()
     {
         ResetLayoutButtonText.Text = _stringLocalizer.GetString("LayoutToolbar_ResetLayoutButton");
 
-        WindowModeHeader.Text = _stringLocalizer.GetString("LayoutToolbar_WindowModeLabel");
-        WindowedModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_WindowedLabel");
-        FullScreenModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_FullScreen");
-        ZenModeRadioLabel.Text = _stringLocalizer.GetString("LayoutToolbar_ZenModeLabel");
-        PresenterModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_PresenterLabel");
+        WindowModeHeader.Text = _stringLocalizer.GetString("LayoutToolbar_LayoutModeLabel");
+        DefaultModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_DefaultLabel");
+        FocusModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_FocusLabel");
+        PresentationModeLabel.Text = _stringLocalizer.GetString("LayoutToolbar_PresentationLabel");
+        FullScreenLabel.Text = _stringLocalizer.GetString("LayoutToolbar_FullScreen");
     }
 
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
     {
         _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceControlsVisibility();
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         // Update button visibility when workspace loads (feature flags may have changed)
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceControlsVisibility();
     }
 
     private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
     {
-        UpdatePanelToggleVisibility();
+        UpdateWorkspaceControlsVisibility();
     }
 
-    private void OnWindowModeChanged(object recipient, WindowModeChangedMessage message)
+    private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
         UpdatePanelIcons();
-        UpdateWindowModeRadios();
+        UpdateLayoutModeRadios();
+    }
+
+    private void OnFullScreenChanged(object recipient, FullScreenChangedMessage message)
+    {
+        UpdateFullScreenToggle();
     }
 
     private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
@@ -145,16 +167,28 @@ public sealed partial class LayoutToolbar : UserControl
         UpdatePanelIcons();
     }
 
-    private void UpdateWindowModeRadios()
+    private void UpdateLayoutModeRadios()
     {
         _isUpdatingUI = true;
         try
         {
-            var windowMode = _windowModeService.WindowMode;
-            WindowedModeRadio.IsChecked = windowMode == WindowMode.Windowed;
-            FullScreenModeRadio.IsChecked = windowMode == WindowMode.FullScreen;
-            ZenModeRadio.IsChecked = windowMode == WindowMode.ZenMode;
-            PresenterModeRadio.IsChecked = windowMode == WindowMode.Presenter;
+            var layoutMode = _windowModeService.LayoutMode;
+            DefaultModeRadio.IsChecked = layoutMode == LayoutMode.Default;
+            FocusModeRadio.IsChecked = layoutMode == LayoutMode.Focus;
+            PresentationModeRadio.IsChecked = layoutMode == LayoutMode.Presentation;
+        }
+        finally
+        {
+            _isUpdatingUI = false;
+        }
+    }
+
+    private void UpdateFullScreenToggle()
+    {
+        _isUpdatingUI = true;
+        try
+        {
+            FullScreenToggle.IsChecked = _windowModeService.IsFullScreen;
         }
         finally
         {
@@ -224,35 +258,31 @@ public sealed partial class LayoutToolbar : UserControl
     {
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = WindowModeTransition.ResetLayout;
+            command.Transition = LayoutTransition.ResetLayout;
         });
         PanelLayoutFlyout.Hide();
     }
 
-    private void WindowModeRadio_Checked(object sender, RoutedEventArgs e)
+    private void LayoutModeRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingUI)
         {
             return;
         }
 
-        WindowModeTransition transition;
+        LayoutTransition transition;
 
-        if (ReferenceEquals(sender, WindowedModeRadio))
+        if (ReferenceEquals(sender, DefaultModeRadio))
         {
-            transition = WindowModeTransition.EnterWindowed;
+            transition = LayoutTransition.Default;
         }
-        else if (ReferenceEquals(sender, FullScreenModeRadio))
+        else if (ReferenceEquals(sender, FocusModeRadio))
         {
-            transition = WindowModeTransition.EnterFullScreen;
+            transition = LayoutTransition.Focus;
         }
-        else if (ReferenceEquals(sender, ZenModeRadio))
+        else if (ReferenceEquals(sender, PresentationModeRadio))
         {
-            transition = WindowModeTransition.EnterZenMode;
-        }
-        else if (ReferenceEquals(sender, PresenterModeRadio))
-        {
-            transition = WindowModeTransition.EnterPresenterMode;
+            transition = LayoutTransition.Presentation;
         }
         else
         {
@@ -262,6 +292,19 @@ public sealed partial class LayoutToolbar : UserControl
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
             command.Transition = transition;
+        });
+    }
+
+    private void FullScreenToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingUI)
+        {
+            return;
+        }
+
+        _commandService.Execute<ISetLayoutCommand>(command =>
+        {
+            command.Transition = LayoutTransition.ToggleFullScreen;
         });
     }
 }

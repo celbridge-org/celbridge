@@ -5,7 +5,7 @@ import { RpcTransport } from './core/rpc-transport.js';
 import { DocumentAPI } from './api/document-api.js';
 import { DialogAPI } from './api/dialog-api.js';
 import { InputAPI } from './api/input-api.js';
-import { ThemeAPI } from './api/theme-api.js';
+import { createAppStateStore, createViewStateStore } from './core/state-store.js';
 import { LocalizationAPI } from './api/localization-api.js';
 import { ToolsAPI } from './api/tools-api.js';
 
@@ -41,10 +41,18 @@ export class Celbridge {
     input;
 
     /**
-     * Theme events API.
-     * @type {ThemeAPI}
+     * Read-only mirror of application-global host state (theme, ...). Exposed as `cel.appState`:
+     * read `cel.appState.current.theme`, react with `cel.appState.onChanged(...)`.
+     * @type {import('./core/state-store.js').Store}
      */
-    theme;
+    #appState;
+
+    /**
+     * Read-only mirror of this view's own host state (a document's writability, ...). Exposed as
+     * `cel.viewState`: read `cel.viewState.current.writable`, react with `cel.viewState.onChanged(...)`.
+     * @type {import('./core/state-store.js').Store}
+     */
+    #viewState;
 
     /**
      * Localization events API.
@@ -55,15 +63,14 @@ export class Celbridge {
     /**
      * Host capability proxy (`cel.*`) and raw tool dispatch (`list`, `call`).
      * Populated from the package's `[permissions] tools` allowlist, which the
-     * host injects as `window.__celbridgeContext.permittedTools` before navigation.
+     * client fetches over the bridge via `host/getContext`.
      * @type {ToolsAPI}
      */
     tools;
 
     /**
-     * Map of secrets supplied by the bundled package's C# descriptor (e.g. SpreadJS
-     * license keys from `Celbridge.Spreadsheet.Module.GetBundledPackages()`). Read once
-     * during construction, then scrubbed from `window.__celbridgeContext`. Always empty
+     * Map of secrets supplied by the bundled package's C# descriptor (e.g. a domain-locked
+     * library's license key). Delivered over the bridge via `host/getContext`. Always empty
      * for non-bundled packages.
      * @type {Readonly<Object<string, string>>}
      */
@@ -71,7 +78,7 @@ export class Celbridge {
 
     /**
      * Package-defined options parsed from the `[options]` table of the editor's
-     * document manifest. Keys and values are opaque to the Celbridge host; the
+     * document manifest. Keys and values are opaque to the Celbridge host. The
      * editor decides how to interpret them.
      * @type {Readonly<Object<string, string>>}
      */
@@ -86,13 +93,27 @@ export class Celbridge {
     #exposeCelGlobal;
 
     /**
+     * Whether the capability context has been resolved — fetched over the bridge via `host/getContext`,
+     * or short-circuited by a context provided to the constructor (used by tests and embedders). Until
+     * resolved, tools/secrets/options are empty.
+     * @type {boolean}
+     */
+    #contextResolved = false;
+
+    /**
+     * In-flight `host/getContext` fetch, so concurrent `ready()` calls share one round-trip.
+     * @type {Promise<void>|null}
+     */
+    #readyPromise = null;
+
+    /**
      * Creates a new Celbridge instance.
      * @param {Object} [options] - Configuration options.
      * @param {Function} [options.postMessage] - Custom postMessage function (for testing).
      * @param {Function} [options.onMessage] - Custom message handler setup (for testing).
      * @param {number} [options.timeout] - Request timeout in milliseconds.
-     * @param {Object} [options.context] - Injected capability context (for testing).
-     *   Normally read from `globalThis.__celbridgeContext`.
+     * @param {Object} [options.context] - Injected capability context (for tests and embedders).
+     *   Normally the host delivers it over the bridge via `host/getContext`.
      * @param {boolean} [options.exposeCelGlobal=true] - When `true` (the default),
      *   `initialize()` assigns the `cel.*` proxy to `globalThis.cel` so extensions
      *   can call `cel.namespace.method(...)` without importing the client.
@@ -100,18 +121,94 @@ export class Celbridge {
     constructor(options = {}) {
         this.#transport = new RpcTransport(options);
 
-        const context = readAndScrubContext(options.context);
-
         // Initialize sub-APIs
         this.document = new DocumentAPI(this.#transport);
         this.dialog = new DialogAPI(this.#transport);
         this.input = new InputAPI(this.#transport);
-        this.theme = new ThemeAPI();
+        this.#appState = createAppStateStore(this.#transport);
+        this.#viewState = createViewStateStore(this.#transport);
         this.localization = new LocalizationAPI(this.#transport);
+        this.#exposeCelGlobal = options.exposeCelGlobal !== false;
+
+        // Report focus to the host, and clear the report when the host blurs us. On the Skia heads the
+        // WinUI WebView.GotFocus event does not fire for clicks inside the WebView, so DOM focus is the
+        // reliable signal that this surface became active. The host uses it to set the active edit target
+        // and register the blur callback.
+        let hasReportedFocusReceived = false;
+        if (typeof document !== 'undefined') {
+            document.addEventListener('focusin', () => {
+                if (!hasReportedFocusReceived) {
+                    hasReportedFocusReceived = true;
+                    this.#transport.notify('input/focusReceived', {});
+                }
+            });
+        }
+
+        // Release the active element when the host signals that focus moved to another panel. Wired
+        // universally so any editor's WebView caret stops when a native panel takes focus on heads
+        // where WebView and host focus are not integrated (Skia).
+        this.#transport.addEventListener('input/releaseFocus', () => {
+            hasReportedFocusReceived = false;
+            blurActiveElement();
+        });
+
+        // At runtime the host delivers the capability context over the bridge, so it stays empty here until
+        // ready() fetches it via host/getContext. A context provided up front via constructor options
+        // short-circuits that fetch and is read here — used by tests and embedders.
+        const context = options.context ? normalizeContext(options.context) : null;
+        this.#contextResolved = context !== null;
+        this.#applyContext(context ?? normalizeContext(null));
+    }
+
+    /**
+     * Sets the tools/secrets/options sub-APIs from a normalized capability context.
+     * @param {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string,string>>, options: Readonly<Object<string,string>> }} context
+     */
+    #applyContext(context) {
         this.tools = new ToolsAPI(this.#transport, context.permittedTools);
         this.secrets = context.secrets;
         this.options = context.options;
-        this.#exposeCelGlobal = options.exposeCelGlobal !== false;
+    }
+
+    /**
+     * Resolves the capability context before tools/secrets/options are read. Fetches the context over the
+     * bridge via host/getContext (resolves immediately if a context was already provided to the
+     * constructor). Editors must await this before reading `tools`, `secrets`, or `options`. Idempotent and
+     * safe to call concurrently.
+     * @returns {Promise<void>}
+     */
+    async ready() {
+        if (this.#contextResolved) {
+            return;
+        }
+        if (this.#readyPromise) {
+            return this.#readyPromise;
+        }
+
+        this.#readyPromise = (async () => {
+            try {
+                const raw = await this.#transport.request('host/getContext', {});
+                this.#applyContext(normalizeContext(raw));
+                this.#contextResolved = true;
+            } catch (error) {
+                // Clear the cached promise so a later ready() can retry instead of returning this
+                // permanently-rejected one, which would leave tools/secrets/options empty for the page.
+                this.#readyPromise = null;
+                throw error;
+            }
+        })();
+
+        return this.#readyPromise;
+    }
+
+    /**
+     * Whether this page is running inside the Celbridge host (vs. opened standalone in a plain browser).
+     * Derived synchronously from the presence of a host transport, so editors can read it immediately to
+     * decide whether to do host integration or run in a standalone/dev mode.
+     * @returns {boolean}
+     */
+    get isHosted() {
+        return this.#transport.isHosted;
     }
 
     /**
@@ -122,6 +219,26 @@ export class Celbridge {
      */
     get cel() {
         return this.tools.cel;
+    }
+
+    /**
+     * The application-global state store (theme, ...), shared by every WebView. Read the latest snapshot
+     * via `cel.appState.current.theme`; react with `cel.appState.onChanged(snapshot => ...)`. The host
+     * pushes the current snapshot on connect.
+     * @returns {import('./core/state-store.js').Store}
+     */
+    get appState() {
+        return this.#appState;
+    }
+
+    /**
+     * This view's own state store (a document's writability, ...). Read the latest snapshot via
+     * `cel.viewState.current.writable`; react with `cel.viewState.onChanged(snapshot => ...)`. The host
+     * pushes the current snapshot on connect, so a handler registered after connect still sees it.
+     * @returns {import('./core/state-store.js').Store}
+     */
+    get viewState() {
+        return this.#viewState;
     }
 
     /**
@@ -141,6 +258,14 @@ export class Celbridge {
     async initialize() {
         if (this.#transport.isInitialized) {
             throw new Error('Client already initialized');
+        }
+
+        // Resolve the capability context first (fetched over the bridge via host/getContext) so the cel.*
+        // tool allowlist is populated before loadDescriptors runs. Without it, an editor that calls
+        // initialize() directly rather than initializeDocument() would see an empty allowlist and no cel.*
+        // tools. A no-op when a context was already provided to the constructor.
+        if (!this.#contextResolved) {
+            await this.ready();
         }
 
         const result = await this.#transport.request('document/initialize', {
@@ -173,10 +298,10 @@ export class Celbridge {
      * is always called after content loading and handler registration complete.
      *
      * Editor state contract: the string returned by `onRequestState` must survive both
-     * external-reload cycles (host calls `onRequestState` → replaces content → calls
+     * external-reload cycles (host calls `onRequestState` -> replaces content -> calls
      * `onRestoreState` with the same string) and session restore (host persists the string
      * as EditorStateJson and replays it on the next session). Contributions define their
-     * own schema for this string; the host treats it as opaque. Anything the editor needs
+     * own schema for this string. The host treats it as opaque. Anything the editor needs
      * to reconstruct view state (scroll position, selection, pending unsaved edits, etc.)
      * must be encoded here.
      *
@@ -188,26 +313,17 @@ export class Celbridge {
      *   The returned string must round-trip through `onRestoreState` with equivalent editor behavior.
      * @param {Function} [handlers.onRestoreState] - Called with a state string previously returned
      *   from `onRequestState` to restore editor view state.
-     * @param {Function} [handlers.onWritableStateChanged] - Called with `{state}` when the document's
-     *   writable state changes. `state` is one of "Writable", "Locked", "ReadOnlyAttribute", or
-     *   "ReadOnlyRoot"; treat anything other than "Writable" as read-only.
      * @returns {Promise<InitializeResult>} - The initialization result with content and config.
      */
     async initializeDocument(handlers = {}) {
-        const result = await this.initialize();
-
-        // Register the writable-state handler and seed it with the initial state
-        // from the handshake before applying content. The editor enters read-only
-        // mode (if applicable) before its first setValue, so the user never sees
-        // a brief writable window for a locked document.
-        if (handlers.onWritableStateChanged) {
-            // Subscribe the callback to future host-pushed state changes.
-            this.document.onWritableStateChanged(handlers.onWritableStateChanged);
-            if (result.writableState) {
-                // Invoke the callback directly with the initial state from the handshake.
-                handlers.onWritableStateChanged({ state: result.writableState });
-            }
+        // Resolve the capability context before the handshake (fetched over the bridge via host/getContext)
+        // so the cel.* proxy, secrets, and options are ready. A no-op when a context was already provided to
+        // the constructor.
+        if (!this.#contextResolved) {
+            await this.ready();
         }
+
+        const result = await this.initialize();
 
         if (handlers.onContent) {
             await handlers.onContent(result.content, result.metadata);
@@ -242,6 +358,18 @@ export class Celbridge {
     }
 
     /**
+     * Registers a handler for a custom host-to-client request (the host expects a return value).
+     * Use this for host-driven queries beyond the standard lifecycle — e.g. the host fetching the
+     * editor's current selection for a clipboard operation. The handler's return value (or resolved
+     * promise) is sent back to the host as the response.
+     * @param {string} method - The RPC method name (e.g. 'editor/getSelectedText').
+     * @param {Function} handler - Called with the request params; returns the response value.
+     */
+    onRequest(method, handler) {
+        this.#transport.setRequestHandler(method, handler);
+    }
+
+    /**
      * Internal method to send requests (used by sub-modules).
      * @param {string} method - The method name.
      * @param {Object} params - The request parameters.
@@ -262,34 +390,13 @@ export class Celbridge {
 }
 
 /**
- * Reads the host-injected capability context and deletes it from the global scope.
- * Called once during Celbridge construction.
- *
- * Contract:
- * - `permittedTools` is an array of glob patterns from the package's `[permissions] tools`.
- *   A missing or empty value means the editor gets no tool access (default-deny).
- * - `secrets` is a map of secret name to resolved value, supplied by the bundled
- *   package's C# descriptor.
- * - `options` is a map of opaque string values from the package's `[options]` table.
- *   Used by editors to configure themselves (e.g., which preview renderer to load).
- *
- * @param {Object} [providedContext] - Context passed via constructor options (testing).
+ * Normalizes a raw capability context (from constructor options or the host/getContext
+ * response) into frozen `permittedTools`/`secrets`/`options`. A null/empty input yields an
+ * empty default (no tools, no secrets, no options).
+ * @param {Object|null} raw
  * @returns {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
  */
-function readAndScrubContext(providedContext) {
-    const fromArg = providedContext ?? null;
-    const fromGlobal = (typeof globalThis !== 'undefined' && globalThis.__celbridgeContext) || null;
-    const raw = fromArg ?? fromGlobal;
-
-    // Scrub the global before returning so the key cannot be read after init.
-    if (fromGlobal !== null && typeof globalThis !== 'undefined') {
-        try {
-            delete globalThis.__celbridgeContext;
-        } catch {
-            globalThis.__celbridgeContext = undefined;
-        }
-    }
-
+function normalizeContext(raw) {
     const permittedTools = Array.isArray(raw?.permittedTools)
         ? Object.freeze([...raw.permittedTools])
         : Object.freeze([]);
@@ -302,6 +409,20 @@ function readAndScrubContext(providedContext) {
         secrets: Object.freeze(secrets),
         options: Object.freeze(options)
     };
+}
+
+/**
+ * Blurs the document's active element so an editor's caret stops when focus moves to another panel.
+ * No-ops outside a browser (e.g. the test environment) or when nothing is focused.
+ */
+function blurActiveElement() {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.blur === 'function') {
+        active.blur();
+    }
 }
 
 function readStringMap(source) {

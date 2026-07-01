@@ -1,5 +1,5 @@
 using System.Reflection;
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
 
@@ -16,10 +16,9 @@ public record class LayoutModeInfo(
     bool ConsoleMaximized);
 
 /// <summary>
-/// Result returned by app_get_state. version is the running Celbridge version.
-/// featureFlags maps each public flag name declared in FeatureFlagConstants to
-/// its current enabled state. focusedPanel is the WorkspacePanel currently
-/// holding focus (or "None"). layoutMode reports current panel visibility.
+/// Result returned by app_get_state, reporting the running version, project load
+/// state, feature flag states, the focused panel ("None" when unfocused), and the
+/// current panel layout.
 /// </summary>
 public record class AppStateResult(
     string Version,
@@ -30,8 +29,7 @@ public record class AppStateResult(
     LayoutModeInfo LayoutMode);
 
 /// <summary>
-/// Builds the AppStateResult snapshot consumed by both the app_get_state
-/// tool and AgentResponseFilter's session-start auto-attach.
+/// Builds the AppStateResult snapshot describing current app and workspace state.
 /// </summary>
 public interface IAppStateProvider
 {
@@ -45,23 +43,23 @@ internal sealed class AppStateProvider : IAppStateProvider
     // get_state payload.
     private static readonly IReadOnlyList<string> KnownFeatureFlagNames = ReadFeatureFlagNames();
 
-    private readonly IEnvironmentService _environmentService;
+    private readonly IAppEnvironment _environmentService;
     private readonly IProjectService _projectService;
     private readonly IFeatureFlags _featureFlags;
-    private readonly IPanelFocusService _panelFocusService;
+    private readonly IFocusService _focusService;
     private readonly ILayoutService _layoutService;
 
     public AppStateProvider(
-        IEnvironmentService environmentService,
+        IAppEnvironment environmentService,
         IProjectService projectService,
         IFeatureFlags featureFlags,
-        IPanelFocusService panelFocusService,
+        IFocusService focusService,
         ILayoutService layoutService)
     {
         _environmentService = environmentService;
         _projectService = projectService;
         _featureFlags = featureFlags;
-        _panelFocusService = panelFocusService;
+        _focusService = focusService;
         _layoutService = layoutService;
     }
 
@@ -79,7 +77,7 @@ internal sealed class AppStateProvider : IAppStateProvider
             featureFlags[flagName] = _featureFlags.IsEnabled(flagName);
         }
 
-        var focusedPanel = _panelFocusService.FocusedPanel.ToString();
+        var focusedPanel = _focusService.FocusedPanel.ToString();
 
         var layoutMode = new LayoutModeInfo(
             ContextPanelVisible: _layoutService.IsContextPanelVisible,

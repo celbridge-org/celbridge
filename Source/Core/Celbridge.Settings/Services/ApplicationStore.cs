@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Utilities;
@@ -11,7 +12,6 @@ namespace Celbridge.Settings.Services;
 internal sealed class ApplicationStore : ISettingsStore
 {
     private const string SettingsFileName = "settings.json";
-    private const string ApplicationDataFolderName = "Celbridge";
 
     private readonly ILogger<ApplicationStore> _logger;
     private readonly ILocalFileSystem _fileSystem;
@@ -20,8 +20,8 @@ internal sealed class ApplicationStore : ISettingsStore
 
     private bool _isDirty;
 
-    public ApplicationStore(ILogger<ApplicationStore> logger, ILocalFileSystem fileSystem)
-        : this(logger, fileSystem, ResolveDefaultFilePath())
+    public ApplicationStore(ILogger<ApplicationStore> logger, ILocalFileSystem fileSystem, IAppEnvironment appEnvironment)
+        : this(logger, fileSystem, ResolveDefaultFilePath(appEnvironment.LocalApplicationDataFolderPath))
     {
     }
 
@@ -94,26 +94,15 @@ internal sealed class ApplicationStore : ISettingsStore
         return Result.Ok();
     }
 
-    // Resolves the settings file path in the per-user config folder. On Windows the
-    // packaged app's LocalFolder is already private to Celbridge, so the file sits at
-    // its root. On macOS and Linux the local data folder is shared between
-    // applications, so the file lives under a Celbridge subfolder to avoid colliding
-    // with other applications.
-    public static string ResolveDefaultFilePath()
+    // Composes the settings file path within the per-user Celbridge application-data folder. The folder
+    // itself (already private to Celbridge on every head) is resolved by IAppEnvironment.
+    public static string ResolveDefaultFilePath(string localApplicationDataFolder)
     {
-#if WINDOWS
-        var localDataPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-
-        return Path.Combine(localDataPath, SettingsFileName);
-#else
-        var localDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-        return Path.Combine(localDataPath, ApplicationDataFolderName, SettingsFileName);
-#endif
+        return Path.Combine(localApplicationDataFolder, SettingsFileName);
     }
 
     // Reads the store once at construction. Settings are read synchronously
-    // throughout, so the file must be loaded before the first read; SyncRunner
+    // throughout, so the file must be loaded before the first read. SyncRunner
     // offloads to the thread pool, so blocking here cannot deadlock on a captured
     // UI context. A missing or unreadable file loads as an empty store.
     private KeyValueStore Load()

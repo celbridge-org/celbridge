@@ -4,6 +4,7 @@ using Celbridge.Documents;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels;
+using Celbridge.Platform;
 using Celbridge.UserInterface.ContextMenu;
 using Celbridge.Workspace;
 using Windows.Foundation;
@@ -23,6 +24,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private readonly IDocumentsService _documentsService;
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
+    private readonly IPlatformInfo _platformInfo;
     private bool _isPopulating;
     private double _savedScrollOffset;
 
@@ -35,6 +37,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -85,10 +88,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             ResourceListView.SelectedItems.Add(item);
         }
     }
-
-    //
-    // IResourceTree implementation
-    //
 
     public async Task<Result> PopulateResourceTree(IResourceRegistry resourceRegistry)
     {
@@ -208,10 +207,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         return await Task.FromResult(Result.Ok());
     }
 
-    //
-    // Scroll position helpers
-    //
-
     private double GetScrollOffset()
     {
         try
@@ -263,10 +258,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         }
         return null;
     }
-
-    //
-    // Event handlers
-    //
 
     private void ListView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
@@ -339,6 +330,39 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Update the ViewModel with the current selection (also sends notification)
         var selectedItems = ResourceListView.SelectedItems.OfType<ResourceViewItem>().ToList();
         ViewModel.UpdateSelectedItems(selectedItems);
+
+        RepaintSelectionVisuals(e);
+    }
+
+    // On the macOS Skia head a row's selection visual state is set on selection change but the row is not
+    // repainted until a later pointer event, so the highlight lags a click. Re-assert the visual state on
+    // the changed containers (deferred so it runs after the ListView's own selection handling) to repaint
+    // immediately. No-op elsewhere.
+    private void RepaintSelectionVisuals(SelectionChangedEventArgs e)
+    {
+        if (!_platformInfo.RequiresMacOSSelectionRepaint)
+        {
+            return;
+        }
+
+        var changedItems = e.AddedItems.Concat(e.RemovedItems).ToList();
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            foreach (var item in changedItems)
+            {
+                if (ResourceListView.ContainerFromItem(item) is ListViewItem container)
+                {
+                    var state = container.IsSelected ? "Selected" : "Normal";
+                    VisualStateManager.GoToState(container, state, false);
+
+                    // GoToState alone sets the brush but the Skia row is not repainted until a pointer
+                    // event. Forcing a re-measure re-renders the container with its current visual now.
+                    container.InvalidateMeasure();
+                    container.InvalidateArrange();
+                }
+            }
+        });
     }
 
     private void ListView_Tapped(object sender, TappedRoutedEventArgs e)
@@ -355,10 +379,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         // Ensure ListView keeps focus for keyboard navigation
         ResourceListView.Focus(FocusState.Programmatic);
     }
-
-    //
-    // Helper methods
-    //
 
     private IFolderResource ResolveDropTargetFolder(IResource? resource)
     {
@@ -391,19 +411,15 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         return null;
     }
 
-    //
-    // Public methods for toolbar actions (called from ExplorerPanel)
-    //
-
     /// <summary>
     /// Adds a file to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
-    public void AddFileToSelectedFolder()
+    public void NewFileToSelectedFolder()
     {
         var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
 
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.DestFolderResource = destFolderResource;
@@ -413,21 +429,18 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     /// <summary>
     /// Adds a folder to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
-    public void AddFolderToSelectedFolder()
+    public void NewFolderToSelectedFolder()
     {
         var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
 
-        _commandService.Execute<IAddResourceDialogCommand>(command =>
+        _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
             command.DestFolderResource = destFolderResource;
         });
     }
 
-    /// <summary>
-    /// Collapses all folders in the tree view.
-    /// </summary>
     public void CollapseAllFolders()
     {
         ViewModel.CollapseAllFolders();
