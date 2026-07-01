@@ -1,13 +1,13 @@
 // RPC Transport: JSON-RPC 2.0 communication layer for Celbridge.
 // Handles low-level message passing between JavaScript clients and the .NET host.
 //
-// Transport hierarchy: one transport carries the bridge on every head -- a WebSocket to the loopback file
-// server. It is learned two ways: a loopback page derives a same-origin ws(s):// URL from a connection
-// token in its own URL. A synthetic-origin page (a faked origin that is not the loopback server) instead
-// reads the full ws:// URL injected as window.__celbridgeBridgeUrl. The only non-WebSocket path is a
-// WebView2 native-message fallback (chrome.webview / webkit.messageHandlers), and it serves the single page
-// that cannot open that socket: a synthetic-origin editor on the Windows virtual host, whose https origin
-// makes ws:// to the loopback server a mixed-content block. (Tests inject their own postMessage/onMessage
+// Transport hierarchy: the host channel is normally a WebSocket to the loopback file server, learned two
+// ways. A loopback page derives a same-origin ws(s):// URL from a connection token in its own URL. A
+// synthetic-origin page (a faked origin that is not the loopback server) cannot derive it, so it reads the
+// full ws:// URL the host provides -- from window.__hostChannelUrl (injected into the loadHTMLString page)
+// or a __hostChannelUrl query parameter (on the virtual-host page). The other path is a WebView2
+// native-message fallback (chrome.webview / webkit.messageHandlers), used by a page that loads this client
+// over the native message channel rather than a WebSocket. (Tests inject their own postMessage/onMessage
 // pair, which always wins.)
 
 /**
@@ -75,21 +75,21 @@ export class RpcTransport {
             this.#isHosted = true;
         } else {
             // The host selects the WebSocket transport in one of two ways. A synthetic-origin page
-            // (served under its faked origin so its derived URL would not reach the loopback server)
-            // gets the full bridge URL injected as window.__celbridgeBridgeUrl. A normal
+            // (served under its faked origin so its derived URL would not reach the loopback server) reads
+            // the full host channel URL the host provides (a window global or a query parameter). A normal
             // loopback page instead carries a connection token in its URL and derives the same-origin
             // ws:// URL from it. Either way the WebSocket survives the WebView's view attachment. With
             // neither present, fall back to the WebView2 messaging transport if a native messaging bridge
             // is present. Otherwise this page is running standalone (outside the Celbridge host).
-            const injectedBridgeUrl = options.wsUrl ?? readInjectedBridgeUrl();
-            const webSocketToken = options.wsToken ?? readWebSocketToken();
-            if (injectedBridgeUrl) {
-                this.#setupWebSocketTransport(injectedBridgeUrl);
+            const injectedHostChannelUrl = options.wsUrl ?? readInjectedHostChannelUrl();
+            const hostToken = options.wsToken ?? readHostToken();
+            if (injectedHostChannelUrl) {
+                this.#setupWebSocketTransport(injectedHostChannelUrl);
                 this.#isHosted = true;
-            } else if (webSocketToken) {
+            } else if (hostToken) {
                 const scheme = (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss' : 'ws';
                 const host = (typeof location !== 'undefined' && location.host) ? location.host : '127.0.0.1';
-                this.#setupWebSocketTransport(`${scheme}://${host}/ws/host?token=${encodeURIComponent(webSocketToken)}`);
+                this.#setupWebSocketTransport(`${scheme}://${host}/ws/host?token=${encodeURIComponent(hostToken)}`);
                 this.#isHosted = true;
             } else {
                 this.#postMessage = defaultWebViewPostMessage;
@@ -102,7 +102,7 @@ export class RpcTransport {
         // host over whichever transport this page uses, rather than assuming chrome.webview. Pages that
         // never load this client fall back to chrome.webview.
         if (typeof globalThis !== 'undefined') {
-            globalThis.__celbridgeSendHostMessage = (json) => this.#postMessage(json);
+            globalThis.__hostSendMessage = (json) => this.#postMessage(json);
         }
     }
 
@@ -466,37 +466,37 @@ function defaultWebViewSetupListener(handler) {
     // the host pushes messages by invoking this global via ExecuteScriptAsync. Heads that use
     // chrome.webview messaging never call it.
     if (typeof globalThis !== 'undefined') {
-        globalThis.__celbridgeReceiveHostMessage = (data) => handler(data);
+        globalThis.__hostReceiveMessage = (data) => handler(data);
     }
 }
 
 /**
- * Reads the WebSocket connection token the host embedded in the page URL, or null when absent (the
- * host did not select the WebSocket transport, or this is a non-browser test environment).
+ * Reads the host connection token the host embedded in the page URL, or null when absent (the host did
+ * not select the WebSocket transport, or this is a non-browser test environment).
  * @returns {string|null}
  */
-function readWebSocketToken() {
+function readHostToken() {
     if (typeof location === 'undefined' || !location.search) {
         return null;
     }
 
     try {
-        return new URLSearchParams(location.search).get('__celToken');
+        return new URLSearchParams(location.search).get('__hostToken');
     } catch {
         return null;
     }
 }
 
 /**
- * Reads the full bridge URL for a synthetic-origin page, whose faked origin means it cannot derive the
- * loopback ws:// URL from its own location. The macOS loadHTMLString page reads a host-injected global; the
- * virtual-host page (which cannot receive a document-start global on the Skia WebView2) reads it from a
+ * Reads the full host channel URL for a synthetic-origin page, whose faked origin means it cannot derive
+ * the loopback ws:// URL from its own location. The macOS loadHTMLString page reads a host-injected global;
+ * the virtual-host page (which cannot receive a document-start global on the Skia WebView2) reads it from a
  * query parameter on its own URL. Null when absent.
  * @returns {string|null}
  */
-function readInjectedBridgeUrl() {
+function readInjectedHostChannelUrl() {
     if (typeof globalThis !== 'undefined') {
-        const url = globalThis.__celbridgeBridgeUrl;
+        const url = globalThis.__hostChannelUrl;
         if (typeof url === 'string' && url.length > 0) {
             return url;
         }
@@ -504,7 +504,7 @@ function readInjectedBridgeUrl() {
 
     if (typeof location !== 'undefined' && location.search) {
         try {
-            return new URLSearchParams(location.search).get('__celBridgeUrl');
+            return new URLSearchParams(location.search).get('__hostChannelUrl');
         } catch {
             return null;
         }

@@ -54,10 +54,10 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // The virtual-host page is a faked origin and cannot derive the loopback socket URL from its own
-            // location, so the full bridge URL is passed as a query parameter it reads synchronously. A
+            // location, so the full host channel URL is passed as a query parameter it reads synchronously. A
             // document-start global would be cleaner, but the Skia WebView2 does not implement that API.
-            var bridgeUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
-            var entryUrl = $"http://{SyntheticHost}/{request.EntryPoint}?__celBridgeUrl={Uri.EscapeDataString(bridgeUrl)}";
+            var hostChannelUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
+            var entryUrl = $"http://{SyntheticHost}/{request.EntryPoint}?__hostChannelUrl={Uri.EscapeDataString(hostChannelUrl)}";
             request.WebView.CoreWebView2.Navigate(entryUrl);
             return;
         }
@@ -75,14 +75,14 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
     /// <summary>
     /// Builds the entry page for native loadHTMLString:baseURL:. The entry HTML is rewritten so its lib and
     /// shared-client references resolve cross-origin to the loopback file server (absolute URLs, since
-    /// loadHTMLString ignores a base element), and the WebSocket bridge URL is injected (the faked-origin page
-    /// cannot derive it from its own location).
+    /// loadHTMLString ignores a base element), and the WebSocket host channel URL is injected (the faked-origin
+    /// page cannot derive it from its own location).
     /// </summary>
     private async Task<string> BuildSyntheticOriginHtmlAsync(ContributionEditorLoadRequest request)
     {
         var packageBaseUrl = _fileServer.GetPackageUrl(request.PackageUrlName, string.Empty);
         var assetsBaseUrl = $"http://127.0.0.1:{request.ServerPort}/assets/";
-        var bridgeUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
+        var hostChannelUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
 
         var entryHtmlPath = System.IO.Path.Combine(request.Package.PackageFolder, request.EntryPoint);
         var readResult = await _localFileSystem.ReadAllTextAsync(entryHtmlPath);
@@ -99,10 +99,10 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
             .Replace("\"spreadsheet.js\"", $"\"{packageBaseUrl}spreadsheet.js\"");
 
         // Inject into <head>: an import map remapping the absolute shared.celbridge client imports to the
-        // loopback /assets/ route, and the WebSocket bridge URL the faked-origin page cannot derive itself.
-        var encodedBridgeUrl = JsonSerializer.Serialize(bridgeUrl);
+        // loopback /assets/ route, and the WebSocket host channel URL the faked-origin page cannot derive itself.
+        var encodedHostChannelUrl = JsonSerializer.Serialize(hostChannelUrl);
         var importMap = $"<script type=\"importmap\">{{\"imports\":{{\"https://shared.celbridge/\":\"{assetsBaseUrl}\"}}}}</script>";
-        var injectedHead = $"{importMap}<script>window.__celbridgeBridgeUrl={encodedBridgeUrl};</script>";
+        var injectedHead = $"{importMap}<script>window.__hostChannelUrl={encodedHostChannelUrl};</script>";
 
         return entryHtml.Replace("<head>", "<head>" + injectedHead);
     }

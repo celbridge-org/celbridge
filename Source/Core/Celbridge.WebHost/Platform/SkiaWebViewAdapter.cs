@@ -158,7 +158,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // client transport registers. The JS->C# direction (chrome.webview.postMessage -> WebMessageReceived)
         // works and is unchanged. Serializing the JSON yields a safely-escaped JS string literal.
         var encodedJson = JsonSerializer.Serialize(json);
-        var script = $"window.__celbridgeReceiveHostMessage && window.__celbridgeReceiveHostMessage({encodedJson});";
+        var script = $"window.__hostReceiveMessage && window.__hostReceiveMessage({encodedJson});";
 
         // ExecuteScriptAsync is the C#->JS push on Skia. Observe the operation instead of discarding it, so a
         // delivery fault (the script never ran) is surfaced rather than lost silently.

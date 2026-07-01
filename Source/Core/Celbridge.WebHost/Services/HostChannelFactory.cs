@@ -50,6 +50,6 @@ public static class HostChannelFactory
 
         var separator = navigationUrl.Contains('?') ? '&' : '?';
 
-        return $"{navigationUrl}{separator}__celToken={connectionToken}";
+        return $"{navigationUrl}{separator}__hostToken={connectionToken}";
     }
 }
