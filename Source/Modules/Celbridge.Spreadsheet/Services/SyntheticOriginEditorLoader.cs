@@ -33,44 +33,34 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
 
-    public HostChannelTransport GetTransport(PackageInfo package)
-    {
-        if (_webViewAdapter.SupportsVirtualHostMapping)
-        {
-            // The virtual-host page is not same-origin with the loopback server and cannot open the insecure
-            // loopback WebSocket, so it falls back to the WebView2 message channel.
-            return HostChannelTransport.WebView2Message;
-        }
+    // Both origin-faking mechanisms (the WebView2 virtual host and WKWebView loadHTMLString) produce an http
+    // faked origin that gets the bridge URL injected, so every head reaches the host over the loopback
+    // WebSocket. Only the mechanism in LoadAsync differs by platform.
+    public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
 
-        // The loadHTMLString page gets the bridge URL injected, so it still uses the WebSocket.
-        return HostChannelTransport.LoopbackWebSocket;
-    }
-
-    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request)
-    {
-        if (_webViewAdapter.SupportsVirtualHostMapping)
-        {
-            // Windows navigates to the https virtual host.
-            return $"https://{SyntheticHost}/";
-        }
-
-        // The Skia heads load under the http synthetic origin via loadHTMLString.
-        return $"http://{SyntheticHost}/";
-    }
+    // http (not https) on every head: the faked-origin page must open the insecure loopback WebSocket and
+    // fetch the http loopback assets without a mixed-content block. The licence validates on the hostname.
+    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request) => $"http://{SyntheticHost}/";
 
     public async Task LoadAsync(ContributionEditorLoadRequest request)
     {
         if (_webViewAdapter.SupportsVirtualHostMapping)
         {
-            // Map the package folder to the synthetic-origin virtual host, then navigate to it. The licence
-            // validates on the hostname.
+            // The Windows heads map the package folder to the synthetic-origin virtual host and navigate to it
+            // over http. The licence validates on the hostname, not the scheme.
             request.WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 SyntheticHost,
                 request.Package.PackageFolder,
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            var entryUrl = $"https://{SyntheticHost}/{request.EntryPoint}";
-            entryUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
+            // The virtual-host page is a faked origin and cannot derive the loopback socket URL from its own
+            // location, so inject the bridge URL for the client to read (as the loadHTMLString path does in
+            // its HTML). It runs before page scripts, so the client sees it when constructing its transport.
+            var bridgeUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
+            var bridgeInjectionScript = $"window.__celbridgeBridgeUrl={JsonSerializer.Serialize(bridgeUrl)};";
+            await _webViewAdapter.InstallDocumentStartScriptAsync(request.WebView.CoreWebView2, bridgeInjectionScript);
+
+            var entryUrl = $"http://{SyntheticHost}/{request.EntryPoint}";
             request.WebView.CoreWebView2.Navigate(entryUrl);
             return;
         }
