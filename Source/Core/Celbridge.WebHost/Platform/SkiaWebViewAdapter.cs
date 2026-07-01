@@ -32,7 +32,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public bool UsesPrewarmedPool => false;
 
-    public bool SupportsVirtualHostMapping => false;
+    // Windows-under-Skia hosts a real WebView2 that implements virtual-host mapping; macOS WKWebView and the
+    // Linux Skia head do not, and use loadHTMLString instead.
+    public bool SupportsVirtualHostMapping => OperatingSystem.IsWindows();
 
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
@@ -178,6 +180,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public async Task InstallDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script)
     {
+        // The Skia WebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, so document-start
+        // injection is native-only. macOS uses a WKUserScript; the desktop Windows head has no equivalent and
+        // relies on the ReinjectDocumentStartScriptAsync (ExecuteScriptAsync) re-delivery after each navigation.
         if (OperatingSystem.IsMacOS()
             && MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
         {

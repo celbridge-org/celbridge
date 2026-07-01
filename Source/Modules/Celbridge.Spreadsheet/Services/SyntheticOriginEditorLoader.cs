@@ -9,8 +9,8 @@ namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
 /// Loads the SpreadJS spreadsheet editor under a synthetic origin so its domain-locked licence validates:
-/// a WebView2 virtual host on Windows, native loadHTMLString on the Uno Skia heads. The package's assets
-/// (lib, shared client) are still served from the loopback file server cross-origin.
+/// a WebView2 virtual host on the Windows heads, native loadHTMLString on the macOS and Linux Skia heads.
+/// Either way the page is a faked origin; its lib and the shared client resolve cross-origin.
 /// </summary>
 public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 {
@@ -34,8 +34,8 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
 
     // Both origin-faking mechanisms (the WebView2 virtual host and WKWebView loadHTMLString) produce an http
-    // faked origin that gets the bridge URL injected, so every head reaches the host over the loopback
-    // WebSocket. Only the mechanism in LoadAsync differs by platform.
+    // faked origin that receives the bridge URL, so every head reaches the host over the loopback WebSocket.
+    // Only the mechanism in LoadAsync differs by platform.
     public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
 
     // http (not https) on every head: the faked-origin page must open the insecure loopback WebSocket and
@@ -54,13 +54,10 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // The virtual-host page is a faked origin and cannot derive the loopback socket URL from its own
-            // location, so inject the bridge URL for the client to read (as the loadHTMLString path does in
-            // its HTML). It runs before page scripts, so the client sees it when constructing its transport.
+            // location, so the full bridge URL is passed as a query parameter it reads synchronously. A
+            // document-start global would be cleaner, but the Skia WebView2 does not implement that API.
             var bridgeUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
-            var bridgeInjectionScript = $"window.__celbridgeBridgeUrl={JsonSerializer.Serialize(bridgeUrl)};";
-            await _webViewAdapter.InstallDocumentStartScriptAsync(request.WebView.CoreWebView2, bridgeInjectionScript);
-
-            var entryUrl = $"http://{SyntheticHost}/{request.EntryPoint}";
+            var entryUrl = $"http://{SyntheticHost}/{request.EntryPoint}?__celBridgeUrl={Uri.EscapeDataString(bridgeUrl)}";
             request.WebView.CoreWebView2.Navigate(entryUrl);
             return;
         }

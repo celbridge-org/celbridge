@@ -29,8 +29,9 @@ public interface IWebViewAdapter
     bool UsesPrewarmedPool { get; }
 
     /// <summary>
-    /// True when the platform can map a virtual host name to a local folder (a real https origin). The Skia
-    /// heads cannot, and load content under a faked origin via LoadHtmlString instead.
+    /// True when the platform can map a virtual host name to a local folder and serve it under a faked origin.
+    /// True on the packaged Windows head and the Windows Skia head (both back a real WebView2); false on the
+    /// macOS and Linux Skia heads, which fake the origin via LoadHtmlString instead.
     /// </summary>
     bool SupportsVirtualHostMapping { get; }
 
@@ -77,14 +78,15 @@ public interface IWebViewAdapter
     Task InstallDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script);
 
     /// <summary>
-    /// Re-delivers a document-start script after a navigation completes. A no-op on Windows, where the managed
-    /// document-start script persists across navigations. On the Skia heads it re-runs the script.
+    /// Re-delivers a document-start script after a navigation completes. A no-op on the packaged Windows head,
+    /// where the managed document-start script persists across navigations. On the Skia heads it re-runs the
+    /// script.
     /// </summary>
     Task ReinjectDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script);
 
     /// <summary>
-    /// Loads an HTML string so the document reports the given base URL as its origin. The macOS replacement for
-    /// virtual-host mapping, used on the Skia heads where SupportsVirtualHostMapping is false.
+    /// Loads an HTML string so the document reports the given base URL as its origin. The replacement for
+    /// virtual-host mapping on the macOS and Linux Skia heads, where SupportsVirtualHostMapping is false.
     /// </summary>
     void LoadHtmlString(CoreWebView2 coreWebView2, string html, string baseUrl);
 

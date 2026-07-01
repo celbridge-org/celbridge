@@ -488,15 +488,27 @@ function readWebSocketToken() {
 }
 
 /**
- * Reads the full bridge URL the host injected for a synthetic-origin page, whose faked origin means
- * it cannot derive the loopback ws:// URL from its own location. Null when absent.
+ * Reads the full bridge URL for a synthetic-origin page, whose faked origin means it cannot derive the
+ * loopback ws:// URL from its own location. The macOS loadHTMLString page reads a host-injected global; the
+ * virtual-host page (which cannot receive a document-start global on the Skia WebView2) reads it from a
+ * query parameter on its own URL. Null when absent.
  * @returns {string|null}
  */
 function readInjectedBridgeUrl() {
-    if (typeof globalThis === 'undefined') {
-        return null;
+    if (typeof globalThis !== 'undefined') {
+        const url = globalThis.__celbridgeBridgeUrl;
+        if (typeof url === 'string' && url.length > 0) {
+            return url;
+        }
     }
 
-    const url = globalThis.__celbridgeBridgeUrl;
-    return typeof url === 'string' && url.length > 0 ? url : null;
+    if (typeof location !== 'undefined' && location.search) {
+        try {
+            return new URLSearchParams(location.search).get('__celBridgeUrl');
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
 }
