@@ -44,7 +44,7 @@
         <controls:Icon
                   Symbol="Windowed"
                   FontSize="14"/>
-        <TextBlock Text="{x:Bind ShowToolbarString}"
+        <TextBlock Text="{x:Bind ExitPresentationString}"
                    VerticalAlignment="Center"/>
       </StackPanel>
     </Grid>

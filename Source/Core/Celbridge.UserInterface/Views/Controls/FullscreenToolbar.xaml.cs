@@ -25,7 +25,7 @@ public sealed partial class FullscreenToolbar : UserControl
     private bool _isMouseOverToolbar;
     private Storyboard? _currentAnimation;
     
-    public string ShowToolbarString => _stringLocalizer.GetString("FullScreenToolbar_ShowToolbar");
+    public string ExitPresentationString => _stringLocalizer.GetString("FullScreenToolbar_ExitPresentation");
 
     public FullscreenToolbar()
     {
@@ -66,6 +66,13 @@ public sealed partial class FullscreenToolbar : UserControl
 
         // Update trigger zone visibility based on current mode
         UpdateTriggerZoneVisibility();
+
+        if (_isToolbarHidden)
+        {
+            // The app started up already in Presentation mode, so briefly reveal the strip to show the
+            // user how to exit.
+            ShowToolbar();
+        }
     }
 
     private void FullscreenToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -83,9 +90,15 @@ public sealed partial class FullscreenToolbar : UserControl
     {
         _isToolbarHidden = message.LayoutMode == LayoutMode.Presentation;
 
-        if (!_isToolbarHidden)
+        if (_isToolbarHidden)
         {
-            // The application toolbar is visible again, so hide the reveal strip immediately
+            // Entering Presentation hides the application toolbar. Briefly reveal the strip so the user
+            // always sees how to exit, then let the auto-hide timer slide it away.
+            ShowToolbar();
+        }
+        else
+        {
+            // The application toolbar is visible again, so hide the reveal strip immediately.
             HideToolbar(animate: false);
         }
 
