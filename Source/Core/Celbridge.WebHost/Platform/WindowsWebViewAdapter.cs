@@ -14,8 +14,6 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
 
     public bool CreatesWebViewInPlace => false;
 
-    public bool RequiresPageUnloadBeforeClose => false;
-
     public bool UsesPrewarmedPool => true;
 
     public bool SupportsVirtualHostMapping => true;

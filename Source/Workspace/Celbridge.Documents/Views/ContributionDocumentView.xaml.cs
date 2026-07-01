@@ -32,10 +32,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     // the serial command queue. Kept under the command watchdog's 5s threshold.
     private const int EditorStateRequestTimeoutSeconds = 3;
 
-    // Bound the wait for the about:blank unload navigation on close so an unresponsive page cannot stall
-    // document close (which would jam the serial command queue). Kept under the command watchdog's threshold.
-    private const int BlankNavigationTimeoutSeconds = 2;
-
     private readonly ILogger<ContributionDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
@@ -76,9 +72,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     // and SetContentLoaded applies it once the JS client signals readiness.
     private string? _pendingEditorStateJson;
     private bool _isContentLoaded;
-
-    // Set while the view is closing so the navigation gate lets the about:blank unload navigation through.
-    private bool _isClosing;
 
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
@@ -465,12 +458,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
                 return;
             }
 
-            // Let the about:blank unload navigation through on close (see UnloadWebViewPageAsync).
-            if (_isClosing)
-            {
-                return;
-            }
-
             if (uri.StartsWith(allowedNavigationPrefix))
             {
                 _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
@@ -481,51 +468,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         };
 
         await editorLoader.LoadAsync(loadRequest);
-    }
-
-    // On the Skia heads WebView2.Close() is an unimplemented no-op and the native WKWebView is not destroyed
-    // on teardown, so a page left loaded keeps running its scripts -- and any audio -- after the document is
-    // closed. Navigate to about:blank first to discard the page's script realm before the control is removed.
-    // Windows disposes the WebView2 on Close(), so this is only needed on the Skia heads.
-    private async Task UnloadWebViewPageAsync()
-    {
-        if (!_webViewAdapter.RequiresPageUnloadBeforeClose)
-        {
-            return;
-        }
-
-        var coreWebView2 = WebView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            return;
-        }
-
-        _isClosing = true;
-
-        var unloadCompletionSource = new TaskCompletionSource();
-        void OnNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
-        {
-            unloadCompletionSource.TrySetResult();
-        }
-
-        coreWebView2.NavigationCompleted += OnNavigationCompleted;
-        try
-        {
-            coreWebView2.Navigate("about:blank");
-
-            // Wait for the unload to commit so the discarded page's scripts stop before teardown, but bound it
-            // so an unresponsive page cannot stall close.
-            var timeout = Task.Delay(TimeSpan.FromSeconds(BlankNavigationTimeoutSeconds));
-            await Task.WhenAny(unloadCompletionSource.Task, timeout);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to unload the WebView page on close");
-        }
-        finally
-        {
-            coreWebView2.NavigationCompleted -= OnNavigationCompleted;
-        }
     }
 
     /// <summary>
@@ -955,8 +897,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
 
         _viewModel.Cleanup();
-
-        await UnloadWebViewPageAsync();
 
         TeardownWebViewState();
 

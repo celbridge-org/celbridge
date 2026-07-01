@@ -23,12 +23,10 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         _logger = logger;
     }
 
-    // In-place creation and the page unload are both consequences of the macOS Skia WebView2 being a native
-    // WKWebView: re-parenting resets its context, and Close() does not destroy it. Both coincide with "not
-    // Windows" on the Skia heads (the desktop Windows head re-parents and disposes harmlessly).
+    // In-place creation is a consequence of the macOS Skia WebView2 being a native WKWebView: re-parenting
+    // resets its context. This coincides with "not Windows" on the Skia heads (the desktop Windows head
+    // re-parents harmlessly).
     public bool CreatesWebViewInPlace => !OperatingSystem.IsWindows();
-
-    public bool RequiresPageUnloadBeforeClose => !OperatingSystem.IsWindows();
 
     public bool UsesPrewarmedPool => false;
 

@@ -48,10 +48,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     // webview_* tool namespace is not supported for them.
     private IDocumentWebViewToolBridge? _toolBridge;
 
-    // Bound the wait for the about:blank unload navigation on close so an unresponsive page cannot stall
-    // document close. Mirrors ContributionDocumentView.
-    private const int BlankNavigationTimeoutSeconds = 2;
-
     private static readonly WebViewDocumentOptions DefaultOptions = new(
         WebViewDocumentRole.ExternalUrl,
         InterceptTopFrameNavigation: false);
@@ -788,60 +784,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         _messengerService.UnregisterAll(this);
 
-        await UnloadWebViewPageAsync();
-
         TeardownWebViewState();
 
         await base.PrepareToClose();
-    }
-
-    // On the Skia heads WebView2.Close() is an unimplemented no-op and the native WKWebView is not destroyed
-    // on teardown, so a page left loaded keeps running its scripts -- and any audio or video -- after the
-    // document is closed. Navigate to about:blank first to discard the page's script realm before the control
-    // is removed. Windows disposes the WebView2 on Close(), so this is only needed on the Skia heads.
-    private async Task UnloadWebViewPageAsync()
-    {
-        if (!_webViewAdapter.RequiresPageUnloadBeforeClose)
-        {
-            return;
-        }
-
-        var coreWebView2 = _webView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            return;
-        }
-
-        // Detach the navigation policy first so the about:blank unload is not intercepted or prompted.
-        if (_navigationPolicy is not null)
-        {
-            _navigationPolicy.Detach(coreWebView2);
-            _navigationPolicy = null;
-        }
-
-        var unloadCompletionSource = new TaskCompletionSource();
-        void OnNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
-        {
-            unloadCompletionSource.TrySetResult();
-        }
-
-        coreWebView2.NavigationCompleted += OnNavigationCompleted;
-        try
-        {
-            coreWebView2.Navigate("about:blank");
-
-            // Wait for the unload to commit so the discarded page's scripts stop before teardown, but bound it
-            // so an unresponsive page cannot stall close.
-            var timeout = Task.Delay(TimeSpan.FromSeconds(BlankNavigationTimeoutSeconds));
-            await Task.WhenAny(unloadCompletionSource.Task, timeout);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to unload the WebView page on close");
-        }
-        finally
-        {
-            coreWebView2.NavigationCompleted -= OnNavigationCompleted;
-        }
     }
 }

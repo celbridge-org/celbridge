@@ -17,12 +17,6 @@ public interface IWebViewAdapter
     bool CreatesWebViewInPlace { get; }
 
     /// <summary>
-    /// True when the platform does not destroy the WebView on Close(), so a loaded page keeps running its
-    /// scripts after the document closes and must be navigated to about:blank before teardown.
-    /// </summary>
-    bool RequiresPageUnloadBeforeClose { get; }
-
-    /// <summary>
     /// True when the platform benefits from a background-warmed pool of WebView2 controls. Only the packaged
     /// Windows head initializes controls while detached, which the pre-warm relies on.
     /// </summary>
