@@ -1,7 +1,7 @@
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Utilities;

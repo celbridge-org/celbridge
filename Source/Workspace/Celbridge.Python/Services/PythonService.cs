@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Celbridge.Console;
 using Celbridge.FileSystem;
 using Celbridge.Logging;

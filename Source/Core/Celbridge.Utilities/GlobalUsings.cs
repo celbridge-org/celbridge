@@ -1,2 +1,2 @@
-global using Celbridge.ApplicationEnvironment;
+global using Celbridge.Platform;
 global using Celbridge.Core;

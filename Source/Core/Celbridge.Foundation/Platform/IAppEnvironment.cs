@@ -1,4 +1,4 @@
-namespace Celbridge.ApplicationEnvironment;
+namespace Celbridge.Platform;
 
 /// <summary>
 /// A snapshot of the running application's version, platform, and build configuration.

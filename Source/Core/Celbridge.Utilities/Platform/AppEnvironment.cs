@@ -1,5 +1,5 @@
 using System.Reflection;
-using Celbridge.ApplicationEnvironment;
+using Celbridge.Platform;
 using Path = System.IO.Path;
 
 namespace Celbridge.Utilities.Platform;
