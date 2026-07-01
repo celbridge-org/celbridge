@@ -32,15 +32,16 @@
     <PackageReference Include="StreamJsonRpc" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- Excluded from the default Content glob because they are embedded below, not served as loose files. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Fonts\**\*.json</DefaultItemExcludes>
+  </PropertyGroup>
+
   <ItemGroup>
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons-icon-theme.json" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\devopicons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\BootstrapIcons\bootstrap-icons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\BootstrapIcons\icon-glyphs.json" />
+    <!-- The .ttf fonts under Assets/Fonts ship automatically as loose Content via the Uno SDK's implicit
+         Assets glob and load through ms-appx, so they need no entry here. Only the JSON glyph maps are
+         embedded, because IconService reads them through GetManifestResourceStream. -->
+    <EmbeddedResource Include="Assets\Fonts\**\*.json" />
   </ItemGroup>
 
 </Project>
