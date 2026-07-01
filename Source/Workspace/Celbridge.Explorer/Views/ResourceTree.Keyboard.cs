@@ -175,6 +175,7 @@ public sealed partial class ResourceTree : IEditTarget
         }
 
         ViewModel.ExpandItem(selectedItem);
+        RestoreFocusToSelectedItem();
         return true;
     }
 
@@ -188,10 +189,17 @@ public sealed partial class ResourceTree : IEditTarget
         if (selectedItem.IsFolder && selectedItem.IsExpanded)
         {
             ViewModel.CollapseItem(selectedItem);
+            RestoreFocusToSelectedItem();
             return true;
         }
 
-        return ViewModel.SelectParentFolder();
+        if (ViewModel.SelectParentFolder())
+        {
+            RestoreFocusToSelectedItem();
+            return true;
+        }
+
+        return false;
     }
 
     private bool HandleOpen(ResourceViewItem? selectedItem)
@@ -203,6 +211,28 @@ public sealed partial class ResourceTree : IEditTarget
 
         OpenResource(selectedItem);
         return true;
+    }
+
+    // Expand/collapse rebuilds the tree, replacing every ListView container and discarding keyboard focus,
+    // which leaves subsequent arrow keys with no target. Re-focus the anchor item's new container once the
+    // rebuild has regenerated it, so keyboard navigation continues.
+    private void RestoreFocusToSelectedItem()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var item = ViewModel.SelectedItem;
+            if (item is null)
+            {
+                return;
+            }
+
+            ResourceListView.ScrollIntoView(item);
+
+            if (ResourceListView.ContainerFromItem(item) is ListViewItem container)
+            {
+                container.Focus(FocusState.Programmatic);
+            }
+        });
     }
 
     private bool HandleClearSelection()
