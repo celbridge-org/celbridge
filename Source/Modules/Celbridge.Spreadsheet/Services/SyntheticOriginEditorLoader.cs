@@ -44,6 +44,11 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
     public async Task LoadAsync(ContributionEditorLoadRequest request)
     {
+        // The faked-origin page fetches its lib and the shared client cross-origin from the loopback file
+        // server, so allow that specific origin to read /assets/ and /package/. No effect on the Windows
+        // heads (their virtual-host mapping serves the same content same-origin), but harmless there.
+        _fileServer.RegisterCrossOriginReader($"http://{SyntheticHost}");
+
         if (_webViewAdapter.SupportsVirtualHostMapping)
         {
             // The Windows heads map the package folder to the synthetic-origin virtual host and navigate to it

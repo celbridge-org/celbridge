@@ -21,6 +21,11 @@ public class FileServer : IFileServer, IDisposable
     // Per-package asset folders served at /package/{name}/{path}, keyed by package name.
     private readonly ConcurrentDictionary<string, PhysicalFileProvider> _packageFileProviders = new();
 
+    // Web origins permitted to read /assets/ and /package/ cross-origin (the synthetic-origin editors).
+    // Any origin not in this set is refused cross-origin reads, so an external page cannot read served
+    // files even if it discovers the loopback port. Keyed case-insensitively; the value is unused.
+    private readonly ConcurrentDictionary<string, byte> _crossOriginReaders = new(StringComparer.OrdinalIgnoreCase);
+
     private PhysicalFileProvider? _projectFileProvider;
     private int _port;
     private bool _disposed;
@@ -72,20 +77,27 @@ public class FileServer : IFileServer, IDisposable
         // The three WebView content routes. WebViews are navigated to a loopback URL under one of
         // these and reference everything else root-relative, so the page resolves all content against
         // its own loopback origin.
-        application.MapGet("/project/{**path}", (HttpContext context, string path) =>
-            ServeFromProvider(context, _projectFileProvider, path));
 
+        // /project/ serves the open project's files. Its pages fetch their own content same-origin, so it
+        // opts out of cross-origin reads: a page in another local origin (e.g. one loaded in the user's
+        // browser that discovered the loopback port) cannot read the project's files across origins.
+        application.MapGet("/project/{**path}", (HttpContext context, string path) =>
+            ServeFromProvider(context, _projectFileProvider, path, allowCrossOrigin: false));
+
+        // /assets/ and /package/ serve bundled shared assets and package folders. The synthetic-origin
+        // editor (a faked origin for a domain-locked library) pulls its lib and the shared client from
+        // these routes cross-origin, so they opt in to cross-origin reads.
         application.MapGet("/assets/{**path}", (HttpContext context, string path) =>
-            ServeFromProvider(context, _assetsFileProvider, path));
+            ServeFromProvider(context, _assetsFileProvider, path, allowCrossOrigin: true));
 
         application.MapGet("/package/{name}/{**path}", (HttpContext context, string name, string path) =>
         {
             _packageFileProviders.TryGetValue(name, out var packageFileProvider);
-            return ServeFromProvider(context, packageFileProvider, path);
+            return ServeFromProvider(context, packageFileProvider, path, allowCrossOrigin: true);
         });
     }
 
-    private static async Task ServeFromProvider(HttpContext context, PhysicalFileProvider? fileProvider, string path)
+    private async Task ServeFromProvider(HttpContext context, PhysicalFileProvider? fileProvider, string path, bool allowCrossOrigin)
     {
         if (fileProvider is null)
         {
@@ -109,12 +121,22 @@ public class FileServer : IFileServer, IDisposable
 
         context.Response.ContentType = contentType;
 
-        // Loopback-served pages are same-origin and need no CORS. The exception is a synthetic-origin
-        // editor (loaded under a faked origin for a domain-locked library): it pulls its lib and the
-        // shared client cross-origin from this server, so the routes must allow any origin and be
-        // embeddable cross-origin.
-        context.Response.Headers["Access-Control-Allow-Origin"] = "*";
-        context.Response.Headers["Cross-Origin-Resource-Policy"] = "cross-origin";
+        // Loopback-served pages are same-origin and need no CORS. Only a synthetic-origin editor (loaded
+        // under a faked origin for a domain-locked library) reads across origins: it pulls its lib and the
+        // shared client cross-origin from this server. Echo the CORS grant only for a registered reader
+        // origin, never for "*", so an external page in another local origin cannot read served files even
+        // if it discovers the loopback port. The project route never opts in at all.
+        if (allowCrossOrigin)
+        {
+            var requestOrigin = context.Request.Headers.Origin.ToString();
+            if (!string.IsNullOrEmpty(requestOrigin)
+                && _crossOriginReaders.ContainsKey(requestOrigin))
+            {
+                context.Response.Headers["Access-Control-Allow-Origin"] = requestOrigin;
+                context.Response.Headers["Vary"] = "Origin";
+                context.Response.Headers["Cross-Origin-Resource-Policy"] = "cross-origin";
+            }
+        }
 
         // These match the /local/ route and enable WebContainer support in local HTML/JS.
         context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
@@ -230,6 +252,17 @@ public class FileServer : IFileServer, IDisposable
         {
             provider.Dispose();
         }
+    }
+
+    public void RegisterCrossOriginReader(string origin)
+    {
+        if (string.IsNullOrWhiteSpace(origin))
+        {
+            return;
+        }
+
+        _crossOriginReaders[origin] = 0;
+        _logger.LogDebug("Registered cross-origin reader -> {Origin}", origin);
     }
 
     public string GetProjectUrl(string path)

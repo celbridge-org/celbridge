@@ -51,6 +51,15 @@ public interface IFileServer
     void UnregisterPackageFolder(string packageName);
 
     /// <summary>
+    /// Allows the given web origin to read the /assets/ and /package/ routes cross-origin. Used by a
+    /// synthetic-origin editor (a faked origin for a domain-locked library) that fetches its lib and the
+    /// shared client from this server. Any origin not registered here is refused cross-origin reads, so a
+    /// page in another local origin (for example one loaded in the user's browser that discovered the
+    /// loopback port) cannot read served files across origins. Idempotent.
+    /// </summary>
+    void RegisterCrossOriginReader(string origin);
+
+    /// <summary>
     /// Builds the absolute loopback URL a WebView is navigated to for a project file, or an empty
     /// string when the server is not running. In-page references use root-relative /project/ paths.
     /// </summary>
