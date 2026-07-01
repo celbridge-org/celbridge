@@ -11,7 +11,7 @@ public record ClipboardFile(string Path, bool IsFolder);
 /// The files and folders read back from the system clipboard, with the transfer mode they were placed
 /// under.
 /// </summary>
-public record ClipboardFiles(IReadOnlyList<string> Paths, DataTransferMode TransferMode);
+public record ClipboardFileContents(IReadOnlyList<string> Paths, DataTransferMode TransferMode);
 
 /// <summary>
 /// The system clipboard for files and folders. Abstracts the platform clipboard so the resource
@@ -34,5 +34,5 @@ public interface IFileClipboard
     /// The files and folders currently on the system clipboard along with their transfer mode, or null
     /// when it holds no files.
     /// </summary>
-    Task<ClipboardFiles?> GetFilesAsync();
+    Task<ClipboardFileContents?> GetFilesAsync();
 }

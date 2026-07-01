@@ -61,7 +61,7 @@ public sealed class WinRtFileClipboard : IFileClipboard
         return MapTransferMode(dataPackageView.RequestedOperation);
     }
 
-    public async Task<ClipboardFiles?> GetFilesAsync()
+    public async Task<ClipboardFileContents?> GetFilesAsync()
     {
         var dataPackageView = Clipboard.GetContent();
         if (!dataPackageView.Contains(StandardDataFormats.StorageItems))
@@ -88,7 +88,7 @@ public sealed class WinRtFileClipboard : IFileClipboard
             return null;
         }
 
-        return new ClipboardFiles(paths, transferMode);
+        return new ClipboardFileContents(paths, transferMode);
     }
 
     private static DataTransferMode MapTransferMode(DataPackageOperation operation)

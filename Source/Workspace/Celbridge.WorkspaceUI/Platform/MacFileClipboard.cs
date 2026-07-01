@@ -88,7 +88,7 @@ public sealed class MacFileClipboard : IFileClipboard
         return ResolveTransferMode(pasteboard);
     }
 
-    public async Task<ClipboardFiles?> GetFilesAsync()
+    public async Task<ClipboardFileContents?> GetFilesAsync()
     {
         await Task.CompletedTask;
 
@@ -152,7 +152,7 @@ public sealed class MacFileClipboard : IFileClipboard
             return null;
         }
 
-        return new ClipboardFiles(paths, ResolveTransferMode(pasteboard));
+        return new ClipboardFileContents(paths, ResolveTransferMode(pasteboard));
     }
 
     private bool PasteboardContainsFileUrls(IntPtr pasteboard)

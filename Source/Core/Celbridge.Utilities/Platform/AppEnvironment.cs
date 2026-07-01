@@ -56,7 +56,7 @@ public sealed class AppEnvironment : IAppEnvironment
         }
     }
 
-    public string GetBundledAssetPath(string moduleFolder, string relativePath)
+    public string GetBundledAssetPath(string moduleFolderName, string relativePath)
     {
         // Callers pass forward-slashed relative paths. Normalize to this platform's separator.
         var normalizedRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
@@ -68,8 +68,8 @@ public sealed class AppEnvironment : IAppEnvironment
         return Path.Combine(root, normalizedRelativePath);
 #else
         // The Skia heads place each library's assets next to the app under the Uno library layout
-        // "<base>/<moduleFolder>/...".
-        return Path.Combine(AppContext.BaseDirectory, moduleFolder, normalizedRelativePath);
+        // "<base>/<moduleFolderName>/...".
+        return Path.Combine(AppContext.BaseDirectory, moduleFolderName, normalizedRelativePath);
 #endif
     }
 
