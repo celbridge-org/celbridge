@@ -1085,16 +1085,16 @@ Do you wish to continue?</value>
   <data name="SearchPanel_StatusResultsCapped" xml:space="preserve">
     <value>{0} (results capped)</value>
   </data>
-  <data name="ProjectPanel_ExplorerTooltip" xml:space="preserve">
+  <data name="ActivityPanel_ExplorerTooltip" xml:space="preserve">
     <value>Explorer</value>
   </data>
-  <data name="ProjectPanel_SearchTooltip" xml:space="preserve">
+  <data name="ActivityPanel_SearchTooltip" xml:space="preserve">
     <value>Search</value>
   </data>
-  <data name="ProjectPanel_DebugTooltip" xml:space="preserve">
+  <data name="ActivityPanel_DebugTooltip" xml:space="preserve">
     <value>Debug</value>
   </data>
-  <data name="ProjectPanel_SourceControlTooltip" xml:space="preserve">
+  <data name="ActivityPanel_SourceControlTooltip" xml:space="preserve">
     <value>Source Control</value>
   </data>
   <data name="NewProjectDialog_InvalidProjectName" xml:space="preserve">
