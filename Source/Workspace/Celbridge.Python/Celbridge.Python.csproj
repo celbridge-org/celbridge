@@ -1,6 +1,6 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
+    <TargetFrameworks>net10.0;net10.0-windows10.0.22621;net10.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>
@@ -67,7 +67,7 @@
        system Python on PATH at build time. -->
   <Target Name="BuildPythonWheel" BeforeTargets="Build"
           Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
-          Condition="'$(TargetFramework)' == 'net9.0-windows10.0.22621'">
+          Condition="'$(TargetFramework)' == 'net10.0-windows10.0.22621'">
     <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
     <Exec Command="python &quot;$(MSBuildThisFileDirectory)build.py&quot;" />
   </Target>

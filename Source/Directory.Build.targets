@@ -12,7 +12,7 @@
 
     UndefineProperties="TargetFramework" stops a consuming project's TargetFramework
     from flowing into the netstandard2.0 analyzer. Without it, a CLI build that sets a
-    global TargetFramework (e.g. dotnet build -f net9.0-desktop) forces net9.0-desktop
+    global TargetFramework (e.g. dotnet build -f net10.0-desktop) forces net10.0-desktop
     onto the analyzer and fails with NETSDK1139 (unrecognized platform "desktop").
   -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Celbridge.FileSystem.Analyzers' and '$(IsTestProject)' != 'true'">
