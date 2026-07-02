@@ -10,7 +10,7 @@ root = true
 
 [*]
 indent_style = space
-end_of_line = crlf
+end_of_line = lf
 trim_trailing_whitespace = true
 insert_final_newline = true
 charset = utf-8
@@ -33,7 +33,6 @@ indent_size = 2
 
 [.vsconfig]
 indent_size = 2
-end_of_line = lf
 
 [*.sln]
 indent_style = tab
@@ -44,7 +43,6 @@ indent_size = 2
 
 [*.{json,slnf}]
 indent_size = 2
-end_of_line = lf
 
 [*.{props,targets}]
 indent_size = 2
@@ -52,15 +50,16 @@ indent_size = 2
 [*.xaml]
 indent_size = 2
 charset = utf-8-bom
+# Explicit: Visual Studio's XAML item templates emit CRLF regardless of the
+# [*] default, so pin LF here to stop new XAML files landing as CRLF.
+end_of_line = lf
 
 [*.xml]
 indent_size = 2
-end_of_line = lf
 
 [*.plist]
 indent_size = 2
 indent_style = tab
-end_of_line = lf
 
 [*.manifest]
 indent_size = 2
@@ -70,15 +69,12 @@ indent_size = 2
 
 [*.{json,css,webmanifest}]
 indent_size = 2
-end_of_line = lf
 
 [web.config]
 indent_size = 2
-end_of_line = lf
 
 [*.sh]
 indent_size = 2
-end_of_line = lf
 
 [*.cs]
 # EOL should be normalized by Git. See https://github.com/dotnet/format/issues/1099

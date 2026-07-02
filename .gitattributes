@@ -1,0 +1,19 @@
+# Every tracked text file is LF on disk, regardless of a contributor's
+# core.autocrlf setting.
+* text=auto eol=lf
+
+# Treat tracked vendored / minified web assets as opaque bytes; do not normalise.
+Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/min/** binary
+Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/markdown-preview/lib/** binary
+Source/Modules/Celbridge.DocumentEditors/Editors/Notes/lib/** binary
+Source/Workspace/Celbridge.Console/Web/Terminal/lib/** binary
+Source/Core/Celbridge.WebHost/Web/bootstrap-icons/** binary
+
+# Explicit binary extensions (Git usually auto-detects these, but be explicit).
+*.png binary
+*.jpg binary
+*.gif binary
+*.ttf binary
+*.woff2 binary
+*.xlsx binary
+*.whl binary

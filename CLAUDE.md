@@ -58,7 +58,7 @@ python run_tests.py
 - Never use `#region` / `#endregion`
 - Order interface methods by lifecycle stage; match that order in implementations
 - Use "folder" not "directory" in naming (exception: external APIs)
-- Use CRLF line endings (Windows project)
+- Use LF line endings. Enforced by `.gitattributes` at the repo root and `Source/.editorconfig`. Coding agents do not need to do anything special: write LF as normal. Contributors need no manual Git config; a `core.autocrlf=true` checkout is overridden by `.gitattributes`
 - Follow the patterns in `ProjectConfigParser.cs` as a reference for coding style
 - Prefer temporary variables over inline instances; break complex logic into simpler steps rather than chaining operations
 - Define collection initialization using multiple lines, never on a single line
