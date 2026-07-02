@@ -49,6 +49,13 @@ public sealed partial class ChoiceDialog : ContentDialog, IChoiceDialog
 
     private void OptionsRadioButtons_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // RadioButtons resets SelectedIndex to -1 when it unloads as the dialog closes.
+        // Ignore that deselection so the user's last choice is preserved in the result.
+        if (OptionsRadioButtons.SelectedIndex < 0)
+        {
+            return;
+        }
+
         ViewModel.SelectedIndex = OptionsRadioButtons.SelectedIndex;
     }
 
