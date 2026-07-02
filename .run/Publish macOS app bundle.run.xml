@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Publish macOS app bundle" type="ShConfigurationType">
-    <option name="SCRIPT_TEXT" value="dotnet publish Source/Celbridge/Celbridge.Application.csproj -f net9.0-desktop -p:PublishProfile=macOS-AppBundle" />
+    <option name="SCRIPT_TEXT" value="dotnet publish Source/Celbridge/Celbridge.Application.csproj -f net10.0-desktop -p:PublishProfile=macOS-AppBundle" />
     <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
     <option name="SCRIPT_PATH" value="" />
     <option name="SCRIPT_OPTIONS" value="" />

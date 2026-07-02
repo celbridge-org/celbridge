@@ -29,8 +29,6 @@
     <EmbeddedResource Include="Guides\**\*.md" />
     <!-- README.md documents the guide-authoring conventions for human contributors and must not be embedded into the agent guide library. -->
     <EmbeddedResource Remove="Guides\README.md" />
-    <!-- app_answer_dialog is debug-only (its tool carries #if DEBUG), so exclude its guide from Release builds to match the tool's gating and keep the loader's tool-coverage validator happy. -->
-    <EmbeddedResource Remove="Guides\Tools\app_answer_dialog.md" Condition="'$(Configuration)' != 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>
