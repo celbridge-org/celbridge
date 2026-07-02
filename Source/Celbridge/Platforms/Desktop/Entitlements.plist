@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<!-- The CoreCLR JIT needs writable-then-executable memory, which the hardened runtime blocks by
+		     default. These two entitlements grant exactly that and nothing more: library validation,
+		     network, and keychain access are all either unneeded (uv and Python are subprocesses, the
+		     credential store targets the entitlement-free login keychain) or granted by Developer ID
+		     being unsandboxed. Hardened runtime (UnoMacOSHardenedRuntime) is required for notarization
+		     and must be enabled for these entitlements to matter. -->
+		<key>com.apple.security.cs.allow-jit</key>
+		<true/>
+		<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+		<true/>
+	</dict>
+</plist>
