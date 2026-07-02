@@ -287,7 +287,7 @@ public class PythonService : IPythonService, IDisposable
             // single quotes uvCommand already uses to quote its own arguments).
             var commandLine = OperatingSystem.IsWindows()
                 ? $"cmd.exe /k \"{uvCommand}\""
-                : $"{uvCommand}; exec bash";
+                : $"{uvCommand}; exec $SHELL";
 
             // Cancel any previous RPC listening loop in case InitializePython
             // is called again after a project reload.
