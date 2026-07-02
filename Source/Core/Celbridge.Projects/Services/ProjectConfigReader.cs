@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Tomlyn;
 using Tomlyn.Model;
+using Tomlyn.Parsing;
 
 namespace Celbridge.Projects.Services;
 
@@ -71,7 +72,7 @@ public class ProjectConfigReader
             }
 
             var text = readResult.Value;
-            var parse = Toml.Parse(text);
+            var parse = SyntaxParser.Parse(text);
 
             if (parse.HasErrors)
             {
@@ -87,7 +88,7 @@ public class ProjectConfigReader
                     IsConfigValid: false));
             }
 
-            var root = (TomlTable)parse.ToModel();
+            var root = TomlSerializer.Deserialize<TomlTable>(text);
             isConfigValid = true;
 
             // Try to extract version from [celbridge] section
