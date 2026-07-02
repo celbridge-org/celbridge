@@ -282,9 +282,17 @@ public class ComponentConfigRegistry
 
             var prototype = JsonSerializer.Deserialize<JsonElement>(prototypeNode.ToJsonString());
 
-            // Create the JsonSchema object
+            // Create the JsonSchema object.
+            // attributes, prototype and form are Celbridge metadata read from the raw JSON, not JSON
+            // Schema keywords. JsonSchema.Net rejects unknown keywords when parsing, so strip the
+            // metadata keys before building the validation schema.
 
-            var jsonSchema = JsonSchema.FromText(schemaJson);
+            var schemaNode = root.AsNode()!.AsObject();
+            schemaNode.Remove(ComponentConfig.AttributesKey);
+            schemaNode.Remove(ComponentConfig.PrototypeKey);
+            schemaNode.Remove(ComponentConfig.FormKey);
+
+            var jsonSchema = JsonSchema.FromText(schemaNode.ToJsonString());
             if (jsonSchema is null)
             {
                 return Result<ComponentConfig>.Fail($"Failed to parse JSON schema for component type: '{componentType}'");

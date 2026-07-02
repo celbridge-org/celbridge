@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.Build.NoTargets/3.7.56">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <!-- Zips are copied here so Celbridge.Projects can load them as ms-appx assets -->
     <TemplateOutputFolder>$(MSBuildThisFileDirectory)..\Core\Celbridge.Projects\Assets\Templates</TemplateOutputFolder>
     <!-- Staging area outside this folder to avoid polluting the project tree in VS -->

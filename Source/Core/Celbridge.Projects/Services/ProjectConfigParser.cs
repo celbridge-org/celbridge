@@ -1,6 +1,7 @@
 using System.Globalization;
 using Tomlyn;
 using Tomlyn.Model;
+using Tomlyn.Parsing;
 
 namespace Celbridge.Projects.Services;
 
@@ -49,14 +50,14 @@ public static class ProjectConfigParser
             // a project config written with non-standard line endings still
             // parses cleanly.
             var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
-            var parse = Toml.Parse(text);
+            var parse = SyntaxParser.Parse(text);
             if (parse.HasErrors)
             {
                 var errors = string.Join("; ", parse.Diagnostics.Select(d => d.ToString()));
                 return Result<ProjectConfig>.Fail($"TOML parse error(s): {errors}");
             }
 
-            var root = (TomlTable)parse.ToModel();
+            var root = TomlSerializer.Deserialize<TomlTable>(text);
             var config = MapRootToModel(root);
 
             return Result<ProjectConfig>.Ok(config);

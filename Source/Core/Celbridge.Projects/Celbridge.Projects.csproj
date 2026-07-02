@@ -1,7 +1,7 @@
 <Project Sdk="Uno.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
+    <TargetFrameworks>net10.0;net10.0-windows10.0.22621;net10.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>
@@ -36,8 +36,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net9.0-desktop)
-         from forcing net9.0-desktop onto this net9.0 NoTargets project (NETSDK1139). -->
+    <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net10.0-desktop)
+         from forcing net10.0-desktop onto this net10.0 NoTargets project (NETSDK1139). -->
     <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" UndefineProperties="TargetFramework" />
   </ItemGroup>
 

@@ -1,6 +1,6 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
+    <TargetFrameworks>net10.0;net10.0-windows10.0.22621;net10.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
     <UnoSingleProject>true</UnoSingleProject>
     <OutputType>Library</OutputType>
@@ -23,6 +23,11 @@
     <!-- Suppress PRI249 false-positive warnings caused by Python wheel filenames (e.g. py3-none-any) -->
     <!-- being incorrectly parsed as Windows resource qualifiers by the PRI indexer. -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
+
+    <!-- The wheel is generated during the build and re-included by IncludeGeneratedPythonWheel.
+         Excluding it from the default Assets glob avoids a duplicate MSIX payload (APPX1101) on the
+         packaged Windows head. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Python\*.whl</DefaultItemExcludes>
 
   </PropertyGroup>
 
@@ -47,9 +52,7 @@
     <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)" DestinationFileName="$(UvZipFileName)" />
   </Target>
 
-  <!-- Build the celbridge Python wheel from source when Python files change.
-       Uses the uv binary (extracted from the downloaded zip) to build the wheel
-       without needing a pre-installed Python or virtual environment. -->
+  <!-- Build the celbridge Python wheel from source when Python files change. -->
   <PropertyGroup>
     <PythonPackageFolder>$(MSBuildThisFileDirectory)packages\celbridge</PythonPackageFolder>
     <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
@@ -61,21 +64,23 @@
     <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
   </ItemGroup>
 
-  <!-- Build the wheel for one TFM only. Other TFMs pick it up via IncludePythonAssets.
-       Delegates to build.py so wheel-building logic lives in one place; build.py is
-       also the script developers run manually outside Visual Studio. Requires a
-       system Python on PATH at build time. -->
-  <Target Name="BuildPythonWheel" BeforeTargets="Build"
+  <!-- Rebuild the wheel via build.py (requires a system Python on PATH) before content target paths
+       are assigned. Runs on the Windows head only; other heads use the committed wheel. Skipped during
+       design-time builds so editing Python source in Visual Studio does not invoke pip. -->
+  <Target Name="BuildPythonWheel" BeforeTargets="AssignTargetPaths"
           Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
-          Condition="'$(TargetFramework)' == 'net9.0-windows10.0.22621'">
+          Condition="'$(TargetFramework)' == 'net10.0-windows10.0.22621' AND '$(DesignTimeBuild)' != 'true'">
     <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
     <Exec Command="python &quot;$(MSBuildThisFileDirectory)build.py&quot;" />
   </Target>
 
-  <!-- Note: the wheel is NOT cleaned during 'Clean' because MSBuild evaluates Content items
-       at project load time. If the file is missing, it won't be included in the AppX package
-       even after BuildPythonWheel recreates it. The target uses Inputs/Outputs to regenerate
-       it when needed. -->
+  <!-- Include the generated wheel as Content before target paths are assigned, so it enters the Uno
+       content pipeline exactly once. -->
+  <Target Name="IncludeGeneratedPythonWheel" BeforeTargets="AssignTargetPaths" DependsOnTargets="BuildPythonWheel">
+    <ItemGroup>
+      <Content Include="Assets\Python\*.whl" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />

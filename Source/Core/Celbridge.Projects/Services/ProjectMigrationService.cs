@@ -3,6 +3,7 @@ using Celbridge.Platform;
 using Celbridge.Logging;
 using Tomlyn;
 using Tomlyn.Model;
+using Tomlyn.Parsing;
 
 namespace Celbridge.Projects.Services;
 
@@ -119,7 +120,7 @@ public class ProjectMigrationService : IProjectMigrationService
             // anything that produced CR-only line endings somewhere upstream)
             // still parse cleanly.
             var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
-            var parse = Toml.Parse(text);
+            var parse = SyntaxParser.Parse(text);
 
             if (parse.HasErrors)
             {
@@ -128,7 +129,7 @@ public class ProjectMigrationService : IProjectMigrationService
                     Result.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}"));
             }
 
-            var root = parse.ToModel();
+            var root = TomlSerializer.Deserialize<TomlTable>(text);
 
             // Get project version from [celbridge].celbridge-version property
             var projectVersion = string.Empty;
@@ -529,14 +530,14 @@ public class ProjectMigrationService : IProjectMigrationService
         // Match ParseProjectVersionInfoAsync: collapse any bare-\r line
         // endings to \n before handing the bytes to Tomlyn.
         var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
-        var parse = Toml.Parse(text);
+        var parse = SyntaxParser.Parse(text);
 
         if (parse.HasErrors)
         {
             return Result<TomlTable>.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
         }
 
-        var root = parse.ToModel();
+        var root = TomlSerializer.Deserialize<TomlTable>(text);
         return Result<TomlTable>.Ok(root);
     }
 }
