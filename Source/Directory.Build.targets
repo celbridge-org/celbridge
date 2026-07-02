@@ -1,6 +1,32 @@
 <Project>
 
   <!--
+    Drop the Windows target framework from every project when not building on Windows.
+    The .NET 10 SDK no longer restores -windows target frameworks on non-Windows hosts,
+    so building one there fails with NETSDK1005. Uno's own UnoRemoveUnsupportedTargetFrameworks
+    filter runs as a build-time target, which Rider does not honor. Doing the same filtering
+    here as an evaluation-time property means Rider (and every other tool) sees only the
+    buildable frameworks. The condition guards non-Windows, so Windows builds are untouched.
+  -->
+  <PropertyGroup Condition="'$(TargetFrameworks)' != '' and !$([MSBuild]::IsOSPlatform('windows'))">
+    <TargetFrameworks>$([System.Text.RegularExpressions.Regex]::Replace($(TargetFrameworks), '(^|;)[^;]*-windows[^;]*', ''))</TargetFrameworks>
+    <TargetFrameworks>$(TargetFrameworks.Trim(';'))</TargetFrameworks>
+  </PropertyGroup>
+
+  <!--
+    Put the desktop target framework first so every project shares the same active (first)
+    target framework. Rider builds a referenced project only for its active target framework,
+    so if the app's active head is net*-desktop while a library's is plain net*, the library's
+    desktop reference assemblies are never built and the app's desktop head fails with CS0006.
+    Fronting desktop everywhere keeps Rider's per-project active head aligned on macOS.
+  -->
+  <PropertyGroup Condition="'$(TargetFrameworks)' != '' and !$([MSBuild]::IsOSPlatform('windows')) and $(TargetFrameworks.Contains('-desktop'))">
+    <_UnoDesktopTargetFramework>$([System.Text.RegularExpressions.Regex]::Match($(TargetFrameworks), '[^;]*-desktop[^;]*').Value)</_UnoDesktopTargetFramework>
+    <TargetFrameworks>$([System.Text.RegularExpressions.Regex]::Replace($(TargetFrameworks), '(^|;)[^;]*-desktop[^;]*', ''))</TargetFrameworks>
+    <TargetFrameworks>$(_UnoDesktopTargetFramework);$(TargetFrameworks.Trim(';'))</TargetFrameworks>
+  </PropertyGroup>
+
+  <!--
     Distribute the Celbridge.FileSystem.Analyzers gateway analyzer (CEL_FS_001)
     to every product project. OutputItemType="Analyzer" with
     ReferenceOutputAssembly="false" adds it as an analyzer only, not a compile

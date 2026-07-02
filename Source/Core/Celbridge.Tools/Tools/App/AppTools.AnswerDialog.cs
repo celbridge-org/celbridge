@@ -1,4 +1,3 @@
-#if DEBUG
 using Celbridge.Dialog;
 using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
@@ -8,7 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class AppTools
 {
-    /// <summary>Schedule an automated answer for the next modal dialog (debug-only test automation).</summary>
+    /// <summary>Schedule an automated answer for the next modal dialog (test automation, gated by the answer-dialog flag).</summary>
     [McpServerTool(Name = "app_answer_dialog", ReadOnly = false, Idempotent = false)]
     [ToolAlias("app.answer_dialog")]
     [RelatedGuides]
@@ -32,4 +31,3 @@ public partial class AppTools
         return ToolResponse.Success("ok");
     }
 }
-#endif

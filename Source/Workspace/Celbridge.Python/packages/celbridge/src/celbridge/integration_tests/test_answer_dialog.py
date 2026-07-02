@@ -1,7 +1,7 @@
-"""End-to-end coverage for app_answer_dialog (debug-only test automation).
+"""End-to-end coverage for app_answer_dialog (test automation).
 
-Skipped (whole class) when the build is release or the user has not set
-`answer-dialog = true` in their .celbridge.
+Skipped (whole class) when the `answer-dialog` flag is off — it defaults off in
+shipping builds; set `answer-dialog = true` under `[features]` in the .celbridge.
 
 Coverage boundary: Confirmation and InputText are exercised here because
 `explorer.delete(showDialog=True)` and `explorer.rename` reliably surface

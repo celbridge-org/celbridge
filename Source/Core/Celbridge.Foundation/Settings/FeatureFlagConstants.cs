@@ -32,8 +32,8 @@ public static class FeatureFlagConstants
 
     /// <summary>
     /// Enables the app_answer_dialog MCP tool that lets a script answer a
-    /// modal dialog without a human present. The tool only ships in debug
-    /// builds, so the flag has no effect in release even when set.
+    /// modal dialog without a human present. A test-automation capability,
+    /// off by default in shipping builds.
     /// </summary>
     public const string AnswerDialog = "answer-dialog";
 

@@ -19,6 +19,9 @@ public class PythonService : IPythonService, IDisposable
 {
     private const int PythonLogMaxFiles = 10;
 
+    // Bounds the wait for the login-shell PATH query so a slow shell profile cannot stall project load.
+    private const int LoginShellPathTimeoutMs = 5000;
+
     // Folder and file names
     private const string UVCacheFolderName = "uv_cache";
     private const string UVExecutableName = "uv";
@@ -44,6 +47,10 @@ public class PythonService : IPythonService, IDisposable
     private string _pendingProjectPythonFolder = string.Empty;
     private bool _fingerprintSaved;
     private volatile bool _hadConnection;
+
+    // The login-shell PATH is app-global and costs a subprocess to resolve, so cache it for the app run.
+    private static string? _resolvedLoginShellPath;
+    private static readonly object _loginShellPathLock = new();
 
     public PythonService(
         IProjectService projectService,
@@ -167,7 +174,7 @@ public class PythonService : IPythonService, IDisposable
             // Build the per-process environment for the terminal
             var uvToolsFolder = Path.Combine(projectPythonFolder, UVToolsFolderName);
             var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
-            var currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+            var currentPath = ResolveChildProcessBasePath();
             var terminalPath = currentPath.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
                 ? currentPath
                 : uvBinFolder + Path.PathSeparator + currentPath;
@@ -287,7 +294,7 @@ public class PythonService : IPythonService, IDisposable
             // single quotes uvCommand already uses to quote its own arguments).
             var commandLine = OperatingSystem.IsWindows()
                 ? $"cmd.exe /k \"{uvCommand}\""
-                : $"{uvCommand}; exec bash";
+                : $"{uvCommand}; exec $SHELL";
 
             // Cancel any previous RPC listening loop in case InitializePython
             // is called again after a project reload.
@@ -668,6 +675,98 @@ public class PythonService : IPythonService, IDisposable
         }
 
         return Result<string>.Ok(wheelFiles[0]);
+    }
+
+    // The base PATH for the Python subsystem and terminal child processes. A macOS app launched from
+    // Finder inherits only the minimal launchd PATH, not the user's login-shell PATH, so user-installed
+    // CLI tools (claude in ~/.local/bin, Homebrew binaries) are invisible. Resolve the login shell's PATH
+    // once and use it. On other platforms, and if resolution fails, fall back to the process PATH.
+    private string ResolveChildProcessBasePath()
+    {
+        var processPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+        if (!OperatingSystem.IsMacOS())
+        {
+            return processPath;
+        }
+
+        lock (_loginShellPathLock)
+        {
+            if (_resolvedLoginShellPath is not null)
+            {
+                return _resolvedLoginShellPath;
+            }
+
+            var loginShellPath = TryResolveLoginShellPath();
+            _resolvedLoginShellPath = string.IsNullOrEmpty(loginShellPath) ? processPath : loginShellPath;
+            return _resolvedLoginShellPath;
+        }
+    }
+
+    // Runs the user's login shell interactively to capture the PATH they see in Terminal. The interactive
+    // (-i) flag is required, not just login (-l): tools like claude add ~/.local/bin from .zshrc, which
+    // only interactive shells source. Returns an empty string on any failure so the caller falls back.
+    private string TryResolveLoginShellPath()
+    {
+        try
+        {
+            var shell = Environment.GetEnvironmentVariable("SHELL");
+            if (string.IsNullOrEmpty(shell))
+            {
+                shell = "/bin/zsh";
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = shell,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            startInfo.ArgumentList.Add("-i");
+            startInfo.ArgumentList.Add("-l");
+            startInfo.ArgumentList.Add("-c");
+            // Wrap the value in sentinels so it survives any banner or profile output the shell prints.
+            startInfo.ArgumentList.Add("printf '__CEL_PATH_BEGIN__%s__CEL_PATH_END__' \"$PATH\"");
+
+            using var process = Process.Start(startInfo);
+            if (process is null)
+            {
+                return string.Empty;
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            if (!process.WaitForExit(LoginShellPathTimeoutMs))
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                    // The process may have exited between the wait timing out and the kill.
+                }
+                _logger.LogWarning("Timed out resolving the login shell PATH; using the process PATH instead.");
+                return string.Empty;
+            }
+
+            const string beginMarker = "__CEL_PATH_BEGIN__";
+            const string endMarker = "__CEL_PATH_END__";
+            var startIndex = output.IndexOf(beginMarker, StringComparison.Ordinal);
+            var endIndex = output.IndexOf(endMarker, StringComparison.Ordinal);
+            if (startIndex < 0 || endIndex <= startIndex)
+            {
+                return string.Empty;
+            }
+
+            startIndex += beginMarker.Length;
+            return output.Substring(startIndex, endIndex - startIndex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to resolve the login shell PATH; using the process PATH instead.");
+            return string.Empty;
+        }
     }
 
     private bool _disposed;

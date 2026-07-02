@@ -56,16 +56,16 @@ def data():
 def answer_dialog_available(app):
     """Skip the suite (or a single test) when the dialog-answer surface is unavailable.
 
-    The tool only ships in debug builds and requires the `answer-dialog` flag
-    to be on. When the flag is off (or the build is release, which carries no
-    flag at all), `app_get_state.featureFlags` will not report it as enabled
-    and we skip. Otherwise the fixture returns True and tests proceed.
+    The tool ships in every build configuration and is gated by the `answer-dialog`
+    flag, which defaults off in shipping builds. When the flag is off,
+    `app_get_state.featureFlags` reports it disabled and we skip. Enable it with
+    `answer-dialog = true` under `[features]` in the project .celbridge.
     """
     state = app.get_state()
     feature_flags = state.get("featureFlags", {})
     if not feature_flags.get("answer-dialog", False):
         pytest.skip(
-            "Dialog answer feature not enabled — requires a debug build with "
-            "answer-dialog = true in user .celbridge"
+            "Dialog answer feature not enabled — set answer-dialog = true "
+            "under [features] in the project .celbridge"
         )
     return True

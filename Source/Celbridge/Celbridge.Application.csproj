@@ -49,6 +49,12 @@
   <!-- Custom Info.plist for the macOS desktop bundle (see that file for details). -->
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-desktop'">
     <UnoMacOSCustomInfoPlist>$(MSBuildProjectDirectory)/Platforms/Desktop/Info.plist</UnoMacOSCustomInfoPlist>
+    <!-- Enable the hardened runtime (required for notarization) and grant the CoreCLR JIT its
+         writable-then-executable memory via the entitlements plist. The two travel together: under the
+         hardened runtime the JIT faults without allow-jit. Only consumed by the app-bundle publish
+         (PackageFormat=app/pkg/dmg); a plain net10.0-desktop build ignores them. -->
+    <UnoMacOSHardenedRuntime>true</UnoMacOSHardenedRuntime>
+    <UnoMacOSEntitlements>$(MSBuildProjectDirectory)/Platforms/Desktop/Entitlements.plist</UnoMacOSEntitlements>
   </PropertyGroup>
 
   <PropertyGroup>
