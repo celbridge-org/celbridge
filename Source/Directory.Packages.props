@@ -18,7 +18,7 @@
     <PackageVersion Include="NUnit" Version="4.4.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.1.0" />
     <PackageVersion Include="OpenAI" Version="2.8.0" />
-    <PackageVersion Include="StreamJsonRpc" Version="2.24.84" />
+    <PackageVersion Include="StreamJsonRpc" Version="2.25.29" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="9.0.17" />
     <PackageVersion Include="Tomlyn" Version="0.19.0" />
   </ItemGroup>
