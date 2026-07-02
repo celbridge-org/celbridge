@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Documents;
 using Tomlyn;
 using Tomlyn.Model;
+using Tomlyn.Parsing;
 
 namespace Celbridge.Packages;
 
@@ -74,7 +75,7 @@ public static class PackageManifestLoader
                     .WithErrors(readResult);
             }
             var toml = readResult.Value;
-            var parsed = Toml.Parse(toml);
+            var parsed = SyntaxParser.Parse(toml);
 
             if (parsed.HasErrors)
             {
@@ -82,7 +83,7 @@ public static class PackageManifestLoader
                 return Result.Fail($"TOML parse error in {packageTomlPath}: {errors}");
             }
 
-            var root = (TomlTable)parsed.ToModel();
+            var root = TomlSerializer.Deserialize<TomlTable>(toml);
 
             if (!root.TryGetValue(PackageSection, out var packageObject) ||
                 packageObject is not TomlTable packageTable)
@@ -193,7 +194,7 @@ public static class PackageManifestLoader
                     .WithErrors(readResult);
             }
             var toml = readResult.Value;
-            var parsed = Toml.Parse(toml);
+            var parsed = SyntaxParser.Parse(toml);
 
             if (parsed.HasErrors)
             {
@@ -201,7 +202,7 @@ public static class PackageManifestLoader
                 return Result.Fail($"TOML parse error in {documentTomlPath}: {errors}");
             }
 
-            var root = (TomlTable)parsed.ToModel();
+            var root = TomlSerializer.Deserialize<TomlTable>(toml);
 
             if (!root.TryGetValue(DocumentSection, out var documentObject) ||
                 documentObject is not TomlTable documentTable)

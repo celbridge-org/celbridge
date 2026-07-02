@@ -2,6 +2,7 @@ using Celbridge.FileSystem.Services;
 using Celbridge.Projects.Services;
 using Celbridge.Tests.Migration.TestHelpers;
 using Tomlyn;
+using Tomlyn.Model;
 
 namespace Celbridge.Tests.Migration.Steps;
 
@@ -49,8 +50,7 @@ public abstract class MigrationStepTestBase<T>
         var projectDataFolderPath = Path.Combine(projectFolderPath, "celbridge");
 
         var text = await File.ReadAllTextAsync(projectFilePath);
-        var parse = Toml.Parse(text);
-        var config = parse.ToModel();
+        var config = TomlSerializer.Deserialize<TomlTable>(text);
 
         // If originalVersion not provided, try to extract from the file
         if (originalVersion == null)

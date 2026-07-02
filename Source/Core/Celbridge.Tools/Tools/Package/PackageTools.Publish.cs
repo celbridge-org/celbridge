@@ -341,7 +341,7 @@ public partial class PackageTools
         TomlTable tomlTable;
         try
         {
-            tomlTable = Toml.ToModel(tomlContent);
+            tomlTable = TomlSerializer.Deserialize<TomlTable>(tomlContent);
         }
         catch (TomlException exception)
         {

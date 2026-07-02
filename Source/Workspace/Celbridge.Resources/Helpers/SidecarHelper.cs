@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Tomlyn;
 using Tomlyn.Model;
+using Tomlyn.Parsing;
 
 namespace Celbridge.Resources.Helpers;
 
@@ -199,14 +200,14 @@ public static class SidecarHelper
                     new Dictionary<string, object>());
             }
 
-            var parseResult = Toml.Parse(tomlText);
+            var parseResult = SyntaxParser.Parse(tomlText);
             if (parseResult.HasErrors)
             {
                 var diagnostics = string.Join("; ", parseResult.Diagnostics.Select(d => d.ToString()));
                 return Result<IReadOnlyDictionary<string, object>>.Fail($"TOML parse error(s): {diagnostics}");
             }
 
-            var table = (TomlTable)parseResult.ToModel();
+            var table = TomlSerializer.Deserialize<TomlTable>(tomlText);
             var dictionary = new Dictionary<string, object>();
             foreach (var (key, value) in table)
             {

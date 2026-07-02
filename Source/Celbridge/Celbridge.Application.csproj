@@ -1,6 +1,6 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net9.0-windows10.0.22621;net9.0-desktop;net9.0</TargetFrameworks>
+    <TargetFrameworks>net10.0-windows10.0.22621;net10.0-desktop;net10.0</TargetFrameworks>
     <UnoDisableVSWarnWindowsIsFirst>true</UnoDisableVSWarnWindowsIsFirst>
     
     <OutputType>Exe</OutputType>
@@ -10,7 +10,7 @@
     <ApplicationTitle>Celbridge</ApplicationTitle>
     <ApplicationId>org.celbridge.Celbridge</ApplicationId>
     <!-- ApplicationDisplayVersion is the single source of the version; Version derives from it so every
-         TFM agrees. The Uno.Sdk maps it to $(Version) on the platform heads but not the plain net9.0 TFM,
+         TFM agrees. The Uno.Sdk maps it to $(Version) on the platform heads but not the plain net10.0 TFM,
          which would otherwise default to 1.0.0 and fail project load in Visual Studio. The packaged
          Windows Identity Version in Package.appxmanifest is separate, keep it in sync. -->
     <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
@@ -47,7 +47,7 @@
   </PropertyGroup>
 
   <!-- Custom Info.plist for the macOS desktop bundle (see that file for details). -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-desktop'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-desktop'">
     <UnoMacOSCustomInfoPlist>$(MSBuildProjectDirectory)/Platforms/Desktop/Info.plist</UnoMacOSCustomInfoPlist>
     <!-- Enable the hardened runtime (required for notarization) and grant the CoreCLR JIT its
          writable-then-executable memory via the entitlements plist. The two travel together: under the
