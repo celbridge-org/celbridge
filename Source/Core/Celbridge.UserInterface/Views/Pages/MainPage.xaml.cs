@@ -2,6 +2,7 @@ using Celbridge.Logging;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.UserInterface.Views.Controls;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
@@ -36,13 +37,19 @@ public partial class MainPage : Page
             .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
             .Name("ContentArea");
 
+        // Host the spotlight callout in the app shell so it can point at any landmark, including
+        // the title-bar chrome above the pages. It registers itself with the spotlight service and
+        // lives for the app lifetime.
+        var spotlightView = new SpotlightView();
+
         _layoutRoot = new Grid()
             .Name("LayoutRoot")
             .RowDefinitions("Auto, *")
-            .Children(_contentArea);
+            .Children(_contentArea, spotlightView);
 
         // Position the content area in the second row (below the title bar)
         Grid.SetRow(_contentArea, 1);
+        Grid.SetRowSpan(spotlightView, 2);
 
         this.DataContext(ViewModel, (page, vm) => page
             .Content(_layoutRoot));
