@@ -48,7 +48,6 @@ public partial class MainMenuViewModel : ObservableObject
     {
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
-        _messengerService.Register<RequestReloadProjectMessage>(this, OnRequestReloadProject);
 
         IsWorkspaceLoaded = _workspaceWrapper.IsWorkspacePageLoaded;
     }
@@ -68,11 +67,6 @@ public partial class MainMenuViewModel : ObservableObject
         IsWorkspaceLoaded = false;
     }
 
-    private void OnRequestReloadProject(object recipient, RequestReloadProjectMessage message)
-    {
-        _ = ReloadProjectAsync();
-    }
-
     public void NewProject()
     {
         _ = _mainMenuUtils.ShowNewProjectDialogAsync();
@@ -83,20 +77,9 @@ public partial class MainMenuViewModel : ObservableObject
         _ = _mainMenuUtils.ShowOpenProjectDialogAsync();
     }
 
-    public async Task ReloadProjectAsync()
+    public void ReloadProject()
     {
-        var projectService = ServiceLocator.AcquireService<IProjectService>();
-        if (projectService.CurrentProject is not null)
-        {
-            string projectPath = projectService.CurrentProject.ProjectFilePath;
-
-            await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
-
-            _commandService.Execute<ILoadProjectCommand>((command) =>
-            {
-                command.ProjectFilePath = projectPath;
-            });
-        }
+        _commandService.Execute<IReloadProjectCommand>();
     }
 
     public async Task CloseProjectAsync()

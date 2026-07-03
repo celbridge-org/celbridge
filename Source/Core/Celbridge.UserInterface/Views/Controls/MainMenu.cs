@@ -392,7 +392,7 @@ public class MainMenu
                 break;
 
             case ReloadProjectTag:
-                _ = ViewModel.ReloadProjectAsync();
+                ViewModel.ReloadProject();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
