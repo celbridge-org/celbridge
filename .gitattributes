@@ -1,5 +1,12 @@
-# Every tracked text file is LF on disk, regardless of a contributor's
-# core.autocrlf setting.
+# Every tracked text file is LF, both in the repository and in the working
+# tree, on every platform.
+#
+# "text=auto" lets Git detect which files are text (versus binary) and
+# normalise their line endings to LF when they are committed, so no CRLF can
+# enter the repository even if a contributor's editor wrote CRLF on disk.
+# "eol=lf" additionally forces LF when files are checked out, so the working
+# tree is LF too. Both parts override the per-machine core.autocrlf Git
+# setting, so contributors need no special Git configuration.
 * text=auto eol=lf
 
 # Treat tracked vendored / minified web assets as opaque bytes; do not normalise.
