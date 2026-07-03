@@ -233,8 +233,7 @@ public partial class ConsolePanelViewModel : ObservableObject
 
     public void OnReloadProjectClicked()
     {
-        // Send message to request project reload
-        _messengerService.Send<RequestReloadProjectMessage>();
+        _commandService.Execute<IReloadProjectCommand>();
     }
 
     private void ShowConsolePanel()

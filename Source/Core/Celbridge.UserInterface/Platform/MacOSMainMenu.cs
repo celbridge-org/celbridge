@@ -249,7 +249,7 @@ internal static class MacOSMainMenu
                 break;
 
             case TagReloadProject:
-                _ = viewModel.ReloadProjectAsync();
+                viewModel.ReloadProject();
                 break;
 
             case TagCloseProject:
