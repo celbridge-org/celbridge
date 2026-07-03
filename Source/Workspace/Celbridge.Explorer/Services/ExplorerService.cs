@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Celbridge.Logging;
-using Celbridge.Resources.Services;
+using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;

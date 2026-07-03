@@ -402,6 +402,9 @@
   <data name="MainMenu_ReloadProject" xml:space="preserve">
     <value>Reload Project</value>
   </data>
+  <data name="MainMenu_ShowLogs" xml:space="preserve">
+    <value>Show Application Logs</value>
+  </data>
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
   </data>
@@ -649,6 +652,9 @@ Do you wish to continue?</value>
   </data>
   <data name="MainMenu_ReloadProjectTooltip" xml:space="preserve">
     <value>Reload the Current Project</value>
+  </data>
+  <data name="MainMenu_ShowLogsTooltip" xml:space="preserve">
+    <value>Reveal the Application Log File in the File Manager</value>
   </data>
   <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
     <value>Python Initialization Error</value>

@@ -59,6 +59,7 @@ public static class ServiceConfiguration
         services.AddTransient<IAlertCommand, AlertCommand>();
         services.AddTransient<IConfirmActionCommand, ConfirmActionCommand>();
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
+        services.AddTransient<IShowLogsCommand, ShowLogsCommand>();
 
         //
         // Register view models

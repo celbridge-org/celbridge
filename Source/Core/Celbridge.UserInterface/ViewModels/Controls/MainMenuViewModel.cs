@@ -82,6 +82,11 @@ public partial class MainMenuViewModel : ObservableObject
         _commandService.Execute<IReloadProjectCommand>();
     }
 
+    public void ShowLogs()
+    {
+        _commandService.Execute<IShowLogsCommand>();
+    }
+
     public async Task CloseProjectAsync()
     {
         var projectService = ServiceLocator.AcquireService<IProjectService>();

@@ -1,5 +1,5 @@
 #if WINDOWS
-using Celbridge.Resources.Services;
+using Celbridge.Platform;
 using Windows.Storage;
 using Windows.System;
 

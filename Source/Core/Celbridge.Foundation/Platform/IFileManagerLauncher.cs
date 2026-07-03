@@ -1,4 +1,4 @@
-namespace Celbridge.Resources.Services;
+namespace Celbridge.Platform;
 
 /// <summary>
 /// Opens files and folders through the operating system's shell: launching a file in its associated

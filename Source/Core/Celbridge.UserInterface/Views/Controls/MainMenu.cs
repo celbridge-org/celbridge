@@ -23,6 +23,7 @@ public class MainMenu
     private const string ClearRecentProjectsTag = "ClearRecentProjects";
     private const string ReloadProjectTag = "ReloadProject";
     private const string CloseProjectTag = "CloseProject";
+    private const string ShowLogsTag = "ShowLogs";
     private const string ExitTag = "Exit";
 
     private const string EditMenuTag = "EditMenu";
@@ -157,6 +158,16 @@ public class MainMenu
             tooltip: _stringLocalizer.GetString("MainMenu_SettingsTooltip"),
             isEnabled: true);
         _menuNavItem.MenuItems.Add(settingsNavItem);
+
+        // Show Application Logs, an app-level diagnostic that reveals the current log file in the file
+        // manager. Always enabled, since logs are useful even when no project is loaded.
+        var showLogsNavItem = CreateMenuItem(
+            tag: ShowLogsTag,
+            icon: new Icon { Symbol = IconSymbol.Bug },
+            label: _stringLocalizer.GetString("MainMenu_ShowLogs"),
+            tooltip: _stringLocalizer.GetString("MainMenu_ShowLogsTooltip"),
+            isEnabled: true);
+        _menuNavItem.MenuItems.Add(showLogsNavItem);
 
         _menuNavItem.MenuItems.Add(new NavigationViewItemSeparator());
 
@@ -398,6 +409,11 @@ public class MainMenu
 
             case CloseProjectTag:
                 _ = ViewModel.CloseProjectAsync();
+                MenuItemInvoked?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case ShowLogsTag:
+                ViewModel.ShowLogs();
                 MenuItemInvoked?.Invoke(this, EventArgs.Empty);
                 break;
 
