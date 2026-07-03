@@ -24,6 +24,7 @@ internal static class MacOSMainMenu
     private const long TagNoRecentProjects = 10;
     private const long TagNewFile = 11;
     private const long TagNewFolder = 12;
+    private const long TagShowLogs = 13;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -117,6 +118,8 @@ internal static class MacOSMainMenu
             Title = Text("Menu_Help"),
             Items = new List<MacMenuItem>
             {
+                MacMenuItem.Command(Text("MainMenu_ShowLogs"), TagShowLogs),
+                MacMenuItem.Separator(),
                 MacMenuItem.Command(Text("Menu_HelpWebsite"), TagHelpWebsite)
             }
         };
@@ -254,6 +257,10 @@ internal static class MacOSMainMenu
 
             case TagCloseProject:
                 _ = viewModel.CloseProjectAsync();
+                break;
+
+            case TagShowLogs:
+                viewModel.ShowLogs();
                 break;
 
             case TagClearRecentProjects:
