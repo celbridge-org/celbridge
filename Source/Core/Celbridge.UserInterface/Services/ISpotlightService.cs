@@ -22,8 +22,27 @@ public interface ISpotlightService
     void UnregisterPresenter(ISpotlightPresenter presenter);
 
     /// <summary>
-    /// Shows the spotlight on a resolved element with a label and an optional auto-clear delay
-    /// in milliseconds (zero to persist). Replaces any active spotlight.
+    /// Registers a reveal provider for a landmark id. The provider runs extra preparation when the
+    /// landmark is spotlighted, on top of the default region reveal, and undoes it on clear.
+    /// </summary>
+    void RegisterLandmark(string landmarkId, ISpotlightLandmark landmark);
+
+    /// <summary>
+    /// Unregisters the reveal provider for a landmark id.
+    /// </summary>
+    void UnregisterLandmark(string landmarkId);
+
+    /// <summary>
+    /// Reveals the named landmark (opening its region, running its reveal provider) and shows the
+    /// spotlight on it with a label and an optional auto-clear delay in milliseconds (zero to
+    /// persist). Returns a failure with a descriptive message when the landmark cannot be made
+    /// visible. Replaces any active spotlight.
+    /// </summary>
+    Task<Result> ShowSpotlightAsync(string target, string label, int durationMs);
+
+    /// <summary>
+    /// Shows the spotlight on an already-resolved element with a label and an optional auto-clear
+    /// delay in milliseconds (zero to persist). Replaces any active spotlight.
     /// </summary>
     void ShowSpotlight(FrameworkElement target, string label, int durationMs);
 

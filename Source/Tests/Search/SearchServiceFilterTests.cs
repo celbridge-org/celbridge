@@ -47,7 +47,8 @@ public class SearchServiceFilterTests
         _service = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             workspaceWrapper,
-            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())));
+            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
+            Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>());
     }
 
     [TearDown]

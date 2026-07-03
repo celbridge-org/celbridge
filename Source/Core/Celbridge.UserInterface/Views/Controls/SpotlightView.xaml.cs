@@ -33,7 +33,7 @@ public sealed partial class SpotlightView : UserControl, ISpotlightPresenter
 
         // Render the label as content with an explicit white foreground rather than through the
         // subtitle, whose foreground resource is not honoured on the Skia head and left the text
-        // black there (issue #720). White reads correctly on the accent background on every head.
+        // black there. White reads correctly on the accent background on every head.
         if (string.IsNullOrEmpty(label))
         {
             SpotlightTeachingTip.Content = null;

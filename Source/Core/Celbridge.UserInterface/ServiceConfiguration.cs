@@ -35,6 +35,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
         services.AddSingleton<IFormService, FormService>();
         services.AddSingleton<ISpotlightService, SpotlightService>();
+        services.AddSingleton<ISpotlightRegistry, SpotlightRegistry>();
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
 
@@ -91,6 +92,10 @@ public static class ServiceConfiguration
     {
         var navigationService = ServiceLocator.AcquireService<INavigationService>() as NavigationService;
         Guard.IsNotNull(navigationService);
+
+        // Seed the built-in spotlight landmarks into the runtime registry.
+        var spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
+        SpotlightLandmarks.Seed(spotlightRegistry);
 
         // EmptyPage is used as a temporary navigation target when unloading workspaces
         navigationService.RegisterPage("Empty", typeof(EmptyPage), ApplicationPage.None);

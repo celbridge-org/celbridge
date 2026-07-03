@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Celbridge.Logging;
 using Celbridge.Resources;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 using Path = System.IO.Path;
 
@@ -19,9 +20,14 @@ public class SearchService : ISearchService, IDisposable
         ".celbridge"
     };
 
+    // Search landmark whose spotlight needs the Search tab activated.
+    private const string SearchInputLandmarkId = "search-input";
+
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
+    private readonly ISpotlightService _spotlightService;
+    private readonly ISpotlightLandmark _searchSpotlightLandmark;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
@@ -34,7 +40,8 @@ public class SearchService : ISearchService, IDisposable
     public SearchService(
         ILogger<SearchService> logger,
         IWorkspaceWrapper workspaceWrapper,
-        ITextBinarySniffer textBinarySniffer)
+        ITextBinarySniffer textBinarySniffer,
+        ISpotlightService spotlightService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -42,9 +49,15 @@ public class SearchService : ISearchService, IDisposable
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
+        _spotlightService = spotlightService;
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
         _textReplacer = new TextReplacer();
+
+        // Register the Search reveal so spotlighting the search box switches to the Search tab.
+        // Torn down when this workspace-scoped service is disposed.
+        _searchSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper);
+        _spotlightService.RegisterLandmark(SearchInputLandmarkId, _searchSpotlightLandmark);
     }
 
     // Decides whether a file should be included in a search. Probes the file
@@ -642,6 +655,7 @@ public class SearchService : ISearchService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
+                _spotlightService.UnregisterLandmark(SearchInputLandmarkId);
             }
 
             _disposed = true;

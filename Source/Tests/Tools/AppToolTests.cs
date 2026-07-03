@@ -175,13 +175,17 @@ public class AppToolTests
         // factory re-resolves IProjectService at call time so tests that
         // override the project service after WireAppStateDependencies returns
         // (most of them) see their override.
+        var spotlightRegistry = Substitute.For<ISpotlightRegistry>();
+        spotlightRegistry.GetLandmarks().Returns(new List<LandmarkDescriptor>());
+
         _services.GetRequiredService<IAppStateProvider>().Returns(
             _ => new AppStateProvider(
                 environmentService,
                 _services.GetRequiredService<IProjectService>(),
                 featureFlags,
                 focusService,
-                layoutService));
+                layoutService,
+                spotlightRegistry));
 
         return featureFlags;
     }

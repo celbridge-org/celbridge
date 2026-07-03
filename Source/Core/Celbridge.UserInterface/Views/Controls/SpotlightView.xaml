@@ -12,7 +12,7 @@
       Fill the callout and its tail with the accent colour so it stands out against the dark
       panels. The body and tail share these background brushes, so overriding them recolours the
       tail too. The label foreground is set in code (see ShowSpotlight) rather than via the
-      subtitle foreground resource, which is not honoured on the Skia head (issue #720).
+      subtitle foreground resource, which is not honoured on the Skia head.
     -->
     <TeachingTip.Resources>
       <StaticResource x:Key="TeachingTipBackgroundBrush"

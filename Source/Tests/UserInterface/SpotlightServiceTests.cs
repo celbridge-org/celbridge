@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 using Microsoft.UI.Xaml;
 
 namespace Celbridge.Tests.UserInterface;
@@ -10,18 +11,22 @@ public class SpotlightServiceTests
 {
     private ILogger<SpotlightService> _logger = null!;
     private IMessengerService _messengerService = null!;
+    private ILayoutService _layoutService = null!;
+    private ISpotlightRegistry _landmarkRegistry = null!;
 
     [SetUp]
     public void Setup()
     {
         _logger = Substitute.For<ILogger<SpotlightService>>();
         _messengerService = Substitute.For<IMessengerService>();
+        _layoutService = Substitute.For<ILayoutService>();
+        _landmarkRegistry = Substitute.For<ISpotlightRegistry>();
     }
 
     [Test]
     public void RegisterPresenter_ThenClear_HidesThePresenter()
     {
-        var service = new SpotlightService(_logger, _messengerService);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
         var presenter = new StubSpotlightPresenter();
 
         service.RegisterPresenter(presenter);
@@ -33,7 +38,7 @@ public class SpotlightServiceTests
     [Test]
     public void RegisterPresenter_ReplacesPreviousPresenter()
     {
-        var service = new SpotlightService(_logger, _messengerService);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
         var first = new StubSpotlightPresenter();
         var second = new StubSpotlightPresenter();
 
@@ -49,7 +54,7 @@ public class SpotlightServiceTests
     [Test]
     public void UnregisterPresenter_NotCurrent_IsIgnored()
     {
-        var service = new SpotlightService(_logger, _messengerService);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
         var first = new StubSpotlightPresenter();
         var second = new StubSpotlightPresenter();
 
@@ -65,7 +70,7 @@ public class SpotlightServiceTests
     [Test]
     public void UnregisterPresenter_Current_ClearsTheSlot()
     {
-        var service = new SpotlightService(_logger, _messengerService);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
         var presenter = new StubSpotlightPresenter();
 
         service.RegisterPresenter(presenter);

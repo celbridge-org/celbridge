@@ -11,12 +11,13 @@ public partial class AppTools
     [RelatedGuides("workspace_panels")]
     public async partial Task<CallToolResult> Spotlight(string target, string label = "", int durationMs = 0)
     {
-        // An empty target is the clear sentinel and is handled before catalog
+        // An empty target is the clear sentinel and is handled before registry
         // validation, so clearing never trips the unknown-target troubleshooter.
+        var landmarkRegistry = GetRequiredService<ISpotlightRegistry>();
         if (!string.IsNullOrEmpty(target) &&
-            !LandmarkCatalog.All.Any(landmark => landmark.Id == target))
+            !landmarkRegistry.TryGetLandmark(target, out _))
         {
-            var validTargets = string.Join(", ", LandmarkCatalog.All.Select(landmark => landmark.Id));
+            var validTargets = string.Join(", ", landmarkRegistry.GetLandmarks().Select(landmark => landmark.Id));
             return ToolResponse.SpotlightTargetNotFound(target, validTargets);
         }
 

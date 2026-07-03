@@ -8,6 +8,7 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
     private readonly IFocusService _focusService;
     private bool _isPointerOver;
     private bool _hasFocus;
+    private bool _isToolbarRevealed;
 
     public ExplorerPanelViewModel ViewModel { get; }
 
@@ -27,6 +28,12 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
     public async Task<Result> SelectResources(List<ResourceKey> resources)
     {
         return await ResourceTree.SelectResources(resources);
+    }
+
+    public void SetToolbarRevealed(bool revealed)
+    {
+        _isToolbarRevealed = revealed;
+        UpdateToolbarVisibility();
     }
 
     private void UserControl_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -61,8 +68,9 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     private void UpdateToolbarVisibility()
     {
-        // Show toolbar when panel has focus or mouse pointer is over it
-        var isToolbarVisible = _hasFocus || _isPointerOver;
+        // Show toolbar when panel has focus, the mouse pointer is over it, or a spotlight is
+        // revealing one of its buttons
+        var isToolbarVisible = _hasFocus || _isPointerOver || _isToolbarRevealed;
         ExplorerToolbar.SetToolbarVisible(isToolbarVisible);
     }
 
