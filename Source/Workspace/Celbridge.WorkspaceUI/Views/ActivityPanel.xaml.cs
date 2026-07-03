@@ -12,6 +12,7 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDispatcher _dispatcher;
     private readonly IFocusService _focusService;
+    private bool _isShowingTab;
 
     public IExplorerPanel ExplorerPanel { get; }
     public ISearchPanel SearchPanel { get; }
@@ -78,29 +79,46 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
             return;
         }
 
-        // Hide all panels
-        ExplorerPanelControl.Visibility = Visibility.Collapsed;
-        SearchPanelControl.Visibility = Visibility.Collapsed;
-
-        // Show the requested panel and set focus
-        switch (tab)
+        // Setting ActivityNavigation.SelectedItem below raises SelectionChanged, which calls back
+        // into ShowTab; this guard makes that re-entrant call a no-op.
+        if (_isShowingTab)
         {
-            case ActivityPanelTab.Explorer:
-                ExplorerPanelControl.Visibility = Visibility.Visible;
-                _focusService.OnFocusReceived(WorkspacePanel.Explorer);
-                break;
-            case ActivityPanelTab.Search:
-                SearchPanelControl.Visibility = Visibility.Visible;
-                _focusService.OnFocusReceived(WorkspacePanel.Search);
-                // Use dispatcher to ensure the panel is fully loaded before focusing
-                _dispatcher.TryEnqueue(() => SearchPanel.FocusSearchInput());
-                break;
-            default:
-                _logger.LogWarning($"Tab not yet implemented: {tab}");
-                return;
+            return;
         }
 
-        ViewModel.CurrentTab = tab;
+        _isShowingTab = true;
+        try
+        {
+            // Hide all panels
+            ExplorerPanelControl.Visibility = Visibility.Collapsed;
+            SearchPanelControl.Visibility = Visibility.Collapsed;
+
+            // Show the requested panel, highlight its activity-bar item, and set focus
+            switch (tab)
+            {
+                case ActivityPanelTab.Explorer:
+                    ExplorerPanelControl.Visibility = Visibility.Visible;
+                    ActivityNavigation.SelectedItem = ExplorerNavItem;
+                    _focusService.OnFocusReceived(WorkspacePanel.Explorer);
+                    break;
+                case ActivityPanelTab.Search:
+                    SearchPanelControl.Visibility = Visibility.Visible;
+                    ActivityNavigation.SelectedItem = SearchNavItem;
+                    _focusService.OnFocusReceived(WorkspacePanel.Search);
+                    // Use dispatcher to ensure the panel is fully loaded before focusing
+                    _dispatcher.TryEnqueue(() => SearchPanel.FocusSearchInput());
+                    break;
+                default:
+                    _logger.LogWarning($"Tab not yet implemented: {tab}");
+                    return;
+            }
+
+            ViewModel.CurrentTab = tab;
+        }
+        finally
+        {
+            _isShowingTab = false;
+        }
     }
 
     private void ActivityNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

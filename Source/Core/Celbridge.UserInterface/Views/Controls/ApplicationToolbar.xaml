@@ -78,7 +78,7 @@
 
         <!-- Settings Button - positioned at the right edge of the toolbar -->
         <Button x:Name="SettingsButton"
-                AutomationProperties.AutomationId="landmark.settings"
+                AutomationProperties.AutomationId="settings-button"
                 Grid.Column="5"
                 Click="SettingsButton_Click"
                 Background="Transparent"

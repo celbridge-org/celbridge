@@ -17,6 +17,20 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileManagerLauncher _fileManagerLauncher;
+    private readonly ISpotlightService _spotlightService;
+    private readonly ISpotlightLandmark _panelSpotlightLandmark;
+    private readonly ISpotlightLandmark _toolbarSpotlightLandmark;
+
+    // Explorer landmark whose spotlight only needs the Explorer tab activated.
+    private const string ExplorerPanelLandmarkId = "explorer-panel";
+
+    // Toolbar button landmarks whose spotlight also needs the ephemeral Explorer toolbar revealed.
+    private static readonly string[] ToolbarLandmarkIds =
+    {
+        "new-file-button",
+        "new-folder-button",
+        "project-settings-button",
+    };
 
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry =>
@@ -37,7 +51,8 @@ public class ExplorerService : IExplorerService, IDisposable
         IMessengerService messengerService,
         IIconService iconService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileManagerLauncher fileManagerLauncher)
+        IFileManagerLauncher fileManagerLauncher,
+        ISpotlightService spotlightService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -47,11 +62,23 @@ public class ExplorerService : IExplorerService, IDisposable
         _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
         _fileManagerLauncher = fileManagerLauncher;
+        _spotlightService = spotlightService;
 
         FolderStateService = serviceProvider.GetRequiredService<IFolderStateService>();
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
+
+        // Register the Explorer reveals so spotlighting an Explorer landmark switches to the
+        // Explorer tab first (and, for the toolbar buttons, fades the ephemeral toolbar in). Torn
+        // down when this workspace-scoped service is disposed.
+        _panelSpotlightLandmark = new ExplorerSpotlightLandmark(workspaceWrapper, revealToolbar: false);
+        _toolbarSpotlightLandmark = new ExplorerSpotlightLandmark(workspaceWrapper, revealToolbar: true);
+        _spotlightService.RegisterLandmark(ExplorerPanelLandmarkId, _panelSpotlightLandmark);
+        foreach (var landmarkId in ToolbarLandmarkIds)
+        {
+            _spotlightService.RegisterLandmark(landmarkId, _toolbarSpotlightLandmark);
+        }
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -243,6 +270,12 @@ public class ExplorerService : IExplorerService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
+
+                _spotlightService.UnregisterLandmark(ExplorerPanelLandmarkId);
+                foreach (var landmarkId in ToolbarLandmarkIds)
+                {
+                    _spotlightService.UnregisterLandmark(landmarkId);
+                }
             }
 
             _disposed = true;

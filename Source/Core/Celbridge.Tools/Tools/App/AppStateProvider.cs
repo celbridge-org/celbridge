@@ -17,8 +17,8 @@ public record class LayoutModeInfo(
 
 /// <summary>
 /// Result returned by app_get_state, reporting the running version, project load
-/// state, feature flag states, the focused panel ("None" when unfocused), and the
-/// current panel layout.
+/// state, feature flag states, the focused panel ("None" when unfocused), the
+/// current panel layout, and the spotlightable landmark ids app_spotlight accepts.
 /// </summary>
 public record class AppStateResult(
     string Version,
@@ -26,7 +26,8 @@ public record class AppStateResult(
     string ProjectName,
     IReadOnlyDictionary<string, bool> FeatureFlags,
     string FocusedPanel,
-    LayoutModeInfo LayoutMode);
+    LayoutModeInfo LayoutMode,
+    IReadOnlyList<string> SpotlightLandmarks);
 
 /// <summary>
 /// Builds the AppStateResult snapshot describing current app and workspace state.
@@ -48,19 +49,22 @@ internal sealed class AppStateProvider : IAppStateProvider
     private readonly IFeatureFlags _featureFlags;
     private readonly IFocusService _focusService;
     private readonly ILayoutService _layoutService;
+    private readonly ISpotlightRegistry _spotlightRegistry;
 
     public AppStateProvider(
         IAppEnvironment environmentService,
         IProjectService projectService,
         IFeatureFlags featureFlags,
         IFocusService focusService,
-        ILayoutService layoutService)
+        ILayoutService layoutService,
+        ISpotlightRegistry spotlightRegistry)
     {
         _environmentService = environmentService;
         _projectService = projectService;
         _featureFlags = featureFlags;
         _focusService = focusService;
         _layoutService = layoutService;
+        _spotlightRegistry = spotlightRegistry;
     }
 
     public AppStateResult GetState()
@@ -85,13 +89,19 @@ internal sealed class AppStateProvider : IAppStateProvider
             ConsolePanelVisible: _layoutService.IsConsolePanelVisible,
             ConsoleMaximized: _layoutService.IsConsoleMaximized);
 
+        var spotlightLandmarks = _spotlightRegistry.GetLandmarks()
+            .Select(landmark => landmark.Id)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+
         return new AppStateResult(
             Version: version,
             IsLoaded: isLoaded,
             ProjectName: projectName,
             FeatureFlags: featureFlags,
             FocusedPanel: focusedPanel,
-            LayoutMode: layoutMode);
+            LayoutMode: layoutMode,
+            SpotlightLandmarks: spotlightLandmarks);
     }
 
     private static IReadOnlyList<string> ReadFeatureFlagNames()
