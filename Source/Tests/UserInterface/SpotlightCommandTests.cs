@@ -1,65 +1,61 @@
-using Celbridge.Messaging;
 using Celbridge.UserInterface.Commands;
-using Celbridge.Workspace;
+using Celbridge.UserInterface.Services;
 
 namespace Celbridge.Tests.UserInterface;
 
 [TestFixture]
 public class SpotlightCommandTests
 {
-    private IMessengerService _messengerService = null!;
-    private ILayoutService _layoutService = null!;
+    private ISpotlightService _spotlightService = null!;
 
     [SetUp]
     public void Setup()
     {
-        _messengerService = Substitute.For<IMessengerService>();
-        _layoutService = Substitute.For<ILayoutService>();
+        _spotlightService = Substitute.For<ISpotlightService>();
     }
 
     [Test]
-    public async Task EmptyTarget_SendsClearSpotlightMessage()
+    public async Task EmptyTarget_ClearsSpotlight()
     {
-        var command = new SpotlightCommand(_messengerService, _layoutService);
+        var command = new SpotlightCommand(_spotlightService);
         command.Target = string.Empty;
 
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeFalse();
-        _messengerService.Received(1).Send(Arg.Any<ClearSpotlightMessage>());
-        _messengerService.DidNotReceive().Send(Arg.Any<ShowSpotlightMessage>());
-        _layoutService.DidNotReceive().SetRegionVisibility(Arg.Any<LayoutRegion>(), Arg.Any<bool>());
+        _spotlightService.Received(1).ClearSpotlight();
+        await _spotlightService.DidNotReceive().ShowSpotlightAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>());
     }
 
     [Test]
-    public async Task SidebarTarget_RevealsRegionAndSendsShowSpotlightMessage()
+    public async Task Target_ShowsSpotlight()
     {
-        var command = new SpotlightCommand(_messengerService, _layoutService);
-        command.Target = "landmark.explorer";
+        _spotlightService.ShowSpotlightAsync("explorer-panel", "This is the Explorer", 4000)
+            .Returns(Result.Ok());
+
+        var command = new SpotlightCommand(_spotlightService);
+        command.Target = "explorer-panel";
         command.Label = "This is the Explorer";
         command.DurationMs = 4000;
 
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeFalse();
-        _layoutService.Received(1).SetRegionVisibility(LayoutRegion.Primary, true);
-        _messengerService.Received(1).Send(Arg.Is<ShowSpotlightMessage>(message =>
-            message.Target == "landmark.explorer" &&
-            message.Label == "This is the Explorer" &&
-            message.DurationMs == 4000));
-        _messengerService.DidNotReceive().Send(Arg.Any<ClearSpotlightMessage>());
+        await _spotlightService.Received(1).ShowSpotlightAsync("explorer-panel", "This is the Explorer", 4000);
+        _spotlightService.DidNotReceive().ClearSpotlight();
     }
 
     [Test]
-    public async Task DocumentsTarget_DoesNotChangeRegionVisibility()
+    public async Task Target_PropagatesShowFailure()
     {
-        var command = new SpotlightCommand(_messengerService, _layoutService);
-        command.Target = "landmark.documents";
+        _spotlightService.ShowSpotlightAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>())
+            .Returns(Result.Fail("The control is not currently on screen."));
+
+        var command = new SpotlightCommand(_spotlightService);
+        command.Target = "new-file-button";
 
         var result = await command.ExecuteAsync();
 
-        result.IsFailure.Should().BeFalse();
-        _layoutService.DidNotReceive().SetRegionVisibility(Arg.Any<LayoutRegion>(), Arg.Any<bool>());
-        _messengerService.Received(1).Send(Arg.Any<ShowSpotlightMessage>());
+        result.IsFailure.Should().BeTrue();
     }
 }

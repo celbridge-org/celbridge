@@ -220,7 +220,8 @@ public class AgentResponseFilterTests
             ProjectName: "ProbeProject",
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "Documents",
-            LayoutMode: new LayoutModeInfo(true, false, true, false));
+            LayoutMode: new LayoutModeInfo(true, false, true, false),
+            SpotlightLandmarks: new List<string>());
         _documentStateProvider.Result = new DocumentStateResult(
             ActiveDocument: "/Notes/README.md",
             SectionCount: 1,
@@ -595,7 +596,8 @@ public class AgentResponseFilterTests
             ProjectName: "TestProject",
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "None",
-            LayoutMode: new LayoutModeInfo(true, true, false, false));
+            LayoutMode: new LayoutModeInfo(true, true, false, false),
+            SpotlightLandmarks: new List<string>());
 
         public AppStateResult GetState() => State;
     }

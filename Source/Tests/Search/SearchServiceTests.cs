@@ -53,7 +53,8 @@ public class SearchServiceTests
         _searchService = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             _workspaceWrapper,
-            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())));
+            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
+            Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>());
 
         // After construction, the workspace is "loaded" so SearchAsync proceeds past its early return.
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
