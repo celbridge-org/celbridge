@@ -368,13 +368,10 @@ public partial class App : Application
     /// </summary>
     private static void SetupLoggingEnvironment()
     {
-
-        string localDataPath;
-#if WINDOWS
-        localDataPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-#else
-        localDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-#endif
+        // AppEnvironment is dependency-free, so it can be used here before the host and DI are built.
+        // Reusing it keeps the log folder aligned with every other Celbridge data folder, which is
+        // namespaced under a Celbridge subfolder on the Skia heads' shared local data location.
+        var localDataPath = new Celbridge.Utilities.Platform.AppEnvironment().LocalApplicationDataFolderPath;
 
         // Get process start time formatted to match the Python host log filenames.
         var processStartTime = System.Diagnostics.Process.GetCurrentProcess().StartTime;
