@@ -13,6 +13,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
+    [RedactedInLogs]
     public List<FileRangeEdit> Edits { get; set; } = new();
 
     public ApplyRangeEditsCommand(

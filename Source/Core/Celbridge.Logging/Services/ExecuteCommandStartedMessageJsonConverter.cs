@@ -1,4 +1,6 @@
 using Celbridge.Commands;
+using System.Collections;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -39,11 +41,20 @@ public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCo
             foreach (var prop in properties)
             {
                 var value = prop.GetValue(command);
-                if (value is not null || options.DefaultIgnoreCondition != JsonIgnoreCondition.WhenWritingNull)
+                if (value is null && options.DefaultIgnoreCondition == JsonIgnoreCondition.WhenWritingNull)
                 {
-                    writer.WritePropertyName(prop.Name);
-                    JsonSerializer.Serialize(writer, value, prop.PropertyType, options);
+                    continue;
                 }
+
+                writer.WritePropertyName(prop.Name);
+
+                if (prop.GetCustomAttribute<RedactedInLogsAttribute>() is not null)
+                {
+                    writer.WriteStringValue(DescribeRedactedValue(value));
+                    continue;
+                }
+
+                JsonSerializer.Serialize(writer, value, prop.PropertyType, options);
             }
         }
 
@@ -58,6 +69,26 @@ public class ExecuteCommandStartedMessageJsonConverter : JsonConverter<ExecuteCo
         JsonSerializer.Serialize(writer, command.ExecutionSource, options);
 
         writer.WriteEndObject();
+    }
+
+    private static string DescribeRedactedValue(object? value)
+    {
+        if (value is null)
+        {
+            return "(redacted)";
+        }
+
+        if (value is string text)
+        {
+            return $"(redacted, {text.Length} chars)";
+        }
+
+        if (value is ICollection collection)
+        {
+            return $"(redacted, {collection.Count} items)";
+        }
+
+        return "(redacted)";
     }
 
     public override ExecuteCommandStartedMessage Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

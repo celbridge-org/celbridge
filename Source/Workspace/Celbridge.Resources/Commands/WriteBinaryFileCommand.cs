@@ -13,6 +13,8 @@ public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
+
+    [RedactedInLogs]
     public string Base64Content { get; set; } = string.Empty;
 
     public WriteBinaryFileCommand(

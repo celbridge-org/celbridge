@@ -14,6 +14,8 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
+
+    [RedactedInLogs]
     public string Content { get; set; } = string.Empty;
 
     public WriteFileCommand(
