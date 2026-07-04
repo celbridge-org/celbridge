@@ -13,8 +13,13 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
+
+    [RedactedInLogs]
     public string SearchText { get; set; } = string.Empty;
+
+    [RedactedInLogs]
     public string ReplaceText { get; set; } = string.Empty;
+
     public bool MatchCase { get; set; }
     public bool MatchWord { get; set; }
     public bool UseRegex { get; set; }

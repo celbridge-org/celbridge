@@ -11,8 +11,13 @@ public class EditFileCommand : CommandBase, IEditFileCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
+
+    [RedactedInLogs]
     public string OldString { get; set; } = string.Empty;
+
+    [RedactedInLogs]
     public string NewString { get; set; } = string.Empty;
+
     public bool ReplaceAll { get; set; }
 
     public EditFileResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);

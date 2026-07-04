@@ -11,6 +11,8 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
+
+    [RedactedInLogs]
     public List<FileEditOperation> Edits { get; set; } = new();
 
     public MultiEditFileResult ResultValue { get; private set; } = new(

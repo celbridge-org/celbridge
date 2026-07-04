@@ -1,11 +1,13 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Logging;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.WorkspaceUI.Commands;
 
 public class CopyTextToClipboardCommand : CommandBase, ICopyTextToClipboardCommand
 {
+    [RedactedInLogs]
     public string Text { get; set; } = string.Empty;
     public DataTransferMode TransferMode { get; set; }
 
