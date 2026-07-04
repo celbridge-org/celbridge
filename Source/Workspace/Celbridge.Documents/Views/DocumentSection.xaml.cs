@@ -274,8 +274,33 @@ public sealed partial class DocumentSection : UserControl
             DispatcherQueue.TryEnqueue(() =>
             {
                 TabView.SelectedItem = tab;
+                ScrollTabIntoView(tab);
             });
+            return;
         }
+
+        ScrollTabIntoView(tab);
+    }
+
+    /// <summary>
+    /// Scrolls the tab strip so the given tab is visible when it lies outside the visible area.
+    /// </summary>
+    private void ScrollTabIntoView(DocumentTab tab)
+    {
+        if (!_platformInfo.RequiresMacOSTabScrollIntoView)
+        {
+            // The packaged Windows TabView brings the selected tab into view on its own.
+            return;
+        }
+
+        // Defer to the next dispatcher cycle so the tab strip has completed layout. A tab that was just
+        // added, or a selection that changes the strip's extent, has no scroll geometry to act on until
+        // the layout pass runs, so scrolling synchronously here would be a no-op.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            var tabListView = VisualTreeHelperEx.FindDescendant<ListViewBase>(TabView);
+            tabListView?.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
+        });
     }
 
     /// <summary>

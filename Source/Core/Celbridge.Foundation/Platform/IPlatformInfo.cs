@@ -85,4 +85,10 @@ public interface IPlatformInfo
     /// selection is retried on the next dispatcher cycle. True on macOS.
     /// </summary>
     bool RequiresMacOSLayoutRetry { get; }
+
+    /// <summary>
+    /// Whether the tab strip must be scrolled manually to reveal the selected tab because the platform does
+    /// not bring it into view automatically. True on macOS.
+    /// </summary>
+    bool RequiresMacOSTabScrollIntoView { get; }
 }

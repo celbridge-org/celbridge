@@ -71,4 +71,6 @@ public sealed class PlatformInfo : IPlatformInfo
     public bool RequiresMacOSSelectionRepaint => OperatingSystem.IsMacOS();
 
     public bool RequiresMacOSLayoutRetry => OperatingSystem.IsMacOS();
+
+    public bool RequiresMacOSTabScrollIntoView => OperatingSystem.IsMacOS();
 }
