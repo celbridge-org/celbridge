@@ -259,27 +259,33 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public void SelectTab(DocumentTab tab)
     {
+        SetSelectedItemWithLayoutRetry(tab, () => ScrollTabIntoView(tab));
+    }
+
+    /// <summary>
+    /// Assigns TabView.SelectedItem, retrying once on the next dispatcher cycle if Uno throws a layout
+    /// exception. On the macOS Skia head, selecting a tab in a strip that has not been measured yet makes
+    /// Uno throw a layout exception for the selected tab's corner render (an invalid NaN/Infinity frame
+    /// size) while bringing the tab into view, which would otherwise crash the workspace. The common path
+    /// stays synchronous so tab selection order during restore is preserved.
+    /// </summary>
+    private void SetSelectedItemWithLayoutRetry(object? selectedItem, Action onSelected)
+    {
         try
         {
-            TabView.SelectedItem = tab;
+            TabView.SelectedItem = selectedItem;
         }
         catch (InvalidOperationException) when (_platformInfo.RequiresMacOSLayoutRetry)
         {
-            // On the macOS Skia head, selecting a tab in an overflowing strip that has not been measured
-            // yet (as happens when the active document is restored after all tabs are added) makes Uno
-            // throw a layout exception for the selected tab's corner render (an invalid NaN/Infinity
-            // frame size), which wedges the workspace load. Retry on the next dispatcher cycle, once the
-            // strip has a valid layout. The common path stays synchronous so tab selection order during
-            // restore is preserved.
             DispatcherQueue.TryEnqueue(() =>
             {
-                TabView.SelectedItem = tab;
-                ScrollTabIntoView(tab);
+                TabView.SelectedItem = selectedItem;
+                onSelected();
             });
             return;
         }
 
-        ScrollTabIntoView(tab);
+        onSelected();
     }
 
     /// <summary>
@@ -355,7 +361,7 @@ public sealed partial class DocumentSection : UserControl
     {
         var selectedItem = TabView.SelectedItem;
         TabView.SelectedItem = null;
-        TabView.SelectedItem = selectedItem;
+        SetSelectedItemWithLayoutRetry(selectedItem, () => { });
     }
 
     /// <summary>
