@@ -122,6 +122,12 @@ public sealed class ConPtyTerminal : IPtyBackend
     {
         var buffer = new byte[4096];
 
+        // A stateful decoder carries a multi-byte UTF-8 sequence split across read boundaries into the
+        // next chunk. Stateless decoding would turn each half into replacement characters, which also
+        // desyncs TUI cursor arithmetic because the replacement glyphs occupy different columns.
+        var decoder = Encoding.UTF8.GetDecoder();
+        var charBuffer = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+
         try
         {
             using var reader = new FileStream(new SafeFileHandle(_hOutputRead, ownsHandle: false), FileAccess.Read);
@@ -134,7 +140,13 @@ public sealed class ConPtyTerminal : IPtyBackend
                     break;
                 }
 
-                var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                int charCount = decoder.GetChars(buffer, 0, bytesRead, charBuffer, 0);
+                if (charCount == 0)
+                {
+                    continue;
+                }
+
+                var text = new string(charBuffer, 0, charCount);
                 OutputReceived?.Invoke(this, text);
             }
         }

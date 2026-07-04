@@ -18,6 +18,8 @@ const files = [
     ['@xterm/addon-fit/lib/addon-fit.js.map', 'addon-fit.js.map'],
     ['@xterm/addon-clipboard/lib/addon-clipboard.js', 'addon-clipboard.js'],
     ['@xterm/addon-clipboard/lib/addon-clipboard.js.map', 'addon-clipboard.js.map'],
+    ['@xterm/addon-unicode11/lib/addon-unicode11.js', 'addon-unicode11.js'],
+    ['@xterm/addon-unicode11/lib/addon-unicode11.js.map', 'addon-unicode11.js.map'],
     ['@xterm/addon-web-links/lib/addon-web-links.js', 'addon-web-links.js'],
     ['@xterm/addon-web-links/lib/addon-web-links.js.map', 'addon-web-links.js.map'],
 ];

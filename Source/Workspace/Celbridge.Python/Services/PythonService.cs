@@ -290,8 +290,9 @@ public class PythonService : IPythonService, IDisposable
             // Keep the terminal alive after the REPL exits so the user can type 'celbridge-py' to start a
             // new session. On Windows the ConPty backend runs the command line via cmd.exe. The Unix
             // backend already runs the command line through /bin/sh -c, so the uv command is appended with
-            // 'exec bash' rather than wrapped in another shell (a second 'bash -c' would collide with the
-            // single quotes uvCommand already uses to quote its own arguments).
+            // 'exec $SHELL' (the user's login shell, typically zsh on macOS) rather than wrapped in another
+            // shell (a second 'sh -c' would collide with the single quotes uvCommand already uses to quote
+            // its own arguments).
             var commandLine = OperatingSystem.IsWindows()
                 ? $"cmd.exe /k \"{uvCommand}\""
                 : $"{uvCommand}; exec $SHELL";

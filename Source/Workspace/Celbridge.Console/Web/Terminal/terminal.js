@@ -15,7 +15,15 @@ const initialTheme = initialIsDark ? darkTheme : lightTheme;
 
 const term = new Terminal({
     theme: initialTheme,
-    fontFamily: "'Cascadia Mono', monospace"
+    fontFamily: "'Cascadia Mono', monospace",
+    // Required by the unicode11 addon, which registers its width tables
+    // through xterm's proposed API. Loading the addon throws without it.
+    allowProposedApi: true,
+    // xterm.js damps small (touchpad) wheel deltas to roughly a third of what
+    // Terminal.app scrolls, which makes TUI scrolling feel sluggish. This
+    // multiplier applies to the wheel paths xterm.js handles itself: viewport
+    // scrolling, mouse-tracking wheel reports, and alternate-scroll arrows.
+    scrollSensitivity: 3
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -23,6 +31,14 @@ term.loadAddon(fitAddon);
 
 const clipboardAddon = new ClipboardAddon.ClipboardAddon();
 term.loadAddon(clipboardAddon);
+
+// xterm.js defaults to Unicode 6 character-width tables, while modern TUIs
+// (Claude Code among them) measure with Unicode 11+ tables. A width mismatch
+// on a single character shifts the rest of its row by a cell, misplacing
+// box-drawing borders.
+const unicode11Addon = new Unicode11Addon.Unicode11Addon();
+term.loadAddon(unicode11Addon);
+term.unicode.activeVersion = '11';
 
 // Web link support
 
@@ -48,8 +64,15 @@ term.loadAddon(webLinksAddon);
 // xterm.js measures cell dimensions when the terminal is opened, so the font
 // must be available by then. Otherwise FitAddon measures against the fallback
 // font and reports an inflated column count, which causes TUI content to be
-// drawn wider than the viewport.
-await document.fonts.load('1em "Cascadia Mono"');
+// drawn wider than the viewport. Load all four face variants up front: the
+// italic and bold faces otherwise load lazily on first use, rendering with
+// fallback metrics until the fetch completes.
+await Promise.all([
+    document.fonts.load('1em "Cascadia Mono"'),
+    document.fonts.load('bold 1em "Cascadia Mono"'),
+    document.fonts.load('italic 1em "Cascadia Mono"'),
+    document.fonts.load('bold italic 1em "Cascadia Mono"')
+]);
 
 const terminalElement = document.getElementById('terminal');
 term.open(terminalElement);
@@ -68,18 +91,28 @@ function applyTheme(isDark) {
     }
 }
 
-// Force the wheel to always scroll the xterm.js viewport, even when the TUI
-// has enabled application cursor mode (DECCKM) — without this, xterm.js
-// converts wheel events into arrow-key sequences that go to the TUI, and
-// Claude Code in particular notices and complains that "Scroll wheel is
-// sending arrow keys". We attach the handler at the DOM capture phase on
-// the terminal container so it runs before xterm.js's own wheel listener.
-// Holding Shift bypasses our handler and lets xterm.js handle the event
-// normally (which then either scrolls or sends to TUI per its default).
+// Force the wheel to scroll the xterm.js viewport while the shell prompt owns
+// the screen, even when the TUI has enabled application cursor mode (DECCKM) —
+// without this, xterm.js converts wheel events into arrow-key sequences that
+// go to the TUI, and Claude Code in particular notices and complains that
+// "Scroll wheel is sending arrow keys". We attach the handler at the DOM
+// capture phase on the terminal container so it runs before xterm.js's own
+// wheel listener. Holding Shift bypasses our handler and lets xterm.js handle
+// the event normally (which then either scrolls or sends to TUI per its default).
 terminalElement.addEventListener('wheel', (ev) => {
     if (ev.shiftKey) {
         return;
     }
+
+    // When a TUI is driving the screen, let xterm.js deliver the wheel to it:
+    // with mouse tracking enabled it forwards wheel reports, and on the
+    // alternate buffer it emulates arrow keys (the standard alternate-scroll
+    // behaviour that less, vim, and Claude Code fullscreen mode scroll with).
+    if (term.modes.mouseTrackingMode !== 'none' ||
+        term.buffer.active.type === 'alternate') {
+        return;
+    }
+
     ev.preventDefault();
     ev.stopPropagation();
     const lines = Math.sign(ev.deltaY) * Math.max(1, Math.round(Math.abs(ev.deltaY) / 40));

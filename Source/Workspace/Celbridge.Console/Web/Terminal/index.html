@@ -12,6 +12,7 @@
     <script src="lib/xterm.js"></script>
     <script src="lib/addon-fit.js"></script>
     <script src="lib/addon-clipboard.js"></script>
+    <script src="lib/addon-unicode11.js"></script>
     <script src="lib/addon-web-links.js"></script>
 
     <style>
@@ -37,6 +38,13 @@
             height: calc(100vh - 16px);
             width: calc(100% - 8px);
             margin: 8px 0 8px 8px;
+        }
+
+        /* The DOM renderer fits text to fractional cell widths with fractional letter-spacing.
+           WebKit's subpixel rounding lets the last column's glyph paint a ~2px sliver past the
+           grid edge, which shows as a stray mark beside full-width TUI borders. Clip it. */
+        #terminal .xterm-screen {
+            overflow: hidden;
         }
     </style>
 </head>
