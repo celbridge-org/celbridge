@@ -12,10 +12,6 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
     // otherwise leave the CDP call hanging.
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
 
-    public bool CreatesWebViewInPlace => false;
-
-    public bool UsesPrewarmedPool => true;
-
     public bool SupportsVirtualHostMapping => true;
 
     public async Task EnsureCoreWebView2Async(WebView2 webView)
