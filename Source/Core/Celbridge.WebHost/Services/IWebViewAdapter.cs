@@ -11,18 +11,6 @@ namespace Celbridge.WebHost;
 public interface IWebViewAdapter
 {
     /// <summary>
-    /// True when the WebView2 is a native WKWebView that loses its context if re-parented, so a view must
-    /// create its control in place rather than reuse a pre-warmed, re-parentable pool.
-    /// </summary>
-    bool CreatesWebViewInPlace { get; }
-
-    /// <summary>
-    /// True when the platform benefits from a background-warmed pool of WebView2 controls. Only the packaged
-    /// Windows head initializes controls while detached, which the pre-warm relies on.
-    /// </summary>
-    bool UsesPrewarmedPool { get; }
-
-    /// <summary>
     /// True when the platform can map a virtual host name to a local folder and serve it under a faked origin.
     /// True on the packaged Windows head and the Windows Skia head (both back a real WebView2); false on the
     /// macOS and Linux Skia heads, which fake the origin via LoadHtmlString instead.

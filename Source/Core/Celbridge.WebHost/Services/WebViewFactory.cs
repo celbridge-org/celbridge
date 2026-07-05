@@ -30,12 +30,9 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         _maxPoolSize = poolSize;
         _pool = new Queue<WebView2>();
 
-        if (_webViewAdapter.UsesPrewarmedPool)
-        {
-            // Start initialization but don't await it.
-            // This allows the WebView pool to be populated in the background.
-            _initializationTask = InitializePoolAsync();
-        }
+        // Start initialization but don't await it.
+        // This allows the WebView pool to be populated in the background.
+        _initializationTask = InitializePoolAsync();
     }
 
     private async Task InitializePoolAsync()

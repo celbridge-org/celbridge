@@ -23,13 +23,6 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         _logger = logger;
     }
 
-    // In-place creation is a consequence of the macOS Skia WebView2 being a native WKWebView: re-parenting
-    // resets its context. This coincides with "not Windows" on the Skia heads (the desktop Windows head
-    // re-parents harmlessly).
-    public bool CreatesWebViewInPlace => !OperatingSystem.IsWindows();
-
-    public bool UsesPrewarmedPool => false;
-
     // Windows-under-Skia hosts a real WebView2 that implements virtual-host mapping; macOS WKWebView and the
     // Linux Skia head do not, and use loadHTMLString instead.
     public bool SupportsVirtualHostMapping => OperatingSystem.IsWindows();
@@ -39,7 +32,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // EnsureCoreWebView2Async never completes for a control that is not parented to a window. Parent the
         // control in the hidden, window-rooted host for the duration of initialization, then detach it so the
         // consumer can place it in its own container with the CoreWebView2 already live.
-        var host = EnsureInitHost();
+        var host = await EnsureInitHostAsync();
         host.Children.Add(webView);
         try
         {
@@ -57,6 +50,22 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             }
 
             await webView.EnsureCoreWebView2Async();
+
+            // Pin the native WKWebView for the process lifetime. Uno's native element disposes the
+            // view on every Unloaded and later touches the stale handle, which is a use-after-free
+            // (see RetainNativeWebView). The handle may not be resolvable yet at this point, so the
+            // other adapter entry points that resolve it also pin (RetainNativeWebView is idempotent).
+            if (OperatingSystem.IsMacOS() && webView.CoreWebView2 is not null)
+            {
+                if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
+                {
+                    MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
+                }
+                else
+                {
+                    _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
+                }
+            }
         }
         finally
         {
@@ -184,6 +193,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         if (OperatingSystem.IsMacOS()
             && MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
         {
+            MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
             MacOSWebViewInterop.AddUserScriptAtDocumentStart(nativeHandle, script);
         }
 
@@ -223,6 +233,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return;
         }
 
+        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+
         _safariVersion ??= ResolveSafariVersion();
 
         var userAgent = $"{MacOSUserAgentPrefix} Version/{_safariVersion} Safari/605.1.15 {applicationToken}";
@@ -251,22 +263,41 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 $"Could not reach the native WKWebView handle to load HTML: {detail}");
         }
 
+        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
         MacOSWebViewInterop.LoadHtmlString(nativeHandle, html, baseUrl);
     }
 
-    private Panel EnsureInitHost()
+    private async Task<Panel> EnsureInitHostAsync()
     {
         if (_initHost is not null)
         {
             return _initHost;
         }
 
+        // The factory pre-warms its pool from application startup, before the window content exists, so
+        // wait for the root grid rather than failing the early pool instances.
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        if (userInterfaceService.MainWindow is not Window mainWindow ||
-            mainWindow.Content is not Grid rootGrid)
+        var pollInterval = TimeSpan.FromMilliseconds(100);
+        var rootGridWait = TimeSpan.Zero;
+
+        Grid? rootGrid = null;
+        while (rootGrid is null)
         {
-            throw new InvalidOperationException(
-                "Cannot initialize WebView2: the application root grid is not available yet");
+            if (userInterfaceService.MainWindow is Window mainWindow &&
+                mainWindow.Content is Grid windowRootGrid)
+            {
+                rootGrid = windowRootGrid;
+                break;
+            }
+
+            if (rootGridWait > TimeSpan.FromSeconds(30))
+            {
+                throw new InvalidOperationException(
+                    "Cannot initialize WebView2: the application root grid did not become available");
+            }
+
+            await Task.Delay(pollInterval);
+            rootGridWait += pollInterval;
         }
 
         var host = new Grid
