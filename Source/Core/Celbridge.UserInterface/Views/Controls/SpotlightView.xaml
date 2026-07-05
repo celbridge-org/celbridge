@@ -2,23 +2,24 @@
     x:Class="Celbridge.UserInterface.Views.Controls.SpotlightView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <!-- Agent-driven spotlight callout, driven by the app_spotlight tool. -->
-  <TeachingTip x:Name="SpotlightTeachingTip"
-               IsLightDismissEnabled="False"
-               Closed="SpotlightTeachingTip_Closed">
+  <controls:SpotlightCallout x:Name="SpotlightTeachingTip"
+                             IsLightDismissEnabled="False"
+                             Closed="SpotlightTeachingTip_Closed">
     <!--
       Fill the callout and its tail with the accent colour so it stands out against the dark
       panels. The body and tail share these background brushes, so overriding them recolours the
-      tail too. The label foreground is set in code (see ShowSpotlight) rather than via the
-      subtitle foreground resource, which is not honoured on the Skia head.
+      tail too. The label foreground and the close button glyph are set in code (see ShowSpotlight
+      and SpotlightCallout) rather than via theme resources, which are not honoured on the Skia head.
     -->
-    <TeachingTip.Resources>
+    <controls:SpotlightCallout.Resources>
       <StaticResource x:Key="TeachingTipBackgroundBrush"
                       ResourceKey="AccentFillColorDefaultBrush"/>
       <StaticResource x:Key="TeachingTipTransientBackground"
                       ResourceKey="AccentFillColorDefaultBrush"/>
-    </TeachingTip.Resources>
-  </TeachingTip>
+    </controls:SpotlightCallout.Resources>
+  </controls:SpotlightCallout>
 </UserControl>

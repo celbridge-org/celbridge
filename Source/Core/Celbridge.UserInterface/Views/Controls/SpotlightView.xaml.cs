@@ -8,6 +8,13 @@ namespace Celbridge.UserInterface.Views.Controls;
 
 public sealed partial class SpotlightView : UserControl, ISpotlightPresenter
 {
+    // The teaching tip's corner close button (40px, TeachingTipAlternateCloseButtonSize) floats
+    // over the top-right of the content and reserves no layout space, so it overlaps the label.
+    // The content already carries a 12px margin (TeachingTipContentMargin), so reserving the
+    // remaining 28px keeps the label wrapping clear of the button. The button's own 4px padding
+    // provides the visual gap between the text and the glyph.
+    private const double CloseButtonClearance = 28;
+
     public SpotlightView()
     {
         InitializeComponent();
@@ -44,7 +51,8 @@ public sealed partial class SpotlightView : UserControl, ISpotlightPresenter
             {
                 Text = label,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, CloseButtonClearance, 0)
             };
         }
 
