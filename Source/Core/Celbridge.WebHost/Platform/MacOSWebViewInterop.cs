@@ -74,6 +74,10 @@ public static class MacOSWebViewInterop
     private static TaskCompletionSource<IntPtr>? _snapshotCompletion;
     private static IntPtr _snapshotBlock;
 
+    // Web views already pinned, so the several resolution points that call RetainNativeWebView take
+    // one retain each.
+    private static readonly HashSet<IntPtr> _pinnedWebViews = new();
+
     /// <summary>
     /// Walks CoreWebView2._nativeWebView and its _webview field to recover the native WKWebView
     /// pointer. Returns false with the type name walked through in 'detail' when the shape does not
@@ -127,6 +131,31 @@ public static class MacOSWebViewInterop
     public static string GetObjectiveCClassName(IntPtr nativeObject)
     {
         return GetClassName(nativeObject);
+    }
+
+    /// <summary>
+    /// Retains the native WKWebView for the lifetime of the process. Uno's MacOSNativeElement calls
+    /// uno_native_dispose on every Unloaded event, which drops the native side's owning reference while
+    /// managed code keeps the raw handle; a later reattach or message then crashes on the freed view.
+    /// Pinning the view turns those touches into calls on a live object. The WebContent renderer is
+    /// still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
+    /// </summary>
+    public static void RetainNativeWebView(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return;
+        }
+
+        lock (_pinnedWebViews)
+        {
+            if (!_pinnedWebViews.Add(webView))
+            {
+                return;
+            }
+        }
+
+        SendMessage(webView, GetSelector("retain"));
     }
 
     /// <summary>

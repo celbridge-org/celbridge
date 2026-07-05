@@ -57,6 +57,22 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             }
 
             await webView.EnsureCoreWebView2Async();
+
+            // Pin the native WKWebView for the process lifetime. Uno's native element disposes the
+            // view on every Unloaded and later touches the stale handle, which is a use-after-free
+            // (see RetainNativeWebView). The handle may not be resolvable yet at this point, so the
+            // other adapter entry points that resolve it also pin (RetainNativeWebView is idempotent).
+            if (OperatingSystem.IsMacOS() && webView.CoreWebView2 is not null)
+            {
+                if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
+                {
+                    MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
+                }
+                else
+                {
+                    _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
+                }
+            }
         }
         finally
         {
@@ -184,6 +200,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         if (OperatingSystem.IsMacOS()
             && MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
         {
+            MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
             MacOSWebViewInterop.AddUserScriptAtDocumentStart(nativeHandle, script);
         }
 
@@ -223,6 +240,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return;
         }
 
+        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+
         _safariVersion ??= ResolveSafariVersion();
 
         var userAgent = $"{MacOSUserAgentPrefix} Version/{_safariVersion} Safari/605.1.15 {applicationToken}";
@@ -251,6 +270,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 $"Could not reach the native WKWebView handle to load HTML: {detail}");
         }
 
+        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
         MacOSWebViewInterop.LoadHtmlString(nativeHandle, html, baseUrl);
     }
 
