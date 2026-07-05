@@ -169,7 +169,11 @@ internal static class MacOSWindowInterop
         SendMessageVoid(window, GetSelector("makeFirstResponder:"), contentView);
     }
 
-    private static IntPtr GetMainWindow()
+    /// <summary>
+    /// Returns the native NSWindow handle for the application window, or IntPtr.Zero when it cannot be
+    /// resolved.
+    /// </summary>
+    internal static IntPtr GetMainWindow()
     {
         var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
         if (application == IntPtr.Zero)

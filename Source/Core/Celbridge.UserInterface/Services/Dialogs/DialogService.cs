@@ -1,6 +1,8 @@
+using System.Runtime.CompilerServices;
 using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.UserInterface.Platform;
 using Celbridge.Validators;
 using Celbridge.Workspace;
 
@@ -14,6 +16,7 @@ public class DialogService : IDialogService
     private readonly DialogAnswerScheduler _answerScheduler;
     private readonly object _tokenLock = new();
     private IProgressDialog? _progressDialog;
+    private IDisposable? _progressDialogOcclusionScope;
     private bool _suppressProgressDialog;
     private List<IProgressDialogToken> _progressDialogTokens = [];
 
@@ -79,9 +82,10 @@ public class DialogService : IDialogService
         UpdateProgressDialog();
     }
 
-    private async Task<T> ShowDialogAsync<T>(Func<Task<T>> showDialog)
+    private async Task<T> ShowDialogAsync<T>(Func<Task<T>> showDialog, [CallerMemberName] string dialogName = "")
     {
         SetProgressDialogSuppressed(true);
+        using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
         try
         {
             return await showDialog();
@@ -114,6 +118,7 @@ public class DialogService : IDialogService
             {
                 _progressDialog = _dialogFactory.CreateProgressDialog();
                 _progressDialog.ShowDialog();
+                _progressDialogOcclusionScope = MacOSModalOcclusionMonitor.BeginDialogScope("ProgressDialog");
             }
 
             // Use the title text from the most recent token added
@@ -125,6 +130,8 @@ public class DialogService : IDialogService
             {
                 _progressDialog.HideDialog();
                 _progressDialog = null;
+                _progressDialogOcclusionScope?.Dispose();
+                _progressDialogOcclusionScope = null;
             }
         }
     }
