@@ -5,15 +5,22 @@ namespace Celbridge.Search.Services;
 
 /// <summary>
 /// Prepares a Search landmark for spotlighting by switching the activity panel to the Search tab,
-/// since the Search content is collapsed while another activity (such as Explorer) is active.
+/// since the Search content is collapsed while another activity (such as Explorer) is active. For
+/// the replace controls it also enables replace mode, which it restores to its prior state on clear.
 /// </summary>
 public sealed class SearchSpotlightLandmark : ISpotlightLandmark
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly bool _revealReplace;
 
-    public SearchSpotlightLandmark(IWorkspaceWrapper workspaceWrapper)
+    // Whether replace mode was already on when this reveal enabled it, so PostSpotlight only turns
+    // it back off if the reveal was what turned it on.
+    private bool _replaceModeWasEnabled;
+
+    public SearchSpotlightLandmark(IWorkspaceWrapper workspaceWrapper, bool revealReplace)
     {
         _workspaceWrapper = workspaceWrapper;
+        _revealReplace = revealReplace;
     }
 
     public async Task<Result> PreSpotlightAsync()
@@ -25,12 +32,30 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
             return Result.Fail("Cannot reveal the Search landmark: no workspace is loaded.");
         }
 
+        var searchPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.SearchPanel;
+
+        // Switch to the Search tab so the Search content is on screen; it is collapsed while another
+        // activity (such as Explorer) is the active tab.
         _workspaceWrapper.WorkspaceService.ActivityPanel.ShowTab(ActivityPanelTab.Search);
+
+        if (_revealReplace)
+        {
+            _replaceModeWasEnabled = searchPanel.IsReplaceModeEnabled;
+            searchPanel.SetReplaceMode(true);
+        }
 
         return Result.Ok();
     }
 
     public void PostSpotlight()
     {
+        if (!_revealReplace ||
+            _replaceModeWasEnabled ||
+            !_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        _workspaceWrapper.WorkspaceService.ActivityPanel.SearchPanel.SetReplaceMode(false);
     }
 }

@@ -75,6 +75,7 @@
       <!-- Search History dropdown button -->
       <Button Grid.Row="1"
               Grid.Column="1"
+              AutomationProperties.AutomationId="search-history-button"
               Padding="4,0"
               Margin="0"
               VerticalAlignment="Stretch"
@@ -97,6 +98,7 @@
       <!-- Search button -->
       <Button Grid.Row="1"
               Grid.Column="2"
+              AutomationProperties.AutomationId="search-run-button"
               Command="{x:Bind ViewModel.ExecuteSearchCommand}"
               Padding="8,0"
               Margin="4,0,0,0"
@@ -114,6 +116,7 @@
                 HorizontalAlignment="Center">
       <!-- Match Case toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.MatchCase, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="search-match-case-button"
                     ToolTipService.ToolTip="{x:Bind ViewModel.MatchCaseTooltip, Mode=OneWay}"
                     Padding="8,6"
                     MinWidth="36"
@@ -123,6 +126,7 @@
 
       <!-- Whole Word toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.WholeWord, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="search-whole-word-button"
                     ToolTipService.ToolTip="{x:Bind ViewModel.WholeWordTooltip, Mode=OneWay}"
                     Padding="8,6"
                     MinWidth="36"
@@ -132,6 +136,7 @@
 
       <!-- Collapse All button -->
       <Button Command="{x:Bind ViewModel.CollapseAllCommand}"
+              AutomationProperties.AutomationId="search-collapse-results-button"
               ToolTipService.ToolTip="{x:Bind ViewModel.CollapseAllTooltip, Mode=OneWay}"
               IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
               Background="Transparent"
@@ -144,6 +149,7 @@
 
       <!-- Replace Mode toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.IsReplaceModeEnabled, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="search-replace-toggle-button"
                     ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceToggleTooltip, Mode=OneWay}"
                     Padding="8,6"
                     MinWidth="36"
@@ -164,12 +170,14 @@
 
       <TextBox x:Name="ReplaceTextBox"
                Grid.Column="0"
+               AutomationProperties.AutomationId="search-replace-input"
                Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
                Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                LostFocus="ReplaceTextBox_LostFocus"/>
 
       <!-- Replace History dropdown button -->
       <Button Grid.Column="1"
+              AutomationProperties.AutomationId="search-replace-history-button"
               Padding="4,0"
               Margin="0"
               VerticalAlignment="Bottom"
@@ -192,6 +200,7 @@
 
       <!-- Replace All button -->
       <Button Grid.Column="2"
+              AutomationProperties.AutomationId="search-replace-all-button"
               Command="{x:Bind ViewModel.ReplaceAllCommand}"
               Padding="8,0"
               Margin="4,0,0,0"

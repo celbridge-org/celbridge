@@ -234,6 +234,8 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         ViewModel.WholeWord = wholeWord;
     }
 
+    public bool IsReplaceModeEnabled => ViewModel.IsReplaceModeEnabled;
+
     public void SetReplaceMode(bool enabled)
     {
         ViewModel.IsReplaceModeEnabled = enabled;

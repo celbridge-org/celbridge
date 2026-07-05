@@ -13,6 +13,7 @@
         
         <!-- Panel Layout Button with Flyout -->
         <Button x:Name="PanelLayoutButton"
+                AutomationProperties.AutomationId="panel-layout-button"
                 Click="PanelLayoutButton_Click"
                 DoubleTapped="Button_DoubleTapped"
                 Margin="0, 0, 2, 0"

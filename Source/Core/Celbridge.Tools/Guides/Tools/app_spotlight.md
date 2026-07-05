@@ -17,14 +17,33 @@ Shell panels:
 - `console-panel` — the Console panel (bottom), where the user talks to you.
 - `inspector-panel` — the Inspector panel (right).
 
-Affordances inside those panels:
+Activity bar (the icon strip on the far left that switches the primary panel):
+
+- `explorer-activity-button` — the Explorer icon in the activity bar.
+- `search-activity-button` — the Search icon in the activity bar.
+
+Explorer toolbar (its buttons are revealed automatically when spotlighted):
 
 - `new-file-button` — the new-file button in the Explorer toolbar.
 - `new-folder-button` — the new-folder button in the Explorer toolbar.
+- `collapse-folders-button` — the collapse-all-folders button in the Explorer toolbar.
 - `project-settings-button` — the project-settings button in the Explorer toolbar.
-- `explorer-activity-button` — the Explorer icon in the activity bar.
-- `search-activity-button` — the Search icon in the activity bar.
-- `search-input` — the search box (only resolves while Search is the active activity).
+
+Search panel (all switch to the Search activity first; the replace ones also enable replace mode):
+
+- `search-input` — the search text box.
+- `search-run-button` — the run-search button (the magnifying glass).
+- `search-history-button` — the recent-searches dropdown.
+- `search-match-case-button` — the match-case toggle.
+- `search-whole-word-button` — the match-whole-word toggle.
+- `search-collapse-results-button` — the collapse-all-results button.
+- `search-replace-toggle-button` — the toggle that shows the replace controls.
+- `search-replace-input` — the replace text box.
+- `search-replace-history-button` — the recent-replacements dropdown.
+- `search-replace-all-button` — the replace-all button.
+
+Console and documents:
+
 - `console-input` — the console area where the user types to you.
 - `console-maximize-button` — the console maximise/restore button.
 - `document-tab-strip` — the open-document tab strip (only resolves with a document open).
@@ -32,6 +51,10 @@ Affordances inside those panels:
 
 Title bar:
 
+- `home-button` — the Home page button.
+- `community-button` — the Community page button.
+- `workspace-button` — the Workspace button (only resolves while a project is loaded).
+- `panel-layout-button` — the layout-mode selector (Default, Focus, Presentation).
 - `settings-button` — the app Settings button.
 - `explorer-toggle-button` — the button that shows or hides the Explorer panel.
 - `console-toggle-button` — the button that shows or hides the Console panel.

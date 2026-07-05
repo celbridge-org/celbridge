@@ -23,6 +23,7 @@
 
             <!-- Home -->
             <NavigationViewItem x:Name="HomeNavItem"
+                                AutomationProperties.AutomationId="home-button"
                                 Tag="Home">
                 <NavigationViewItem.Icon>
                     <controls:Icon Symbol="Home"/>
@@ -31,6 +32,7 @@
 
             <!-- Community -->
             <NavigationViewItem x:Name="CommunityNavItem"
+                                AutomationProperties.AutomationId="community-button"
                                 Tag="Community">
                 <NavigationViewItem.Icon>
                     <controls:Icon
@@ -44,6 +46,7 @@
 
             <!-- Workspace - shows project name when loaded -->
             <NavigationViewItem x:Name="WorkspaceNavItem"
+                                AutomationProperties.AutomationId="workspace-button"
                                 Tag="Workspace"
                                 Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
                                 Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">

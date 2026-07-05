@@ -20,14 +20,32 @@ public class SearchService : ISearchService, IDisposable
         ".celbridge"
     };
 
-    // Search landmark whose spotlight needs the Search tab activated.
-    private const string SearchInputLandmarkId = "search-input";
+    // Search landmarks whose spotlight only needs the Search tab activated.
+    private static readonly string[] SearchLandmarkIds =
+    {
+        "search-input",
+        "search-run-button",
+        "search-history-button",
+        "search-match-case-button",
+        "search-whole-word-button",
+        "search-collapse-results-button",
+        "search-replace-toggle-button",
+    };
+
+    // Search landmarks whose spotlight also needs replace mode enabled to reveal the replace controls.
+    private static readonly string[] SearchReplaceLandmarkIds =
+    {
+        "search-replace-input",
+        "search-replace-history-button",
+        "search-replace-all-button",
+    };
 
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly ISpotlightService _spotlightService;
     private readonly ISpotlightLandmark _searchSpotlightLandmark;
+    private readonly ISpotlightLandmark _searchReplaceSpotlightLandmark;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
@@ -54,10 +72,19 @@ public class SearchService : ISearchService, IDisposable
         _formatter = new SearchResultFormatter();
         _textReplacer = new TextReplacer();
 
-        // Register the Search reveal so spotlighting the search box switches to the Search tab.
-        // Torn down when this workspace-scoped service is disposed.
-        _searchSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper);
-        _spotlightService.RegisterLandmark(SearchInputLandmarkId, _searchSpotlightLandmark);
+        // Register the Search reveals so spotlighting a Search landmark switches to the Search tab
+        // first (and, for the replace controls, enables replace mode). Torn down when this
+        // workspace-scoped service is disposed.
+        _searchSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, revealReplace: false);
+        _searchReplaceSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, revealReplace: true);
+        foreach (var landmarkId in SearchLandmarkIds)
+        {
+            _spotlightService.RegisterLandmark(landmarkId, _searchSpotlightLandmark);
+        }
+        foreach (var landmarkId in SearchReplaceLandmarkIds)
+        {
+            _spotlightService.RegisterLandmark(landmarkId, _searchReplaceSpotlightLandmark);
+        }
     }
 
     // Decides whether a file should be included in a search. Probes the file
@@ -655,7 +682,14 @@ public class SearchService : ISearchService, IDisposable
             if (disposing)
             {
                 // Dispose managed objects here
-                _spotlightService.UnregisterLandmark(SearchInputLandmarkId);
+                foreach (var landmarkId in SearchLandmarkIds)
+                {
+                    _spotlightService.UnregisterLandmark(landmarkId);
+                }
+                foreach (var landmarkId in SearchReplaceLandmarkIds)
+                {
+                    _spotlightService.UnregisterLandmark(landmarkId);
+                }
             }
 
             _disposed = true;

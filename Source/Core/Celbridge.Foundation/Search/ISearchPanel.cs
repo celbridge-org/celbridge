@@ -26,6 +26,11 @@ public interface ISearchPanel
     void SetWholeWord(bool wholeWord);
 
     /// <summary>
+    /// Whether replace mode is currently enabled, which governs whether the replace controls are shown.
+    /// </summary>
+    bool IsReplaceModeEnabled { get; }
+
+    /// <summary>
     /// Enables or disables replace mode.
     /// </summary>
     void SetReplaceMode(bool enabled);
