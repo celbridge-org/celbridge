@@ -40,11 +40,16 @@ public sealed partial class SpotlightView : UserControl, ISpotlightPresenter
         }
         else
         {
+            // Drop the label into its own row below the close button. The button glyph sits about
+            // 12px in from the top and right edges; without this margin the content starts level with
+            // the button and the gap beneath it reads as too tight. The default content margin already
+            // supplies 12px, so 16px more clears the 40px button and leaves a matching 12px gap.
             SpotlightTeachingTip.Content = new TextBlock
             {
                 Text = label,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 16, 0, 0)
             };
         }
 

@@ -54,6 +54,7 @@
                 FontSize="20" />
     </Button>
     <Button x:Name="CollapseFoldersButton"
+            AutomationProperties.AutomationId="collapse-folders-button"
             ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
             Padding="4"
             Click="CollapseFoldersButton_Click">
