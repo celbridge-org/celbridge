@@ -14,6 +14,10 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
 
     public bool SupportsVirtualHostMapping => true;
 
+    // Chromium's WebView2 ships its own find bar, so the host find bar and its programmatic find plumbing are
+    // left to the heads that lack one (the macOS WKWebView). Ctrl+F reaches Chromium's built-in bar directly.
+    public bool ProvidesBuiltInFind => true;
+
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
         // The packaged WebView2 initializes without being attached to the visual tree, so detached controls
@@ -112,6 +116,25 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         // for identification rather than replacing the UA. Not idempotent: call once per WebView, since a
         // second call would append the token again.
         coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
+    }
+
+    // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find
+    // through the adapter here. These no-ops satisfy the shared adapter contract.
+    public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)
+    {
+        await Task.CompletedTask;
+    }
+
+    public void FindNext(CoreWebView2 coreWebView2)
+    {
+    }
+
+    public void FindPrevious(CoreWebView2 coreWebView2)
+    {
+    }
+
+    public void StopFind(CoreWebView2 coreWebView2)
+    {
     }
 
     private static string BuildCaptureScreenshotParams(ScreenshotRequest request)

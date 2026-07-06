@@ -64,6 +64,11 @@ public static class MacOSWebViewInterop
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern void SendMessageVoidCGRect(IntPtr receiver, IntPtr selector, CGRect rect);
 
+    // The WKFindConfiguration setters take a single BOOL, a shape the shared runtime does not carry, so this
+    // declaration stays local.
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern void SendMessageVoidBool(IntPtr receiver, IntPtr selector, [MarshalAs(UnmanagedType.I1)] bool value);
+
     [DllImport(LibSystem)]
     private static extern IntPtr dlsym(IntPtr handle, string symbol);
 
@@ -73,6 +78,12 @@ public static class MacOSWebViewInterop
     // the main thread, so a second concurrent snapshot would clobber this field.
     private static TaskCompletionSource<IntPtr>? _snapshotCompletion;
     private static IntPtr _snapshotBlock;
+
+    // Single find in flight at a time. Find runs on the main thread and completes near-instantly, and the
+    // host find bar issues one call per keystroke or step, so a fresh call simply supersedes the previous
+    // callback (last find wins), matching the single-in-flight snapshot pattern above.
+    private static Action<bool>? _findCompletionCallback;
+    private static IntPtr _findBlock;
 
     // Web views already pinned, so the several resolution points that call RetainNativeWebView take
     // one retain each.
@@ -270,6 +281,47 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
+    /// Calls -[WKWebView findString:withConfiguration:completionHandler:] (macOS 11+), which selects and
+    /// scrolls to a match but draws no UI of its own. The configuration carries the direction, case
+    /// sensitivity, and wrap behaviour. onResult receives WKFindResult.matchFound (there is no free match
+    /// total, so the macOS find bar shows presence without a counter), and runs on the main thread from the
+    /// completion handler.
+    /// </summary>
+    public static void FindString(IntPtr webView, string term, bool caseSensitive, bool backwards, bool wraps, Action<bool> onResult)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            onResult(false);
+            return;
+        }
+
+        IntPtr configuration = IntPtr.Zero;
+        var configurationClass = GetClass("WKFindConfiguration");
+        if (configurationClass != IntPtr.Zero)
+        {
+            var allocated = SendMessage(configurationClass, GetSelector("alloc"));
+            configuration = SendMessage(allocated, GetSelector("init"));
+            SendMessageVoidBool(configuration, GetSelector("setBackwards:"), backwards);
+            SendMessageVoidBool(configuration, GetSelector("setCaseSensitive:"), caseSensitive);
+            SendMessageVoidBool(configuration, GetSelector("setWraps:"), wraps);
+        }
+
+        _findCompletionCallback = onResult;
+        var completionBlock = EnsureFindBlock();
+        var termString = CreateNSString(term);
+
+        var selector = GetSelector("findString:withConfiguration:completionHandler:");
+        SendMessage(webView, selector, termString, configuration, completionBlock);
+
+        // findString reads the configuration synchronously to start the search, so the alloc/init reference is
+        // released here; the async part delivers only the result to the completion handler.
+        if (configuration != IntPtr.Zero)
+        {
+            SendMessage(configuration, GetSelector("release"));
+        }
+    }
+
+    /// <summary>
     /// Captures the rendered WKWebView surface via -[WKWebView
     /// takeSnapshotWithConfiguration:completionHandler:], clipping to the request's rect and rendering at
     /// its SnapshotWidth, then encodes to the requested format ("png" or "jpeg", quality 1-100 for JPEG).
@@ -443,6 +495,62 @@ public static class MacOSWebViewInterop
 
         _snapshotBlock = blockPointer;
         return blockPointer;
+    }
+
+    // findString:withConfiguration:completionHandler: calls back through a one-argument Objective-C block
+    // (WKFindResult *). Built once as a no-capture global block whose invoke pointer is a managed method.
+    private static unsafe IntPtr EnsureFindBlock()
+    {
+        if (_findBlock != IntPtr.Zero)
+        {
+            return _findBlock;
+        }
+
+        var descriptor = new BlockDescriptor
+        {
+            Reserved = 0,
+            Size = (nuint)Marshal.SizeOf<BlockLiteral>(),
+        };
+        var descriptorPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockDescriptor>());
+        Marshal.StructureToPtr(descriptor, descriptorPointer, false);
+
+        var blockIsa = dlsym(RtldDefault, "_NSConcreteGlobalBlock");
+        var invoke = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)&FindCompletionCallback;
+
+        var block = new BlockLiteral
+        {
+            Isa = blockIsa,
+            Flags = BlockIsGlobal,
+            Reserved = 0,
+            Invoke = invoke,
+            Descriptor = descriptorPointer,
+        };
+        var blockPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockLiteral>());
+        Marshal.StructureToPtr(block, blockPointer, false);
+
+        _findBlock = blockPointer;
+        return blockPointer;
+    }
+
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+    private static void FindCompletionCallback(IntPtr block, IntPtr findResult)
+    {
+        // Runs on the main thread from WebKit's completion handler. Never let an exception cross back into
+        // native code.
+        try
+        {
+            var callback = _findCompletionCallback;
+            _findCompletionCallback = null;
+
+            var matchFound = findResult != IntPtr.Zero
+                && SendMessageReturnBool(findResult, GetSelector("matchFound"));
+
+            callback?.Invoke(matchFound);
+        }
+        catch
+        {
+            // Swallow: a throw here would unwind through WebKit and crash the process.
+        }
     }
 
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]

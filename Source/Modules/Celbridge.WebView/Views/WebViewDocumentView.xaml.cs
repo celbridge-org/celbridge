@@ -26,7 +26,7 @@ namespace Celbridge.WebView.Views;
 /// single WebView2 lifecycle and differ only in URL source and navigation
 /// policy.
 /// </summary>
-public sealed partial class WebViewDocumentView : DocumentView, IHostInput
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<WebViewDocumentView> _logger;
@@ -83,6 +83,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
+
+        FindBar.Attach(this);
+        FindBar.Closed += OnFindBarClosed;
 
         Loaded += WebViewDocumentView_Loaded;
 
@@ -778,6 +781,59 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private void ReleaseFocus()
     {
         _ = _host?.NotifyReleaseFocusAsync();
+    }
+
+    // True when the host find bar can drive this document: the WebView is live and its backend has no find UI
+    // of its own (the Windows Chromium heads do, so they report false and keep their built-in bar).
+    public bool CanFind => !_webViewAdapter.ProvidesBuiltInFind && _webView?.CoreWebView2 is not null;
+
+    public bool TryBeginFind()
+    {
+        if (!CanFind)
+        {
+            return false;
+        }
+
+        FindBar.Begin();
+        return true;
+    }
+
+    private void OnFindBarClosed(object? sender, EventArgs e)
+    {
+        // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
+        _webView?.Focus(FocusState.Programmatic);
+    }
+
+    async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            await _webViewAdapter.StartFindAsync(coreWebView2, term, options);
+        }
+    }
+
+    void IWebViewFindTarget.FindNext()
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            _webViewAdapter.FindNext(coreWebView2);
+        }
+    }
+
+    void IWebViewFindTarget.FindPrevious()
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            _webViewAdapter.FindPrevious(coreWebView2);
+        }
+    }
+
+    void IWebViewFindTarget.StopFind()
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            _webViewAdapter.StopFind(coreWebView2);
+        }
     }
 
     public override async Task PrepareToClose()

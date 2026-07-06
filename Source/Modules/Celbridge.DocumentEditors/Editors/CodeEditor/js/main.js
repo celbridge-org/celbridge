@@ -61,6 +61,12 @@ async function initialize() {
     editorController = new EditorController();
     editorController.create(container);
 
+    // WKWebView lazy-decodes Monaco's inlined codicon @font-face and paints tofu (e.g. in the find widget)
+    // until the font is forced. Loading it explicitly makes the glyphs render.
+    if (document.fonts?.load) {
+        document.fonts.load('16px "codicon"').catch(() => {});
+    }
+
     if (options.previewRendererUrl) {
         previewPipeline = new PreviewPipeline({
             editorController,

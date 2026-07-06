@@ -263,6 +263,18 @@ public class DocumentsService : IDocumentsService, IDisposable
     public DocumentViewType GetDocumentViewType(ResourceKey fileResource) =>
         _fileTypeClassifier.GetDocumentViewType(fileResource);
 
+    public IFindableDocument? GetActiveFindableDocument()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return null;
+        }
+
+        var activeDocumentView = DocumentsPanel.GetDocumentView(ActiveDocument);
+
+        return activeDocumentView as IFindableDocument;
+    }
+
     public bool IsDocumentSupported(ResourceKey fileResource) =>
         _fileTypeClassifier.IsDocumentSupported(fileResource);
 

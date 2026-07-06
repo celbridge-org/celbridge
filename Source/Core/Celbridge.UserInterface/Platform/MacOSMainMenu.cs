@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -25,6 +26,7 @@ internal static class MacOSMainMenu
     private const long TagNewFile = 11;
     private const long TagNewFolder = 12;
     private const long TagShowLogs = 13;
+    private const long TagFind = 14;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -96,7 +98,12 @@ internal static class MacOSMainMenu
                 MacMenuItem.Selector(Text("Menu_Cut"), "cut:", "x"),
                 MacMenuItem.Selector(Text("Menu_Copy"), "copy:", "c"),
                 MacMenuItem.Selector(Text("Menu_Paste"), "paste:", "v"),
-                MacMenuItem.Selector(Text("Menu_SelectAll"), "selectAll:", "a")
+                MacMenuItem.Selector(Text("Menu_SelectAll"), "selectAll:", "a"),
+                MacMenuItem.Separator(),
+                // Find is a Command item (not a responder-chain Selector): it targets the active document's
+                // host find bar. It disables when the active document has none (e.g. the Monaco code editor),
+                // so Cmd+F falls through the responder chain and Monaco keeps its own find widget.
+                MacMenuItem.Command(Text("Menu_Find"), TagFind, "f")
             }
         };
 
@@ -172,6 +179,17 @@ internal static class MacOSMainMenu
         return items;
     }
 
+    private static IFindableDocument? GetActiveFindableDocument()
+    {
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return null;
+        }
+
+        return workspaceWrapper.WorkspaceService.DocumentsService.GetActiveFindableDocument();
+    }
+
     private static bool Validate(long tag)
     {
         // The standard Edit verbs are responder-chain Selector items (see the Edit menu in Install), so
@@ -186,6 +204,9 @@ internal static class MacOSMainMenu
             case TagNewFile:
             case TagNewFolder:
                 return ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
+
+            case TagFind:
+                return GetActiveFindableDocument()?.CanFind ?? false;
 
             case TagNoRecentProjects:
                 return false;
@@ -261,6 +282,10 @@ internal static class MacOSMainMenu
 
             case TagShowLogs:
                 viewModel.ShowLogs();
+                break;
+
+            case TagFind:
+                GetActiveFindableDocument()?.TryBeginFind();
                 break;
 
             case TagClearRecentProjects:

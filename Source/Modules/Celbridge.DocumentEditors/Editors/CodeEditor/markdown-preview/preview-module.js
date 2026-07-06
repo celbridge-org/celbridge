@@ -7,9 +7,11 @@
 import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
+import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
 
 let iframeElement = null;
 let callbacks = null;
+let previewFind = null;
 
 // Registered once: the preview iframe is a separate document that does not load the celbridge client,
 // so it cannot read the app theme itself. The parent mirrors the effective theme onto the iframe's
@@ -325,6 +327,30 @@ export async function initialize(iframe, handlers) {
 
     attachScrollListener();
     attachClickToSyncListener();
+    setupPreviewFind(iframe);
+}
+
+// Installs the in-content preview find bar, but only where the WebView backend has no find bar of its own.
+// The host reports this over viewState.providesBuiltInFind; where it is true (Chromium's WebView2) the package
+// stays hands-off so Ctrl+F reaches the built-in bar. The capability is constant per process, so the first
+// snapshot that carries it decides, once.
+function setupPreviewFind(iframe) {
+    let decided = false;
+    celbridge.viewState.onChanged((viewState) => {
+        if (decided || !viewState || !('providesBuiltInFind' in viewState)) {
+            return;
+        }
+        decided = true;
+
+        if (viewState.providesBuiltInFind === 'true') {
+            return;
+        }
+
+        previewFind = createFindBar({
+            document: iframe.contentDocument,
+            searchRoot: previewContentElement,
+        });
+    });
 }
 
 /**
@@ -409,6 +435,12 @@ export function render(markdown) {
         } catch (fallbackError) {
             previewContentElement.innerHTML = `<p style="color: var(--hl-keyword);">Error rendering markdown: ${error.message}</p>`;
         }
+    }
+
+    // Re-run an open find over the new content: the previous match ranges point into DOM that innerHTML just
+    // replaced. A no-op when the find bar is closed.
+    if (previewFind) {
+        previewFind.refresh();
     }
 
     if (savedScrollTop > 0 && previewContainerElement) {
