@@ -22,6 +22,7 @@ public class DocumentViewModelTests
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
+    private IServiceProvider? _previousServiceProvider;
 
     [SetUp]
     public void Setup()
@@ -58,6 +59,10 @@ public class DocumentViewModelTests
         services.AddSingleton(_messengerService);
         services.AddSingleton(workspaceWrapper);
         services.AddSingleton<ILocalFileSystem>(TestFileSystem.CreateLocal());
+
+        // Capture and restore the global ServiceLocator around each test so this fixture
+        // leaves it as it found it and later fixtures inherit a clean slate.
+        _previousServiceProvider = ServiceLocator.ServiceProvider;
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
         _vm = new TestDocumentViewModel(_resourceFileSystem);
@@ -70,6 +75,15 @@ public class DocumentViewModelTests
     {
         _vm.Cleanup();
         _messengerService.UnregisterAll(this);
+
+        if (_previousServiceProvider is not null)
+        {
+            ServiceLocator.Initialize(_previousServiceProvider);
+        }
+        else
+        {
+            ServiceLocator.Reset();
+        }
 
         if (Directory.Exists(_tempFolder))
         {

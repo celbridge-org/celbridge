@@ -26,7 +26,14 @@ internal static class MacOSModalOcclusionMonitor
             return NoOpScope.Instance;
         }
 
-        var scope = new DialogScope(dialogName);
+        // No DI logger means no UI host to monitor (e.g. unit tests).
+        var logger = ServiceLocator.ServiceProvider?.GetService(typeof(ILogger<DialogScope>)) as ILogger<DialogScope>;
+        if (logger is null)
+        {
+            return NoOpScope.Instance;
+        }
+
+        var scope = new DialogScope(dialogName, logger);
         scope.Start();
         return scope;
     }
@@ -51,9 +58,9 @@ internal static class MacOSModalOcclusionMonitor
         private readonly string _dialogName;
         private readonly CancellationTokenSource _cancellationTokenSource = new();
 
-        public DialogScope(string dialogName)
+        public DialogScope(string dialogName, ILogger logger)
         {
-            _logger = ServiceLocator.AcquireService<ILogger<DialogScope>>();
+            _logger = logger;
             _dialogName = dialogName;
         }
 

@@ -23,6 +23,15 @@ public static class ServiceLocator
     }
 
     /// <summary>
+    /// Clears the service provider, returning the locator to its uninitialized state.
+    /// Intended for test teardown where a fixture must restore an uninitialized locator so that later fixtures inherit a clean slate.
+    /// </summary>
+    public static void Reset()
+    {
+        _serviceProvider = null;
+    }
+
+    /// <summary>
     /// Extension method to acquire a service from the service provider.
     /// This can be used in contexts where Microsoft.Extensions.DependencyInjection should be avoided, e.g. Modules.
     /// </summary>
