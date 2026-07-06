@@ -18,6 +18,11 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // completes for a control that has not been parented to a window.
     private Panel? _initHost;
 
+    // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
+    private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
+
+    private sealed record FindSession(string Term, bool CaseSensitive, Action<FindMatchState>? OnMatchStateChanged);
+
     public SkiaWebViewAdapter(ILogger<SkiaWebViewAdapter> logger)
     {
         _logger = logger;
@@ -84,6 +89,11 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             && webView.CoreWebView2 is not null)
         {
             MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out nativeWebViewHandle, out _);
+        }
+
+        if (webView.CoreWebView2 is not null)
+        {
+            _findSessions.Remove(webView.CoreWebView2);
         }
 
         container.Children.Remove(webView);
@@ -265,6 +275,112 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
         MacOSWebViewInterop.LoadHtmlString(nativeHandle, html, baseUrl);
+    }
+
+    public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)
+    {
+        await Task.CompletedTask;
+
+        if (!OperatingSystem.IsMacOS())
+        {
+            // Whole-page find is wired for the macOS WKWebView only. The Linux WebKitGTK and Windows-under-Skia
+            // heads have no native find plumbing here.
+            _logger.LogDebug("Whole-page find is not implemented on this Skia head");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(term))
+        {
+            StopFind(coreWebView2);
+            return;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out var detail))
+        {
+            _logger.LogWarning("Could not start find: {Detail}", detail);
+            return;
+        }
+
+        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+
+        var session = new FindSession(term, options.CaseSensitive, options.OnMatchStateChanged);
+        _findSessions[coreWebView2] = session;
+
+        IssueFind(nativeHandle, session, backwards: false);
+    }
+
+    public void FindNext(CoreWebView2 coreWebView2)
+    {
+        StepFind(coreWebView2, backwards: false);
+    }
+
+    public void FindPrevious(CoreWebView2 coreWebView2)
+    {
+        StepFind(coreWebView2, backwards: true);
+    }
+
+    public void StopFind(CoreWebView2 coreWebView2)
+    {
+        _findSessions.Remove(coreWebView2);
+
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        // findString leaves the last match selected. Clear it so no highlight lingers after the bar closes.
+        var clearOperation = coreWebView2.ExecuteScriptAsync("window.getSelection().removeAllRanges()");
+        _ = ObserveClearAsync();
+
+        async Task ObserveClearAsync()
+        {
+            try
+            {
+                await clearOperation;
+            }
+            catch (Exception clearException)
+            {
+                _logger.LogError(clearException, "Failed to clear the find selection");
+            }
+        }
+    }
+
+    private void StepFind(CoreWebView2 coreWebView2, bool backwards)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        if (!_findSessions.TryGetValue(coreWebView2, out var session))
+        {
+            return;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
+        {
+            return;
+        }
+
+        IssueFind(nativeHandle, session, backwards);
+    }
+
+    public void InstallFindShortcut(WebView2 webView, Action openFindBar)
+    {
+        // Find is routed through the macOS Edit menu (Cmd+F), not an in-content accelerator, so nothing is
+        // wired here. The Linux WebKitGTK and Windows-under-Skia heads have no find shortcut.
+    }
+
+    private static void IssueFind(IntPtr nativeHandle, FindSession session, bool backwards)
+    {
+        // Find always wraps, matching browser behaviour.
+        MacOSWebViewInterop.FindString(
+            nativeHandle,
+            session.Term,
+            session.CaseSensitive,
+            backwards,
+            wraps: true,
+            matchFound => session.OnMatchStateChanged?.Invoke(new FindMatchState(matchFound)));
     }
 
     private async Task<Panel> EnsureInitHostAsync()

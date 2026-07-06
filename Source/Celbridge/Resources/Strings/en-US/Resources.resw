@@ -950,6 +950,9 @@ Do you wish to continue?</value>
   <data name="Menu_SelectAll" xml:space="preserve">
     <value>Select All</value>
   </data>
+  <data name="Menu_Find" xml:space="preserve">
+    <value>Find</value>
+  </data>
   <data name="Menu_Window" xml:space="preserve">
     <value>Window</value>
   </data>
@@ -1237,6 +1240,27 @@ Do you wish to continue?</value>
   </data>
   <data name="DocumentEditor_DocumentContribution" xml:space="preserve">
     <value>Document Contribution</value>
+  </data>
+  <data name="WebView_Find_Placeholder" xml:space="preserve">
+    <value>Find</value>
+  </data>
+  <data name="WebView_Find_Next" xml:space="preserve">
+    <value>Next match</value>
+  </data>
+  <data name="WebView_Find_Previous" xml:space="preserve">
+    <value>Previous match</value>
+  </data>
+  <data name="WebView_Find_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="WebView_Find_MatchCase" xml:space="preserve">
+    <value>Match case</value>
+  </data>
+  <data name="WebView_Find_NoResults" xml:space="preserve">
+    <value>No results</value>
+  </data>
+  <data name="WebView_Find_MatchCount" xml:space="preserve">
+    <value>{0} of {1}</value>
   </data>
   <data name="WebView_NavigationPrompt_Title" xml:space="preserve">
     <value>Open external link</value>

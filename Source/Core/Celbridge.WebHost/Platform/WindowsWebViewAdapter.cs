@@ -1,5 +1,15 @@
+// The packaged Windows head is the only head that uses this adapter, and its find implementation depends on
+// CoreWebView2Find, a type present only in the WinAppSDK-referenced WebView2 (1.0.3912.50) and absent from the
+// older WebView2 the Uno Skia heads reference. Compiling the whole adapter under WINDOWS aligns compilation
+// with the DI selection in PlatformServiceConfiguration, so the Skia build never sees the missing type.
+#if WINDOWS
+using System.Reflection;
 using System.Text.Json;
+using Celbridge.Logging;
+using Microsoft.UI.Input;
 using Microsoft.Web.WebView2.Core;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Celbridge.WebHost.Platform;
 
@@ -8,11 +18,26 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public sealed class WindowsWebViewAdapter : IWebViewAdapter
 {
+    private readonly ILogger<WindowsWebViewAdapter> _logger;
+
     // Bounds the wait for Page.captureScreenshot. Inactive WinUI tabs pause the WebView2 renderer, which would
     // otherwise leave the CDP call hanging.
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
 
+    public WindowsWebViewAdapter(ILogger<WindowsWebViewAdapter> logger)
+    {
+        _logger = logger;
+    }
+
     public bool SupportsVirtualHostMapping => true;
+
+    // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
+    private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
+
+    private sealed record FindSession(
+        CoreWebView2Find Find,
+        EventHandler<object> OnMatchCountChanged,
+        EventHandler<object> OnActiveMatchIndexChanged);
 
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
@@ -23,6 +48,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
 
     public void CloseWebView(WebView2 webView, Panel container)
     {
+        if (webView.CoreWebView2 is not null)
+        {
+            StopFind(webView.CoreWebView2);
+        }
+
         container.Children.Remove(webView);
         webView.Close();
     }
@@ -114,6 +144,137 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
     }
 
+    public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)
+    {
+        // Restart cleanly so a prior session's handlers cannot double-report against the new term.
+        StopFind(coreWebView2);
+
+        if (string.IsNullOrEmpty(term))
+        {
+            return;
+        }
+
+        var find = coreWebView2.Find;
+
+        var findOptions = coreWebView2.Environment.CreateFindOptions();
+        findOptions.FindTerm = term;
+        findOptions.IsCaseSensitive = options.CaseSensitive;
+        findOptions.ShouldMatchWord = false;
+        // Our host bar is the only find UI. Suppressing Chromium's built-in bar keeps them from both showing.
+        findOptions.SuppressDefaultFindDialog = true;
+
+        void ReportState()
+        {
+            var matchCount = find.MatchCount;
+            var activeMatchIndex = find.ActiveMatchIndex;
+            var state = new FindMatchState(matchCount > 0, matchCount, activeMatchIndex);
+            options.OnMatchStateChanged?.Invoke(state);
+        }
+
+        EventHandler<object> onMatchCountChanged = (_, _) => ReportState();
+        EventHandler<object> onActiveMatchIndexChanged = (_, _) => ReportState();
+        find.MatchCountChanged += onMatchCountChanged;
+        find.ActiveMatchIndexChanged += onActiveMatchIndexChanged;
+
+        _findSessions[coreWebView2] = new FindSession(find, onMatchCountChanged, onActiveMatchIndexChanged);
+
+        await find.StartAsync(findOptions);
+
+        // Report once after the session starts in case the counts settled before a change event fired.
+        ReportState();
+    }
+
+    public void FindNext(CoreWebView2 coreWebView2)
+    {
+        if (_findSessions.TryGetValue(coreWebView2, out var session))
+        {
+            session.Find.FindNext();
+        }
+    }
+
+    public void FindPrevious(CoreWebView2 coreWebView2)
+    {
+        if (_findSessions.TryGetValue(coreWebView2, out var session))
+        {
+            session.Find.FindPrevious();
+        }
+    }
+
+    public void StopFind(CoreWebView2 coreWebView2)
+    {
+        if (!_findSessions.Remove(coreWebView2, out var session))
+        {
+            return;
+        }
+
+        session.Find.MatchCountChanged -= session.OnMatchCountChanged;
+        session.Find.ActiveMatchIndexChanged -= session.OnActiveMatchIndexChanged;
+        session.Find.Stop();
+    }
+
+    public void InstallFindShortcut(WebView2 webView, Action openFindBar)
+    {
+        // The WinUI WebView2 surfaces only CoreWebView2, not the CoreWebView2Controller that raises
+        // AcceleratorKeyPressed, so reach the controller by reflecting over the control's non-public fields
+        // (the same reach-into-the-runtime approach the macOS interop uses). Degrade to a no-op -- Ctrl+F then
+        // falls back to Chromium's built-in bar -- rather than crash if the field shape changes.
+        try
+        {
+            var controller = ResolveController(webView);
+            if (controller is null)
+            {
+                _logger.LogWarning("Could not resolve the CoreWebView2Controller; the host find shortcut is not installed");
+                return;
+            }
+
+            controller.AcceleratorKeyPressed += (_, args) =>
+            {
+                if (args.KeyEventKind != CoreWebView2KeyEventKind.KeyDown)
+                {
+                    return;
+                }
+
+                if (args.VirtualKey != (uint)VirtualKey.F)
+                {
+                    return;
+                }
+
+                var controlDown = InputKeyboardSource
+                    .GetKeyStateForCurrentThread(VirtualKey.Control)
+                    .HasFlag(CoreVirtualKeyStates.Down);
+                if (!controlDown)
+                {
+                    return;
+                }
+
+                // Handle only this one key so print (Ctrl+P), reload (Ctrl+R), zoom (Ctrl+/-), and every other
+                // browser accelerator stay with the browser.
+                args.Handled = true;
+                webView.DispatcherQueue.TryEnqueue(() => openFindBar());
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install the host find shortcut");
+        }
+    }
+
+    private static CoreWebView2Controller? ResolveController(WebView2 webView)
+    {
+        var fields = webView.GetType().GetFields(
+            BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+
+        foreach (var field in fields)
+        {
+            if (typeof(CoreWebView2Controller).IsAssignableFrom(field.FieldType))
+            {
+                return field.GetValue(webView) as CoreWebView2Controller;
+            }
+        }
+
+        return null;
+    }
+
     private static string BuildCaptureScreenshotParams(ScreenshotRequest request)
     {
         var payload = new Dictionary<string, object>
@@ -138,3 +299,4 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return JsonSerializer.Serialize(payload);
     }
 }
+#endif

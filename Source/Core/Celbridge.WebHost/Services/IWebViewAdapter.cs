@@ -3,6 +3,23 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebHost;
 
 /// <summary>
+/// Options for a whole-page find session. Grouped as a Parameter Object so whole-word (and other toggles) can
+/// be added later without changing the adapter call sites. Find always wraps, matching browser behaviour.
+/// OnMatchStateChanged is the match-progress reporting hook: the adapter invokes it (on the UI thread) as the
+/// find advances, so the host bar can reflect state.
+/// </summary>
+public sealed record FindOptions(
+    bool CaseSensitive = false,
+    Action<FindMatchState>? OnMatchStateChanged = null);
+
+/// <summary>
+/// A snapshot of find progress. MatchFound drives next/previous enable state on every head. MatchCount and
+/// ActiveMatchIndex (1-based) are populated only where the platform supplies a free total: the Windows
+/// CoreWebView2Find reports both, while the macOS findString reports presence only, leaving them null.
+/// </summary>
+public sealed record FindMatchState(bool MatchFound, int? MatchCount = null, int? ActiveMatchIndex = null);
+
+/// <summary>
 /// Per-platform WebView2 operations for the document editor stack. The packaged Windows head drives the
 /// WebView2 SDK directly. The Uno Skia heads fall back to ExecuteScriptAsync where the managed surface is
 /// unimplemented and, on macOS, to the native WKWebView interop. Selecting the implementation in DI keeps the
@@ -79,4 +96,35 @@ public interface IWebViewAdapter
     /// token; the Windows head appends the token to its already-recognised UA. Must be set before navigation.
     /// </summary>
     void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken);
+
+    /// <summary>
+    /// Begins (or restarts) a whole-page find for the given term, selecting and scrolling to the first match.
+    /// Uses CoreWebView2Find on Windows (which also suppresses Chromium's built-in bar) and the native
+    /// WKWebView findString on macOS. Match progress is reported through FindOptions.OnMatchStateChanged.
+    /// </summary>
+    Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options);
+
+    /// <summary>
+    /// Advances to the next match of the active find session, wrapping per the session's options. A no-op if
+    /// no session was started for this WebView.
+    /// </summary>
+    void FindNext(CoreWebView2 coreWebView2);
+
+    /// <summary>
+    /// Steps to the previous match of the active find session, wrapping per the session's options. A no-op if
+    /// no session was started for this WebView.
+    /// </summary>
+    void FindPrevious(CoreWebView2 coreWebView2);
+
+    /// <summary>
+    /// Ends the active find session, clearing the match selection. Safe to call when no session is active.
+    /// </summary>
+    void StopFind(CoreWebView2 coreWebView2);
+
+    /// <summary>
+    /// Installs a Ctrl+F accelerator that opens the host find bar, scoped to that key alone so every other
+    /// browser accelerator (print, reload, zoom) is untouched. Windows-only: the macOS find shortcut is
+    /// routed through the Edit menu, so the Skia adapter is a no-op.
+    /// </summary>
+    void InstallFindShortcut(WebView2 webView, Action openFindBar);
 }

@@ -26,7 +26,7 @@ namespace Celbridge.WebView.Views;
 /// single WebView2 lifecycle and differ only in URL source and navigation
 /// policy.
 /// </summary>
-public sealed partial class WebViewDocumentView : DocumentView, IHostInput
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<WebViewDocumentView> _logger;
@@ -83,6 +83,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
+
+        FindBar.Attach(this);
+        FindBar.Closed += OnFindBarClosed;
 
         Loaded += WebViewDocumentView_Loaded;
 
@@ -273,6 +276,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _webView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
 
             AttachNavigationPolicy(_webView.CoreWebView2);
+
+            // Windows: open our host find bar on Ctrl+F (and keep Chromium's built-in bar suppressed). No-op on
+            // the Skia heads, where macOS routes find through the Edit menu instead.
+            _webViewAdapter.InstallFindShortcut(_webView, () => TryBeginFind());
 
             TryNavigate();
         }
@@ -778,6 +785,59 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private void ReleaseFocus()
     {
         _ = _host?.NotifyReleaseFocusAsync();
+    }
+
+    // Find is available whenever the WebView is live. The macOS Edit-menu Find item and the Windows Ctrl+F
+    // accelerator consult this before opening the bar.
+    public bool CanFind => _webView?.CoreWebView2 is not null;
+
+    public bool TryBeginFind()
+    {
+        if (!CanFind)
+        {
+            return false;
+        }
+
+        FindBar.Begin();
+        return true;
+    }
+
+    private void OnFindBarClosed(object? sender, EventArgs e)
+    {
+        // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
+        _webView?.Focus(FocusState.Programmatic);
+    }
+
+    async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            await _webViewAdapter.StartFindAsync(coreWebView2, term, options);
+        }
+    }
+
+    void IWebViewFindTarget.FindNext()
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            _webViewAdapter.FindNext(coreWebView2);
+        }
+    }
+
+    void IWebViewFindTarget.FindPrevious()
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            _webViewAdapter.FindPrevious(coreWebView2);
+        }
+    }
+
+    void IWebViewFindTarget.StopFind()
+    {
+        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        {
+            _webViewAdapter.StopFind(coreWebView2);
+        }
     }
 
     public override async Task PrepareToClose()
