@@ -32,6 +32,10 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // Linux Skia head do not, and use loadHTMLString instead.
     public bool SupportsVirtualHostMapping => OperatingSystem.IsWindows();
 
+    // Windows-under-Skia hosts Chromium's WebView2 with its own find bar; the macOS WKWebView and Linux
+    // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
+    public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
+
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
         // EnsureCoreWebView2Async never completes for a control that is not parented to a window. Parent the
@@ -363,12 +367,6 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         }
 
         IssueFind(nativeHandle, session, backwards);
-    }
-
-    public void InstallFindShortcut(WebView2 webView, Action openFindBar)
-    {
-        // Find is routed through the macOS Edit menu (Cmd+F), not an in-content accelerator, so nothing is
-        // wired here. The Linux WebKitGTK and Windows-under-Skia heads have no find shortcut.
     }
 
     private static void IssueFind(IntPtr nativeHandle, FindSession session, bool backwards)

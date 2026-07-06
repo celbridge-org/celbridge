@@ -13,9 +13,9 @@ public sealed record FindOptions(
     Action<FindMatchState>? OnMatchStateChanged = null);
 
 /// <summary>
-/// A snapshot of find progress. MatchFound drives next/previous enable state on every head. MatchCount and
-/// ActiveMatchIndex (1-based) are populated only where the platform supplies a free total: the Windows
-/// CoreWebView2Find reports both, while the macOS findString reports presence only, leaving them null.
+/// A snapshot of find progress. MatchFound drives next/previous enable state. MatchCount and ActiveMatchIndex
+/// (1-based) are reserved for a backend that supplies a free match total; the only backend currently wired to
+/// the host find bar, macOS findString, reports presence only and leaves them null.
 /// </summary>
 public sealed record FindMatchState(bool MatchFound, int? MatchCount = null, int? ActiveMatchIndex = null);
 
@@ -33,6 +33,14 @@ public interface IWebViewAdapter
     /// macOS and Linux Skia heads, which fake the origin via LoadHtmlString instead.
     /// </summary>
     bool SupportsVirtualHostMapping { get; }
+
+    /// <summary>
+    /// True when the hosted WebView backend supplies its own find bar, so the host does not add one and the
+    /// StartFindAsync/FindNext/FindPrevious/StopFind methods are inert. True on the Windows heads (Chromium's
+    /// WebView2 has a built-in bar reached directly by Ctrl+F); false on the macOS and Linux Skia heads, whose
+    /// WKWebView and WebKitGTK backends have none, so the host find bar drives find through this adapter.
+    /// </summary>
+    bool ProvidesBuiltInFind { get; }
 
     /// <summary>
     /// Brings a detached WebView2's CoreWebView2 to life. On the Skia heads this parents the control in a
@@ -99,20 +107,21 @@ public interface IWebViewAdapter
 
     /// <summary>
     /// Begins (or restarts) a whole-page find for the given term, selecting and scrolling to the first match.
-    /// Uses CoreWebView2Find on Windows (which also suppresses Chromium's built-in bar) and the native
-    /// WKWebView findString on macOS. Match progress is reported through FindOptions.OnMatchStateChanged.
+    /// Drives the native WKWebView findString on macOS. Inert where ProvidesBuiltInFind is true (the Windows
+    /// heads), whose backend supplies its own find bar. Match progress is reported through
+    /// FindOptions.OnMatchStateChanged.
     /// </summary>
     Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options);
 
     /// <summary>
     /// Advances to the next match of the active find session, wrapping per the session's options. A no-op if
-    /// no session was started for this WebView.
+    /// no session was started for this WebView, or where ProvidesBuiltInFind is true.
     /// </summary>
     void FindNext(CoreWebView2 coreWebView2);
 
     /// <summary>
     /// Steps to the previous match of the active find session, wrapping per the session's options. A no-op if
-    /// no session was started for this WebView.
+    /// no session was started for this WebView, or where ProvidesBuiltInFind is true.
     /// </summary>
     void FindPrevious(CoreWebView2 coreWebView2);
 
@@ -120,11 +129,4 @@ public interface IWebViewAdapter
     /// Ends the active find session, clearing the match selection. Safe to call when no session is active.
     /// </summary>
     void StopFind(CoreWebView2 coreWebView2);
-
-    /// <summary>
-    /// Installs a Ctrl+F accelerator that opens the host find bar, scoped to that key alone so every other
-    /// browser accelerator (print, reload, zoom) is untouched. Windows-only: the macOS find shortcut is
-    /// routed through the Edit menu, so the Skia adapter is a no-op.
-    /// </summary>
-    void InstallFindShortcut(WebView2 webView, Action openFindBar);
 }

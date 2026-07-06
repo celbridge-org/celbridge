@@ -284,7 +284,8 @@ public static class MacOSWebViewInterop
     /// Calls -[WKWebView findString:withConfiguration:completionHandler:] (macOS 11+), which selects and
     /// scrolls to a match but draws no UI of its own. The configuration carries the direction, case
     /// sensitivity, and wrap behaviour. onResult receives WKFindResult.matchFound (there is no free match
-    /// total, unlike the Windows CoreWebView2Find), and runs on the main thread from the completion handler.
+    /// total, so the macOS find bar shows presence without a counter), and runs on the main thread from the
+    /// completion handler.
     /// </summary>
     public static void FindString(IntPtr webView, string term, bool caseSensitive, bool backwards, bool wraps, Action<bool> onResult)
     {

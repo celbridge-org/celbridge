@@ -277,10 +277,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
             AttachNavigationPolicy(_webView.CoreWebView2);
 
-            // Windows: open our host find bar on Ctrl+F (and keep Chromium's built-in bar suppressed). No-op on
-            // the Skia heads, where macOS routes find through the Edit menu instead.
-            _webViewAdapter.InstallFindShortcut(_webView, () => TryBeginFind());
-
             TryNavigate();
         }
         catch (Exception ex)
@@ -787,9 +783,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         _ = _host?.NotifyReleaseFocusAsync();
     }
 
-    // Find is available whenever the WebView is live. The macOS Edit-menu Find item and the Windows Ctrl+F
-    // accelerator consult this before opening the bar.
-    public bool CanFind => _webView?.CoreWebView2 is not null;
+    // True when the host find bar can drive this document: the WebView is live and its backend has no find UI
+    // of its own (the Windows Chromium heads do, so they report false and keep their built-in bar).
+    public bool CanFind => !_webViewAdapter.ProvidesBuiltInFind && _webView?.CoreWebView2 is not null;
 
     public bool TryBeginFind()
     {
