@@ -41,6 +41,10 @@ public class CelbridgeHostTests
         {
             ServiceLocator.Initialize(_previousServiceProvider);
         }
+        else
+        {
+            ServiceLocator.Reset();
+        }
     }
 
     [Test]
