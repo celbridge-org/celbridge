@@ -361,6 +361,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         _viewState = stateService.CreateViewState();
         _viewState.SetValue("writable", WritableState.ToString());
+        // The preview find bar is built only where the WebView backend has no find bar of its own; where it
+        // does (Chromium's WebView2), the package stays hands-off and Ctrl+F reaches the built-in bar.
+        _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
         _viewStateConnection = _viewState.RegisterConnection(
             snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
 

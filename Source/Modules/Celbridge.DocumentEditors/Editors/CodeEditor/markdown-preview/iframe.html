@@ -3,10 +3,22 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css" />
     <link rel="stylesheet" href="preview.css" />
     <link rel="stylesheet" href="highlight.css" />
 </head>
 <body>
+    <!-- In-content find bar, wired from the parent page by preview-find.js. Shown only on backends without a
+         built-in find bar (macOS WKWebView); on Chromium's WebView2 the built-in bar is used instead. -->
+    <div id="preview-find-bar" hidden>
+        <input id="preview-find-input" type="text" />
+        <button id="preview-find-match-case" class="preview-find-toggle" type="button" aria-pressed="false"><i class="bi bi-type"></i></button>
+        <button id="preview-find-whole-word" class="preview-find-toggle" type="button" aria-pressed="false"><span>ab</span></button>
+        <span id="preview-find-count"></span>
+        <button id="preview-find-prev" type="button"><i class="bi bi-chevron-up"></i></button>
+        <button id="preview-find-next" type="button"><i class="bi bi-chevron-down"></i></button>
+        <button id="preview-find-close" type="button"><i class="bi bi-x-lg"></i></button>
+    </div>
     <div id="preview-container">
         <div id="preview-content"></div>
     </div>
