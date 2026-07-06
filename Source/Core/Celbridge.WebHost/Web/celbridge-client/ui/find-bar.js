@@ -224,7 +224,18 @@ class FindBar {
         link.id = ICON_FONT_LINK_ID;
         link.rel = 'stylesheet';
         link.href = new URL('../../bootstrap-icons/bootstrap-icons.css', import.meta.url).href;
+        link.addEventListener('load', () => this.#ensureIconFont(), { once: true });
         this.#doc.head.appendChild(link);
+    }
+
+    #ensureIconFont() {
+        // Force the icon font to load rather than relying on WebKit's paint-triggered lazy loading, which
+        // leaves the glyphs as tofu when the bar was created while the preview pane was hidden (the default
+        // Source view mode) and later shown in a way that does not repaint them (e.g. split view).
+        const fonts = this.#doc.fonts;
+        if (fonts && typeof fonts.load === 'function') {
+            fonts.load('16px "bootstrap-icons"').catch(() => {});
+        }
     }
 
     #buildBar() {
@@ -283,6 +294,9 @@ class FindBar {
         this.#previousButton.title = t('FindBar_Previous');
         this.#nextButton.title = t('FindBar_Next');
         this.#closeButton.title = t('FindBar_Close');
+
+        // The bar is now visible, so make sure the icon font is loaded (see ensureIconFont).
+        this.#ensureIconFont();
 
         this.#open = true;
         this.#bar.hidden = false;
