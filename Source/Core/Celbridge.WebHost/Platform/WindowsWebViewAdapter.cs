@@ -1,6 +1,3 @@
-// Compiling the whole adapter under WINDOWS aligns compilation with the DI selection in
-// PlatformServiceConfiguration, so the Skia build never links against the WinAppSDK WebView2 surface.
-#if WINDOWS
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
 
@@ -121,9 +118,8 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
     }
 
-    // The whole-page find methods drive the host find bar, which is macOS-only (ProvidesBuiltInFind is true
-    // here, so WebViewDocumentView never opens the bar on Windows). They are no-ops that satisfy the shared
-    // adapter contract without pulling in the CoreWebView2Find surface.
+    // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find
+    // through the adapter here. These no-ops satisfy the shared adapter contract.
     public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)
     {
         await Task.CompletedTask;
@@ -165,4 +161,3 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return JsonSerializer.Serialize(payload);
     }
 }
-#endif
