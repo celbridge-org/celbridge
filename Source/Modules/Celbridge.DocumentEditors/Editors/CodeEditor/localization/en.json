@@ -20,13 +20,5 @@
     "CodeEditor_Snippet_Image": "Image",
     "CodeEditor_Snippet_Table": "Table",
     "CodeEditor_Snippet_Footnote": "Footnote",
-    "CodeEditor_Snippet_HorizontalRule": "Horizontal Rule",
-    "CodeEditor_Find_Placeholder": "Find",
-    "CodeEditor_Find_MatchCase": "Match case",
-    "CodeEditor_Find_WholeWord": "Match whole word",
-    "CodeEditor_Find_Previous": "Previous match",
-    "CodeEditor_Find_Next": "Next match",
-    "CodeEditor_Find_Close": "Close",
-    "CodeEditor_Find_NoResults": "No results",
-    "CodeEditor_Find_Count": "{0} of {1}"
+    "CodeEditor_Snippet_HorizontalRule": "Horizontal Rule"
 }

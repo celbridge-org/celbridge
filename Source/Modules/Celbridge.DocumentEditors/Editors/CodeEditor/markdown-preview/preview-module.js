@@ -7,7 +7,7 @@
 import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
-import { PreviewFind } from './preview-find.js';
+import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
 
 let iframeElement = null;
 let callbacks = null;
@@ -346,8 +346,10 @@ function setupPreviewFind(iframe) {
             return;
         }
 
-        previewFind = new PreviewFind(iframe);
-        previewFind.install();
+        previewFind = createFindBar({
+            document: iframe.contentDocument,
+            searchRoot: previewContentElement,
+        });
     });
 }
 

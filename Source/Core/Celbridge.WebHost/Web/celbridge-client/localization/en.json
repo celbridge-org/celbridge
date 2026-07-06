@@ -1,0 +1,10 @@
+{
+    "FindBar_Placeholder": "Find",
+    "FindBar_MatchCase": "Match case",
+    "FindBar_WholeWord": "Match whole word",
+    "FindBar_Previous": "Previous match",
+    "FindBar_Next": "Next match",
+    "FindBar_Close": "Close",
+    "FindBar_NoResults": "No results",
+    "FindBar_Count": "{0} of {1}"
+}
