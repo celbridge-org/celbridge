@@ -11,11 +11,20 @@ public class MockHostChannel : IHostChannel
     public List<string> SentMessages { get; } = new();
 
     public event EventHandler<string>? MessageReceived;
+    public event EventHandler? Closed;
 
     public void PostMessage(string json)
     {
         SentMessages.Add(json);
         MessagePosted?.Invoke();
+    }
+
+    /// <summary>
+    /// Raises Closed to simulate the underlying transport dropping.
+    /// </summary>
+    public void SimulateClosed()
+    {
+        Closed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

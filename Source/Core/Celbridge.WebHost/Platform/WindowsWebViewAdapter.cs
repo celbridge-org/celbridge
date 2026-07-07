@@ -1,3 +1,6 @@
+// Compiling the whole adapter under WINDOWS aligns compilation with the DI selection in
+// PlatformServiceConfiguration, so the Skia build never links against the WinAppSDK WebView2 surface.
+#if WINDOWS
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
 
@@ -161,3 +164,4 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return JsonSerializer.Serialize(payload);
     }
 }
+#endif

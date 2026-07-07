@@ -16,4 +16,10 @@ public interface IHostChannel
     /// Event raised when a message is received from the WebView.
     /// </summary>
     event EventHandler<string> MessageReceived;
+
+    /// <summary>
+    /// Raised once when the channel's underlying transport is permanently gone (the WebSocket dropped,
+    /// the WebView detached).
+    /// </summary>
+    event EventHandler? Closed;
 }

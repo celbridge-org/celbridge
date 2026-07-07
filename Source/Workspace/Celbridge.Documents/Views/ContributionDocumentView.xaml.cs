@@ -61,6 +61,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     // WebSocket channel, depending on the transport the host channel factory selected.
     private Action? _hostChannelTeardown;
 
+    // Set when the WebSocket transport is in use, to resync the editor after a reconnect.
+    private ProxyHostChannel? _proxyChannel;
+
     // WebView tool bridge registration tracking. Only set when the package allows the
     // webview_* tools and the registration has succeeded. The field doubles as a guard
     // for unregistration.
@@ -85,6 +88,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private readonly object _reloadLock = new();
     private bool _isReloadInProgress;
     private bool _hasPendingReload;
+
+    // Set when the host channel re-binds a reconnected transport. Forces the next reload to run even
+    // when the disk content matches the file tracking info, because the editor may have missed a reload
+    // notification that was in transit when the previous transport died.
+    private bool _forceReload;
 
     // Completed by InitContributionViewAsync with the init outcome. LoadContent
     // triggers the init on first call and awaits this TCS so the open-document
@@ -324,6 +332,14 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         var connectionToken = hostChannelSetup.ConnectionToken;
         Host = new CelbridgeHost(hostChannelSetup.Channel);
 
+        // A reconnected transport (e.g. after an OS suspend dropped the socket) may have lost messages
+        // that were in transit when the previous socket died, so resync the editor on every rebind.
+        if (hostChannelSetup.Channel is ProxyHostChannel proxyChannel)
+        {
+            _proxyChannel = proxyChannel;
+            proxyChannel.Rebound += OnHostChannelRebound;
+        }
+
         Host.AddLocalRpcTarget<IHostInput>(this);
         Host.AddLocalRpcTarget<IHostContext>(this);
 
@@ -433,6 +449,12 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             _webViewAdapter.CloseWebView(WebView, ContributionWebViewContainer);
 
             WebView = null;
+        }
+
+        if (_proxyChannel is not null)
+        {
+            _proxyChannel.Rebound -= OnHostChannelRebound;
+            _proxyChannel = null;
         }
 
         _appStateConnection?.Dispose();
@@ -625,6 +647,10 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(ReloadStateWaitSeconds)));
             if (completed != reloadComplete.Task)
             {
+                // Expected while the editor transport is mid-reconnect; the rebind resync re-runs the reload.
+                _logger.LogWarning(
+                    "Editor did not confirm external reload within {Seconds}s. File: {File}",
+                    ReloadStateWaitSeconds, _viewModel.FilePath);
                 return;
             }
 
@@ -978,6 +1004,18 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             canRedo);
     }
 
+    private void OnHostChannelRebound(object? sender, EventArgs e)
+    {
+        lock (_reloadLock)
+        {
+            _forceReload = true;
+        }
+
+        // Raised on the WebSocket endpoint's request thread; marshal to the UI thread where the
+        // reload pipeline runs.
+        DispatcherQueue.TryEnqueue(() => ViewModel_ReloadRequested(this, EventArgs.Empty));
+    }
+
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
         // Coalesce concurrent reload requests. FileSystemWatcher commonly emits
@@ -995,6 +1033,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         while (true)
         {
+            lock (_reloadLock)
+            {
+                _forceReload = false;
+            }
+
             // async void: catch everything so a faulty editor cannot crash the process.
             try
             {
@@ -1011,20 +1054,30 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
             // Drain any pending request. Skip the follow-up reload when the disk
             // content has not actually changed since the reload we just ran (the
-            // duplicate-watcher-event case).
+            // duplicate-watcher-event case) -- unless a transport rebind forced it,
+            // in which case the editor may be stale even though the tracking info
+            // matches the disk.
             bool runFollowUp = false;
             while (!runFollowUp)
             {
                 bool wasPending;
+                bool forceReload;
                 lock (_reloadLock)
                 {
                     wasPending = _hasPendingReload;
                     _hasPendingReload = false;
+                    forceReload = _forceReload;
                     if (!wasPending)
                     {
                         _isReloadInProgress = false;
                         return;
                     }
+                }
+
+                if (forceReload)
+                {
+                    runFollowUp = true;
+                    continue;
                 }
 
                 try

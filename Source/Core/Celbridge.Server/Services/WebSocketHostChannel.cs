@@ -18,6 +18,7 @@ public sealed class WebSocketHostChannel : IHostChannel, IDisposable
     private bool _disposed;
 
     public event EventHandler<string>? MessageReceived;
+    public event EventHandler? Closed;
 
     public WebSocketHostChannel(WebSocket webSocket)
     {
@@ -172,5 +173,8 @@ public sealed class WebSocketHostChannel : IHostChannel, IDisposable
         _disposed = true;
         _outbound.Writer.TryComplete();
         _webSocket.Dispose();
+
+        // The endpoint disposes the channel on every path, so this is the single Closed raise site.
+        Closed?.Invoke(this, EventArgs.Empty);
     }
 }
