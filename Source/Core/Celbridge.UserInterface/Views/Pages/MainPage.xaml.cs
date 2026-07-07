@@ -3,6 +3,7 @@ using Celbridge.Navigation;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.UserInterface.Views.Controls;
+using Celbridge.Workspace;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
@@ -74,6 +75,11 @@ public partial class MainPage : Page
         // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
         // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
         Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
+
+        // Deliver Tab to a focused code editor (indent / outdent) instead of letting the platform focus loop
+        // move focus out of it. macOS-only. A no-op elsewhere.
+        var focusServiceForTab = ServiceLocator.AcquireService<IFocusService>();
+        Celbridge.UserInterface.Platform.MacOSTabKeyMonitor.Start(focusServiceForTab, _logger);
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);

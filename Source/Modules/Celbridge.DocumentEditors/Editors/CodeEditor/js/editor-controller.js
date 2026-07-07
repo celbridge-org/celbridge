@@ -138,7 +138,9 @@ export class EditorController {
             cut: 'editor.action.clipboardCutAction',
             paste: 'editor.action.clipboardPasteAction',
             undo: 'undo',
-            redo: 'redo'
+            redo: 'redo',
+            indent: 'tab',
+            outdent: 'outdent'
         }[intent];
 
         if (actionId) {
@@ -554,6 +556,7 @@ export class EditorController {
         // Paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
         this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
         this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
+        this.#editor.onDidBlurEditorText(() => this.#notifyEditAvailability());
     }
 
     #notifyEditAvailability() {
@@ -570,7 +573,10 @@ export class EditorController {
             canPaste: true,
             canSelectAll: true,
             canUndo: true,
-            canRedo: true
+            canRedo: true,
+            // Only claim Tab while the editor text has focus, so Tab still moves between the fields of the
+            // find widget or any other control hosted in the same WebView.
+            canIndent: this.#editor.hasTextFocus()
         });
     }
 

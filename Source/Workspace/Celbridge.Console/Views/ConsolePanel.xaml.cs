@@ -113,6 +113,12 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         }
     }
 
+    public bool TryHandleTabKey(bool shift)
+    {
+        // The console does not act on Tab, so normal focus navigation proceeds.
+        return false;
+    }
+
     private async Task CopyConsoleSelectionAsync()
     {
         var consoleHost = _consoleHost;
@@ -168,7 +174,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         bool canPaste,
         bool canSelectAll,
         bool canUndo,
-        bool canRedo)
+        bool canRedo,
+        bool canIndent = false)
     {
         _editAvailability = new EditAvailability(
             canCopy,
@@ -176,7 +183,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
             canPaste,
             canSelectAll,
             canUndo,
-            canRedo);
+            canRedo,
+            canIndent);
     }
 
     private void OnRequestConsoleFocus(object recipient, RequestConsoleFocusMessage message)
