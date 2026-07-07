@@ -907,6 +907,25 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         }
     }
 
+    public bool TryHandleTabKey(bool shift)
+    {
+        // A code editor with text focus indents or outdents. It reports that over the bridge, so a read-only
+        // or unfocused editor falls through to the generic Tab notification below.
+        if (_editAvailability.CanIndent)
+        {
+            var command = shift ? "outdent" : "indent";
+            _ = Host?.NotifyPerformEditAsync(command);
+
+            return true;
+        }
+
+        // Other editors handle Tab their own way (the spreadsheet moves the active cell). Editors that do
+        // not act on it ignore the notification, and the key is still swallowed so focus stays in the document.
+        _ = Host?.NotifyTabKeyAsync(shift);
+
+        return true;
+    }
+
     private async Task CopyEditorSelectionAsync(bool deleteSelection)
     {
         var host = Host;
@@ -967,7 +986,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         bool canPaste,
         bool canSelectAll,
         bool canUndo,
-        bool canRedo)
+        bool canRedo,
+        bool canIndent = false)
     {
         _editAvailability = new EditAvailability(
             canCopy,
@@ -975,7 +995,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             canPaste,
             canSelectAll,
             canUndo,
-            canRedo);
+            canRedo,
+            canIndent);
     }
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)

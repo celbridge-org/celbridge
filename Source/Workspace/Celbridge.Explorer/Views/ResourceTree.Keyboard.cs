@@ -96,6 +96,12 @@ public sealed partial class ResourceTree : IEditTarget
         }
     }
 
+    public bool TryHandleTabKey(bool shift)
+    {
+        // The resource tree does not act on Tab, so normal focus navigation proceeds.
+        return false;
+    }
+
     private static EditIntent? ResolveEditIntent(VirtualKey key)
     {
         if (!EditKeyboard.IsCommandModifierDown())

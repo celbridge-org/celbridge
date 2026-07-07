@@ -278,6 +278,43 @@ function initializeSpreadsheet() {
     }
 }
 
+// Moves the active cell one column on Tab (or back on Shift+Tab). The host swallows the native Tab so focus
+// stays in the document, then forwards it here, matching the cell navigation the packaged Windows head gets
+// from the WebView natively.
+function handleTabKey(shift) {
+    if (!designer) {
+        return;
+    }
+
+    let spread;
+    try {
+        spread = designer.getWorkbook();
+    } catch (err) {
+        return;
+    }
+
+    const sheet = spread?.getActiveSheet();
+    if (!sheet) {
+        return;
+    }
+
+    const row = sheet.getActiveRowIndex();
+    const column = sheet.getActiveColumnIndex();
+    if (row < 0
+        || column < 0) {
+        return;
+    }
+
+    const columnCount = sheet.getColumnCount();
+    const targetColumn = Math.max(0, Math.min(shift ? column - 1 : column + 1, columnCount - 1));
+    if (targetColumn === column) {
+        return;
+    }
+
+    sheet.setActiveCell(row, targetColumn);
+    sheet.showColumn(targetColumn, GC.Spread.Sheets.HorizontalPosition.nearest);
+}
+
 async function initializeEditor() {
     try {
         // Resolve the host capability context before initializeSpreadsheet reads the
@@ -308,6 +345,11 @@ async function initializeEditor() {
             });
             return;
         }
+
+        // The host forwards Tab here (it swallows the native key so focus cannot leave the document).
+        client.onNotification('input/tabKey', (params) => {
+            handleTabKey(params?.shift === true);
+        });
 
         client.viewState.onChanged((viewState) => {
             if (viewState.writable) {

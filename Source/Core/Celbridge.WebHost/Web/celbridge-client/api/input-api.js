@@ -77,6 +77,8 @@ export class InputAPI {
      * @param {boolean} [availability.canSelectAll]
      * @param {boolean} [availability.canUndo]
      * @param {boolean} [availability.canRedo]
+     * @param {boolean} [availability.canIndent] - Whether the editor indents on Tab, so the host keeps Tab
+     *   inside the editor instead of letting it move focus.
      */
     notifyEditAvailability(availability = {}) {
         this.#transport.notify('input/editAvailabilityChanged', {
@@ -85,7 +87,8 @@ export class InputAPI {
             canPaste: availability.canPaste === true,
             canSelectAll: availability.canSelectAll === true,
             canUndo: availability.canUndo === true,
-            canRedo: availability.canRedo === true
+            canRedo: availability.canRedo === true,
+            canIndent: availability.canIndent === true
         });
     }
 }

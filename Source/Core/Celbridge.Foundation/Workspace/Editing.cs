@@ -33,6 +33,13 @@ public interface IEditTarget
     /// Performs the intent on the surface's current selection. May be fire-and-forget.
     /// </summary>
     void PerformEdit(EditIntent intent);
+
+    /// <summary>
+    /// Handles a Tab (or Shift+Tab) keypress that the platform's focus navigation would otherwise consume,
+    /// keeping it inside the surface (e.g. a code editor indents or outdents). Returns false to let normal
+    /// focus navigation proceed. May be fire-and-forget.
+    /// </summary>
+    bool TryHandleTabKey(bool shift);
 }
 
 /// <summary>
@@ -45,12 +52,13 @@ public record EditAvailability(
     bool CanPaste,
     bool CanSelectAll,
     bool CanUndo,
-    bool CanRedo)
+    bool CanRedo,
+    bool CanIndent)
 {
     /// <summary>
     /// The default for an editor that has reported nothing yet: nothing is allowed.
     /// </summary>
-    public static EditAvailability None { get; } = new(false, false, false, false, false, false);
+    public static EditAvailability None { get; } = new(false, false, false, false, false, false, false);
 
     /// <summary>
     /// Whether the given intent is one of the currently allowed verbs.

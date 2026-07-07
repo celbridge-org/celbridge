@@ -17,6 +17,10 @@ public static class InputRpcMethods
     // Host to client. Asks the editor to run one of its own edit commands (selectAll, undo, redo).
     public const string PerformEdit = "input/performEdit";
 
+    // Host to client. Tells the editor a Tab (or Shift+Tab) was pressed, for editors that handle Tab their
+    // own way (e.g. the spreadsheet moves the active cell). The code editor uses PerformEdit for indenting.
+    public const string TabKey = "input/tabKey";
+
     // Client to host. Reports which edit verbs the editor can currently perform.
     public const string EditAvailabilityChanged = "input/editAvailabilityChanged";
 
@@ -79,7 +83,8 @@ public interface IHostInput
         bool canPaste,
         bool canSelectAll,
         bool canUndo,
-        bool canRedo)
+        bool canRedo,
+        bool canIndent = false)
     { }
 
     /// <summary>
@@ -103,8 +108,15 @@ public static class HostInputExtensions
 
     /// <summary>
     /// Asks the editor to run one of its own edit commands. The command is the editor command name
-    /// (selectAll, undo, redo). Copy, cut, and paste are host-mediated and not sent here.
+    /// (selectAll, undo, redo, indent, outdent). Copy, cut, and paste are host-mediated and not sent here.
     /// </summary>
     public static Task NotifyPerformEditAsync(this CelbridgeHost host, string command)
         => host.Rpc.NotifyWithParameterObjectAsync(InputRpcMethods.PerformEdit, new { command });
+
+    /// <summary>
+    /// Tells the editor that Tab (or Shift+Tab) was pressed while it was focused, so an editor that navigates
+    /// on Tab (such as the spreadsheet moving the active cell) can act on it.
+    /// </summary>
+    public static Task NotifyTabKeyAsync(this CelbridgeHost host, bool shift)
+        => host.Rpc.NotifyWithParameterObjectAsync(InputRpcMethods.TabKey, new { shift });
 }

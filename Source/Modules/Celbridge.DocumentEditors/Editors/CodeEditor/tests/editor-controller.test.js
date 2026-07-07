@@ -33,6 +33,8 @@ function createMockEditor(model) {
         onDidScrollChange: vi.fn(),
         onDidChangeCursorSelection: vi.fn(),
         onDidFocusEditorText: vi.fn(),
+        onDidBlurEditorText: vi.fn(),
+        hasTextFocus: vi.fn(() => true),
         getSelection: vi.fn(() => ({ isEmpty: () => true })),
         setSelection: vi.fn(),
         trigger: vi.fn(),
