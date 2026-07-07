@@ -35,6 +35,7 @@ public class WebViewHostChannel : IHostChannel
     }
 
     public event EventHandler<string>? MessageReceived;
+    public event EventHandler? Closed;
 
     public void PostMessage(string json)
     {
@@ -103,7 +104,13 @@ public class WebViewHostChannel : IHostChannel
     /// </summary>
     public void Detach()
     {
+        if (_isDetached)
+        {
+            return;
+        }
+
         _isDetached = true;
         _coreWebView2.WebMessageReceived -= OnWebMessageReceived;
+        Closed?.Invoke(this, EventArgs.Empty);
     }
 }

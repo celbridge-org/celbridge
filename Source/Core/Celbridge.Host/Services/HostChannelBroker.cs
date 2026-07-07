@@ -25,9 +25,10 @@ public sealed class HostChannelBroker : IHostChannelBroker
 
     public bool TryBindConnection(string token, IHostChannel socketChannel)
     {
-        // The token is kept (not consumed on bind) so a synthetic-origin editor whose page is reloaded
-        // (e.g. a WebView reattach) can reconnect and re-bind to the same proxy channel. The entry is
-        // removed when the view disposes the proxy channel.
+        // The token is kept (not consumed on bind) so a page can reconnect and re-bind to the same proxy
+        // channel -- after a page reload (e.g. a WebView reattach), or after a live page's socket dropped
+        // (an OS suspend, a network blip) and the client reconnected. The entry is removed when the view
+        // disposes the proxy channel.
         if (string.IsNullOrEmpty(token)
             || !_pendingConnections.TryGetValue(token, out var proxyChannel))
         {

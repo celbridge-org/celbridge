@@ -35,7 +35,8 @@ internal static class HostChannelEndpoint
             {
                 if (!broker.TryBindConnection(token, channel))
                 {
-                    // Unknown, already-bound, or disposed token: refuse the connection.
+                    // Unknown or disposed token: refuse the connection. A live token re-binds instead,
+                    // replacing the previous transport (a reconnecting page).
                     return;
                 }
 

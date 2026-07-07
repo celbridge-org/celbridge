@@ -108,36 +108,95 @@ export class RpcTransport {
 
     /**
      * Routes the bridge over a WebSocket on the loopback server at the given URL. The token in the URL
-     * both routes the socket to this document's host channel and authenticates it. Outbound messages
-     * are buffered until the socket opens. No automatic reconnection: the socket lives for the page's
-     * lifetime.
+     * both routes the socket to this document's host channel and authenticates it. Outbound messages are
+     * buffered while no socket is open and flushed on (re)connect. A dropped socket (system sleep, a
+     * network blip) reconnects automatically with exponential backoff; the host keeps the token alive
+     * for the document's lifetime and re-binds the new socket to the same proxy channel, so the JSON-RPC
+     * session resumes without a page reload.
      * @param {string} url - The full ws:// URL (same-origin-derived, or host-injected for synthetic-origin pages).
      */
     #setupWebSocketTransport(url) {
         const outboundQueue = [];
-        const socket = new WebSocket(url);
 
-        socket.addEventListener('open', () => {
-            this.#log('debug', 'Host WebSocket connected');
-            while (outboundQueue.length > 0 && socket.readyState === WebSocket.OPEN) {
+        const RECONNECT_BASE_MS = 500;
+        const RECONNECT_MAX_MS = 10000;
+
+        let socket = null;
+        let reconnectAttempts = 0;
+        let reconnectTimer = null;
+
+        const flushQueue = () => {
+            while (outboundQueue.length > 0 && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(outboundQueue.shift());
             }
-        });
-        socket.addEventListener('message', (event) => {
-            this.#handleMessage(event.data);
-        });
-        socket.addEventListener('close', () => {
-            this.#log('warn', 'Host WebSocket closed');
-        });
-        socket.addEventListener('error', (event) => {
-            this.#log('error', 'Host WebSocket error', event);
-        });
+        };
+
+        const scheduleReconnect = () => {
+            if (reconnectTimer !== null) {
+                return;
+            }
+
+            const delay = Math.min(RECONNECT_BASE_MS * (2 ** reconnectAttempts), RECONNECT_MAX_MS);
+            reconnectAttempts++;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connect();
+            }, delay);
+        };
+
+        const connect = () => {
+            const ws = new WebSocket(url);
+            socket = ws;
+
+            // Handlers guard against firing for a socket that has already been replaced, so a stale
+            // close cannot schedule a duplicate connection on top of a live one.
+            ws.addEventListener('open', () => {
+                if (ws !== socket) {
+                    return;
+                }
+                this.#log('debug', 'Host WebSocket connected');
+                reconnectAttempts = 0;
+                flushQueue();
+            });
+            ws.addEventListener('message', (event) => {
+                this.#handleMessage(event.data);
+            });
+            ws.addEventListener('close', () => {
+                if (ws !== socket) {
+                    return;
+                }
+                this.#log('warn', 'Host WebSocket closed');
+                scheduleReconnect();
+            });
+            ws.addEventListener('error', (event) => {
+                this.#log('error', 'Host WebSocket error', event);
+            });
+        };
+
+        // A machine returning from sleep or a network coming back fires 'online'. Reconnect at once
+        // rather than waiting out the current backoff delay.
+        const onOnline = () => {
+            if (socket !== null && socket.readyState !== WebSocket.CLOSED) {
+                return;
+            }
+            if (reconnectTimer !== null) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            connect();
+        };
+
+        if (typeof globalThis !== 'undefined' && typeof globalThis.addEventListener === 'function') {
+            globalThis.addEventListener('online', onOnline);
+        }
+
+        connect();
 
         this.#postMessage = (message) => {
-            if (socket.readyState === WebSocket.OPEN) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(message);
             } else {
-                // Buffer until the socket opens (still connecting), then flush on 'open'.
+                // Buffer until the socket (re)opens, then flush on 'open'.
                 outboundQueue.push(message);
             }
         };
