@@ -1,6 +1,7 @@
 using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Server;
 using Celbridge.Settings;
@@ -18,6 +19,7 @@ public class WorkspaceLoader
     private readonly IServerService _serverService;
     private readonly ProjectCheckReporter _projectCheckReporter;
     private readonly IProjectLoadReporter _loadReporter;
+    private readonly IAppEnvironment _appEnvironment;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -27,7 +29,8 @@ public class WorkspaceLoader
         IProjectService projectService,
         IServerService serverService,
         ProjectCheckReporter projectCheckReporter,
-        IProjectLoadReporter loadReporter)
+        IProjectLoadReporter loadReporter,
+        IAppEnvironment appEnvironment)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -37,6 +40,7 @@ public class WorkspaceLoader
         _serverService = serverService;
         _projectCheckReporter = projectCheckReporter;
         _loadReporter = loadReporter;
+        _appEnvironment = appEnvironment;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -222,6 +226,19 @@ public class WorkspaceLoader
         if (Path.Exists(folderPath))
         {
             Directory.SetCurrentDirectory(folderPath);
+        }
+    }
+
+    // Reverts the process working folder to the one captured at startup. Called when a project unloads so the
+    // working folder stays valid while no project is loaded. A deleted project folder would otherwise leave
+    // the working folder dangling, which breaks the next project's server start (getcwd fails).
+    [AllowDirectFileSystemAccess]
+    public void ResetProcessWorkingFolder()
+    {
+        var launchWorkingFolderPath = _appEnvironment.LaunchWorkingFolderPath;
+        if (Path.Exists(launchWorkingFolderPath))
+        {
+            Directory.SetCurrentDirectory(launchWorkingFolderPath);
         }
     }
 

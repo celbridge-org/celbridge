@@ -27,6 +27,11 @@ public interface IAppEnvironment
     string TemporaryFolderPath { get; }
 
     /// <summary>
+    /// The process working folder captured at application startup, before any loaded project changes it.
+    /// </summary>
+    string LaunchWorkingFolderPath { get; }
+
+    /// <summary>
     /// Returns the on-disk path to a bundled asset (file or folder) shipped by the given library module,
     /// at the forward-slashed relative path within that module's bundled files.
     /// </summary>

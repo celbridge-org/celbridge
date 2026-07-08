@@ -14,6 +14,20 @@ public sealed class AppEnvironment : IAppEnvironment
 {
     private const string ApplicationDataFolderName = "Celbridge";
 
+    // The process working folder captured at startup, before any loaded project changes it.
+    private static readonly string LaunchWorkingFolder;
+
+    // Capture the launch working folder when this type is first touched during startup (the pre-DI instance
+    // created for the log folder), not lazily on first read of LaunchWorkingFolderPath. By then a loaded
+    // project may have changed the working folder, or deleted it, which would make Environment.CurrentDirectory
+    // throw. The explicit static constructor forces this precise timing (a field initializer alone is
+    // beforefieldinit, so the CLR could defer it to first field access). Environment.CurrentDirectory (not the
+    // analyzer-gated Directory facade) keeps this dependency-free utility from needing a filesystem carve-out.
+    static AppEnvironment()
+    {
+        LaunchWorkingFolder = Environment.CurrentDirectory;
+    }
+
     public EnvironmentInfo GetEnvironmentInfo()
     {
         var appVersion = ResolveAppVersion();
@@ -55,6 +69,8 @@ public sealed class AppEnvironment : IAppEnvironment
 #endif
         }
     }
+
+    public string LaunchWorkingFolderPath => LaunchWorkingFolder;
 
     public string GetBundledAssetPath(string moduleFolderName, string relativePath)
     {

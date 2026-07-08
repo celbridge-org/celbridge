@@ -13,6 +13,11 @@ public class ProjectUnloader
 {
     private const string EmptyPageTag = "Empty";
 
+    private const int PollIntervalMs = 50;
+
+    // Settable so tests can exercise the timeout without waiting the full bound.
+    internal int UnloadTimeoutMs { get; set; } = 30000;
+
     private readonly ILogger<ProjectUnloader> _logger;
     private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
@@ -107,10 +112,19 @@ public class ProjectUnloader
                 .WithErrors(navResult);
         }
 
-        // Wait until the workspace is fully unloaded
+        // Wait until the workspace is fully unloaded. The wait is bounded so a teardown failure fails
+        // this command instead of blocking the command queue forever. The healthy path can take tens of
+        // seconds when many open editors each hit their state-save timeout.
+        var elapsedMs = 0;
         while (_workspaceWrapper.IsWorkspacePageLoaded)
         {
-            await Task.Delay(50);
+            if (elapsedMs >= UnloadTimeoutMs)
+            {
+                return Result.Fail($"The workspace page did not unload within {UnloadTimeoutMs}ms");
+            }
+
+            await Task.Delay(PollIntervalMs);
+            elapsedMs += PollIntervalMs;
         }
 
         return Result.Ok();

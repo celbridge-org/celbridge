@@ -110,27 +110,58 @@ public partial class WorkspacePageViewModel : ObservableObject
         OnPropertyChanged(nameof(IsConsoleMaximized));
     }
 
-    public void OnWorkspacePageUnloaded()
+    public async Task OnWorkspacePageUnloadedAsync()
     {
-        _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
+        // Best-effort: persist editor state while the editors are still alive, then close the panels. A
+        // failure here (e.g. the project folder was deleted while the project was open) must not prevent the
+        // dispose and unload notification below, which is a separate step so it still runs.
+        try
+        {
+            // Save editor states before closing documents, while editors are still alive.
+            await _workspaceService.DocumentsService.StoreDocumentEditorStates();
 
-        // Unregister message handlers
-        _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
-        _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
+            // Close all open documents and clean up their WebView2 resources.
+            _workspaceService.DocumentsPanel.Shutdown();
 
-        // Clear project-level feature flag overrides before disposing the workspace
-        _featureFlags.ClearProjectOverrides();
+            _workspaceService.ConsolePanel?.Shutdown();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to save workspace state during page unload");
+        }
 
-        // Clear shortcut buttons from the title bar before disposing the workspace
-        _workspaceLoader.ClearTitleBarShortcuts();
+        // Tear down and dispose the workspace. Guarded so the unload notification is still sent on failure.
+        try
+        {
+            _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
 
-        // Dispose the workspace service
-        // This disposes all the sub-services and releases all resources held by the workspace.
-        var disposableWorkspace = _workspaceService as IDisposable;
-        Guard.IsNotNull(disposableWorkspace);
-        disposableWorkspace.Dispose();
+            // Unregister message handlers
+            _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
+            _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
 
-        // Notify listeners that the workspace has been unloaded.
+            // Clear project-level feature flag overrides before disposing the workspace
+            _featureFlags.ClearProjectOverrides();
+
+            // Clear shortcut buttons from the title bar before disposing the workspace
+            _workspaceLoader.ClearTitleBarShortcuts();
+
+            // Revert the process working folder set on load, so it stays valid while no project is loaded
+            _workspaceLoader.ResetProcessWorkingFolder();
+
+            // Dispose the workspace service
+            // This disposes all the sub-services and releases all resources held by the workspace.
+            var disposableWorkspace = _workspaceService as IDisposable;
+            Guard.IsNotNull(disposableWorkspace);
+            disposableWorkspace.Dispose();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Workspace teardown failed during page unload");
+        }
+
+        // Notify listeners that the workspace has been unloaded. This must always be sent, even after a
+        // failure above, because the ProjectUnloader wait completes only when this message clears the
+        // workspace loaded state.
         var message = new WorkspaceUnloadedMessage();
         _messengerService.Send(message);
     }
