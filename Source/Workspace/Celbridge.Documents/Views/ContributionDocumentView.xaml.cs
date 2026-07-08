@@ -43,6 +43,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private readonly IWebViewService _webViewService;
     private readonly IFocusService _focusService;
     private readonly IWebViewAdapter _webViewAdapter;
+    private readonly IWebViewFocusMonitor _webViewFocusMonitor;
 
     // Latest edit availability reported by the editor over the bridge. Drives CanPerformEdit.
     private EditAvailability _editAvailability = EditAvailability.None;
@@ -139,6 +140,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _webViewService = webViewService;
         _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
+        _webViewFocusMonitor = ServiceLocator.AcquireService<IWebViewFocusMonitor>();
 
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
@@ -290,6 +292,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         WebView.GotFocus -= WebView_GotFocus;
         WebView.GotFocus += WebView_GotFocus;
+
+        // On macOS the WKWebView consumes clicks without raising GotFocus, and the JS client only
+        // reports DOM focus changes, which a click on non-focusable content (e.g. rendered markdown)
+        // never produces. The native monitor covers those clicks. No-op on other platforms.
+        _webViewFocusMonitor.Register(WebView.CoreWebView2, OnNativeFocusSignal);
 
         // Every contribution editor's assets (its lib, the shared client) are served from the loopback
         // file server, so register this package's folder there. The resolved loader decides where the
@@ -444,6 +451,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
 
         if (WebView is not null)
         {
+            if (WebView.CoreWebView2 is not null)
+            {
+                _webViewFocusMonitor.Unregister(WebView.CoreWebView2);
+            }
+
             WebView.GotFocus -= WebView_GotFocus;
 
             _webViewAdapter.CloseWebView(WebView, ContributionWebViewContainer);
@@ -870,6 +882,16 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private void WebView_GotFocus(object sender, RoutedEventArgs e)
     {
         // Set this document as the active document when the WebView2 receives focus
+        var message = new DocumentViewFocusedMessage(FileResource);
+        _messengerService.Send(message);
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
+    }
+
+    private void OnNativeFocusSignal()
+    {
+        // Arrives from the platform focus monitor on the UI thread when a click lands inside this
+        // view's native web surface. Same handling as the managed GotFocus path.
         var message = new DocumentViewFocusedMessage(FileResource);
         _messengerService.Send(message);
 
