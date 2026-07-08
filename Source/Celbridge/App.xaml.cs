@@ -1,6 +1,7 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
 using Celbridge.Platform;
+using Celbridge.Projects;
 using Celbridge.Modules.Services;
 using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
@@ -11,9 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
-using Celbridge.FileSystem;
 using Celbridge.Resources;
-using Celbridge.Settings;
 using Windows.ApplicationModel.Activation;
 #endif
 
@@ -152,7 +151,11 @@ public partial class App : Application
         var environmentInfo = environmentService.GetEnvironmentInfo();
         logger.LogDebug(environmentInfo.ToString());
 
-        // Check if the application was opened with a project file argument 
+        // Resolve the activation service before the main page loads so it is subscribed for the
+        // MainPageLoadedMessage that triggers the startup project open.
+        var appActivationService = Host.Services.GetRequiredService<IAppActivationService>();
+
+        // Check if the application was opened with a project file argument
 #if WINDOWS
         var activatedEventArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
         if (activatedEventArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File)
@@ -165,24 +168,18 @@ public partial class App : Application
                 {
                     var projectFile = storageFile.Path;
                     logger.LogDebug($"Launched with project file: {projectFile}");
-                    var fileSystem = Host.Services.GetRequiredService<ILocalFileSystem>();
-                    var projectFileInfo = await fileSystem.GetInfoAsync(projectFile);
-                    if (projectFileInfo.IsSuccess
-                        && projectFileInfo.Value.Kind == StorageItemKind.File)
-                    {
-                        var settingsService = Host.Services.GetRequiredService<ISettingsService>();
-                        settingsService.Set(SettingCatalog.Project.PreviousProject, projectFile);
-                    }
+                    appActivationService.OnFilesActivated(new List<string> { projectFile });
                 }
             }
         }
 #else
-        // The macOS counterpart to the Windows file activation above is not implemented yet: a double-clicked
-        // .celbridge launches the app (the bundle declares the association), but macOS delivers the opened
-        // path via an Apple Event that Uno does not surface on this head. The app auto-opens the previous project.
-        // No async file-activation work on this head; the await keeps OnLaunched awaiting on non-Windows heads.
-        await Task.CompletedTask;
+        // The macOS open-document handler is installed onto the app delegate class in Program.Main (before the
+        // run loop, since macOS delivers the launch open event before this runs). Now that DI exists, wire the
+        // routing callback and flush any file path that arrived during launch. Does nothing on the non-macOS
+        // Skia heads.
+        Celbridge.UserInterface.Platform.MacOSFileActivation.SetCallback(appActivationService.OnFilesActivated);
 #endif
+        await Task.CompletedTask;
 
         // Initialize the Core Services
         InitializeCoreServices();

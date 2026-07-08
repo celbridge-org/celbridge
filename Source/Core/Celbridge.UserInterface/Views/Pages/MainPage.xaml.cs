@@ -89,7 +89,7 @@ public partial class MainPage : Page
         Guard.IsNotNull(navigationService);
         navigationService.SetNavigateHandler(NavigateToPage);
 
-        await ViewModel.OnMainPage_LoadedAsync();
+        ViewModel.OnMainPage_Loaded();
 
         // Listen for keyboard input events (required for undo / redo and other app shortcuts).
         // Window.CoreWindow is a legacy UWP API that is null on the Skia desktop head, so the root

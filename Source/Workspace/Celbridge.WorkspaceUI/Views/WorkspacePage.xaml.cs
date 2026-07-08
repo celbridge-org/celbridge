@@ -199,25 +199,14 @@ public sealed partial class WorkspacePage : Page
 
     private async Task PerformCleanupAsync()
     {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        var workspaceService = workspaceWrapper.WorkspaceService;
-        Guard.IsNotNull(workspaceService);
-
+        // Cleanup owned by this page: its own view-model and message subscriptions. The workspace teardown
+        // (save editor state, shut down panels, dispose the workspace) is orchestrated by the view-model.
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
-        // Unregister message handlers
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
 
-        // Save editor states before closing documents, while editors are still alive
-        await workspaceService.DocumentsService.StoreDocumentEditorStates();
-
-        // Close all open documents and clean up their WebView2 resources
-        workspaceService.DocumentsPanel.Shutdown();
-
-        workspaceService.ConsolePanel?.Shutdown();
-
-        ViewModel.OnWorkspacePageUnloaded();
+        await ViewModel.OnWorkspacePageUnloadedAsync();
 
         _initialized = false;
     }

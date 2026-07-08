@@ -41,6 +41,10 @@
     <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" UndefineProperties="TargetFramework" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
   <!-- Runs after the referenced Celbridge.Templates project has generated the zips and before MSBuild
        assigns content target paths, so the freshly built zips flow through the normal Uno content
        pipeline (library layout on the Skia heads, package root on the packaged Windows head). -->
