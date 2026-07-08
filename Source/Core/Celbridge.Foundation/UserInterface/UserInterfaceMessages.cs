@@ -16,6 +16,11 @@ public record MainWindowDeactivatedMessage();
 public record ActivePageChangedMessage(ApplicationPage ActivePage);
 
 /// <summary>
+/// Sent when the main page has finished loading at startup.
+/// </summary>
+public record MainPageLoadedMessage();
+
+/// <summary>
 /// Message sent when the layout mode (chrome level) changes.
 /// </summary>
 public record LayoutModeChangedMessage(LayoutMode LayoutMode);
