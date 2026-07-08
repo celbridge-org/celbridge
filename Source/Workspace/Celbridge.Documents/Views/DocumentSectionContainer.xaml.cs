@@ -405,39 +405,44 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Sets the active document.
+    /// Restores the given document as the active document, falling back to the selected tab of the
+    /// first populated section when it is empty or no longer open. Guarantees that while any
+    /// documents are open, exactly one is the active document - the invariant restore depends on.
     /// </summary>
     public void SetActiveDocument(ResourceKey fileResource)
     {
-        if (fileResource.IsEmpty)
+        // Restore inserts tabs with Activate=false, so a section can end up with tabs but no
+        // selected tab. Give every populated section a selected tab first, so the fallback can
+        // choose from real per-section selections.
+        EnsureVisibleTabsSelected();
+
+        // Prefer the requested (previously active) document when it is still open.
+        var location = fileResource.IsEmpty ? null : FindDocumentTab(fileResource);
+
+        // The requested document can be empty (never saved) or point to a document that failed to
+        // restore (e.g. its file was deleted between sessions). Fall back to the selected tab of
+        // the first populated section, scanning sections in index order.
+        if (location is null)
         {
-            _activeDocument = ResourceKey.Empty;
-            _activeSectionIndex = 0;
-            UpdateTabSelectionIndicators();
-            ActiveDocumentChanged?.Invoke(_activeDocument);
-            EnsureVisibleTabsSelected();
-            return;
+            location = FindFallbackActiveDocument();
         }
 
-        // Find which section contains this document
-        var location = FindDocumentTab(fileResource);
         if (location is not null)
         {
-            // Select the tab in its section
+            // Directly update the active document; programmatic selection does not rely on events.
             location.Section.SelectTab(location.Tab);
-
-            // Directly update active document (don't rely on events for programmatic selection)
             _activeSectionIndex = location.Section.SectionIndex;
-            _activeDocument = fileResource;
-            UpdateTabSelectionIndicators();
-            ActiveDocumentChanged?.Invoke(_activeDocument);
+            _activeDocument = location.Tab.ViewModel.FileResource;
+        }
+        else
+        {
+            // No documents are open, so there is no active document.
+            _activeDocument = ResourceKey.Empty;
+            _activeSectionIndex = 0;
         }
 
-        // During workspace restore many tabs are inserted with Activate=false, so non-active
-        // sections end up with no selected tab. SetActiveDocument is the hook that runs after
-        // all of those inserts finish, so enforce the "every populated section has a visible
-        // selected tab" invariant here.
-        EnsureVisibleTabsSelected();
+        UpdateTabSelectionIndicators();
+        ActiveDocumentChanged?.Invoke(_activeDocument);
     }
 
     /// <summary>
@@ -452,6 +457,30 @@ public sealed partial class DocumentSectionContainer : UserControl
             if (tab != null)
             {
                 return new DocumentTabLocation(_sections[i], tab);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the selected document tab of the first populated section, scanning sections in index
+    /// order, or null when no section has a selected tab.
+    /// </summary>
+    private DocumentTabLocation? FindFallbackActiveDocument()
+    {
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            var selectedResource = section.GetSelectedDocument();
+            if (selectedResource.IsEmpty)
+            {
+                continue;
+            }
+
+            var tab = section.GetDocumentTab(selectedResource);
+            if (tab is not null)
+            {
+                return new DocumentTabLocation(section, tab);
             }
         }
         return null;

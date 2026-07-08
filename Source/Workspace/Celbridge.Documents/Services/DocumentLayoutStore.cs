@@ -61,13 +61,18 @@ public class DocumentLayoutStore
         await propertyBag.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
     }
 
-    public async Task StoreActiveDocumentAsync(ResourceKey activeDocument)
+    public async Task StoreActiveDocumentAsync()
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        var fileResource = activeDocument.ToString();
-        await propertyBag.SetPropertyAsync(ActiveDocumentKey, fileResource);
+        // Read the panel's active document directly rather than the gated
+        // IDocumentsService.ActiveDocument, which reports Empty until the workspace page finishes
+        // loading. WorkspaceLoader persists right after restore, before that milestone, so the
+        // gated value would clobber the setting to empty and the active document would never be
+        // remembered across loads.
+        var activeDocument = DocumentsPanel.ActiveDocument;
+        await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
     }
 
     public async Task StoreSectionRatiosAsync(List<double> ratios)
@@ -290,22 +295,22 @@ public class DocumentLayoutStore
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        var selectedDocument = await propertyBag.GetPropertyAsync<string>(ActiveDocumentKey);
-        if (string.IsNullOrEmpty(selectedDocument))
+        var storedActiveDocument = await propertyBag.GetPropertyAsync<string>(ActiveDocumentKey);
+
+        var activeDocument = ResourceKey.Empty;
+        if (!string.IsNullOrEmpty(storedActiveDocument))
         {
-            return;
+            if (!ResourceKey.TryCreate(storedActiveDocument, out activeDocument))
+            {
+                _logger.LogWarning($"Invalid resource key '{storedActiveDocument}' found for previously selected document");
+                activeDocument = ResourceKey.Empty;
+            }
         }
 
-        if (!ResourceKey.TryCreate(selectedDocument, out var selectedDocumentKey))
-        {
-            _logger.LogWarning($"Invalid resource key '{selectedDocument}' found for previously selected document");
-            return;
-        }
-
-        // Set the active document. SectionContainer.SetActiveDocument also enforces the invariant
-        // that every populated section has a selected tab, so non-active sections that had tabs
-        // inserted during restore get a sensible default selection automatically.
-        DocumentsPanel.ActiveDocument = selectedDocumentKey;
+        // Always delegate to the panel, even when the stored value is empty or invalid.
+        // SectionContainer.SetActiveDocument restores this document when it is still open and
+        // otherwise falls back so that any open documents leave exactly one active document.
+        DocumentsPanel.ActiveDocument = activeDocument;
     }
 
     private async Task OpenDefaultReadmeAsync()

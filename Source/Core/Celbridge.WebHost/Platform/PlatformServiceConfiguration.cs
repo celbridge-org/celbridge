@@ -18,5 +18,17 @@ public static class PlatformServiceConfiguration
 #else
         services.AddSingleton<IWebViewAdapter, SkiaWebViewAdapter>();
 #endif
+
+        // The focus monitor is a genuine runtime OS selection: the AppKit first-responder signal
+        // exists only on macOS, which is also the only OS where WKWebView consumes clicks without
+        // raising the managed GotFocus event.
+        if (OperatingSystem.IsMacOS())
+        {
+            services.AddSingleton<IWebViewFocusMonitor, MacOSWebViewFocusMonitor>();
+        }
+        else
+        {
+            services.AddSingleton<IWebViewFocusMonitor, NullWebViewFocusMonitor>();
+        }
     }
 }

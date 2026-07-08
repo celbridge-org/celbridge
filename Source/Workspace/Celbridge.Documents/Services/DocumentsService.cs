@@ -382,7 +382,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Task StoreDocumentLayout() => _layoutStore.StoreDocumentLayoutAsync();
 
-    public Task StoreActiveDocument() => _layoutStore.StoreActiveDocumentAsync(ActiveDocument);
+    public Task StoreActiveDocument() => _layoutStore.StoreActiveDocumentAsync();
 
     public Task StoreDocumentEditorStates() => _layoutStore.StoreDocumentEditorStatesAsync();
 

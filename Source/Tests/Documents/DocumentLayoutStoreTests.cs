@@ -288,6 +288,26 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
+    public async Task RestorePanelStateAsync_NoStoredActiveDocument_StillSetsActiveDocument()
+    {
+        // Restored tabs with no persisted active document must still delegate to the panel so it
+        // can enforce the one-active-document invariant. The store used to return early here, which
+        // left the panel showing a selected tab with no active document.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", 0, 0, 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+        _propertyBag.GetPropertyAsync<string>("ActiveDocument")
+            .Returns(Task.FromResult<string?>(null));
+
+        await _store.RestorePanelStateAsync();
+
+        _documentsPanel.Received().ActiveDocument = ResourceKey.Empty;
+    }
+
+    [Test]
     public async Task RestorePanelStateAsync_AppliesSectionRatiosWhenValid()
     {
         var ratios = new List<double> { 0.3, 0.7 };
@@ -303,11 +323,15 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task StoreActiveDocumentAsync_WritesResourceKeyString()
+    public async Task StoreActiveDocumentAsync_WritesPanelActiveDocumentString()
     {
+        // The store reads the panel's active document directly (not the gated
+        // IDocumentsService.ActiveDocument), so the real value is persisted even while the
+        // workspace page is still loading.
         var resource = new ResourceKey("notes/readme.md");
+        _documentsPanel.ActiveDocument.Returns(resource);
 
-        await _store.StoreActiveDocumentAsync(resource);
+        await _store.StoreActiveDocumentAsync();
 
         // ResourceKey.ToString prefixes the default root, so the persisted
         // value is "project:notes/readme.md" rather than the bare path.

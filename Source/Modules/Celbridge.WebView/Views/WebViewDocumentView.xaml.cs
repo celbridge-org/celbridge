@@ -36,6 +36,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private readonly IWebViewService _webViewService;
     private readonly IFocusService _focusService;
     private readonly IWebViewAdapter _webViewAdapter;
+    private readonly IWebViewFocusMonitor _webViewFocusMonitor;
 
     private WebView2? _webView;
     // Host RPC channel. Only created for the HtmlViewer role; external-URL documents run without one.
@@ -81,6 +82,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         _webViewService = webViewService;
         _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
+        _webViewFocusMonitor = ServiceLocator.AcquireService<IWebViewFocusMonitor>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
@@ -229,6 +231,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
             _webView.GotFocus -= WebView_GotFocus;
             _webView.GotFocus += WebView_GotFocus;
+
+            // On macOS the WKWebView consumes clicks without raising GotFocus, and the external-URL
+            // role deliberately injects no script that could report focus over the bridge, so the
+            // native monitor supplies the click-focus signal. No-op on other platforms.
+            _webViewFocusMonitor.Register(_webView.CoreWebView2, OnNativeFocusSignal);
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
@@ -383,6 +390,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         if (_webView?.CoreWebView2 is not null)
         {
+            _webViewFocusMonitor.Unregister(_webView.CoreWebView2);
+
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
@@ -776,6 +785,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
             _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
         });
+    }
+
+    private void OnNativeFocusSignal()
+    {
+        // Arrives from the platform focus monitor on the UI thread when a click lands inside this
+        // view's native web surface. Same handling as the managed GotFocus path.
+        var message = new DocumentViewFocusedMessage(FileResource);
+        _messengerService.Send(message);
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
     }
 
     private void ReleaseFocus()
