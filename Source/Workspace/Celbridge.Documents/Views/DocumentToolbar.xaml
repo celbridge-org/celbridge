@@ -18,6 +18,7 @@
             Width="24"
             Height="24"
             ToolTipService.ToolTip="{x:Bind SplitEditorTooltipString}"
+            ToolTipService.Placement="Bottom"
             Padding="4"
             VerticalAlignment="Center">
       <controls:SplitEditorIcon x:Name="ButtonIcon"
