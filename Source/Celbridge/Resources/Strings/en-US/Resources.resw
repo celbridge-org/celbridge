@@ -295,7 +295,7 @@
     <value>Enter a name for the destination folder:</value>
   </data>
   <data name="Settings_Page_Title" xml:space="preserve">
-    <value>Settings</value>
+    <value>Application Settings</value>
   </data>
   <data name="ResourceTree_EnterNewName" xml:space="preserve">
     <value>Enter a new name:</value>
@@ -1218,7 +1218,7 @@ Do you wish to continue?</value>
     <value>Cannot Publish</value>
   </data>
   <data name="Workshop_PublishBlocked_Message" xml:space="preserve">
-    <value>No Author is set. Add one on the Settings page, then try again.</value>
+    <value>No Author is set. Add one on the Application Settings page, then try again.</value>
   </data>
   <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
     <value>Spreadsheet Editor</value>
