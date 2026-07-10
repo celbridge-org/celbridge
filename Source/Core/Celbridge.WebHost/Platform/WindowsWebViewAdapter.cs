@@ -34,6 +34,12 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         webView.Close();
     }
 
+    public void FocusWebView(WebView2 webView)
+    {
+        // The packaged WebView2 integrates with XAML focus, so managed focus reaches the web content.
+        webView.Focus(FocusState.Programmatic);
+    }
+
     public async Task<string> EvalAsync(CoreWebView2 coreWebView2, string expression)
     {
         return await coreWebView2.ExecuteScriptAsync(expression);

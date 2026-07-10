@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -248,26 +247,12 @@ public partial class DocumentTab : TabViewItem
         var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
         _messengerService.Send(message);
 
-        // Focus the document editor when the tab is clicked (even if tab is already selected)
+        // Focus the document when the tab is clicked (even if tab is already selected). The view gives its
+        // web content keyboard focus and reports it, releasing the previously focused surface.
         _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            FocusDocumentEditor();
+            (this.Content as IDocumentView)?.FocusDocument();
         });
-    }
-
-    private void FocusDocumentEditor()
-    {
-        var documentView = this.Content as IDocumentView;
-        if (documentView is FrameworkElement element)
-        {
-            // Focus workaround for Monaco editor hosted in WebView2.
-            // Try to find a WebView2 control within the document view and focus it.
-            var webView = VisualTreeHelperEx.FindDescendant<WebView2>(element);
-            if (webView != null)
-            {
-                webView.Focus(FocusState.Programmatic);
-            }
-        }
     }
 
     private void DocumentTab_DragStarting(UIElement sender, DragStartingEventArgs args)

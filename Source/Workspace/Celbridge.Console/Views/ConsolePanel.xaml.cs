@@ -27,6 +27,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IFocusService _focusService;
     private readonly IWebViewFactory _webViewFactory;
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IKeyboardShortcutService _keyboardShortcutService;
     private readonly IWebViewStateService _webViewStateService;
 
@@ -56,6 +57,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         _webViewStateService = ServiceLocator.AcquireService<IWebViewStateService>();
 
@@ -217,7 +219,9 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
             return;
         }
 
-        _consoleWebView.Focus(FocusState.Programmatic);
+        // The adapter gives the web content keyboard focus (native first responder on macOS, managed focus
+        // on Windows); the host notification then places the DOM focus on the terminal input.
+        _webViewAdapter.FocusWebView(_consoleWebView);
         _ = _consoleHost.FocusAsync();
     }
 

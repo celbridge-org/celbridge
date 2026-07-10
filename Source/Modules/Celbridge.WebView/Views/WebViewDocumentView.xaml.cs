@@ -774,6 +774,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
     }
 
+    public override void FocusDocument()
+    {
+        // A tab click focuses the web content (native first responder on macOS, where no managed
+        // GotFocus follows), so report the focus here to release the previously focused surface.
+        if (_webView is not null)
+        {
+            _webViewAdapter.FocusWebView(_webView);
+        }
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
+    }
+
     public void OnFocusReceived()
     {
         // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
@@ -820,7 +832,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
         // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
-        _webView?.Focus(FocusState.Programmatic);
+        // On the macOS Skia head managed focus routes keys through the managed pipeline instead of the web
+        // content, so the adapter gives the native WebView keyboard focus.
+        if (_webView is not null)
+        {
+            _webViewAdapter.FocusWebView(_webView);
+        }
     }
 
     async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)

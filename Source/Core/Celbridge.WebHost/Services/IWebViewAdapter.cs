@@ -55,6 +55,14 @@ public interface IWebViewAdapter
     void CloseWebView(WebView2 webView, Panel container);
 
     /// <summary>
+    /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.
+    /// Managed focus does this on the Windows heads. On the macOS Skia head managed focus routes keys
+    /// through the managed pipeline, where they never reach the web content, so the native WKWebView is
+    /// made the window's first responder instead.
+    /// </summary>
+    void FocusWebView(WebView2 webView);
+
+    /// <summary>
     /// Evaluates a JavaScript expression and returns the JSON-encoded result. On the Skia heads common
     /// WKWebView eval faults (script errors, undefined results) are normalized to "null".
     /// </summary>

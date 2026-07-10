@@ -195,6 +195,28 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
+    /// Makes the native WKWebView its window's first responder, so keyboard input routes natively to the
+    /// web content. Programmatic managed focus leaves the first responder on the Skia canvas, where keys
+    /// enter the managed pipeline and never reach the web content; this reproduces the responder state a
+    /// click inside the view establishes.
+    /// </summary>
+    public static void MakeWebViewFirstResponder(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var window = SendMessage(webView, GetSelector("window"));
+        if (window == IntPtr.Zero)
+        {
+            return;
+        }
+
+        SendMessageVoid(window, GetSelector("makeFirstResponder:"), webView);
+    }
+
+    /// <summary>
     /// Sets the native WKWebView's customUserAgent. WKWebView's default User-Agent omits the Safari token that
     /// some sites (e.g. Gmail) require, so they flag it as an unsupported browser even though the engine is the
     /// current system WebKit. Must be set before navigation to take effect.

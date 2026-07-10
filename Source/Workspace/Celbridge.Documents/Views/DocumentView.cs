@@ -190,4 +190,10 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     {
         return Task.CompletedTask;
     }
+
+    // Web-view-hosted editors override this to give their web content focus and report it to the focus
+    // service. Views with no focusable surface (e.g. the plain text box) leave it as a no-op.
+    public virtual void FocusDocument()
+    {
+    }
 }

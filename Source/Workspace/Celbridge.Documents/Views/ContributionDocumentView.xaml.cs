@@ -888,6 +888,18 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
     }
 
+    public override void FocusDocument()
+    {
+        // A tab click focuses the web content (native first responder on macOS, where no managed
+        // GotFocus follows), so report the focus here to release the previously focused surface.
+        if (WebView is not null)
+        {
+            _webViewAdapter.FocusWebView(WebView);
+        }
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
+    }
+
     private void OnNativeFocusSignal()
     {
         // Arrives from the platform focus monitor on the UI thread when a click lands inside this
