@@ -5,8 +5,9 @@
   xmlns:ic="using:Celbridge.UserInterface.Views.Controls"
   xmlns:local="using:Celbridge.Console.Views"
   xmlns:controls="using:Celbridge.WorkspaceUI.Views"
+  xmlns:tracking="using:Celbridge.UserInterface"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  GotFocus="UserControl_GotFocus">
+  tracking:FocusTracking.Panel="Console">
 
   <Grid>
     

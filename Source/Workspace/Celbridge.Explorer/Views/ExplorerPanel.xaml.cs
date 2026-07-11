@@ -1,11 +1,10 @@
 using Celbridge.Explorer.ViewModels;
-using Celbridge.Workspace;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Explorer.Views;
 
 public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 {
-    private readonly IFocusService _focusService;
     private bool _isPointerOver;
     private bool _hasFocus;
     private bool _isToolbarRevealed;
@@ -14,10 +13,11 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     public ExplorerPanel()
     {
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
         ViewModel = ServiceLocator.AcquireService<ExplorerPanelViewModel>();
 
         InitializeComponent();
+
+        FocusTracking.SetEditTarget(this, ResourceTree);
     }
 
     public List<ResourceKey> GetSelectedResources()
@@ -48,15 +48,9 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         UpdateToolbarVisibility();
     }
 
-    private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Explorer, ResourceTree);
-    }
-
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
         _hasFocus = true;
-        _focusService.OnFocusReceived(WorkspacePanel.Explorer, ResourceTree);
         UpdateToolbarVisibility();
     }
 

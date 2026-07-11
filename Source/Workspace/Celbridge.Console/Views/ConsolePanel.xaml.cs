@@ -63,13 +63,10 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
+        FocusTracking.SetEditTarget(this, this);
+
         // Listen for console focus requests
         _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
-    }
-
-    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
     }
 
     public void OnFocusReceived()

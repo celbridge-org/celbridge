@@ -4,12 +4,13 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Explorer.Views"
   xmlns:controls="using:Celbridge.WorkspaceUI.Views"
+  xmlns:tracking="using:Celbridge.UserInterface"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
   Background="Transparent"
+  tracking:FocusTracking.Panel="Explorer"
   PointerEntered="UserControl_PointerEntered"
   PointerExited="UserControl_PointerExited"
-  PointerPressed="UserControl_PointerPressed"
   GotFocus="UserControl_GotFocus"
   LostFocus="UserControl_LostFocus">
 

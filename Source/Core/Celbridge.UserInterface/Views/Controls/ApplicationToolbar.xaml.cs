@@ -1,7 +1,6 @@
 using Celbridge.Navigation;
 using Celbridge.Platform;
 using Celbridge.UserInterface.ViewModels.Controls;
-using Celbridge.Workspace;
 using Microsoft.UI.Dispatching;
 
 namespace Celbridge.UserInterface.Views;
@@ -14,7 +13,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IFocusService _focusService;
     private DispatcherQueueTimer? _layoutChangedTimer;
 
     /// <summary>
@@ -62,7 +60,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
         ViewModel = ServiceLocator.AcquireService<TitleBarViewModel>();
 
         this.DataContext = ViewModel;
@@ -86,11 +83,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
         PageNavigationToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
         SettingsButton.SizeChanged += OnInteractiveElement_SizeChanged;
 
-        // Focus moving to any toolbar element means it left the workspace panels. The Skia heads do not
-        // integrate WebView focus with host focus, so a WebView panel (e.g. the console) would otherwise
-        // keep its DOM caret active. Reporting the loss lets that surface release its focus.
-        GotFocus += OnApplicationToolbar_GotFocus;
-
         // A host that derives window-chrome regions from the toolbar (the Windows TitleBar wrapper)
         // recomputes them when the layout shifts, e.g. on window maximize/restore.
         this.LayoutUpdated += OnApplicationToolbar_LayoutUpdated;
@@ -106,7 +98,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         PageNavigationToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         SettingsButton.SizeChanged -= OnInteractiveElement_SizeChanged;
-        GotFocus -= OnApplicationToolbar_GotFocus;
         this.LayoutUpdated -= OnApplicationToolbar_LayoutUpdated;
 
         if (_layoutChangedTimer is not null)
@@ -171,11 +162,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
     private void OnMainWindowDeactivated(object recipient, MainWindowDeactivatedMessage message)
     {
         VisualStateManager.GoToState(this, "Inactive", false);
-    }
-
-    private void OnApplicationToolbar_GotFocus(object sender, RoutedEventArgs e)
-    {
-        _focusService.ClearFocus();
     }
 
     private void OnInteractiveElement_SizeChanged(object sender, SizeChangedEventArgs e)
