@@ -25,10 +25,12 @@
         <TextBlock Text="{x:Bind ApplicationThemeString}"
                    VerticalAlignment="Center"/>
 
-        <ComboBox x:Name="ApplicationThemeComboBox"
-                  Grid.Column="1"
+        <ComboBox Grid.Column="1"
                   VerticalAlignment="Center"
-                  HorizontalAlignment="Left"/>
+                  HorizontalAlignment="Left"
+                  ItemsSource="{x:Bind ViewModel.ThemeOptions}"
+                  SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}"
+                  DisplayMemberPath="DisplayName"/>
       </Grid>
 
       <local:WorkshopSettingsView Margin="0,24,0,0"/>

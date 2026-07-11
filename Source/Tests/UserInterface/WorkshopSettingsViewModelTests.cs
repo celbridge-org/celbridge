@@ -180,7 +180,7 @@ public class WorkshopSettingsViewModelTests
         _viewModel.Author = "Ada Lovelace";
         // No key entered.
 
-        await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
+        _viewModel.SaveWorkshopConnection();
 
         // URL and Author persist as settings, independently of any stored key.
         _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(WorkshopUrl);
@@ -233,13 +233,13 @@ public class WorkshopSettingsViewModelTests
     }
 
     [Test]
-    public async Task Save_NoKeyEntered_PromptsForKey()
+    public async Task TestConnection_NoKeyEntered_PromptsForKey()
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
         // Valid URL, no key.
 
-        await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
+        await _viewModel.TestConnectionCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Informational);
@@ -247,24 +247,24 @@ public class WorkshopSettingsViewModelTests
     }
 
     [Test]
-    public async Task Save_EmptyUrl_ShowsError()
+    public async Task TestConnection_EmptyUrl_ShowsError()
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = string.Empty;
 
-        await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
+        await _viewModel.TestConnectionCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
     }
 
     [Test]
-    public async Task Save_InvalidUrl_ShowsError()
+    public async Task TestConnection_InvalidUrl_ShowsError()
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = "http://workshop.celbridge.org";
 
-        await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
+        await _viewModel.TestConnectionCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
@@ -337,6 +337,19 @@ public class WorkshopSettingsViewModelTests
     }
 
     [Test]
+    public async Task TestConnection_WithStoredKey_ReportsVerified()
+    {
+        SeedStoredConnection(author: "Ada Lovelace");
+        await _viewModel.InitializeAsync();
+        SetConnectionCheckOutcome(ConnectionCheckOutcome.Connected);
+
+        await _viewModel.TestConnectionCommand.ExecuteAsync(null);
+
+        _viewModel.IsStatusVisible.Should().BeTrue();
+        _viewModel.StatusSeverity.Should().Be(StatusSeverity.Success);
+    }
+
+    [Test]
     public async Task Save_UrlChange_PersistsToSettingsAndKeepsKey()
     {
         SeedStoredConnection(author: "Ada Lovelace");
@@ -345,9 +358,10 @@ public class WorkshopSettingsViewModelTests
         var updatedUrl = "https://other.celbridge.org";
         _viewModel.WorkshopUrl = updatedUrl;
 
-        await _viewModel.SaveWorkshopConnectionAsync(checkConnection: false);
+        _viewModel.SaveWorkshopConnection();
 
-        _viewModel.StatusSeverity.Should().NotBe(StatusSeverity.Error);
+        // The auto-save persists silently, without reporting connection status.
+        _viewModel.IsStatusVisible.Should().BeFalse();
         _settingsService.Get(SettingCatalog.Workshop.Url).Should().Be(updatedUrl);
 
         GetStoredKey().Should().Be(TestWorkshopKey);

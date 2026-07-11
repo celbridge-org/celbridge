@@ -456,6 +456,9 @@
   <data name="Settings_Workshop_KeyRemove" xml:space="preserve">
     <value>Remove</value>
   </data>
+  <data name="Settings_Workshop_TestConnection" xml:space="preserve">
+    <value>Test Connection</value>
+  </data>
   <data name="Settings_Workshop_KeySetDialogTitle" xml:space="preserve">
     <value>Set Workshop Key</value>
   </data>

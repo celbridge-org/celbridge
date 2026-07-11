@@ -108,25 +108,37 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Persists the non-secret Workshop URL and Author as ordinary settings and
-    /// reports the resulting connection status. The Workshop Key is not handled
-    /// here; it is entered through ChangeWorkshopKey. When checkConnection is set
-    /// and a key is stored, the connection is verified against the workshop; the
-    /// view requests a check only when a connection-affecting field changed.
+    /// Persists the non-secret Workshop URL and Author as ordinary settings. This is the auto-save path for
+    /// field edits and does not verify the connection; the user tests the connection explicitly through
+    /// TestConnection. The Workshop Key is entered separately through ChangeWorkshopKey.
     /// </summary>
-    public async Task SaveWorkshopConnectionAsync(bool checkConnection = true)
+    public void SaveWorkshopConnection()
     {
         if (!IsStoreAvailable)
         {
             return;
         }
 
-        // The URL and Author are non-secret; persist them as settings on every
-        // commit, so they are never coupled to the presence of a key.
+        // The URL and Author are non-secret; persist them as settings, so they are never coupled to the
+        // presence of a key.
         _settingsService.Set(SettingCatalog.Workshop.Url, WorkshopUrl.Trim());
         _settingsService.Set(SettingCatalog.Workshop.Author, Author.Trim());
+    }
 
-        await ReportConnectionStatusAsync(checkConnection);
+    // Persists the current field values and verifies the connection against the workshop, reporting the
+    // outcome in the status bar. Bound to the Test Connection button.
+    [RelayCommand]
+    private async Task TestConnectionAsync()
+    {
+        if (!IsStoreAvailable)
+        {
+            return;
+        }
+
+        // Persist first so the probe tests exactly the URL and Author shown in the fields.
+        SaveWorkshopConnection();
+
+        await ReportConnectionStatusAsync(checkConnection: true);
     }
 
     [RelayCommand]
