@@ -34,9 +34,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
-    private readonly IFocusService _focusService;
     private readonly IWebViewAdapter _webViewAdapter;
-    private readonly IWebViewFocusMonitor _webViewFocusMonitor;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private WebView2? _webView;
     // Host RPC channel. Only created for the HtmlViewer role; external-URL documents run without one.
@@ -80,9 +79,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
-        _webViewFocusMonitor = ServiceLocator.AcquireService<IWebViewFocusMonitor>();
+        _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
@@ -229,13 +227,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView = await _webViewFactory.AcquireAsync();
             AppWebViewContainer.Children.Add(_webView);
 
-            _webView.GotFocus -= WebView_GotFocus;
-            _webView.GotFocus += WebView_GotFocus;
-
-            // On macOS the WKWebView consumes clicks without raising GotFocus, and the external-URL
-            // role deliberately injects no script that could report focus over the bridge, so the
-            // native monitor supplies the click-focus signal. No-op on other platforms.
-            _webViewFocusMonitor.Register(_webView.CoreWebView2, OnNativeFocusSignal);
+            // Register this document's web surface with the focus registry, which owns its focus-gain
+            // signals. The external-URL role injects no script, so on macOS the registry's native click
+            // monitor supplies the click-focus signal for content that raises no DOM focus event.
+            _webViewFocusRegistry.Register(new WebViewFocusRegistration(
+                _webView,
+                WorkspacePanel.Documents,
+                EditTarget: null,
+                ReleaseFocus: ReleaseFocus,
+                OnFocusGained: () => _messengerService.Send(new DocumentViewFocusedMessage(FileResource))));
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
@@ -390,7 +390,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         if (_webView?.CoreWebView2 is not null)
         {
-            _webViewFocusMonitor.Unregister(_webView.CoreWebView2);
+            _webViewFocusRegistry.Unregister(_webView.CoreWebView2);
 
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
@@ -406,8 +406,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         if (_webView is not null)
         {
-            _webView.GotFocus -= WebView_GotFocus;
-
             _webViewAdapter.CloseWebView(_webView, AppWebViewContainer);
 
             _webView = null;
@@ -766,47 +764,29 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    private void WebView_GotFocus(object sender, RoutedEventArgs e)
-    {
-        var message = new DocumentViewFocusedMessage(FileResource);
-        _messengerService.Send(message);
-
-        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
-    }
-
     public override void FocusDocument()
     {
-        // A tab click focuses the web content (native first responder on macOS, where no managed
-        // GotFocus follows), so report the focus here to release the previously focused surface.
+        // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
+        // follows). The registry gives it focus and reports it, releasing the previously focused surface.
         if (_webView is not null)
         {
-            _webViewAdapter.FocusWebView(_webView);
+            _webViewFocusRegistry.GrantFocus(_webView);
         }
-
-        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
     }
 
     public void OnFocusReceived()
     {
         // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
-        // reports DOM focus over the bridge. Marshal to the UI thread and record the focus.
+        // reports DOM focus over the bridge. Marshal to the UI thread and forward to the registry, which
+        // sends the active-document message and reports the focus.
         DispatcherQueue.TryEnqueue(() =>
         {
-            var message = new DocumentViewFocusedMessage(FileResource);
-            _messengerService.Send(message);
-
-            _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
+            var coreWebView = _webView?.CoreWebView2;
+            if (coreWebView is not null)
+            {
+                _webViewFocusRegistry.ReportFocus(coreWebView);
+            }
         });
-    }
-
-    private void OnNativeFocusSignal()
-    {
-        // Arrives from the platform focus monitor on the UI thread when a click lands inside this
-        // view's native web surface. Same handling as the managed GotFocus path.
-        var message = new DocumentViewFocusedMessage(FileResource);
-        _messengerService.Send(message);
-
-        _focusService.OnFocusReceived(WorkspacePanel.Documents, onReleaseFocus: ReleaseFocus);
     }
 
     private void ReleaseFocus()
@@ -832,11 +812,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
         // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
-        // On the macOS Skia head managed focus routes keys through the managed pipeline instead of the web
-        // content, so the adapter gives the native WebView keyboard focus.
+        // Routing through the registry grant reports the focus too, so the panel focus reflects the page
+        // again after the find bar closes.
         if (_webView is not null)
         {
-            _webViewAdapter.FocusWebView(_webView);
+            _webViewFocusRegistry.GrantFocus(_webView);
         }
     }
 

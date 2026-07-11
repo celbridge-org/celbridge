@@ -15,7 +15,7 @@ namespace Celbridge.WebHost.Platform;
 /// whole click is handled on the native side, so this signal needs neither the managed GotFocus
 /// event nor any script injected into the page. macOS-only.
 /// </summary>
-public class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
+internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
     private const string LibSystem = "/usr/lib/libSystem.dylib";

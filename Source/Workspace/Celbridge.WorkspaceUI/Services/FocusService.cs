@@ -9,6 +9,7 @@ public class FocusService : IFocusService
 {
     private readonly IMessengerService _messengerService;
     private readonly ILogger<FocusService> _logger;
+    private readonly Dictionary<WorkspacePanel, Action> _panelFocusHandlers = new();
     private WorkspacePanel _focusedPanel = WorkspacePanel.None;
     private IEditTarget? _editTarget;
 
@@ -112,5 +113,24 @@ public class FocusService : IFocusService
         _editTarget = null;
 
         _logger.LogDebug("Edit target cleared on teardown: {EditTarget}", target.GetType().Name);
+    }
+
+    public void SetPanelFocusHandler(WorkspacePanel panel, Action? focusHandler)
+    {
+        if (focusHandler is null)
+        {
+            _panelFocusHandlers.Remove(panel);
+            return;
+        }
+
+        _panelFocusHandlers[panel] = focusHandler;
+    }
+
+    public void RefocusFocusedPanel()
+    {
+        if (_panelFocusHandlers.TryGetValue(_focusedPanel, out var focusHandler))
+        {
+            focusHandler.Invoke();
+        }
     }
 }

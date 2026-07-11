@@ -10,7 +10,7 @@ namespace Celbridge.WebHost;
 /// non-focusable content (e.g. rendered markdown) that raise no DOM focus event. Non-macOS heads,
 /// which rely on the JS path, use a no-op implementation.
 /// </summary>
-public interface IWebViewFocusMonitor
+internal interface IWebViewFocusMonitor
 {
     /// <summary>
     /// Registers a web view so onFocusSignal runs on the UI thread when a click gives its native

@@ -20,9 +20,19 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         FocusTracking.SetEditTarget(this, ResourceTree);
     }
 
+    public void FocusPanel()
+    {
+        ResourceTree.FocusTree();
+    }
+
     public List<ResourceKey> GetSelectedResources()
     {
         return ResourceTree.GetSelectedResources();
+    }
+
+    private void PanelHeader_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        FocusPanel();
     }
 
     public async Task<Result> SelectResources(List<ResourceKey> resources)

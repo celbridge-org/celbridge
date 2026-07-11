@@ -74,6 +74,14 @@ public class PanelFocusTracker
                     editTarget = FocusTracking.GetEditTarget(current);
                     foundDeclaration = true;
                 }
+                else if (FocusTracking.GetPreservePanelFocus(current))
+                {
+                    // Focus landed on chrome marked to preserve panel focus. Such an element can hold focus
+                    // transiently (e.g. as the fallback sink during dialog teardown or a tree rebuild)
+                    // without representing a move off the panel, so preserve the current panel by not
+                    // reporting.
+                    return;
+                }
             }
 
             if (ReferenceEquals(current, mainContentRoot))

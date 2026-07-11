@@ -11,6 +11,7 @@ public class DialogServiceAnswerTests
 {
     private CapturingMessengerService _messengerService = null!;
     private IDialogFactory _dialogFactory = null!;
+    private IFocusService _focusService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ILogger<DialogService> _logger = null!;
     private DialogService _dialogService = null!;
@@ -20,10 +21,11 @@ public class DialogServiceAnswerTests
     {
         _messengerService = new CapturingMessengerService();
         _dialogFactory = Substitute.For<IDialogFactory>();
+        _focusService = Substitute.For<IFocusService>();
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _logger = Substitute.For<ILogger<DialogService>>();
 
-        _dialogService = new DialogService(_logger, _dialogFactory, _workspaceWrapper, _messengerService);
+        _dialogService = new DialogService(_logger, _dialogFactory, _focusService, _workspaceWrapper, _messengerService);
 
         // The DialogService awaits dialog.ShowDialogAsync; stub something sensible.
         var fakeConfirm = Substitute.For<IConfirmationDialog>();

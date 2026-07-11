@@ -11,6 +11,7 @@ namespace Celbridge.UserInterface.Services.Dialogs;
 public class DialogService : IDialogService
 {
     private readonly IDialogFactory _dialogFactory;
+    private readonly IFocusService _focusService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
     private readonly DialogAnswerScheduler _answerScheduler;
@@ -23,10 +24,12 @@ public class DialogService : IDialogService
     public DialogService(
         ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
+        IFocusService focusService,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService)
     {
         _dialogFactory = dialogFactory;
+        _focusService = focusService;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _answerScheduler = new DialogAnswerScheduler(logger, messengerService);
@@ -93,6 +96,11 @@ public class DialogService : IDialogService
         finally
         {
             SetProgressDialogSuppressed(false);
+
+            // A modal dialog moves keyboard focus into itself; on the Skia heads closing it does not
+            // reliably return focus to the panel it came from. Return keyboard focus to the focused panel
+            // so the focus indicator's panel is the keyboard target again.
+            _focusService.RefocusFocusedPanel();
         }
     }
 

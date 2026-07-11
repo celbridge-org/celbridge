@@ -39,4 +39,18 @@ public interface IFocusService
     /// receiving Edit commands. A newer target is left in place.
     /// </summary>
     void ClearEditTarget(IEditTarget target);
+
+    /// <summary>
+    /// Registers how the given panel takes keyboard focus, or null to clear it. Used to return keyboard
+    /// focus to the focused panel after an interaction moves it away transiently (a modal dialog closing,
+    /// a resource-tree rebuild).
+    /// </summary>
+    void SetPanelFocusHandler(WorkspacePanel panel, Action? focusHandler);
+
+    /// <summary>
+    /// Re-asserts keyboard focus on the currently focused panel by invoking its registered focus handler,
+    /// so the panel the focus indicator shows becomes the keyboard target again. A no-op when the focused
+    /// panel has no registered handler.
+    /// </summary>
+    void RefocusFocusedPanel();
 }

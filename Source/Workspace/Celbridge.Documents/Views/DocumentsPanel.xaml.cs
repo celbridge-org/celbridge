@@ -20,7 +20,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IWindowModeService _windowModeService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IWebViewAdapter _webViewAdapter;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private bool _isShuttingDown = false;
 
@@ -61,7 +61,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _windowModeService = windowModeService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
-        _webViewAdapter = serviceProvider.AcquireService<IWebViewAdapter>();
+        _webViewFocusRegistry = serviceProvider.AcquireService<IWebViewFocusRegistry>();
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -258,13 +258,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Defer so focus is set after the panels have collapsed and layout has settled.
         DispatcherQueue.TryEnqueue(() =>
         {
-            // The adapter gives the web content keyboard focus per platform: managed focus on Windows,
-            // native first responder on the macOS Skia head where managed focus would route keys away
-            // from the web content.
+            // Route through the registry grant so the active document's web content gets keyboard focus
+            // (native first responder on macOS, managed focus on Windows) and the focus is reported. This
+            // closes the latent gap where entering Focus or Presentation layout focused without reporting.
             var webView = VisualTreeHelperEx.FindDescendant<WebView2>(SectionContainer);
             if (webView is not null)
             {
-                _webViewAdapter.FocusWebView(webView);
+                _webViewFocusRegistry.GrantFocus(webView);
             }
         });
     }
