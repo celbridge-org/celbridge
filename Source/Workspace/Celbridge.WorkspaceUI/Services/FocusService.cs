@@ -23,6 +23,10 @@ public class FocusService : IFocusService
     {
         _messengerService = messengerService;
         _logger = logger;
+
+        // Leaving the workspace for another page clears panel focus, so returning shows no focused panel
+        // until the user clicks or tabs into one.
+        _messengerService.Register<WorkspacePageDeactivatedMessage>(this, OnWorkspacePageDeactivated);
     }
 
     public WorkspacePanel FocusedPanel => _focusedPanel;
@@ -132,5 +136,12 @@ public class FocusService : IFocusService
         {
             focusHandler.Invoke();
         }
+    }
+
+    private void OnWorkspacePageDeactivated(object recipient, WorkspacePageDeactivatedMessage message)
+    {
+        // The destination page will take focus; clearing here makes the workspace deterministically show no
+        // focused panel on return, rather than depending on whether that page grabs focus.
+        ClearFocus();
     }
 }
