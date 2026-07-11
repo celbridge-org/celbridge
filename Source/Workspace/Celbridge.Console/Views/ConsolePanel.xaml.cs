@@ -67,20 +67,6 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
     }
 
-    public void OnFocusReceived()
-    {
-        // The Skia head does not raise GotFocus for clicks inside the console WebView, so its JS client
-        // reports DOM focus over the bridge. Marshal to the UI thread and forward to the registry.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            var coreWebView = _consoleWebView?.CoreWebView2;
-            if (coreWebView is not null)
-            {
-                _webViewFocusRegistry.ReportFocus(coreWebView);
-            }
-        });
-    }
-
     private void ReleaseFocus()
     {
         _ = _consoleHost?.ReleaseFocusAsync();
@@ -276,9 +262,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         // immediately, so it must run after StartListening.
         _appStateConnection = _consoleHost.RegisterAppState(_webViewStateService);
 
-        // Register the console web surface with the focus registry, which now owns its focus-gain signals
-        // (managed GotFocus, the native click monitor, and the JS bridge report forwarded from
-        // OnFocusReceived) and the terminal-focus grant.
+        // Register the console web surface with the focus registry, which owns its focus-gain signals
+        // (managed GotFocus on Windows, the macOS native click monitor) and the terminal-focus grant.
         _webViewFocusRegistry.Register(new WebViewFocusRegistration(
             _consoleWebView,
             WorkspacePanel.Console,

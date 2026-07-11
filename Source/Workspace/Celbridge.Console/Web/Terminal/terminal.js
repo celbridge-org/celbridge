@@ -209,21 +209,14 @@ function reportConsoleEditAvailability() {
     });
 }
 
-// Report focus + edit availability to the host, and clear focus on blur. On the Skia heads GotFocus does not
-// fire for clicks inside the console WebView, so DOM focus is the reliable signal it became active.
-let hasReportedConsoleFocus = false;
+// Report edit availability to the host on every focus change within the terminal.
 document.addEventListener('focusin', () => {
-    if (!hasReportedConsoleFocus) {
-        hasReportedConsoleFocus = true;
-        consoleClient.notifyFocusReceived();
-    }
     reportConsoleEditAvailability();
 });
 
 // Release the terminal's focus when the host signals focus moved to another panel, so its caret stops
 // on heads where WebView and host focus are not integrated (Skia).
 consoleClient.onReleaseFocus(() => {
-    hasReportedConsoleFocus = false;
     const active = document.activeElement;
     if (active && active !== document.body && typeof active.blur === 'function') {
         active.blur();

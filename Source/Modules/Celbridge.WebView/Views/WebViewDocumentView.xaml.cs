@@ -774,21 +774,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    public void OnFocusReceived()
-    {
-        // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
-        // reports DOM focus over the bridge. Marshal to the UI thread and forward to the registry, which
-        // sends the active-document message and reports the focus.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            var coreWebView = _webView?.CoreWebView2;
-            if (coreWebView is not null)
-            {
-                _webViewFocusRegistry.ReportFocus(coreWebView);
-            }
-        });
-    }
-
     private void ReleaseFocus()
     {
         _ = _host?.NotifyReleaseFocusAsync();

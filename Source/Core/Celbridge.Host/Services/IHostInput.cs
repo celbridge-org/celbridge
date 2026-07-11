@@ -23,10 +23,6 @@ public static class InputRpcMethods
 
     // Client to host. Reports which edit verbs the editor can currently perform.
     public const string EditAvailabilityChanged = "input/editAvailabilityChanged";
-
-    // Client to host. Reports that the WebView content has received focus. This is the focus signal on the
-    // Skia heads, where the WinUI WebView.GotFocus event does not fire for clicks inside the WebView.
-    public const string FocusReceived = "input/focusReceived";
 }
 
 /// <summary>
@@ -87,13 +83,6 @@ public interface IHostInput
         bool canIndent = false)
     { }
 
-    /// <summary>
-    /// Called when the WebView content gains focus. The host marshals to the UI thread and reports the
-    /// surface to the focus service. This is the focus signal on the Skia heads (where WebView.GotFocus
-    /// does not fire).
-    /// </summary>
-    [JsonRpcMethod(InputRpcMethods.FocusReceived)]
-    void OnFocusReceived() { }
 }
 
 public static class HostInputExtensions

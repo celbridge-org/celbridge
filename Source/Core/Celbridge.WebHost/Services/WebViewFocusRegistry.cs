@@ -71,14 +71,6 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    public void ReportFocus(CoreWebView2 coreWebView)
-    {
-        if (_registrations.TryGetValue(coreWebView, out var registration))
-        {
-            Report(registration);
-        }
-    }
-
     public void GrantFocus(WebView2 webView)
     {
         var coreWebView = webView.CoreWebView2;

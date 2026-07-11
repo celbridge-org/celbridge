@@ -76,14 +76,6 @@ class ConsoleClient {
     }
 
     /**
-     * Notifies the host that the console WebView received focus. On the Skia heads GotFocus does not fire
-     * for clicks inside the WebView, so this DOM-focus signal is how the host learns the console is active.
-     */
-    notifyFocusReceived() {
-        this.#transport.notify('input/focusReceived', {});
-    }
-
-    /**
      * Registers a handler for blur requests from the host (focus moved to another panel).
      * @param {function(): void} handler - The handler function.
      */

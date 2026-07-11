@@ -289,8 +289,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
         // Register this editor's web surface with the focus registry, which owns its focus-gain signals
-        // (managed GotFocus, the macOS native click monitor for clicks on non-focusable content that raise no
-        // DOM focus event, and the JS bridge report forwarded from OnFocusReceived) and its edit context.
+        // (managed GotFocus on Windows, the macOS native click monitor) and its edit context.
         _webViewFocusRegistry.Register(new WebViewFocusRegistration(
             WebView,
             WorkspacePanel.Documents,
@@ -885,21 +884,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         {
             _webViewFocusRegistry.GrantFocus(WebView);
         }
-    }
-
-    public void OnFocusReceived()
-    {
-        // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
-        // reports DOM focus over the bridge. Marshal to the UI thread and forward to the registry, which
-        // sends the active-document message and reports the focus.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            var coreWebView = WebView?.CoreWebView2;
-            if (coreWebView is not null)
-            {
-                _webViewFocusRegistry.ReportFocus(coreWebView);
-            }
-        });
     }
 
     private void ReleaseFocus()
