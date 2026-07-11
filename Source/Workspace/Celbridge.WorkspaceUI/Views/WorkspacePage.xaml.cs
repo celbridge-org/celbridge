@@ -387,36 +387,6 @@ public sealed partial class WorkspacePage : Page
         LayoutRoot.InvalidateArrange();
     }
 
-    private void Panel_GotFocus(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement frameworkElement &&
-            frameworkElement.Tag is string panelTag &&
-            !string.IsNullOrEmpty(panelTag))
-        {
-            SetActivePanel(panelTag);
-        }
-    }
-
-    private void Panel_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is FrameworkElement frameworkElement &&
-            frameworkElement.Tag is string panelTag &&
-            !string.IsNullOrEmpty(panelTag))
-        {
-            SetActivePanel(panelTag);
-        }
-    }
-
-    private void SetActivePanel(string panelTag)
-    {
-        if (!Enum.TryParse<WorkspacePanel>(panelTag, out var panel))
-        {
-            throw new ArgumentException($"Invalid panel tag: '{panelTag}'. Tag must match a WorkspacePanel enum value.");
-        }
-
-        ViewModel.SetActivePanel(panel);
-    }
-
     //
     // Splitter event handlers for panel resizing
     //
