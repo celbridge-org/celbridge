@@ -2,6 +2,10 @@ using Celbridge.UserInterface;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
+// The Uno SDK's implicit global usings include System.Windows.Input, which on the Windows head also
+// contains a FocusManager type, so the bare name is ambiguous there.
+using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
+
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
