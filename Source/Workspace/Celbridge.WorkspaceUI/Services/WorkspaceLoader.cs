@@ -184,7 +184,7 @@ public class WorkspaceLoader
         // Populate title bar shortcut buttons from project config.
         PopulateTitleBarShortcuts();
 
-        // Populate the centre title-bar utilities toolbar from registered utility contributions.
+        // Populate the title-bar utility launcher buttons from registered utility contributions.
         PopulateUtilityToolbar();
 
         // Open auto_open utilities. Runs after RestorePanelState above so a utility restored from the

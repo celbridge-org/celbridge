@@ -223,7 +223,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
             return null;
         }
 
-        var descriptor = utilityFactory.UtilityDescriptor;
+        var descriptor = utilityFactory.Contribution.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
 
         return new UtilityTabInfo(descriptor.Icon, utilityFactory.DisplayName, descriptor.Closable);

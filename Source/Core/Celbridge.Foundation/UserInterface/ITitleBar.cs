@@ -23,7 +23,7 @@ public interface ITitleBar
     void ClearShortcutButtons();
 
     /// <summary>
-    /// Builds and displays the utility launcher buttons in the centre of the title bar.
+    /// Builds and displays the utility launcher buttons in the title bar.
     /// When a button is clicked, the callback is invoked with the utility's fully-qualified id.
     /// Returns true when at least one button was built.
     /// </summary>

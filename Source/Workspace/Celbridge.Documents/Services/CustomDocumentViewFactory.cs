@@ -20,17 +20,12 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     public override string DisplayName => _resolvedDisplayName;
 
     /// <summary>
-    /// The contribution this factory was built from. Exposed so the documents panel can read the
-    /// utility metadata (glyph, tooltip) when a utility document is opened.
+    /// The contribution this factory was built from. Exposed so the documents panel and the utility
+    /// seeder can reach the utility metadata (glyph, tooltip, template) when a utility document is opened.
     /// </summary>
     public CustomDocumentEditorContribution Contribution => _contribution;
 
     public override bool IsUtility => _contribution.IsUtility;
-
-    /// <summary>
-    /// The utility metadata, or null when this factory is an ordinary file-type editor.
-    /// </summary>
-    public UtilityDescriptor? UtilityDescriptor => _contribution.UtilityDescriptor;
 
     public override IReadOnlyList<string> SupportedExtensions =>
         _contribution.FileTypes.Select(fileType => fileType.FileExtension).ToList();

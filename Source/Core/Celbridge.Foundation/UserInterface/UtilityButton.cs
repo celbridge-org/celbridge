@@ -1,7 +1,7 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Describes a utility launcher button shown in the centre of the title bar. Built from a utility
+/// Describes a utility launcher button shown in the title bar. Built from a utility
 /// document contribution; clicking the button opens or activates that utility document.
 /// </summary>
 public record UtilityButton
