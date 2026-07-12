@@ -1,3 +1,5 @@
+using Celbridge.Core;
+using Celbridge.UserInterface.Services;
 using Microsoft.UI.Input;
 
 namespace Celbridge.UserInterface.Views.Controls;
@@ -101,12 +103,13 @@ public sealed partial class Splitter : UserControl
     private Brush? _normalBrush;
     private Brush? _draggingBrush;
     private DateTime _lastDoubleClickTime;
+    private ISplitterCursorController? _cursorController;
 
     public Splitter()
     {
         InitializeComponent();
 
-        // Ensure splitter renders above adjacent content when using negative margins for overlap.
+        // Ensure the splitter renders above the adjacent panel content its grab band overlaps.
         Canvas.SetZIndex(this, NormalZIndex);
 
         // Set up pointer event handlers
@@ -123,6 +126,8 @@ public sealed partial class Splitter : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _cursorController = ServiceLocator.AcquireService<ISplitterCursorController>();
+
         _normalBrush = (Brush)Application.Current.Resources["DividerBrush"];
         _draggingBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
 
@@ -165,23 +170,60 @@ public sealed partial class Splitter : UserControl
     {
         if (Orientation == Orientation.Vertical)
         {
-            // Vertical splitter (resizes columns left/right)
-            SplitterLine.HorizontalAlignment = HorizontalAlignment.Center;
+            // Vertical splitter (resizes columns left/right).
+            var lineAlignment = ResolveVerticalLineAlignment();
+            SplitterLine.HorizontalAlignment = lineAlignment;
             SplitterLine.VerticalAlignment = VerticalAlignment.Stretch;
-            HoverLine.HorizontalAlignment = HorizontalAlignment.Center;
+            HoverLine.HorizontalAlignment = lineAlignment;
             HoverLine.VerticalAlignment = VerticalAlignment.Stretch;
         }
         else
         {
-            // Horizontal splitter (resizes rows top/bottom)
+            // Horizontal splitter (resizes rows top/bottom).
+            var lineAlignment = ResolveHorizontalLineAlignment();
             SplitterLine.HorizontalAlignment = HorizontalAlignment.Stretch;
-            SplitterLine.VerticalAlignment = VerticalAlignment.Center;
+            SplitterLine.VerticalAlignment = lineAlignment;
             HoverLine.HorizontalAlignment = HorizontalAlignment.Stretch;
-            HoverLine.VerticalAlignment = VerticalAlignment.Center;
+            HoverLine.VerticalAlignment = lineAlignment;
         }
 
         UpdateLineThickness();
         UpdateGrabAreaSize();
+        ApplyManagedCursor();
+    }
+
+    // The visible line is drawn on the boundary edge the splitter is docked against, so the grab band extends
+    // from the line into the panel the splitter lives in and stays clear of the adjacent editor. A splitter
+    // with no docked edge sits in its own gutter (a document-section splitter between two editors), so its
+    // line stays centred in the gutter.
+    private HorizontalAlignment ResolveVerticalLineAlignment()
+    {
+        if (HorizontalAlignment == HorizontalAlignment.Left)
+        {
+            return HorizontalAlignment.Left;
+        }
+
+        if (HorizontalAlignment == HorizontalAlignment.Right)
+        {
+            return HorizontalAlignment.Right;
+        }
+
+        return HorizontalAlignment.Center;
+    }
+
+    private VerticalAlignment ResolveHorizontalLineAlignment()
+    {
+        if (VerticalAlignment == VerticalAlignment.Top)
+        {
+            return VerticalAlignment.Top;
+        }
+
+        if (VerticalAlignment == VerticalAlignment.Bottom)
+        {
+            return VerticalAlignment.Bottom;
+        }
+
+        return VerticalAlignment.Center;
     }
 
     private void UpdateLineThickness()
@@ -204,24 +246,20 @@ public sealed partial class Splitter : UserControl
 
     private void UpdateGrabAreaSize()
     {
+        // The control is docked to the boundary by its alignment (or fills its own gutter column), so a zero
+        // margin keeps the whole grab band inside its own panel, clear of the adjacent editor.
         if (Orientation == Orientation.Vertical)
         {
             Width = GrabAreaSize;
             Height = double.NaN; // Stretch
-
-            // Use negative margins to overlap with adjacent content
-            var halfGrab = GrabAreaSize / 2;
-            Margin = new Thickness(-halfGrab, 0, -halfGrab, 0);
         }
         else
         {
             Width = double.NaN; // Stretch
             Height = GrabAreaSize;
-
-            // Use negative margins to overlap with adjacent content
-            var halfGrab = GrabAreaSize / 2;
-            Margin = new Thickness(0, -halfGrab, 0, -halfGrab);
         }
+
+        Margin = new Thickness(0);
     }
 
     private void BeginHoverFadeIn()
@@ -229,6 +267,11 @@ public sealed partial class Splitter : UserControl
         // Stop the fade-out so the two opacity animations never run together.
         HoverFadeOut.Stop();
         HoverFadeIn.Begin();
+
+        // Drive the OS cursor from the same enter and exit signals as the hover highlight so the two always
+        // agree. The managed cursor is unreliable on the Skia head, so the native controller keeps the resize
+        // cursor correct there.
+        _cursorController?.SetCursor(ResizeCursorShape);
     }
 
     private void BeginHoverFadeOut()
@@ -248,12 +291,12 @@ public sealed partial class Splitter : UserControl
         // Animate down from the captured opacity so the fade-out is smooth.
         HoverFadeOutAnimation.From = currentOpacity;
         HoverFadeOut.Begin();
+
+        _cursorController?.SetCursor(SplitterCursorShape.Default);
     }
 
     private void OnPointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        UpdateCursor();
-
         BeginHoverFadeIn();
     }
 
@@ -261,8 +304,6 @@ public sealed partial class Splitter : UserControl
     {
         if (!_isDragging)
         {
-            SetCursor(InputSystemCursorShape.Arrow);
-
             BeginHoverFadeOut();
         }
     }
@@ -277,6 +318,10 @@ public sealed partial class Splitter : UserControl
         }
 
         _isDragging = true;
+
+        // Hold the resize cursor for the drag. The hover highlight stays lit while dragging, so the cursor
+        // matches it.
+        _cursorController?.SetCursor(ResizeCursorShape);
 
         var point = e.GetCurrentPoint(this.Parent as UIElement);
         _dragStartPosition = Orientation == Orientation.Vertical
@@ -307,7 +352,6 @@ public sealed partial class Splitter : UserControl
         // Notify that drag has started
         DragStarted?.Invoke(this, EventArgs.Empty);
 
-        UpdateCursor();
         e.Handled = true;
     }
 
@@ -317,6 +361,11 @@ public sealed partial class Splitter : UserControl
         {
             return;
         }
+
+        // Re-assert the resize cursor on every drag move. A fast drag sweeps the captured pointer over the
+        // native editor web view, whose tracking area sets an arrow cursor. Re-asserting here overrides it so
+        // the resize cursor holds for the whole drag.
+        _cursorController?.SetCursor(ResizeCursorShape);
 
         // Skip DragDelta events within debounce window after a double-click
         // This prevents cached sizes in SplitterHelper from overwriting reset values
@@ -387,21 +436,20 @@ public sealed partial class Splitter : UserControl
 
             DragCompleted?.Invoke(this, EventArgs.Empty);
         }
-
-        SetCursor(InputSystemCursorShape.Arrow);
     }
 
-    private void UpdateCursor()
+    private SplitterCursorShape ResizeCursorShape => Orientation == Orientation.Vertical
+        ? SplitterCursorShape.ResizeColumns
+        : SplitterCursorShape.ResizeRows;
+
+    // Sets the managed resize cursor for the element. This shows the resize cursor on the packaged Windows
+    // head. The Skia heads drive the cursor natively instead, where the managed cursor is unreliable.
+    private void ApplyManagedCursor()
     {
         var cursorShape = Orientation == Orientation.Vertical
             ? InputSystemCursorShape.SizeWestEast
             : InputSystemCursorShape.SizeNorthSouth;
 
-        SetCursor(cursorShape);
-    }
-
-    private void SetCursor(InputSystemCursorShape cursorShape)
-    {
         var oldCursor = ProtectedCursor;
         ProtectedCursor = InputSystemCursor.Create(cursorShape);
         oldCursor?.Dispose();
