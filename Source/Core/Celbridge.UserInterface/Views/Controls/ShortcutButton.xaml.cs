@@ -14,10 +14,20 @@ public sealed partial class ShortcutButton : UserControl
         IconElement.GlyphName = glyphName;
     }
 
+    public void SetIconSize(double fontSize)
+    {
+        IconElement.FontSize = fontSize;
+    }
+
     public void SetTooltip(string tooltip)
     {
         ToolTipService.SetToolTip(ButtonElement, tooltip);
         ToolTipService.SetPlacement(ButtonElement, PlacementMode.Bottom);
+    }
+
+    public void SetAutomationName(string name)
+    {
+        AutomationProperties.SetName(ButtonElement, name);
     }
 
     public void SetFlyout(MenuFlyout flyout)

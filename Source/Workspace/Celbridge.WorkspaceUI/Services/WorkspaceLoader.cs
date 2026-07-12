@@ -1,6 +1,9 @@
 using System.Text;
+using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.Documents;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Server;
@@ -181,6 +184,9 @@ public class WorkspaceLoader
         // Populate title bar shortcut buttons from project config.
         PopulateTitleBarShortcuts();
 
+        // Populate the centre title-bar utilities toolbar from registered utility contributions.
+        PopulateUtilityToolbar();
+
         // Notify that the workspace has loaded.
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
@@ -354,6 +360,113 @@ public class WorkspaceLoader
     public void ClearTitleBarShortcuts()
     {
         _userInterfaceService.TitleBar?.ClearShortcutButtons();
+    }
+
+    private void PopulateUtilityToolbar()
+    {
+        // The whole utility-documents feature is gated behind this flag while it is under development.
+        if (!_featureFlags.IsEnabled(FeatureFlagConstants.UtilityDocuments))
+        {
+            return;
+        }
+
+        var titleBar = _userInterfaceService.TitleBar;
+        if (titleBar is null)
+        {
+            return;
+        }
+
+        var packageService = _workspaceWrapper.WorkspaceService.PackageService;
+        var localizationService = ServiceLocator.AcquireService<IPackageLocalizationService>();
+
+        var utilityContributions = new List<CustomDocumentEditorContribution>();
+        foreach (var contribution in packageService.GetAllDocumentEditors())
+        {
+            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utilityContribution)
+            {
+                continue;
+            }
+
+            if (!IsPackageEnabled(utilityContribution.Package))
+            {
+                continue;
+            }
+
+            utilityContributions.Add(utilityContribution);
+        }
+
+        // Stable order: bundled utilities before project utilities, each group sorted by fully-qualified id.
+        var bundledContributions = utilityContributions
+            .Where(contribution => contribution.Package.Origin == PackageOrigin.Bundled)
+            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+
+        var projectContributions = utilityContributions
+            .Where(contribution => contribution.Package.Origin == PackageOrigin.Project)
+            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+
+        var orderedContributions = bundledContributions.Concat(projectContributions);
+
+        var utilityButtons = new List<UtilityButton>();
+        foreach (var contribution in orderedContributions)
+        {
+            var descriptor = contribution.UtilityDescriptor;
+            Guard.IsNotNull(descriptor);
+
+            var tooltip = ResolveUtilityTooltip(localizationService, contribution.Package, descriptor.Tooltip);
+
+            var utilityButton = new UtilityButton
+            {
+                UtilityId = GetUtilityId(contribution),
+                Icon = descriptor.Icon,
+                Tooltip = tooltip
+            };
+            utilityButtons.Add(utilityButton);
+        }
+
+        titleBar.BuildUtilityButtons(utilityButtons, OpenUtility);
+    }
+
+    public void ClearTitleBarUtilities()
+    {
+        _userInterfaceService.TitleBar?.ClearUtilityButtons();
+    }
+
+    private static string GetUtilityId(CustomDocumentEditorContribution contribution)
+    {
+        return $"{contribution.Package.Name}.{contribution.Id}";
+    }
+
+    private bool IsPackageEnabled(PackageInfo package)
+    {
+        if (string.IsNullOrEmpty(package.FeatureFlag))
+        {
+            return true;
+        }
+
+        return _featureFlags.IsEnabled(package.FeatureFlag);
+    }
+
+    private static string ResolveUtilityTooltip(
+        IPackageLocalizationService localizationService,
+        PackageInfo package,
+        string tooltipKey)
+    {
+        var localizationStrings = localizationService.LoadStrings(package);
+        if (localizationStrings.TryGetValue(tooltipKey, out var localized))
+        {
+            return localized;
+        }
+
+        return tooltipKey;
+    }
+
+    private void OpenUtility(string utilityId)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        commandService.Execute<IOpenUtilityCommand>(command =>
+        {
+            command.UtilityId = utilityId;
+        });
     }
 
     private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)

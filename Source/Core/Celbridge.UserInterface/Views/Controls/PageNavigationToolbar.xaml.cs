@@ -1,6 +1,7 @@
 using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Animation;
 
@@ -8,11 +9,17 @@ namespace Celbridge.UserInterface.Views;
 
 public sealed partial class PageNavigationToolbar : UserControl
 {
+    // Matches the app's standard title-bar / nav-bar icon size, so utility launcher glyphs sit level
+    // with the project button and the Home and Community icons.
+    private const double TitleBarIconGlyphSize = 16;
+
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private MainMenu? _mainMenu;
     private bool _hasShortcuts;
+    private bool _hasUtilities;
     private ShortcutMenuBuilder? _shortcutMenuBuilder;
+    private Action<string>? _onOpenUtility;
 
     public PageNavigationToolbarViewModel ViewModel { get; }
 
@@ -50,26 +57,96 @@ public sealed partial class PageNavigationToolbar : UserControl
     }
 
     /// <summary>
+    /// Builds the utility launcher buttons, placed to the right of the project button and to the left of
+    /// the shortcut buttons. Each button opens or activates its utility via the callback. Returns true
+    /// when at least one button was built.
+    /// </summary>
+    public bool BuildUtilityButtons(IReadOnlyList<UtilityButton> utilities, Action<string> onOpenUtility)
+    {
+        ClearUtilityButtons();
+
+        _onOpenUtility = onOpenUtility;
+
+        foreach (var utility in utilities)
+        {
+            var button = new ShortcutButton();
+            button.SetIcon(utility.Icon);
+
+            // Match the glyph to the surrounding title-bar icons (project button, Home, Community) rather
+            // than the larger default shortcut-button glyph.
+            button.SetIconSize(TitleBarIconGlyphSize);
+
+            button.SetTooltip(utility.Tooltip);
+            button.SetAutomationName(utility.Tooltip);
+            button.Tag = utility.UtilityId;
+            button.Click += OnUtilityButton_Click;
+
+            UtilityButtonsPanel.Children.Add(button);
+        }
+
+        _hasUtilities = utilities.Count > 0;
+        UpdateSeparators();
+        UpdatePaneButtonsVisibility();
+
+        return _hasUtilities;
+    }
+
+    /// <summary>
+    /// Clears all utility launcher buttons.
+    /// </summary>
+    public void ClearUtilityButtons()
+    {
+        UtilityButtonsPanel.Children.Clear();
+        _onOpenUtility = null;
+        _hasUtilities = false;
+        UpdateSeparators();
+        UpdatePaneButtonsVisibility();
+    }
+
+    private void OnUtilityButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is ShortcutButton button
+            && button.Tag is string utilityId)
+        {
+            _onOpenUtility?.Invoke(utilityId);
+        }
+    }
+
+    /// <summary>
     /// Sets whether shortcut buttons are populated and shows/hides them accordingly.
     /// Shortcuts are only visible when populated and the workspace page is active.
     /// </summary>
     public void SetShortcutButtonsVisible(bool isVisible)
     {
         _hasShortcuts = isVisible;
-        UpdateShortcutButtonsVisibility(animate: isVisible);
+        UpdateSeparators();
+        UpdatePaneButtonsVisibility(animate: isVisible);
     }
 
-    private void UpdateShortcutButtonsVisibility(bool animate = false)
+    // The utility group owns both its separators. The utility trailing separator already divides
+    // utilities from the shortcuts, so the shortcuts add their own leading separator only when no
+    // utilities precede them.
+    private void UpdateSeparators()
+    {
+        UtilityLeadingSeparator.Visibility = _hasUtilities ? Visibility.Visible : Visibility.Collapsed;
+        UtilityTrailingSeparator.Visibility = _hasUtilities ? Visibility.Visible : Visibility.Collapsed;
+
+        var showShortcutSeparator = _hasShortcuts && !_hasUtilities;
+        ShortcutLeadingSeparator.Visibility = showShortcutSeparator ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdatePaneButtonsVisibility(bool animate = false)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        var shouldShow = _hasShortcuts && userInterfaceService.ActivePage == ApplicationPage.Workspace;
+        var hasButtons = _hasShortcuts || _hasUtilities;
+        var shouldShow = hasButtons && userInterfaceService.ActivePage == ApplicationPage.Workspace;
 
         if (shouldShow)
         {
             if (animate)
             {
-                ShortcutButtonsContainer.Opacity = 0;
-                ShortcutButtonsContainer.Visibility = Visibility.Visible;
+                PaneButtonsContainer.Opacity = 0;
+                PaneButtonsContainer.Visibility = Visibility.Visible;
 
                 var storyboard = new Storyboard();
                 var fadeIn = new DoubleAnimation
@@ -80,21 +157,21 @@ public sealed partial class PageNavigationToolbar : UserControl
                     EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
                 };
 
-                Storyboard.SetTarget(fadeIn, ShortcutButtonsContainer);
+                Storyboard.SetTarget(fadeIn, PaneButtonsContainer);
                 Storyboard.SetTargetProperty(fadeIn, "Opacity");
                 storyboard.Children.Add(fadeIn);
                 storyboard.Begin();
             }
             else
             {
-                ShortcutButtonsContainer.Opacity = 1;
-                ShortcutButtonsContainer.Visibility = Visibility.Visible;
+                PaneButtonsContainer.Opacity = 1;
+                PaneButtonsContainer.Visibility = Visibility.Visible;
             }
         }
         else
         {
-            ShortcutButtonsContainer.Visibility = Visibility.Collapsed;
-            ShortcutButtonsContainer.Opacity = 1;
+            PaneButtonsContainer.Visibility = Visibility.Collapsed;
+            PaneButtonsContainer.Opacity = 1;
         }
     }
 
@@ -183,7 +260,7 @@ public sealed partial class PageNavigationToolbar : UserControl
         UpdateNavigationSelection(message.ActivePage);
 
         var isNavigatingToWorkspace = message.ActivePage == ApplicationPage.Workspace;
-        UpdateShortcutButtonsVisibility(animate: isNavigatingToWorkspace);
+        UpdatePaneButtonsVisibility(animate: isNavigatingToWorkspace);
     }
 
     private void UpdateNavigationSelection(ApplicationPage activePage)

@@ -54,7 +54,7 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <!-- Page Navigation Toolbar -->
+        <!-- Page Navigation Toolbar. Hosts the utility and shortcut launcher buttons in its pane content. -->
         <controls:PageNavigationToolbar x:Name="PageNavigationToolbar"
                                          Grid.Column="1"/>
 

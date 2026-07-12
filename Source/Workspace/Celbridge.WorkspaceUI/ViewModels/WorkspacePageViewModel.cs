@@ -142,8 +142,9 @@ public partial class WorkspacePageViewModel : ObservableObject
             // Clear project-level feature flag overrides before disposing the workspace
             _featureFlags.ClearProjectOverrides();
 
-            // Clear shortcut buttons from the title bar before disposing the workspace
+            // Clear shortcut and utility buttons from the title bar before disposing the workspace
             _workspaceLoader.ClearTitleBarShortcuts();
+            _workspaceLoader.ClearTitleBarUtilities();
 
             // Revert the process working folder set on load, so it stays valid while no project is loaded
             _workspaceLoader.ResetProcessWorkingFolder();
