@@ -2,10 +2,10 @@
     x:Class="Celbridge.UserInterface.Views.Controls.FileIcon"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:ui="using:Celbridge.UserInterface.Services">
+    xmlns:ui-services="using:Celbridge.UserInterface.Services">
 
     <UserControl.Resources>
-        <ui:FontFamilyConverter x:Key="FontFamilyConverter" />
+        <ui-services:FontFamilyConverter x:Key="FontFamilyConverter" />
     </UserControl.Resources>
 
     <FontIcon

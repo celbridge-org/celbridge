@@ -25,6 +25,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
     private readonly IPlatformInfo _platformInfo;
+    private readonly IFocusService _focusService;
     private bool _isPopulating;
     private double _savedScrollOffset;
 
@@ -38,6 +39,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -125,6 +127,14 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             ResourceListView.UpdateLayout();
             SetScrollOffset(savedScrollOffset);
 
+            // A rebuild (e.g. after a rename or delete) destroys the focused item, so keyboard focus can
+            // land on the activity rail. Return it to the tree, with the selection just restored above, when
+            // Explorer is the focused panel so the focus indicator's panel stays the keyboard target.
+            if (_focusService.FocusedPanel == WorkspacePanel.Explorer)
+            {
+                FocusTree();
+            }
+
             return Result.Ok();
         }
         finally
@@ -141,6 +151,14 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     public List<ResourceKey> GetSelectedResources()
     {
         return ViewModel.GetSelectedResourceKeys();
+    }
+
+    public void FocusTree()
+    {
+        // Pointer focus state so the central PanelFocusTracker reports the panel (it ignores Programmatic
+        // focus). Used when a deliberate gesture (activity-rail selection, panel title-bar click) should
+        // move keyboard focus into the tree.
+        ResourceListView.Focus(FocusState.Pointer);
     }
 
     public async Task<Result> SelectResource(ResourceKey resource, bool scrollIntoView = true)

@@ -6,7 +6,7 @@ namespace Celbridge.WebHost.Platform;
 /// No-op IWebViewFocusMonitor for platforms where the managed GotFocus event fires for clicks inside
 /// web view content, so no native focus signal is needed.
 /// </summary>
-public class NullWebViewFocusMonitor : IWebViewFocusMonitor
+internal class NullWebViewFocusMonitor : IWebViewFocusMonitor
 {
     public void Register(CoreWebView2 coreWebView, Action onFocusSignal)
     {

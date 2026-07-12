@@ -6,6 +6,11 @@ namespace Celbridge.Explorer;
 public interface IExplorerPanel
 {
     /// <summary>
+    /// Moves keyboard focus into the panel's resource tree so the panel becomes the focused panel.
+    /// </summary>
+    void FocusPanel();
+
+    /// <summary>
     /// Returns all selected resources in the explorer panel.
     /// </summary>
     List<ResourceKey> GetSelectedResources();

@@ -7,9 +7,9 @@
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:ws="using:Celbridge.WorkspaceUI.Views"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
+  xmlns:ui="using:Celbridge.UserInterface"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  GotFocus="UserControl_GotFocus"
-  PointerPressed="UserControl_PointerPressed">
+  ui:FocusTracking.Panel="Search">
 
   <UserControl.Resources>
     <converters:ExpanderGlyphConverter x:Key="ExpandCollapseGlyphConverter"/>
@@ -32,8 +32,7 @@
 
     <!-- Panel Header -->
     <ws:PanelHeader Grid.Row="0"
-                    Panel="Search"
-                    Region="Primary"
+                    Tapped="PanelHeader_Tapped"
                     Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
 
     <!-- Search Input -->

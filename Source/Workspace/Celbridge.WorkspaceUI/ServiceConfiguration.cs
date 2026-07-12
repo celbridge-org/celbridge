@@ -18,6 +18,7 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<IFocusService, FocusService>();
+        services.AddSingleton<PanelFocusTracker>();
 
         PlatformServiceConfiguration.ConfigureServices(services);
 
@@ -64,5 +65,10 @@ public static class ServiceConfiguration
             NavigationConstants.WorkspaceTag,
             typeof(WorkspacePage),
             ApplicationPage.Workspace);
+
+        // Track managed focus changes for the lifetime of the app. Reports are no-ops until a
+        // workspace is active.
+        var panelFocusTracker = ServiceLocator.AcquireService<PanelFocusTracker>();
+        panelFocusTracker.Start();
     }
 }

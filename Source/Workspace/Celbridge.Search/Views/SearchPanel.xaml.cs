@@ -1,14 +1,11 @@
 using Celbridge.Search.ViewModels;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Workspace;
 using Windows.System;
 
 namespace Celbridge.Search.Views;
 
 public sealed partial class SearchPanel : UserControl, ISearchPanel
 {
-    private readonly IFocusService _focusService;
-
     // Saved scroll position for refresh operations
     private double _savedScrollOffset;
 
@@ -16,7 +13,6 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     public SearchPanel()
     {
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
         ViewModel = ServiceLocator.AcquireService<SearchPanelViewModel>();
 
         this.InitializeComponent();
@@ -106,16 +102,6 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         {
             ResultsScrollViewer.ChangeView(null, _savedScrollOffset, null, disableAnimation: true);
         });
-    }
-
-    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Search);
-    }
-
-    private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Search);
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -215,8 +201,16 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     public void FocusSearchInput()
     {
-        SearchTextBox.Focus(FocusState.Programmatic);
+        // Pointer focus state so the central PanelFocusTracker reports the panel (it ignores Programmatic
+        // focus). Used when a deliberate gesture (activity-rail selection, panel title-bar click) should
+        // move keyboard focus into the search box.
+        SearchTextBox.Focus(FocusState.Pointer);
         SearchTextBox.SelectAll();
+    }
+
+    private void PanelHeader_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        FocusSearchInput();
     }
 
     public void SetSearchText(string searchText)

@@ -109,6 +109,31 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         }
     }
 
+    public void FocusWebView(WebView2 webView)
+    {
+        // On macOS programmatic managed focus flips the WebView's input routing to the managed pipeline,
+        // where keys never reach the web content. Reproduce the responder state a click inside the view
+        // establishes instead: make the native WKWebView the window's first responder. There is no managed
+        // fallback on failure, because managed focus would leave typing broken anyway.
+        if (OperatingSystem.IsMacOS()
+            && webView.CoreWebView2 is not null)
+        {
+            if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
+            {
+                MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+                MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
+            }
+            else
+            {
+                _logger.LogWarning("Could not focus the WebView natively: {Detail}", detail);
+            }
+
+            return;
+        }
+
+        webView.Focus(FocusState.Programmatic);
+    }
+
     public async Task<string> EvalAsync(CoreWebView2 coreWebView2, string expression)
     {
         // WKWebView's evaluateJavaScript faults on JS exceptions and syntax errors (WKError 4), on unsupported

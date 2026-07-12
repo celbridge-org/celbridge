@@ -5,8 +5,9 @@
   xmlns:ic="using:Celbridge.UserInterface.Views.Controls"
   xmlns:local="using:Celbridge.Console.Views"
   xmlns:controls="using:Celbridge.WorkspaceUI.Views"
+  xmlns:ui="using:Celbridge.UserInterface"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  GotFocus="UserControl_GotFocus">
+  ui:FocusTracking.Panel="Console">
 
   <Grid>
     
@@ -21,8 +22,6 @@
 
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
-                          Panel="Console"
-                          Region="Console"
                           Title="{x:Bind TitleText}"
                           Tapped="TitleBar_Tapped"
                           DoubleTapped="TitleBar_DoubleTapped">

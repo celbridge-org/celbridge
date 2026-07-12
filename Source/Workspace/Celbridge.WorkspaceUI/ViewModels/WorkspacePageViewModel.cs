@@ -203,14 +203,5 @@ public partial class WorkspacePageViewModel : ObservableObject
         _logger.LogDebug($"Workspace loaded in {elapsed} ms");
 
     }
-
-    public void SetActivePanel(WorkspacePanel panel)
-    {
-        if (_workspaceService.ActivePanel != panel)
-        {
-            // Setter is not exposed in public API
-            (_workspaceService as WorkspaceService)!.ActivePanel = panel;
-        }
-    }
 }
 

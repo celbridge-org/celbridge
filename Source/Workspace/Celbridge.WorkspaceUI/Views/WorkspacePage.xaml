@@ -5,6 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.WorkspaceUI.Views"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  xmlns:layout="using:Celbridge.WorkspaceUI"
   xmlns:vm="using:Celbridge.WorkspaceUI.ViewModels"
   NavigationCacheMode="Required"
   DataContext="{x:Bind ViewModel}">
@@ -35,21 +36,16 @@
     <Grid x:Name="PrimaryPanel"
           Grid.RowSpan="2"
           MinWidth="200"
-          Tag="Explorer"
+          layout:WorkspaceLayout.Region="Primary"
           AutomationProperties.AutomationId="explorer-panel"
-          Background="{ThemeResource PanelBackgroundABrush}"
-          GotFocus="Panel_GotFocus"
-          PointerPressed="Panel_PointerPressed">
+          Background="{ThemeResource PanelBackgroundABrush}">
     </Grid>
 
     <!-- Documents Panel -->
     <Grid x:Name="DocumentsPanel"
           Grid.Column="1"
-          Tag="Documents"
           AutomationProperties.AutomationId="documents-panel"
-          Background="{ThemeResource ApplicationBackgroundBrush}"
-          GotFocus="Panel_GotFocus"
-          PointerPressed="Panel_PointerPressed">
+          Background="{ThemeResource ApplicationBackgroundBrush}">
     </Grid>
 
     <!-- Secondary Panel -->
@@ -58,22 +54,18 @@
           Grid.Row="0"
           Grid.RowSpan="2"
           MinWidth="200"
-          Tag="Inspector"
+          layout:WorkspaceLayout.Region="Secondary"
           AutomationProperties.AutomationId="inspector-panel"
-          Background="{ThemeResource PanelBackgroundABrush}"
-          GotFocus="Panel_GotFocus"
-          PointerPressed="Panel_PointerPressed">
+          Background="{ThemeResource PanelBackgroundABrush}">
     </Grid>
 
     <!-- Console Panel -->
     <Grid x:Name="ConsolePanel"
           Grid.Column="1"
           Grid.Row="1"
-          Tag="Console"
+          layout:WorkspaceLayout.Region="Console"
           AutomationProperties.AutomationId="console-panel"
-          Background="{ThemeResource PanelBackgroundBBrush}"
-          GotFocus="Panel_GotFocus"
-          PointerPressed="Panel_PointerPressed">
+          Background="{ThemeResource PanelBackgroundBBrush}">
     </Grid>
 
     <!-- Grid splitters -->

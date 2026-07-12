@@ -4,6 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -19,6 +20,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IWindowModeService _windowModeService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private bool _isShuttingDown = false;
 
@@ -59,6 +61,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _windowModeService = windowModeService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
+        _webViewFocusRegistry = serviceProvider.AcquireService<IWebViewFocusRegistry>();
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -255,8 +258,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Defer so focus is set after the panels have collapsed and layout has settled.
         DispatcherQueue.TryEnqueue(() =>
         {
-            var webView = VisualTreeHelperEx.FindDescendant<WebView2>(SectionContainer);
-            webView?.Focus(FocusState.Programmatic);
+            // Route through the registry grant so the active document's web content gets keyboard focus
+            // (native first responder on macOS, managed focus on Windows) and the focus is reported. This
+            // closes the latent gap where entering Focus or Presentation layout focused without reporting.
+            var webView = VisualTree.FindDescendant<WebView2>(SectionContainer);
+            if (webView is not null)
+            {
+                _webViewFocusRegistry.GrantFocus(webView);
+            }
         });
     }
 

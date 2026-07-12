@@ -41,9 +41,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
-    private readonly IFocusService _focusService;
     private readonly IWebViewAdapter _webViewAdapter;
-    private readonly IWebViewFocusMonitor _webViewFocusMonitor;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     // Latest edit availability reported by the editor over the bridge. Drives CanPerformEdit.
     private EditAvailability _editAvailability = EditAvailability.None;
@@ -138,9 +137,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         _serviceProvider = serviceProvider;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
-        _webViewFocusMonitor = ServiceLocator.AcquireService<IWebViewFocusMonitor>();
+        _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
 
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
@@ -290,13 +288,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         WebView.CoreWebView2.Settings.AreDevToolsEnabled =
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
-        WebView.GotFocus -= WebView_GotFocus;
-        WebView.GotFocus += WebView_GotFocus;
-
-        // On macOS the WKWebView consumes clicks without raising GotFocus, and the JS client only
-        // reports DOM focus changes, which a click on non-focusable content (e.g. rendered markdown)
-        // never produces. The native monitor covers those clicks. No-op on other platforms.
-        _webViewFocusMonitor.Register(WebView.CoreWebView2, OnNativeFocusSignal);
+        // Register this editor's web surface; it hosts an edit target (this) for the Edit commands.
+        RegisterWebSurfaceFocus(WebView, editTarget: this, ReleaseFocus);
 
         // Every contribution editor's assets (its lib, the shared client) are served from the loopback
         // file server, so register this package's folder there. The resolved loader decides where the
@@ -453,10 +446,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         {
             if (WebView.CoreWebView2 is not null)
             {
-                _webViewFocusMonitor.Unregister(WebView.CoreWebView2);
+                _webViewFocusRegistry.Unregister(WebView.CoreWebView2);
             }
-
-            WebView.GotFocus -= WebView_GotFocus;
 
             _webViewAdapter.CloseWebView(WebView, ContributionWebViewContainer);
 
@@ -879,37 +870,14 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         await base.PrepareToClose();
     }
 
-    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    public override void FocusDocument()
     {
-        // Set this document as the active document when the WebView2 receives focus
-        var message = new DocumentViewFocusedMessage(FileResource);
-        _messengerService.Send(message);
-
-        _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
-    }
-
-    private void OnNativeFocusSignal()
-    {
-        // Arrives from the platform focus monitor on the UI thread when a click lands inside this
-        // view's native web surface. Same handling as the managed GotFocus path.
-        var message = new DocumentViewFocusedMessage(FileResource);
-        _messengerService.Send(message);
-
-        _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
-    }
-
-    public void OnFocusReceived()
-    {
-        // The Skia head does not raise WebView.GotFocus for clicks inside the WebView, so the JS client
-        // reports DOM focus over the bridge. Marshal to the UI thread and register this editor as the
-        // active surface. On Windows this is redundant with WebView_GotFocus and harmless.
-        DispatcherQueue.TryEnqueue(() =>
+        // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
+        // follows). The registry gives it focus and reports it, releasing the previously focused surface.
+        if (WebView is not null)
         {
-            var message = new DocumentViewFocusedMessage(FileResource);
-            _messengerService.Send(message);
-
-            _focusService.OnFocusReceived(WorkspacePanel.Documents, this, ReleaseFocus);
-        });
+            _webViewFocusRegistry.GrantFocus(WebView);
+        }
     }
 
     private void ReleaseFocus()

@@ -11,7 +11,6 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
     private readonly ILogger<InspectorPanel> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IInspectorService _inspectorService;
-    private readonly IFocusService _focusService;
 
     public InspectorPanelViewModel ViewModel { get; }
 
@@ -21,7 +20,6 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
     {
         _logger = ServiceLocator.AcquireService<ILogger<InspectorPanel>>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _inspectorService = workspaceWrapper.WorkspaceService.InspectorService;
@@ -41,16 +39,6 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         {
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         };
-    }
-
-    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Inspector);
-    }
-
-    private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Inspector);
     }
 
     private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)

@@ -10,6 +10,7 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IWebViewService, WebViewService>();
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
+        services.AddSingleton<IWebViewFocusRegistry, WebViewFocusRegistry>();
         services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
 

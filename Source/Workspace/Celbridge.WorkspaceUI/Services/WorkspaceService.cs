@@ -32,7 +32,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IActivityService ActivityService { get; }
     public IDataTransferService DataTransferService { get; }
 
-    public WorkspacePanel ActivePanel { get; set; }
+    public WorkspacePanel ActivePanel { get; private set; }
 
     public IActivityPanel ActivityPanel { get; private set; } = null!;
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
@@ -82,6 +82,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettings.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
+
+        // The active panel is derived from the single focus arbiter rather than tracked separately.
+        _messengerService.Register<PanelFocusChangedMessage>(this, OnPanelFocusChanged);
     }
 
     public void SetPanels(
@@ -100,6 +103,16 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
     {
         _workspaceStateIsDirty = true;
+    }
+
+    private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
+    {
+        // Focus on chrome (toolbars, dialogs) reports None; keep the active panel on the last real panel so
+        // panel-scoped undo still targets it after such an interaction.
+        if (message.FocusedPanel != WorkspacePanel.None)
+        {
+            ActivePanel = message.FocusedPanel;
+        }
     }
 
     public async Task<Result> UpdateWorkspaceAsync(double deltaTime)

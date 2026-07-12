@@ -13,12 +13,12 @@ public class PlatformContainmentTests
     [Test]
     public void NativeInterop_LivesOnlyInPlatformFolders()
     {
-        var sourceFolder = FindSourceFolder();
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
         Directory.Exists(sourceFolder).Should().BeTrue(
             "the repository Source folder must be locatable from the test binary");
 
         var offenders = new List<string>();
-        foreach (var filePath in EnumerateProductionSourceFiles(sourceFolder))
+        foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
             var contents = File.ReadAllText(filePath);
             if (!contents.Contains("DllImport"))
@@ -34,50 +34,6 @@ public class PlatformContainmentTests
 
         offenders.Should().BeEmpty(
             "native interop must be contained in a Platform/ folder per the cross-platform convention");
-    }
-
-    private static string FindSourceFolder()
-    {
-        var folder = new DirectoryInfo(AppContext.BaseDirectory);
-        while (folder is not null)
-        {
-            var solutionPath = Path.Combine(folder.FullName, "Celbridge.slnx");
-            if (File.Exists(solutionPath))
-            {
-                return Path.Combine(folder.FullName, "Source");
-            }
-
-            folder = folder.Parent;
-        }
-
-        return string.Empty;
-    }
-
-    private static IEnumerable<string> EnumerateProductionSourceFiles(string sourceFolder)
-    {
-        // The convention governs production code. The Tests project legitimately names platform concepts.
-        var testsFolder = Path.Combine(sourceFolder, "Tests");
-
-        foreach (var filePath in Directory.EnumerateFiles(sourceFolder, "*.cs", SearchOption.AllDirectories))
-        {
-            if (filePath.StartsWith(testsFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (IsGeneratedOrBuildOutput(filePath))
-            {
-                continue;
-            }
-
-            yield return filePath;
-        }
-    }
-
-    private static bool IsGeneratedOrBuildOutput(string filePath)
-    {
-        var segments = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return segments.Any(segment => segment is "obj" or "bin");
     }
 
     private static bool IsInsidePlatformFolder(string sourceFolder, string filePath)

@@ -130,25 +130,10 @@ export class Celbridge {
         this.localization = new LocalizationAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
-        // Report focus to the host, and clear the report when the host blurs us. On the Skia heads the
-        // WinUI WebView.GotFocus event does not fire for clicks inside the WebView, so DOM focus is the
-        // reliable signal that this surface became active. The host uses it to set the active edit target
-        // and register the blur callback.
-        let hasReportedFocusReceived = false;
-        if (typeof document !== 'undefined') {
-            document.addEventListener('focusin', () => {
-                if (!hasReportedFocusReceived) {
-                    hasReportedFocusReceived = true;
-                    this.#transport.notify('input/focusReceived', {});
-                }
-            });
-        }
-
         // Release the active element when the host signals that focus moved to another panel. Wired
         // universally so any editor's WebView caret stops when a native panel takes focus on heads
         // where WebView and host focus are not integrated (Skia).
         this.#transport.addEventListener('input/releaseFocus', () => {
-            hasReportedFocusReceived = false;
             blurActiveElement();
         });
 

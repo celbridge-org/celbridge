@@ -83,6 +83,11 @@
       </Grid>
     </ContentControl>
 
+    <Button Content="{x:Bind TestConnectionString}"
+            HorizontalAlignment="Left"
+            IsEnabled="{x:Bind ViewModel.IsStoreAvailable, Mode=OneWay}"
+            Command="{x:Bind ViewModel.TestConnectionCommand}"/>
+
     <InfoBar IsOpen="{x:Bind ViewModel.IsStatusVisible, Mode=OneWay}"
              Severity="{x:Bind ViewModel.StatusSeverity, Mode=OneWay, Converter={StaticResource StatusSeverityConverter}}"
              Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"

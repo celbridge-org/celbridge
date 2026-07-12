@@ -3,9 +3,9 @@
              xmlns:local="using:Celbridge.Inspector.Views"
              xmlns:controls="using:Celbridge.WorkspaceUI.Views"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:Celbridge.UserInterface"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             GotFocus="UserControl_GotFocus"
-             PointerPressed="UserControl_PointerPressed">
+             ui:FocusTracking.Panel="Inspector">
 
   <Grid>
     <Grid.RowDefinitions>
@@ -15,8 +15,6 @@
 
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
-                          Panel="Inspector"
-                          Region="Secondary"
                           Title="{x:Bind TitleString}"/>
 
     <local:EntityEditor x:Name="EntityEditor"

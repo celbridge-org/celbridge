@@ -25,8 +25,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IFocusService _focusService;
     private readonly IWebViewFactory _webViewFactory;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IKeyboardShortcutService _keyboardShortcutService;
     private readonly IWebViewStateService _webViewStateService;
 
@@ -54,30 +54,17 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
+        _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         _webViewStateService = ServiceLocator.AcquireService<IWebViewStateService>();
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
+        FocusTracking.SetEditTarget(this, this);
+
         // Listen for console focus requests
         _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
-    }
-
-    private void UserControl_GotFocus(object sender, RoutedEventArgs e)
-    {
-        _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
-    }
-
-    public void OnFocusReceived()
-    {
-        // The Skia head does not raise GotFocus for clicks inside the console WebView, so its JS client
-        // reports DOM focus over the bridge. Marshal to the UI thread and record the focus.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            _focusService.OnFocusReceived(WorkspacePanel.Console, this, ReleaseFocus);
-        });
     }
 
     private void ReleaseFocus()
@@ -212,13 +199,14 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
     private void FocusConsole()
     {
-        if (_consoleWebView is not { CoreWebView2: not null } || _consoleHost is null)
+        if (_consoleWebView is null)
         {
             return;
         }
 
-        _consoleWebView.Focus(FocusState.Programmatic);
-        _ = _consoleHost.FocusAsync();
+        // The registry gives the web content keyboard focus and then focuses the terminal input over the
+        // bridge (the registration's GrantDomFocus), reporting the focus so the previous surface is released.
+        _webViewFocusRegistry.GrantFocus(_consoleWebView);
     }
 
     public void RunCommand(string command)
@@ -273,6 +261,15 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         // change, over the same mechanism the editors use. Registering pushes the current snapshot
         // immediately, so it must run after StartListening.
         _appStateConnection = _consoleHost.RegisterAppState(_webViewStateService);
+
+        // Register the console web surface with the focus registry, which owns its focus-gain signals
+        // (managed GotFocus on Windows, the macOS native click monitor) and the terminal-focus grant.
+        _webViewFocusRegistry.Register(new WebViewFocusRegistration(
+            _consoleWebView,
+            WorkspacePanel.Console,
+            EditTarget: this,
+            ReleaseFocus: ReleaseFocus,
+            GrantDomFocus: () => _consoleHost?.FocusAsync() ?? Task.CompletedTask));
 
         var tcs = new TaskCompletionSource<bool>();
         void Handler(object? sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -392,6 +389,11 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         if (_consoleWebView != null)
         {
+            if (_consoleWebView.CoreWebView2 is not null)
+            {
+                _webViewFocusRegistry.Unregister(_consoleWebView.CoreWebView2);
+            }
+
             _consoleWebView.Close();
             _consoleWebView = null;
         }

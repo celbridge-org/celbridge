@@ -16,6 +16,11 @@ internal sealed class WorkshopApiSender : IDisposable
 {
     private const string ApiKeyScheme = "Api-Key";
 
+    // Bound the connection probe so a slow or flaky network resolves to Unreachable in a few seconds rather
+    // than pending on the HttpClient default timeout (100 seconds). Scoped to the probe request so it does
+    // not shorten legitimately long operations, such as package uploads, that share the same client.
+    private static readonly TimeSpan ConnectionProbeTimeout = TimeSpan.FromSeconds(10);
+
     private readonly ISettingsService _settingsService;
     private readonly HttpClient _httpClient;
 
@@ -75,10 +80,11 @@ internal sealed class WorkshopApiSender : IDisposable
             return ConnectionCheckOutcome.Unreachable;
         }
         using var request = requestResult.Value;
+        using var timeout = new CancellationTokenSource(ConnectionProbeTimeout);
 
         try
         {
-            using var response = await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request, timeout.Token);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 return ConnectionCheckOutcome.Unauthorized;

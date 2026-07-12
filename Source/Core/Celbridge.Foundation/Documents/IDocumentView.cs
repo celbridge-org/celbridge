@@ -60,6 +60,12 @@ public interface IDocumentView
     Task<Result> NavigateToLocation(string location);
 
     /// <summary>
+    /// Gives this document keyboard focus and reports the focus change so any previously focused surface
+    /// is released. Called when the document's tab is clicked. Views with no focusable surface do nothing.
+    /// </summary>
+    void FocusDocument();
+
+    /// <summary>
     /// Returns true if the document view can be closed.
     /// For example, a document view could prompt the user to confirm closing the document, and return false
     /// here to indicate that the user cancelled the close operation. 

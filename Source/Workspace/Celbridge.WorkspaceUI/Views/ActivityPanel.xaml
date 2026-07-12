@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
     <Grid x:Name="LayoutRoot">
@@ -19,6 +20,7 @@
 
             <!-- Vertical Navigation View for tab selection -->
             <NavigationView x:Name="ActivityNavigation"
+                             ui:FocusTracking.PreservePanelFocus="True"
                              IsPaneToggleButtonVisible="False"
                              IsBackButtonVisible="Collapsed"
                              IsSettingsVisible="False"

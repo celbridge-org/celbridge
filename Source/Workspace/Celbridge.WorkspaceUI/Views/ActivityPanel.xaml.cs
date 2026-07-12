@@ -43,14 +43,29 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         ShowTab(ActivityPanelTab.Explorer);
 
         Loaded += ActivityPanel_Loaded;
+        Unloaded += ActivityPanel_Unloaded;
     }
 
     private void ActivityPanel_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyTooltips();
 
+        // Register how the hosted panels take keyboard focus, so the focus service can return focus to
+        // whichever is focused after a modal dialog closes or the resource tree rebuilds. Only Explorer
+        // and Search register a handler by design: the Documents and Console web surfaces and the
+        // Inspector intentionally have none, so focus restore is a deliberate no-op for those and the
+        // user re-focuses them with a single click.
+        _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, ExplorerPanel.FocusPanel);
+        _focusService.SetPanelFocusHandler(WorkspacePanel.Search, SearchPanel.FocusSearchInput);
+
         // Set Explorer as the initially selected nav item
         ActivityNavigation.SelectedItem = ExplorerNavItem;
+    }
+
+    private void ActivityPanel_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, null);
+        _focusService.SetPanelFocusHandler(WorkspacePanel.Search, null);
     }
 
     private void ApplyTooltips()
@@ -93,19 +108,20 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
             ExplorerPanelControl.Visibility = Visibility.Collapsed;
             SearchPanelControl.Visibility = Visibility.Collapsed;
 
-            // Show the requested panel, highlight its activity-bar item, and set focus
+            // Show the requested panel and highlight its activity-bar item, then move keyboard focus into
+            // the panel. Focusing the panel content reports the panel through the central tracker, so no
+            // explicit focus claim is made here. The focus is deferred so it lands after the NavigationView
+            // finishes moving focus onto the selected rail item (which would otherwise clear it again).
             switch (tab)
             {
                 case ActivityPanelTab.Explorer:
                     ExplorerPanelControl.Visibility = Visibility.Visible;
                     ActivityNavigation.SelectedItem = ExplorerNavItem;
-                    _focusService.OnFocusReceived(WorkspacePanel.Explorer);
+                    _dispatcher.TryEnqueue(() => ExplorerPanel.FocusPanel());
                     break;
                 case ActivityPanelTab.Search:
                     SearchPanelControl.Visibility = Visibility.Visible;
                     ActivityNavigation.SelectedItem = SearchNavItem;
-                    _focusService.OnFocusReceived(WorkspacePanel.Search);
-                    // Use dispatcher to ensure the panel is fully loaded before focusing
                     _dispatcher.TryEnqueue(() => SearchPanel.FocusSearchInput());
                     break;
                 default:

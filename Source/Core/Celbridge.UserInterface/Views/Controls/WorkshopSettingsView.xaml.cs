@@ -14,7 +14,6 @@ public sealed partial class WorkshopSettingsView : UserControl
     private readonly IStringLocalizer _stringLocalizer;
 
     private DispatcherQueueTimer? _autoSaveTimer;
-    private bool _connectionFieldDirty;
 
     private string WorkshopSectionString => _stringLocalizer.GetString("Settings_Workshop_SectionHeader");
     private string WorkshopDescriptionString => _stringLocalizer.GetString("Settings_Workshop_Description");
@@ -27,6 +26,7 @@ public sealed partial class WorkshopSettingsView : UserControl
     private string SetWorkshopKeyString => _stringLocalizer.GetString("Settings_Workshop_KeySet");
     private string ChangeKeyString => _stringLocalizer.GetString("Settings_Workshop_KeyChange");
     private string RemoveKeyString => _stringLocalizer.GetString("Settings_Workshop_KeyRemove");
+    private string TestConnectionString => _stringLocalizer.GetString("Settings_Workshop_TestConnection");
 
     public WorkshopSettingsViewModel ViewModel { get; }
 
@@ -55,8 +55,8 @@ public sealed partial class WorkshopSettingsView : UserControl
             _autoSaveTimer.Tick += AutoSaveTimer_Tick;
         }
 
-        WorkshopUrlTextBox.TextChanged += WorkshopUrlField_Changed;
-        AuthorTextBox.TextChanged += AuthorField_Changed;
+        WorkshopUrlTextBox.TextChanged += ConnectionField_Changed;
+        AuthorTextBox.TextChanged += ConnectionField_Changed;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -64,17 +64,16 @@ public sealed partial class WorkshopSettingsView : UserControl
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
 
-        WorkshopUrlTextBox.TextChanged -= WorkshopUrlField_Changed;
-        AuthorTextBox.TextChanged -= AuthorField_Changed;
+        WorkshopUrlTextBox.TextChanged -= ConnectionField_Changed;
+        AuthorTextBox.TextChanged -= ConnectionField_Changed;
 
         if (_autoSaveTimer is not null)
         {
-            // A pending debounce means the user edited a field and is navigating
-            // away before the timer fired. Flush it so the change is not lost; the
-            // connection check is skipped because the section is going away.
+            // A pending debounce means the user edited a field and is navigating away before the timer
+            // fired. Flush the persist so the change is not lost.
             if (_autoSaveTimer.IsRunning)
             {
-                _ = ViewModel.SaveWorkshopConnectionAsync(checkConnection: false);
+                ViewModel.SaveWorkshopConnection();
             }
 
             _autoSaveTimer.Stop();
@@ -83,33 +82,14 @@ public sealed partial class WorkshopSettingsView : UserControl
         }
     }
 
-    private void WorkshopUrlField_Changed(object sender, TextChangedEventArgs e)
+    private void ConnectionField_Changed(object sender, TextChangedEventArgs e)
     {
-        OnConnectionFieldEdited();
-    }
-
-    private void AuthorField_Changed(object sender, TextChangedEventArgs e)
-    {
-        // The author does not affect connectivity, so an author-only edit saves
-        // without re-verifying the connection.
+        // A programmatic field update (the initial load) must not schedule a save of its own values.
         if (ViewModel.IsApplyingProgrammaticChange)
         {
             return;
         }
 
-        RestartAutoSaveTimer();
-    }
-
-    // A URL or key edit marks the next auto-save as connection-affecting, so the
-    // saved connection is verified against the workshop once it persists.
-    private void OnConnectionFieldEdited()
-    {
-        if (ViewModel.IsApplyingProgrammaticChange)
-        {
-            return;
-        }
-
-        _connectionFieldDirty = true;
         RestartAutoSaveTimer();
     }
 
@@ -119,12 +99,9 @@ public sealed partial class WorkshopSettingsView : UserControl
         _autoSaveTimer?.Start();
     }
 
-    private async void AutoSaveTimer_Tick(DispatcherQueueTimer sender, object args)
+    private void AutoSaveTimer_Tick(DispatcherQueueTimer sender, object args)
     {
         sender.Stop();
-
-        var checkConnection = _connectionFieldDirty;
-        _connectionFieldDirty = false;
-        await ViewModel.SaveWorkshopConnectionAsync(checkConnection);
+        ViewModel.SaveWorkshopConnection();
     }
 }

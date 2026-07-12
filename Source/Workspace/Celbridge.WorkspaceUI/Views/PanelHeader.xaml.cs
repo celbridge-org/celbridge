@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface;
 
 namespace Celbridge.WorkspaceUI.Views;
 
@@ -8,46 +9,6 @@ namespace Celbridge.WorkspaceUI.Views;
 public sealed partial class PanelHeader : UserControl
 {
     private readonly ICommandService _commandService;
-
-    /// <summary>
-    /// The panel this header is associated with.
-    /// </summary>
-    public WorkspacePanel Panel
-    {
-        get => (WorkspacePanel)GetValue(PanelProperty);
-        set => SetValue(PanelProperty, value);
-    }
-
-    public static readonly DependencyProperty PanelProperty =
-        DependencyProperty.Register(
-            nameof(Panel),
-            typeof(WorkspacePanel),
-            typeof(PanelHeader),
-            new PropertyMetadata(WorkspacePanel.None, OnPanelChanged));
-
-    private static void OnPanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is PanelHeader header)
-        {
-            header.FocusIndicatorControl.Panel = (WorkspacePanel)e.NewValue;
-        }
-    }
-
-    /// <summary>
-    /// The region used to collapse this panel when the close button is clicked.
-    /// </summary>
-    public LayoutRegion Region
-    {
-        get => (LayoutRegion)GetValue(RegionProperty);
-        set => SetValue(RegionProperty, value);
-    }
-
-    public static readonly DependencyProperty RegionProperty =
-        DependencyProperty.Register(
-            nameof(Region),
-            typeof(LayoutRegion),
-            typeof(PanelHeader),
-            new PropertyMetadata(LayoutRegion.None));
 
     /// <summary>
     /// The title text displayed in the header.
@@ -110,25 +71,38 @@ public sealed partial class PanelHeader : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
 
         this.InitializeComponent();
+
+        Loaded += PanelHeader_Loaded;
+    }
+
+    private void PanelHeader_Loaded(object sender, RoutedEventArgs e)
+    {
+        // The panel identity is declared once on the panel root via FocusTracking.Panel; derive the focus
+        // indicator's panel from the nearest such ancestor rather than duplicating the value on the header.
+        // The walk runs on Loaded because the header's ancestors are only reachable once the tree is live.
+        FocusIndicatorControl.Panel = FocusTracking.FindPanel(this);
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Region == LayoutRegion.None)
+        // The region is derived from the container the header currently sits in.
+        var region = WorkspaceLayout.FindRegion(this);
+        if (region == LayoutRegion.None)
         {
             return;
         }
 
         _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Regions = Region;
+            command.Regions = region;
             command.IsVisible = false;
         });
     }
 
     private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (Region == LayoutRegion.None)
+        var region = WorkspaceLayout.FindRegion(this);
+        if (region == LayoutRegion.None)
         {
             return;
         }
@@ -136,7 +110,7 @@ public sealed partial class PanelHeader : UserControl
         // Double-clicking the title bar resets the panel to its default size
         _commandService.Execute<IResetPanelCommand>(command =>
         {
-            command.Region = Region;
+            command.Region = region;
         });
     }
 }
