@@ -76,10 +76,11 @@ public partial class MainPage : Page
         // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
         Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
 
-        // Deliver Tab to a focused code editor (indent / outdent) instead of letting the platform focus loop
-        // move focus out of it. macOS-only. A no-op elsewhere.
-        var focusServiceForTab = ServiceLocator.AcquireService<IFocusService>();
-        Celbridge.UserInterface.Platform.MacOSTabKeyMonitor.Start(focusServiceForTab, _logger);
+        // Deliver document keys the focused WKWebView would otherwise swallow: Tab to a focused code editor
+        // (indent / outdent) instead of letting the platform focus loop move focus out of it, and Command+W /
+        // Command+Shift+W to the close-document shortcuts. macOS-only. A no-op elsewhere.
+        var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
+        Celbridge.UserInterface.Platform.MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, _messengerService, _logger);
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);

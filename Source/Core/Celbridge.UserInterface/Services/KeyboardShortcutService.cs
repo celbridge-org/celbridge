@@ -43,6 +43,22 @@ public class KeyboardShortcutService : IKeyboardShortcutService
             return true;
         }
 
+        // All platforms close all documents shortcut: Ctrl+Shift+W
+        if (control && shift && key == VirtualKey.W)
+        {
+            var message = new CloseAllDocumentsRequestedMessage();
+            _messengerService.Send(message);
+            return true;
+        }
+
+        // All platforms close active document shortcut: Ctrl+W
+        if (control && key == VirtualKey.W)
+        {
+            var message = new CloseActiveDocumentRequestedMessage();
+            _messengerService.Send(message);
+            return true;
+        }
+
         return false;
     }
 
@@ -52,6 +68,7 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         {
             "z" or "Z" => VirtualKey.Z,
             "y" or "Y" => VirtualKey.Y,
+            "w" or "W" => VirtualKey.W,
             _ => VirtualKey.None
         };
 

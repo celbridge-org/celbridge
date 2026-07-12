@@ -89,6 +89,22 @@ public partial class DocumentTab : TabViewItem
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
         ReopenMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Reopen");
         ReopenWithMenuItem.Text = _stringLocalizer.GetString("DocumentTab_ReopenWith");
+
+        ApplyCloseShortcutHints();
+    }
+
+    // Displays the close shortcut hints next to the Close and Close All menu items. These are display-only
+    // labels matching the shortcuts handled in KeyboardShortcutService. The platform command modifier selects
+    // between the Command-glyph form shown on macOS and the "Ctrl" form shown on Windows.
+    private void ApplyCloseShortcutHints()
+    {
+        bool usesCommandModifier = _platformInfo.CommandModifier == CommandModifierKey.Command;
+
+        string closeHintKey = usesCommandModifier ? "DocumentTab_CloseShortcutCommand" : "DocumentTab_CloseShortcutControl";
+        string closeAllHintKey = usesCommandModifier ? "DocumentTab_CloseAllShortcutCommand" : "DocumentTab_CloseAllShortcutControl";
+
+        CloseMenuItem.KeyboardAcceleratorTextOverride = _stringLocalizer.GetString(closeHintKey);
+        CloseAllMenuItem.KeyboardAcceleratorTextOverride = _stringLocalizer.GetString(closeAllHintKey);
     }
 
     /// <summary>

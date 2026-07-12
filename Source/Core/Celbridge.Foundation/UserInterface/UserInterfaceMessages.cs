@@ -51,3 +51,13 @@ public record UndoRequestedMessage();
 /// </summary>
 public record RedoRequestedMessage();
 
+/// <summary>
+/// Message sent to request closing the active document tab.
+/// </summary>
+public record CloseActiveDocumentRequestedMessage();
+
+/// <summary>
+/// Message sent to request closing all document tabs in the active document's section.
+/// </summary>
+public record CloseAllDocumentsRequestedMessage();
+
