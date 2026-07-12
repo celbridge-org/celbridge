@@ -138,7 +138,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         // Persist first so the probe tests exactly the URL and Author shown in the fields.
         SaveWorkshopConnection();
 
-        await ReportConnectionStatusAsync(checkConnection: true);
+        await ReportConnectionStatusAsync();
     }
 
     [RelayCommand]
@@ -180,7 +180,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         RefreshStoredKeyDisplay();
         UpdateViewState();
 
-        await ReportConnectionStatusAsync(checkConnection: true);
+        await ReportConnectionStatusAsync();
     }
 
     [RelayCommand]
@@ -206,9 +206,8 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         UpdateViewState();
     }
 
-    // Validates the URL and reports the connection status. When a key is stored
-    // and checkConnection is set, the connection is verified against the workshop.
-    private async Task ReportConnectionStatusAsync(bool checkConnection)
+    // Validates the URL and, when a key is stored, verifies the connection against the workshop.
+    private async Task ReportConnectionStatusAsync()
     {
         var workshopUrl = WorkshopUrl.Trim();
         if (string.IsNullOrEmpty(workshopUrl))
@@ -228,19 +227,12 @@ public partial class WorkshopSettingsViewModel : ObservableObject
             return;
         }
 
-        if (checkConnection)
-        {
-            await CheckConnectionAsync();
-        }
-        else
-        {
-            ShowConnectionOkStatus("Settings_Workshop_ConnectionSaved");
-        }
+        await CheckConnectionAsync();
     }
 
-    // The connection is stored and (where checked) reachable. Publishing also
-    // needs an Author, so a missing one is surfaced as a warning in place of the
-    // success message rather than waiting for the first publish to fail.
+    // The connection is stored and reachable. Publishing also needs an Author, so a missing one is
+    // surfaced as a warning in place of the success message rather than waiting for the first publish
+    // to fail.
     private void ShowConnectionOkStatus(string successMessageKey)
     {
         if (string.IsNullOrWhiteSpace(Author))

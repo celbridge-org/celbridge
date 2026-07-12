@@ -498,9 +498,6 @@
   <data name="Settings_Workshop_KeyRemoveFailed" xml:space="preserve">
     <value>Failed to remove the Workshop Key.</value>
   </data>
-  <data name="Settings_Workshop_ConnectionSaved" xml:space="preserve">
-    <value>Workshop connection saved.</value>
-  </data>
   <data name="Settings_Workshop_KeyRemoved" xml:space="preserve">
     <value>Workshop Key removed. Set a new key to reconnect.</value>
   </data>

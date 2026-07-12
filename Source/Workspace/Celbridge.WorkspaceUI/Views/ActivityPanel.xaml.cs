@@ -51,7 +51,10 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         ApplyTooltips();
 
         // Register how the hosted panels take keyboard focus, so the focus service can return focus to
-        // whichever is focused after a modal dialog closes or the resource tree rebuilds.
+        // whichever is focused after a modal dialog closes or the resource tree rebuilds. Only Explorer
+        // and Search register a handler by design: the Documents and Console web surfaces and the
+        // Inspector intentionally have none, so focus restore is a deliberate no-op for those and the
+        // user re-focuses them with a single click.
         _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, ExplorerPanel.FocusPanel);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Search, SearchPanel.FocusSearchInput);
 

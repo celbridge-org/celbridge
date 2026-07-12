@@ -44,9 +44,9 @@ public class PanelFocusTracker
         // moving focus for itself, and the caller already knows what it did: intra-panel restoration
         // (re-focusing a list item after a rename, a dialog auto-focusing its first field) would only
         // echo the current panel, and programmatically focusing a hosted WebView is the broken managed
-        // routing path we avoid on macOS anyway. Web surfaces report their real focus through the JS
-        // bridge instead. Guard on "not Programmatic" rather than "is Pointer or Keyboard" because real
-        // clicks can transition through Unfocused.
+        // routing path we avoid on macOS anyway. Web surfaces report their real focus through the
+        // web-view focus registry instead. Guard on "not Programmatic" rather than "is Pointer or
+        // Keyboard" because real clicks can transition through Unfocused.
         if (element is Control control &&
             control.FocusState == FocusState.Programmatic)
         {
