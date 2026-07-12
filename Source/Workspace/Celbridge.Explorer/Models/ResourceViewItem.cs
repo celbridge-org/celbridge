@@ -86,6 +86,12 @@ public partial class ResourceViewItem : ObservableObject
     public string ReadOnlyMessage { get; }
 
     /// <summary>
+    /// Localised affordance hint shown when hovering the project folder, naming
+    /// the platform's file manager. Empty for non-project-folder items.
+    /// </summary>
+    public string ProjectFolderTooltip { get; }
+
+    /// <summary>
     /// The tooltip shown when the user hovers the item. The project folder
     /// retains its existing affordance hint; non-editable items show the
     /// read-only reason; editable items have no tooltip (returns null so the
@@ -97,7 +103,7 @@ public partial class ResourceViewItem : ObservableObject
         {
             if (IsProjectFolder)
             {
-                return "Double-click to open in File Explorer";
+                return ProjectFolderTooltip;
             }
 
             return string.IsNullOrEmpty(ReadOnlyMessage)
@@ -116,7 +122,8 @@ public partial class ResourceViewItem : ObservableObject
         bool hasChildren,
         bool isProjectFolder = false,
         string? displayName = null,
-        string? readOnlyMessage = null)
+        string? readOnlyMessage = null,
+        string? projectFolderTooltip = null)
     {
         Resource = resource;
         IndentLevel = indentLevel;
@@ -125,5 +132,6 @@ public partial class ResourceViewItem : ObservableObject
         IsProjectFolder = isProjectFolder;
         Name = displayName ?? resource.Name;
         ReadOnlyMessage = readOnlyMessage ?? string.Empty;
+        ProjectFolderTooltip = projectFolderTooltip ?? string.Empty;
     }
 }
