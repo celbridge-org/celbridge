@@ -88,7 +88,7 @@ public class WorkshopSettingsViewModelTests
     // Stubs the removal confirmation dialog with the given answer.
     private void SetRemoveConfirmationResult(bool confirmed)
     {
-        _dialogService.ShowConfirmationDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+        _dialogService.ShowConfirmationDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
             .Returns(Task.FromResult(Result<bool>.Ok(confirmed)));
     }
 

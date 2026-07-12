@@ -75,7 +75,12 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             var primaryButtonText = _stringLocalizer.GetString("ResourceTree_OpenApplication");
             var secondaryButtonText = _stringLocalizer.GetString("DialogButton_Cancel");
 
-            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(title, message, primaryButtonText, secondaryButtonText);
+            var confirmationOptions = new ConfirmationDialogOptions
+            {
+                PrimaryButtonText = primaryButtonText,
+                SecondaryButtonText = secondaryButtonText
+            };
+            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(title, message, confirmationOptions);
             if (confirmResult.IsSuccess && confirmResult.Value)
             {
                 _commandService.Execute<IOpenApplicationCommand>(command =>

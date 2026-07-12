@@ -5,7 +5,8 @@
     xmlns:local="using:Celbridge.UserInterface.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"
-    CloseButtonText="{x:Bind OkString}">
+    CloseButtonText="{x:Bind OkString}"
+    DefaultButton="Close">
 
     <Grid HorizontalAlignment="Left"
           VerticalAlignment="Center">

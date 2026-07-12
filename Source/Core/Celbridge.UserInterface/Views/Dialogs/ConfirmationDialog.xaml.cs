@@ -7,9 +7,12 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
 {
     private readonly ILogger<ConfirmationDialog> _logger;
     private readonly IMessengerService _messengerService;
+    private Button? _secondaryButton;
     private bool _autoAnswered;
 
     public ConfirmationDialogViewModel ViewModel { get; }
+
+    public bool IsDestructive { get; set; }
 
     public string TitleText
     {
@@ -43,8 +46,16 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         this.EnableThemeSync();
     }
 
+    protected override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        _secondaryButton = GetTemplateChild("SecondaryButton") as Button;
+    }
+
     public async Task<bool> ShowDialogAsync()
     {
+        ConfigureDefaultButton();
+
         _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
         try
         {
@@ -59,6 +70,26 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         {
             _messengerService.UnregisterAll(this);
         }
+    }
+
+    private void ConfigureDefaultButton()
+    {
+        if (IsDestructive)
+        {
+            // The confirm button stays accented as the action, but keyboard focus starts on Cancel and
+            // no button is the Enter default, so pressing Enter cannot carry out the action by mistake.
+            DefaultButton = ContentDialogButton.None;
+            Opened += OnDestructiveDialogOpened;
+        }
+        else
+        {
+            DefaultButton = ContentDialogButton.Primary;
+        }
+    }
+
+    private void OnDestructiveDialogOpened(ContentDialog sender, ContentDialogOpenedEventArgs args)
+    {
+        _secondaryButton?.Focus(FocusState.Programmatic);
     }
 
     private void OnDialogAnswer(object recipient, DialogAnswerMessage message)

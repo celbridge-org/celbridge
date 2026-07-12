@@ -188,7 +188,10 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     {
         var title = _stringLocalizer.GetString("Settings_Workshop_KeyRemoveTitle");
         var message = _stringLocalizer.GetString("Settings_Workshop_KeyRemoveMessage");
-        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(title, message);
+        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(
+            title,
+            message,
+            new ConfirmationDialogOptions { IsDestructive = true });
         if (confirmResult.IsFailure
             || !confirmResult.Value)
         {

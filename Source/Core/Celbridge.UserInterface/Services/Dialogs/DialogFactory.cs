@@ -21,7 +21,7 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText, string? primaryButtonText = null, string? secondaryButtonText = null)
+    public IConfirmationDialog CreateConfirmationDialog(string titleText, string messageText, ConfirmationDialogOptions? options = null)
     {
         var dialog = new ConfirmationDialog
         {
@@ -29,15 +29,20 @@ public class DialogFactory : IDialogFactory
             MessageText = messageText
         };
 
-        // Only override the default button text if custom text is provided
-        if (primaryButtonText is not null)
+        if (options is not null)
         {
-            dialog.PrimaryButtonText = primaryButtonText;
-        }
+            // Only override the default button text if custom text is provided
+            if (options.PrimaryButtonText is not null)
+            {
+                dialog.PrimaryButtonText = options.PrimaryButtonText;
+            }
 
-        if (secondaryButtonText is not null)
-        {
-            dialog.SecondaryButtonText = secondaryButtonText;
+            if (options.SecondaryButtonText is not null)
+            {
+                dialog.SecondaryButtonText = options.SecondaryButtonText;
+            }
+
+            dialog.IsDestructive = options.IsDestructive;
         }
 
         return WithFocusGuard(dialog);

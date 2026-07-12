@@ -1,3 +1,4 @@
+using Celbridge.Dialog;
 using Celbridge.Resources;
 using Microsoft.Extensions.Localization;
 
@@ -162,7 +163,10 @@ public partial class SearchPanelViewModel
 
             progressToken.Dispose();
 
-            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(titleText, messageText);
+            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(
+                titleText,
+                messageText,
+                new ConfirmationDialogOptions { IsDestructive = true });
             if (!confirmResult.IsSuccess || !confirmResult.Value)
             {
                 return;

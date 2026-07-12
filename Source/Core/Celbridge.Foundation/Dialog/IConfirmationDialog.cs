@@ -26,6 +26,12 @@ public interface IConfirmationDialog
     string SecondaryButtonText { get; set; }
 
     /// <summary>
+    /// When true, the confirm button is styled as a destructive action and keyboard focus starts on
+    /// the cancel button, so pressing Enter cancels rather than carrying out the action.
+    /// </summary>
+    bool IsDestructive { get; set; }
+
+    /// <summary>
     /// Present the confirms dialog to the user.
     /// The async call completes when the user closes the dialog by accepting or cancelling the action.
     /// </summary>

@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Celbridge.UserInterface.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    PrimaryButtonStyle="{StaticResource AccentButtonStyle}"
     Title="{x:Bind ViewModel.TitleText, Mode=OneWay}">
 
     <Grid HorizontalAlignment="Left"

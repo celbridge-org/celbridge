@@ -110,7 +110,12 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             confirmDeleteString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteMultiple", Resources.Count);
         }
 
-        var showResult = await _dialogService.ShowConfirmationDialogAsync(deleteString, confirmDeleteString);
+        var confirmationOptions = new ConfirmationDialogOptions
+        {
+            PrimaryButtonText = deleteString,
+            IsDestructive = true
+        };
+        var showResult = await _dialogService.ShowConfirmationDialogAsync(deleteString, confirmDeleteString, confirmationOptions);
         if (showResult.IsSuccess)
         {
             var confirmed = showResult.Value;
