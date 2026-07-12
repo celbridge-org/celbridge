@@ -227,15 +227,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView = await _webViewFactory.AcquireAsync();
             AppWebViewContainer.Children.Add(_webView);
 
-            // Register this document's web surface with the focus registry, which owns its focus-gain
-            // signals. The external-URL role injects no script, so on macOS the registry's native click
-            // monitor supplies the click-focus signal for content that raises no DOM focus event.
-            _webViewFocusRegistry.Register(new WebViewFocusRegistration(
-                _webView,
-                WorkspacePanel.Documents,
-                EditTarget: null,
-                ReleaseFocus: ReleaseFocus,
-                OnFocusGained: () => _messengerService.Send(new DocumentViewFocusedMessage(FileResource))));
+            // The external-URL role injects no script, so on macOS the registry's native click monitor
+            // supplies the click-focus signal for content that raises no DOM focus event. This surface
+            // hosts no edit target.
+            RegisterWebSurfaceFocus(_webView, editTarget: null, ReleaseFocus);
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 

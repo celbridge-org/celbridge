@@ -1,5 +1,6 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
@@ -189,6 +190,25 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     public virtual Task RestoreEditorStateAsync(string state)
     {
         return Task.CompletedTask;
+    }
+
+    // Registers a hosted web surface with the focus registry using the Documents-panel contract the web-view
+    // document editors share: a focus gain reports the Documents panel and marks this the active document.
+    // Pass the editor's edit target, or null for a surface that hosts none (an external-URL document).
+    // releaseFocus drops the surface's caret when focus leaves it.
+    protected void RegisterWebSurfaceFocus(WebView2 webView, IEditTarget? editTarget, Action releaseFocus)
+    {
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
+
+        var registration = new WebViewFocusRegistration(
+            webView,
+            WorkspacePanel.Documents,
+            EditTarget: editTarget,
+            ReleaseFocus: releaseFocus,
+            OnFocusGained: () => messengerService.Send(new DocumentViewFocusedMessage(FileResource)));
+
+        webViewFocusRegistry.Register(registration);
     }
 
     // Web-view-hosted editors override this to give their web content focus and report it to the focus

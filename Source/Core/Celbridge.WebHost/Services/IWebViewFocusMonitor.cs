@@ -3,12 +3,13 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Native macOS click-focus signal for hosted web views: the macOS Skia head raises no WebView.GotFocus
-/// for clicks inside a WKWebView, so an AppKit mouse-down monitor hit-tests each click against the
-/// registered web views and reports focus. This is the macOS focus signal for hosted web content,
-/// including external-URL .webview documents with no injected script and clicks on non-focusable content
-/// (e.g. rendered markdown) that raise no DOM focus event. Non-macOS Skia heads use a no-op implementation
-/// and have no click-focus signal yet (a WebKitGTK equivalent for Linux is a follow-up).
+/// Reports when a pointer click gives a registered hosted web view native focus, invoking a per-view
+/// callback the caller supplies at registration. It exists for the macOS Skia head, where a click inside a
+/// WKWebView raises no managed WebView.GotFocus and (for external-URL .webview documents with no injected
+/// script, or clicks on non-focusable content such as rendered markdown) no DOM focus event either, leaving
+/// nothing else to notice the surface became active. The macOS implementation hit-tests each click through
+/// an AppKit mouse-down monitor; heads where managed GotFocus already fires (Windows), or that have no
+/// monitor yet (Linux, pending a WebKitGTK equivalent), use a no-op implementation.
 /// </summary>
 internal interface IWebViewFocusMonitor
 {

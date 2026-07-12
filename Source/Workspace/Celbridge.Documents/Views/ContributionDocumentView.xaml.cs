@@ -288,14 +288,8 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput,
         WebView.CoreWebView2.Settings.AreDevToolsEnabled =
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
-        // Register this editor's web surface with the focus registry, which owns its focus-gain signals
-        // (managed GotFocus on Windows, the macOS native click monitor) and its edit context.
-        _webViewFocusRegistry.Register(new WebViewFocusRegistration(
-            WebView,
-            WorkspacePanel.Documents,
-            EditTarget: this,
-            ReleaseFocus: ReleaseFocus,
-            OnFocusGained: () => _messengerService.Send(new DocumentViewFocusedMessage(FileResource))));
+        // Register this editor's web surface; it hosts an edit target (this) for the Edit commands.
+        RegisterWebSurfaceFocus(WebView, editTarget: this, ReleaseFocus);
 
         // Every contribution editor's assets (its lib, the shared client) are served from the loopback
         // file server, so register this package's folder there. The resolved loader decides where the
