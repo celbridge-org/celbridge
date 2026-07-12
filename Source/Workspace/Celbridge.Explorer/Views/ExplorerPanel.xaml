@@ -26,7 +26,6 @@
     <!-- Panel Header -->
     <controls:PanelHeader x:Name="PanelHeader"
                           Grid.Row="0"
-                          Panel="Explorer"
                           Region="Primary"
                           Tapped="PanelHeader_Tapped"
                           Title="{x:Bind ViewModel.TitleText, Mode=OneWay}">

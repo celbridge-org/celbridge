@@ -1,4 +1,5 @@
 using Celbridge.Workspace;
+using Microsoft.UI.Xaml.Media;
 
 namespace Celbridge.UserInterface;
 
@@ -24,6 +25,28 @@ public static class FocusTracking
     public static void SetPanel(DependencyObject element, WorkspacePanel value)
     {
         element.SetValue(PanelProperty, value);
+    }
+
+    /// <summary>
+    /// Walks from the element towards the visual root and returns the nearest ancestor's Panel declaration,
+    /// or None when no ancestor declares one. This is the same nearest-mapped-ancestor rule the focus tracker
+    /// classifies a focused element by, so a subtree carries a single panel identity from its root.
+    /// </summary>
+    public static WorkspacePanel FindPanel(DependencyObject element)
+    {
+        DependencyObject? current = element;
+        while (current is not null)
+        {
+            var panel = GetPanel(current);
+            if (panel != WorkspacePanel.None)
+            {
+                return panel;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return WorkspacePanel.None;
     }
 
     /// <summary>

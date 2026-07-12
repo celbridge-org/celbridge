@@ -15,7 +15,6 @@
 
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
-                          Panel="Inspector"
                           Region="Secondary"
                           Title="{x:Bind TitleString}"/>
 
