@@ -21,6 +21,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
+    private readonly IFocusService _focusService;
 
     private bool _isShuttingDown = false;
 
@@ -62,6 +63,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
         _webViewFocusRegistry = serviceProvider.AcquireService<IWebViewFocusRegistry>();
+        _focusService = serviceProvider.AcquireService<IFocusService>();
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -196,8 +198,59 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for layout reset requests to reset section count
         _messengerService.Register<ResetLayoutRequestedMessage>(this, OnResetLayoutRequested);
 
+        // Listen for the close document keyboard shortcuts
+        _messengerService.Register<CloseActiveDocumentRequestedMessage>(this, OnCloseActiveDocumentRequested);
+        _messengerService.Register<CloseAllDocumentsRequestedMessage>(this, OnCloseAllDocumentsRequested);
+
         // Apply initial tab strip visibility based on the current layout mode
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
+    }
+
+    private void OnCloseActiveDocumentRequested(object recipient, CloseActiveDocumentRequestedMessage message)
+    {
+        var activeTab = GetFocusedActiveDocumentTab();
+        if (activeTab is null)
+        {
+            return;
+        }
+
+        CloseTab(activeTab);
+    }
+
+    private void OnCloseAllDocumentsRequested(object recipient, CloseAllDocumentsRequestedMessage message)
+    {
+        var activeTab = GetFocusedActiveDocumentTab();
+        if (activeTab is null)
+        {
+            return;
+        }
+
+        CloseAllTabs(activeTab);
+    }
+
+    // Resolves the active document's tab, but only while the documents panel holds focus. The close shortcuts
+    // must not close a hidden document when the user is working in the console or another panel.
+    private DocumentTab? GetFocusedActiveDocumentTab()
+    {
+        if (_isShuttingDown)
+        {
+            return null;
+        }
+
+        if (_focusService.FocusedPanel != WorkspacePanel.Documents)
+        {
+            return null;
+        }
+
+        var activeResource = SectionContainer.ActiveDocument;
+        if (activeResource.IsEmpty)
+        {
+            return null;
+        }
+
+        var location = SectionContainer.FindDocumentTab(activeResource);
+
+        return location?.Tab;
     }
 
     private void OnDocumentViewFocused(object recipient, DocumentViewFocusedMessage message)

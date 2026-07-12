@@ -749,6 +749,18 @@ Do you wish to continue?</value>
   <data name="DocumentTab_CloseAll" xml:space="preserve">
     <value>Close All</value>
   </data>
+  <data name="DocumentTab_CloseShortcutCommand" xml:space="preserve">
+    <value>⌘W</value>
+  </data>
+  <data name="DocumentTab_CloseShortcutControl" xml:space="preserve">
+    <value>Ctrl+W</value>
+  </data>
+  <data name="DocumentTab_CloseAllShortcutCommand" xml:space="preserve">
+    <value>⌘⇧W</value>
+  </data>
+  <data name="DocumentTab_CloseAllShortcutControl" xml:space="preserve">
+    <value>Ctrl+Shift+W</value>
+  </data>
   <data name="DocumentTab_MoveLeft" xml:space="preserve">
     <value>Move Left</value>
   </data>
