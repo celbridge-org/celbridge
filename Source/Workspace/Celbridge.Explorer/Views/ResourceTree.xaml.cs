@@ -308,7 +308,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     {
         if (item.Resource is IFolderResource)
         {
-            // Double-clicking the project folder opens it in File Explorer
+            // Double-clicking the project folder opens it in the system file manager
             if (item.IsProjectFolder)
             {
                 var resourceKey = _resourceRegistry.GetResourceKey(item.Resource);

@@ -522,8 +522,17 @@
   <data name="NewProjectDialog_SaveLocationTooltip" xml:space="preserve">
     <value>The project will be saved at this location.</value>
   </data>
-  <data name="ResourceTree_OpenFileExplorer" xml:space="preserve">
-    <value>Open in File Explorer</value>
+  <data name="ResourceTree_OpenFileManager" xml:space="preserve">
+    <value>Open in {0}</value>
+  </data>
+  <data name="ResourceTree_DoubleClickToOpen" xml:space="preserve">
+    <value>Double-click to open in {0}</value>
+  </data>
+  <data name="Platform_FileManager_Finder" xml:space="preserve">
+    <value>Finder</value>
+  </data>
+  <data name="Platform_FileManager_FileExplorer" xml:space="preserve">
+    <value>File Explorer</value>
   </data>
   <data name="ResourceTree_OpenApplication" xml:space="preserve">
     <value>Open with Application</value>
@@ -761,8 +770,8 @@ Do you wish to continue?</value>
   <data name="DocumentTab_CopyFilePath" xml:space="preserve">
     <value>Copy File Path</value>
   </data>
-  <data name="DocumentTab_OpenFileExplorer" xml:space="preserve">
-    <value>Open in File Explorer</value>
+  <data name="DocumentTab_OpenFileManager" xml:space="preserve">
+    <value>Open in {0}</value>
   </data>
   <data name="DocumentTab_OpenApplication" xml:space="preserve">
     <value>Open in Application</value>

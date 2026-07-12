@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Microsoft.Extensions.Localization;
 
@@ -34,6 +35,7 @@ public partial class DocumentTab : TabViewItem
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
+    private readonly IPlatformInfo _platformInfo;
 
     public DocumentTabViewModel ViewModel { get; }
 
@@ -69,6 +71,7 @@ public partial class DocumentTab : TabViewItem
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
@@ -81,7 +84,8 @@ public partial class DocumentTab : TabViewItem
         CopyResourceKeyMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyResourceKey");
         CopyFilePathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyFilePath");
         SelectFileMenuItem.Text = _stringLocalizer.GetString("DocumentTab_SelectFile");
-        OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileExplorer");
+        string fileManagerName = _stringLocalizer.GetString(_platformInfo.FileManagerNameStringKey);
+        OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileManager", fileManagerName);
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
         ReopenMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Reopen");
         ReopenWithMenuItem.Text = _stringLocalizer.GetString("DocumentTab_ReopenWith");

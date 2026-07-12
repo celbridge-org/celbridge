@@ -52,6 +52,10 @@ public sealed class PlatformInfo : IPlatformInfo
         ? CommandModifierKey.Command
         : CommandModifierKey.Control;
 
+    public string FileManagerNameStringKey => OperatingSystem.IsMacOS()
+        ? "Platform_FileManager_Finder"
+        : "Platform_FileManager_FileExplorer";
+
     public bool TreatsBackspaceAsDeleteKey => OperatingSystem.IsMacOS();
 
     public bool TreatsCtrlYAsRedo => OperatingSystem.IsWindows();

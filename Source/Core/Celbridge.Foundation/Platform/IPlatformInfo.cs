@@ -57,6 +57,12 @@ public interface IPlatformInfo
     CommandModifierKey CommandModifier { get; }
 
     /// <summary>
+    /// The localization key for the platform's system file manager name, resolved by the consumer for menu
+    /// labels and hints. Names Finder on macOS. Names File Explorer on Windows and Linux.
+    /// </summary>
+    string FileManagerNameStringKey { get; }
+
+    /// <summary>
     /// Whether the platform treats Backspace as a delete key in addition to Delete, following the macOS
     /// keyboard convention where the main Delete key is Backspace. True on macOS.
     /// </summary>
