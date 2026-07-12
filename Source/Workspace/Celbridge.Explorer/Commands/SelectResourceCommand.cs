@@ -37,6 +37,12 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
                 command.Regions = LayoutRegion.Primary;
                 command.IsVisible = true;
             });
+
+            // Switch the activity panel to the Explorer tab. Making the Primary region visible is not
+            // enough on its own: the Explorer content stays collapsed while another activity (such as
+            // Search) is the active tab, so the selected resource would not be shown.
+            var activityPanel = _workspaceWrapper.WorkspaceService.ActivityPanel;
+            activityPanel.ShowTab(ActivityPanelTab.Explorer);
         }
 
         return Result.Ok();
