@@ -1,9 +1,9 @@
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Provides utility methods for traversing the visual tree.
+/// Utility methods for traversing the visual tree, both towards descendants and towards ancestors.
 /// </summary>
-public static class VisualTreeHelperEx
+public static class VisualTree
 {
     /// <summary>
     /// Finds the first descendant of the specified type in the visual tree.
@@ -82,5 +82,30 @@ public static class VisualTreeHelperEx
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Enumerates the ancestors of the element, from its parent up towards the visual root. When includeSelf
+    /// is set, the element itself is yielded first. Lazy, so a caller that stops at the first match does not
+    /// walk the rest of the chain.
+    /// </summary>
+    public static IEnumerable<DependencyObject> GetAncestors(DependencyObject element, bool includeSelf = false)
+    {
+        DependencyObject? current;
+        if (includeSelf)
+        {
+            current = element;
+        }
+        else
+        {
+            current = VisualTreeHelper.GetParent(element);
+        }
+
+        while (current is not null)
+        {
+            yield return current;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
     }
 }

@@ -22,7 +22,7 @@ public sealed partial class SpotlightView : UserControl, ISpotlightPresenter
         // chrome and whatever page is in the frame. Fall back to this control when the XamlRoot
         // is not available yet.
         var searchRoot = (XamlRoot?.Content as DependencyObject) ?? this;
-        return VisualTreeHelperEx.FindDescendantByAutomationId(searchRoot, landmarkId);
+        return VisualTree.FindDescendantByAutomationId(searchRoot, landmarkId);
     }
 
     public void ShowSpotlight(FrameworkElement target, string label)

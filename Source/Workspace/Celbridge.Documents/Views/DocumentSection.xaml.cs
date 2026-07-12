@@ -105,7 +105,7 @@ public sealed partial class DocumentSection : UserControl
     {
         // The TabView uses a ListViewBase internally for the tab strip.
         // We need to find it and clear its ChildrenTransitions.
-        var listView = VisualTreeHelperEx.FindDescendant<ListViewBase>(TabView);
+        var listView = VisualTree.FindDescendant<ListViewBase>(TabView);
         if (listView is not null)
         {
             listView.ItemContainerTransitions = new TransitionCollection();
@@ -297,7 +297,7 @@ public sealed partial class DocumentSection : UserControl
         // the layout pass runs, so scrolling synchronously here would be a no-op.
         DispatcherQueue.TryEnqueue(() =>
         {
-            var tabListView = VisualTreeHelperEx.FindDescendant<ListViewBase>(TabView);
+            var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
             tabListView?.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
         });
     }
@@ -366,13 +366,13 @@ public sealed partial class DocumentSection : UserControl
         {
             try
             {
-                var tabListView = VisualTreeHelperEx.FindDescendant<ListView>(TabView);
+                var tabListView = VisualTree.FindDescendant<ListView>(TabView);
                 if (tabListView != null)
                 {
                     tabListView.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
                 }
 
-                var tabStripContainer = VisualTreeHelperEx.FindDescendantByName(TabView, "TabContainerGrid");
+                var tabStripContainer = VisualTree.FindDescendantByName(TabView, "TabContainerGrid");
                 if (tabStripContainer is FrameworkElement container)
                 {
                     container.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;

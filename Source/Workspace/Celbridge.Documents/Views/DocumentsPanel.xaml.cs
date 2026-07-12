@@ -261,7 +261,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // Route through the registry grant so the active document's web content gets keyboard focus
             // (native first responder on macOS, managed focus on Windows) and the focus is reported. This
             // closes the latent gap where entering Focus or Presentation layout focused without reporting.
-            var webView = VisualTreeHelperEx.FindDescendant<WebView2>(SectionContainer);
+            var webView = VisualTree.FindDescendant<WebView2>(SectionContainer);
             if (webView is not null)
             {
                 _webViewFocusRegistry.GrantFocus(webView);

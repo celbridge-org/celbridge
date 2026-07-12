@@ -15,7 +15,6 @@
 
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
-                          Region="Secondary"
                           Title="{x:Bind TitleString}"/>
 
     <local:EntityEditor x:Name="EntityEditor"

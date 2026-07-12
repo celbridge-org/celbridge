@@ -22,7 +22,6 @@
 
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
-                          Region="Console"
                           Title="{x:Bind TitleText}"
                           Tapped="TitleBar_Tapped"
                           DoubleTapped="TitleBar_DoubleTapped">

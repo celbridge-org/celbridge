@@ -11,22 +11,6 @@ public sealed partial class PanelHeader : UserControl
     private readonly ICommandService _commandService;
 
     /// <summary>
-    /// The region used to collapse this panel when the close button is clicked.
-    /// </summary>
-    public LayoutRegion Region
-    {
-        get => (LayoutRegion)GetValue(RegionProperty);
-        set => SetValue(RegionProperty, value);
-    }
-
-    public static readonly DependencyProperty RegionProperty =
-        DependencyProperty.Register(
-            nameof(Region),
-            typeof(LayoutRegion),
-            typeof(PanelHeader),
-            new PropertyMetadata(LayoutRegion.None));
-
-    /// <summary>
     /// The title text displayed in the header.
     /// </summary>
     public string Title
@@ -101,21 +85,24 @@ public sealed partial class PanelHeader : UserControl
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Region == LayoutRegion.None)
+        // The region is derived from the container the header currently sits in.
+        var region = WorkspaceLayout.FindRegion(this);
+        if (region == LayoutRegion.None)
         {
             return;
         }
 
         _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Regions = Region;
+            command.Regions = region;
             command.IsVisible = false;
         });
     }
 
     private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (Region == LayoutRegion.None)
+        var region = WorkspaceLayout.FindRegion(this);
+        if (region == LayoutRegion.None)
         {
             return;
         }
@@ -123,7 +110,7 @@ public sealed partial class PanelHeader : UserControl
         // Double-clicking the title bar resets the panel to its default size
         _commandService.Execute<IResetPanelCommand>(command =>
         {
-            command.Region = Region;
+            command.Region = region;
         });
     }
 }

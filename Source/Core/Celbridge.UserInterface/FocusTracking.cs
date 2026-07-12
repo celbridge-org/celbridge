@@ -1,5 +1,5 @@
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
-using Microsoft.UI.Xaml.Media;
 
 namespace Celbridge.UserInterface;
 
@@ -34,16 +34,13 @@ public static class FocusTracking
     /// </summary>
     public static WorkspacePanel FindPanel(DependencyObject element)
     {
-        DependencyObject? current = element;
-        while (current is not null)
+        foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
         {
-            var panel = GetPanel(current);
+            var panel = GetPanel(ancestor);
             if (panel != WorkspacePanel.None)
             {
                 return panel;
             }
-
-            current = VisualTreeHelper.GetParent(current);
         }
 
         return WorkspacePanel.None;
