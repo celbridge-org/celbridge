@@ -7,9 +7,9 @@
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:ws="using:Celbridge.WorkspaceUI.Views"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
-  xmlns:tracking="using:Celbridge.UserInterface"
+  xmlns:ui="using:Celbridge.UserInterface"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  tracking:FocusTracking.Panel="Search">
+  ui:FocusTracking.Panel="Search">
 
   <UserControl.Resources>
     <converters:ExpanderGlyphConverter x:Key="ExpandCollapseGlyphConverter"/>

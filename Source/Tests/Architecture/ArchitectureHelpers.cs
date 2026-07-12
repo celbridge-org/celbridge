@@ -3,7 +3,7 @@ namespace Celbridge.Tests.Architecture;
 /// <summary>
 /// Shared helpers for architecture tests that scan the repository's production source files.
 /// </summary>
-internal static class ArchitectureSourceFiles
+internal static class ArchitectureHelpers
 {
     /// <summary>
     /// Locates the repository Source folder by walking up from the test binary to the solution file, or an

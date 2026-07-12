@@ -13,12 +13,12 @@ public class PlatformContainmentTests
     [Test]
     public void NativeInterop_LivesOnlyInPlatformFolders()
     {
-        var sourceFolder = ArchitectureSourceFiles.FindSourceFolder();
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
         Directory.Exists(sourceFolder).Should().BeTrue(
             "the repository Source folder must be locatable from the test binary");
 
         var offenders = new List<string>();
-        foreach (var filePath in ArchitectureSourceFiles.EnumerateProductionSourceFiles(sourceFolder))
+        foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
             var contents = File.ReadAllText(filePath);
             if (!contents.Contains("DllImport"))

@@ -23,12 +23,12 @@ public class FocusContainmentTests
     [Test]
     public void FocusReports_ComeOnlyFromCentralComponents()
     {
-        var sourceFolder = ArchitectureSourceFiles.FindSourceFolder();
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
         Directory.Exists(sourceFolder).Should().BeTrue(
             "the repository Source folder must be locatable from the test binary");
 
         var offenders = new List<string>();
-        foreach (var filePath in ArchitectureSourceFiles.EnumerateProductionSourceFiles(sourceFolder))
+        foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
             if (CentralFocusComponents.Contains(Path.GetFileName(filePath)))
             {

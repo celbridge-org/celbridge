@@ -251,7 +251,8 @@ public partial class DocumentTab : TabViewItem
         // web content keyboard focus and reports it, releasing the previously focused surface.
         _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            (this.Content as IDocumentView)?.FocusDocument();
+            var documentView = this.Content as IDocumentView;
+            documentView?.FocusDocument();
         });
     }
 
