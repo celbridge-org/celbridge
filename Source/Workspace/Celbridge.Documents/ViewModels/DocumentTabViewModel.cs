@@ -58,6 +58,11 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _utilityIconGlyphName = string.Empty;
 
     /// <summary>
+    /// Whether the user is allowed to close this tab.
+    /// </summary>
+    public bool IsUserClosable { get; set; } = true;
+
+    /// <summary>
     /// The editor that created this tab's document view.
     /// </summary>
     public DocumentEditorId EditorId { get; set; }

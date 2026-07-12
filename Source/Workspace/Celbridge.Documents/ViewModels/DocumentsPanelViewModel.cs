@@ -199,11 +199,11 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return await _documentsService.SetPreferredEditorAsync(fileResource, editorId, useAsExtensionDefault);
     }
 
-    public record class UtilityTabInfo(string IconGlyphName, string Title);
+    public record class UtilityTabInfo(string IconGlyphName, string Title, bool Closable);
 
-    // Resolves the tab title and glyph for a utility document from its editor factory, or null when
-    // the editor is not a utility. The title is the factory's localized display name (a utility defaults
-    // its display name to the tooltip key); the glyph is the manifest icon.
+    // Resolves the tab title, glyph, and closability for a utility document from its editor factory, or
+    // null when the editor is not a utility. The title is the factory's localized display name (a utility
+    // defaults its display name to the tooltip key); the glyph and closability come from the manifest.
     public UtilityTabInfo? ResolveUtilityTabInfo(DocumentEditorId documentEditorId)
     {
         if (documentEditorId.IsEmpty)
@@ -226,6 +226,6 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var descriptor = utilityFactory.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
 
-        return new UtilityTabInfo(descriptor.Icon, utilityFactory.DisplayName);
+        return new UtilityTabInfo(descriptor.Icon, utilityFactory.DisplayName, descriptor.Closable);
     }
 }

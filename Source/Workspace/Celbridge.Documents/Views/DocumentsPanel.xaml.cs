@@ -818,6 +818,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.IsUtility = true;
         documentTab.ViewModel.UtilityIconGlyphName = utilityInfo.IconGlyphName;
         documentTab.ViewModel.DocumentName = utilityInfo.Title;
+
+        // A non-closable utility hides its tab close button; the bulk-close paths read the same flag to
+        // skip it. The CanClose veto on the view is the structural backstop for any residual close path.
+        documentTab.ViewModel.IsUserClosable = utilityInfo.Closable;
+        documentTab.IsClosable = utilityInfo.Closable;
     }
 
     private void UpdateAllTabDisplayNames()
@@ -973,10 +978,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var tabsToClose = new List<ResourceKey>();
 
-        // Only close other tabs within the same section
+        // Only close other tabs within the same section. Non-closable utilities are skipped rather than
+        // force-closed.
         foreach (var documentTab in section.GetAllTabs())
         {
-            if (documentTab != keepTab)
+            if (documentTab != keepTab
+                && documentTab.ViewModel.IsUserClosable)
             {
                 tabsToClose.Add(documentTab.ViewModel.FileResource);
             }
@@ -1002,10 +1009,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var tabsToClose = new List<ResourceKey>();
         bool foundReference = false;
 
-        // Close tabs to the right within the same section
+        // Close tabs to the right within the same section, skipping non-closable utilities.
         foreach (var documentTab in section.GetAllTabs())
         {
-            if (foundReference)
+            if (foundReference
+                && documentTab.ViewModel.IsUserClosable)
             {
                 tabsToClose.Add(documentTab.ViewModel.FileResource);
             }
@@ -1034,14 +1042,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var tabsToClose = new List<ResourceKey>();
 
-        // Close tabs to the left within the same section
+        // Close tabs to the left within the same section, skipping non-closable utilities.
         foreach (var documentTab in section.GetAllTabs())
         {
             if (documentTab == referenceTab)
             {
                 break;
             }
-            tabsToClose.Add(documentTab.ViewModel.FileResource);
+            if (documentTab.ViewModel.IsUserClosable)
+            {
+                tabsToClose.Add(documentTab.ViewModel.FileResource);
+            }
         }
 
         foreach (var fileResource in tabsToClose)
@@ -1063,10 +1074,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var tabsToClose = new List<ResourceKey>();
 
-        // Only close tabs within the same section
+        // Only close tabs within the same section, skipping non-closable utilities.
         foreach (var documentTab in section.GetAllTabs())
         {
-            tabsToClose.Add(documentTab.ViewModel.FileResource);
+            if (documentTab.ViewModel.IsUserClosable)
+            {
+                tabsToClose.Add(documentTab.ViewModel.FileResource);
+            }
         }
 
         foreach (var fileResource in tabsToClose)

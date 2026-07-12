@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -264,6 +265,17 @@ public class DocumentLayoutStore
                 continue;
             }
 
+            // A utils: resource is always a utility document (the root name equals its backing subfolder
+            // name by convention). If its editor factory is unavailable, the contributing package was
+            // uninstalled or disabled since last session; skip the document rather than falling through to
+            // the text editor, which would show the user the raw state JSON.
+            if (fileResource.Root == ProjectConstants.UtilsFolder
+                && !HasUtilityEditorFactory(fileResource))
+            {
+                _logger.LogError($"Cannot restore utility document '{fileResource}': no utility editor is registered for it. The contributing package may have been uninstalled or disabled.");
+                continue;
+            }
+
             // Recreate a utility's backing file if it was deleted between sessions, so restore recovers the
             // utility with default state rather than silently dropping it at the existence gate below.
             var seedResult = await _utilityDocumentSeeder.SeedIfMissingAsync(fileResource);
@@ -305,6 +317,18 @@ public class DocumentLayoutStore
                 await StoreDocumentEditorStateAsync(fileResource, null);
             }
         }
+    }
+
+    // Returns true when a registered, enabled editor factory for this resource is a utility factory.
+    // GetFactory resolves the factory only while its package is registered and its feature flag is enabled,
+    // so a disabled or uninstalled utility reports false.
+    private bool HasUtilityEditorFactory(ResourceKey fileResource)
+    {
+        var registry = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
+        var factoryResult = registry.GetFactory(fileResource);
+
+        return factoryResult.IsSuccess
+            && factoryResult.Value.IsUtility;
     }
 
     private async Task RestoreActiveDocumentAsync()

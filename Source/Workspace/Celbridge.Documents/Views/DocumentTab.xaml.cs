@@ -203,6 +203,10 @@ public partial class DocumentTab : TabViewItem
         int tabCount = tabView.TabItems.Count;
         int tabIndex = tabView.TabItems.IndexOf(this);
 
+        // A non-closable utility hides its own "Close" item; the bulk-close items stay visible because
+        // they skip it and still close the surrounding tabs.
+        CloseMenuItem.Visibility = ViewModel.IsUserClosable ? Visibility.Visible : Visibility.Collapsed;
+
         // Only show "Close Others" if there are at least 2 other tabs to close
         CloseOthersMenuItem.Visibility = tabCount > 2 ? Visibility.Visible : Visibility.Collapsed;
 

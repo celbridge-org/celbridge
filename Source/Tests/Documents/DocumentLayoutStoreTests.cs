@@ -18,6 +18,7 @@ public class DocumentLayoutStoreTests
 {
     private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private IDocumentEditorRegistry _documentEditorRegistry = null!;
     private IDocumentsPanel _documentsPanel = null!;
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -63,13 +64,14 @@ public class DocumentLayoutStoreTests
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
-        // The restore path consults the utility seeder for every resource; wire a documents service
-        // whose registry reports no factory so these ordinary project resources seed nothing.
-        var documentEditorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        documentEditorRegistry.GetFactory(Arg.Any<ResourceKey>())
+        // The restore path consults the utility seeder and the missing-factory guard for every resource;
+        // wire a documents service whose registry reports no factory by default, so ordinary project
+        // resources seed nothing and utility resources with no factory are treated as absent.
+        _documentEditorRegistry = Substitute.For<IDocumentEditorRegistry>();
+        _documentEditorRegistry.GetFactory(Arg.Any<ResourceKey>())
             .Returns(Result<IDocumentEditorFactory>.Fail("no factory"));
         var documentsService = Substitute.For<IDocumentsService>();
-        documentsService.DocumentEditorRegistry.Returns(documentEditorRegistry);
+        documentsService.DocumentEditorRegistry.Returns(_documentEditorRegistry);
         workspaceService.DocumentsService.Returns(documentsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -226,6 +228,14 @@ public class DocumentLayoutStoreTests
         var virtualResource = new ResourceKey("utils:settings._notepad");
         _resourceRegistry.GetResource(virtualResource)
             .Returns(Result<IResource>.Fail("virtual-root keys are not in the registry"));
+
+        // The utility's editor factory is registered, so the missing-factory guard passes and the utility
+        // restores.
+        var utilityFactory = Substitute.For<IDocumentEditorFactory>();
+        utilityFactory.IsUtility.Returns(true);
+        _documentEditorRegistry.GetFactory(virtualResource)
+            .Returns(Result<IDocumentEditorFactory>.Ok(utilityFactory));
+
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
             new(virtualResource.ToString(), 0, 0, 0),
@@ -238,6 +248,28 @@ public class DocumentLayoutStoreTests
         await _documentsPanel.Received(1).OpenDocument(
             virtualResource,
             Arg.Any<OpenDocumentOptions>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_UtilityWithMissingFactory_IsSkipped()
+    {
+        // A utils: resource whose editor factory is gone (its contributing package was uninstalled or
+        // disabled since last session) must be skipped rather than opened, which would otherwise fall
+        // through to the text editor and show the user the raw state JSON. The default registry reports no
+        // factory, so no utility editor is registered here.
+        var utilityResource = new ResourceKey("utils:settings._notepad");
+        _resourceRegistry.GetResource(utilityResource)
+            .Returns(Result<IResource>.Fail("virtual-root keys are not in the registry"));
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new(utilityResource.ToString(), 0, 0, 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
 
     [Test]

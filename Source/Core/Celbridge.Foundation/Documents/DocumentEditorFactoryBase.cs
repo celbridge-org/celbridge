@@ -19,6 +19,8 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 
     public virtual bool IsPlaceholder => false;
 
+    public virtual bool IsUtility => false;
+
     public virtual bool CanHandleResource(ResourceKey fileResource)
     {
         var fileName = Path.GetFileName(fileResource.ToString());

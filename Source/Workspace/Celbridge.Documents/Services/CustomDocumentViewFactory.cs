@@ -25,10 +25,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     /// </summary>
     public CustomDocumentEditorContribution Contribution => _contribution;
 
-    /// <summary>
-    /// Whether this factory produces a utility document (has a UtilityDescriptor).
-    /// </summary>
-    public bool IsUtility => _contribution.IsUtility;
+    public override bool IsUtility => _contribution.IsUtility;
 
     /// <summary>
     /// The utility metadata, or null when this factory is an ordinary file-type editor.

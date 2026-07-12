@@ -12,6 +12,8 @@ public class OpenUtilityCommand : CommandBase, IOpenUtilityCommand
 
     public string UtilityId { get; set; } = string.Empty;
 
+    public bool Activate { get; set; } = true;
+
     public OpenUtilityCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -42,7 +44,7 @@ public class OpenUtilityCommand : CommandBase, IOpenUtilityCommand
         }
 
         var editorId = new DocumentEditorId($"{utilityContribution.Package.Name}.{utilityContribution.Id}");
-        var options = new OpenDocumentOptions(Activate: true, EditorId: editorId);
+        var options = new OpenDocumentOptions(Activate: Activate, EditorId: editorId);
 
         var openResult = await workspaceService.DocumentsService.OpenDocument(resourceKey, options);
         if (openResult.IsFailure)

@@ -42,6 +42,7 @@ public class Module : IModule
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notepad") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Process") },
         };
     }
 }

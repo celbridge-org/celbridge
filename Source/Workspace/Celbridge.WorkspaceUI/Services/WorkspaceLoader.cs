@@ -187,6 +187,10 @@ public class WorkspaceLoader
         // Populate the centre title-bar utilities toolbar from registered utility contributions.
         PopulateUtilityToolbar();
 
+        // Open auto_open utilities. Runs after RestorePanelState above so a utility restored from the
+        // previous session is not opened a second time.
+        OpenAutoOpenUtilities();
+
         // Notify that the workspace has loaded.
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
@@ -376,38 +380,10 @@ public class WorkspaceLoader
             return;
         }
 
-        var packageService = _workspaceWrapper.WorkspaceService.PackageService;
         var localizationService = ServiceLocator.AcquireService<IPackageLocalizationService>();
 
-        var utilityContributions = new List<CustomDocumentEditorContribution>();
-        foreach (var contribution in packageService.GetAllDocumentEditors())
-        {
-            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utilityContribution)
-            {
-                continue;
-            }
-
-            if (!IsPackageEnabled(utilityContribution.Package))
-            {
-                continue;
-            }
-
-            utilityContributions.Add(utilityContribution);
-        }
-
-        // Stable order: bundled utilities before project utilities, each group sorted by fully-qualified id.
-        var bundledContributions = utilityContributions
-            .Where(contribution => contribution.Package.Origin == PackageOrigin.Bundled)
-            .OrderBy(GetUtilityId, StringComparer.Ordinal);
-
-        var projectContributions = utilityContributions
-            .Where(contribution => contribution.Package.Origin == PackageOrigin.Project)
-            .OrderBy(GetUtilityId, StringComparer.Ordinal);
-
-        var orderedContributions = bundledContributions.Concat(projectContributions);
-
         var utilityButtons = new List<UtilityButton>();
-        foreach (var contribution in orderedContributions)
+        foreach (var contribution in GetOrderedUtilityContributions())
         {
             var descriptor = contribution.UtilityDescriptor;
             Guard.IsNotNull(descriptor);
@@ -426,9 +402,75 @@ public class WorkspaceLoader
         titleBar.BuildUtilityButtons(utilityButtons, OpenUtility);
     }
 
+    // Opens every utility whose manifest sets auto_open. Runs after session restore so a utility already
+    // restored from last session is not opened twice (the FindDocumentTab dedup inside OpenDocument catches
+    // it). Fire-and-forget through the command queue -- an awaited command would deadlock the serial queue
+    // during load -- and without activation, so a restored session's active tab is kept.
+    private void OpenAutoOpenUtilities()
+    {
+        // The whole utility-documents feature is gated behind this flag while it is under development.
+        if (!_featureFlags.IsEnabled(FeatureFlagConstants.UtilityDocuments))
+        {
+            return;
+        }
+
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        foreach (var contribution in GetOrderedUtilityContributions())
+        {
+            var descriptor = contribution.UtilityDescriptor;
+            Guard.IsNotNull(descriptor);
+
+            if (!descriptor.AutoOpen)
+            {
+                continue;
+            }
+
+            var utilityId = GetUtilityId(contribution);
+            commandService.Execute<IOpenUtilityCommand>(command =>
+            {
+                command.UtilityId = utilityId;
+                command.Activate = false;
+            });
+        }
+    }
+
     public void ClearTitleBarUtilities()
     {
         _userInterfaceService.TitleBar?.ClearUtilityButtons();
+    }
+
+    // Enumerates enabled utility contributions in the toolbar's stable order: bundled before project, each
+    // group sorted by fully-qualified id. Feature-flag-disabled packages are filtered out.
+    private List<CustomDocumentEditorContribution> GetOrderedUtilityContributions()
+    {
+        var packageService = _workspaceWrapper.WorkspaceService.PackageService;
+
+        var utilityContributions = new List<CustomDocumentEditorContribution>();
+        foreach (var contribution in packageService.GetAllDocumentEditors())
+        {
+            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utilityContribution)
+            {
+                continue;
+            }
+
+            if (!IsPackageEnabled(utilityContribution.Package))
+            {
+                continue;
+            }
+
+            utilityContributions.Add(utilityContribution);
+        }
+
+        var bundledContributions = utilityContributions
+            .Where(contribution => contribution.Package.Origin == PackageOrigin.Bundled)
+            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+
+        var projectContributions = utilityContributions
+            .Where(contribution => contribution.Package.Origin == PackageOrigin.Project)
+            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+
+        return bundledContributions.Concat(projectContributions).ToList();
     }
 
     private static string GetUtilityId(CustomDocumentEditorContribution contribution)

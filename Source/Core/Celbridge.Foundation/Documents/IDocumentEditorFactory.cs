@@ -64,6 +64,12 @@ public interface IDocumentEditorFactory
     bool IsPlaceholder { get; }
 
     /// <summary>
+    /// True for factories that produce utility documents: title-bar-launched editors
+    /// backed by a fixed utils: resource rather than an extension claimed across the project.
+    /// </summary>
+    bool IsUtility { get; }
+
+    /// <summary>
     /// Determines if this factory can handle the given file resource.
     /// </summary>
     bool CanHandleResource(ResourceKey fileResource);
