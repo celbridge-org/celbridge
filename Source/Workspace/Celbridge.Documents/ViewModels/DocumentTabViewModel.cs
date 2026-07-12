@@ -44,6 +44,20 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _editorDisplayName = string.Empty;
 
     /// <summary>
+    /// True when this tab holds a utility document. Utility tabs source their title and icon from the
+    /// manifest rather than the filename and the file-type icon set.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isUtility;
+
+    /// <summary>
+    /// The Bootstrap glyph name for a utility tab's icon, sourced from the manifest. Empty for
+    /// ordinary document tabs.
+    /// </summary>
+    [ObservableProperty]
+    private string _utilityIconGlyphName = string.Empty;
+
+    /// <summary>
     /// The editor that created this tab's document view.
     /// </summary>
     public DocumentEditorId EditorId { get; set; }
@@ -54,13 +68,21 @@ public partial class DocumentTabViewModel : ObservableObject
     public string FileExtension => Path.GetExtension(FileResource.ResourceName);
 
     /// <summary>
-    /// Tooltip text for the tab. Includes editor name when multiple editors are available.
+    /// Tooltip text for the tab. A utility tab shows its manifest title; an ordinary tab shows its file
+    /// path plus the editor name when multiple editors are available.
     /// </summary>
-    public string TabTooltip => string.IsNullOrEmpty(EditorDisplayName)
-        ? FilePath
-        : $"{FilePath} - {EditorDisplayName}";
+    public string TabTooltip => IsUtility
+        ? DocumentName
+        : string.IsNullOrEmpty(EditorDisplayName)
+            ? FilePath
+            : $"{FilePath} - {EditorDisplayName}";
 
     partial void OnFilePathChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnDocumentNameChanged(string? oldValue, string newValue)
     {
         OnPropertyChanged(nameof(TabTooltip));
     }

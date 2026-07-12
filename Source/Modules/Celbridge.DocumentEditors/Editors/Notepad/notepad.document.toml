@@ -1,0 +1,12 @@
+[document]
+id = "notepad"
+type = "custom"
+entry_point = "index.html"
+
+[utility]
+resource   = "utils:settings._notepad"
+template   = "templates/default._notepad"
+icon       = "sticky"
+tooltip    = "Utility_Notepad_Tooltip"
+auto_open  = false
+closable   = true

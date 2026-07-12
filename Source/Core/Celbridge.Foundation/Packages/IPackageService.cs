@@ -65,4 +65,11 @@ public interface IPackageService
     /// Returns null if no package provides a default template for this extension.
     /// </summary>
     byte[]? GetDefaultTemplateContent(string fileExtension);
+
+    /// <summary>
+    /// Reads the seed template bytes for a utility contribution from its manifest template path.
+    /// Returns an empty array when the utility declares no template, and null when a declared
+    /// template file is missing or unreadable.
+    /// </summary>
+    byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution);
 }

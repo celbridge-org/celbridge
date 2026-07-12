@@ -498,6 +498,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         UpdateEditorDisplayName(documentTab, documentView.EditorId);
 
+        // A utility tab sources its title and icon from the manifest. This is applied before
+        // UpdateAllTabDisplayNames so the utility title is not overwritten by filename disambiguation.
+        ApplyUtilityTabMetadata(documentTab, documentView.EditorId);
+
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
 
@@ -803,14 +807,28 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
+    private void ApplyUtilityTabMetadata(DocumentTab documentTab, DocumentEditorId documentEditorId)
+    {
+        var utilityInfo = ViewModel.ResolveUtilityTabInfo(documentEditorId);
+        if (utilityInfo is null)
+        {
+            return;
+        }
+
+        documentTab.ViewModel.IsUtility = true;
+        documentTab.ViewModel.UtilityIconGlyphName = utilityInfo.IconGlyphName;
+        documentTab.ViewModel.DocumentName = utilityInfo.Title;
+    }
+
     private void UpdateAllTabDisplayNames()
     {
-        // Collect all tabs from all sections
+        // Collect all tabs from all sections. Utility tabs keep their manifest title, so they are
+        // excluded from filename-based disambiguation.
         var allTabs = new List<DocumentTab>();
         for (int i = 0; i < SectionContainer.SectionCount; i++)
         {
             var section = SectionContainer.GetSection(i);
-            allTabs.AddRange(section.GetAllTabs());
+            allTabs.AddRange(section.GetAllTabs().Where(tab => !tab.ViewModel.IsUtility));
         }
 
         // Group tabs by their filename

@@ -33,6 +33,17 @@ public partial record CustomDocumentEditorContribution : DocumentEditorContribut
     /// </summary>
     public IReadOnlyDictionary<string, string> Options { get; init; } = EmptyOptions;
 
+    /// <summary>
+    /// Utility metadata parsed from the [utility] section, or null for an ordinary file-type editor.
+    /// When present this contribution is a utility document rather than an extension-claiming editor.
+    /// </summary>
+    public UtilityDescriptor? UtilityDescriptor { get; init; }
+
+    /// <summary>
+    /// Whether this contribution is a utility document, derived from the presence of a UtilityDescriptor.
+    /// </summary>
+    public bool IsUtility => UtilityDescriptor is not null;
+
     private static readonly IReadOnlyDictionary<string, string> EmptyOptions =
         new Dictionary<string, string>();
 }

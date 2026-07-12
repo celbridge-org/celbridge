@@ -1026,6 +1026,180 @@ public class ManifestTests
         result.Value.DocumentEditors.Should().BeEmpty();
     }
 
+    [Test]
+    public void LoadPackage_UtilityDocument_ParsesDescriptorAndDerivesExtension()
+    {
+        WritePackageToml("""
+            [package]
+            name = "test.emoji"
+            title = "Emoji Renderer"
+
+            [contributes]
+            document_editors = ["emoji.document.toml"]
+            """);
+
+        WriteDocumentToml("emoji.document.toml", """
+            [document]
+            id = "emoji-renderer"
+            type = "custom"
+            entry_point = "index.html"
+
+            [utility]
+            resource = "utils:settings._emoji"
+            template = "templates/default._emoji"
+            icon = "emoji-smile"
+            tooltip = "Emoji_Utility_Tooltip"
+            auto_open = true
+            closable = false
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().ContainSingle();
+
+        var contribution = (CustomDocumentEditorContribution)result.Value.DocumentEditors[0];
+        contribution.IsUtility.Should().BeTrue();
+
+        // The editor extension is derived from the backing resource, and the display name defaults to the
+        // tooltip key (a utility has no separate label field).
+        contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be("._emoji");
+        contribution.DisplayName.Should().Be("Emoji_Utility_Tooltip");
+
+        var descriptor = contribution.UtilityDescriptor!;
+        descriptor.Resource.Should().Be("utils:settings._emoji");
+        descriptor.Template.Should().Be("templates/default._emoji");
+        descriptor.Icon.Should().Be("emoji-smile");
+        descriptor.Tooltip.Should().Be("Emoji_Utility_Tooltip");
+        descriptor.AutoOpen.Should().BeTrue();
+        descriptor.Closable.Should().BeFalse();
+    }
+
+    [Test]
+    public void LoadPackage_UtilityDefaults_ClosableTrueAutoOpenFalse()
+    {
+        WritePackageToml("""
+            [package]
+            name = "test.emoji"
+            title = "Emoji Renderer"
+
+            [contributes]
+            document_editors = ["emoji.document.toml"]
+            """);
+
+        WriteDocumentToml("emoji.document.toml", """
+            [document]
+            id = "emoji-renderer"
+            type = "custom"
+
+            [utility]
+            resource = "utils:settings._emoji"
+            icon = "emoji-smile"
+            tooltip = "Emoji_Utility_Tooltip"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        var contribution = (CustomDocumentEditorContribution)result.Value.DocumentEditors[0];
+        contribution.UtilityDescriptor!.AutoOpen.Should().BeFalse();
+        contribution.UtilityDescriptor!.Closable.Should().BeTrue();
+        contribution.UtilityDescriptor!.Template.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_UtilityWithFileTypes_IsRejected()
+    {
+        WritePackageToml("""
+            [package]
+            name = "test.emoji"
+            title = "Emoji Renderer"
+
+            [contributes]
+            document_editors = ["emoji.document.toml"]
+            """);
+
+        // A utility cannot also claim a file type across the project; the two forms are mutually exclusive.
+        WriteDocumentToml("emoji.document.toml", """
+            [document]
+            id = "emoji-renderer"
+            type = "custom"
+
+            [utility]
+            resource = "utils:settings._emoji"
+            icon = "emoji-smile"
+            tooltip = "Emoji_Utility_Tooltip"
+
+            [[document_file_types]]
+            extension = ".emoji"
+            display_name = "Emoji"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        // A failed document manifest is skipped, so the package loads with no document editors.
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_UtilityWithCodeType_IsRejected()
+    {
+        WritePackageToml("""
+            [package]
+            name = "test.emoji"
+            title = "Emoji Renderer"
+
+            [contributes]
+            document_editors = ["emoji.document.toml"]
+            """);
+
+        WriteDocumentToml("emoji.document.toml", """
+            [document]
+            id = "emoji-renderer"
+            type = "code"
+            display_name = "Emoji"
+
+            [utility]
+            resource = "utils:settings._emoji"
+            icon = "emoji-smile"
+            tooltip = "Emoji_Utility_Tooltip"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_UtilityMissingResource_IsRejected()
+    {
+        WritePackageToml("""
+            [package]
+            name = "test.emoji"
+            title = "Emoji Renderer"
+
+            [contributes]
+            document_editors = ["emoji.document.toml"]
+            """);
+
+        WriteDocumentToml("emoji.document.toml", """
+            [document]
+            id = "emoji-renderer"
+            type = "custom"
+
+            [utility]
+            icon = "emoji-smile"
+            tooltip = "Emoji_Utility_Tooltip"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
     private void WritePackageToml(string content)
     {
         File.WriteAllText(Path.Combine(_tempFolder, "package.toml"), content);

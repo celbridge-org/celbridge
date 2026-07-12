@@ -19,6 +19,7 @@ public class DocumentLayoutStore
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
+    private readonly UtilityDocumentSeeder _utilityDocumentSeeder;
     private readonly ILogger<DocumentLayoutStore> _logger;
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
@@ -26,10 +27,12 @@ public class DocumentLayoutStore
     public DocumentLayoutStore(
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
+        UtilityDocumentSeeder utilityDocumentSeeder,
         ILogger<DocumentLayoutStore> logger)
     {
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
+        _utilityDocumentSeeder = utilityDocumentSeeder;
         _logger = logger;
     }
 
@@ -241,11 +244,17 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            var getResourceResult = resourceRegistry.GetResource(fileResource);
-            if (getResourceResult.IsFailure)
+            // Project resources use the registry fast path; virtual-root keys (utils:, temp:, logs:) are
+            // never in the registry, so their existence is validated by the ResolveResourcePath +
+            // GetInfoAsync checks below instead.
+            if (fileResource.Root == ResourceKey.DefaultRoot)
             {
-                _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
-                continue;
+                var getResourceResult = resourceRegistry.GetResource(fileResource);
+                if (getResourceResult.IsFailure)
+                {
+                    _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
+                    continue;
+                }
             }
 
             var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
@@ -253,6 +262,14 @@ public class DocumentLayoutStore
             {
                 _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
                 continue;
+            }
+
+            // Recreate a utility's backing file if it was deleted between sessions, so restore recovers the
+            // utility with default state rather than silently dropping it at the existence gate below.
+            var seedResult = await _utilityDocumentSeeder.SeedIfMissingAsync(fileResource);
+            if (seedResult.IsFailure)
+            {
+                _logger.LogWarning(seedResult, $"Failed to seed utility document for resource: '{fileResource}'");
             }
 
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;

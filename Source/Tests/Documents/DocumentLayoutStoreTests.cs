@@ -63,6 +63,15 @@ public class DocumentLayoutStoreTests
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
+        // The restore path consults the utility seeder for every resource; wire a documents service
+        // whose registry reports no factory so these ordinary project resources seed nothing.
+        var documentEditorRegistry = Substitute.For<IDocumentEditorRegistry>();
+        documentEditorRegistry.GetFactory(Arg.Any<ResourceKey>())
+            .Returns(Result<IDocumentEditorFactory>.Fail("no factory"));
+        var documentsService = Substitute.For<IDocumentsService>();
+        documentsService.DocumentEditorRegistry.Returns(documentEditorRegistry);
+        workspaceService.DocumentsService.Returns(documentsService);
+
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
@@ -75,9 +84,14 @@ public class DocumentLayoutStoreTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
 
+        var utilityDocumentSeeder = new UtilityDocumentSeeder(
+            _workspaceWrapper,
+            Substitute.For<ILogger<UtilityDocumentSeeder>>());
+
         _store = new DocumentLayoutStore(
             _workspaceWrapper,
             _commandService,
+            utilityDocumentSeeder,
             Substitute.For<ILogger<DocumentLayoutStore>>());
     }
 

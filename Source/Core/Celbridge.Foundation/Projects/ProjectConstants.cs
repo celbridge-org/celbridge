@@ -32,6 +32,12 @@ public static class ProjectConstants
     public const string LogsFolder = "logs";
 
     /// <summary>
+    /// Sub-folder of .celbridge/ that backs the utils: virtual root. Holds the
+    /// persistent state of utility documents. Not wiped on workspace load.
+    /// </summary>
+    public const string UtilsFolder = "utils";
+
+    /// <summary>
     /// Sub-folder of .celbridge/ for soft-deleted files. Cleared on every workspace load.
     /// </summary>
     public const string TrashFolder = "trash";

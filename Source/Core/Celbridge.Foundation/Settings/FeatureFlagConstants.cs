@@ -41,4 +41,9 @@ public static class FeatureFlagConstants
     /// Enables the built-in WebFetch and WebSearch tools for coding agents.
     /// </summary>
     public const string WebAccessTools = "web-access-tools";
+
+    /// <summary>
+    /// Utility documents: title-bar-launched WebView editors backed by the utils: root.
+    /// </summary>
+    public const string UtilityDocuments = "utility-documents";
 }

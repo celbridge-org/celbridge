@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Documents.Services;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -196,5 +197,35 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault)
     {
         return await _documentsService.SetPreferredEditorAsync(fileResource, editorId, useAsExtensionDefault);
+    }
+
+    public record class UtilityTabInfo(string IconGlyphName, string Title);
+
+    // Resolves the tab title and glyph for a utility document from its editor factory, or null when
+    // the editor is not a utility. The title is the factory's localized display name (a utility defaults
+    // its display name to the tooltip key); the glyph is the manifest icon.
+    public UtilityTabInfo? ResolveUtilityTabInfo(DocumentEditorId documentEditorId)
+    {
+        if (documentEditorId.IsEmpty)
+        {
+            return null;
+        }
+
+        var editorRegistry = _documentsService.DocumentEditorRegistry;
+        var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
+        if (factoryResult.IsFailure)
+        {
+            return null;
+        }
+
+        if (factoryResult.Value is not CustomDocumentViewFactory { IsUtility: true } utilityFactory)
+        {
+            return null;
+        }
+
+        var descriptor = utilityFactory.UtilityDescriptor;
+        Guard.IsNotNull(descriptor);
+
+        return new UtilityTabInfo(descriptor.Icon, utilityFactory.DisplayName);
     }
 }

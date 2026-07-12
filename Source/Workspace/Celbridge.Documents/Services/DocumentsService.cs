@@ -24,6 +24,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly DocumentEditorPreferenceStore _preferenceStore;
     private readonly DocumentViewFactory _viewFactory;
     private readonly DocumentLayoutStore _layoutStore;
+    private readonly UtilityDocumentSeeder _utilityDocumentSeeder;
     private readonly ReloadHintStore _reloadHintStore = new(TimeSpan.FromSeconds(2));
     private bool _disposed;
 
@@ -117,9 +118,14 @@ public class DocumentsService : IDocumentsService, IDisposable
             _serviceProvider,
             serviceProvider.GetRequiredService<ILogger<DocumentViewFactory>>());
 
+        _utilityDocumentSeeder = new UtilityDocumentSeeder(
+            _workspaceWrapper,
+            serviceProvider.GetRequiredService<ILogger<UtilityDocumentSeeder>>());
+
         _layoutStore = new DocumentLayoutStore(
             _workspaceWrapper,
             _commandService,
+            _utilityDocumentSeeder,
             serviceProvider.GetRequiredService<ILogger<DocumentLayoutStore>>());
     }
 
@@ -311,6 +317,15 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
+        // A utility resource that has never been opened has no backing file yet. Seed it from the manifest
+        // template ahead of the existence gate so launch, auto-open, and this same recovery path all work.
+        var seedResult = await _utilityDocumentSeeder.SeedIfMissingAsync(fileResource);
+        if (seedResult.IsFailure)
+        {
+            return Result.Fail($"Failed to prepare utility document for file resource '{fileResource}'")
+                .WithErrors(seedResult);
+        }
+
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
