@@ -72,18 +72,4 @@ public class OpenUtilityCommand : CommandBase, IOpenUtilityCommand
 
         return null;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void OpenUtility(string utilityId)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IOpenUtilityCommand>(command =>
-        {
-            command.UtilityId = utilityId;
-        });
-    }
 }
