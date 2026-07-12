@@ -218,6 +218,29 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
+    public async Task RestorePanelStateAsync_VirtualRootResource_RestoresDespiteRegistryMiss()
+    {
+        // A virtual-root key (utils:/temp:/logs:) is never in the resource registry, so GetResource fails
+        // by design. The restore must still open it: the registry-membership guard is gated to project
+        // resources, and existence is validated by ResolveResourcePath + GetInfoAsync instead.
+        var virtualResource = new ResourceKey("utils:settings._notepad");
+        _resourceRegistry.GetResource(virtualResource)
+            .Returns(Result<IResource>.Fail("virtual-root keys are not in the registry"));
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new(virtualResource.ToString(), 0, 0, 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.Received(1).OpenDocument(
+            virtualResource,
+            Arg.Any<OpenDocumentOptions>());
+    }
+
+    [Test]
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
         // ResolveResourcePath returns a path that does not exist on disk.
