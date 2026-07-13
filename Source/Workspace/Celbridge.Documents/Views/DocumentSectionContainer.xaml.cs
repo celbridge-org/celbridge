@@ -20,6 +20,8 @@ public sealed partial class DocumentSectionContainer : UserControl
     private readonly List<Splitter> _splitters = new();
     private readonly Dictionary<int, SplitterHelper> _splitterHelpers = new();
 
+    private UIElement? _documentToolbar;
+
     private double _totalDragDelta = 0;
 
     private int _sectionCount = 1;
@@ -165,6 +167,16 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             _sections[_sectionCount - 1].SetTabStripFooter(content);
         }
+    }
+
+    /// <summary>
+    /// Sets the split-editor toolbar hosted in the rightmost section's tab strip footer. The toolbar
+    /// is re-placed on the current rightmost section whenever the section layout is rebuilt.
+    /// </summary>
+    public void SetDocumentToolbar(UIElement toolbar)
+    {
+        _documentToolbar = toolbar;
+        SetTabStripFooter(_documentToolbar);
     }
 
     /// <summary>
@@ -509,9 +521,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Moves a tab from its current section to the target section.
+    /// Moves a tab from its current section to the target section, appending it to the tab strip or
+    /// inserting it at the given insertion slot.
     /// </summary>
-    public bool MoveTabToSection(DocumentTab tab, int targetSectionIndex)
+    public bool MoveTabToSection(DocumentTab tab, int targetSectionIndex, int? insertionSlot = null)
     {
         if (targetSectionIndex < 0 || targetSectionIndex >= _sectionCount)
         {
@@ -532,10 +545,31 @@ public sealed partial class DocumentSectionContainer : UserControl
             return false; // Already in the target section
         }
 
+        bool wasSelectedInSource = sourceSection.GetSelectedDocument() == tab.ViewModel.FileResource;
+        int sourceTabIndex = sourceSection.GetTabIndex(tab);
+
         // Move the tab
         sourceSection.RemoveTab(tab);
-        targetSection.AddTab(tab);
+        if (insertionSlot is int slot)
+        {
+            targetSection.InsertTab(tab, slot);
+        }
+        else
+        {
+            targetSection.AddTab(tab);
+        }
         targetSection.SelectTab(tab);
+
+        // Restore a visible selection in the source section. The Uno Skia TabView does not reliably
+        // select a neighbouring tab when its selected tab is removed, which leaves every tab in the
+        // strip rendered in the unselected style (the whole row reads as disabled).
+        if (wasSelectedInSource &&
+            sourceSection.TabCount > 0)
+        {
+            int neighbourIndex = Math.Clamp(sourceTabIndex, 0, sourceSection.TabCount - 1);
+            var neighbourTab = sourceSection.GetAllTabs().ElementAt(neighbourIndex);
+            sourceSection.SelectTab(neighbourTab);
+        }
 
         // Always make the moved tab the active document
         _activeSectionIndex = targetSectionIndex;
@@ -559,6 +593,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
         section.TabDroppedInside += OnSectionTabDroppedInside;
         section.FilesDropped += OnSectionFilesDropped;
+        section.TabPointerPressed += OnSectionTabPointerPressed;
 
         _sections.Add(section);
     }
@@ -604,42 +639,36 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void RebuildGrid()
     {
-        // Unsubscribe from existing splitter events
+        // Remove the existing splitters. They hold no content and are recreated for the new layout.
         foreach (var splitter in _splitters)
         {
             splitter.DragStarted -= Splitter_DragStarted;
             splitter.DragDelta -= Splitter_DragDelta;
             splitter.DragCompleted -= Splitter_DragCompleted;
             splitter.DoubleClicked -= Splitter_DoubleClicked;
+            RootGrid.Children.Remove(splitter);
+        }
+        _splitters.Clear();
+
+        // Detach sections that are no longer visible. Sections that stay visible are left attached:
+        // reparenting a section resets its TabView measurement and leaves the tab strip stuck in an
+        // overflow-scroll state (clipping tabs and reserving phantom trailing space) until the next
+        // real resize. Clearing ColumnDefinitions below does not detach children, so it is safe.
+        for (int i = _sectionCount; i < _sections.Count; i++)
+        {
+            var hiddenSection = _sections[i];
+            if (RootGrid.Children.Contains(hiddenSection))
+            {
+                RootGrid.Children.Remove(hiddenSection);
+            }
         }
 
-        RootGrid.Children.Clear();
         RootGrid.ColumnDefinitions.Clear();
-        _splitters.Clear();
 
         // Update VisibleSectionCount on all sections
         foreach (var section in _sections)
         {
             section.VisibleSectionCount = _sectionCount;
-        }
-
-        // Ensure all sections have events wired up (defensive check)
-        for (int i = 0; i < _sections.Count; i++)
-        {
-            var section = _sections[i];
-
-            // Unwire and rewire to ensure no duplicates
-            section.SelectionChanged -= OnSectionSelectionChanged;
-            section.DocumentsLayoutChanged -= OnSectionDocumentsLayoutChanged;
-            section.CloseRequested -= OnSectionCloseRequested;
-            section.ContextMenuActionRequested -= OnSectionContextMenuActionRequested;
-            section.TabDroppedInside -= OnSectionTabDroppedInside;
-
-            section.SelectionChanged += OnSectionSelectionChanged;
-            section.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
-            section.CloseRequested += OnSectionCloseRequested;
-            section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-            section.TabDroppedInside += OnSectionTabDroppedInside;
         }
 
         for (int i = 0; i < _sectionCount; i++)
@@ -654,7 +683,10 @@ public sealed partial class DocumentSectionContainer : UserControl
 
             var section = _sections[i];
             Grid.SetColumn(section, i * 2);
-            RootGrid.Children.Add(section);
+            if (!RootGrid.Children.Contains(section))
+            {
+                RootGrid.Children.Add(section);
+            }
 
             // Add splitter after each section except the last
             if (i < _sectionCount - 1)
@@ -667,6 +699,10 @@ public sealed partial class DocumentSectionContainer : UserControl
                 _splitters.Add(splitter);
             }
         }
+
+        // The split-editor toolbar lives in the rightmost visible section's footer, so re-place it
+        // whenever the section layout changes.
+        SetTabStripFooter(_documentToolbar);
     }
 
     private Splitter CreateSplitter(int index)
