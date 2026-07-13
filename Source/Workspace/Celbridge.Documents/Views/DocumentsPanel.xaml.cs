@@ -22,6 +22,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IFocusService _focusService;
+    private readonly DocumentToolbar _documentToolbar = new();
 
     private bool _isShuttingDown = false;
 
@@ -78,8 +79,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.SectionRatiosChanged += OnSectionRatiosChanged;
         SectionContainer.FilesDropped += OnSectionFilesDropped;
 
+        SectionContainer.InitializeTabDrag(TabDragOverlay);
+
+        // Host the split-editor toolbar in the rightmost section's tab strip footer.
+        SectionContainer.SetDocumentToolbar(_documentToolbar);
+
         // Wire up toolbar events
-        DocumentToolbar.SectionCountChangeRequested += OnToolbarSectionCountChangeRequested;
+        _documentToolbar.SectionCountChangeRequested += OnToolbarSectionCountChangeRequested;
 
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
@@ -118,7 +124,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void OnSectionCountChanged(int newCount)
     {
         // Update toolbar to reflect new section count
-        DocumentToolbar.UpdateSectionCount(newCount);
+        _documentToolbar.UpdateSectionCount(newCount);
         // Note: Ratios are persisted via OnSectionRatiosChanged which fires after count changes
     }
 
@@ -328,7 +334,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // In all other modes, show the tab strip and toolbar.
         bool showTabStrip = layoutMode != LayoutMode.Presentation;
         SectionContainer.UpdateTabStripVisibility(showTabStrip);
-        DocumentToolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
+        _documentToolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void SetSectionRatios(List<double> ratios)

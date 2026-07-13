@@ -40,7 +40,7 @@
              Drop="TabView_Drop">
       <TabView.TabStripFooter>
         <ContentPresenter x:Name="FooterPresenter"
-                          MinWidth="24"/>
+                          MinWidth="0"/>
       </TabView.TabStripFooter>
     </TabView>
   </Grid>

@@ -8,10 +8,11 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     ui:FocusTracking.Panel="Documents">
   <Grid>
+    <!-- The split-editor toolbar is hosted in the rightmost section's tab strip footer,
+         placed there by DocumentSectionContainer. -->
     <local:DocumentSectionContainer x:Name="SectionContainer"/>
-    <local:DocumentToolbar x:Name="DocumentToolbar" 
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Top"
-                           Margin="0,6"/>
+    <!-- Topmost display-only layer for tab drag visuals (ghost and insertion indicator) -->
+    <Canvas x:Name="TabDragOverlay"
+            IsHitTestVisible="False"/>
   </Grid>
 </UserControl>

@@ -97,4 +97,10 @@ public interface IPlatformInfo
     /// not bring it into view automatically. True on macOS.
     /// </summary>
     bool RequiresMacOSTabScrollIntoView { get; }
+
+    /// <summary>
+    /// Whether document tabs are dragged by the pointer-driven drag controller because the platform's
+    /// built-in tab drag-and-drop is unreliable. True on the Skia desktop head (all operating systems).
+    /// </summary>
+    bool UsesPointerDrivenTabDrag { get; }
 }
