@@ -195,14 +195,12 @@ internal sealed class TabDragController
         _lastPointerPosition = position;
         _currentTarget = ResolveDropTarget(position);
 
-        // The ghost rides along the tab strip band rather than following the pointer freely. Native
-        // web views composite above the managed layer on this head, so a free-floating ghost would
-        // vanish over editor content; clamping also signals that tabs drop into a strip.
+        // The ghost follows the pointer. Display-only drag visuals are not occluded by the native web
+        // views on this head, so it stays visible over editor content.
         if (_ghost is not null)
         {
-            var stripBounds = GetDragStripBounds();
             double ghostX = Math.Clamp(position.X - (_ghost.ActualWidth / 2), 0, Math.Max(0, _overlay.ActualWidth - _ghost.ActualWidth));
-            double ghostY = stripBounds.IsEmpty ? 0 : stripBounds.Y;
+            double ghostY = Math.Clamp(position.Y - (_ghost.ActualHeight / 2), 0, Math.Max(0, _overlay.ActualHeight - _ghost.ActualHeight));
             Canvas.SetLeft(_ghost, ghostX);
             Canvas.SetTop(_ghost, ghostY);
         }
