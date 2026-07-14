@@ -60,13 +60,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
             // background extends behind them. The caption buttons are drawn over this column by the platform.
             CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(144);
         }
-        else
-        {
-            // The native title bar already shows the app icon, so hide the duplicate icon on this toolbar
-            // and reclaim its column.
-            AppIconImage.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-            AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(0);
-        }
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
