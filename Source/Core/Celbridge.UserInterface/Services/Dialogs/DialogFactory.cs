@@ -164,11 +164,8 @@ public class DialogFactory : IDialogFactory
             return;
         }
 
-        var options = new FindNextElementOptions
-        {
-            SearchRoot = dialog
-        };
-        FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
+        var firstFocusable = FocusManager.FindFirstFocusableElement(dialog) as UIElement;
+        firstFocusable?.Focus(FocusState.Programmatic);
     }
 }
 
