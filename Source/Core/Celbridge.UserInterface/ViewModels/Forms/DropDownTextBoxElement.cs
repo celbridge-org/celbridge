@@ -2,8 +2,6 @@ using Celbridge.UserInterface.Services.Forms;
 using Celbridge.UserInterface.Views.Controls;
 using System.Text.Json;
 using Windows.System;
-using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
-using FocusNavigationDirection = Microsoft.UI.Xaml.Input.FocusNavigationDirection;
 
 namespace Celbridge.UserInterface.ViewModels.Forms;
 
@@ -56,12 +54,7 @@ public partial class DropDownTextBoxElement : FormElement
             if (e.Key == VirtualKey.Enter)
             {
                 // Pressing enter moves focus to next focusable element
-                var options = new FindNextElementOptions
-                {
-                    SearchRoot = ((UIElement)sender).XamlRoot!.Content
-                };
-
-                FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
+                FocusNavigationHelper.MoveFocusToNextElement();
 
                 e.Handled = true;
             }

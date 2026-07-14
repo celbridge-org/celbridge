@@ -1,7 +1,5 @@
 using Celbridge.Dialog;
 using Celbridge.Projects;
-using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
-using FocusNavigationDirection = Microsoft.UI.Xaml.Input.FocusNavigationDirection;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -64,11 +62,7 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
             e.Handled = true;
             // Move focus away from the TextBox when Enter is pressed
             // This allows the user to see validation results without submitting
-            var options = new FindNextElementOptions
-            {
-                SearchRoot = this.XamlRoot?.Content
-            };
-            FocusManager.TryMoveFocus(FocusNavigationDirection.Next, options);
+            FocusNavigationHelper.MoveFocusToNextElement();
         }
     }
 
