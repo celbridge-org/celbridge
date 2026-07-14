@@ -77,4 +77,16 @@ public sealed class PlatformInfo : IPlatformInfo
     public bool RequiresMacOSLayoutRetry => OperatingSystem.IsMacOS();
 
     public bool RequiresMacOSTabScrollIntoView => OperatingSystem.IsMacOS();
+
+    public bool UsesPointerDrivenTabDrag
+    {
+        get
+        {
+#if WINDOWS
+            return false;
+#else
+            return true;
+#endif
+        }
+    }
 }

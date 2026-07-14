@@ -78,6 +78,8 @@ public sealed partial class DocumentSection : UserControl
         _logger = ServiceLocator.AcquireService<IDocumentSectionLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _tabPointerPressedHandler = OnTabPointerPressed;
+        DisableBuiltInTabDrag();
 
         // Disable tab add/remove animations so tabs snap into place immediately
         TabView.Loaded += (s, e) => DisableTabViewAnimations();
@@ -232,6 +234,7 @@ public sealed partial class DocumentSection : UserControl
         tab.VisibleSectionCount = VisibleSectionCount;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
+        AddTabPointerPressedHandler(tab);
         TabView.TabItems.Add(tab);
         UpdateEmptyPlaceholderVisibility();
     }
@@ -243,8 +246,30 @@ public sealed partial class DocumentSection : UserControl
     {
         tab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
         tab.DragStarted -= OnDocumentTabDragStarted;
+        RemoveTabPointerPressedHandler(tab);
         TabView.TabItems.Remove(tab);
+        DetachStrandedContainer(tab);
         UpdateEmptyPlaceholderVisibility();
+    }
+
+    /// <summary>
+    /// Works around an Uno Skia TabView bug where TabItems.Remove can leave the removed tab's
+    /// container parented to this strip's ItemsStackPanel (seen when it was the selected or last
+    /// tab). While that stale parent stands, adding the tab to another section's strip fails to
+    /// render its header: the tab is in the model and its content shows, but the header stays blank
+    /// until some later reorder rebuilds the panel. Detaching the container here lets the
+    /// destination strip take ownership. The packaged Windows head runs the real WinUI TabView and
+    /// does not hit this.
+    /// </summary>
+    private void DetachStrandedContainer(DocumentTab tab)
+    {
+        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
+        var itemsPanel = tabListView?.ItemsPanelRoot;
+        if (itemsPanel is not null &&
+            itemsPanel.Children.Contains(tab))
+        {
+            itemsPanel.Children.Remove(tab);
+        }
     }
 
     /// <summary>
@@ -401,6 +426,7 @@ public sealed partial class DocumentSection : UserControl
 
             documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
             documentTab.DragStarted -= OnDocumentTabDragStarted;
+            RemoveTabPointerPressedHandler(documentTab);
 
             var documentView = documentTab.Content as IDocumentView;
             if (documentView != null)
@@ -442,6 +468,28 @@ public sealed partial class DocumentSection : UserControl
 
         ToolTipService.SetToolTip(TabView, null);
         UpdateEmptyPlaceholderVisibility();
+
+        // Removing tabs can leave the strip scrolled past the end of its shrunken content, clipping
+        // tabs at the leading edge while showing a blank gap at the trailing edge. Re-clamp once
+        // layout has settled.
+        _ = DispatcherQueue.TryEnqueue(ClampTabStripScrollOffset);
+    }
+
+    private void ClampTabStripScrollOffset()
+    {
+        var scrollViewer = GetTabStripScrollViewer();
+        if (scrollViewer is not null &&
+            scrollViewer.HorizontalOffset > scrollViewer.ScrollableWidth)
+        {
+            scrollViewer.ChangeView(scrollViewer.ScrollableWidth, null, null, disableAnimation: true);
+        }
+    }
+
+    private ScrollViewer? GetTabStripScrollViewer()
+    {
+        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
+
+        return tabListView is null ? null : VisualTree.FindDescendant<ScrollViewer>(tabListView);
     }
 
     private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
@@ -468,8 +516,10 @@ public sealed partial class DocumentSection : UserControl
 
     private void UpdateEmptyPlaceholderVisibility()
     {
+        // Keep the TabView visible even when the section has no tabs, so its tab strip footer (which
+        // hosts the split-editor toolbar on the rightmost section) stays accessible. The empty
+        // placeholder renders behind the empty strip.
         EmptyPlaceholder.Visibility = TabView.TabItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        TabView.Visibility = TabView.TabItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void TabView_TabDroppedOutside(TabView sender, TabViewTabDroppedOutsideEventArgs args)
@@ -663,6 +713,7 @@ public sealed partial class DocumentSection : UserControl
         tab.VisibleSectionCount = VisibleSectionCount;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
+        AddTabPointerPressedHandler(tab);
 
         if (index < 0 || index >= TabView.TabItems.Count)
         {

@@ -146,7 +146,8 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 case DeleteReferencePolicy.RequireConfirmation:
                     var dialogResult = await _dialogService.ShowConfirmationDialogAsync(
                         titleText: "Delete resources with existing references?",
-                        messageText: BuildConfirmationMessage(Resources, externalReferencers));
+                        messageText: BuildConfirmationMessage(Resources, externalReferencers),
+                        options: new ConfirmationDialogOptions { IsDestructive = true });
 
                     if (dialogResult.IsFailure
                         || !dialogResult.Value)

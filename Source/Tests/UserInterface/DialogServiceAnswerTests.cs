@@ -31,7 +31,7 @@ public class DialogServiceAnswerTests
         var fakeConfirm = Substitute.For<IConfirmationDialog>();
         fakeConfirm.ShowDialogAsync().Returns(Task.FromResult(false));
         _dialogFactory.CreateConfirmationDialog(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
             .Returns(fakeConfirm);
 
         var fakeInputText = Substitute.For<IInputTextDialog>();

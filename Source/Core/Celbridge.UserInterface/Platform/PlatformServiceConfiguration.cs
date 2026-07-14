@@ -52,5 +52,21 @@ public static class PlatformServiceConfiguration
 #else
         services.AddSingleton<IApplicationToolbarHost, SkiaApplicationToolbarHost>();
 #endif
+
+        // The panel splitters set the OS cursor directly on macOS, where the managed cursor is only pushed on
+        // pointer-move and is left stale after the pointer returns from a native web view. Other heads apply
+        // the managed cursor reliably and use a no-op.
+#if WINDOWS
+        services.AddSingleton<ISplitterCursorController, DefaultSplitterCursorController>();
+#else
+        if (OperatingSystem.IsMacOS())
+        {
+            services.AddSingleton<ISplitterCursorController, MacOSSplitterCursorController>();
+        }
+        else
+        {
+            services.AddSingleton<ISplitterCursorController, DefaultSplitterCursorController>();
+        }
+#endif
     }
 }
