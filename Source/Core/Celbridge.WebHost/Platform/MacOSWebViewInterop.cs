@@ -13,8 +13,8 @@ public sealed record MacWebViewSnapshot(byte[] Bytes, int Width, int Height);
 
 /// <summary>
 /// Parameters for a WKWebView snapshot. The clip rectangle (CSS pixels, in the web view's coordinate space)
-/// selects the region to capture. SnapshotWidth is the target output width in points (0 leaves the capture
-/// at native resolution). Format is "png" or "jpeg" (Quality 1-100 applies to JPEG).
+/// selects the region to capture. SnapshotWidth is the target output width in device pixels (0 leaves the
+/// capture at native resolution). Format is "png" or "jpeg" (Quality 1-100 applies to JPEG).
 /// </summary>
 public sealed record MacSnapshotRequest(
     double ClipX,
@@ -348,15 +348,16 @@ public static class MacOSWebViewInterop
     /// takeSnapshotWithConfiguration:completionHandler:], clipping to the request's rect and rendering at
     /// its SnapshotWidth, then encodes to the requested format ("png" or "jpeg", quality 1-100 for JPEG).
     /// Returns null if the snapshot does not complete within the timeout. This is the macOS replacement for
-    /// the Chrome DevTools Protocol Page.captureScreenshot, which is unavailable on WKWebView. On a Retina
-    /// display the captured pixels can be up to the backing-scale multiple of SnapshotWidth.
+    /// the Chrome DevTools Protocol Page.captureScreenshot, which is unavailable on WKWebView. SnapshotWidth
+    /// is treated as a device-pixel target, so the returned bitmap matches it on both Retina and non-Retina
+    /// displays.
     /// </summary>
     public static async Task<MacWebViewSnapshot?> TakeSnapshotAsync(IntPtr webView, MacSnapshotRequest request)
     {
         _snapshotCompletion = new TaskCompletionSource<IntPtr>();
         var completionBlock = EnsureSnapshotBlock();
 
-        var configuration = BuildSnapshotConfiguration(request);
+        var configuration = BuildSnapshotConfiguration(webView, request);
 
         var selector = GetSelector("takeSnapshotWithConfiguration:completionHandler:");
         SendMessageVoid(webView, selector, configuration, completionBlock);
@@ -389,7 +390,7 @@ public static class MacOSWebViewInterop
         }
     }
 
-    private static IntPtr BuildSnapshotConfiguration(MacSnapshotRequest request)
+    private static IntPtr BuildSnapshotConfiguration(IntPtr webView, MacSnapshotRequest request)
     {
         var configurationClass = GetClass("WKSnapshotConfiguration");
         if (configurationClass == IntPtr.Zero)
@@ -417,11 +418,46 @@ public static class MacOSWebViewInterop
 
         if (request.SnapshotWidth > 0)
         {
-            var snapshotWidthNumber = SendMessage(GetClass("NSNumber"), GetSelector("numberWithDouble:"), request.SnapshotWidth);
+            // WKSnapshotConfiguration.snapshotWidth is in points, and WebKit renders the bitmap at
+            // backingScale times that many pixels. The caller's SnapshotWidth is a device-pixel target
+            // (matching the Windows CDP contract), so convert to points by dividing out the backing scale.
+            var backingScaleFactor = GetBackingScaleFactor(webView);
+            var snapshotWidthInPoints = request.SnapshotWidth / backingScaleFactor;
+            var snapshotWidthNumber = SendMessage(GetClass("NSNumber"), GetSelector("numberWithDouble:"), snapshotWidthInPoints);
             SendMessage(configuration, GetSelector("setSnapshotWidth:"), snapshotWidthNumber);
         }
 
         return configuration;
+    }
+
+    private static double GetBackingScaleFactor(IntPtr webView)
+    {
+        // The web view's window carries the backing scale of the display it is on. Fall back to the main
+        // screen, then to 1.0, if the view is not yet attached to a window.
+        if (webView != IntPtr.Zero)
+        {
+            var window = SendMessage(webView, GetSelector("window"));
+            if (window != IntPtr.Zero)
+            {
+                var windowScale = SendMessageReturnDouble(window, GetSelector("backingScaleFactor"));
+                if (windowScale > 0)
+                {
+                    return windowScale;
+                }
+            }
+        }
+
+        var mainScreen = SendMessage(GetClass("NSScreen"), GetSelector("mainScreen"));
+        if (mainScreen != IntPtr.Zero)
+        {
+            var screenScale = SendMessageReturnDouble(mainScreen, GetSelector("backingScaleFactor"));
+            if (screenScale > 0)
+            {
+                return screenScale;
+            }
+        }
+
+        return 1.0;
     }
 
     private static MacWebViewSnapshot? ConvertNSImage(IntPtr nsImage, string format, int quality)

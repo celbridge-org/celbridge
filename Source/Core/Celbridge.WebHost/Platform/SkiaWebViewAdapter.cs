@@ -169,7 +169,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     {
         // Page.captureScreenshot (CDP) is not implemented, so snapshot the native WKWebView. The bridge resolves
         // the clip rect (viewport or selector) and a Scale that fits MaxEdge. Map that to the native snapshot:
-        // clip to the rect, render at Width * Scale points.
+        // clip to the rect, render at Width * Scale device pixels (the native path divides out the backing scale).
         if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
         {
             throw new InvalidOperationException(
