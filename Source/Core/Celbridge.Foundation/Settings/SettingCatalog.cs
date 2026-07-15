@@ -66,7 +66,7 @@ public static class SettingCatalog
         public static readonly SettingDescriptor<bool> IsConsoleMaximized =
             new("Layout.IsConsoleMaximized", SettingScope.Workspace, false);
 
-        // The utility id of the active rail surface (e.g. "celbridge.explorer" or a contributed id). Restored on
+        // The utility id of the active rail surface (e.g. "celbridge.explorer" or a custom id). Restored on
         // load, falling back to Explorer when the persisted id no longer resolves to a rail item.
         public static readonly SettingDescriptor<string> UtilityPanelSelectedUtility =
             new("Layout.UtilityPanelSelectedUtility", SettingScope.Workspace, "");

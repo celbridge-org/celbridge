@@ -127,7 +127,7 @@ public partial class WorkspacePageViewModel : ObservableObject
 
             // Tear down the utilities, then clear the rail.
             await _workspaceService.UtilityService.TeardownUtilitiesAsync();
-            _workspaceService.UtilityPanel.ClearContributedUtilities();
+            _workspaceService.UtilityPanel.ClearCustomUtilities();
         }
         catch (Exception exception)
         {

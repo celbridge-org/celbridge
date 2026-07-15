@@ -1,5 +1,5 @@
 <UserControl
-    x:Class="Celbridge.Documents.Views.ContributionPanelView"
+    x:Class="Celbridge.Documents.Views.CustomUtilityView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.WorkspaceUI.Views"
@@ -7,7 +7,7 @@
     xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="Transparent"
-    ui:FocusTracking.Panel="Utility">
+    ui:FocusTracking.Panel="CustomUtility">
 
     <Grid Background="Transparent">
         <Grid.RowDefinitions>
@@ -29,7 +29,7 @@
             </controls:PanelHeader.ToolbarContent>
         </controls:PanelHeader>
 
-        <Grid x:Name="ContributionWebViewContainer"
+        <Grid x:Name="CustomWebViewContainer"
               Grid.Row="1"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"/>

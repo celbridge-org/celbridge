@@ -177,13 +177,13 @@ public class DocumentsService : IDocumentsService, IDisposable
                     if (result.IsFailure)
                     {
                         _logger.LogWarning(result,
-                            $"Failed to register contribution editor factory for: {contribution?.Package?.Name}");
+                            $"Failed to register custom editor factory for: {contribution?.Package?.Name}");
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex,
-                        $"An exception occurred while registering contribution editor for: {contribution.Package?.Name ?? contribution.Id}");
+                        $"An exception occurred while registering custom editor for: {contribution.Package?.Name ?? contribution.Id}");
                 }
             }
 
@@ -250,7 +250,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         // Applied after SetFileResource and before LoadContent so the editor
-        // enters read-only mode before its first setValue. For ContributionDocumentView
+        // enters read-only mode before its first setValue. For CustomDocumentView
         // the state ships through the document/initialize handshake; for editors
         // that drive their surface directly, OnWritableStateChanged fires here.
         var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;

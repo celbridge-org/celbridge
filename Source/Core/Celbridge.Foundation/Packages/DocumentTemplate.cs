@@ -1,13 +1,13 @@
 namespace Celbridge.Packages;
 
 /// <summary>
-/// A document template declared by an extension.
-/// Templates provide starter content for new files of the extension's type.
+/// A document template declared by a package.
+/// Templates provide starter content for new files of the package's file type.
 /// </summary>
 public partial record DocumentTemplate
 {
     /// <summary>
-    /// Unique identifier for this template within the extension.
+    /// Unique identifier for this template within the package.
     /// </summary>
     public string Id { get; init; } = string.Empty;
 
@@ -17,7 +17,7 @@ public partial record DocumentTemplate
     public string DisplayName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Path to the template file, relative to the extension directory.
+    /// Path to the template file, relative to the package folder.
     /// </summary>
     public string TemplateFile { get; init; } = string.Empty;
 

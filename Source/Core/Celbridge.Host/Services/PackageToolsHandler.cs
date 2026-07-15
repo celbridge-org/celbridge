@@ -25,12 +25,12 @@ public static class ToolRpcErrorCodes
 /// Per-WebView RPC target for tools/list and tools/call, gated by a package's
 /// [permissions] tools allowlist.
 /// </summary>
-public sealed class ContributionToolsHandler
+public sealed class PackageToolsHandler
 {
     private readonly IMcpToolBridge _bridge;
     private readonly IReadOnlyList<string> _allowedPatterns;
 
-    public ContributionToolsHandler(IMcpToolBridge bridge, IReadOnlyList<string> allowedPatterns)
+    public PackageToolsHandler(IMcpToolBridge bridge, IReadOnlyList<string> allowedPatterns)
     {
         _bridge = bridge;
         _allowedPatterns = allowedPatterns;
@@ -46,7 +46,7 @@ public sealed class ContributionToolsHandler
 
         foreach (var tool in allTools)
         {
-            if (IsContributionRestricted(tool.Alias))
+            if (IsCustomEditorRestricted(tool.Alias))
             {
                 continue;
             }
@@ -73,11 +73,11 @@ public sealed class ContributionToolsHandler
 
         // The webview_* namespace is reserved for the MCP path. Blocking it here
         // (regardless of the package's permitted tools) closes the
-        // cross-document attack vector where a contribution editor's JS could
+        // cross-document attack vector where a custom editor's JS could
         // call webview.eval against another open document.
-        if (IsContributionRestricted(name))
+        if (IsCustomEditorRestricted(name))
         {
-            throw new LocalRpcException($"Tool '{name}' is not accessible from contribution editors")
+            throw new LocalRpcException($"Tool '{name}' is not accessible from custom editors")
             {
                 ErrorCode = ToolRpcErrorCodes.ToolDenied
             };
@@ -110,11 +110,11 @@ public sealed class ContributionToolsHandler
 
     /// <summary>
     /// Returns true if the tool name belongs to a namespace that is forbidden inside
-    /// contribution WebViews. Currently this is the webview_* namespace, which is
+    /// custom editor WebViews. Currently this is the webview_* namespace, which is
     /// available on the MCP path only. Both MCP-style names (webview_eval) and alias
     /// dotted names (webview.eval) are matched.
     /// </summary>
-    private static bool IsContributionRestricted(string name)
+    private static bool IsCustomEditorRestricted(string name)
     {
         return name.StartsWith("webview.", StringComparison.Ordinal)
             || name.StartsWith("webview_", StringComparison.Ordinal);

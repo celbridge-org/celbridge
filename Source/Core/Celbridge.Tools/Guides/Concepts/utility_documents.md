@@ -86,8 +86,8 @@ A utility persists through the standard editable-save path: the WebView calls `c
 
 ## Agent interaction
 
-- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus contributed utilities — with each one's id, display name, `location` (`"panel"` or `"document"`, its current dock location), and whether it is currently shown.
-- `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `location` (`"panel"` or `"document"`) to move it there first. A contributed utility's id is `{packageName}.{documentId}`.
+- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus custom utilities — with each one's id, display name, `location` (`"panel"` or `"document"`, its current dock location), and whether it is currently shown.
+- `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `location` (`"panel"` or `"document"`) to move it there first. A custom utility's id is `{packageName}.{documentId}`.
 - `app_get_state` reports `activeUtility`, the id of the surface currently shown in the Utility Panel rail.
 - `app_spotlight` can point at a utility's button: `{utilityId}-utility-button` for its rail item in the Utility Panel.
 - `utils:` is a registered root, so `file.*` tools can read and write a utility's backing file when the package declares `file.*` under `[permissions] tools`. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract needs no permission — it is framework-level, distinct from the `cel.*` tool proxies.

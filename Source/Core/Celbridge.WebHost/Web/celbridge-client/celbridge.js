@@ -285,7 +285,7 @@ export class Celbridge {
      * Editor state contract: the string returned by `onRequestState` must survive both
      * external-reload cycles (host calls `onRequestState` -> replaces content -> calls
      * `onRestoreState` with the same string) and session restore (host persists the string
-     * as EditorStateJson and replays it on the next session). Contributions define their
+     * as EditorStateJson and replays it on the next session). Editors define their
      * own schema for this string. The host treats it as opaque. Anything the editor needs
      * to reconstruct view state (scroll position, selection, pending unsaved edits, etc.)
      * must be encoded here.

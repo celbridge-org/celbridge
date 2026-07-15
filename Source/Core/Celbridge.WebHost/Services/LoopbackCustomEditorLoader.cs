@@ -3,14 +3,14 @@ using Celbridge.Server;
 
 namespace Celbridge.WebHost.Services;
 
-// Default contribution editor loader: serves the editor from the loopback file server over the WebSocket
+// Default custom editor loader: serves the editor from the loopback file server over the WebSocket
 // host channel. Matches every package and is resolved as the fallback, so it hosts any editor a custom
 // loader does not claim.
-internal sealed class LoopbackContributionEditorLoader : IContributionEditorLoader
+internal sealed class LoopbackCustomEditorLoader : ICustomEditorLoader
 {
     private readonly IFileServer _fileServer;
 
-    public LoopbackContributionEditorLoader(IFileServer fileServer)
+    public LoopbackCustomEditorLoader(IFileServer fileServer)
     {
         _fileServer = fileServer;
     }
@@ -19,12 +19,12 @@ internal sealed class LoopbackContributionEditorLoader : IContributionEditorLoad
 
     public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
 
-    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request)
+    public string GetAllowedNavigationOrigin(CustomEditorLoadRequest request)
     {
         return _fileServer.GetPackageUrl(request.PackageUrlName, string.Empty);
     }
 
-    public Task LoadAsync(ContributionEditorLoadRequest request)
+    public Task LoadAsync(CustomEditorLoadRequest request)
     {
         var entryUrl = _fileServer.GetPackageUrl(request.PackageUrlName, request.EntryPoint);
         var navigationUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);

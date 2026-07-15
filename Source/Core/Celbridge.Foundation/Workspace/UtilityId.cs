@@ -1,9 +1,9 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// A strongly-typed identifier for a utility, built-in or contributed, in "{scope}.{name}" form (e.g.
+/// A strongly-typed identifier for a utility, built-in or custom, in "{scope}.{name}" form (e.g.
 /// "celbridge.explorer", "acme.notepad"). The same value addresses a utility on the rail, as a docked document,
-/// and across the agent tools. A contributed utility's id equals its document editor id. Empty is the
+/// and across the agent tools. A custom utility's id equals its document editor id. Empty is the
 /// "no utility" value.
 /// </summary>
 public readonly struct UtilityId : IEquatable<UtilityId>
@@ -27,7 +27,7 @@ public readonly struct UtilityId : IEquatable<UtilityId>
 
     /// <summary>
     /// Builds a utility id from a package name and document id, as "{packageName}.{documentId}". Built-in and
-    /// contributed utilities share this form.
+    /// custom utilities share this form.
     /// </summary>
     public static UtilityId Create(string packageName, string documentId)
     {

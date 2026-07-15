@@ -46,7 +46,7 @@ public class WebViewServiceSupportTests
     }
 
     [Test]
-    public void GetWebViewToolSupport_ContributionEditorWithDevToolsBlocked_NamesThePackageAndPolicy()
+    public void GetWebViewToolSupport_CustomEditorWithDevToolsBlocked_NamesThePackageAndPolicy()
     {
         var resource = new ResourceKey("budget.spreadsheet");
         var editorId = "celbridge.spreadsheet.spreadsheet-document";

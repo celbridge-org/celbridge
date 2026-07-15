@@ -76,7 +76,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             Location: DockLocation.UtilityPanel,
             IsShown: activeUtilityId == BuiltInUtilityIds.Search));
 
-        // Package-contributed utilities. Each is a persistent surface, in the rail or docked as a document tab.
+        // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
         // When it is a document it is shown if its tab is the active document; when it is in the panel it is
         // shown if it is the active rail surface.
         foreach (var contribution in packageService.GetAllDocumentEditors())

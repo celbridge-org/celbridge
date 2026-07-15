@@ -10,12 +10,12 @@ namespace Celbridge.Modules;
 public interface IModule
 {
     /// <summary>
-    /// Configures the dependency injection framework to support the types provided by the extension.
+    /// Configures the dependency injection framework to support the types provided by the module.
     /// </summary>
     void ConfigureServices(IModuleServiceCollection serviceCollection);
 
     /// <summary>
-    /// Initializes the extension during application startup.
+    /// Initializes the module during application startup.
     /// </summary>
     Result Initialize();
 

@@ -36,9 +36,9 @@ public enum WorkspacePanel
     Console,
 
     /// <summary>
-    /// The contributed-utility surface in the Utility Panel (Explorer and Search have their own values).
+    /// The custom-utility surface in the Utility Panel (Explorer and Search have their own values).
     /// </summary>
-    Utility
+    CustomUtility
 }
 
 /// <summary>

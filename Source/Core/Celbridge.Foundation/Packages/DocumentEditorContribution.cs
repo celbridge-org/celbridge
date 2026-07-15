@@ -4,7 +4,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Base class for document editor contributions parsed from a TOML document manifest.
-/// Each extension can contribute one or more document editors via its extension.toml.
+/// Each package can contribute one or more document editors via its document manifests.
 /// Subclasses define the specific editor type and its configuration.
 /// </summary>
 public abstract partial record DocumentEditorContribution
@@ -36,7 +36,7 @@ public abstract partial record DocumentEditorContribution
     public EditorPriority Priority { get; init; }
 
     /// <summary>
-    /// Optional list of document templates provided by this extension.
+    /// Optional list of document templates provided by this package.
     /// </summary>
     public IReadOnlyList<DocumentTemplate> Templates { get; init; } = [];
 }

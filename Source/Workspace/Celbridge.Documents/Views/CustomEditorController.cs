@@ -19,20 +19,20 @@ using Windows.ApplicationModel.DataTransfer;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// The hosting surface a consumer supplies to a ContributionEditorController: the workspace panel the
+/// The hosting surface a consumer supplies to a CustomEditorController: the workspace panel the
 /// editor's web surface reports focus through, and the side effect to run when it gains focus. The document
 /// view reports the Documents panel and marks itself the active document; a panel host reports its own panel.
 /// </summary>
-public sealed record ContributionEditorFocusContext(WorkspacePanel Panel, Action OnFocusGained);
+public sealed record CustomEditorFocusContext(WorkspacePanel Panel, Action OnFocusGained);
 
 /// <summary>
-/// Drives a contribution (WebView-based) editor: it acquires and tears down the WebView, owns the JSON-RPC
+/// Drives a custom (WebView-based) editor: it acquires and tears down the WebView, owns the JSON-RPC
 /// host channel and its RPC targets, mirrors app/view state, bridges the webview_* tools, coordinates saves
 /// and external reloads, and implements the edit-target and link-routing behaviour. It has no dependency on
-/// DocumentView, the documents panel, or tab machinery; ContributionDocumentView and (later) a panel view are
+/// DocumentView, the documents panel, or tab machinery; CustomDocumentView and (later) a panel view are
 /// thin adapters that construct one and forward their lifecycle to it.
 /// </summary>
-public sealed class ContributionEditorController : IHostInput, IHostContext, IEditTarget
+public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarget
 {
     private const int SaveRequestTimeoutSeconds = 30;
     private const int ReloadStateWaitSeconds = 5;
@@ -42,7 +42,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     // the serial command queue. Kept under the command watchdog's 5s threshold.
     private const int EditorStateRequestTimeoutSeconds = 3;
 
-    private readonly ILogger<ContributionEditorController> _logger;
+    private readonly ILogger<CustomEditorController> _logger;
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
@@ -52,12 +52,12 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
-    private readonly ContributionDocumentViewModel _viewModel;
+    private readonly CustomDocumentViewModel _viewModel;
 
     // The container the WebView currently lives in, and the focus identity it reports through. Both are
     // reassigned by Redock when a utility moves between dock locations; the WebView is moved, never rebuilt.
     private Panel _webViewContainer;
-    private ContributionEditorFocusContext _focusContext;
+    private CustomEditorFocusContext _focusContext;
 
     // Set by InitializeAsync before the WebView is configured.
     private CustomDocumentEditorContribution? _contribution;
@@ -69,8 +69,8 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     // Latest edit availability reported by the editor over the bridge. Drives CanPerformEdit.
     private EditAvailability _editAvailability = EditAvailability.None;
 
-    private ContributionDocumentHandler? _documentHandler;
-    private ContributionToolsHandler? _toolsHandler;
+    private CustomDocumentHandler? _documentHandler;
+    private PackageToolsHandler? _toolsHandler;
     private IDisposable? _appStateConnection;
 
     // This editor's own state store (writability), mirrored to its WebView over the viewState channel.
@@ -114,7 +114,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     // notification that was in transit when the previous transport died.
     private bool _forceReload;
 
-    // Completed by InitContributionViewAsync with the init outcome. InitializeAsync
+    // Completed by InitCustomViewAsync with the init outcome. InitializeAsync
     // triggers the init on first call and awaits this TCS so the open-document
     // flow returns only when the WebView and host are ready for RPCs.
     private TaskCompletionSource<Result>? _initTcs;
@@ -129,18 +129,18 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     /// </summary>
     private CelbridgeHost? Host { get; set; }
 
-    public ContributionEditorController(
+    public CustomEditorController(
         IServiceProvider serviceProvider,
-        ContributionDocumentViewModel viewModel,
+        CustomDocumentViewModel viewModel,
         Panel webViewContainer,
-        ContributionEditorFocusContext focusContext)
+        CustomEditorFocusContext focusContext)
     {
         _serviceProvider = serviceProvider;
         _viewModel = viewModel;
         _webViewContainer = webViewContainer;
         _focusContext = focusContext;
 
-        _logger = serviceProvider.GetRequiredService<ILogger<ContributionEditorController>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<CustomEditorController>>();
         _commandService = serviceProvider.GetRequiredService<ICommandService>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _dialogService = serviceProvider.GetRequiredService<IDialogService>();
@@ -166,7 +166,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         if (_initTcs is null)
         {
             _initTcs = new TaskCompletionSource<Result>();
-            _ = InitContributionViewAsync();
+            _ = InitCustomViewAsync();
         }
 
         var initResult = await _initTcs.Task;
@@ -212,7 +212,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
             _documentHandler.SaveResultTcs = null;
             CompleteSave();
 
-            var errorMessage = $"Contribution editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
+            var errorMessage = $"Custom editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
                                $"File: {_viewModel.FilePath}";
 
             _logger.LogError(errorMessage);
@@ -252,12 +252,12 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         return false;
     }
 
-    private IContributionEditorLoader ResolveContributionEditorLoader(PackageInfo package)
+    private ICustomEditorLoader ResolveCustomEditorLoader(PackageInfo package)
     {
         // The loopback default is registered first and matches every package, so it is the fallback. A
         // module's custom loader is registered later and wins as the last matching loader.
-        IContributionEditorLoader? selected = null;
-        foreach (var candidate in _serviceProvider.GetServices<IContributionEditorLoader>())
+        ICustomEditorLoader? selected = null;
+        foreach (var candidate in _serviceProvider.GetServices<ICustomEditorLoader>())
         {
             if (candidate.CanLoad(package))
             {
@@ -270,17 +270,17 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         return selected;
     }
 
-    private async Task InitContributionViewAsync()
+    private async Task InitCustomViewAsync()
     {
         if (_contribution is null)
         {
-            var error = "Cannot initialize contribution view: Contribution is not set";
+            var error = "Cannot initialize custom view: Contribution is not set";
             _logger.LogError(error);
             _initTcs!.TrySetResult(Result.Fail(error));
             return;
         }
 
-        var editorLoader = ResolveContributionEditorLoader(_contribution.Package);
+        var editorLoader = ResolveCustomEditorLoader(_contribution.Package);
 
         // The factory hands back a control with CoreWebView2 already live (pre-warmed where possible), so
         // the host is configured immediately and init is signalled once the editor's navigation has started.
@@ -295,9 +295,9 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to initialize contribution view: {_contribution.Package.Name}");
+            _logger.LogError(ex, $"Failed to initialize custom view: {_contribution.Package.Name}");
             TeardownWebViewState();
-            var failure = Result.Fail($"Failed to initialize contribution view: {_contribution.Package.Name}")
+            var failure = Result.Fail($"Failed to initialize custom view: {_contribution.Package.Name}")
                 .WithException(ex);
             _initTcs!.TrySetResult(failure);
         }
@@ -305,7 +305,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
 
     // Configures a live WebView (CoreWebView2 ready): host channel, RPC targets, tool bridge, navigation gate,
     // and the editor load. Shared by the pooled and in-place init paths.
-    private async Task ConfigureWebViewHostAsync(IContributionEditorLoader editorLoader)
+    private async Task ConfigureWebViewHostAsync(ICustomEditorLoader editorLoader)
     {
         Guard.IsNotNull(_contribution);
         Guard.IsNotNull(WebView);
@@ -319,7 +319,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         // Register this editor's web surface; it hosts an edit target (this) for the Edit commands.
         RegisterWebSurfaceFocus();
 
-        // Every contribution editor's assets (its lib, the shared client) are served from the loopback
+        // Every custom editor's assets (its lib, the shared client) are served from the loopback
         // file server, so register this package's folder there. The resolved loader decides where the
         // entry page itself loads from.
         var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
@@ -371,7 +371,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         Host.AddLocalRpcTarget<IHostInput>(this);
         Host.AddLocalRpcTarget<IHostContext>(this);
 
-        _documentHandler = new ContributionDocumentHandler(
+        _documentHandler = new CustomDocumentHandler(
             _viewModel,
             _logger,
             CreateDocumentMetadata,    // Callback to construct document metadata on demand
@@ -379,7 +379,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
 
         _documentHandler.ContentLoaded += SetContentLoaded;
 
-        var dialogHandler = new ContributionDialogHandler(
+        var dialogHandler = new CustomDialogHandler(
             _dialogService,
             _stringLocalizer,
             _viewModel);
@@ -390,8 +390,8 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
         if (mcpToolBridge is not null)
         {
-            _toolsHandler = new ContributionToolsHandler(mcpToolBridge, _contribution.Package.PermittedTools);
-            Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
+            _toolsHandler = new PackageToolsHandler(mcpToolBridge, _contribution.Package.PermittedTools);
+            Host.AddLocalRpcTarget<PackageToolsHandler>(_toolsHandler);
         }
 
         Host.StartListening();
@@ -420,7 +420,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
 
         var entryPoint = _contribution.EntryPoint;
         var serverPort = _serviceProvider.GetRequiredService<IServerService>().Port;
-        var loadRequest = new ContributionEditorLoadRequest(
+        var loadRequest = new CustomEditorLoadRequest(
             WebView!,
             _contribution.Package,
             packageUrlName,
@@ -474,7 +474,7 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     /// while it moves between dock locations (the Utility Panel and a document tab). Called before the WebView
     /// is acquired, it just records the target container so the pending init lands there.
     /// </summary>
-    public void Redock(Panel newContainer, ContributionEditorFocusContext focusContext)
+    public void Redock(Panel newContainer, CustomEditorFocusContext focusContext)
     {
         _focusContext = focusContext;
 

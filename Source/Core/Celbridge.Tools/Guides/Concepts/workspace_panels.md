@@ -12,7 +12,7 @@ The left sidebar is the **Utility Panel**: an icon rail switches its content bet
 
 ## Utilities
 
-A utility is an auxiliary surface a package contributes — a colour picker, a scratchpad, a process view. It lives as a rail item in the Utility Panel alongside Explorer and Search, and the user can dock it into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and contributed) with its current `location` (panel or document), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to a `location` first). See `utility_documents` for how they are authored.
+A utility is an auxiliary surface a package contributes — a colour picker, a scratchpad, a process view. It lives as a rail item in the Utility Panel alongside Explorer and Search, and the user can dock it into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and custom) with its current `location` (panel or document), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to a `location` first). See `utility_documents` for how they are authored.
 
 ## Resolving ambiguous file references
 

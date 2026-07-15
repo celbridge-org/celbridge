@@ -9,16 +9,16 @@ namespace Celbridge.Documents.Views;
 /// Handles IHostDialog RPC methods for contribution document views.
 /// Provides image picking, file picking, and alert dialogs.
 /// </summary>
-internal sealed class ContributionDialogHandler : IHostDialog
+internal sealed class CustomDialogHandler : IHostDialog
 {
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly ContributionDocumentViewModel _viewModel;
+    private readonly CustomDocumentViewModel _viewModel;
 
-    public ContributionDialogHandler(
+    public CustomDialogHandler(
         IDialogService dialogService,
         IStringLocalizer stringLocalizer,
-        ContributionDocumentViewModel viewModel)
+        CustomDocumentViewModel viewModel)
     {
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;

@@ -1,6 +1,6 @@
-// Tools API: MCP tool dispatch wrapper and dynamic `cel.*` proxy for contribution editors.
+// Tools API: MCP tool dispatch wrapper and dynamic `cel.*` proxy for custom editors.
 //
-// Contribution packages declare the tools they need via `[permissions] tools` in package.toml.
+// Packages declare the tools they need via `[permissions] tools` in package.toml.
 // The client fetches the resolved allowlist over the bridge via `host/getContext`. This module
 // builds a dynamic proxy that exposes only the allowed tools as
 // `celbridge.cel.<namespace>.<tool>(...)`.

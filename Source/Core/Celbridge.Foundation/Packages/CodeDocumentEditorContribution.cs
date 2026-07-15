@@ -1,20 +1,20 @@
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Preview configuration for a code extension.
+/// Preview configuration for a code editor.
 /// When present, enables the split editor with a preview panel.
 /// </summary>
 public record CodePreviewConfig
 {
     /// <summary>
     /// The preview page to load in the split editor preview panel,
-    /// relative to the extension directory (e.g., "markdown-preview/index.html").
+    /// relative to the package folder (e.g., "markdown-preview/index.html").
     /// </summary>
     public string EntryPoint { get; init; } = string.Empty;
 }
 
 /// <summary>
-/// Monaco editor configuration for code extensions.
+/// Monaco editor configuration for code editors.
 /// </summary>
 public record CodeEditorConfig
 {
@@ -34,7 +34,7 @@ public record CodeEditorConfig
     public bool? MinimapEnabled { get; init; }
 
     /// <summary>
-    /// Path to a JavaScript customization script, relative to the extension directory (e.g., "customize.js").
+    /// Path to a JavaScript customization script, relative to the package folder (e.g., "customize.js").
     /// The script is loaded after Monaco initializes and should export an
     /// activate(monaco, editor, container, celbridge) function.
     /// </summary>

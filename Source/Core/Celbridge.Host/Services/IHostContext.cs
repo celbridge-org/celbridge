@@ -8,7 +8,7 @@ public static class ContextRpcMethods
 }
 
 /// <summary>
-/// RPC service interface for retrieving the contribution editor's capability context.
+/// RPC service interface for retrieving the custom editor's capability context.
 /// </summary>
 public interface IHostContext
 {
