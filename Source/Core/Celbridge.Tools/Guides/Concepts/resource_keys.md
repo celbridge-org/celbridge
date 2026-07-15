@@ -14,12 +14,14 @@ A resource key has the optional `root:path` form. When no root prefix is given, 
 | `project:` (or `""`) | The project root itself |
 | `temp:staging/pkg/v1/file.txt` | A file under the `temp:` scratch root |
 | `logs:session.log` | A file under the `logs:` diagnostic root |
+| `utils:settings._notepad` | A file under the `utils:` utility-document root |
 
 ## Roots
 
 - `project:` — the visible project tree. The default root; the prefix is optional in input but always present in output. Use for all user content.
 - `temp:` — host scratch space (`.celbridge/temp/`). Hidden from the resource tree. Used by host tools, scripts, and agents for transient artifacts and staging output. Contents are not version-controlled. **All contents are wiped on workspace load** — if you need data to persist, write under `project:` instead. Conventional sub-folders include `temp:staging/...`, `temp:scratch/...`, `temp:cache/...`, and `temp:downloads/...`.
 - `logs:` — host diagnostic logs (`.celbridge/logs/`). Hidden from the resource tree. Used by the host engine, Python scripts, agents, and Console panel session loggers.
+- `utils:` — persistent state for utility documents (`.celbridge/utils/`). Hidden from the resource tree, text search, and New File, and local to the machine (`.celbridge/` is gitignored). Unlike `temp:`, it is **not** wiped on workspace load — it is the durable home for a utility's per-project state. Addressed by a fixed key per utility (`utils:settings._<name>`); see `utility_documents`.
 
 ## Output canonical form
 

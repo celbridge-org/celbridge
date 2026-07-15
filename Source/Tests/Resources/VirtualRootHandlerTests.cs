@@ -7,14 +7,16 @@ public class VirtualRootHandlerTests
 {
     private string? _tempBacking;
     private string? _logsBacking;
+    private string? _utilsBacking;
 
     [SetUp]
     public void Setup()
     {
         _tempBacking = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(VirtualRootHandlerTests)}_temp");
         _logsBacking = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(VirtualRootHandlerTests)}_logs");
+        _utilsBacking = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(VirtualRootHandlerTests)}_utils");
 
-        foreach (var path in new[] { _tempBacking, _logsBacking })
+        foreach (var path in new[] { _tempBacking, _logsBacking, _utilsBacking })
         {
             if (Directory.Exists(path))
             {
@@ -27,7 +29,7 @@ public class VirtualRootHandlerTests
     [TearDown]
     public void TearDown()
     {
-        foreach (var path in new[] { _tempBacking, _logsBacking })
+        foreach (var path in new[] { _tempBacking, _logsBacking, _utilsBacking })
         {
             if (path is not null && Directory.Exists(path))
             {
@@ -62,12 +64,45 @@ public class VirtualRootHandlerTests
         handler.RootName.Should().Be("logs");
         handler.BackingLocation.Should().Be(_logsBacking);
         handler.Capabilities.IsWritable.Should().BeTrue();
-        handler.Capabilities.IsWatched.Should().BeTrue();
+        // The logs root is deliberately unwatched: it is rewritten constantly and nothing consumes its events.
+        handler.Capabilities.IsWatched.Should().BeFalse();
 
         var resolveResult = handler.Resolve(ResourceKey.Create("logs:session.log"));
         resolveResult.IsSuccess.Should().BeTrue();
         resolveResult.Value.Should().Be(
             Path.GetFullPath(Path.Combine(_logsBacking, "session.log")));
+    }
+
+    [Test]
+    public void UtilsRootHandlerResolvesUnderBackingLocation()
+    {
+        Guard.IsNotNull(_utilsBacking);
+        var handler = new UtilsRootHandler(_utilsBacking);
+
+        handler.RootName.Should().Be("utils");
+        handler.BackingLocation.Should().Be(_utilsBacking);
+        handler.Capabilities.IsWritable.Should().BeTrue();
+        handler.Capabilities.IsWatched.Should().BeTrue();
+
+        var resolveResult = handler.Resolve(ResourceKey.Create("utils:settings._notepad"));
+        resolveResult.IsSuccess.Should().BeTrue();
+        resolveResult.Value.Should().Be(
+            Path.GetFullPath(Path.Combine(_utilsBacking, "settings._notepad")));
+    }
+
+    [Test]
+    public void UtilsRootHandlerRoundTripsResourceKey()
+    {
+        Guard.IsNotNull(_utilsBacking);
+        var handler = new UtilsRootHandler(_utilsBacking);
+
+        var absolutePath = Path.Combine(_utilsBacking, "settings._notepad");
+        var keyResult = handler.GetResourceKey(absolutePath);
+
+        keyResult.IsSuccess.Should().BeTrue();
+        keyResult.Value.Root.Should().Be("utils");
+        keyResult.Value.Path.Should().Be("settings._notepad");
+        keyResult.Value.FullKey.Should().Be("utils:settings._notepad");
     }
 
     [Test]

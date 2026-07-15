@@ -5,10 +5,14 @@ A loaded project arranges the UI around a central editor area. You can highlight
 - **Explorer** (left sidebar) — the project file tree, with toolbar buttons to add a file, add a folder, and open project settings. `explorer_*` tools create, move, rename, and delete resources; `explorer_undo` / `explorer_redo` reverse file system operations only, not document text edits.
 - **Documents** (centre) — the editor area. Files open as tabs across up to three sections (sectionIndex 0, 1, 2 from left to right); a split-editor button on the document toolbar sets the section count. `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content.
 - **Inspector** (right sidebar) — contextual properties for the selected resource.
-- **Search** — full-text search, reached from the activity bar alongside Explorer in the left sidebar. From the agent, use `file_grep` for the same purpose.
+- **Search** — full-text search, reached from the Utility Panel rail alongside Explorer. From the agent, use `file_grep` for the same purpose.
 - **Console** (bottom) — a Python REPL where the user converses with you; it can be maximised to fill the editor area.
 
-The sidebars and console are shown or hidden from the title-bar toggle buttons, and the activity bar switches the left sidebar between Explorer and Search. `app_get_state` reports which panels are currently visible and focused.
+The left sidebar is the **Utility Panel**: an icon rail switches its content between Explorer, Search, and any utilities the project contributes. The sidebars and console are shown or hidden from the title-bar toggle buttons. `app_get_state` reports which panels are currently visible and focused, and `activeUtility` names the rail surface currently shown.
+
+## Utilities
+
+A utility is an auxiliary surface a package contributes — a colour picker, a scratchpad, a process view. It lives as a rail item in the Utility Panel alongside Explorer and Search, and the user can dock it into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and contributed) with its current `location` (panel or document), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to a `location` first). See `utility_documents` for how they are authored.
 
 ## Resolving ambiguous file references
 

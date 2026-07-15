@@ -604,6 +604,8 @@ public sealed partial class DocumentSectionContainer : UserControl
         var targetSection = _sections[newSectionCount - 1];
         var targetSectionIndex = newSectionCount - 1;
 
+        var movedTabs = new List<DocumentTab>();
+
         for (int i = newSectionCount; i < _sections.Count; i++)
         {
             var sourceSection = _sections[i];
@@ -613,6 +615,7 @@ public sealed partial class DocumentSectionContainer : UserControl
             {
                 sourceSection.RemoveTab(tab);
                 targetSection.AddTab(tab);
+                movedTabs.Add(tab);
             }
         }
 
@@ -635,6 +638,28 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         UpdateTabSelectionIndicators();
+
+        FlashMovedTabs(movedTabs);
+    }
+
+    // Flashes each tab that migrated into a surviving section so its new location stands out. Deferred to a low
+    // dispatcher tick so the target section's tab strip has laid the moved headers out before they pulse.
+    private void FlashMovedTabs(List<DocumentTab> movedTabs)
+    {
+        if (movedTabs.Count == 0)
+        {
+            return;
+        }
+
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
+            {
+                foreach (var tab in movedTabs)
+                {
+                    tab.FlashAttention();
+                }
+            });
     }
 
     private void RebuildGrid()

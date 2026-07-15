@@ -19,6 +19,7 @@ public class DocumentLayoutStoreTests
     private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IDocumentsPanel _documentsPanel = null!;
+    private IUtilityService _utilityService = null!;
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private DocumentLayoutStore _store = null!;
@@ -62,6 +63,12 @@ public class DocumentLayoutStoreTests
         workspaceService.ResourceService.Returns(resourceService);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
+
+        // A stored utils: entry drives the dock mechanism through the utility service; default it to success.
+        _utilityService = Substitute.For<IUtilityService>();
+        _utilityService.RestoreDockedUtility(Arg.Any<ResourceKey>(), Arg.Any<DocumentAddress>())
+            .Returns(Result.Ok());
+        workspaceService.UtilityService.Returns(_utilityService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -200,6 +207,29 @@ public class DocumentLayoutStoreTests
 
         await _store.RestorePanelStateAsync();
 
+        await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_UtilityResource_DocksViaDocumentsService()
+    {
+        // A utils: resource is a utility, a permanent Utility Panel surface instantiated eagerly at load. A
+        // stored utils: entry means it was docked last session, so the restore drives the dock mechanism to
+        // reparent the already-live utility into its saved position rather than opening a second document.
+        var utilityResource = new ResourceKey("utils:settings._notepad");
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new(utilityResource.ToString(), WindowIndex: 0, SectionIndex: 0, TabOrder: 3),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        // Docked via the utility service at the saved address, never opened as a document.
+        _utilityService.Received(1).RestoreDockedUtility(
+            utilityResource,
+            Arg.Is<DocumentAddress>(address => address.SectionIndex == 0 && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
 

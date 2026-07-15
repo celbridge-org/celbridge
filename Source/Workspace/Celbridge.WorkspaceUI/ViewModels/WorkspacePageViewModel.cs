@@ -124,6 +124,10 @@ public partial class WorkspacePageViewModel : ObservableObject
             _workspaceService.DocumentsPanel.Shutdown();
 
             _workspaceService.ConsolePanel?.Shutdown();
+
+            // Tear down the utilities, then clear the rail.
+            await _workspaceService.UtilityService.TeardownUtilitiesAsync();
+            _workspaceService.UtilityPanel.ClearContributedUtilities();
         }
         catch (Exception exception)
         {
@@ -142,7 +146,8 @@ public partial class WorkspacePageViewModel : ObservableObject
             // Clear project-level feature flag overrides before disposing the workspace
             _featureFlags.ClearProjectOverrides();
 
-            // Clear shortcut buttons from the title bar before disposing the workspace
+            // Clear shortcut buttons from the title bar before disposing the workspace. Utility launchers live
+            // in the Explorer toolbar, which is torn down with the workspace page, so they need no explicit clear.
             _workspaceLoader.ClearTitleBarShortcuts();
 
             // Revert the process working folder set on load, so it stays valid while no project is loaded

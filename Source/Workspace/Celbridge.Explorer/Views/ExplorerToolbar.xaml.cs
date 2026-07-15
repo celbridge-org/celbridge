@@ -30,18 +30,6 @@ public sealed partial class ExplorerToolbar : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
     }
 
-    public void SetToolbarVisible(bool isVisible)
-    {
-        if (isVisible)
-        {
-            ToolbarFadeIn.Begin();
-        }
-        else
-        {
-            ToolbarFadeOut.Begin();
-        }
-    }
-
     private void NewFileButton_Click(object sender, RoutedEventArgs e)
     {
         NewFileClicked?.Invoke(this, EventArgs.Empty);

@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Search.Services;
 
 /// <summary>
-/// Prepares a Search landmark for spotlighting by switching the activity panel to the Search tab,
+/// Prepares a Search landmark for spotlighting by switching the Utility Panel to the Search tab,
 /// since the Search content is collapsed while another activity (such as Explorer) is active. For
 /// the replace controls it also enables replace mode, which it restores to its prior state on clear.
 /// </summary>
@@ -32,11 +32,11 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
             return Result.Fail("Cannot reveal the Search landmark: no workspace is loaded.");
         }
 
-        var searchPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.SearchPanel;
+        var searchPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.SearchPanel;
 
         // Switch to the Search tab so the Search content is on screen; it is collapsed while another
         // activity (such as Explorer) is the active tab.
-        _workspaceWrapper.WorkspaceService.ActivityPanel.ShowTab(ActivityPanelTab.Search);
+        _workspaceWrapper.WorkspaceService.UtilityPanel.ShowUtility(BuiltInUtilityIds.Search);
 
         if (_revealReplace)
         {
@@ -56,6 +56,6 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
             return;
         }
 
-        _workspaceWrapper.WorkspaceService.ActivityPanel.SearchPanel.SetReplaceMode(false);
+        _workspaceWrapper.WorkspaceService.UtilityPanel.SearchPanel.SetReplaceMode(false);
     }
 }

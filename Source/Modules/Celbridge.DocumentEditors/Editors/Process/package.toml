@@ -1,0 +1,7 @@
+[package]
+name = "celbridge.process"
+title = "Utility_Process_Package"
+feature_flag = "example-utilities"
+
+[contributes]
+document_editors = ["process.document.toml"]

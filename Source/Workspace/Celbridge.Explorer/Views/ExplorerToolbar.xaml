@@ -1,31 +1,15 @@
-﻿<UserControl
+<UserControl
     x:Class="Celbridge.Explorer.Views.ExplorerToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-  <UserControl.Resources>
-    <!-- Storyboard animations for toolbar fade in/out -->
-    <Storyboard x:Name="ToolbarFadeIn">
-      <DoubleAnimation Storyboard.TargetName="ToolbarPanel"
-                       Storyboard.TargetProperty="Opacity"
-                       To="1"
-                       Duration="0:0:0.15" />
-    </Storyboard>
-    <Storyboard x:Name="ToolbarFadeOut">
-      <DoubleAnimation Storyboard.TargetName="ToolbarPanel"
-                       Storyboard.TargetProperty="Opacity"
-                       To="0"
-                       Duration="0:0:0.15" />
-    </Storyboard>
-  </UserControl.Resources>
-
-  <!-- Toolbar Buttons -->
-  <StackPanel x:Name="ToolbarPanel"
-              Orientation="Horizontal"
+  <!-- Explorer toolbar actions: new file, new folder, collapse the tree, and open project settings. Left-aligned
+       so the button group lines up with the panel title above it and the resource tree below it. -->
+  <StackPanel Orientation="Horizontal"
               Spacing="0"
-              Opacity="0">
+              HorizontalAlignment="Left">
     <StackPanel.Resources>
       <!-- Button theme resources are overridden on the parent to give all child buttons the same hover behaviour -->
       <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
@@ -35,6 +19,7 @@
       <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
       <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
     </StackPanel.Resources>
+
     <Button x:Name="NewFileButton"
             AutomationProperties.AutomationId="new-file-button"
             ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
@@ -42,7 +27,7 @@
             Click="NewFileButton_Click">
       <controls:Icon
                 Symbol="FileAdd"
-                FontSize="20" />
+                FontSize="16" />
     </Button>
     <Button x:Name="NewFolderButton"
             AutomationProperties.AutomationId="new-folder-button"
@@ -51,7 +36,7 @@
             Click="NewFolderButton_Click">
       <controls:Icon
                 Symbol="FolderAdd"
-                FontSize="20" />
+                FontSize="16" />
     </Button>
     <Button x:Name="CollapseFoldersButton"
             AutomationProperties.AutomationId="collapse-folders-button"
@@ -60,7 +45,7 @@
             Click="CollapseFoldersButton_Click">
       <controls:Icon
                 Symbol="Collapse"
-                FontSize="20" />
+                FontSize="16" />
     </Button>
     <Button x:Name="ProjectSettingsButton"
             AutomationProperties.AutomationId="project-settings-button"
@@ -69,7 +54,7 @@
             Click="ProjectSettingsButton_Click">
       <controls:Icon
                 Symbol="Settings"
-                FontSize="20" />
+                FontSize="16" />
     </Button>
   </StackPanel>
 </UserControl>

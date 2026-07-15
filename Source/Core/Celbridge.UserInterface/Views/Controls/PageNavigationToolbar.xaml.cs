@@ -1,6 +1,7 @@
 using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Animation;
 
@@ -56,10 +57,18 @@ public sealed partial class PageNavigationToolbar : UserControl
     public void SetShortcutButtonsVisible(bool isVisible)
     {
         _hasShortcuts = isVisible;
-        UpdateShortcutButtonsVisibility(animate: isVisible);
+        UpdateSeparators();
+        UpdatePaneButtonsVisibility(animate: isVisible);
     }
 
-    private void UpdateShortcutButtonsVisibility(bool animate = false)
+    // The shortcut group shows its leading separator (dividing it from the project button) whenever
+    // shortcuts are present.
+    private void UpdateSeparators()
+    {
+        ShortcutLeadingSeparator.Visibility = _hasShortcuts ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdatePaneButtonsVisibility(bool animate = false)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         var shouldShow = _hasShortcuts && userInterfaceService.ActivePage == ApplicationPage.Workspace;
@@ -68,8 +77,8 @@ public sealed partial class PageNavigationToolbar : UserControl
         {
             if (animate)
             {
-                ShortcutButtonsContainer.Opacity = 0;
-                ShortcutButtonsContainer.Visibility = Visibility.Visible;
+                PaneButtonsContainer.Opacity = 0;
+                PaneButtonsContainer.Visibility = Visibility.Visible;
 
                 var storyboard = new Storyboard();
                 var fadeIn = new DoubleAnimation
@@ -80,21 +89,21 @@ public sealed partial class PageNavigationToolbar : UserControl
                     EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
                 };
 
-                Storyboard.SetTarget(fadeIn, ShortcutButtonsContainer);
+                Storyboard.SetTarget(fadeIn, PaneButtonsContainer);
                 Storyboard.SetTargetProperty(fadeIn, "Opacity");
                 storyboard.Children.Add(fadeIn);
                 storyboard.Begin();
             }
             else
             {
-                ShortcutButtonsContainer.Opacity = 1;
-                ShortcutButtonsContainer.Visibility = Visibility.Visible;
+                PaneButtonsContainer.Opacity = 1;
+                PaneButtonsContainer.Visibility = Visibility.Visible;
             }
         }
         else
         {
-            ShortcutButtonsContainer.Visibility = Visibility.Collapsed;
-            ShortcutButtonsContainer.Opacity = 1;
+            PaneButtonsContainer.Visibility = Visibility.Collapsed;
+            PaneButtonsContainer.Opacity = 1;
         }
     }
 
@@ -183,7 +192,7 @@ public sealed partial class PageNavigationToolbar : UserControl
         UpdateNavigationSelection(message.ActivePage);
 
         var isNavigatingToWorkspace = message.ActivePage == ApplicationPage.Workspace;
-        UpdateShortcutButtonsVisibility(animate: isNavigatingToWorkspace);
+        UpdatePaneButtonsVisibility(animate: isNavigatingToWorkspace);
     }
 
     private void UpdateNavigationSelection(ApplicationPage activePage)

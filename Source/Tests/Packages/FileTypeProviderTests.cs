@@ -221,6 +221,45 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
+    public async Task GetDocumentTypes_UtilityContribution_Excluded()
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, "bundled", "emoji");
+        Directory.CreateDirectory(packageDir);
+
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
+            [package]
+            name = "test.emoji"
+            title = "Emoji"
+
+            [contributes]
+            document_editors = ["emoji.document.toml"]
+            """);
+
+        File.WriteAllText(Path.Combine(packageDir, "emoji.document.toml"), """
+            [document]
+            id = "emoji-renderer"
+            type = "custom"
+            entry_point = "index.html"
+
+            [utility]
+            resource = "utils:settings._emoji"
+            template = "templates/default._emoji"
+            icon = "emoji-smile"
+            tooltip = "Emoji_Utility_Tooltip"
+            """);
+
+        _bundledPackagePaths.Add(packageDir);
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        // The utility registered as a document editor, but must not appear as a creatable New File type.
+        var editors = _service.GetAllDocumentEditors();
+        editors.Should().ContainSingle();
+        ((CustomDocumentEditorContribution)editors[0]).IsUtility.Should().BeTrue();
+
+        _service.GetDocumentTypes().Should().BeEmpty();
+    }
+
+    [Test]
     public async Task GetDefaultTemplateContent_PackageWithTemplate_ReturnsContent()
     {
         var templateContent = "{\"type\":\"doc\"}";

@@ -1,6 +1,9 @@
 using System.Text;
+using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.Documents;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Server;
@@ -169,11 +172,22 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Open previous opened documents in the Documents Panel.
+        // Create a persistent surface for every utility and build their rail. This runs before the documents are
+        // restored so a utility that was docked as a document last session is reparented into its saved tab
+        // rather than opened as a second instance.
+        await BuildUtilities();
+
+        // Open previously opened documents in the Documents Panel. A stored utils: entry docks its
+        // already-created utility into the saved tab position.
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
-        // Update the current stored state of the workspace in preparation for the next session.
+        // Restore the previously selected Utility Panel tab, after documents are restored so a persisted surface
+        // that ended up docked falls back to Explorer rather than showing an empty panel.
+        _workspaceWrapper.WorkspaceService.UtilityPanel.RestoreSelectedUtility();
+
+        // Update the current stored state of the workspace in preparation for the next session. Runs after the
+        // dock restore so the re-persisted layout still records the docked utilities.
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
@@ -354,6 +368,76 @@ public class WorkspaceLoader
     public void ClearTitleBarShortcuts()
     {
         _userInterfaceService.TitleBar?.ClearShortcutButtons();
+    }
+
+    // Creates the persistent surface for every utility (bundled before project, each by id) and builds the rail.
+    // The utilities are owned by the documents service for the workspace lifetime. The utility mechanism is
+    // always on; individual utility packages can still gate themselves with a package feature flag.
+    private async Task BuildUtilities()
+    {
+        var utilityContributions = GetUtilityContributions();
+        if (utilityContributions.Count == 0)
+        {
+            return;
+        }
+
+        var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
+        var tabs = await utilityService.CreateUtilitiesAsync(utilityContributions);
+        if (tabs.Count == 0)
+        {
+            return;
+        }
+
+        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildContributedUtilities(tabs);
+    }
+
+    // Enumerates enabled utility contributions in the rail's stable order: bundled before project, each
+    // group sorted by fully-qualified id. Feature-flag-disabled packages are filtered out.
+    private List<CustomDocumentEditorContribution> GetUtilityContributions()
+    {
+        var packageService = _workspaceWrapper.WorkspaceService.PackageService;
+
+        var utilityContributions = new List<CustomDocumentEditorContribution>();
+        foreach (var contribution in packageService.GetAllDocumentEditors())
+        {
+            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utilityContribution)
+            {
+                continue;
+            }
+
+            if (!IsPackageEnabled(utilityContribution.Package))
+            {
+                continue;
+            }
+
+            utilityContributions.Add(utilityContribution);
+        }
+
+        var bundledContributions = utilityContributions
+            .Where(contribution => contribution.Package.Origin == PackageOrigin.Bundled)
+            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+
+        var projectContributions = utilityContributions
+            .Where(contribution => contribution.Package.Origin == PackageOrigin.Project)
+            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+
+        return bundledContributions.Concat(projectContributions).ToList();
+    }
+
+    // The utility id string, used only as a stable ordinal sort key for the rail ordering.
+    private static string GetUtilityId(CustomDocumentEditorContribution contribution)
+    {
+        return UtilityId.Create(contribution.Package.Name, contribution.Id).ToString();
+    }
+
+    private bool IsPackageEnabled(PackageInfo package)
+    {
+        if (string.IsNullOrEmpty(package.FeatureFlag))
+        {
+            return true;
+        }
+
+        return _featureFlags.IsEnabled(package.FeatureFlag);
     }
 
     private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)

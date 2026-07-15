@@ -83,12 +83,13 @@ public class ResourceService : IResourceService, IDisposable
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         Registry.InitializeProjectRoot(projectFolderPath);
 
-        // Build the .celbridge/ hidden folder layout: temp/, logs/, trash/.
+        // Build the .celbridge/ hidden folder layout: temp/, logs/, utils/, trash/.
         // These need to exist before downstream services start reading or
         // watching them.
         var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
         var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.TempFolder);
         var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.LogsFolder);
+        var celbridgeUtilsFolder = Path.Combine(celbridgeFolder, ProjectConstants.UtilsFolder);
         var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.TrashFolder);
 
         // temp:/ is wiped on every workspace load. The contract is that nothing
@@ -97,6 +98,11 @@ public class ResourceService : IResourceService, IDisposable
         TryDeleteFolder(celbridgeTempFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTempFolder));
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeLogsFolder));
+
+        // utils:/ is the persistent home for utility-document state, so it is
+        // deliberately not wiped. The folder is created here so the watcher can
+        // attach to it even before the first utility writes its state.
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeUtilsFolder));
 
         // Trash is cleared on every workspace load; undo history lives in memory only,
         // so previous-session trash content has no live handles.
@@ -115,6 +121,7 @@ public class ResourceService : IResourceService, IDisposable
 
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder));
         rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder));
+        rootHandlerRegistry.RegisterRootHandler(new UtilsRootHandler(celbridgeUtilsFolder));
 
         // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
         // the monitor looks up its registry through IWorkspaceWrapper, which is only populated

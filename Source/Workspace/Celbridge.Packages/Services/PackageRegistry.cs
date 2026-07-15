@@ -135,6 +135,15 @@ public class PackageRegistry
 
         foreach (var contribution in contributions)
         {
+            // A utility owns one fixed resource and is never created as an ordinary project file, so it
+            // must not appear as a creatable type in the New File dialog. The skip is also structural:
+            // a utility has no [[document_file_types]] entry to offer, so the FileTypes[0] read below
+            // would be meaningless for it.
+            if (contribution is CustomDocumentEditorContribution { IsUtility: true })
+            {
+                continue;
+            }
+
             if (contribution.Templates.Count == 0)
             {
                 continue;
@@ -215,6 +224,42 @@ public class PackageRegistry
         }
 
         return null;
+    }
+
+    // Reads the seed template bytes for a utility contribution from its manifest 'template'
+    // path, choosing the reader by package origin (direct File.* for bundled, gateway for
+    // project). Returns an empty array when the utility declares no template, and null when a
+    // declared template file is missing or unreadable so callers can log and seed an empty file.
+    public byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution)
+    {
+        var descriptor = contribution.UtilityDescriptor;
+        if (descriptor is null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(descriptor.Template))
+        {
+            return Array.Empty<byte>();
+        }
+
+        var templatePath = Path.Combine(contribution.Package.PackageFolder, descriptor.Template);
+        var reader = GetReaderForPackage(contribution.Package);
+
+        if (!reader.Exists(templatePath))
+        {
+            _logger.LogWarning($"Utility template file not found: {templatePath}");
+            return null;
+        }
+
+        var readResult = reader.ReadAllBytes(templatePath);
+        if (readResult.IsFailure)
+        {
+            _logger.LogWarning($"Failed to read utility template file: {templatePath}. {readResult.FirstErrorMessage}");
+            return null;
+        }
+
+        return readResult.Value;
     }
 
     // Rejects packages whose document-type registration declares any file

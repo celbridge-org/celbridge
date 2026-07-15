@@ -1,0 +1,71 @@
+<UserControl
+    x:Class="Celbridge.WorkspaceUI.Views.Controls.UtilityButton"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    IsTabStop="False">
+
+    <Grid Height="48">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="SelectionStates">
+                <VisualState x:Name="Unselected" />
+                <VisualState x:Name="SelectedUnfocused">
+                    <VisualState.Setters>
+                        <!-- Selected but the utility panel is unfocused: show the capsule in its base grey. -->
+                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="SelectedFocused">
+                    <VisualState.Setters>
+                        <!-- Selected and focused: swap the capsule to the accent color. ThemeResource keeps
+                             both tones correct across a light/dark theme switch. -->
+                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
+                        <Setter Target="SelectionIndicator.Background" Value="{ThemeResource NavigationViewSelectionIndicatorForeground}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <!-- Full-cell transparent click target. Hover and pressed visuals come from the default Button
+             template; it carries no content so it cannot bias the icon's position. -->
+        <Button x:Name="ButtonElement"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                CornerRadius="4"
+                IsTabStop="False"
+                Click="ButtonElement_Click" />
+
+        <!-- Attention flash overlay, pulsed to the accent color by FlashAttention (e.g. when this utility is
+             undocked and the button becomes available again). Behind the icon and not hit-testable. -->
+        <Border x:Name="AttentionOverlay"
+                Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                CornerRadius="4"
+                Margin="4,2,4,2"
+                Opacity="0"
+                IsHitTestVisible="False" />
+
+        <!-- Icon centered in the full rail width, above the button but passing clicks through to it. -->
+        <controls:Icon x:Name="IconElement"
+                       FontSize="22"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False" />
+
+        <!-- Tall capsule on the left edge, shown when this rail item is the selected surface. Grey by default
+             (selected but unfocused); the SelectedFocused state swaps it to the accent color. Stretches to the
+             top and bottom of the cell with an even 2px inset on the left, top and bottom, and not hit-testable
+             so the whole cell stays clickable. -->
+        <Border x:Name="SelectionIndicator"
+                Width="3"
+                CornerRadius="1.5"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Stretch"
+                Margin="2,2,0,2"
+                IsHitTestVisible="False"
+                Background="{ThemeResource TextFillColorTertiaryBrush}"
+                Visibility="Collapsed" />
+    </Grid>
+</UserControl>

@@ -28,7 +28,7 @@ public partial class PackageTools
     /// <summary>Publish a package folder to the workshop as a new version, named from its manifest.</summary>
     [McpServerTool(Name = "package_publish", Destructive = true)]
     [ToolAlias("package.publish")]
-    [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive", "document_editor_contributions")]
+    [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive", "document_editor_contributions", "utility_documents")]
     public async partial Task<CallToolResult> Publish(string resource, string summary = "", bool confirmWithUser = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

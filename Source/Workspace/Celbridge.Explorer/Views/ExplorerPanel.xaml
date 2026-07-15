@@ -8,16 +8,13 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
   Background="Transparent"
-  ui:FocusTracking.Panel="Explorer"
-  PointerEntered="UserControl_PointerEntered"
-  PointerExited="UserControl_PointerExited"
-  GotFocus="UserControl_GotFocus"
-  LostFocus="UserControl_LostFocus">
+  ui:FocusTracking.Panel="Explorer">
 
   <Grid VerticalAlignment="Stretch"
         Background="Transparent">
 
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
@@ -26,25 +23,29 @@
     <!-- Panel Header -->
     <controls:PanelHeader x:Name="PanelHeader"
                           Grid.Row="0"
+                          ShowFocusIndicator="False"
                           Tapped="PanelHeader_Tapped"
-                          Title="{x:Bind ViewModel.TitleText, Mode=OneWay}">
-      <controls:PanelHeader.ToolbarContent>
-        
-        <local:ExplorerToolbar x:Name="ExplorerToolbar"
-                               VerticalAlignment="Center"
-                               NewFileClicked="ExplorerToolbar_NewFileClicked"
-                               NewFolderClicked="ExplorerToolbar_NewFolderClicked"
-                               CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
+                          Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
 
-      </controls:PanelHeader.ToolbarContent>
-    </controls:PanelHeader>
+    <!-- Persistent Toolbar: shares the header background (one chrome band) and is divided from the tree -->
+    <Border Grid.Row="1"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="6,2,6,2">
+      <local:ExplorerToolbar x:Name="ExplorerToolbar"
+                             HorizontalAlignment="Stretch"
+                             NewFileClicked="ExplorerToolbar_NewFileClicked"
+                             NewFolderClicked="ExplorerToolbar_NewFolderClicked"
+                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
+    </Border>
 
     <!-- Resource Tree -->
     <local:ResourceTree x:Name="ResourceTree"
-                        Grid.Row="1"/>
+                        Grid.Row="2"/>
 
     <!-- Notification Bar -->
-    <local:ExplorerNotificationBar Grid.Row="2"/>
-    
+    <local:ExplorerNotificationBar Grid.Row="3"/>
+
   </Grid>
 </UserControl>

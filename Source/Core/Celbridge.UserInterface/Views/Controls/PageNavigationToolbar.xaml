@@ -8,6 +8,13 @@
 
     <UserControl.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+        <Style x:Key="TitleBarSeparatorStyle" TargetType="Border">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Margin" Value="4,0,4,0"/>
+            <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+        </Style>
     </UserControl.Resources>
 
     <NavigationView x:Name="PageNavigation"
@@ -57,23 +64,21 @@
             </NavigationViewItem>
         </NavigationView.MenuItems>
 
-        <!-- Shortcut buttons -->
+        <!-- Shortcut buttons to the right of the project button -->
         <NavigationView.PaneCustomContent>
-            <StackPanel x:Name="ShortcutButtonsContainer"
+            <StackPanel x:Name="PaneButtonsContainer"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Visibility="Collapsed">
 
-              <!-- Separator -->
-              <Border Width="1"
-                      Height="20"
-                      Margin="4,0,4,0"
-                      Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-              
-              <!-- Shortcut buttons are added programmatically -->
+              <!-- Shortcut buttons (added programmatically) -->
+              <Border x:Name="ShortcutLeadingSeparator"
+                      Style="{StaticResource TitleBarSeparatorStyle}"
+                      Visibility="Collapsed"/>
+
               <StackPanel x:Name="ShortcutButtonsPanel"
                           Orientation="Horizontal"/>
-              
+
             </StackPanel>
         </NavigationView.PaneCustomContent>
     </NavigationView>

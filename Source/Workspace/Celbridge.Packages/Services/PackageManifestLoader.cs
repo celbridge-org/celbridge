@@ -22,6 +22,7 @@ public static class PackageManifestLoader
     private const string CodeEditorSection = "code_editor";
     private const string CodePreviewSection = "code_preview";
     private const string OptionsSection = "options";
+    private const string UtilitySection = "utility";
     private const string ToolsKey = "tools";
 
     private const string IdKey = "id";
@@ -38,6 +39,10 @@ public static class PackageManifestLoader
     private const string EntryPointKey = "entry_point";
     private const string BinaryKey = "binary";
     private const string ExternalContentKey = "external_content";
+    private const string ResourcePropertyKey = "resource";
+    private const string TemplateKey = "template";
+    private const string IconKey = "icon";
+    private const string TooltipKey = "tooltip";
     private const string WordWrapKey = "word_wrap";
     private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
     private const string MinimapEnabledKey = "minimap_enabled";
@@ -84,6 +89,10 @@ public static class PackageManifestLoader
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(toml);
+            if (root is null)
+            {
+                return Result.Fail($"Failed to deserialize package manifest: {packageTomlPath}");
+            }
 
             if (!root.TryGetValue(PackageSection, out var packageObject) ||
                 packageObject is not TomlTable packageTable)
@@ -203,6 +212,10 @@ public static class PackageManifestLoader
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(toml);
+            if (root is null)
+            {
+                return Result.Fail($"Failed to deserialize document manifest: {documentTomlPath}");
+            }
 
             if (!root.TryGetValue(DocumentSection, out var documentObject) ||
                 documentObject is not TomlTable documentTable)
@@ -217,17 +230,78 @@ public static class PackageManifestLoader
             }
 
             var documentType = GetString(documentTable, TypeKey).ToLowerInvariant();
+
+            // A [utility] section turns this contribution into a utility document. Its presence relaxes
+            // the display_name requirement (the tooltip doubles as the label), replaces [[document_file_types]]
+            // (the editor extension is derived from the backing resource), and requires the custom editor type.
+            UtilityDescriptor? utilityDescriptor = null;
+            if (root.TryGetValue(UtilitySection, out var utilityObject))
+            {
+                if (utilityObject is not TomlTable utilityTable)
+                {
+                    return Result.Fail($"[{UtilitySection}] must be a table: {documentTomlPath}");
+                }
+
+                if (documentType == CodeDocumentType)
+                {
+                    return Result.Fail(
+                        $"A [{UtilitySection}] document must use type = \"custom\", not \"{CodeDocumentType}\": {documentTomlPath}");
+                }
+
+                if (root.ContainsKey(DocumentFileTypesSection))
+                {
+                    return Result.Fail(
+                        $"A document manifest cannot declare both [{UtilitySection}] and [[{DocumentFileTypesSection}]]: {documentTomlPath}. " +
+                        $"A utility owns one fixed resource and derives its editor extension from it.");
+                }
+
+                var utilityResult = ParseUtilitySection(utilityTable, documentTomlPath);
+                if (utilityResult.IsFailure)
+                {
+                    return Result.Fail($"Invalid [{UtilitySection}] section: {documentTomlPath}")
+                        .WithErrors(utilityResult);
+                }
+                utilityDescriptor = utilityResult.Value;
+            }
+
             var displayName = GetString(documentTable, DisplayNameKey);
             if (string.IsNullOrEmpty(displayName))
             {
-                return Result.Fail(
-                    $"Document missing required '{DisplayNameKey}' field in [{DocumentSection}] section: {documentTomlPath}. " +
-                    $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
+                if (utilityDescriptor is not null)
+                {
+                    // A utility has no separate label field, so its tooltip localization key doubles as the
+                    // editor display name used for the tab title and any diagnostics.
+                    displayName = utilityDescriptor.Tooltip;
+                }
+                else
+                {
+                    return Result.Fail(
+                        $"Document missing required '{DisplayNameKey}' field in [{DocumentSection}] section: {documentTomlPath}. " +
+                        $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
+                }
             }
             var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
             var fileTypes = new List<DocumentFileType>();
-            if (root.TryGetValue(DocumentFileTypesSection, out var fileTypesObject) &&
+            if (utilityDescriptor is not null)
+            {
+                // The utility registers under the extension derived from its backing resource, so
+                // OpenDocument resolution finds it in the normal extension bucket without a
+                // [[document_file_types]] declaration.
+                var derivedExtension = Path.GetExtension(utilityDescriptor.Resource).ToLowerInvariant();
+                if (string.IsNullOrEmpty(derivedExtension))
+                {
+                    return Result.Fail(
+                        $"The [{UtilitySection}] '{ResourcePropertyKey}' must include a file extension so the editor can register: {documentTomlPath}");
+                }
+
+                fileTypes.Add(new DocumentFileType
+                {
+                    FileExtension = derivedExtension,
+                    DisplayName = displayName
+                });
+            }
+            else if (root.TryGetValue(DocumentFileTypesSection, out var fileTypesObject) &&
                 fileTypesObject is TomlTableArray fileTypesArray)
             {
                 foreach (var fileTypeTable in fileTypesArray)
@@ -322,7 +396,7 @@ public static class PackageManifestLoader
             DocumentEditorContribution contribution = documentType switch
             {
                 CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates),
-                _ => BuildCustomContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates, documentTable)
+                _ => BuildCustomContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates, documentTable, utilityDescriptor)
             };
 
             return Result<DocumentEditorContribution>.Ok(contribution);
@@ -341,7 +415,8 @@ public static class PackageManifestLoader
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
         List<DocumentTemplate> templates,
-        TomlTable documentTable)
+        TomlTable documentTable,
+        UtilityDescriptor? utilityDescriptor)
     {
         var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
         var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
@@ -360,8 +435,42 @@ public static class PackageManifestLoader
             EntryPoint = entryPoint,
             Binary = binary,
             ExternalContent = externalContent,
-            Options = options
+            Options = options,
+            UtilityDescriptor = utilityDescriptor
         };
+    }
+
+    private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string documentTomlPath)
+    {
+        var resource = GetString(utilityTable, ResourcePropertyKey);
+        if (string.IsNullOrEmpty(resource))
+        {
+            return Result.Fail($"[{UtilitySection}] missing required '{ResourcePropertyKey}' field: {documentTomlPath}");
+        }
+
+        var icon = GetString(utilityTable, IconKey);
+        if (string.IsNullOrEmpty(icon))
+        {
+            return Result.Fail($"[{UtilitySection}] missing required '{IconKey}' field: {documentTomlPath}");
+        }
+
+        var tooltip = GetString(utilityTable, TooltipKey);
+        if (string.IsNullOrEmpty(tooltip))
+        {
+            return Result.Fail($"[{UtilitySection}] missing required '{TooltipKey}' field: {documentTomlPath}");
+        }
+
+        var template = GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
+
+        var descriptor = new UtilityDescriptor
+        {
+            Resource = resource,
+            Template = template,
+            Icon = icon,
+            Tooltip = tooltip
+        };
+
+        return descriptor;
     }
 
     private static IReadOnlyDictionary<string, string> ParseOptionsTable(TomlTable root)

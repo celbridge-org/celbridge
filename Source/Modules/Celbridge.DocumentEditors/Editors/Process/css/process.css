@@ -1,0 +1,52 @@
+:root {
+    color-scheme: light dark;
+}
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+}
+
+#process-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+#process-title {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#process-blurb {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+#process-input {
+    flex: 1;
+    resize: none;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    border-radius: 4px;
+    padding: 8px;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 13px;
+    background: transparent;
+    color: inherit;
+}
+
+body.theme-light {
+    background: #ffffff;
+    color: #1a1a1a;
+}
+
+body.theme-dark {
+    background: #1e1e1e;
+    color: #e6e6e6;
+}

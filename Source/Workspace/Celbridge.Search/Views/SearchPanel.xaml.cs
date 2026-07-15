@@ -202,7 +202,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
     public void FocusSearchInput()
     {
         // Pointer focus state so the central PanelFocusTracker reports the panel (it ignores Programmatic
-        // focus). Used when a deliberate gesture (activity-rail selection, panel title-bar click) should
+        // focus). Used when a deliberate gesture (utility-rail selection, panel title-bar click) should
         // move keyboard focus into the search box.
         SearchTextBox.Focus(FocusState.Pointer);
         SearchTextBox.SelectAll();

@@ -77,7 +77,12 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     /// </summary>
     public virtual async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        if (ResourceRegistry.GetResource(fileResource).IsFailure)
+        // The registry only contains project: resources; virtual-root keys (utils:, temp:, logs:) are
+        // addressable but never enumerated in the tree. The ResolveResourcePath + GetInfoAsync checks below
+        // are root-resolver based and validate existence on all roots, so the registry-membership fast path
+        // is gated to project resources.
+        if (fileResource.Root == ResourceKey.DefaultRoot
+            && ResourceRegistry.GetResource(fileResource).IsFailure)
         {
             return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
         }

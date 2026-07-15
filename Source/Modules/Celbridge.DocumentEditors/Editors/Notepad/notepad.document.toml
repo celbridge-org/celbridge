@@ -1,0 +1,12 @@
+[document]
+id = "notepad"
+type = "custom"
+entry_point = "index.html"
+
+# A utility: a persistent surface created when the project loads, appearing as a rail item in the Utility Panel
+# beside Explorer and Search. An example utility, behind the example-utilities feature flag.
+[utility]
+resource   = "utils:settings._notepad"
+template   = "templates/default._notepad"
+icon       = "sticky"
+tooltip    = "Utility_Notepad_Tooltip"

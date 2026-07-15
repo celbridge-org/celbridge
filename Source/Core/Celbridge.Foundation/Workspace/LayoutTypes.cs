@@ -33,7 +33,12 @@ public enum WorkspacePanel
     /// <summary>
     /// The Console panel.
     /// </summary>
-    Console
+    Console,
+
+    /// <summary>
+    /// The contributed-utility surface in the Utility Panel (Explorer and Search have their own values).
+    /// </summary>
+    Utility
 }
 
 /// <summary>

@@ -42,6 +42,12 @@ public record RegionVisibilityChangedMessage(LayoutRegion RegionVisibility);
 public record PanelFocusChangedMessage(WorkspacePanel FocusedPanel);
 
 /// <summary>
+/// Sent when the surface shown in the Utility Panel rail changes. UtilityId is the fully-qualified id of the
+/// now-active utility (a built-in id such as "celbridge.explorer", or a contributed id), or empty when none.
+/// </summary>
+public record ActiveUtilityChangedMessage(string UtilityId);
+
+/// <summary>
 /// Message sent when the Console panel maximized state changes.
 /// </summary>
 public record ConsoleMaximizedChangedMessage(bool IsMaximized);

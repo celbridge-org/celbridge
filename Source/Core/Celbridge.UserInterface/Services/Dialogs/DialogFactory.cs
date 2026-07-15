@@ -1,10 +1,8 @@
 using Celbridge.Dialog;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views;
 using Celbridge.Validators;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+
+using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
 
 namespace Celbridge.UserInterface.Services.Dialogs;
 
@@ -164,8 +162,13 @@ public class DialogFactory : IDialogFactory
             return;
         }
 
-        var firstFocusable = FocusManager.FindFirstFocusableElement(dialog) as UIElement;
-        firstFocusable?.Focus(FocusState.Programmatic);
+        // FindNextElementOptions.SearchRoot only supports the directional navigation directions
+        // (Up/Down/Left/Right), not Next/Previous, so scoping a Next move to the dialog throws. Find the
+        // dialog's first focusable element directly and focus it instead of tabbing into it.
+        if (FocusManager.FindFirstFocusableElement(dialog) is Control firstFocusable)
+        {
+            firstFocusable.Focus(FocusState.Programmatic);
+        }
     }
 }
 

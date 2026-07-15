@@ -182,22 +182,38 @@ public partial class SearchPanelViewModel : ObservableObject
 
     private void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
-        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+        ScheduleSearchForResourceChange(message.Resource);
     }
 
     private void OnResourceCreated(object recipient, ResourceCreatedMessage message)
     {
-        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+        ScheduleSearchForResourceChange(message.Resource);
     }
 
     private void OnResourceDeleted(object recipient, ResourceDeletedMessage message)
     {
-        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+        ScheduleSearchForResourceChange(message.Resource);
     }
 
     private void OnResourceRenamed(object recipient, ResourceRenamedMessage message)
     {
-        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+        ScheduleSearchForResourceChange(message.OldResource, message.NewResource);
+    }
+
+    // Refreshes results only when a change touches the searched scope. Search scans the project root only, so
+    // changes under volatile roots (logs:, temp:) never affect results. Reacting to them would rebuild the
+    // results for nothing, and because our own search cancellation logs first-chance exceptions to the logs
+    // root, a logs-triggered refresh would feed straight back into itself.
+    private void ScheduleSearchForResourceChange(params ResourceKey[] resources)
+    {
+        foreach (var resource in resources)
+        {
+            if (resource.Root == ResourceKey.DefaultRoot)
+            {
+                ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+                return;
+            }
+        }
     }
 
     /// <summary>

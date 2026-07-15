@@ -33,6 +33,7 @@
     <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\Celbridge.Packages\Celbridge.Packages.csproj" />
+    <ProjectReference Include="..\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
   </ItemGroup>
 
 </Project>

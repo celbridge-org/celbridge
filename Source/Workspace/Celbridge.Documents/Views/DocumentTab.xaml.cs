@@ -3,7 +3,9 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.Documents.Views;
 
@@ -37,6 +39,9 @@ public partial class DocumentTab : TabViewItem
     private readonly IMessengerService _messengerService;
     private readonly IPlatformInfo _platformInfo;
 
+    // The currently running attention flash, if any. Kept so a repeated flash restarts cleanly.
+    private Storyboard? _attentionStoryboard;
+
     public DocumentTabViewModel ViewModel { get; }
 
     /// <summary>
@@ -53,6 +58,17 @@ public partial class DocumentTab : TabViewItem
     /// Gets whether this tab is the active document.
     /// </summary>
     public bool IsActiveDocument { get; private set; }
+
+    /// <summary>
+    /// Briefly pulses the tab's background to the accent color to draw the user's attention to it, then fades
+    /// it back out. Used to give visible feedback when a tab is surfaced (e.g. activating a docked utility) or
+    /// moved into a different section by a section-count change.
+    /// </summary>
+    public void FlashAttention()
+    {
+        _attentionStoryboard?.Stop();
+        _attentionStoryboard = AttentionFlash.Play(AttentionOverlay);
+    }
 
     /// <summary>
     /// Event raised when a context menu action is triggered.
@@ -228,11 +244,32 @@ public partial class DocumentTab : TabViewItem
         bool canMoveRight = hasMultipleSections && SectionIndex < VisibleSectionCount - 1;
         MoveRightMenuItem.Visibility = canMoveRight ? Visibility.Visible : Visibility.Collapsed;
 
-        // Show "Reopen with..." only when there are multiple editors registered for this file type
-        ReopenWithMenuItem.Visibility = ViewModel.HasMultipleCompatibleEditors() ? Visibility.Visible : Visibility.Collapsed;
-
         // Show the separator only if at least one move option is visible
         MoveSeparator.Visibility = (canMoveLeft || canMoveRight) ? Visibility.Visible : Visibility.Collapsed;
+
+        // A utility tab presents a docked utility, not a file, so hide the options that reveal or act on its
+        // backing file. The close and move options remain.
+        bool isUtility = ViewModel.IsUtility;
+        var fileActionsVisibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
+        SelectFileSeparator.Visibility = fileActionsVisibility;
+        SelectFileMenuItem.Visibility = fileActionsVisibility;
+        CopySeparator.Visibility = fileActionsVisibility;
+        CopyResourceKeyMenuItem.Visibility = fileActionsVisibility;
+        CopyFilePathMenuItem.Visibility = fileActionsVisibility;
+        OpenSeparator.Visibility = fileActionsVisibility;
+        OpenFileExplorerMenuItem.Visibility = fileActionsVisibility;
+        OpenApplicationMenuItem.Visibility = fileActionsVisibility;
+
+        // A utility tab hosts a docked utility, not a file opened with a chosen editor. Reopening would dock it
+        // back into the panel and then open a second, uncontrolled instance, so the reopen options are hidden
+        // for utilities.
+        ReopenSeparator.Visibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
+        ReopenMenuItem.Visibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
+
+        // Show "Reopen with..." only when there are multiple editors registered for this file type.
+        bool showReopenWith = !isUtility
+            && ViewModel.HasMultipleCompatibleEditors();
+        ReopenWithMenuItem.Visibility = showReopenWith ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private TabView? FindParentTabView()

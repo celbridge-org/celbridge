@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -241,17 +242,43 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            var getResourceResult = resourceRegistry.GetResource(fileResource);
-            if (getResourceResult.IsFailure)
+            // Project resources use the registry fast path; virtual-root keys (utils:, temp:, logs:) are
+            // never in the registry, so their existence is validated by the ResolveResourcePath +
+            // GetInfoAsync checks below instead.
+            if (fileResource.Root == ResourceKey.DefaultRoot)
             {
-                _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
-                continue;
+                var getResourceResult = resourceRegistry.GetResource(fileResource);
+                if (getResourceResult.IsFailure)
+                {
+                    _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
+                    continue;
+                }
             }
 
             var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
             if (resolveResult.IsFailure)
             {
                 _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
+                continue;
+            }
+
+            // A utils: resource is a utility (the root name equals its backing subfolder name by convention).
+            // Utilities are permanent Utility Panel surfaces, instantiated eagerly at workspace load, never
+            // opened as a second document instance. A stored utils: entry means the utility was docked last
+            // session, so drive the dock mechanism to reparent the already-live utility into its saved tab
+            // position instead of creating a new view. This runs after the utilities have been built (the load
+            // order guarantees it), so the utility exists to reparent.
+            if (fileResource.Root == ProjectConstants.UtilsFolder)
+            {
+                int utilitySection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
+                var utilityAddress = new DocumentAddress(stored.WindowIndex, utilitySection, stored.TabOrder);
+
+                var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
+                var restoreResult = utilityService.RestoreDockedUtility(fileResource, utilityAddress);
+                if (restoreResult.IsFailure)
+                {
+                    _logger.LogWarning(restoreResult, $"Failed to restore docked utility '{fileResource}'");
+                }
                 continue;
             }
 

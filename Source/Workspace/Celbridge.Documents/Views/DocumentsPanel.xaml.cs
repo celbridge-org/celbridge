@@ -12,8 +12,17 @@ namespace Celbridge.Documents.Views;
 
 using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;
 
+/// <summary>
+/// Where to place a utility when docking it into a document tab. A null Address docks into the active
+/// document's section and appends the tab, matching the interactive "Open as document" behaviour; a non-null
+/// Address targets a specific section and tab order, used when restoring a docked utility to its saved
+/// position. Activate selects the docked tab and makes it the active document.
+/// </summary>
+public record DockUtilityPlacement(DocumentAddress? Address, bool Activate);
+
 public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentsLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -57,6 +66,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         InitializeComponent();
 
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
@@ -113,6 +123,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void OnSectionCloseRequested(DocumentSection section, ResourceKey fileResource)
     {
+        // A docked utility is never destroyed: closing its tab docks it back into the Utility Panel instead.
+        // That decision is centralized in CloseDocumentCommand so every close path (this close button included)
+        // shares it, so the tab close button routes through the normal close like any other document.
         ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
@@ -207,6 +220,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for the close document keyboard shortcuts
         _messengerService.Register<CloseActiveDocumentRequestedMessage>(this, OnCloseActiveDocumentRequested);
         _messengerService.Register<CloseAllDocumentsRequestedMessage>(this, OnCloseAllDocumentsRequested);
+
+        // Listen for requests to flash a document tab (e.g. when a utility is surfaced or a document reopened)
+        _messengerService.Register<FlashDocumentMessage>(this, OnFlashDocumentRequested);
 
         // Apply initial tab strip visibility based on the current layout mode
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
@@ -474,7 +490,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+
+        // When the caller names the editor (a utility launcher always does), stamp the utility's manifest title
+        // and icon before the tab enters the visual tree, so it never briefly flashes the raw backing-file name
+        // while the view is created. Paths that only learn the editor id from the created view re-apply below.
+        ApplyUtilityTabMetadata(documentTab, effectiveOptions.EditorId);
+        if (!documentTab.ViewModel.IsUtility)
+        {
+            documentTab.ViewModel.DocumentName = fileResource.ResourceName;
+        }
 
         if (address is not null)
         {
@@ -503,6 +527,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.Content = documentView;
 
         UpdateEditorDisplayName(documentTab, documentView.EditorId);
+
+        // Apply the manifest title and icon for paths that only learn the editor id from the created view
+        // (the launcher path already stamped it above; this is idempotent). Runs before UpdateAllTabDisplayNames
+        // so the utility title is not overwritten by filename disambiguation.
+        ApplyUtilityTabMetadata(documentTab, documentView.EditorId);
 
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
@@ -585,6 +614,129 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // state we were trying to get into anyway, so we consider this a success.
 
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Docks a utility into a document tab: creates a tab hosting the utility's borrowed controller (reusing its
+    /// live WebView) and stamps the utility tab metadata. The placement selects the target section and tab order
+    /// and whether the tab is activated; the controller's WebView is reparented into the tab once it is in the
+    /// visual tree.
+    /// </summary>
+    public Result DockUtility(ContributionPanelView panelView, DockUtilityPlacement placement)
+    {
+        var resource = panelView.FileResource;
+        // A contributed utility's id string is its document editor id.
+        var editorId = new DocumentEditorId(panelView.UtilityId.ToString());
+
+        var resolveResult = ViewModel.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for utility resource: '{resource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
+
+        var address = placement.Address;
+        int sectionIndex = address is not null ? address.SectionIndex : SectionContainer.ActiveSectionIndex;
+        if (sectionIndex < 0
+            || sectionIndex >= SectionContainer.SectionCount)
+        {
+            sectionIndex = 0;
+        }
+        var section = SectionContainer.GetSection(sectionIndex);
+
+        var documentTab = new DocumentTab();
+        documentTab.ViewModel.FileResource = resource;
+        documentTab.ViewModel.FilePath = filePath;
+        documentTab.ViewModel.EditorId = editorId;
+        ApplyUtilityTabMetadata(documentTab, editorId);
+
+        var dockedView = new DockedUtilityDocumentView(_serviceProvider, _messengerService, panelView.Controller);
+        dockedView.EditorId = editorId;
+        dockedView.Bind(resource, filePath);
+
+        if (address is not null)
+        {
+            section.InsertTab(documentTab, address.TabOrder);
+        }
+        else
+        {
+            section.AddTab(documentTab);
+        }
+
+        documentTab.ViewModel.DocumentView = dockedView;
+        documentTab.Content = dockedView;
+
+        if (placement.Activate)
+        {
+            section.SelectTab(documentTab);
+        }
+
+        // Reparent the borrowed WebView into the tab now that the tab is in the visual tree.
+        dockedView.Dock();
+
+        if (placement.Activate)
+        {
+            SectionContainer.ActivateDocument(resource, sectionIndex);
+        }
+
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Activates the open document tab for a docked utility (used when its rail button is clicked).
+    /// </summary>
+    public void ActivateUtilityTab(ResourceKey resource)
+    {
+        var location = SectionContainer.FindDocumentTab(resource);
+        if (location is not null)
+        {
+            SectionContainer.ActivateDocument(resource, location.Section.SectionIndex);
+        }
+    }
+
+    private void OnFlashDocumentRequested(object recipient, FlashDocumentMessage message)
+    {
+        // Flashing is a transient view effect, so it is deferred until the tab that prompted it (a freshly
+        // docked, activated, or opened tab) has settled into the visual tree.
+        var fileResource = message.FileResource;
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => FlashDocument(fileResource));
+    }
+
+    /// <summary>
+    /// Briefly flashes the open document tab for the given resource to draw attention to it. A no-op when the
+    /// document is not open.
+    /// </summary>
+    private void FlashDocument(ResourceKey fileResource)
+    {
+        var location = SectionContainer.FindDocumentTab(fileResource);
+        location?.Tab.FlashAttention();
+    }
+
+    /// <summary>
+    /// Removes a docked utility's document tab. The caller reparents the controller's WebView back to the
+    /// Utility Panel first, so the tab (and its now-empty docked view) is dropped without any teardown.
+    /// </summary>
+    public void RemoveUtilityTab(ResourceKey resource)
+    {
+        var location = SectionContainer.FindDocumentTab(resource);
+        if (location is null)
+        {
+            return;
+        }
+
+        var section = location.Section;
+        var documentTab = location.Tab;
+
+        int tabIndex = section.GetTabIndex(documentTab);
+        SectionContainer.HandleDocumentClosing(resource, section.SectionIndex, tabIndex);
+
+        _ = documentTab.ViewModel.DocumentView?.PrepareToClose();
+        section.RemoveTab(documentTab);
+
+        UpdateAllTabDisplayNames();
     }
 
     /// <summary>
@@ -809,14 +961,28 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
+    private void ApplyUtilityTabMetadata(DocumentTab documentTab, DocumentEditorId documentEditorId)
+    {
+        var utilityInfo = ViewModel.ResolveUtilityTabInfo(documentEditorId);
+        if (utilityInfo is null)
+        {
+            return;
+        }
+
+        documentTab.ViewModel.IsUtility = true;
+        documentTab.ViewModel.UtilityIconGlyphName = utilityInfo.IconGlyphName;
+        documentTab.ViewModel.DocumentName = utilityInfo.Title;
+    }
+
     private void UpdateAllTabDisplayNames()
     {
-        // Collect all tabs from all sections
+        // Collect all tabs from all sections. Utility tabs keep their manifest title, so they are
+        // excluded from filename-based disambiguation.
         var allTabs = new List<DocumentTab>();
         for (int i = 0; i < SectionContainer.SectionCount; i++)
         {
             var section = SectionContainer.GetSection(i);
-            allTabs.AddRange(section.GetAllTabs());
+            allTabs.AddRange(section.GetAllTabs().Where(tab => !tab.ViewModel.IsUtility));
         }
 
         // Group tabs by their filename
@@ -961,7 +1127,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var tabsToClose = new List<ResourceKey>();
 
-        // Only close other tabs within the same section
+        // Only close other tabs within the same section.
         foreach (var documentTab in section.GetAllTabs())
         {
             if (documentTab != keepTab)
@@ -990,7 +1156,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var tabsToClose = new List<ResourceKey>();
         bool foundReference = false;
 
-        // Close tabs to the right within the same section
+        // Close tabs to the right within the same section.
         foreach (var documentTab in section.GetAllTabs())
         {
             if (foundReference)
@@ -1022,7 +1188,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var tabsToClose = new List<ResourceKey>();
 
-        // Close tabs to the left within the same section
+        // Close tabs to the left within the same section.
         foreach (var documentTab in section.GetAllTabs())
         {
             if (documentTab == referenceTab)
@@ -1051,7 +1217,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         var tabsToClose = new List<ResourceKey>();
 
-        // Only close tabs within the same section
+        // Only close tabs within the same section.
         foreach (var documentTab in section.GetAllTabs())
         {
             tabsToClose.Add(documentTab.ViewModel.FileResource);

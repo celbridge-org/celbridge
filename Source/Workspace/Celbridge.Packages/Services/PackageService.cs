@@ -84,4 +84,9 @@ public class PackageService : IPackageService
     {
         return _registry.GetDefaultTemplateContent(fileExtension);
     }
+
+    public byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution)
+    {
+        return _registry.GetUtilityTemplateContent(contribution);
+    }
 }

@@ -66,6 +66,34 @@ public sealed partial class PanelHeader : UserControl
         }
     }
 
+    /// <summary>
+    /// Whether the panel-focus indicator should be shown. Defaults to true. Set false for panels that show
+    /// their focus state elsewhere: the utility panels indicate focus via the Utility Panel rail instead.
+    /// </summary>
+    public bool ShowFocusIndicator
+    {
+        get => (bool)GetValue(ShowFocusIndicatorProperty);
+        set => SetValue(ShowFocusIndicatorProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowFocusIndicatorProperty =
+        DependencyProperty.Register(
+            nameof(ShowFocusIndicator),
+            typeof(bool),
+            typeof(PanelHeader),
+            new PropertyMetadata(true, OnShowFocusIndicatorChanged));
+
+    private static void OnShowFocusIndicatorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // This callback can fire during XAML parse, before the templated FocusIndicatorControl field is
+        // connected, so guard against it being null. Loaded applies the value reliably regardless.
+        if (d is PanelHeader header
+            && header.FocusIndicatorControl is not null)
+        {
+            header.FocusIndicatorControl.Visibility = (bool)e.NewValue ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
     public PanelHeader()
     {
         _commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -77,6 +105,10 @@ public sealed partial class PanelHeader : UserControl
 
     private void PanelHeader_Loaded(object sender, RoutedEventArgs e)
     {
+        // Apply the focus-indicator visibility here as the reliable point: the change callback can fire during
+        // XAML parse before the named element is connected.
+        FocusIndicatorControl.Visibility = ShowFocusIndicator ? Visibility.Visible : Visibility.Collapsed;
+
         // The panel identity is declared once on the panel root via FocusTracking.Panel; derive the focus
         // indicator's panel from the nearest such ancestor rather than duplicating the value on the header.
         // The walk runs on Loaded because the header's ancestors are only reachable once the tree is live.
