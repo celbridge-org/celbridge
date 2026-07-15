@@ -272,8 +272,8 @@ internal sealed class TabDragController
             return;
         }
 
-        var stripBounds = target.Section.GetTabStripBounds(_overlay);
-        if (stripBounds.IsEmpty)
+        var targetStrip = target.Section.GetTabStripBounds(_overlay);
+        if (targetStrip.IsEmpty)
         {
             _insertionIndicator.Visibility = Visibility.Collapsed;
             return;
@@ -297,7 +297,7 @@ internal sealed class TabDragController
         }
         else if (headerBounds.Count == 0)
         {
-            indicatorX = stripBounds.X;
+            indicatorX = targetStrip.X;
         }
         else if (slot < headerBounds.Count)
         {
@@ -309,9 +309,14 @@ internal sealed class TabDragController
             indicatorX = lastBounds.X + lastBounds.Width;
         }
 
-        _insertionIndicator.Height = stripBounds.Height;
+        // The target's own strip collapses to a short height when the section is empty, so take the
+        // indicator's vertical extent from the drag strip band, which stays full height and shares
+        // the same top edge as every section.
+        var stripBand = GetDragStripBounds();
+
+        _insertionIndicator.Height = stripBand.Height;
         Canvas.SetLeft(_insertionIndicator, indicatorX - (IndicatorWidth / 2));
-        Canvas.SetTop(_insertionIndicator, stripBounds.Y);
+        Canvas.SetTop(_insertionIndicator, stripBand.Y);
         _insertionIndicator.Visibility = Visibility.Visible;
     }
 
@@ -469,13 +474,18 @@ internal sealed class TabDragController
     }
 
     /// <summary>
-    /// Gets the tab strip band relevant to the current drag: the target section's strip when over
-    /// one, otherwise the source section's. The ghost rides this band and the section highlight
+    /// Gets the tab strip band relevant to the current drag: the target section's strip when it has
+    /// tabs, otherwise the source section's. The ghost rides this band and the section highlight
     /// starts just below it.
     /// </summary>
     private Rect GetDragStripBounds()
     {
-        if (_currentTarget is not null)
+        // An empty target section has no laid-out tab list, so its strip measures with a near-zero
+        // height pinned to the section top. Trust the target's own strip only when it has tabs;
+        // otherwise fall back to the source strip, which always hosts the dragged tab and shares the
+        // same strip height and top edge as every section.
+        if (_currentTarget is not null &&
+            _currentTarget.Section.TabCount > 0)
         {
             var targetBounds = _currentTarget.Section.GetTabStripBounds(_overlay);
             if (!targetBounds.IsEmpty)
