@@ -87,15 +87,6 @@ public sealed partial class ContributionDocumentView : DocumentView
         return _controller.RestoreEditorStateAsync(state);
     }
 
-    public override async Task<bool> CanClose()
-    {
-        await Task.CompletedTask;
-
-        // A utility declared closable = false in its manifest vetoes user-initiated close. The force-close
-        // paths (resource deletion, project teardown) bypass CanClose, so the tab still tears down on unload.
-        return Contribution?.UtilityDescriptor?.Closable ?? true;
-    }
-
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);

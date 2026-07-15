@@ -19,7 +19,7 @@ title = "My Widget"       # display name
 document_editors = ["my-editor.document.toml"]
 ```
 
-**Required:** `name`. **Optional:** `title`, `feature_flag`. The `[contributes]` section lists document editor manifests provided by the package. If your package contributes a document editor, also read `document_editor_contributions` for the manifest, handler, and read-only contract. For a self-contained tool that is launched from a title-bar button rather than by opening a file — one that owns a fixed backing resource under the hidden `utils:` root — read `utility_documents`.
+**Required:** `name`. **Optional:** `title`, `feature_flag`. The `[contributes]` section lists document editor manifests provided by the package. If your package contributes a document editor, also read `document_editor_contributions` for the manifest, handler, and read-only contract. For a self-contained tool that owns a fixed backing resource under the hidden `utils:` root — surfaced as a document tab or a Utility Panel rail item rather than by opening a file — read `utility_documents`.
 
 The manifest carries no author: the publisher recorded on each version is the **Author** set once in Workshop settings (Settings page), not a per-package field. `package_publish` fails if no Author is configured.
 

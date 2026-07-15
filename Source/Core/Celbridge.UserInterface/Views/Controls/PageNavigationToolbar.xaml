@@ -64,24 +64,12 @@
             </NavigationViewItem>
         </NavigationView.MenuItems>
 
-        <!-- Utility launcher buttons followed by shortcut buttons, to the right of the project button -->
+        <!-- Shortcut buttons to the right of the project button -->
         <NavigationView.PaneCustomContent>
             <StackPanel x:Name="PaneButtonsContainer"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Visibility="Collapsed">
-
-              <!-- Utility launcher buttons (added programmatically), flanked by separators -->
-              <Border x:Name="UtilityLeadingSeparator"
-                      Style="{StaticResource TitleBarSeparatorStyle}"
-                      Visibility="Collapsed"/>
-
-              <StackPanel x:Name="UtilityButtonsPanel"
-                          Orientation="Horizontal"/>
-
-              <Border x:Name="UtilityTrailingSeparator"
-                      Style="{StaticResource TitleBarSeparatorStyle}"
-                      Visibility="Collapsed"/>
 
               <!-- Shortcut buttons (added programmatically) -->
               <Border x:Name="ShortcutLeadingSeparator"

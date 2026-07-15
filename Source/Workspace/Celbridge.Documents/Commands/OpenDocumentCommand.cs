@@ -1,6 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
+using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -15,6 +17,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILayoutService _layoutService;
+    private readonly IMessengerService _messengerService;
 
     public ResourceKey FileResource { get; set; }
 
@@ -44,13 +47,15 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         IDialogService dialogService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        ILayoutService layoutService)
+        ILayoutService layoutService,
+        IMessengerService messengerService)
     {
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _layoutService = layoutService;
+        _messengerService = messengerService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -113,6 +118,14 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
         // Propagate the outcome to callers that need the result of the operation.
         ResultValue = openResult.Value;
+
+        // Flash the tab to draw the eye to it, but only when the document was actually opened (not a cancelled
+        // open) and brought to the front. A background open (Activate = false) does not flash.
+        if (Activate
+            && ResultValue == OpenDocumentOutcome.Opened)
+        {
+            _messengerService.Send(new FlashDocumentMessage(FileResource));
+        }
 
         return Result.Ok();
     }

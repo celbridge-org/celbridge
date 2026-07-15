@@ -24,6 +24,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IResourceService ResourceService { get; }
     public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
+    public IUtilityService UtilityService { get; }
     public IInspectorService InspectorService { get; }
     public IConsoleService ConsoleService { get; }
     public ISearchService SearchService { get; }
@@ -34,7 +35,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public WorkspacePanel ActivePanel { get; private set; }
 
-    public IActivityPanel ActivityPanel { get; private set; } = null!;
+    public IUtilityPanel UtilityPanel { get; private set; } = null!;
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
     public IInspectorPanel InspectorPanel { get; private set; } = null!;
     public IConsolePanel? ConsolePanel { get; private set; }
@@ -58,6 +59,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
+        UtilityService = serviceProvider.GetRequiredService<IUtilityService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
@@ -88,13 +90,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     }
 
     public void SetPanels(
-        IActivityPanel activityPanel,
+        IUtilityPanel utilityPanel,
         IDocumentsPanel documentsPanel,
         IInspectorPanel inspectorPanel,
         IConsolePanel? consolePanel)
     {
         // Store panel references
-        ActivityPanel = activityPanel;
+        UtilityPanel = utilityPanel;
         DocumentsPanel = documentsPanel;
         InspectorPanel = inspectorPanel;
         ConsolePanel = consolePanel;
@@ -145,6 +147,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             failed = true;
             _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.DiagnosticReport}");
         }
+
+        // Tick the utilities' save timers alongside the documents (their surfaces persist the same way).
+        await UtilityService.SaveModifiedUtilities(deltaTime);
 
         var activitiesResult = await ActivityService.UpdateAsync();
         if (activitiesResult.IsFailure)
@@ -219,6 +224,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
+                (UtilityService as IDisposable)!.Dispose();
                 (InspectorService as IDisposable)!.Dispose();
                 (ExplorerService as IDisposable)!.Dispose();
                 (SearchService as IDisposable)!.Dispose();

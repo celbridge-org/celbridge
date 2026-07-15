@@ -61,3 +61,9 @@ public record CloseActiveDocumentRequestedMessage();
 /// </summary>
 public record CloseAllDocumentsRequestedMessage();
 
+/// <summary>
+/// Sent to request a brief attention flash on an open document's tab. A transient view effect with no state
+/// change, so it is a notification rather than a command. A no-op when the document is not open.
+/// </summary>
+public record FlashDocumentMessage(ResourceKey FileResource);
+

@@ -70,7 +70,7 @@ public static class FocusTracking
     /// <summary>
     /// Marks a subtree where focus landing preserves the currently focused panel instead of clearing it to
     /// None. Declared on chrome that can transiently receive focus without representing a deliberate move
-    /// off the panel; the activity rail is the current such element.
+    /// off the panel; the Utility Panel rail is the current such element.
     /// </summary>
     public static readonly DependencyProperty PreservePanelFocusProperty =
         DependencyProperty.RegisterAttached(

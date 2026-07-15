@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.Commands;
+using Celbridge.Messaging;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -20,6 +21,7 @@ public class OpenDocumentCommandTests
     private IDialogService _dialogService = null!;
     private ICommandService _commandService = null!;
     private ILayoutService _layoutService = null!;
+    private IMessengerService _messengerService = null!;
 
     [SetUp]
     public void Setup()
@@ -42,6 +44,8 @@ public class OpenDocumentCommandTests
 
         _layoutService = Substitute.For<ILayoutService>();
         _layoutService.IsConsoleMaximized.Returns(false);
+
+        _messengerService = Substitute.For<IMessengerService>();
     }
 
     private OpenDocumentCommand CreateCommand()
@@ -51,7 +55,8 @@ public class OpenDocumentCommandTests
             _dialogService,
             _commandService,
             _workspaceWrapper,
-            _layoutService);
+            _layoutService,
+            _messengerService);
     }
 
     [Test]

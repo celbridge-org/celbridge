@@ -2,6 +2,7 @@ using Celbridge.Documents.Commands;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents;
 
@@ -14,6 +15,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IDocumentsService, DocumentsService>();
+        services.AddTransient<IUtilityService, UtilityService>();
 
         //
         // Register views
@@ -22,6 +24,7 @@ public static class ServiceConfiguration
         services.AddTransient<IDocumentsPanel, DocumentsPanel>();
         services.AddTransient<TextBoxDocumentView>();
         services.AddTransient<ContributionDocumentView>();
+        services.AddTransient<ContributionPanelView>();
 
         //
         // Register view models
@@ -37,10 +40,12 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IOpenDocumentCommand, OpenDocumentCommand>();
-        services.AddTransient<IOpenUtilityCommand, OpenUtilityCommand>();
+        services.AddTransient<IShowUtilityCommand, ShowUtilityCommand>();
+        services.AddTransient<IDockUtilityCommand, DockUtilityCommand>();
         services.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
         services.AddTransient<IActivateDocumentCommand, ActivateDocumentCommand>();
         services.AddTransient<IResetSectionsCommand, ResetSectionsCommand>();
         services.AddTransient<IGetDocumentStateCommand, GetDocumentStateCommand>();
+        services.AddTransient<IGetUtilitiesStateCommand, GetUtilitiesStateCommand>();
     }
 }

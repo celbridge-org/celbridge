@@ -151,7 +151,7 @@ public sealed partial class WorkspacePage : Page
         var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
 
         // Create panels via DI
-        var activityPanel = ServiceLocator.AcquireService<IActivityPanel>();
+        var utilityPanel = ServiceLocator.AcquireService<IUtilityPanel>();
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
         var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
 
@@ -173,10 +173,10 @@ public sealed partial class WorkspacePage : Page
         }
 
         // Register panels with the workspace service
-        workspaceService.SetPanels(activityPanel, documentsPanel, inspectorPanel, consolePanel);
+        workspaceService.SetPanels(utilityPanel, documentsPanel, inspectorPanel, consolePanel);
 
         // Add panels to the UI
-        PrimaryPanel.Children.Add(activityPanel as UIElement);
+        PrimaryPanel.Children.Add(utilityPanel as UIElement);
         DocumentsPanel.Children.Add(documentsPanel as UIElement);
         SecondaryPanel.Children.Add(inspectorPanel as UIElement);
 

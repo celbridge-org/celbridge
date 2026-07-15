@@ -128,7 +128,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
             SetScrollOffset(savedScrollOffset);
 
             // A rebuild (e.g. after a rename or delete) destroys the focused item, so keyboard focus can
-            // land on the activity rail. Return it to the tree, with the selection just restored above, when
+            // land on the Utility Panel rail. Return it to the tree, with the selection just restored above, when
             // Explorer is the focused panel so the focus indicator's panel stays the keyboard target.
             if (_focusService.FocusedPanel == WorkspacePanel.Explorer)
             {
@@ -156,7 +156,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     public void FocusTree()
     {
         // Pointer focus state so the central PanelFocusTracker reports the panel (it ignores Programmatic
-        // focus). Used when a deliberate gesture (activity-rail selection, panel title-bar click) should
+        // focus). Used when a deliberate gesture (utility-rail selection, panel title-bar click) should
         // move keyboard focus into the tree.
         ResourceListView.Focus(FocusState.Pointer);
     }

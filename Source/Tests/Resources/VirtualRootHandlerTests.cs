@@ -64,7 +64,8 @@ public class VirtualRootHandlerTests
         handler.RootName.Should().Be("logs");
         handler.BackingLocation.Should().Be(_logsBacking);
         handler.Capabilities.IsWritable.Should().BeTrue();
-        handler.Capabilities.IsWatched.Should().BeTrue();
+        // The logs root is deliberately unwatched: it is rewritten constantly and nothing consumes its events.
+        handler.Capabilities.IsWatched.Should().BeFalse();
 
         var resolveResult = handler.Resolve(ResourceKey.Create("logs:session.log"));
         resolveResult.IsSuccess.Should().BeTrue();

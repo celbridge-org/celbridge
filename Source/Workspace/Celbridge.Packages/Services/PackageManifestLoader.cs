@@ -43,8 +43,6 @@ public static class PackageManifestLoader
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
     private const string TooltipKey = "tooltip";
-    private const string AutoOpenKey = "auto_open";
-    private const string ClosableKey = "closable";
     private const string WordWrapKey = "word_wrap";
     private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
     private const string MinimapEnabledKey = "minimap_enabled";
@@ -455,17 +453,13 @@ public static class PackageManifestLoader
         }
 
         var template = GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
-        var autoOpen = GetBoolOrNull(utilityTable, AutoOpenKey) ?? false;
-        var closable = GetBoolOrNull(utilityTable, ClosableKey) ?? true;
 
         var descriptor = new UtilityDescriptor
         {
             Resource = resource,
             Template = template,
             Icon = icon,
-            Tooltip = tooltip,
-            AutoOpen = autoOpen,
-            Closable = closable
+            Tooltip = tooltip
         };
 
         return descriptor;

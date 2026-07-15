@@ -147,18 +147,6 @@
   <data name="TitleBar_HomeTooltip" xml:space="preserve">
     <value>Home</value>
   </data>
-  <data name="MainPage_Explorer" xml:space="preserve">
-    <value>Explorer</value>
-  </data>
-  <data name="MainPage_Search" xml:space="preserve">
-    <value>Search</value>
-  </data>
-  <data name="MainPage_Debug" xml:space="preserve">
-    <value>Debug</value>
-  </data>
-  <data name="MainPage_RevisionControl" xml:space="preserve">
-    <value>Version Control</value>
-  </data>
   <data name="TitleBar_CommunityTooltip" xml:space="preserve">
     <value>Community</value>
   </data>
@@ -1115,17 +1103,14 @@ Do you wish to continue?</value>
   <data name="SearchPanel_StatusResultsCapped" xml:space="preserve">
     <value>{0} (results capped)</value>
   </data>
-  <data name="ActivityPanel_ExplorerTooltip" xml:space="preserve">
+  <data name="UtilityPanel_ExplorerTooltip" xml:space="preserve">
     <value>Explorer</value>
   </data>
-  <data name="ActivityPanel_SearchTooltip" xml:space="preserve">
+  <data name="UtilityPanel_SearchTooltip" xml:space="preserve">
     <value>Search</value>
   </data>
-  <data name="ActivityPanel_DebugTooltip" xml:space="preserve">
-    <value>Debug</value>
-  </data>
-  <data name="ActivityPanel_SourceControlTooltip" xml:space="preserve">
-    <value>Source Control</value>
+  <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
+    <value>Open as document</value>
   </data>
   <data name="NewProjectDialog_InvalidProjectName" xml:space="preserve">
     <value>The project name contains invalid characters or is not a valid file name.</value>

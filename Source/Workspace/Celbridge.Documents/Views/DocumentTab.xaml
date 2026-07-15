@@ -26,12 +26,12 @@
             <MenuFlyoutSeparator x:Name="MoveSeparator" />
             <MenuFlyoutItem x:Name="MoveLeftMenuItem" Click="ContextMenu_MoveLeft" />
             <MenuFlyoutItem x:Name="MoveRightMenuItem" Click="ContextMenu_MoveRight" />
-            <MenuFlyoutSeparator />
+            <MenuFlyoutSeparator x:Name="SelectFileSeparator" />
             <MenuFlyoutItem x:Name="SelectFileMenuItem" Click="ContextMenu_SelectFile" />
-            <MenuFlyoutSeparator />
+            <MenuFlyoutSeparator x:Name="CopySeparator" />
             <MenuFlyoutItem x:Name="CopyResourceKeyMenuItem" Click="ContextMenu_CopyResourceKey" />
             <MenuFlyoutItem x:Name="CopyFilePathMenuItem" Click="ContextMenu_CopyFilePath" />
-            <MenuFlyoutSeparator />
+            <MenuFlyoutSeparator x:Name="OpenSeparator" />
             <MenuFlyoutItem x:Name="OpenFileExplorerMenuItem" Click="ContextMenu_OpenFileExplorer" />
             <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
             <MenuFlyoutSeparator x:Name="ReopenSeparator" />
@@ -42,9 +42,18 @@
 
     <muxc:TabViewItem.Header>
         <Grid Margin="0,-4,0,2">
+            <!-- Attention flash overlay, pulsed to the accent color by FlashAttention. Behind the label and not hit-testable. -->
+            <Border x:Name="AttentionOverlay"
+                    Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                    CornerRadius="4"
+                    Opacity="0"
+                    IsHitTestVisible="False"
+                    Margin="0,0,-36,-4" />
+
             <!-- Tab content -->
             <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                <!-- Ordinary document tabs show a file-type icon; utility tabs show their manifest glyph. -->
+                <!-- Ordinary document tabs show a file-type icon; utility tabs show their manifest glyph tinted
+                     to the accent color, a subtle cue marking the tab as a docked utility rather than a file. -->
                 <controls:FileIcon x:Name="ResourceIcon"
                                    Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
                                    Size="16"
@@ -57,6 +66,7 @@
                                FontSize="16"
                                MinWidth="20"
                                Margin="0"
+                               Foreground="{ThemeResource NavigationViewSelectionIndicatorForeground}"
                                Visibility="{x:Bind ViewModel.IsUtility, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                 <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"

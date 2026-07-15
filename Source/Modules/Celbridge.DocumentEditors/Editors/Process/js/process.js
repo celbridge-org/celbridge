@@ -1,7 +1,7 @@
 // Process utility document for Celbridge WebView integration.
-// A pinned per-project surface: opened automatically on project load and non-closable. It demonstrates
-// the long-running "process" pattern. Its notes are persisted as a JSON state blob in the utils: root
-// through the standard document save contract. Served over the loopback file server, so the shared client
+// A persistent per-project surface that lives in the Utility Panel and can be docked into a document tab. It
+// demonstrates the long-running "process" pattern. Its notes are persisted as a JSON state blob in the utils:
+// root through the standard document save contract. Served over the loopback file server, so the shared client
 // is addressed root-relative under /assets/ (resolved against the page's own loopback origin).
 
 import celbridge from '/assets/celbridge-client/celbridge.js';

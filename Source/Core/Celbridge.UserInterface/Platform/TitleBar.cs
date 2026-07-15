@@ -43,16 +43,6 @@ public sealed class TitleBar : UserControl, ITitleBar
         _applicationToolbar.ClearShortcutButtons();
     }
 
-    public bool BuildUtilityButtons(IReadOnlyList<UtilityButton> utilities, Action<string> onOpenUtility)
-    {
-        return _applicationToolbar.BuildUtilityButtons(utilities, onOpenUtility);
-    }
-
-    public void ClearUtilityButtons()
-    {
-        _applicationToolbar.ClearUtilityButtons();
-    }
-
     private void OnTitleBar_Loaded(object sender, RoutedEventArgs e)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();

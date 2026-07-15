@@ -3,13 +3,11 @@ id = "process"
 type = "custom"
 entry_point = "index.html"
 
-# A "process" utility: pinned so the user cannot close it (closable = false), opened on demand from the
-# title-bar launcher. Set auto_open = true to also open it automatically on project load. Demonstrates the
-# long-running per-project surface pattern. Behind the utility-documents feature flag.
+# A utility: a persistent surface created when the project loads and alive until it unloads, appearing as a rail
+# item beside Explorer and Search. Demonstrates the long-running per-project surface pattern. An example utility,
+# behind the example-utilities feature flag.
 [utility]
 resource   = "utils:settings._process"
 template   = "templates/default._process"
 icon       = "cpu"
 tooltip    = "Utility_Process_Tooltip"
-auto_open  = false
-closable   = false

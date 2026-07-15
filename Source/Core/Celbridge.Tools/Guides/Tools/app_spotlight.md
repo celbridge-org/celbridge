@@ -17,10 +17,10 @@ Shell panels:
 - `console-panel` — the Console panel (bottom), where the user talks to you.
 - `inspector-panel` — the Inspector panel (right).
 
-Activity bar (the icon strip on the far left that switches the primary panel):
+Utility Panel rail (the icon strip on the far left that switches the primary panel):
 
-- `explorer-activity-button` — the Explorer icon in the activity bar.
-- `search-activity-button` — the Search icon in the activity bar.
+- `explorer-utility-button` — the Explorer icon in the rail.
+- `search-utility-button` — the Search icon in the rail.
 
 Explorer toolbar (its buttons are revealed automatically when spotlighted):
 
@@ -29,7 +29,11 @@ Explorer toolbar (its buttons are revealed automatically when spotlighted):
 - `collapse-folders-button` — the collapse-all-folders button in the Explorer toolbar.
 - `project-settings-button` — the project-settings button in the Explorer toolbar.
 
-Search panel (all switch to the Search activity first; the replace ones also enable replace mode):
+Utilities (dynamic; the `{utilityId}` is the id `app_list_utilities` reports, e.g. `acme.emoji-picker-utility-button`):
+
+- `{utilityId}-utility-button` — a utility's button in the Utility Panel rail.
+
+Search panel (all switch to the Search tab first; the replace ones also enable replace mode):
 
 - `search-input` — the search text box.
 - `search-run-button` — the run-search button (the magnifying glass).

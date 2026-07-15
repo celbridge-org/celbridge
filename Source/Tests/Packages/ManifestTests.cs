@@ -1,4 +1,5 @@
 using Celbridge.Packages;
+using Celbridge.Tests.Architecture;
 
 namespace Celbridge.Tests.Packages;
 
@@ -1049,8 +1050,6 @@ public class ManifestTests
             template = "templates/default._emoji"
             icon = "emoji-smile"
             tooltip = "Emoji_Utility_Tooltip"
-            auto_open = true
-            closable = false
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -1071,12 +1070,10 @@ public class ManifestTests
         descriptor.Template.Should().Be("templates/default._emoji");
         descriptor.Icon.Should().Be("emoji-smile");
         descriptor.Tooltip.Should().Be("Emoji_Utility_Tooltip");
-        descriptor.AutoOpen.Should().BeTrue();
-        descriptor.Closable.Should().BeFalse();
     }
 
     [Test]
-    public void LoadPackage_UtilityDefaults_ClosableTrueAutoOpenFalse()
+    public void LoadPackage_UtilityDefaults_TemplateEmpty()
     {
         WritePackageToml("""
             [package]
@@ -1102,9 +1099,29 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         var contribution = (CustomDocumentEditorContribution)result.Value.DocumentEditors[0];
-        contribution.UtilityDescriptor!.AutoOpen.Should().BeFalse();
-        contribution.UtilityDescriptor!.Closable.Should().BeTrue();
         contribution.UtilityDescriptor!.Template.Should().BeEmpty();
+    }
+
+    // Loads the real bundled utility manifests (not synthetic ones) so a fixture that regresses -- for
+    // example by declaring both [utility] and [[document_file_types]], which the loader rejects, silently
+    // dropping the editor -- fails the build instead of only surfacing in a manual in-app run.
+    [TestCase("Notepad")]
+    [TestCase("Process")]
+    public void LoadPackage_BundledUtilityFixture_RegistersUtilityContribution(string editorFolder)
+    {
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        sourceFolder.Should().NotBeEmpty("the test must locate the repository Source folder to read bundled fixtures");
+
+        var packagePath = Path.Combine(sourceFolder, "Modules", "Celbridge.DocumentEditors", "Editors", editorFolder, "package.toml");
+        File.Exists(packagePath).Should().BeTrue($"the bundled utility manifest should exist at '{packagePath}'");
+
+        var result = PackageManifestLoader.LoadPackage(packagePath);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var contribution = result.Value.DocumentEditors.Should().ContainSingle()
+            .Which.Should().BeOfType<CustomDocumentEditorContribution>().Which;
+        contribution.IsUtility.Should().BeTrue();
     }
 
     [Test]

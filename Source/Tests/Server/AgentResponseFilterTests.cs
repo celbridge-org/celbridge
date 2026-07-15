@@ -220,6 +220,7 @@ public class AgentResponseFilterTests
             ProjectName: "ProbeProject",
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "Documents",
+            ActiveUtility: "",
             LayoutMode: new LayoutModeInfo(true, false, true, false),
             SpotlightLandmarks: new List<string>());
         _documentStateProvider.Result = new DocumentStateResult(
@@ -596,6 +597,7 @@ public class AgentResponseFilterTests
             ProjectName: "TestProject",
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "None",
+            ActiveUtility: "",
             LayoutMode: new LayoutModeInfo(true, true, false, false),
             SpotlightLandmarks: new List<string>());
 

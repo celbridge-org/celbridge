@@ -1,10 +1,9 @@
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Describes a utility document: a custom WebView editor that is not tied to a user-authored file
-/// resource but instead owns one fixed backing resource under the utils: root and contributes a
-/// title-bar launcher. Parsed from the [utility] section of a document manifest and carried on the
-/// custom contribution. Its presence is what marks a contribution as a utility.
+/// Describes a utility: a WebView editor backed by one fixed resource under the utils: root rather than a
+/// user-authored file. Parsed from the [utility] section of a document manifest; its presence marks the
+/// contribution as a utility.
 /// </summary>
 public record UtilityDescriptor
 {
@@ -21,22 +20,12 @@ public record UtilityDescriptor
     public string Template { get; init; } = string.Empty;
 
     /// <summary>
-    /// Icon glyph name for the launcher button and the tab icon (e.g. "emoji-smile").
+    /// Icon glyph name for the rail button and the docked tab icon (e.g. "emoji-smile").
     /// </summary>
     public string Icon { get; init; } = string.Empty;
 
     /// <summary>
-    /// Localization key for the launcher tooltip and accessible name. Also drives the tab title.
+    /// Localization key for the rail button tooltip and accessible name. Also drives the docked tab title.
     /// </summary>
     public string Tooltip { get; init; } = string.Empty;
-
-    /// <summary>
-    /// When true, the utility is opened automatically when the project loads.
-    /// </summary>
-    public bool AutoOpen { get; init; }
-
-    /// <summary>
-    /// When false, the user cannot close the utility's tab. Teardown at project unload still closes it.
-    /// </summary>
-    public bool Closable { get; init; } = true;
 }

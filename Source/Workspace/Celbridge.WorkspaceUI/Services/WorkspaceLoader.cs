@@ -172,24 +172,28 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Open previous opened documents in the Documents Panel.
+        // Create a persistent surface for every utility and build their rail. This runs before the documents are
+        // restored so a utility that was docked as a document last session is reparented into its saved tab
+        // rather than opened as a second instance.
+        await BuildUtilities();
+
+        // Open previously opened documents in the Documents Panel. A stored utils: entry docks its
+        // already-created utility into the saved tab position.
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
-        // Update the current stored state of the workspace in preparation for the next session.
+        // Restore the previously selected Utility Panel tab, after documents are restored so a persisted surface
+        // that ended up docked falls back to Explorer rather than showing an empty panel.
+        _workspaceWrapper.WorkspaceService.UtilityPanel.RestoreSelectedUtility();
+
+        // Update the current stored state of the workspace in preparation for the next session. Runs after the
+        // dock restore so the re-persisted layout still records the docked utilities.
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
 
         // Populate title bar shortcut buttons from project config.
         PopulateTitleBarShortcuts();
-
-        // Populate the title-bar utility launcher buttons from registered utility contributions.
-        PopulateUtilityToolbar();
-
-        // Open auto_open utilities. Runs after RestorePanelState above so a utility restored from the
-        // previous session is not opened a second time.
-        OpenAutoOpenUtilities();
 
         // Notify that the workspace has loaded.
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
@@ -366,83 +370,30 @@ public class WorkspaceLoader
         _userInterfaceService.TitleBar?.ClearShortcutButtons();
     }
 
-    private void PopulateUtilityToolbar()
+    // Creates the persistent surface for every utility (bundled before project, each by id) and builds the rail.
+    // The utilities are owned by the documents service for the workspace lifetime. The utility mechanism is
+    // always on; individual utility packages can still gate themselves with a package feature flag.
+    private async Task BuildUtilities()
     {
-        // The whole utility-documents feature is gated behind this flag while it is under development.
-        if (!_featureFlags.IsEnabled(FeatureFlagConstants.UtilityDocuments))
+        var utilityContributions = GetUtilityContributions();
+        if (utilityContributions.Count == 0)
         {
             return;
         }
 
-        var titleBar = _userInterfaceService.TitleBar;
-        if (titleBar is null)
+        var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
+        var tabs = await utilityService.CreateUtilitiesAsync(utilityContributions);
+        if (tabs.Count == 0)
         {
             return;
         }
 
-        var localizationService = ServiceLocator.AcquireService<IPackageLocalizationService>();
-
-        var utilityButtons = new List<UtilityButton>();
-        foreach (var contribution in GetOrderedUtilityContributions())
-        {
-            var descriptor = contribution.UtilityDescriptor;
-            Guard.IsNotNull(descriptor);
-
-            var tooltip = ResolveUtilityTooltip(localizationService, contribution.Package, descriptor.Tooltip);
-
-            var utilityButton = new UtilityButton
-            {
-                UtilityId = GetUtilityId(contribution),
-                Icon = descriptor.Icon,
-                Tooltip = tooltip
-            };
-            utilityButtons.Add(utilityButton);
-        }
-
-        titleBar.BuildUtilityButtons(utilityButtons, OpenUtility);
+        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildContributedUtilities(tabs);
     }
 
-    // Opens every utility whose manifest sets auto_open. Runs after session restore so a utility already
-    // restored from last session is not opened twice (the FindDocumentTab dedup inside OpenDocument catches
-    // it). Fire-and-forget through the command queue -- an awaited command would deadlock the serial queue
-    // during load -- and without activation, so a restored session's active tab is kept.
-    private void OpenAutoOpenUtilities()
-    {
-        // The whole utility-documents feature is gated behind this flag while it is under development.
-        if (!_featureFlags.IsEnabled(FeatureFlagConstants.UtilityDocuments))
-        {
-            return;
-        }
-
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        foreach (var contribution in GetOrderedUtilityContributions())
-        {
-            var descriptor = contribution.UtilityDescriptor;
-            Guard.IsNotNull(descriptor);
-
-            if (!descriptor.AutoOpen)
-            {
-                continue;
-            }
-
-            var utilityId = GetUtilityId(contribution);
-            commandService.Execute<IOpenUtilityCommand>(command =>
-            {
-                command.UtilityId = utilityId;
-                command.Activate = false;
-            });
-        }
-    }
-
-    public void ClearTitleBarUtilities()
-    {
-        _userInterfaceService.TitleBar?.ClearUtilityButtons();
-    }
-
-    // Enumerates enabled utility contributions in the toolbar's stable order: bundled before project, each
+    // Enumerates enabled utility contributions in the rail's stable order: bundled before project, each
     // group sorted by fully-qualified id. Feature-flag-disabled packages are filtered out.
-    private List<CustomDocumentEditorContribution> GetOrderedUtilityContributions()
+    private List<CustomDocumentEditorContribution> GetUtilityContributions()
     {
         var packageService = _workspaceWrapper.WorkspaceService.PackageService;
 
@@ -473,9 +424,10 @@ public class WorkspaceLoader
         return bundledContributions.Concat(projectContributions).ToList();
     }
 
+    // The utility id string, used only as a stable ordinal sort key for the rail ordering.
     private static string GetUtilityId(CustomDocumentEditorContribution contribution)
     {
-        return $"{contribution.Package.Name}.{contribution.Id}";
+        return UtilityId.Create(contribution.Package.Name, contribution.Id).ToString();
     }
 
     private bool IsPackageEnabled(PackageInfo package)
@@ -486,29 +438,6 @@ public class WorkspaceLoader
         }
 
         return _featureFlags.IsEnabled(package.FeatureFlag);
-    }
-
-    private static string ResolveUtilityTooltip(
-        IPackageLocalizationService localizationService,
-        PackageInfo package,
-        string tooltipKey)
-    {
-        var localizationStrings = localizationService.LoadStrings(package);
-        if (localizationStrings.TryGetValue(tooltipKey, out var localized))
-        {
-            return localized;
-        }
-
-        return tooltipKey;
-    }
-
-    private void OpenUtility(string utilityId)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-        commandService.Execute<IOpenUtilityCommand>(command =>
-        {
-            command.UtilityId = utilityId;
-        });
     }
 
     private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)

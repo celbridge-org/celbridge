@@ -32,6 +32,7 @@
 
     <!-- Panel Header -->
     <ws:PanelHeader Grid.Row="0"
+                    ShowFocusIndicator="False"
                     Tapped="PanelHeader_Tapped"
                     Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
 

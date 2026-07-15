@@ -20,7 +20,7 @@ public interface IWorkspaceService
     /// Called by WorkspacePage during initialization.
     /// </summary>
     void SetPanels(
-        IActivityPanel activityPanel,
+        IUtilityPanel utilityPanel,
         IDocumentsPanel documentsPanel,
         IInspectorPanel inspectorPanel,
         IConsolePanel? consolePanel);
@@ -55,6 +55,11 @@ public interface IWorkspaceService
     /// Returns the Documents Service associated with the workspace.
     /// </summary>
     IDocumentsService DocumentsService { get; }
+
+    /// <summary>
+    /// Returns the Utility Service associated with the workspace.
+    /// </summary>
+    IUtilityService UtilityService { get; }
 
     /// <summary>
     /// Returns the Inspector Service associated with the workspace.
@@ -97,9 +102,9 @@ public interface IWorkspaceService
     WorkspacePanel ActivePanel { get; }
 
     /// <summary>
-    /// Returns the Activity Panel view.
+    /// Returns the Utility Panel view.
     /// </summary>
-    IActivityPanel ActivityPanel { get; }
+    IUtilityPanel UtilityPanel { get; }
 
     /// <summary>
     /// Returns the Documents Panel view.

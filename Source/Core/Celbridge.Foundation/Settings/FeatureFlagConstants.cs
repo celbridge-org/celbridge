@@ -43,7 +43,8 @@ public static class FeatureFlagConstants
     public const string WebAccessTools = "web-access-tools";
 
     /// <summary>
-    /// Utility documents: title-bar-launched WebView editors backed by the utils: root.
+    /// The built-in example utilities (Notepad, Process) that exercise the utility mechanism. Off for real
+    /// projects, which contribute their own utilities.
     /// </summary>
-    public const string UtilityDocuments = "utility-documents";
+    public const string ExampleUtilities = "example-utilities";
 }

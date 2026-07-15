@@ -64,8 +64,8 @@ public interface IDocumentEditorFactory
     bool IsPlaceholder { get; }
 
     /// <summary>
-    /// True for factories that produce utility documents: title-bar-launched editors
-    /// backed by a fixed utils: resource rather than an extension claimed across the project.
+    /// True for factories that produce utility documents: Utility Panel surfaces backed by a fixed utils:
+    /// resource rather than an extension claimed across the project.
     /// </summary>
     bool IsUtility { get; }
 

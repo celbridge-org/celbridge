@@ -21,16 +21,4 @@ public interface ITitleBar
     /// Clears all shortcut buttons from the title bar.
     /// </summary>
     void ClearShortcutButtons();
-
-    /// <summary>
-    /// Builds and displays the utility launcher buttons in the title bar.
-    /// When a button is clicked, the callback is invoked with the utility's fully-qualified id.
-    /// Returns true when at least one button was built.
-    /// </summary>
-    bool BuildUtilityButtons(IReadOnlyList<UtilityButton> utilities, Action<string> onOpenUtility);
-
-    /// <summary>
-    /// Clears all utility launcher buttons from the title bar.
-    /// </summary>
-    void ClearUtilityButtons();
 }

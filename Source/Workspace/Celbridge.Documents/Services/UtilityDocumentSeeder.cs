@@ -1,13 +1,13 @@
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Seeds a utility document's backing file from its manifest template when the file is absent.
-/// Runs on the open path (ahead of the file-existence gate) so the launch command, auto-open, and
-/// session restore all recover a missing file, and so it doubles as the recovery path when the user
-/// deletes the .celbridge state file. Non-utility resources pass through untouched.
+/// Seeds a utility document's backing file from its manifest template when the file is absent. Runs when the
+/// utility's panel is created at workspace load, so both a first run and a session where the user has deleted
+/// the .celbridge state file recover with the utility's default state.
 /// </summary>
 public class UtilityDocumentSeeder
 {
@@ -23,21 +23,24 @@ public class UtilityDocumentSeeder
     }
 
     /// <summary>
-    /// Seeds the backing file for a utility resource when it does not yet exist. Returns Ok for any
-    /// non-utility resource, for an already-present file, and after a successful seed. Returns Fail only
-    /// when the resource resolves to a utility but the seed write fails.
+    /// Seeds the backing file for a utility contribution when it does not yet exist, resolving the resource from
+    /// its descriptor. Returns Fail if the descriptor's resource is malformed or the seed write fails.
     /// </summary>
-    public async Task<Result> SeedIfMissingAsync(ResourceKey resource)
+    public async Task<Result> SeedIfMissingAsync(CustomDocumentEditorContribution contribution)
     {
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+        var descriptor = contribution.UtilityDescriptor;
+        Guard.IsNotNull(descriptor);
 
-        var factoryResult = documentsService.DocumentEditorRegistry.GetFactory(resource);
-        if (factoryResult.IsFailure
-            || factoryResult.Value is not CustomDocumentViewFactory { IsUtility: true } utilityFactory)
+        if (!ResourceKey.TryCreate(descriptor.Resource, out var resource))
         {
-            return Result.Ok();
+            return Result.Fail($"Utility declares an invalid resource: '{descriptor.Resource}'");
         }
 
+        return await SeedFromContributionAsync(resource, contribution);
+    }
+
+    private async Task<Result> SeedFromContributionAsync(ResourceKey resource, CustomDocumentEditorContribution contribution)
+    {
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var infoResult = await resourceFileSystem.GetInfoAsync(resource);
@@ -51,7 +54,7 @@ public class UtilityDocumentSeeder
         // the open still succeeds and the editor initialises to its default state. An empty array means
         // the utility declares no template, which is also seeded as an empty file.
         var packageService = _workspaceWrapper.WorkspaceService.PackageService;
-        var templateBytes = packageService.GetUtilityTemplateContent(utilityFactory.Contribution)
+        var templateBytes = packageService.GetUtilityTemplateContent(contribution)
             ?? Array.Empty<byte>();
 
         var writeResult = await resourceFileSystem.WriteAllBytesAsync(resource, templateBytes);

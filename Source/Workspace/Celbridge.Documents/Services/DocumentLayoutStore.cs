@@ -20,7 +20,6 @@ public class DocumentLayoutStore
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
-    private readonly UtilityDocumentSeeder _utilityDocumentSeeder;
     private readonly ILogger<DocumentLayoutStore> _logger;
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
@@ -28,12 +27,10 @@ public class DocumentLayoutStore
     public DocumentLayoutStore(
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        UtilityDocumentSeeder utilityDocumentSeeder,
         ILogger<DocumentLayoutStore> logger)
     {
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
-        _utilityDocumentSeeder = utilityDocumentSeeder;
         _logger = logger;
     }
 
@@ -265,23 +262,24 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            // A utils: resource is always a utility document (the root name equals its backing subfolder
-            // name by convention). If its editor factory is unavailable, the contributing package was
-            // uninstalled or disabled since last session; skip the document rather than falling through to
-            // the text editor, which would show the user the raw state JSON.
-            if (fileResource.Root == ProjectConstants.UtilsFolder
-                && !HasUtilityEditorFactory(fileResource))
+            // A utils: resource is a utility (the root name equals its backing subfolder name by convention).
+            // Utilities are permanent Utility Panel surfaces, instantiated eagerly at workspace load, never
+            // opened as a second document instance. A stored utils: entry means the utility was docked last
+            // session, so drive the dock mechanism to reparent the already-live utility into its saved tab
+            // position instead of creating a new view. This runs after the utilities have been built (the load
+            // order guarantees it), so the utility exists to reparent.
+            if (fileResource.Root == ProjectConstants.UtilsFolder)
             {
-                _logger.LogError($"Cannot restore utility document '{fileResource}': no utility editor is registered for it. The contributing package may have been uninstalled or disabled.");
-                continue;
-            }
+                int utilitySection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
+                var utilityAddress = new DocumentAddress(stored.WindowIndex, utilitySection, stored.TabOrder);
 
-            // Recreate a utility's backing file if it was deleted between sessions, so restore recovers the
-            // utility with default state rather than silently dropping it at the existence gate below.
-            var seedResult = await _utilityDocumentSeeder.SeedIfMissingAsync(fileResource);
-            if (seedResult.IsFailure)
-            {
-                _logger.LogWarning(seedResult, $"Failed to seed utility document for resource: '{fileResource}'");
+                var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
+                var restoreResult = utilityService.RestoreDockedUtility(fileResource, utilityAddress);
+                if (restoreResult.IsFailure)
+                {
+                    _logger.LogWarning(restoreResult, $"Failed to restore docked utility '{fileResource}'");
+                }
+                continue;
             }
 
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
@@ -317,18 +315,6 @@ public class DocumentLayoutStore
                 await StoreDocumentEditorStateAsync(fileResource, null);
             }
         }
-    }
-
-    // Returns true when a registered, enabled editor factory for this resource is a utility factory.
-    // GetFactory resolves the factory only while its package is registered and its feature flag is enabled,
-    // so a disabled or uninstalled utility reports false.
-    private bool HasUtilityEditorFactory(ResourceKey fileResource)
-    {
-        var registry = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
-        var factoryResult = registry.GetFactory(fileResource);
-
-        return factoryResult.IsSuccess
-            && factoryResult.Value.IsUtility;
     }
 
     private async Task RestoreActiveDocumentAsync()

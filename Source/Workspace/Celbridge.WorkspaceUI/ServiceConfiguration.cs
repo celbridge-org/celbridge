@@ -33,14 +33,14 @@ public static class ServiceConfiguration
         // Register panels
         //
 
-        services.AddTransient<IActivityPanel, ActivityPanel>();
+        services.AddTransient<IUtilityPanel, UtilityPanel>();
 
         //
         // Register view models
         //
 
         services.AddTransient<WorkspacePageViewModel>();
-        services.AddTransient<ActivityPanelViewModel>();
+        services.AddTransient<UtilityPanelViewModel>();
 
         //
         // Register commands

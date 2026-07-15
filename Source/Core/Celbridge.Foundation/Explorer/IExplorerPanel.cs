@@ -19,11 +19,4 @@ public interface IExplorerPanel
     /// Select resources in the explorer panel.
     /// </summary>
     Task<Result> SelectResources(List<ResourceKey> resources);
-
-    /// <summary>
-    /// Keeps the explorer toolbar revealed while set, overriding the pointer and focus visibility
-    /// so a spotlight can point at one of the toolbar buttons. Clearing it returns toolbar
-    /// visibility to following the pointer and focus.
-    /// </summary>
-    void SetToolbarRevealed(bool revealed);
 }

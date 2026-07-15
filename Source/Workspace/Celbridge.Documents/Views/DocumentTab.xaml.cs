@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.Documents.Views;
 
@@ -37,6 +38,9 @@ public partial class DocumentTab : TabViewItem
     private readonly IMessengerService _messengerService;
     private readonly IPlatformInfo _platformInfo;
 
+    // The currently running attention flash, if any. Kept so a repeated flash restarts cleanly.
+    private Storyboard? _attentionStoryboard;
+
     public DocumentTabViewModel ViewModel { get; }
 
     /// <summary>
@@ -53,6 +57,48 @@ public partial class DocumentTab : TabViewItem
     /// Gets whether this tab is the active document.
     /// </summary>
     public bool IsActiveDocument { get; private set; }
+
+    /// <summary>
+    /// Briefly pulses the tab's background to the accent color to draw the user's attention to it, then fades
+    /// it back out. Used to give visible feedback when a tab is surfaced (e.g. activating a docked utility).
+    /// </summary>
+    public void FlashAttention()
+    {
+        _attentionStoryboard?.Stop();
+
+        // One key-framed animation, not two: fade in to a partial accent wash (kept below full so the label
+        // stays readable), hold, then fade out. WinUI forbids two animations in a Storyboard from targeting the
+        // same property on the same element, so the phases are key frames on a single animation. Opacity is an
+        // independent (compositor) property, so no EnableDependentAnimation is needed and it runs on both heads.
+        var animation = new DoubleAnimationUsingKeyFrames();
+        Storyboard.SetTarget(animation, AttentionOverlay);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+
+        animation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
+            Value = 0.0
+        });
+        animation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),
+            Value = 0.55
+        });
+        animation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(560)),
+            Value = 0.55
+        });
+        animation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(920)),
+            Value = 0.0
+        });
+
+        _attentionStoryboard = new Storyboard();
+        _attentionStoryboard.Children.Add(animation);
+        _attentionStoryboard.Begin();
+    }
 
     /// <summary>
     /// Event raised when a context menu action is triggered.
@@ -203,10 +249,6 @@ public partial class DocumentTab : TabViewItem
         int tabCount = tabView.TabItems.Count;
         int tabIndex = tabView.TabItems.IndexOf(this);
 
-        // A non-closable utility hides its own "Close" item; the bulk-close items stay visible because
-        // they skip it and still close the surrounding tabs.
-        CloseMenuItem.Visibility = ViewModel.IsUserClosable ? Visibility.Visible : Visibility.Collapsed;
-
         // Only show "Close Others" if there are at least 2 other tabs to close
         CloseOthersMenuItem.Visibility = tabCount > 2 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -232,11 +274,32 @@ public partial class DocumentTab : TabViewItem
         bool canMoveRight = hasMultipleSections && SectionIndex < VisibleSectionCount - 1;
         MoveRightMenuItem.Visibility = canMoveRight ? Visibility.Visible : Visibility.Collapsed;
 
-        // Show "Reopen with..." only when there are multiple editors registered for this file type
-        ReopenWithMenuItem.Visibility = ViewModel.HasMultipleCompatibleEditors() ? Visibility.Visible : Visibility.Collapsed;
-
         // Show the separator only if at least one move option is visible
         MoveSeparator.Visibility = (canMoveLeft || canMoveRight) ? Visibility.Visible : Visibility.Collapsed;
+
+        // A utility tab presents a docked utility, not a file, so hide the options that reveal or act on its
+        // backing file. The close and move options remain.
+        bool isUtility = ViewModel.IsUtility;
+        var fileActionsVisibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
+        SelectFileSeparator.Visibility = fileActionsVisibility;
+        SelectFileMenuItem.Visibility = fileActionsVisibility;
+        CopySeparator.Visibility = fileActionsVisibility;
+        CopyResourceKeyMenuItem.Visibility = fileActionsVisibility;
+        CopyFilePathMenuItem.Visibility = fileActionsVisibility;
+        OpenSeparator.Visibility = fileActionsVisibility;
+        OpenFileExplorerMenuItem.Visibility = fileActionsVisibility;
+        OpenApplicationMenuItem.Visibility = fileActionsVisibility;
+
+        // A utility tab hosts a docked utility, not a file opened with a chosen editor. Reopening would dock it
+        // back into the panel and then open a second, uncontrolled instance, so the reopen options are hidden
+        // for utilities.
+        ReopenSeparator.Visibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
+        ReopenMenuItem.Visibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
+
+        // Show "Reopen with..." only when there are multiple editors registered for this file type.
+        bool showReopenWith = !isUtility
+            && ViewModel.HasMultipleCompatibleEditors();
+        ReopenWithMenuItem.Visibility = showReopenWith ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private TabView? FindParentTabView()

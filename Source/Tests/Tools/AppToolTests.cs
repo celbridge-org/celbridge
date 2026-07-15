@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Server;
@@ -185,7 +186,8 @@ public class AppToolTests
                 featureFlags,
                 focusService,
                 layoutService,
-                spotlightRegistry));
+                spotlightRegistry,
+                Substitute.For<IMessengerService>()));
 
         return featureFlags;
     }

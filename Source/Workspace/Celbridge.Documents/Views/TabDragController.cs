@@ -4,6 +4,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
+using KeyEventHandler = Microsoft.UI.Xaml.Input.KeyEventHandler;
+
 namespace Celbridge.Documents.Views;
 
 /// <summary>

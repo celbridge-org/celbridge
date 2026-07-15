@@ -1,7 +1,9 @@
 using System.Reflection;
+using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tools;
 
@@ -17,8 +19,9 @@ public record class LayoutModeInfo(
 
 /// <summary>
 /// Result returned by app_get_state, reporting the running version, project load
-/// state, feature flag states, the focused panel ("None" when unfocused), the
-/// current panel layout, and the spotlightable landmark ids app_spotlight accepts.
+/// state, feature flag states, the focused panel ("None" when unfocused), the utility
+/// currently shown in the Utility Panel rail ("" when no project is loaded), the current
+/// panel layout, and the spotlightable landmark ids app_spotlight accepts.
 /// </summary>
 public record class AppStateResult(
     string Version,
@@ -26,6 +29,7 @@ public record class AppStateResult(
     string ProjectName,
     IReadOnlyDictionary<string, bool> FeatureFlags,
     string FocusedPanel,
+    string ActiveUtility,
     LayoutModeInfo LayoutMode,
     IReadOnlyList<string> SpotlightLandmarks);
 
@@ -51,13 +55,19 @@ internal sealed class AppStateProvider : IAppStateProvider
     private readonly ILayoutService _layoutService;
     private readonly ISpotlightRegistry _spotlightRegistry;
 
+    // The most recently broadcast active Utility Panel surface, cached from ActiveUtilityChangedMessage so
+    // app_get_state can report it without reading the UI panel off the tool thread. Reference assignment is
+    // atomic, so the cross-thread read needs no lock.
+    private string _activeUtilityId = string.Empty;
+
     public AppStateProvider(
         IAppEnvironment environmentService,
         IProjectService projectService,
         IFeatureFlags featureFlags,
         IFocusService focusService,
         ILayoutService layoutService,
-        ISpotlightRegistry spotlightRegistry)
+        ISpotlightRegistry spotlightRegistry,
+        IMessengerService messengerService)
     {
         _environmentService = environmentService;
         _projectService = projectService;
@@ -65,6 +75,14 @@ internal sealed class AppStateProvider : IAppStateProvider
         _focusService = focusService;
         _layoutService = layoutService;
         _spotlightRegistry = spotlightRegistry;
+
+        // This provider is a singleton, so the subscription lives for the app lifetime (no unregister needed).
+        messengerService.Register<ActiveUtilityChangedMessage>(this, OnActiveUtilityChanged);
+    }
+
+    private void OnActiveUtilityChanged(object recipient, ActiveUtilityChangedMessage message)
+    {
+        _activeUtilityId = message.UtilityId;
     }
 
     public AppStateResult GetState()
@@ -83,6 +101,8 @@ internal sealed class AppStateProvider : IAppStateProvider
 
         var focusedPanel = _focusService.FocusedPanel.ToString();
 
+        var activeUtility = isLoaded ? _activeUtilityId : string.Empty;
+
         var layoutMode = new LayoutModeInfo(
             ContextPanelVisible: _layoutService.IsContextPanelVisible,
             InspectorPanelVisible: _layoutService.IsInspectorPanelVisible,
@@ -100,6 +120,7 @@ internal sealed class AppStateProvider : IAppStateProvider
             ProjectName: projectName,
             FeatureFlags: featureFlags,
             FocusedPanel: focusedPanel,
+            ActiveUtility: activeUtility,
             LayoutMode: layoutMode,
             SpotlightLandmarks: spotlightLandmarks);
     }

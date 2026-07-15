@@ -30,8 +30,7 @@ public sealed record ContributionEditorFocusContext(WorkspacePanel Panel, Action
 /// host channel and its RPC targets, mirrors app/view state, bridges the webview_* tools, coordinates saves
 /// and external reloads, and implements the edit-target and link-routing behaviour. It has no dependency on
 /// DocumentView, the documents panel, or tab machinery; ContributionDocumentView and (later) a panel view are
-/// thin adapters that construct one and forward their lifecycle to it. Named ...Controller rather than ...Host
-/// because it owns and configures a CelbridgeHost; it is not itself a host.
+/// thin adapters that construct one and forward their lifecycle to it.
 /// </summary>
 public sealed class ContributionEditorController : IHostInput, IHostContext, IEditTarget
 {
@@ -54,8 +53,11 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private readonly ContributionDocumentViewModel _viewModel;
-    private readonly Panel _webViewContainer;
-    private readonly ContributionEditorFocusContext _focusContext;
+
+    // The container the WebView currently lives in, and the focus identity it reports through. Both are
+    // reassigned by Redock when a utility moves between dock locations; the WebView is moved, never rebuilt.
+    private Panel _webViewContainer;
+    private ContributionEditorFocusContext _focusContext;
 
     // Set by InitializeAsync before the WebView is configured.
     private CustomDocumentEditorContribution? _contribution;
@@ -467,6 +469,40 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
     }
 
     /// <summary>
+    /// Moves the live WebView into a new container and re-points its focus registration at it, without tearing
+    /// it down or reloading it. This is the dock primitive: a utility keeps one WebView (and all its live state)
+    /// while it moves between dock locations (the Utility Panel and a document tab). Called before the WebView
+    /// is acquired, it just records the target container so the pending init lands there.
+    /// </summary>
+    public void Redock(Panel newContainer, ContributionEditorFocusContext focusContext)
+    {
+        _focusContext = focusContext;
+
+        if (WebView is null)
+        {
+            // Not yet initialized; the pending init adds the WebView to this container and registers focus.
+            _webViewContainer = newContainer;
+            return;
+        }
+
+        // Drop the old registration first so the registry never holds a stale host identity, then move the
+        // WebView across containers and register it against the new host.
+        if (WebView.CoreWebView2 is not null)
+        {
+            _webViewFocusRegistry.Unregister(WebView.CoreWebView2);
+        }
+
+        if (!ReferenceEquals(newContainer, _webViewContainer))
+        {
+            _webViewContainer.Children.Remove(WebView);
+            newContainer.Children.Add(WebView);
+            _webViewContainer = newContainer;
+        }
+
+        RegisterWebSurfaceFocus();
+    }
+
+    /// <summary>
     /// Tears down the editor: unsubscribes from the view model, resets content-loaded state, and disposes the
     /// WebView, host channel, and associated handlers. Safe to call multiple times.
     /// </summary>
@@ -608,6 +644,12 @@ public sealed class ContributionEditorController : IHostInput, IHostContext, IEd
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
+
+    /// <summary>
+    /// The writable state last applied to the editor. Used by the save tick to suppress expected read-only
+    /// save failures.
+    /// </summary>
+    public WritableState WritableState => _writableState;
 
     /// <summary>
     /// Applies a writable state: stores it and mirrors it to the WebView over the viewState channel. The store

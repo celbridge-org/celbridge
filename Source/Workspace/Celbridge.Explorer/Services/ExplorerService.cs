@@ -18,13 +18,12 @@ public class ExplorerService : IExplorerService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileManagerLauncher _fileManagerLauncher;
     private readonly ISpotlightService _spotlightService;
-    private readonly ISpotlightLandmark _panelSpotlightLandmark;
-    private readonly ISpotlightLandmark _toolbarSpotlightLandmark;
+    private readonly ISpotlightLandmark _spotlightLandmark;
 
-    // Explorer landmark whose spotlight only needs the Explorer tab activated.
+    // The Explorer panel landmark.
     private const string ExplorerPanelLandmarkId = "explorer-panel";
 
-    // Toolbar button landmarks whose spotlight also needs the ephemeral Explorer toolbar revealed.
+    // The Explorer toolbar button landmarks.
     private static readonly string[] ToolbarLandmarkIds =
     {
         "new-file-button",
@@ -70,15 +69,14 @@ public class ExplorerService : IExplorerService, IDisposable
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<SelectedResourceChangedMessage>(this, OnSelectedResourceChangedMessage);
 
-        // Register the Explorer reveals so spotlighting an Explorer landmark switches to the
-        // Explorer tab first (and, for the toolbar buttons, fades the ephemeral toolbar in). Torn
-        // down when this workspace-scoped service is disposed.
-        _panelSpotlightLandmark = new ExplorerSpotlightLandmark(workspaceWrapper, revealToolbar: false);
-        _toolbarSpotlightLandmark = new ExplorerSpotlightLandmark(workspaceWrapper, revealToolbar: true);
-        _spotlightService.RegisterLandmark(ExplorerPanelLandmarkId, _panelSpotlightLandmark);
+        // Register the Explorer reveal so spotlighting an Explorer landmark switches to the Explorer tab
+        // first (its content is collapsed while another activity is active). The reveal is stateless, so the
+        // panel and toolbar landmarks share one instance. Torn down when this workspace-scoped service is disposed.
+        _spotlightLandmark = new ExplorerSpotlightLandmark(workspaceWrapper);
+        _spotlightService.RegisterLandmark(ExplorerPanelLandmarkId, _spotlightLandmark);
         foreach (var landmarkId in ToolbarLandmarkIds)
         {
-            _spotlightService.RegisterLandmark(landmarkId, _toolbarSpotlightLandmark);
+            _spotlightService.RegisterLandmark(landmarkId, _spotlightLandmark);
         }
     }
 
@@ -93,7 +91,7 @@ public class ExplorerService : IExplorerService, IDisposable
         SelectedResource = message.Resource;
 
         // Update the selected resources list from the panel
-        var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+        var explorerPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.ExplorerPanel;
         _selectedResources = explorerPanel.GetSelectedResources();
 
         if (_isWorkspaceLoaded)
@@ -105,7 +103,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> SelectResources(List<ResourceKey> resources)
     {
-        var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+        var explorerPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.ExplorerPanel;
 
         var selectResult = await explorerPanel.SelectResources(resources);
         if (selectResult.IsFailure)
@@ -153,7 +151,7 @@ public class ExplorerService : IExplorerService, IDisposable
                 .ToList();
 
             // Select all previously selected resources
-            var explorerPanel = _workspaceWrapper.WorkspaceService.ActivityPanel.ExplorerPanel;
+            var explorerPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.ExplorerPanel;
             var selectResult = await explorerPanel.SelectResources(resources);
             if (selectResult.IsFailure)
             {

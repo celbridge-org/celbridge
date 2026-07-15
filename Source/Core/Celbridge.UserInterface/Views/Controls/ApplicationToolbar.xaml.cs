@@ -39,16 +39,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
         PageNavigationToolbar.ClearShortcutButtons();
     }
 
-    public bool BuildUtilityButtons(IReadOnlyList<UtilityButton> utilities, Action<string> onOpenUtility)
-    {
-        return PageNavigationToolbar.BuildUtilityButtons(utilities, onOpenUtility);
-    }
-
-    public void ClearUtilityButtons()
-    {
-        PageNavigationToolbar.ClearUtilityButtons();
-    }
-
     public ApplicationToolbar()
     {
         this.InitializeComponent();

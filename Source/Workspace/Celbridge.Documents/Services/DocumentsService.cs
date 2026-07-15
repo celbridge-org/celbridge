@@ -1,10 +1,14 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Helpers;
+using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -24,8 +28,8 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly DocumentEditorPreferenceStore _preferenceStore;
     private readonly DocumentViewFactory _viewFactory;
     private readonly DocumentLayoutStore _layoutStore;
-    private readonly UtilityDocumentSeeder _utilityDocumentSeeder;
     private readonly ReloadHintStore _reloadHintStore = new(TimeSpan.FromSeconds(2));
+
     private bool _disposed;
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
@@ -118,14 +122,9 @@ public class DocumentsService : IDocumentsService, IDisposable
             _serviceProvider,
             serviceProvider.GetRequiredService<ILogger<DocumentViewFactory>>());
 
-        _utilityDocumentSeeder = new UtilityDocumentSeeder(
-            _workspaceWrapper,
-            serviceProvider.GetRequiredService<ILogger<UtilityDocumentSeeder>>());
-
         _layoutStore = new DocumentLayoutStore(
             _workspaceWrapper,
             _commandService,
-            _utilityDocumentSeeder,
             serviceProvider.GetRequiredService<ILogger<DocumentLayoutStore>>());
     }
 
@@ -169,6 +168,10 @@ public class DocumentsService : IDocumentsService, IDisposable
                         continue;
                     }
 
+                    // Register a document editor factory for each custom contribution, including utilities: a
+                    // utility's factory is what lets it be docked into a document tab. Its IsUtility flag keeps
+                    // it out of the New File dialog and the Reopen-with menu, and its utils: backing resource
+                    // keeps it out of the project-scoped resource tree and search.
                     var factory = new CustomDocumentViewFactory(_serviceProvider, customContribution, _featureFlags, localizationService);
                     var result = _documentEditorRegistry.RegisterFactory(factory);
                     if (result.IsFailure)
@@ -317,13 +320,11 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        // A utility resource that has never been opened has no backing file yet. Seed it from the manifest
-        // template ahead of the existence gate so launch, auto-open, and this same recovery path all work.
-        var seedResult = await _utilityDocumentSeeder.SeedIfMissingAsync(fileResource);
-        if (seedResult.IsFailure)
+        // A utility is only ever presented by docking, never opened as an ordinary document. This is the
+        // chokepoint every open routes through, so refusing utils: here prevents a second, uncontrolled instance.
+        if (fileResource.Root == ProjectConstants.UtilsFolder)
         {
-            return Result.Fail($"Failed to prepare utility document for file resource '{fileResource}'")
-                .WithErrors(seedResult);
+            return Result.Fail($"Cannot open utility resource '{fileResource}' as a document. Utilities are presented through the Utility Panel and docked into a tab, never opened directly.");
         }
 
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
