@@ -1,0 +1,64 @@
+/* Celbridge design tokens, served at /assets/celbridge-client/celbridge-tokens.css.
+
+   This is the tokens-only sheet: the `--cel-*` custom properties and nothing else. Link it directly when an
+   editor wants the host's colors and fonts but brings its own chrome and does not want the bare-element control
+   styling in celbridge.css (the CodeEditor is the precedent — its toolbar and Monaco surface are styled by hand
+   and should not inherit generic button/input rules). Utilities that want the full package link celbridge.css
+   instead, which imports this file and adds the base and control layers on top.
+
+   The color values mirror the native app's theme dictionaries in Celbridge.UserInterface/Resources/Colors.xaml;
+   keep the two in sync when either changes. Theme follows html[data-theme], which the client mirrors from the
+   host on every state snapshot (see core/state-store.js). The accent color is hardcoded per theme because the
+   CSS AccentColor keyword renders as transparent in WebView2. The monospace font is the bundled Cascadia Mono,
+   imported below; the UI font is a system stack, matching the host chrome per platform. */
+
+@import url('/assets/cascadia-mono/cascadia-mono.css');
+
+:root {
+    --cel-font-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    --cel-font-mono: "Cascadia Mono", ui-monospace, Consolas, Menlo, monospace;
+    --cel-font-size-base: 14px;
+
+    --cel-radius-control: 4px;
+    --cel-radius-card: 8px;
+
+    color-scheme: light;
+
+    --cel-app-bg: #F3F3F3;
+    --cel-panel-bg: #F3F3F3;
+    --cel-panel-bg-alt: #F7F8FA;
+    --cel-divider: #D0D0D0;
+    --cel-accent: #0078D4;
+    --cel-accent-text: #FFFFFF;
+    --cel-text-primary: #1F1F1F;
+    --cel-text-secondary: rgba(0, 0, 0, 0.6);
+    --cel-error-text: #D32F2F;
+    --cel-warning-text: #FFA000;
+    --cel-search-highlight: #C66300;
+    --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
+
+    /* Button fill and hover. The native app uses WinUI's system control brushes here rather than a token in
+       Colors.xaml; these approximate that Fluent look. */
+    --cel-control-bg: #FBFBFB;
+    --cel-control-hover-bg: #F0F0F0;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --cel-app-bg: #2B2D30;
+    --cel-panel-bg: #2B2D30;
+    --cel-panel-bg-alt: #1E1F22;
+    --cel-divider: #1E1F22;
+    --cel-accent: #60CDFF;
+    --cel-accent-text: #000000;
+    --cel-text-primary: #FFFFFF;
+    --cel-text-secondary: rgba(255, 255, 255, 0.6);
+    --cel-error-text: #FF5252;
+    --cel-warning-text: #FFCA28;
+    --cel-search-highlight: #FFD966;
+    --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
+
+    --cel-control-bg: #383A3E;
+    --cel-control-hover-bg: #43464A;
+}

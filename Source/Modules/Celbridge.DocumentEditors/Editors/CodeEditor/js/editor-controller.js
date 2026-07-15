@@ -33,7 +33,11 @@ export class EditorController {
             automaticLayout: true,
             theme: initialTheme,
             minimap: { autohide: true },
-            wordWrap: 'on'
+            wordWrap: 'on',
+            // Render hovers, suggestions, and the find widget's toggle tooltips on a fixed layer attached to
+            // the body rather than inside the editor, so they are not clipped by the container's overflow:hidden
+            // when the find widget sits at the top edge.
+            fixedOverflowWidgets: true
         });
 
         this.#setupLineEndings();

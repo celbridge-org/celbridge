@@ -20,6 +20,10 @@ const ACTIVE_MATCH_HIGHLIGHT = 'celbridge-find-active';
 const STYLE_ELEMENT_ID = 'celbridge-find-styles';
 const ICON_FONT_LINK_ID = 'celbridge-find-icon-font';
 
+// Colors read from the shared stylesheet's --cel-* tokens where the host page links it (celbridge.css), with
+// the previous GitHub-style palette kept as the fallback so the bar is unchanged in a host that does not. The
+// per-theme fallbacks stay split across the base and html[data-theme="dark"] blocks; when the tokens are
+// present they are theme-aware, so both blocks resolve to the same host color.
 const STYLES = `
 .celbridge-find-bar {
     position: fixed;
@@ -31,10 +35,10 @@ const STYLES = `
     gap: 4px;
     padding: 6px 8px;
     font-size: 13px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-    background-color: #f6f8fa;
-    color: #24292f;
-    border: 1px solid #d0d7de;
+    font-family: var(--cel-font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif);
+    background-color: var(--cel-panel-bg-alt, #f6f8fa);
+    color: var(--cel-text-primary, #24292f);
+    border: 1px solid var(--cel-divider, #d0d7de);
     border-top: none;
     border-right: none;
     border-radius: 0 0 0 6px;
@@ -45,10 +49,10 @@ const STYLES = `
     width: 240px;
     padding: 6px 8px;
     font-size: 14px;
-    border: 1px solid #d0d7de;
+    border: 1px solid var(--cel-divider, #d0d7de);
     border-radius: 4px;
-    background-color: #ffffff;
-    color: #24292f;
+    background-color: var(--cel-app-bg, #ffffff);
+    color: var(--cel-text-primary, #24292f);
     outline: none;
 }
 .celbridge-find-count {
@@ -56,7 +60,7 @@ const STYLES = `
     min-width: 88px;
     text-align: center;
     white-space: nowrap;
-    color: #656d76;
+    color: var(--cel-text-secondary, #656d76);
 }
 .celbridge-find-bar button {
     display: inline-flex;
@@ -74,21 +78,21 @@ const STYLES = `
 .celbridge-find-bar button:hover { background-color: rgba(0, 0, 0, 0.08); }
 .celbridge-find-bar .bi { font-size: 15px; }
 .celbridge-find-toggle { font-size: 13px; font-weight: 600; }
-.celbridge-find-toggle[aria-pressed="true"] { background-color: #0969da; color: #ffffff; }
+.celbridge-find-toggle[aria-pressed="true"] { background-color: var(--cel-accent, #0969da); color: var(--cel-accent-text, #ffffff); }
 
 html[data-theme="dark"] .celbridge-find-bar {
-    background-color: #282828;
-    color: #d4d4d4;
-    border-color: #444;
+    background-color: var(--cel-panel-bg-alt, #282828);
+    color: var(--cel-text-primary, #d4d4d4);
+    border-color: var(--cel-divider, #444);
 }
 html[data-theme="dark"] .celbridge-find-input {
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    border-color: #444;
+    background-color: var(--cel-app-bg, #1e1e1e);
+    color: var(--cel-text-primary, #d4d4d4);
+    border-color: var(--cel-divider, #444);
 }
-html[data-theme="dark"] .celbridge-find-count { color: #9e9e9e; }
+html[data-theme="dark"] .celbridge-find-count { color: var(--cel-text-secondary, #9e9e9e); }
 html[data-theme="dark"] .celbridge-find-bar button:hover { background-color: rgba(255, 255, 255, 0.1); }
-html[data-theme="dark"] .celbridge-find-toggle[aria-pressed="true"] { background-color: #58a6ff; color: #1e1e1e; }
+html[data-theme="dark"] .celbridge-find-toggle[aria-pressed="true"] { background-color: var(--cel-accent, #58a6ff); color: var(--cel-accent-text, #1e1e1e); }
 
 /* Yellow for all matches, orange for the active one, mirroring the familiar browser find colours. */
 ::highlight(celbridge-find) { background-color: #ffd54f; color: #000000; }

@@ -79,7 +79,7 @@ tools = ["document.*", "file.*", "app.get_state"]
 The manifest uses the **alias form** — `namespace.snake_case_method`. The JS proxy converts the method portion to camelCase at the call site; the manifest does **not**.
 
 ```javascript
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
 await celbridge.initialize();
 const tree = await cel.file.getTree("");
 ```

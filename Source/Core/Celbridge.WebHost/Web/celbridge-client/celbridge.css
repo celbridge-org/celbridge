@@ -1,0 +1,121 @@
+/* Celbridge shared stylesheet for WebView utilities and editors.
+   Served over the loopback file server at /assets/celbridge-client/celbridge.css. Link it alongside the
+   client script to inherit the host's fonts and colors, plus base and control styling:
+
+       <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+
+   This imports the design tokens from celbridge-tokens.css and layers a box-sizing reset, body defaults, and
+   an approximate-Fluent set of form-control and text-element styles on top. An editor that wants the tokens
+   but brings its own chrome should link celbridge-tokens.css directly instead, to avoid the bare-element
+   control rules below (the CodeEditor does this). */
+
+@import url('/assets/celbridge-client/celbridge-tokens.css');
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: var(--cel-font-ui);
+    font-size: var(--cel-font-size-base);
+    color: var(--cel-text-primary);
+    background: var(--cel-app-bg);
+}
+
+/* Common form controls, approximating the native Fluent look so a utility's inputs and buttons read as part
+   of the host. These bare-element rules apply only to pages that link this stylesheet; an editor with its own
+   control styling can override them by id or class, since element selectors have the lowest specificity. */
+
+:root {
+    accent-color: var(--cel-accent);
+}
+
+button,
+select,
+textarea,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]) {
+    font-family: var(--cel-font-ui);
+    font-size: var(--cel-font-size-base);
+    color: var(--cel-text-primary);
+    border: 1px solid var(--cel-divider);
+    border-radius: var(--cel-radius-control);
+}
+
+select,
+textarea,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]) {
+    padding: 5px 8px;
+    background: var(--cel-panel-bg-alt);
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+    outline: none;
+    border-color: var(--cel-accent);
+}
+
+button {
+    padding: 5px 14px;
+    background: var(--cel-control-bg);
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--cel-control-hover-bg);
+}
+
+button:disabled,
+select:disabled,
+textarea:disabled,
+input:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Primary/call-to-action button, filled with the accent color. */
+button.cel-accent {
+    background: var(--cel-accent);
+    border-color: var(--cel-accent);
+    color: var(--cel-accent-text);
+}
+
+button.cel-accent:hover {
+    filter: brightness(1.08);
+}
+
+/* Text-level defaults. Links, code, placeholders, and selection pick up the theme so real content reads as
+   part of the host rather than falling back to the browser's blue links and UA monospace. */
+
+a {
+    color: var(--cel-accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+code,
+pre,
+kbd,
+samp {
+    font-family: var(--cel-font-mono);
+}
+
+::placeholder {
+    color: var(--cel-text-secondary);
+}
+
+::selection {
+    background: var(--cel-list-selected-bg);
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--cel-divider);
+}

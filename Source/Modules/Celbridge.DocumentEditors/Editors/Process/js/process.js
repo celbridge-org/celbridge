@@ -16,10 +16,6 @@ const inputEl = document.getElementById('process-input');
 let suppressChangeNotifications = false;
 let notifyTimer = null;
 
-function applyTheme(theme) {
-    document.body.className = theme === 'Dark' ? 'theme-dark' : 'theme-light';
-}
-
 function applyReadOnlyState(readOnly) {
     suppressChangeNotifications = readOnly;
     inputEl.readOnly = readOnly;
@@ -52,12 +48,6 @@ function scheduleNotifyChanged() {
 }
 
 inputEl.addEventListener('input', scheduleNotifyChanged);
-
-client.appState.onChanged((appState) => {
-    if (appState.theme) {
-        applyTheme(appState.theme);
-    }
-});
 
 client.viewState.onChanged((viewState) => {
     if (viewState.writable) {
