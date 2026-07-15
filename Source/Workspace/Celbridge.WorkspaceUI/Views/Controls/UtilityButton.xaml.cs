@@ -1,4 +1,6 @@
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.WorkspaceUI.Views.Controls;
 
@@ -11,6 +13,9 @@ public sealed partial class UtilityButton : UserControl
 {
     // Icon opacity while the utility is docked, giving the button a disabled look while it stays clickable.
     private const double DockedIconOpacity = 0.4;
+
+    // The currently running attention flash, if any. Kept so a repeated flash restarts cleanly.
+    private Storyboard? _attentionStoryboard;
 
     public event EventHandler<RoutedEventArgs>? Click;
 
@@ -92,6 +97,16 @@ public sealed partial class UtilityButton : UserControl
     public void SetAutomationId(string automationId)
     {
         AutomationProperties.SetAutomationId(ButtonElement, automationId);
+    }
+
+    /// <summary>
+    /// Briefly pulses the button to the accent color to draw the user's attention to it, then fades back out.
+    /// Used to signal that the utility's rail button has become available again after an undock.
+    /// </summary>
+    public void FlashAttention()
+    {
+        _attentionStoryboard?.Stop();
+        _attentionStoryboard = AttentionFlash.Play(AttentionOverlay);
     }
 
     private static void OnSelectionStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

@@ -203,8 +203,12 @@ public class UtilityService : IUtilityService, IDisposable
         var documentsPanel = (DocumentsPanel)DocumentsPanel;
         documentsPanel.RemoveUtilityTab(panelView.FileResource);
 
-        _workspaceWrapper.WorkspaceService.UtilityPanel.SetUtilityDockLocation(
-            panelView.UtilityId, DockLocation.UtilityPanel, ResourceKey.Empty);
+        var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
+        utilityPanel.SetUtilityDockLocation(panelView.UtilityId, DockLocation.UtilityPanel, ResourceKey.Empty);
+
+        // Flash the freed rail button so its now-available home is obvious, mirroring the tab flash shown when a
+        // utility is docked as a document.
+        utilityPanel.FlashUtility(panelView.UtilityId);
 
         return Result.Ok();
     }

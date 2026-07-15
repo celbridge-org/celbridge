@@ -82,6 +82,12 @@ public interface IUtilityPanel
     void SetUtilityDockLocation(UtilityId utilityId, DockLocation location, ResourceKey documentResource);
 
     /// <summary>
+    /// Briefly flashes a utility's rail button to draw attention to it, e.g. when the utility is undocked from a
+    /// document tab and its rail button becomes available again. A no-op when no utility has that id.
+    /// </summary>
+    void FlashUtility(UtilityId utilityId);
+
+    /// <summary>
     /// Restores the previously active rail surface from workspace settings, falling back to Explorer when the
     /// persisted id no longer resolves. Enables persisting later user selections. Called on project load after
     /// the utility items have been built.

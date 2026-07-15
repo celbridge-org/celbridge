@@ -3,6 +3,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 
@@ -60,44 +61,13 @@ public partial class DocumentTab : TabViewItem
 
     /// <summary>
     /// Briefly pulses the tab's background to the accent color to draw the user's attention to it, then fades
-    /// it back out. Used to give visible feedback when a tab is surfaced (e.g. activating a docked utility).
+    /// it back out. Used to give visible feedback when a tab is surfaced (e.g. activating a docked utility) or
+    /// moved into a different section by a section-count change.
     /// </summary>
     public void FlashAttention()
     {
         _attentionStoryboard?.Stop();
-
-        // One key-framed animation, not two: fade in to a partial accent wash (kept below full so the label
-        // stays readable), hold, then fade out. WinUI forbids two animations in a Storyboard from targeting the
-        // same property on the same element, so the phases are key frames on a single animation. Opacity is an
-        // independent (compositor) property, so no EnableDependentAnimation is needed and it runs on both heads.
-        var animation = new DoubleAnimationUsingKeyFrames();
-        Storyboard.SetTarget(animation, AttentionOverlay);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-
-        animation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
-            Value = 0.0
-        });
-        animation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),
-            Value = 0.55
-        });
-        animation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(560)),
-            Value = 0.55
-        });
-        animation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(920)),
-            Value = 0.0
-        });
-
-        _attentionStoryboard = new Storyboard();
-        _attentionStoryboard.Children.Add(animation);
-        _attentionStoryboard.Begin();
+        _attentionStoryboard = AttentionFlash.Play(AttentionOverlay);
     }
 
     /// <summary>

@@ -340,6 +340,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ViewModel.SetDocked(utilityId, isDocument);
     }
 
+    public void FlashUtility(UtilityId utilityId)
+    {
+        if (!_buttons.TryGetValue(utilityId, out var button))
+        {
+            return;
+        }
+
+        // Deferred to a low dispatcher tick so the undock reparent settles before the button pulses.
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => button.FlashAttention());
+    }
+
     public void RestoreSelectedUtility()
     {
         var tag = _settings.Get(SettingCatalog.Layout.UtilityPanelSelectedUtility);
