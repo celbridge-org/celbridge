@@ -23,7 +23,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     private bool _awaitingSelectionFocus;
 
     /// <summary>
-    /// The rail items in display order: built-in surfaces first, then contributed utilities.
+    /// The rail items in display order: built-in surfaces first, then custom utilities.
     /// </summary>
     public IReadOnlyList<UtilityItemViewModel> Items => _items;
 
@@ -34,7 +34,7 @@ public partial class UtilityPanelViewModel : ObservableObject
 
     /// <summary>
     /// Appends a rail item and returns its view model. focusIdentity is the workspace panel this surface
-    /// reports focus as (WorkspacePanel.Utility for every contributed utility).
+    /// reports focus as (WorkspacePanel.CustomUtility for every custom utility).
     /// </summary>
     public UtilityItemViewModel AddItem(UtilityId id, WorkspacePanel focusIdentity)
     {

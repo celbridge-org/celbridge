@@ -110,12 +110,12 @@ public class UtilityPanelViewModelTests
     }
 
     [Test]
-    public void ContributedUtility_FocusReportedAsUtility_LightsAccent()
+    public void CustomUtility_FocusReportedAsUtility_LightsAccent()
     {
-        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanel.Utility);
+        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanel.CustomUtility);
 
         _viewModel.SelectUtility(NotepadUtilityId);
-        _viewModel.ReconcileFocus(WorkspacePanel.Utility);
+        _viewModel.ReconcileFocus(WorkspacePanel.CustomUtility);
 
         notepad.IsSelected.Should().BeTrue();
         notepad.IsFocused.Should().BeTrue();
@@ -125,7 +125,7 @@ public class UtilityPanelViewModelTests
     [Test]
     public void SetDocked_MarksTheItemDocked()
     {
-        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanel.Utility);
+        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanel.CustomUtility);
 
         _viewModel.SetDocked(NotepadUtilityId, true);
         notepad.IsDocked.Should().BeTrue();
@@ -137,7 +137,7 @@ public class UtilityPanelViewModelTests
     [Test]
     public void RemoveItem_RemovesItFromTheRail()
     {
-        _viewModel.AddItem(NotepadUtilityId, WorkspacePanel.Utility);
+        _viewModel.AddItem(NotepadUtilityId, WorkspacePanel.CustomUtility);
         _viewModel.Items.Should().HaveCount(3);
 
         _viewModel.RemoveItem(NotepadUtilityId);

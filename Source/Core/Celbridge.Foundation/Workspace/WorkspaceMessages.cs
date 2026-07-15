@@ -43,7 +43,7 @@ public record PanelFocusChangedMessage(WorkspacePanel FocusedPanel);
 
 /// <summary>
 /// Sent when the surface shown in the Utility Panel rail changes. UtilityId is the fully-qualified id of the
-/// now-active utility (a built-in id such as "celbridge.explorer", or a contributed id), or empty when none.
+/// now-active utility (a built-in id such as "celbridge.explorer", or a custom id), or empty when none.
 /// </summary>
 public record ActiveUtilityChangedMessage(string UtilityId);
 

@@ -28,7 +28,7 @@ public record ToolCallResult(bool IsSuccess, string ErrorMessage, object? Value)
 
 /// <summary>
 /// Typed gateway onto the MCP tool registry, used by consumers that enumerate
-/// or invoke tools from C# (contribution editors, automation, etc.).
+/// or invoke tools from C# (custom editors, automation, etc.).
 /// </summary>
 public interface IMcpToolBridge
 {

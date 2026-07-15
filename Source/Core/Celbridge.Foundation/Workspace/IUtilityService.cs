@@ -14,7 +14,7 @@ public interface IUtilityService
     /// Creates each utility as a persistent workspace surface and returns the rail tabs describing them. Each
     /// utility is owned by this service until the workspace unloads. Contributions are given in display order.
     /// </summary>
-    Task<IReadOnlyList<ContributedUtility>> CreateUtilitiesAsync(IReadOnlyList<CustomDocumentEditorContribution> contributions);
+    Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<CustomDocumentEditorContribution> contributions);
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given

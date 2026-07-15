@@ -15,7 +15,7 @@ public class UtilityService : IUtilityService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly UtilityDocumentSeeder _utilityDocumentSeeder;
 
-    private readonly List<ContributionPanelView> _utilities = new();
+    private readonly List<CustomUtilityView> _utilities = new();
 
     private bool _disposed;
 
@@ -40,11 +40,11 @@ public class UtilityService : IUtilityService, IDisposable
             serviceProvider.GetRequiredService<ILogger<UtilityDocumentSeeder>>());
     }
 
-    public async Task<IReadOnlyList<ContributedUtility>> CreateUtilitiesAsync(IReadOnlyList<CustomDocumentEditorContribution> contributions)
+    public async Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<CustomDocumentEditorContribution> contributions)
     {
         var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-        var tabs = new List<ContributedUtility>();
+        var tabs = new List<CustomUtility>();
         foreach (var contribution in contributions)
         {
             var descriptor = contribution.UtilityDescriptor;
@@ -70,7 +70,7 @@ public class UtilityService : IUtilityService, IDisposable
 
             var displayName = ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
 
-            var panelView = _serviceProvider.GetRequiredService<ContributionPanelView>();
+            var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
             var initResult = await panelView.InitializeAsync(contribution, resource, displayName);
             if (initResult.IsFailure)
             {
@@ -81,7 +81,7 @@ public class UtilityService : IUtilityService, IDisposable
             _utilities.Add(panelView);
 
             var tooltip = ResolveLocalizedString(localizationService, contribution.Package, descriptor.Tooltip);
-            tabs.Add(new ContributedUtility(utilityId, descriptor.Icon, tooltip, displayName, panelView, panelView.FocusPanel));
+            tabs.Add(new CustomUtility(utilityId, descriptor.Icon, tooltip, displayName, panelView, panelView.FocusPanel));
         }
 
         return tabs;
@@ -149,7 +149,7 @@ public class UtilityService : IUtilityService, IDisposable
 
     // Docks a utility into a document tab in the active document's section, reusing its live WebView. Activates
     // the tab if the utility is already there.
-    private Result DockUtilityAsDocument(ContributionPanelView panelView)
+    private Result DockUtilityAsDocument(CustomUtilityView panelView)
     {
         var documentsPanel = (DocumentsPanel)DocumentsPanel;
 
@@ -188,7 +188,7 @@ public class UtilityService : IUtilityService, IDisposable
 
     // Docks a utility back into the Utility Panel, reparenting its WebView out of its document tab and removing
     // the tab. The utility itself is never torn down.
-    private Result DockUtilityInPanel(ContributionPanelView panelView)
+    private Result DockUtilityInPanel(CustomUtilityView panelView)
     {
         if (panelView.Location == DockLocation.UtilityPanel)
         {

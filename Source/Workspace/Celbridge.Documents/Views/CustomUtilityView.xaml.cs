@@ -10,27 +10,27 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Hosts a contributed utility in the Utility Panel, adapting the shared ContributionEditorController to
+/// Hosts a custom utility in the Utility Panel, adapting the shared CustomEditorController to
 /// panel chrome.
 /// </summary>
-public sealed partial class ContributionPanelView : UserControl
+public sealed partial class CustomUtilityView : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
-    private readonly ContributionDocumentViewModel _viewModel;
-    private readonly ContributionEditorController _controller;
-    private readonly ContributionEditorFocusContext _panelFocusContext;
+    private readonly CustomDocumentViewModel _viewModel;
+    private readonly CustomEditorController _controller;
+    private readonly CustomEditorFocusContext _panelFocusContext;
 
     // The utility's id, set on Initialize. Used by the dock orchestration to address this panel.
     private UtilityId _utilityId = UtilityId.Empty;
 
-    public ContributionPanelView(IServiceProvider serviceProvider)
+    public CustomUtilityView(IServiceProvider serviceProvider)
     {
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         _workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
         _commandService = serviceProvider.GetRequiredService<ICommandService>();
-        _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
+        _viewModel = serviceProvider.GetRequiredService<CustomDocumentViewModel>();
 
         this.InitializeComponent();
 
@@ -40,14 +40,14 @@ public sealed partial class ContributionPanelView : UserControl
 
         // A utility in the panel is not a document, so it does not mark itself the active document on focus. The
         // registry still reports its Utility focus identity from the registration, which is all a utility needs.
-        _panelFocusContext = new ContributionEditorFocusContext(
-            WorkspacePanel.Utility,
+        _panelFocusContext = new CustomEditorFocusContext(
+            WorkspacePanel.CustomUtility,
             () => { });
 
-        _controller = new ContributionEditorController(
+        _controller = new CustomEditorController(
             serviceProvider,
             _viewModel,
-            ContributionWebViewContainer,
+            CustomWebViewContainer,
             _panelFocusContext);
     }
 
@@ -55,19 +55,19 @@ public sealed partial class ContributionPanelView : UserControl
     /// The utility's persistent editor controller. Owned by this panel for the workspace lifetime; the dock
     /// orchestration borrows it to present the utility in a document tab and hands it back when it returns.
     /// </summary>
-    public ContributionEditorController Controller => _controller;
+    public CustomEditorController Controller => _controller;
 
     /// <summary>
     /// This panel's WebView container. Docking the utility back into the panel reparents the controller's
     /// WebView into it.
     /// </summary>
-    public Panel PanelContainer => ContributionWebViewContainer;
+    public Panel PanelContainer => CustomWebViewContainer;
 
     /// <summary>
     /// The focus context the utility reports through while docked in the Utility Panel. Re-applied when the
     /// utility is docked back into the panel.
     /// </summary>
-    public ContributionEditorFocusContext PanelFocusContext => _panelFocusContext;
+    public CustomEditorFocusContext PanelFocusContext => _panelFocusContext;
 
     /// <summary>
     /// The utility's id.

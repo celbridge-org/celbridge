@@ -8,14 +8,14 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document view for contribution-based editors, hosted via a WebView2. A thin adapter over
-/// ContributionEditorController: it satisfies the DocumentView contract (open, save timer, close, editor-state
+/// CustomEditorController: it satisfies the DocumentView contract (open, save timer, close, editor-state
 /// persistence) and forwards the WebView-hosting work to the controller.
 /// </summary>
-public sealed partial class ContributionDocumentView : DocumentView
+public sealed partial class CustomDocumentView : DocumentView
 {
     private readonly IMessengerService _messengerService;
-    private readonly ContributionDocumentViewModel _viewModel;
-    private readonly ContributionEditorController _controller;
+    private readonly CustomDocumentViewModel _viewModel;
+    private readonly CustomEditorController _controller;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -25,23 +25,23 @@ public sealed partial class ContributionDocumentView : DocumentView
     /// </summary>
     public CustomDocumentEditorContribution? Contribution { get; set; }
 
-    public ContributionDocumentView(
+    public CustomDocumentView(
         IServiceProvider serviceProvider,
         IMessengerService messengerService)
     {
         _messengerService = messengerService;
-        _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
+        _viewModel = serviceProvider.GetRequiredService<CustomDocumentViewModel>();
 
         this.InitializeComponent();
 
-        var focusContext = new ContributionEditorFocusContext(
+        var focusContext = new CustomEditorFocusContext(
             WorkspacePanel.Documents,
             () => _messengerService.Send(new DocumentViewFocusedMessage(_viewModel.FileResource)));
 
-        _controller = new ContributionEditorController(
+        _controller = new CustomEditorController(
             serviceProvider,
             _viewModel,
-            ContributionWebViewContainer,
+            CustomWebViewContainer,
             focusContext);
     }
 
@@ -66,7 +66,7 @@ public sealed partial class ContributionDocumentView : DocumentView
     {
         if (Contribution is null)
         {
-            return Result.Fail("Cannot initialize contribution view: Contribution is not set");
+            return Result.Fail("Cannot initialize custom view: Contribution is not set");
         }
 
         return await _controller.InitializeAsync(Contribution);

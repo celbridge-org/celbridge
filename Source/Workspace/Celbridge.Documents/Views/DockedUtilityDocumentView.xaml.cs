@@ -6,32 +6,32 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document view for a utility docked as a document: a utility whose presentation has moved from the Utility
-/// Panel into a document tab. It borrows the utility's persistent ContributionEditorController (owned by its
-/// ContributionPanelView) rather than creating one, so the utility keeps a single WebView as it moves between
+/// Panel into a document tab. It borrows the utility's persistent CustomEditorController (owned by its
+/// CustomUtilityView) rather than creating one, so the utility keeps a single WebView as it moves between
 /// dock locations. The view is inert on saves (the owning panel drives the save tick) and never tears the
 /// controller down on close; the documents panel reparents the WebView back to the panel instead.
 /// </summary>
 public sealed partial class DockedUtilityDocumentView : DocumentView
 {
-    private readonly ContributionDocumentViewModel _viewModel;
-    private readonly ContributionEditorController _controller;
-    private readonly ContributionEditorFocusContext _focusContext;
+    private readonly CustomDocumentViewModel _viewModel;
+    private readonly CustomEditorController _controller;
+    private readonly CustomEditorFocusContext _focusContext;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     public DockedUtilityDocumentView(
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
-        ContributionEditorController controller)
+        CustomEditorController controller)
     {
         _controller = controller;
-        _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
+        _viewModel = serviceProvider.GetRequiredService<CustomDocumentViewModel>();
 
         this.InitializeComponent();
 
         // A docked utility reports the Documents panel and marks itself the active document on focus, matching
         // any other document tab. Docking back into the panel re-points the controller at its Utility context.
-        _focusContext = new ContributionEditorFocusContext(
+        _focusContext = new CustomEditorFocusContext(
             WorkspacePanel.Documents,
             () => messengerService.Send(new DocumentViewFocusedMessage(_viewModel.FileResource)));
     }

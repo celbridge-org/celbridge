@@ -12,7 +12,7 @@ namespace Celbridge.Spreadsheet.Services;
 /// a WebView2 virtual host on the Windows heads, native loadHTMLString on the macOS and Linux Skia heads.
 /// Either way the page is a faked origin; its lib and the shared client resolve cross-origin.
 /// </summary>
-public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
+public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
 {
     private const string SpreadsheetPackageName = "celbridge.spreadsheet";
     private const string SyntheticHost = "spreadjs.celbridge";
@@ -40,9 +40,9 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
 
     // http (not https) on every head: the faked-origin page must open the insecure loopback WebSocket and
     // fetch the http loopback assets without a mixed-content block. The licence validates on the hostname.
-    public string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request) => $"http://{SyntheticHost}/";
+    public string GetAllowedNavigationOrigin(CustomEditorLoadRequest request) => $"http://{SyntheticHost}/";
 
-    public async Task LoadAsync(ContributionEditorLoadRequest request)
+    public async Task LoadAsync(CustomEditorLoadRequest request)
     {
         // The faked-origin page fetches its lib and the shared client cross-origin from the loopback file
         // server, so allow that specific origin to read /assets/ and /package/. No effect on the Windows
@@ -83,7 +83,7 @@ public sealed class SyntheticOriginEditorLoader : IContributionEditorLoader
     /// loadHTMLString ignores a base element), and the WebSocket host channel URL is injected (the faked-origin
     /// page cannot derive it from its own location).
     /// </summary>
-    private async Task<string> BuildSyntheticOriginHtmlAsync(ContributionEditorLoadRequest request)
+    private async Task<string> BuildSyntheticOriginHtmlAsync(CustomEditorLoadRequest request)
     {
         var packageBaseUrl = _fileServer.GetPackageUrl(request.PackageUrlName, string.Empty);
         var assetsBaseUrl = $"http://127.0.0.1:{request.ServerPort}/assets/";

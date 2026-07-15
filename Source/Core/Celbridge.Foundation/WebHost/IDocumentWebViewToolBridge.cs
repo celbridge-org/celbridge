@@ -140,7 +140,7 @@ public interface IDocumentWebViewToolBridge
 
     /// <summary>
     /// Registers a supported WebView with the tool bridge. Called by document views
-    /// (contribution editors and HTML viewers) once their WebView is initialized.
+    /// (custom editors and HTML viewers) once their WebView is initialized.
     /// The screenshot delegate is optional. Pass null on platforms or surfaces that
     /// do not support a native snapshot API.
     /// </summary>
@@ -158,7 +158,7 @@ public interface IDocumentWebViewToolBridge
     /// <summary>
     /// Notifies the bridge that the editor's content has finished loading and gated
     /// tool calls (eval, inspection) may dispatch. Document views call this on the
-    /// editor's readiness signal — notifyContentLoaded for contribution editors and
+    /// editor's readiness signal — notifyContentLoaded for custom editors and
     /// NavigationCompleted for the HTML viewer. Idempotent. Safe to call repeatedly
     /// and in any order relative to NotifyContentLoading. No effect if the resource
     /// is not registered.

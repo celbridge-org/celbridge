@@ -1,7 +1,7 @@
 namespace Celbridge.Packages;
 
 /// <summary>
-/// A document file type declared by an extension.
+/// A document file type declared by a package.
 /// Declares the file extension the editor handles and an optional display name or localization key
 /// shown in the Add File dialog.
 /// </summary>

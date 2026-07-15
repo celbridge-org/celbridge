@@ -3,11 +3,11 @@ using Celbridge.Packages;
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Loads a contribution editor's entry page into its WebView and declares the host-channel transport and
+/// Loads a custom editor's entry page into its WebView and declares the host-channel transport and
 /// navigation origin that page can reach. The default loads every editor over the loopback file server. A
 /// package may supply a custom loader for content that must load under a different origin.
 /// </summary>
-public interface IContributionEditorLoader
+public interface ICustomEditorLoader
 {
     /// <summary>
     /// True when this loader handles the given package. The loopback default matches every package and is
@@ -23,17 +23,17 @@ public interface IContributionEditorLoader
     /// <summary>
     /// The origin prefix the editor is pinned to. The view cancels any navigation outside it.
     /// </summary>
-    string GetAllowedNavigationOrigin(ContributionEditorLoadRequest request);
+    string GetAllowedNavigationOrigin(CustomEditorLoadRequest request);
 
     /// <summary>
     /// Loads the editor's entry page, owning any platform-specific hosting needed to place it under its
     /// origin.
     /// </summary>
-    Task LoadAsync(ContributionEditorLoadRequest request);
+    Task LoadAsync(CustomEditorLoadRequest request);
 }
 
 /// <summary>
-/// The transport a contribution editor's page uses to reach the Celbridge host.
+/// The transport a custom editor's page uses to reach the Celbridge host.
 /// </summary>
 public enum HostChannelTransport
 {
@@ -50,10 +50,10 @@ public enum HostChannelTransport
 }
 
 /// <summary>
-/// The inputs a loader needs to place a contribution editor's entry page into its WebView. The view has
+/// The inputs a loader needs to place a custom editor's entry page into its WebView. The view has
 /// already created the control and brought up its CoreWebView2 before the loader runs.
 /// </summary>
-public sealed record ContributionEditorLoadRequest(
+public sealed record CustomEditorLoadRequest(
     WebView2 WebView,
     PackageInfo Package,
     string PackageUrlName,

@@ -5,8 +5,8 @@ using Celbridge.Settings;
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Factory for creating ContributionDocumentView instances for custom (WebView-based)
-/// extension editors. One instance per discovered CustomDocumentEditorContribution.
+/// Factory for creating CustomDocumentView instances for custom (WebView-based)
+/// editors. One instance per discovered CustomDocumentEditorContribution.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 {
@@ -75,7 +75,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
-        var view = _serviceProvider.GetRequiredService<ContributionDocumentView>();
+        var view = _serviceProvider.GetRequiredService<CustomDocumentView>();
         view.Contribution = _contribution;
         view.EditorId = EditorId;
 

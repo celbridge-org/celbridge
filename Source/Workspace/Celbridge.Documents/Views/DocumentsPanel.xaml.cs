@@ -622,10 +622,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     /// and whether the tab is activated; the controller's WebView is reparented into the tab once it is in the
     /// visual tree.
     /// </summary>
-    public Result DockUtility(ContributionPanelView panelView, DockUtilityPlacement placement)
+    public Result DockUtility(CustomUtilityView panelView, DockUtilityPlacement placement)
     {
         var resource = panelView.FileResource;
-        // A contributed utility's id string is its document editor id.
+        // A custom utility's id string is its document editor id.
         var editorId = new DocumentEditorId(panelView.UtilityId.ToString());
 
         var resolveResult = ViewModel.ResolveResourcePath(resource);

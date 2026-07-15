@@ -12,7 +12,7 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 public record InitializeResult(string Content, DocumentMetadata Metadata, string? EditorStateJson = null);
 
 /// <summary>
-/// The host capability context for a contribution editor: the resolved tool allowlist, the package's
+/// The host capability context for a custom editor: the resolved tool allowlist, the package's
 /// secrets, and its options.
 /// </summary>
 public record CelbridgeContext(

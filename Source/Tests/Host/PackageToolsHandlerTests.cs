@@ -6,7 +6,7 @@ using StreamJsonRpc;
 namespace Celbridge.Tests.Host;
 
 [TestFixture]
-public class ContributionToolsHandlerTests
+public class PackageToolsHandlerTests
 {
     [Test]
     public async Task ListToolsAsync_FiltersByAllowlist()
@@ -20,7 +20,7 @@ public class ContributionToolsHandlerTests
                 Descriptor("file_read",       "file.read")
             }
         };
-        var handler = new ContributionToolsHandler(bridge, new[] { "app.*", "document.open" });
+        var handler = new PackageToolsHandler(bridge, new[] { "app.*", "document.open" });
 
         var result = await handler.ListToolsAsync();
 
@@ -39,7 +39,7 @@ public class ContributionToolsHandlerTests
                 Descriptor("webview_reload",  "webview.reload")
             }
         };
-        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "*" });
 
         var result = await handler.ListToolsAsync();
 
@@ -50,7 +50,7 @@ public class ContributionToolsHandlerTests
     public void CallToolAsync_WebViewNamespace_ThrowsDeniedRegardlessOfAllowlist()
     {
         var bridge = new StubToolBridge();
-        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "*" });
 
         Func<Task> act = () => handler.CallToolAsync("webview.eval", (JsonElement?)null);
 
@@ -67,7 +67,7 @@ public class ContributionToolsHandlerTests
     public void CallToolAsync_WebViewMcpStyleName_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
-        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "*" });
 
         Func<Task> act = () => handler.CallToolAsync("webview_eval", (JsonElement?)null);
 
@@ -85,7 +85,7 @@ public class ContributionToolsHandlerTests
         {
             CallResult = new ToolCallResult(true, string.Empty, "0.2.5")
         };
-        var handler = new ContributionToolsHandler(bridge, new[] { "app.*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "app.*" });
 
         var result = await handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
@@ -98,7 +98,7 @@ public class ContributionToolsHandlerTests
     public void CallToolAsync_DeniedTool_ThrowsLocalRpcExceptionWithDeniedCode()
     {
         var bridge = new StubToolBridge();
-        var handler = new ContributionToolsHandler(bridge, new[] { "app.*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "app.*" });
 
         Func<Task> act = () => handler.CallToolAsync("file.read", (JsonElement?)null);
 
@@ -115,7 +115,7 @@ public class ContributionToolsHandlerTests
     public void CallToolAsync_EmptyName_ThrowsInvalidArgs()
     {
         var bridge = new StubToolBridge();
-        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "*" });
 
         Func<Task> act = () => handler.CallToolAsync("", (JsonElement?)null);
 
@@ -133,7 +133,7 @@ public class ContributionToolsHandlerTests
         {
             CallThrows = new InvalidOperationException("boom")
         };
-        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge, new[] { "*" });
 
         Func<Task> act = () => handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
@@ -147,7 +147,7 @@ public class ContributionToolsHandlerTests
     [Test]
     public void AllowedPatterns_IsSurfaced()
     {
-        var handler = new ContributionToolsHandler(new StubToolBridge(), new[] { "app.*", "file.read" });
+        var handler = new PackageToolsHandler(new StubToolBridge(), new[] { "app.*", "file.read" });
         handler.AllowedPatterns.Should().Equal("app.*", "file.read");
     }
 

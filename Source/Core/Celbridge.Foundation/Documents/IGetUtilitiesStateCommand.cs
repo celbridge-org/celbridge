@@ -16,13 +16,13 @@ public record class UtilityInfo(
     bool IsShown);
 
 /// <summary>
-/// Snapshot of every available utility (built-in and contributed) produced by IGetUtilitiesStateCommand.
+/// Snapshot of every available utility (built-in and custom) produced by IGetUtilitiesStateCommand.
 /// </summary>
 public record class UtilitiesStateSnapshot(
     IReadOnlyList<UtilityInfo> Utilities);
 
 /// <summary>
-/// Read-only query that snapshots the catalog of available utilities (built-in and contributed) and their
+/// Read-only query that snapshots the catalog of available utilities (built-in and custom) and their
 /// current shown state.
 /// </summary>
 public interface IGetUtilitiesStateCommand : IExecutableCommand<UtilitiesStateSnapshot>

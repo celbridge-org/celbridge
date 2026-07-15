@@ -32,8 +32,8 @@ public class Module : IModule
         services.AddSingleton<ISpreadsheetReader, SpreadsheetReader>();
 
         // Hosts the SpreadJS editor under its synthetic origin. Registered after the core loopback default,
-        // so the contribution view resolves it ahead of the default for the spreadsheet package.
-        services.AddSingleton<IContributionEditorLoader, SyntheticOriginEditorLoader>();
+        // so the custom view resolves it ahead of the default for the spreadsheet package.
+        services.AddSingleton<ICustomEditorLoader, SyntheticOriginEditorLoader>();
 
         services.AddTransient<IWriteCellsCommand, WriteCellsCommand>();
         services.AddTransient<IAppendRowsCommand, AppendRowsCommand>();

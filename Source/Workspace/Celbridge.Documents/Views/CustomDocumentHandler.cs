@@ -8,9 +8,9 @@ namespace Celbridge.Documents.Views;
 /// Handles IHostDocument RPC methods for contribution document views.
 /// Manages document initialization, loading, saving, and change tracking.
 /// </summary>
-internal sealed class ContributionDocumentHandler : IHostDocument
+internal sealed class CustomDocumentHandler : IHostDocument
 {
-    private readonly ContributionDocumentViewModel _viewModel;
+    private readonly CustomDocumentViewModel _viewModel;
     private readonly ILogger _logger;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
@@ -27,8 +27,8 @@ internal sealed class ContributionDocumentHandler : IHostDocument
     /// </summary>
     internal event Action<ContentLoadedReason>? ContentLoaded;
 
-    public ContributionDocumentHandler(
-        ContributionDocumentViewModel viewModel,
+    public CustomDocumentHandler(
+        CustomDocumentViewModel viewModel,
         ILogger logger,
         Func<DocumentMetadata> createMetadata,
         Func<bool> completeSave)

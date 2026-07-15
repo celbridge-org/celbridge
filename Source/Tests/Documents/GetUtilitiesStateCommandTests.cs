@@ -15,7 +15,7 @@ namespace Celbridge.Tests.Documents;
 public class GetUtilitiesStateCommandTests
 {
     [Test]
-    public async Task Execute_ReturnsBuiltInsAndContributedUtilitiesWithShownState()
+    public async Task Execute_ReturnsBuiltInsAndCustomUtilitiesWithShownState()
     {
         var panelUtility = new CustomDocumentEditorContribution
         {

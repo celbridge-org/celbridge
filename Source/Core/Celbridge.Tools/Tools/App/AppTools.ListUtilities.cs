@@ -17,14 +17,14 @@ public record class UtilityListEntry(
     bool IsShown);
 
 /// <summary>
-/// Result returned by app_list_utilities: the catalog of every available utility, built-in and contributed.
+/// Result returned by app_list_utilities: the catalog of every available utility, built-in and custom.
 /// </summary>
 public record class UtilitiesListResult(
     IReadOnlyList<UtilityListEntry> Utilities);
 
 public partial class AppTools
 {
-    /// <summary>List every available utility (built-in and contributed) with its shown state.</summary>
+    /// <summary>List every available utility (built-in and custom) with its shown state.</summary>
     [McpServerTool(Name = "app_list_utilities", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.list_utilities")]
     [RelatedGuides("workspace_panels")]

@@ -2,7 +2,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// A custom webView-based document editor contribution.
-/// The extension provides the entire UI via an HTML entry point.
+/// The package provides the entire UI via an HTML entry point.
 /// Communicates with the host via the IHostDocument JSON-RPC protocol.
 /// </summary>
 public partial record CustomDocumentEditorContribution : DocumentEditorContribution

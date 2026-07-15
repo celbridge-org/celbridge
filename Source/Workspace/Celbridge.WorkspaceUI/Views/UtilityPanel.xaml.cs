@@ -27,7 +27,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
 
-    // Rail buttons, content hosts, and focus callbacks for every surface (built-in and contributed), keyed by
+    // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition; the view model owns the rail selection
     // and focus state, which the buttons bind to.
     private readonly Dictionary<UtilityId, UtilityButton> _buttons = new();
@@ -255,19 +255,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Send(new ActiveUtilityChangedMessage(ActiveUtilityId.ToString()));
     }
 
-    public void BuildContributedUtilities(IReadOnlyList<ContributedUtility> utilities)
+    public void BuildCustomUtilities(IReadOnlyList<CustomUtility> utilities)
     {
-        ClearContributedUtilities();
+        ClearCustomUtilities();
 
         foreach (var utility in utilities)
         {
-            var item = ViewModel.AddItem(utility.UtilityId, WorkspacePanel.Utility);
+            var item = ViewModel.AddItem(utility.UtilityId, WorkspacePanel.CustomUtility);
 
             var railButton = new UtilityButton();
             railButton.SetIcon(utility.IconGlyphName);
             railButton.SetTooltip(utility.Tooltip);
 
-            var landmarkId = ContributedLandmarkId(utility.UtilityId);
+            var landmarkId = CustomLandmarkId(utility.UtilityId);
             railButton.SetAutomationId(landmarkId);
 
             BindButton(railButton, item);
@@ -294,19 +294,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
     }
 
-    public void ClearContributedUtilities()
+    public void ClearCustomUtilities()
     {
         // This runs on unload and on rebuild, so the revert-to-Explorer below must not persist over the user's
         // saved selection. RestoreSelectedUtility re-enables persistence once the rebuilt rail is restored.
         _selectionPersistenceEnabled = false;
 
         // Revert to Explorer before removing items so a removed utility is never left showing or highlighted.
-        if (IsContributedSurfaceSelected())
+        if (IsCustomSurfaceSelected())
         {
             ShowSurface(BuiltInUtilityIds.Explorer);
         }
 
-        foreach (var utilityId in GetContributedUtilityIds())
+        foreach (var utilityId in GetCustomUtilityIds())
         {
             var railButton = _buttons[utilityId];
             RailItems.Children.Remove(railButton);
@@ -315,7 +315,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             contentControl.Content = null;
             ContentArea.Children.Remove(contentControl);
 
-            _spotlightRegistry.UnregisterLandmark(ContributedLandmarkId(utilityId));
+            _spotlightRegistry.UnregisterLandmark(CustomLandmarkId(utilityId));
 
             _buttons.Remove(utilityId);
             _contentControls.Remove(utilityId);
@@ -384,38 +384,38 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _settings.Set(SettingCatalog.Layout.UtilityPanelSelectedUtility, tag);
     }
 
-    private bool IsContributedSurfaceSelected()
+    private bool IsCustomSurfaceSelected()
     {
-        return IsContributedUtility(ViewModel.SelectedUtilityId);
+        return IsCustomUtility(ViewModel.SelectedUtilityId);
     }
 
-    private static bool IsContributedUtility(UtilityId utilityId)
+    private static bool IsCustomUtility(UtilityId utilityId)
     {
         return !utilityId.IsEmpty
             && utilityId != BuiltInUtilityIds.Explorer
             && utilityId != BuiltInUtilityIds.Search;
     }
 
-    // Spotlight landmark id for a contributed utility's rail button: its utility id followed by "-utility-button",
+    // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button",
     // matching the AutomationId set on the button and the app_spotlight guide so an agent can resolve it. The rail
     // is always visible when the Primary region is shown, so these landmarks need only a region reveal, matching
     // the built-in Explorer and Search rail buttons.
-    private static string ContributedLandmarkId(UtilityId utilityId)
+    private static string CustomLandmarkId(UtilityId utilityId)
     {
         return $"{utilityId}-utility-button";
     }
 
-    private List<UtilityId> GetContributedUtilityIds()
+    private List<UtilityId> GetCustomUtilityIds()
     {
-        var contributedUtilityIds = new List<UtilityId>();
+        var customUtilityIds = new List<UtilityId>();
         foreach (var utilityId in _contentControls.Keys)
         {
-            if (IsContributedUtility(utilityId))
+            if (IsCustomUtility(utilityId))
             {
-                contributedUtilityIds.Add(utilityId);
+                customUtilityIds.Add(utilityId);
             }
         }
 
-        return contributedUtilityIds;
+        return customUtilityIds;
     }
 }

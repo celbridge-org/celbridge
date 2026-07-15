@@ -6,9 +6,9 @@ namespace Celbridge.Documents.ViewModels;
 /// <summary>
 /// View model for contribution document editors.
 /// Provides text file I/O, file-change monitoring, path resolution, and template content
-/// for custom contribution editors.
+/// for custom editors.
 /// </summary>
-public partial class ContributionDocumentViewModel : DocumentViewModel
+public partial class CustomDocumentViewModel : DocumentViewModel
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
@@ -21,7 +21,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// </summary>
     public CustomDocumentEditorContribution? Contribution { get; set; }
 
-    public ContributionDocumentViewModel(
+    public CustomDocumentViewModel(
         IWorkspaceWrapper workspaceWrapper,
         ILocalFileSystem fileSystem,
         IEnumerable<IDocumentContentProvider> contentProviders)

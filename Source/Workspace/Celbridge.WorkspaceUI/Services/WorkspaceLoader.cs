@@ -388,7 +388,7 @@ public class WorkspaceLoader
             return;
         }
 
-        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildContributedUtilities(tabs);
+        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildCustomUtilities(tabs);
     }
 
     // Enumerates enabled utility contributions in the rail's stable order: bundled before project, each

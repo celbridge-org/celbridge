@@ -104,7 +104,7 @@ public class PackageRegistry
 
     public Package? GetContributingPackage(DocumentEditorId editorId)
     {
-        // Custom contribution editor IDs are formatted as "{packageName}.{contributionId}"
+        // Custom editor IDs are formatted as "{packageName}.{contributionId}"
         // by CustomDocumentViewFactory. Bundled package names themselves contain
         // dots (e.g. "celbridge.notes"), so match by full-name prefix rather than
         // splitting on the first separator.
@@ -426,7 +426,7 @@ public class PackageRegistry
             var manifestPath = resolveResult.Value;
             var packageFolder = Path.GetDirectoryName(manifestPath)!;
 
-            // Project packages are served over the loopback file server. Their contribution editors run on
+            // Project packages are served over the loopback file server. Their custom editors run on
             // every head.
             var loadResult = PackageManifestLoader.LoadPackage(
                 manifestPath,
