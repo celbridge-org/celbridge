@@ -1,33 +1,25 @@
+/* Colors and fonts come from the shared stylesheet (/assets/celbridge-client/celbridge.css), which follows
+   the host theme via html[data-theme]. Only Notepad's own layout lives here. */
+
 html, body {
-    margin: 0;
     height: 100%;
 }
 
 #notepad-container {
-    box-sizing: border-box;
     height: 100vh;
     padding: 8px;
 }
 
 #notepad-input {
-    box-sizing: border-box;
     width: 100%;
     height: 100%;
     padding: 8px;
     border: none;
     outline: none;
     resize: none;
-    font-family: Consolas, "Courier New", monospace;
+    font-family: var(--cel-font-mono);
     font-size: 14px;
     line-height: 1.5;
-}
-
-body.theme-light #notepad-input {
-    background-color: #ffffff;
-    color: #1e1e1e;
-}
-
-body.theme-dark #notepad-input {
-    background-color: #1e1e1e;
-    color: #e0e0e0;
+    background: var(--cel-panel-bg-alt);
+    color: var(--cel-text-primary);
 }

@@ -1,10 +1,7 @@
-:root {
-    color-scheme: light dark;
-}
+/* Colors and fonts come from the shared stylesheet (/assets/celbridge-client/celbridge.css), which follows
+   the host theme via html[data-theme]. Only Process's own layout lives here. */
 
-html,
-body {
-    margin: 0;
+html, body {
     height: 100%;
 }
 
@@ -12,9 +9,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    box-sizing: border-box;
     padding: 12px;
-    font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 #process-title {
@@ -26,27 +21,38 @@ body {
 #process-blurb {
     margin: 0 0 12px 0;
     font-size: 12px;
-    opacity: 0.7;
+    color: var(--cel-text-secondary);
+}
+
+#process-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+#process-controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+#process-footer {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: var(--cel-text-secondary);
 }
 
 #process-input {
     flex: 1;
     resize: none;
-    border: 1px solid rgba(128, 128, 128, 0.4);
-    border-radius: 4px;
+    border: 1px solid var(--cel-divider);
+    border-radius: var(--cel-radius-control);
     padding: 8px;
-    font-family: "Cascadia Mono", Consolas, monospace;
+    font-family: var(--cel-font-mono);
     font-size: 13px;
-    background: transparent;
-    color: inherit;
-}
-
-body.theme-light {
-    background: #ffffff;
-    color: #1a1a1a;
-}
-
-body.theme-dark {
-    background: #1e1e1e;
-    color: #e6e6e6;
+    background: var(--cel-panel-bg-alt);
+    color: var(--cel-text-primary);
 }
