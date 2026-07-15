@@ -1,6 +1,6 @@
 # Document editor contributions
 
-A package contribution that takes over a file extension in the documents panel. The editor runs in a WebView2 and talks to the host through `https://shared.celbridge/celbridge-client/celbridge.js`. Read `packages_overview` first.
+A package contribution that takes over a file extension in the documents panel. The editor runs in a WebView and talks to the host through the shared client at `/assets/celbridge-client/celbridge.js`, addressed root-relative against the page's own loopback origin. Read `packages_overview` first.
 
 ## Manifest
 
@@ -44,8 +44,8 @@ default = true
 ## JS handlers
 
 ```javascript
-import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 
 const client = celbridge;
 
@@ -67,6 +67,35 @@ client.viewState.onChanged((viewState) => {
 - **`onRequestSave()`** — auto-save, tab close, programmatic flush. `await client.document.save(content)`. May fire while the tab is hidden.
 - **`onExternalChange(args)`** — file changed on disk. `client.document.load()`, apply with the spurious-update guard, then `client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload)`. Forward `args.preserveViewState`.
 - **`onRequestState()` / `onRestoreState(stateJson)`** — opaque string round-trip for scroll, selection, pending view state. Survives external reloads and session restore. Return `null` if nothing to preserve.
+
+## Styling
+
+Link the shared stylesheet to inherit the host's fonts and colors, so a WebView editor reads as part of the native app rather than a foreign web page:
+
+```html
+<link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+```
+
+It defines design tokens as CSS custom properties whose color values mirror the native app's theme (`Celbridge.UserInterface/Resources/Colors.xaml`). Theme switching is automatic: the client mirrors the host theme onto `html[data-theme]` on every state snapshot, so tokens re-resolve with no editor JS — do not subscribe to `appState.theme` to swap a stylesheet or toggle a class. Build surfaces from the tokens, or key your own rules on `[data-theme="dark"]` for anything a token does not cover.
+
+An editor that hand-styles its own chrome (the CodeEditor is the precedent) can link `/assets/celbridge-client/celbridge-tokens.css` instead — the same tokens with none of the bare-element control rules — so it gets the host palette without the generic button/input styling leaking into its surface.
+
+Core tokens:
+
+| Token | Purpose |
+|---|---|
+| `--cel-font-ui` | UI and prose text. A system font stack, matching the host chrome per platform. |
+| `--cel-font-mono` | Code and monospace text. The bundled Cascadia Mono, consistent across platforms. |
+| `--cel-app-bg`, `--cel-panel-bg`, `--cel-panel-bg-alt` | Window, panel, and inner-content backgrounds. |
+| `--cel-text-primary`, `--cel-text-secondary` | Primary and muted foreground text. |
+| `--cel-divider` | Separator and control-border color. |
+| `--cel-accent` | Accent color (hardcoded per theme; the CSS `AccentColor` keyword renders transparent in WebView2). |
+| `--cel-error-text`, `--cel-warning-text`, `--cel-search-highlight` | Semantic status colors. |
+| `--cel-radius-control`, `--cel-radius-card` | Corner radii for controls and larger cards. |
+
+The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and window background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
+
+The Notepad and Process utilities are the minimal reference for consuming these tokens — Notepad for a bare monospace surface, Process for the UI font, host-styled controls, and a bordered input.
 
 ## Edit verbs (optional)
 

@@ -4,26 +4,26 @@ html, body {
     overflow: hidden;
 }
 
-/* Theme via [data-theme] attribute (WebView2 doesn't reliably
-   re-evaluate prefers-color-scheme). Accent color is hardcoded
-   because the CSS AccentColor keyword renders as transparent. */
+/* Theme via [data-theme] attribute (WebView2 doesn't reliably re-evaluate prefers-color-scheme). The accent
+   and toolbar-foreground colors derive from the shared tokens (celbridge-tokens.css, linked before this file),
+   so they are single-sourced from Colors.xaml and need no per-theme override here. The remaining tokens are
+   the editor's own translucent divider, toolbar surface, and button-overlay colors, which have no shared
+   equivalent and stay defined per theme below. */
 :root {
-    --accent-color: #0078D4;
+    --accent-color: var(--cel-accent);
+    --toolbar-btn-fg: var(--cel-text-primary);
     --divider-base-color: rgba(0, 0, 0, 0.0803);
     --toolbar-bg: #F3F3F3;
     --toolbar-border: rgba(0, 0, 0, 0.0803);
-    --toolbar-btn-fg: #1F1F1F;
     --toolbar-btn-hover-bg: rgba(0, 0, 0, 0.0402);
     --toolbar-btn-active-bg: rgba(0, 120, 212, 0.12);
     --toolbar-btn-disabled-fg: rgba(0, 0, 0, 0.36);
 }
 
 [data-theme="dark"] {
-    --accent-color: #60CDFF;
     --divider-base-color: rgba(255, 255, 255, 0.0837);
     --toolbar-bg: #202020;
     --toolbar-border: rgba(255, 255, 255, 0.0837);
-    --toolbar-btn-fg: #FFFFFF;
     --toolbar-btn-hover-bg: rgba(255, 255, 255, 0.0605);
     --toolbar-btn-active-bg: rgba(96, 205, 255, 0.18);
     --toolbar-btn-disabled-fg: rgba(255, 255, 255, 0.3628);
