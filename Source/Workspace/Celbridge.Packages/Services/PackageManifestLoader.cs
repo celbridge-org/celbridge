@@ -89,6 +89,10 @@ public static class PackageManifestLoader
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(toml);
+            if (root is null)
+            {
+                return Result.Fail($"Failed to deserialize package manifest: {packageTomlPath}");
+            }
 
             if (!root.TryGetValue(PackageSection, out var packageObject) ||
                 packageObject is not TomlTable packageTable)
@@ -208,6 +212,10 @@ public static class PackageManifestLoader
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(toml);
+            if (root is null)
+            {
+                return Result.Fail($"Failed to deserialize document manifest: {documentTomlPath}");
+            }
 
             if (!root.TryGetValue(DocumentSection, out var documentObject) ||
                 documentObject is not TomlTable documentTable)
