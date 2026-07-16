@@ -577,6 +577,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         UpdateTabSelectionIndicators();
         ActiveDocumentChanged?.Invoke(_activeDocument);
 
+        // Flash the tab at its new section so the address change stands out.
+        tab.FlashAttentionDeferred();
+
         return true;
     }
 
@@ -642,24 +645,13 @@ public sealed partial class DocumentSectionContainer : UserControl
         FlashMovedTabs(movedTabs);
     }
 
-    // Flashes each tab that migrated into a surviving section so its new location stands out. Deferred to a low
-    // dispatcher tick so the target section's tab strip has laid the moved headers out before they pulse.
+    // Flashes each tab that migrated into a surviving section so its new location stands out.
     private void FlashMovedTabs(List<DocumentTab> movedTabs)
     {
-        if (movedTabs.Count == 0)
+        foreach (var tab in movedTabs)
         {
-            return;
+            tab.FlashAttentionDeferred();
         }
-
-        _ = DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () =>
-            {
-                foreach (var tab in movedTabs)
-                {
-                    tab.FlashAttention();
-                }
-            });
     }
 
     private void RebuildGrid()

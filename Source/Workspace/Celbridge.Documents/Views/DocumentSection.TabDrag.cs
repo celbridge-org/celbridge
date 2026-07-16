@@ -93,6 +93,9 @@ public sealed partial class DocumentSection
         {
             SetSelectedItemWithLayoutRetry(tab, () => ScrollTabIntoView(tab));
         }
+
+        // Flash the tab at its new position so the address change stands out.
+        tab.FlashAttentionDeferred();
     }
 
     /// <summary>
@@ -114,6 +117,27 @@ public sealed partial class DocumentSection
         var transform = tabListView.TransformToVisual(relativeTo);
 
         return transform.TransformBounds(new Rect(0, 0, tabListView.ActualWidth, tabListView.ActualHeight));
+    }
+
+    /// <summary>
+    /// Gets the insertion slot (0 to TabCount inclusive) for a pointer at the given X, comparing it to
+    /// the tab centres. The X and the tab bounds are both taken relative to the given element, so any
+    /// element shared with the caller works.
+    /// </summary>
+    public int GetInsertionSlot(double pointerX, UIElement relativeTo)
+    {
+        var headerBounds = GetTabHeaderBounds(relativeTo);
+        for (int i = 0; i < headerBounds.Count; i++)
+        {
+            var bounds = headerBounds[i].Bounds;
+            double centerX = bounds.X + (bounds.Width / 2);
+            if (pointerX < centerX)
+            {
+                return i;
+            }
+        }
+
+        return headerBounds.Count;
     }
 
     /// <summary>

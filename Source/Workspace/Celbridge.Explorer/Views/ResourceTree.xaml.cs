@@ -7,6 +7,7 @@ using Celbridge.Explorer.ViewModels;
 using Celbridge.Platform;
 using Celbridge.UserInterface.ContextMenu;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 using Windows.Foundation;
 
 namespace Celbridge.Explorer.Views;
@@ -14,7 +15,7 @@ namespace Celbridge.Explorer.Views;
 /// <summary>
 /// A custom tree control built on ListView, because TreeView is not flexible enough.
 /// </summary>
-public sealed partial class ResourceTree : UserControl, IResourceTree
+public sealed partial class ResourceTree : UserControl
 {
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
@@ -25,8 +26,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
     private readonly IPlatformInfo _platformInfo;
-    private readonly IFocusService _focusService;
-    private bool _isPopulating;
+    private readonly IStringLocalizer _stringLocalizer;
     private double _savedScrollOffset;
 
     public ResourceTreeViewModel ViewModel { get; }
@@ -39,7 +39,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-        _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -48,6 +48,9 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         _sidecarService = workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
+
+        _listPointerPressedHandler = ResourceListView_PointerPressed;
+        ConfigurePointerDrag();
 
         Loaded += ResourceTree_Loaded;
         Unloaded += ResourceTree_Unloaded;
@@ -59,6 +62,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         ViewModel.SelectionRequested += OnSelectionRequested;
         ViewModel.PreBuildResourceTree += OnPreBuildResourceTree;
         ViewModel.PostBuildResourceTree += OnPostBuildResourceTree;
+        RegisterAsDropTarget();
     }
 
     private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
@@ -66,6 +70,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         ViewModel.SelectionRequested -= OnSelectionRequested;
         ViewModel.PreBuildResourceTree -= OnPreBuildResourceTree;
         ViewModel.PostBuildResourceTree -= OnPostBuildResourceTree;
+        UnregisterAsDropTarget();
         ViewModel.OnUnloaded();
     }
 
@@ -89,63 +94,6 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         {
             ResourceListView.SelectedItems.Add(item);
         }
-    }
-
-    public async Task<Result> PopulateResourceTree(IResourceRegistry resourceRegistry)
-    {
-        // Prevent concurrent population which causes duplicate resources.
-        if (_isPopulating)
-        {
-            return Result.Ok();
-        }
-        _isPopulating = true;
-
-        try
-        {
-            // Save state before rebuilding
-            var savedScrollOffset = GetScrollOffset();
-            var selectedResourceKey = GetSelectedResource();
-
-            try
-            {
-                // Rebuild the resource tree from the resource registry
-                ViewModel.RebuildResourceTree();
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"An exception occurred when populating the tree view.")
-                    .WithException(ex);
-            }
-
-            // Restore selection if the resource still exists
-            if (ViewModel.ResourceExists(selectedResourceKey))
-            {
-                await SelectResource(selectedResourceKey, scrollIntoView: false);
-            }
-
-            // Restore scroll position
-            ResourceListView.UpdateLayout();
-            SetScrollOffset(savedScrollOffset);
-
-            // A rebuild (e.g. after a rename or delete) destroys the focused item, so keyboard focus can
-            // land on the Utility Panel rail. Return it to the tree, with the selection just restored above, when
-            // Explorer is the focused panel so the focus indicator's panel stays the keyboard target.
-            if (_focusService.FocusedPanel == WorkspacePanel.Explorer)
-            {
-                FocusTree();
-            }
-
-            return Result.Ok();
-        }
-        finally
-        {
-            _isPopulating = false;
-        }
-    }
-
-    public ResourceKey GetSelectedResource()
-    {
-        return ViewModel.GetSelectedResourceKey();
     }
 
     public List<ResourceKey> GetSelectedResources()

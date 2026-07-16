@@ -61,13 +61,24 @@ public partial class DocumentTab : TabViewItem
 
     /// <summary>
     /// Briefly pulses the tab's background to the accent color to draw the user's attention to it, then fades
-    /// it back out. Used to give visible feedback when a tab is surfaced (e.g. activating a docked utility) or
-    /// moved into a different section by a section-count change.
+    /// it back out. Gives visible feedback when a tab is opened, surfaced, or changes address (moved to another
+    /// section or reordered within one).
     /// </summary>
     public void FlashAttention()
     {
         _attentionStoryboard?.Stop();
         _attentionStoryboard = AttentionFlash.Play(AttentionOverlay);
+    }
+
+    /// <summary>
+    /// Flashes the tab after the next layout pass, so a header that was just moved, inserted, or reordered has
+    /// settled into the strip before it pulses.
+    /// </summary>
+    public void FlashAttentionDeferred()
+    {
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            FlashAttention);
     }
 
     /// <summary>

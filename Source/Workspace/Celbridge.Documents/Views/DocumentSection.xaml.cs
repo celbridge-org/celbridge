@@ -565,7 +565,7 @@ public sealed partial class DocumentSection : UserControl
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.Caption = "Open";
+            e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_Open");
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
@@ -617,7 +617,7 @@ public sealed partial class DocumentSection : UserControl
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.Caption = "Open";
+            e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_Open");
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
@@ -653,9 +653,9 @@ public sealed partial class DocumentSection : UserControl
         }
     }
 
-    // Resource drags from ResourceTree can arrive via the DataPackage's custom properties on Windows
-    // or via ResourceDragState on the Uno Skia desktop head (where managed properties do not
-    // round-trip).
+    // Resource drags from ResourceTree carry their payload in the DataPackage's custom properties, which
+    // round-trip on the Windows head. The Skia head recognises these drags through the pointer-driven
+    // coordinator instead, so they never reach this built-in drag-and-drop path.
     private static bool IsResourceDragInFlight(DragEventArgs e)
     {
         if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
@@ -663,36 +663,22 @@ public sealed partial class DocumentSection : UserControl
             return true;
         }
 
-        if (e.DataView?.Properties?.ContainsKey("DraggedResources") == true)
-        {
-            return true;
-        }
-
-        return ResourceDragState.Current is not null;
+        return e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
     }
 
     private static List<IResource>? TakeResourceDragPayload(DragEventArgs e)
     {
-        List<IResource>? draggedResources = null;
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
         {
-            draggedResources = draggedObj as List<IResource>;
-        }
-        else if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
-        {
-            draggedResources = draggedViewObj as List<IResource>;
-        }
-        else if (ResourceDragState.Current is { } sharedResources)
-        {
-            draggedResources = sharedResources.ToList();
+            return draggedObj as List<IResource>;
         }
 
-        if (draggedResources is not null)
+        if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
         {
-            ResourceDragState.End();
+            return draggedViewObj as List<IResource>;
         }
 
-        return draggedResources;
+        return null;
     }
 
     /// <summary>

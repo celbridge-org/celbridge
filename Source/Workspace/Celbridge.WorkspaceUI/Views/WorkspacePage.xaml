@@ -87,5 +87,14 @@
                        Grid.Row="1"
                        VerticalAlignment="Top"
                        Orientation="Horizontal"/>
+
+    <!-- Topmost display-only overlay for pointer-driven resource drag visuals (the ghost),
+         spanning every panel so the ghost is visible across the whole workspace. -->
+    <Canvas x:Name="ResourceDragOverlay"
+            Grid.Row="0"
+            Grid.Column="0"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="3"
+            IsHitTestVisible="False"/>
   </Grid>
 </Page>

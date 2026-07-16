@@ -90,6 +90,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.FilesDropped += OnSectionFilesDropped;
 
         SectionContainer.InitializeTabDrag(TabDragOverlay);
+        ConfigureResourceDropTarget();
 
         // Host the split-editor toolbar in the rightmost section's tab strip footer.
         SectionContainer.SetDocumentToolbar(_documentToolbar);
@@ -150,10 +151,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
     {
-        HandleDroppedFiles(targetSection, resources);
+        // The built-in drag-and-drop path shows no divider, so the drop appends. The pointer-driven
+        // path arrives through TryDrop instead, which carries the divider's insertion slot.
+        _ = HandleDroppedFiles(targetSection, resources, insertionSlot: null);
     }
 
-    private void HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources)
+    // The insertion slot is where the drop's divider landed in the target section's tab order, or null
+    // to append (the built-in drag-and-drop heads show no divider and always append). The open is awaited
+    // so focus can transfer to the resulting document once its view exists; the command queue serializes
+    // the opens either way, so this does not change the order documents open in.
+    private async Task HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources, int? insertionSlot)
     {
         if (_isShuttingDown)
         {
@@ -161,6 +168,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         var targetSectionIndex = targetSection.SectionIndex;
+        int droppedFileOffset = 0;
+        ResourceKey? documentToFocus = null;
 
         foreach (var resource in resources)
         {
@@ -171,6 +180,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             var fileResourceKey = ViewModel.GetResourceKey(fileResource);
 
+            // Several files dropped at one divider insert consecutively from that slot.
+            int? slot = insertionSlot is int start ? start + droppedFileOffset : null;
+            droppedFileOffset++;
+
             // Check if the file is already open in any section
             var existingLocation = SectionContainer.FindDocumentTab(fileResourceKey);
             if (existingLocation is not null)
@@ -178,27 +191,56 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 var existingSection = existingLocation.Section;
                 var existingTab = existingLocation.Tab;
 
-                // Already open - move to target section if different, otherwise just select it
+                // Already open - move to the target section, otherwise reorder within it, then select it
                 if (existingSection.SectionIndex != targetSectionIndex)
                 {
-                    SectionContainer.MoveTabToSection(existingTab, targetSectionIndex);
+                    SectionContainer.MoveTabToSection(existingTab, targetSectionIndex, slot);
                 }
                 else
                 {
+                    if (slot is int reorderSlot)
+                    {
+                        existingSection.ReorderTab(existingTab, reorderSlot);
+                    }
                     existingSection.SelectTab(existingTab);
                     SectionContainer.ActivateDocument(fileResourceKey, targetSectionIndex);
                 }
             }
             else
             {
-                // Not open - use the command to open in the target section
-                _commandService.Execute<IOpenDocumentCommand>(command =>
+                // Not open - use the command to open in the target section at the divider slot
+                await _commandService.ExecuteAsync<IOpenDocumentCommand>(command =>
                 {
                     command.FileResource = fileResourceKey;
                     command.TargetSectionIndex = targetSectionIndex;
+                    command.TargetTabIndex = slot;
                 });
             }
+
+            documentToFocus = fileResourceKey;
         }
+
+        // On the pointer-drag head, dropping a resource into the document area is a deliberate move into that
+        // area, so hand keyboard focus to the resulting document, matching a tab click. The built-in
+        // drag-and-drop head (where the coordinator is absent) keeps its own focus behaviour. Skipped when
+        // nothing opened (a folder-only drop).
+        if (_resourceDragCoordinator is not null
+            && documentToFocus is ResourceKey keyToFocus)
+        {
+            FocusDroppedDocument(keyToFocus);
+        }
+    }
+
+    private void FocusDroppedDocument(ResourceKey fileResource)
+    {
+        // Deferred (Low) so the resulting tab's view is laid out before it is focused, mirroring the
+        // DocumentTab_Tapped focus path.
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            var location = SectionContainer.FindDocumentTab(fileResource);
+            var documentView = location?.Tab.Content as IDocumentView;
+            documentView?.FocusDocument();
+        });
     }
 
     private void OnToolbarSectionCountChangeRequested(int requestedCount)
@@ -226,6 +268,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         // Apply initial tab strip visibility based on the current layout mode
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
+
+        RegisterAsResourceDropTarget();
     }
 
     private void OnCloseActiveDocumentRequested(object recipient, CloseActiveDocumentRequestedMessage message)
@@ -309,6 +353,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
+        UnregisterAsResourceDropTarget();
         ViewModel.OnViewUnloaded();
         _messengerService.UnregisterAll(this);
     }

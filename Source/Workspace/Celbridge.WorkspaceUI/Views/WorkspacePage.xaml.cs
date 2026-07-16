@@ -2,7 +2,9 @@ using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
+using Celbridge.Platform;
 using Celbridge.Settings;
+using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 
@@ -27,6 +29,8 @@ public sealed partial class WorkspacePage : Page
 
     private readonly ICommandService _commandService;
     private readonly Logging.ILogger<WorkspacePage> _logger;
+    private readonly IPlatformInfo _platformInfo;
+    private readonly IResourceDragCoordinator _resourceDragCoordinator;
 
     public WorkspacePageViewModel ViewModel { get; }
 
@@ -46,6 +50,8 @@ public sealed partial class WorkspacePage : Page
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _logger = ServiceLocator.AcquireService<Logging.ILogger<WorkspacePage>>();
         _featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _resourceDragCoordinator = ServiceLocator.AcquireService<IResourceDragCoordinator>();
 
         DataContext = ViewModel;
 
@@ -180,6 +186,13 @@ public sealed partial class WorkspacePage : Page
         DocumentsPanel.Children.Add(documentsPanel as UIElement);
         SecondaryPanel.Children.Add(inspectorPanel as UIElement);
 
+        // Enable the pointer-driven resource drag overlay on heads where the built-in drag-and-drop is
+        // disabled. The panels register their drop targets with the coordinator as they load.
+        if (_platformInfo.UsesPointerDrivenTabDrag)
+        {
+            _resourceDragCoordinator.Initialize(ResourceDragOverlay, LayoutRoot);
+        }
+
         // Listen for workspace loaded message and feature flag changes to update console visibility
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
@@ -202,6 +215,10 @@ public sealed partial class WorkspacePage : Page
         // Cleanup owned by this page: its own view-model and message subscriptions. The workspace teardown
         // (save editor state, shut down panels, dispose the workspace) is orchestrated by the view-model.
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+        // Unbind the shared resource drag coordinator from this workspace. Safe when it was never
+        // initialized (heads without the drag overlay).
+        _resourceDragCoordinator.Reset();
 
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
