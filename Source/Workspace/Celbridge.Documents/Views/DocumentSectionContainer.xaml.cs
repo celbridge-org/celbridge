@@ -1,6 +1,5 @@
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
-using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
 
@@ -66,11 +65,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<List<double>>? SectionRatiosChanged;
 
     /// <summary>
-    /// Event raised when resource files are dropped into a section from the ResourceTree. The insertion
-    /// slot is where the drop should land in the section's tab order, or null to append (the built-in
-    /// drag-and-drop heads, which show no divider, always append).
+    /// Event raised when resource files are dropped into a section from the ResourceTree.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>, int?>? FilesDropped;
+    public event Action<DocumentSection, List<IResource>>? FilesDropped;
 
     /// <summary>
     /// Gets the current number of sections.
@@ -517,10 +514,6 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void Shutdown()
     {
-        // Detach the static drag-end subscription so this container is not held alive across a
-        // workspace reload. Safe when it was never subscribed (heads without the drag overlay).
-        ResourceDragState.Ended -= OnResourceDragEnded;
-
         foreach (var section in _sections)
         {
             section.Shutdown();
@@ -584,6 +577,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         UpdateTabSelectionIndicators();
         ActiveDocumentChanged?.Invoke(_activeDocument);
 
+        // Flash the tab at its new section so the address change stands out.
+        tab.FlashAttentionDeferred();
+
         return true;
     }
 
@@ -600,8 +596,6 @@ public sealed partial class DocumentSectionContainer : UserControl
         section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
         section.TabDroppedInside += OnSectionTabDroppedInside;
         section.FilesDropped += OnSectionFilesDropped;
-        section.ResourceDragOver += OnSectionResourceDragOver;
-        section.ResourceDragLeave += OnSectionResourceDragLeave;
         section.TabPointerPressed += OnSectionTabPointerPressed;
 
         _sections.Add(section);
@@ -651,24 +645,13 @@ public sealed partial class DocumentSectionContainer : UserControl
         FlashMovedTabs(movedTabs);
     }
 
-    // Flashes each tab that migrated into a surviving section so its new location stands out. Deferred to a low
-    // dispatcher tick so the target section's tab strip has laid the moved headers out before they pulse.
+    // Flashes each tab that migrated into a surviving section so its new location stands out.
     private void FlashMovedTabs(List<DocumentTab> movedTabs)
     {
-        if (movedTabs.Count == 0)
+        foreach (var tab in movedTabs)
         {
-            return;
+            tab.FlashAttentionDeferred();
         }
-
-        _ = DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () =>
-            {
-                foreach (var tab in movedTabs)
-                {
-                    tab.FlashAttention();
-                }
-            });
     }
 
     private void RebuildGrid()
@@ -938,18 +921,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
     }
 
-    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources, Point dropPosition)
+    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
     {
-        // Resolve the drop's insertion slot only where the preview drew a divider for it (the
-        // pointer-driven heads). Elsewhere the drop appends, matching the built-in drag-and-drop.
-        int? insertionSlot = _dropPreview is null
-            ? null
-            : targetSection.GetInsertionSlot(dropPosition.X, targetSection);
-
-        _dropPreview?.Hide();
-        _highlightedSection = null;
-
-        FilesDropped?.Invoke(targetSection, resources, insertionSlot);
+        FilesDropped?.Invoke(targetSection, resources);
     }
 
     /// <summary>

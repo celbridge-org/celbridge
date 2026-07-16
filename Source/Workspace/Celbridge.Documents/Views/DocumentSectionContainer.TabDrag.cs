@@ -1,9 +1,13 @@
 using Celbridge.Platform;
-using Celbridge.UserInterface.Helpers;
 using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
+
+/// <summary>
+/// The section and insertion slot a resource drop from the Explorer would land in.
+/// </summary>
+public record ResourceDropLocation(DocumentSection Section, int InsertionSlot);
 
 /// <summary>
 /// Pointer-driven tab drag support for DocumentSectionContainer, used on heads where the built-in
@@ -14,7 +18,6 @@ public sealed partial class DocumentSectionContainer
 {
     private TabDragController? _tabDragController;
     private SectionDragPreview? _dropPreview;
-    private DocumentSection? _highlightedSection;
 
     /// <summary>
     /// Enables the drag overlay used on heads where the built-in TabView drag-and-drop is disabled:
@@ -32,42 +35,79 @@ public sealed partial class DocumentSectionContainer
 
         _dropPreview = new SectionDragPreview(this, dragOverlay);
         _tabDragController = new TabDragController(this, dragOverlay, _dropPreview);
-
-        // A resource drag can end without a section leave or drop being delivered (released away from a
-        // drop target, or cancelled), so clear the preview whenever any resource drag ends.
-        ResourceDragState.Ended += OnResourceDragEnded;
     }
 
-    private void OnSectionResourceDragOver(DocumentSection section, Point position)
+    /// <summary>
+    /// Resolves the section and insertion slot a resource drop at the given window point would land in,
+    /// or null when the point is over no section or the drag overlay is not active on this head.
+    /// </summary>
+    public ResourceDropLocation? GetResourceDropLocation(Point windowPoint)
+    {
+        if (_dropPreview is null)
+        {
+            return null;
+        }
+
+        var section = GetSectionAtWindowPoint(windowPoint);
+        if (section is null)
+        {
+            return null;
+        }
+
+        var sectionPoint = WindowToSectionPoint(section, windowPoint);
+        int slot = section.GetInsertionSlot(sectionPoint.X, section);
+
+        return new ResourceDropLocation(section, slot);
+    }
+
+    /// <summary>
+    /// Shows the drop-target divider and highlight for a resource drag over the given location.
+    /// </summary>
+    public void ShowResourceDropPreview(ResourceDropLocation location)
     {
         if (_dropPreview is null)
         {
             return;
         }
 
-        int slot = section.GetInsertionSlot(position.X, section);
-        _dropPreview.ShowInsertion(section, slot, draggedTab: null);
-        _dropPreview.ShowHighlight(section);
-        _highlightedSection = section;
+        _dropPreview.ShowInsertion(location.Section, location.InsertionSlot, draggedTab: null);
+        _dropPreview.ShowHighlight(location.Section);
     }
 
-    private void OnSectionResourceDragLeave(DocumentSection section)
+    /// <summary>
+    /// Clears any resource drop-target feedback.
+    /// </summary>
+    public void HideResourceDropPreview()
     {
-        // The pointer may already have moved on to another section, which re-targeted the single
-        // preview. Only a leave from the section still highlighted should clear it.
-        if (_highlightedSection != section)
+        _dropPreview?.Hide();
+    }
+
+    private DocumentSection? GetSectionAtWindowPoint(Point windowPoint)
+    {
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
         {
-            return;
+            var section = _sections[i];
+            var local = WindowToSectionPoint(section, windowPoint);
+            if (local.X >= 0 &&
+                local.Y >= 0 &&
+                local.X < section.ActualWidth &&
+                local.Y < section.ActualHeight)
+            {
+                return section;
+            }
         }
 
-        _dropPreview?.Hide();
-        _highlightedSection = null;
+        return null;
     }
 
-    private void OnResourceDragEnded()
+    private Point WindowToSectionPoint(DocumentSection section, Point windowPoint)
     {
-        _dropPreview?.Hide();
-        _highlightedSection = null;
+        if (XamlRoot?.Content is UIElement windowContent)
+        {
+            return windowContent.TransformToVisual(section).TransformPoint(windowPoint);
+        }
+
+        return windowPoint;
     }
 
     /// <summary>

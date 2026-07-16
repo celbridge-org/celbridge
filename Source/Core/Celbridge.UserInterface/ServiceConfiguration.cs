@@ -4,6 +4,7 @@ using Celbridge.Forms;
 using Celbridge.Localization;
 using Celbridge.Navigation;
 using Celbridge.UserInterface.Commands;
+using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
@@ -36,6 +37,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IFormService, FormService>();
         services.AddSingleton<ISpotlightService, SpotlightService>();
         services.AddSingleton<ISpotlightRegistry, SpotlightRegistry>();
+        services.AddSingleton<IResourceDragCoordinator, ResourceDragCoordinator>();
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
 

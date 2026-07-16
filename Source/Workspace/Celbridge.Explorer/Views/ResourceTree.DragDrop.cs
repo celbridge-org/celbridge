@@ -1,6 +1,5 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
-using Celbridge.UserInterface.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
@@ -16,9 +15,8 @@ public sealed partial class ResourceTree
     // the Uno Skia head (only OS-serialisable formats survive), so the internal-drag path was never
     // recognised there. Set when an internal drag starts, read during drag-over and drop, and cleared
     // after an internal drop. External drags are identified by the StorageItems format and checked first,
-    // so a stale value here never affects them. The DataPackage property and the shared
-    // ResourceDragState are also populated so cross-control consumers (e.g. DocumentSection) can
-    // recognise the drag on Windows and on the Skia head respectively.
+    // so a stale value here never affects them. The DataPackage property is also populated so a
+    // cross-control consumer (DocumentSection) can recognise the drag on Windows, where it round-trips.
     private List<IResource>? _internalDragResources;
 
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
@@ -42,7 +40,6 @@ public sealed partial class ResourceTree
 
         _internalDragResources = draggedResources;
         e.Data.Properties["DraggedResources"] = draggedResources;
-        ResourceDragState.Begin(draggedResources);
         e.Data.RequestedOperation = DataPackageOperation.Move;
 
         // Set text for drag visual - show count of items being dragged
@@ -57,11 +54,9 @@ public sealed partial class ResourceTree
     private void ListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
     {
         // Clear the internal-drag tracking once the drag ends, including when it is cancelled (Escape, or
-        // release over a surface where Drop never fires). A successful internal drop already cleared these
-        // in ListView_Drop. ResourceDragState.Current is process-wide, so leaving a stale value here could
-        // leak resources into a later, unrelated drag.
+        // release over a surface where Drop never fires). A successful internal drop already cleared it in
+        // ListView_Drop.
         _internalDragResources = null;
-        ResourceDragState.End();
     }
 
     private void ListView_DragOver(object sender, DragEventArgs e)
@@ -217,7 +212,6 @@ public sealed partial class ResourceTree
         {
             var draggedResources = _internalDragResources;
             _internalDragResources = null;
-            ResourceDragState.End();
             MoveResourcesToFolder(draggedResources, destFolder);
         }
     }

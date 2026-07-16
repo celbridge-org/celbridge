@@ -209,30 +209,59 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // collapsed. Focusing after layout (rather than this tick) lands on a control that is actually focusable.
     private void ShowContentWithFocus(UtilityId utilityId, ContentControl content)
     {
+        // A surface that is already visible (re-selected while another panel holds focus, e.g. after a
+        // docked utility moved focus to a document) is already laid out and setting it visible again may
+        // raise no LayoutUpdated, so focus it now. Otherwise re-selecting it would never move focus back
+        // onto it, leaving its rail button unfocused.
+        bool wasAlreadyVisible = content.Visibility == Visibility.Visible;
+
         Canvas.SetZIndex(content, 1);
         content.Visibility = Visibility.Visible;
+
+        if (wasAlreadyVisible)
+        {
+            FocusShownContent(utilityId, content);
+            return;
+        }
 
         void OnLayoutUpdated(object? sender, object args)
         {
             content.LayoutUpdated -= OnLayoutUpdated;
-
-            // Drop a stale attempt when a later selection superseded this one before layout ran.
-            if (ViewModel.SelectedUtilityId != utilityId
-                || content.Visibility != Visibility.Visible)
-            {
-                return;
-            }
-
-            if (_focusActions.TryGetValue(utilityId, out var focusContent))
-            {
-                focusContent();
-            }
-            ViewModel.ReconcileFocus(_focusService.FocusedPanel);
-
-            CollapseContentExcept(content);
+            FocusShownContent(utilityId, content);
         }
 
         content.LayoutUpdated += OnLayoutUpdated;
+    }
+
+    private void FocusShownContent(UtilityId utilityId, ContentControl content)
+    {
+        // Drop a stale attempt when a later selection superseded this one before layout ran.
+        if (ViewModel.SelectedUtilityId != utilityId
+            || content.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        if (_focusActions.TryGetValue(utilityId, out var focusContent))
+        {
+            focusContent();
+        }
+
+        // A web-view utility's focusContent moves only native focus, so managed focus stays on the
+        // outgoing surface. Collapsing that surface below would then relocate managed focus onto
+        // unrelated chrome (a document tab), clobbering the web view's just-reported CustomUtility panel.
+        // Park managed focus on this utility's host - it carries the CustomUtility panel declaration - so
+        // the collapse has nothing to relocate. Use Pointer state to match the focus the host receives
+        // naturally when switching in from a managed panel (which leaves web-view typing working);
+        // Programmatic focus would instead route keys away from the web content on macOS.
+        if (IsCustomUtility(utilityId))
+        {
+            content.Focus(FocusState.Pointer);
+        }
+
+        ViewModel.ReconcileFocus(_focusService.FocusedPanel);
+
+        CollapseContentExcept(content);
     }
 
     // Collapses every content host except the one shown.
@@ -286,6 +315,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
                 Visibility = Visibility.Collapsed,
                 Content = utility.Content as UIElement
             };
+
+            // Declare the panel on the host wrapper, not just the custom utility view inside it. Focusing
+            // the hosted web view lands managed focus on this ContentControl, and the focus tracker
+            // classifies by walking towards the root, so without a declaration here the walk passes the
+            // view's own declaration and reports None - clearing the rail button's focus highlight.
+            FocusTracking.SetPanel(contentControl, WorkspacePanel.CustomUtility);
+
             ContentArea.Children.Add(contentControl);
 
             _buttons[utility.UtilityId] = railButton;

@@ -5,7 +5,6 @@ using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Foundation;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
@@ -68,21 +67,9 @@ public sealed partial class DocumentSection : UserControl
     public event Action<DocumentSection, DocumentTab>? TabDroppedInside;
 
     /// <summary>
-    /// Event raised when resource files are dropped into this section from the ResourceTree. The point
-    /// is the drop position relative to this section, used to resolve the insertion slot.
+    /// Event raised when resource files are dropped into this section from the ResourceTree.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>, Point>? FilesDropped;
-
-    /// <summary>
-    /// Event raised while a resource drag from the ResourceTree is over this section. The point is the
-    /// pointer position relative to this section, used to drive the drop-target divider and highlight.
-    /// </summary>
-    public event Action<DocumentSection, Point>? ResourceDragOver;
-
-    /// <summary>
-    /// Event raised when a resource drag from the ResourceTree leaves this section without dropping.
-    /// </summary>
-    public event Action<DocumentSection>? ResourceDragLeave;
+    public event Action<DocumentSection, List<IResource>>? FilesDropped;
 
     public DocumentSection()
     {
@@ -582,31 +569,7 @@ public sealed partial class DocumentSection : UserControl
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
-            ResourceDragOver?.Invoke(this, e.GetPosition(this));
         }
-    }
-
-    private void RootGrid_DragLeave(object sender, DragEventArgs e)
-    {
-        if (!IsResourceDragInFlight(e))
-        {
-            return;
-        }
-
-        // DragLeave also fires when the pointer crosses between this section's nested drop targets (the
-        // tab strip, the empty placeholder, the content). Treat it as a real leave only when the pointer
-        // has moved outside the section, so the highlight does not flicker mid-section.
-        var position = e.GetPosition(RootGrid);
-        bool insideSection = position.X >= 0 &&
-            position.Y >= 0 &&
-            position.X < RootGrid.ActualWidth &&
-            position.Y < RootGrid.ActualHeight;
-        if (insideSection)
-        {
-            return;
-        }
-
-        ResourceDragLeave?.Invoke(this);
     }
 
     private void RootGrid_Drop(object sender, DragEventArgs e)
@@ -633,7 +596,7 @@ public sealed partial class DocumentSection : UserControl
         var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
-            FilesDropped?.Invoke(this, draggedResources, e.GetPosition(this));
+            FilesDropped?.Invoke(this, draggedResources);
             e.Handled = true;
         }
     }
@@ -658,7 +621,6 @@ public sealed partial class DocumentSection : UserControl
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
-            ResourceDragOver?.Invoke(this, e.GetPosition(this));
         }
     }
 
@@ -686,14 +648,14 @@ public sealed partial class DocumentSection : UserControl
         var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
-            FilesDropped?.Invoke(this, draggedResources, e.GetPosition(this));
+            FilesDropped?.Invoke(this, draggedResources);
             e.Handled = true;
         }
     }
 
-    // Resource drags from ResourceTree can arrive via the DataPackage's custom properties on Windows
-    // or via ResourceDragState on the Uno Skia desktop head (where managed properties do not
-    // round-trip).
+    // Resource drags from ResourceTree carry their payload in the DataPackage's custom properties, which
+    // round-trip on the Windows head. The Skia head recognises these drags through the pointer-driven
+    // coordinator instead, so they never reach this built-in drag-and-drop path.
     private static bool IsResourceDragInFlight(DragEventArgs e)
     {
         if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
@@ -701,36 +663,22 @@ public sealed partial class DocumentSection : UserControl
             return true;
         }
 
-        if (e.DataView?.Properties?.ContainsKey("DraggedResources") == true)
-        {
-            return true;
-        }
-
-        return ResourceDragState.Current is not null;
+        return e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
     }
 
     private static List<IResource>? TakeResourceDragPayload(DragEventArgs e)
     {
-        List<IResource>? draggedResources = null;
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
         {
-            draggedResources = draggedObj as List<IResource>;
-        }
-        else if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
-        {
-            draggedResources = draggedViewObj as List<IResource>;
-        }
-        else if (ResourceDragState.Current is { } sharedResources)
-        {
-            draggedResources = sharedResources.ToList();
+            return draggedObj as List<IResource>;
         }
 
-        if (draggedResources is not null)
+        if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
         {
-            ResourceDragState.End();
+            return draggedViewObj as List<IResource>;
         }
 
-        return draggedResources;
+        return null;
     }
 
     /// <summary>

@@ -93,6 +93,9 @@ public sealed partial class DocumentSection
         {
             SetSelectedItemWithLayoutRetry(tab, () => ScrollTabIntoView(tab));
         }
+
+        // Flash the tab at its new position so the address change stands out.
+        tab.FlashAttentionDeferred();
     }
 
     /// <summary>

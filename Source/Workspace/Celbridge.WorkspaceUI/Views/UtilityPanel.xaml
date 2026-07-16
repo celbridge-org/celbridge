@@ -32,13 +32,19 @@
         <Grid x:Name="ContentArea"
               Grid.Column="1"
               Background="{ThemeResource PanelBackgroundABrush}">
+            <!-- The panel host controls sit above the hosted panel's FocusTracking.Panel declaration. A tree
+                 rebuild destroys the focused row and the platform bounces focus up onto the host, which has no
+                 panel ancestor and would otherwise clear panel focus to None. PreservePanelFocus keeps the
+                 current panel during that transient bounce, matching the utility rail above. -->
             <ContentControl x:Name="ExplorerPanelControl"
                             HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch" />
+                            VerticalContentAlignment="Stretch"
+                            ui:FocusTracking.PreservePanelFocus="True" />
             <ContentControl x:Name="SearchPanelControl"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch"
-                            Visibility="Collapsed" />
+                            Visibility="Collapsed"
+                            ui:FocusTracking.PreservePanelFocus="True" />
         </Grid>
     </Grid>
 </UserControl>

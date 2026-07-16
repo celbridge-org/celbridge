@@ -180,6 +180,9 @@
   <data name="ResourceTree_ConfirmDeleteMultiple" xml:space="preserve">
     <value>Delete {0} items?</value>
   </data>
+  <data name="ResourceTree_DragItemCount" xml:space="preserve">
+    <value>{0} items</value>
+  </data>
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
@@ -320,6 +323,9 @@
   </data>
   <data name="ResourceTree_Cut" xml:space="preserve">
     <value>Cut</value>
+  </data>
+  <data name="ResourceTree_Move" xml:space="preserve">
+    <value>Move</value>
   </data>
   <data name="ResourceTree_Paste" xml:space="preserve">
     <value>Paste</value>
