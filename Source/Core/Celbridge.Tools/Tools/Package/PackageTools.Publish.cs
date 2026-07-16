@@ -338,7 +338,7 @@ public partial class PackageTools
         }
         var tomlContent = readResult.Value;
 
-        TomlTable tomlTable;
+        TomlTable? tomlTable;
         try
         {
             tomlTable = TomlSerializer.Deserialize<TomlTable>(tomlContent);
@@ -346,6 +346,11 @@ public partial class PackageTools
         catch (TomlException exception)
         {
             return Result.Fail($"Invalid TOML in package manifest: {exception.Message}");
+        }
+
+        if (tomlTable is null)
+        {
+            return Result.Fail("Package manifest is empty or not a valid TOML table.");
         }
 
         if (!tomlTable.TryGetValue("package", out var packageSection)

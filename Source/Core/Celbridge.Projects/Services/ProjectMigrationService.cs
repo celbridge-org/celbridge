@@ -130,6 +130,12 @@ public class ProjectMigrationService : IProjectMigrationService
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(text);
+            if (root is null)
+            {
+                return ParseResult.Failure(
+                    ParseFailureReason.InvalidToml,
+                    Result.Fail("Failed to deserialize project TOML file"));
+            }
 
             // Get project version from [celbridge].celbridge-version property
             var projectVersion = string.Empty;
@@ -538,6 +544,11 @@ public class ProjectMigrationService : IProjectMigrationService
         }
 
         var root = TomlSerializer.Deserialize<TomlTable>(text);
+        if (root is null)
+        {
+            return Result<TomlTable>.Fail("Failed to deserialize project TOML file");
+        }
+
         return Result<TomlTable>.Ok(root);
     }
 }

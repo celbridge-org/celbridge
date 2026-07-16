@@ -89,6 +89,18 @@ public class ProjectConfigReader
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(text);
+            if (root is null)
+            {
+                _logger.LogWarning($"Failed to deserialize TOML in '{projectFilePath}'");
+
+                return Result<ProjectMetadata>.Ok(new ProjectMetadata(
+                    projectFilePath,
+                    projectName,
+                    projectFolderPath,
+                    CelbridgeVersion: null,
+                    IsConfigValid: false));
+            }
+
             isConfigValid = true;
 
             // Try to extract version from [celbridge] section

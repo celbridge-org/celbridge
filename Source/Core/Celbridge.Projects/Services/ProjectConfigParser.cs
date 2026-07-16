@@ -58,6 +58,11 @@ public static class ProjectConfigParser
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(text);
+            if (root is null)
+            {
+                return Result<ProjectConfig>.Fail($"Failed to deserialize TOML file: {configFilePath}");
+            }
+
             var config = MapRootToModel(root);
 
             return Result<ProjectConfig>.Ok(config);

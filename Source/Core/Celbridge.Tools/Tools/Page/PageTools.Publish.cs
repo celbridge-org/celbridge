@@ -204,7 +204,7 @@ public partial class PageTools
         }
         var tomlContent = readResult.Value;
 
-        TomlTable tomlTable;
+        TomlTable? tomlTable;
         try
         {
             tomlTable = TomlSerializer.Deserialize<TomlTable>(tomlContent);
@@ -212,6 +212,11 @@ public partial class PageTools
         catch (TomlException exception)
         {
             return Result.Fail($"Invalid TOML in page manifest: {exception.Message}");
+        }
+
+        if (tomlTable is null)
+        {
+            return Result.Fail($"Page manifest '{PageConstants.ManifestFileName}' is empty or not a valid TOML table.");
         }
 
         if (!tomlTable.TryGetValue("publish", out var publishSection)
