@@ -5,6 +5,7 @@ using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
@@ -67,9 +68,21 @@ public sealed partial class DocumentSection : UserControl
     public event Action<DocumentSection, DocumentTab>? TabDroppedInside;
 
     /// <summary>
-    /// Event raised when resource files are dropped into this section from the ResourceTree.
+    /// Event raised when resource files are dropped into this section from the ResourceTree. The point
+    /// is the drop position relative to this section, used to resolve the insertion slot.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>>? FilesDropped;
+    public event Action<DocumentSection, List<IResource>, Point>? FilesDropped;
+
+    /// <summary>
+    /// Event raised while a resource drag from the ResourceTree is over this section. The point is the
+    /// pointer position relative to this section, used to drive the drop-target divider and highlight.
+    /// </summary>
+    public event Action<DocumentSection, Point>? ResourceDragOver;
+
+    /// <summary>
+    /// Event raised when a resource drag from the ResourceTree leaves this section without dropping.
+    /// </summary>
+    public event Action<DocumentSection>? ResourceDragLeave;
 
     public DocumentSection()
     {
@@ -569,7 +582,31 @@ public sealed partial class DocumentSection : UserControl
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
+            ResourceDragOver?.Invoke(this, e.GetPosition(this));
         }
+    }
+
+    private void RootGrid_DragLeave(object sender, DragEventArgs e)
+    {
+        if (!IsResourceDragInFlight(e))
+        {
+            return;
+        }
+
+        // DragLeave also fires when the pointer crosses between this section's nested drop targets (the
+        // tab strip, the empty placeholder, the content). Treat it as a real leave only when the pointer
+        // has moved outside the section, so the highlight does not flicker mid-section.
+        var position = e.GetPosition(RootGrid);
+        bool insideSection = position.X >= 0 &&
+            position.Y >= 0 &&
+            position.X < RootGrid.ActualWidth &&
+            position.Y < RootGrid.ActualHeight;
+        if (insideSection)
+        {
+            return;
+        }
+
+        ResourceDragLeave?.Invoke(this);
     }
 
     private void RootGrid_Drop(object sender, DragEventArgs e)
@@ -596,7 +633,7 @@ public sealed partial class DocumentSection : UserControl
         var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
-            FilesDropped?.Invoke(this, draggedResources);
+            FilesDropped?.Invoke(this, draggedResources, e.GetPosition(this));
             e.Handled = true;
         }
     }
@@ -621,6 +658,7 @@ public sealed partial class DocumentSection : UserControl
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
+            ResourceDragOver?.Invoke(this, e.GetPosition(this));
         }
     }
 
@@ -648,7 +686,7 @@ public sealed partial class DocumentSection : UserControl
         var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
-            FilesDropped?.Invoke(this, draggedResources);
+            FilesDropped?.Invoke(this, draggedResources, e.GetPosition(this));
             e.Handled = true;
         }
     }

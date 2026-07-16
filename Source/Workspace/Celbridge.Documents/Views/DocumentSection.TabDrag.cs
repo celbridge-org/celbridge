@@ -117,6 +117,27 @@ public sealed partial class DocumentSection
     }
 
     /// <summary>
+    /// Gets the insertion slot (0 to TabCount inclusive) for a pointer at the given X, comparing it to
+    /// the tab centres. The X and the tab bounds are both taken relative to the given element, so any
+    /// element shared with the caller works.
+    /// </summary>
+    public int GetInsertionSlot(double pointerX, UIElement relativeTo)
+    {
+        var headerBounds = GetTabHeaderBounds(relativeTo);
+        for (int i = 0; i < headerBounds.Count; i++)
+        {
+            var bounds = headerBounds[i].Bounds;
+            double centerX = bounds.X + (bounds.Width / 2);
+            if (pointerX < centerX)
+            {
+                return i;
+            }
+        }
+
+        return headerBounds.Count;
+    }
+
+    /// <summary>
     /// Gets each tab header and its bounds relative to the given element, in tab order.
     /// </summary>
     public List<TabHeaderBounds> GetTabHeaderBounds(UIElement relativeTo)

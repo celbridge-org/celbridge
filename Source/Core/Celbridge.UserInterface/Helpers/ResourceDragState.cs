@@ -18,6 +18,13 @@ public static class ResourceDragState
     public static IReadOnlyList<IResource>? Current => _resources;
 
     /// <summary>
+    /// Raised once when an in-flight resource drag ends, however it ends: dropped, released away from a
+    /// drop target, or cancelled. Consumers use it to tear down drag feedback that a per-target leave or
+    /// drop event may not deliver.
+    /// </summary>
+    public static event Action? Ended;
+
+    /// <summary>
     /// Records the resources for a new drag operation. Called by the source on drag start.
     /// </summary>
     public static void Begin(IReadOnlyList<IResource> resources)
@@ -26,10 +33,17 @@ public static class ResourceDragState
     }
 
     /// <summary>
-    /// Clears the in-flight drag. Consumers call this after handling a drop.
+    /// Clears the in-flight drag. Consumers call this after handling a drop; the source also calls it
+    /// when the drag completes. Raises Ended on the first call that clears a live drag.
     /// </summary>
     public static void End()
     {
+        if (_resources is null)
+        {
+            return;
+        }
+
         _resources = null;
+        Ended?.Invoke();
     }
 }

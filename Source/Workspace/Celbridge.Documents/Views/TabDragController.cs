@@ -17,19 +17,20 @@ internal record TabDropTarget(DocumentSection Section, int InsertionSlot, bool O
 
 /// <summary>
 /// Pointer-driven drag controller for document tabs, replacing the built-in TabView drag-and-drop
-/// on heads where it is unreliable. Tracks a pressed tab through a drag threshold, renders a ghost
-/// and insertion indicator in an overlay canvas, and commits the reorder or move on release.
+/// on heads where it is unreliable. Tracks a pressed tab through a drag threshold, renders the ghost
+/// that follows the pointer, drives the shared insertion divider and section highlight, and commits
+/// the reorder or move on release.
 /// </summary>
 internal sealed class TabDragController
 {
     private const double DragThreshold = 5.0;
     private const double GhostOpacity = 0.85;
-    private const double IndicatorWidth = 2.0;
     private const double AutoScrollEdgeWidth = 28.0;
     private const double AutoScrollStep = 16.0;
 
     private readonly DocumentSectionContainer _container;
     private readonly Canvas _overlay;
+    private readonly SectionDragPreview _dropPreview;
     private readonly PointerEventHandler _pointerMovedHandler;
     private readonly PointerEventHandler _pointerReleasedHandler;
     private readonly PointerEventHandler _pointerCaptureLostHandler;
@@ -45,13 +46,12 @@ internal sealed class TabDragController
     private UIElement? _keyEventRoot;
     private TabDropTarget? _currentTarget;
     private Border? _ghost;
-    private Border? _insertionIndicator;
-    private Border? _sectionHighlight;
 
-    public TabDragController(DocumentSectionContainer container, Canvas overlay)
+    public TabDragController(DocumentSectionContainer container, Canvas overlay, SectionDragPreview dropPreview)
     {
         _container = container;
         _overlay = overlay;
+        _dropPreview = dropPreview;
         _pointerMovedHandler = OnPointerMoved;
         _pointerReleasedHandler = OnPointerReleased;
         _pointerCaptureLostHandler = OnPointerCaptureLost;
@@ -227,14 +227,14 @@ internal sealed class TabDragController
             if (!stripBounds.IsEmpty &&
                 stripBounds.Contains(position))
             {
-                int insertionSlot = ComputeInsertionSlot(section, position.X);
+                int insertionSlot = section.GetInsertionSlot(position.X, _overlay);
                 return new TabDropTarget(section, insertionSlot, OverSectionBody: false);
             }
 
             var sectionBounds = GetElementBounds(section);
             if (sectionBounds.Contains(position))
             {
-                int insertionSlot = ComputeInsertionSlot(section, position.X);
+                int insertionSlot = section.GetInsertionSlot(position.X, _overlay);
                 return new TabDropTarget(section, insertionSlot, OverSectionBody: true);
             }
         }
@@ -242,109 +242,28 @@ internal sealed class TabDragController
         return null;
     }
 
-    private int ComputeInsertionSlot(DocumentSection section, double pointerX)
-    {
-        var headerBounds = section.GetTabHeaderBounds(_overlay);
-        for (int i = 0; i < headerBounds.Count; i++)
-        {
-            var bounds = headerBounds[i].Bounds;
-            double centerX = bounds.X + (bounds.Width / 2);
-            if (pointerX < centerX)
-            {
-                return i;
-            }
-        }
-
-        return headerBounds.Count;
-    }
-
     private void UpdateInsertionIndicator(DocumentTab draggedTab)
     {
-        if (_insertionIndicator is null)
+        if (_currentTarget is { } target)
         {
-            return;
-        }
-
-        var target = _currentTarget;
-        if (target is null)
-        {
-            _insertionIndicator.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        var targetStrip = target.Section.GetTabStripBounds(_overlay);
-        if (targetStrip.IsEmpty)
-        {
-            _insertionIndicator.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        var headerBounds = target.Section.GetTabHeaderBounds(_overlay);
-        int slot = target.InsertionSlot;
-        int draggedIndex = target.Section.GetTabIndex(draggedTab);
-
-        // Position the indicator at the slot boundary: the left edge of the slot's tab, the right
-        // edge of the last tab for the trailing slot (append), or the strip start when empty. A slot
-        // adjacent to the dragged tab's own position is a no-op drop, so mark the tab's left edge -
-        // that is where it stays.
-        bool dropsInPlace = draggedIndex >= 0 &&
-            (slot == draggedIndex || slot == draggedIndex + 1);
-        double indicatorX;
-        if (dropsInPlace &&
-            draggedIndex < headerBounds.Count)
-        {
-            indicatorX = headerBounds[draggedIndex].Bounds.X;
-        }
-        else if (headerBounds.Count == 0)
-        {
-            indicatorX = targetStrip.X;
-        }
-        else if (slot < headerBounds.Count)
-        {
-            indicatorX = headerBounds[slot].Bounds.X;
+            _dropPreview.ShowInsertion(target.Section, target.InsertionSlot, draggedTab);
         }
         else
         {
-            var lastBounds = headerBounds[^1].Bounds;
-            indicatorX = lastBounds.X + lastBounds.Width;
+            _dropPreview.HideInsertion();
         }
-
-        // The target's own strip collapses to a short height when the section is empty, so take the
-        // indicator's vertical extent from the drag strip band, which stays full height and shares
-        // the same top edge as every section.
-        var stripBand = GetDragStripBounds();
-
-        _insertionIndicator.Height = stripBand.Height;
-        Canvas.SetLeft(_insertionIndicator, indicatorX - (IndicatorWidth / 2));
-        Canvas.SetTop(_insertionIndicator, stripBand.Y);
-        _insertionIndicator.Visibility = Visibility.Visible;
     }
 
     private void UpdateSectionHighlight()
     {
-        if (_sectionHighlight is null)
+        if (_currentTarget is { OverSectionBody: true } target)
         {
-            return;
+            _dropPreview.ShowHighlight(target.Section);
         }
-
-        if (_currentTarget is not { OverSectionBody: true } target)
+        else
         {
-            _sectionHighlight.Visibility = Visibility.Collapsed;
-            return;
+            _dropPreview.HideHighlight();
         }
-
-        // Cover only the content area below the tab strip band. The ghost tab rides in that band, so
-        // highlighting it too would read as a phantom strip - most visibly on an empty section, where
-        // the ghost is the only thing in an otherwise bare strip.
-        var sectionBounds = GetElementBounds(target.Section);
-        var stripBand = GetDragStripBounds();
-        double top = stripBand.IsEmpty ? sectionBounds.Y : stripBand.Bottom;
-
-        _sectionHighlight.Width = sectionBounds.Width;
-        _sectionHighlight.Height = Math.Max(0, sectionBounds.Bottom - top);
-        Canvas.SetLeft(_sectionHighlight, sectionBounds.X);
-        Canvas.SetTop(_sectionHighlight, top);
-        _sectionHighlight.Visibility = Visibility.Visible;
     }
 
     private void UpdateAutoScroll(Point position)
@@ -414,25 +333,8 @@ internal sealed class TabDragController
             Child = ghostLabel
         };
 
-        _insertionIndicator = new Border
-        {
-            Width = IndicatorWidth,
-            Background = GetThemeBrush("AccentFillColorDefaultBrush", Microsoft.UI.Colors.DodgerBlue),
-            IsHitTestVisible = false,
-            Visibility = Visibility.Collapsed
-        };
-
-        _sectionHighlight = new Border
-        {
-            Background = CreateAccentHighlightBrush(),
-            BorderBrush = GetThemeBrush("AccentFillColorDefaultBrush", Microsoft.UI.Colors.DodgerBlue),
-            BorderThickness = new Thickness(1),
-            IsHitTestVisible = false,
-            Visibility = Visibility.Collapsed
-        };
-
-        _overlay.Children.Add(_sectionHighlight);
-        _overlay.Children.Add(_insertionIndicator);
+        // The divider and highlight are persistent children of the overlay owned by SectionDragPreview,
+        // so the ghost is added after them and always renders on top.
         _overlay.Children.Add(_ghost);
     }
 
@@ -455,46 +357,13 @@ internal sealed class TabDragController
             _overlay.Children.Remove(_ghost);
             _ghost = null;
         }
-        if (_insertionIndicator is not null)
-        {
-            _overlay.Children.Remove(_insertionIndicator);
-            _insertionIndicator = null;
-        }
-        if (_sectionHighlight is not null)
-        {
-            _overlay.Children.Remove(_sectionHighlight);
-            _sectionHighlight = null;
-        }
+        _dropPreview.Hide();
 
         _pressedTab = null;
         _sourceSection = null;
         _isDragging = false;
         _autoScrollDelta = 0;
         _currentTarget = null;
-    }
-
-    /// <summary>
-    /// Gets the tab strip band relevant to the current drag: the target section's strip when it has
-    /// tabs, otherwise the source section's. The ghost rides this band and the section highlight
-    /// starts just below it.
-    /// </summary>
-    private Rect GetDragStripBounds()
-    {
-        // An empty target section has no laid-out tab list, so its strip measures with a near-zero
-        // height pinned to the section top. Trust the target's own strip only when it has tabs;
-        // otherwise fall back to the source strip, which always hosts the dragged tab and shares the
-        // same strip height and top edge as every section.
-        if (_currentTarget is not null &&
-            _currentTarget.Section.TabCount > 0)
-        {
-            var targetBounds = _currentTarget.Section.GetTabStripBounds(_overlay);
-            if (!targetBounds.IsEmpty)
-            {
-                return targetBounds;
-            }
-        }
-
-        return _sourceSection?.GetTabStripBounds(_overlay) ?? Rect.Empty;
     }
 
     private Rect GetElementBounds(UIElement element)
@@ -533,24 +402,5 @@ internal sealed class TabDragController
         }
 
         return new SolidColorBrush(fallbackColor);
-    }
-
-    private static Windows.UI.Color GetThemeColor(string resourceKey, Windows.UI.Color fallbackColor)
-    {
-        if (Application.Current.Resources.TryGetValue(resourceKey, out var resource) &&
-            resource is SolidColorBrush brush)
-        {
-            return brush.Color;
-        }
-
-        return fallbackColor;
-    }
-
-    private static Brush CreateAccentHighlightBrush()
-    {
-        var color = GetThemeColor("AccentFillColorDefaultBrush", Microsoft.UI.Colors.DodgerBlue);
-        color.A = 0x28;
-
-        return new SolidColorBrush(color);
     }
 }

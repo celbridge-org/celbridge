@@ -148,12 +148,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OnSectionRatiosChanged(ratios);
     }
 
-    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
+    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources, int? insertionSlot)
     {
-        HandleDroppedFiles(targetSection, resources);
+        HandleDroppedFiles(targetSection, resources, insertionSlot);
     }
 
-    private void HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources)
+    // The insertion slot is where the drop's divider landed in the target section's tab order, or null
+    // to append (the built-in drag-and-drop heads show no divider and always append).
+    private void HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources, int? insertionSlot)
     {
         if (_isShuttingDown)
         {
@@ -161,6 +163,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         var targetSectionIndex = targetSection.SectionIndex;
+        int droppedFileOffset = 0;
 
         foreach (var resource in resources)
         {
@@ -171,6 +174,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             var fileResourceKey = ViewModel.GetResourceKey(fileResource);
 
+            // Several files dropped at one divider insert consecutively from that slot.
+            int? slot = insertionSlot is int start ? start + droppedFileOffset : null;
+            droppedFileOffset++;
+
             // Check if the file is already open in any section
             var existingLocation = SectionContainer.FindDocumentTab(fileResourceKey);
             if (existingLocation is not null)
@@ -178,24 +185,29 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 var existingSection = existingLocation.Section;
                 var existingTab = existingLocation.Tab;
 
-                // Already open - move to target section if different, otherwise just select it
+                // Already open - move to the target section, otherwise reorder within it, then select it
                 if (existingSection.SectionIndex != targetSectionIndex)
                 {
-                    SectionContainer.MoveTabToSection(existingTab, targetSectionIndex);
+                    SectionContainer.MoveTabToSection(existingTab, targetSectionIndex, slot);
                 }
                 else
                 {
+                    if (slot is int reorderSlot)
+                    {
+                        existingSection.ReorderTab(existingTab, reorderSlot);
+                    }
                     existingSection.SelectTab(existingTab);
                     SectionContainer.ActivateDocument(fileResourceKey, targetSectionIndex);
                 }
             }
             else
             {
-                // Not open - use the command to open in the target section
+                // Not open - use the command to open in the target section at the divider slot
                 _commandService.Execute<IOpenDocumentCommand>(command =>
                 {
                     command.FileResource = fileResourceKey;
                     command.TargetSectionIndex = targetSectionIndex;
+                    command.TargetTabIndex = slot;
                 });
             }
         }
