@@ -24,7 +24,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
 {
     private IResourceDragCoordinator? _resourceDragCoordinator;
     private readonly PointerEventHandler _listPointerPressedHandler;
-    private FrameworkElement? _dropHighlightElement;
+    private Panel? _dropHighlightElement;
 
     /// <summary>
     /// Disables the built-in ListView drag source on heads that use the pointer-driven coordinator, and
@@ -200,7 +200,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
     private void HighlightDropTarget(ResourceViewItem targetItem)
     {
         var container = ResourceListView.ContainerFromItem(targetItem) as ListViewItem;
-        var contentGrid = container is null ? null : VisualTree.FindDescendantByName(container, "ContentGrid") as FrameworkElement;
+        var contentGrid = container is null ? null : VisualTree.FindDescendantByName(container, "ContentGrid") as Panel;
         if (contentGrid is null)
         {
             ClearDragFeedback();
