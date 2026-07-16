@@ -84,7 +84,7 @@ public sealed partial class DocumentSection
             return;
         }
 
-        bool wasSelected = TabView.SelectedItem == tab;
+        bool wasSelected = ReferenceEquals(TabView.SelectedItem, tab);
         TabView.TabItems.RemoveAt(currentIndex);
         DetachStrandedContainer(tab);
         TabView.TabItems.Insert(targetIndex, tab);

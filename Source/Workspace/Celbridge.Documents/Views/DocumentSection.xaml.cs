@@ -67,9 +67,10 @@ public sealed partial class DocumentSection : UserControl
     public event Action<DocumentSection, DocumentTab>? TabDroppedInside;
 
     /// <summary>
-    /// Event raised when resource files are dropped into this section from the ResourceTree.
+    /// Event raised when resource files are dropped into this section from the ResourceTree, with the
+    /// insertion slot in the tab order the drop point maps to.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>>? FilesDropped;
+    public event Action<DocumentSection, List<IResource>, int>? FilesDropped;
 
     public DocumentSection()
     {
@@ -596,7 +597,8 @@ public sealed partial class DocumentSection : UserControl
         var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
-            FilesDropped?.Invoke(this, draggedResources);
+            int insertionSlot = GetInsertionSlot(e.GetPosition(this).X, this);
+            FilesDropped?.Invoke(this, draggedResources, insertionSlot);
             e.Handled = true;
         }
     }
@@ -648,7 +650,8 @@ public sealed partial class DocumentSection : UserControl
         var draggedResources = TakeResourceDragPayload(e);
         if (draggedResources != null)
         {
-            FilesDropped?.Invoke(this, draggedResources);
+            int insertionSlot = GetInsertionSlot(e.GetPosition(this).X, this);
+            FilesDropped?.Invoke(this, draggedResources, insertionSlot);
             e.Handled = true;
         }
     }
