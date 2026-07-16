@@ -208,6 +208,12 @@ public static class SidecarHelper
             }
 
             var table = TomlSerializer.Deserialize<TomlTable>(tomlText);
+            if (table is null)
+            {
+                return Result<IReadOnlyDictionary<string, object>>.Ok(
+                    new Dictionary<string, object>());
+            }
+
             var dictionary = new Dictionary<string, object>();
             foreach (var (key, value) in table)
             {
