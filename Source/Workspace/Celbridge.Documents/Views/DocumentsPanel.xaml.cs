@@ -149,18 +149,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OnSectionRatiosChanged(ratios);
     }
 
-    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
+    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources, int insertionSlot)
     {
-        // The built-in drag-and-drop path shows no divider, so the drop appends. The pointer-driven
-        // path arrives through TryDrop instead, which carries the divider's insertion slot.
-        _ = HandleDroppedFiles(targetSection, resources, insertionSlot: null);
+        // The built-in drag-and-drop path: the section maps the drop point to an insertion slot. The
+        // pointer-driven path arrives through TryDrop instead, which carries the divider's insertion slot.
+        _ = HandleDroppedFiles(targetSection, resources, insertionSlot);
     }
 
-    // The insertion slot is where the drop's divider landed in the target section's tab order, or null
-    // to append (the built-in drag-and-drop heads show no divider and always append). The open is awaited
+    // The insertion slot is where the drop landed in the target section's tab order. The open is awaited
     // so focus can transfer to the resulting document once its view exists; the command queue serializes
     // the opens either way, so this does not change the order documents open in.
-    private async Task HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources, int? insertionSlot)
+    private async Task HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources, int insertionSlot)
     {
         if (_isShuttingDown)
         {
@@ -180,8 +179,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             var fileResourceKey = ViewModel.GetResourceKey(fileResource);
 
-            // Several files dropped at one divider insert consecutively from that slot.
-            int? slot = insertionSlot is int start ? start + droppedFileOffset : null;
+            // Several files dropped at one slot insert consecutively from it.
+            int slot = insertionSlot + droppedFileOffset;
             droppedFileOffset++;
 
             // Check if the file is already open in any section
@@ -198,10 +197,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 }
                 else
                 {
-                    if (slot is int reorderSlot)
-                    {
-                        existingSection.ReorderTab(existingTab, reorderSlot);
-                    }
+                    existingSection.ReorderTab(existingTab, slot);
                     existingSection.SelectTab(existingTab);
                     SectionContainer.ActivateDocument(fileResourceKey, targetSectionIndex);
                 }

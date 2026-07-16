@@ -65,9 +65,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<List<double>>? SectionRatiosChanged;
 
     /// <summary>
-    /// Event raised when resource files are dropped into a section from the ResourceTree.
+    /// Event raised when resource files are dropped into a section from the ResourceTree, with the
+    /// insertion slot in the tab order the drop point maps to.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>>? FilesDropped;
+    public event Action<DocumentSection, List<IResource>, int>? FilesDropped;
 
     /// <summary>
     /// Gets the current number of sections.
@@ -921,9 +922,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
     }
 
-    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
+    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources, int insertionSlot)
     {
-        FilesDropped?.Invoke(targetSection, resources);
+        FilesDropped?.Invoke(targetSection, resources, insertionSlot);
     }
 
     /// <summary>
