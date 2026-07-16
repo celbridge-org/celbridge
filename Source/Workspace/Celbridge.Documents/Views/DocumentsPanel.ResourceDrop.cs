@@ -1,5 +1,6 @@
 using Celbridge.Platform;
 using Celbridge.UserInterface.DragDrop;
+using Microsoft.Extensions.Localization;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
@@ -46,7 +47,7 @@ public sealed partial class DocumentsPanel : IResourceDropTarget
 
         SectionContainer.ShowResourceDropPreview(location);
 
-        return "Open";
+        return _stringLocalizer.GetString("ResourceTree_Open");
     }
 
     public void ClearDragFeedback()

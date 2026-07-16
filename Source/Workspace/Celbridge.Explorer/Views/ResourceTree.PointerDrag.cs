@@ -2,6 +2,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Helpers;
+using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -133,7 +134,8 @@ public sealed partial class ResourceTree : IResourceDropTarget
             ClearDragFeedback();
         }
 
-        return IsCopyRequested() ? "Copy" : "Move";
+        var captionKey = IsCopyRequested() ? "ResourceTree_Copy" : "ResourceTree_Move";
+        return _stringLocalizer.GetString(captionKey);
     }
 
     public void ClearDragFeedback()

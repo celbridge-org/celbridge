@@ -565,7 +565,7 @@ public sealed partial class DocumentSection : UserControl
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.Caption = "Open";
+            e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_Open");
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;
@@ -617,7 +617,7 @@ public sealed partial class DocumentSection : UserControl
         {
             // Match the source's requested operation (Move) for compatibility
             e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.Caption = "Open";
+            e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_Open");
             e.DragUIOverride.IsCaptionVisible = true;
             e.DragUIOverride.IsGlyphVisible = false;
             e.Handled = true;

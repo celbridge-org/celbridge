@@ -183,6 +183,9 @@
   <data name="ResourceTree_DragItemCount" xml:space="preserve">
     <value>{0} items</value>
   </data>
+  <data name="ResourceTree_CannotDropHere" xml:space="preserve">
+    <value>Cannot drop here</value>
+  </data>
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>

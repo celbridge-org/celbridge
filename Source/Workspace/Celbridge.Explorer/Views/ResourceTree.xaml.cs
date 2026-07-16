@@ -5,9 +5,9 @@ using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Platform;
-using Microsoft.Extensions.Localization;
 using Celbridge.UserInterface.ContextMenu;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 using Windows.Foundation;
 
 namespace Celbridge.Explorer.Views;
@@ -26,6 +26,7 @@ public sealed partial class ResourceTree : UserControl
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
     private readonly IPlatformInfo _platformInfo;
+    private readonly IStringLocalizer _stringLocalizer;
     private double _savedScrollOffset;
 
     public ResourceTreeViewModel ViewModel { get; }
@@ -38,6 +39,7 @@ public sealed partial class ResourceTree : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;

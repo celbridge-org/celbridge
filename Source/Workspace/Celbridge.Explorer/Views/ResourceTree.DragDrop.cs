@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
+using Microsoft.Extensions.Localization;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
@@ -46,7 +47,7 @@ public sealed partial class ResourceTree
         var count = draggedResources.Count;
         var text = count == 1
             ? draggedResources[0].Name
-            : $"{count} items";
+            : _stringLocalizer.GetString("ResourceTree_DragItemCount", count);
 
         e.Data.Properties.Add(StandardDataFormats.Text, text);
     }
@@ -167,13 +168,14 @@ public sealed partial class ResourceTree
                 e.AcceptedOperation = isControlPressed
                     ? DataPackageOperation.Copy
                     : DataPackageOperation.Move;
-                e.DragUIOverride.Caption = e.AcceptedOperation == DataPackageOperation.Copy ? "Copy" : "Move";
+                var captionKey = e.AcceptedOperation == DataPackageOperation.Copy ? "ResourceTree_Copy" : "ResourceTree_Move";
+                e.DragUIOverride.Caption = _stringLocalizer.GetString(captionKey);
             }
             else
             {
                 // External drag - always copy
                 e.AcceptedOperation = DataPackageOperation.Copy;
-                e.DragUIOverride.Caption = "Copy";
+                e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_Copy");
             }
 
             e.DragUIOverride.IsCaptionVisible = true;
@@ -183,7 +185,7 @@ public sealed partial class ResourceTree
         else
         {
             e.AcceptedOperation = DataPackageOperation.None;
-            e.DragUIOverride.Caption = "Cannot drop here";
+            e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_CannotDropHere");
             e.DragUIOverride.IsCaptionVisible = true;
         }
     }
