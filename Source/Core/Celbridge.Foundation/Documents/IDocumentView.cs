@@ -35,7 +35,7 @@ public interface IDocumentView
     /// <summary>
     /// The document view may use a save timer to avoid writing to disk too frequently.
     /// Returns true when the timer has expired, and the file should now be saved.
-    /// Fails if the HasUnsavedChanges is false.
+    /// Fails if HasUnsavedChanges is false.
     /// </summary>
     Result<bool> UpdateSaveTimer(double deltaTime);
 
@@ -61,21 +61,18 @@ public interface IDocumentView
 
     /// <summary>
     /// Gives this document keyboard focus and reports the focus change so any previously focused surface
-    /// is released. Called when the document's tab is clicked. Views with no focusable surface do nothing.
+    /// is released. Views with no focusable surface do nothing.
     /// </summary>
     void FocusDocument();
 
     /// <summary>
-    /// Returns true if the document view can be closed.
-    /// For example, a document view could prompt the user to confirm closing the document, and return false
-    /// here to indicate that the user cancelled the close operation. 
+    /// Returns true if the document view can be closed. Returning false cancels the close operation.
     /// </summary>
     Task<bool> CanClose();
 
     /// <summary>
-    /// Called when the document is about to close.
-    /// This can be used to clear the document view state and free resources, etc. before the document view closes.
-    /// This approach is used instead of the Dispose Pattern to support pooling use cases.
+    /// Called when the document is about to close. Use this to clear the document view state
+    /// and free resources.
     /// </summary>
     Task PrepareToClose();
 

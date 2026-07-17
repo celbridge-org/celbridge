@@ -138,7 +138,7 @@ public class PackageServiceTests
     public async Task RegisterPackages_MultiplePackages_ReturnsAll()
     {
         CreateProjectPackage("editor-a", "editor-a", "Editor A", "custom", ".a");
-        CreateProjectPackage("editor-b", "editor-b", "Editor B", "code", ".b");
+        CreateProjectPackage("editor-b", "editor-b", "Editor B", "custom", ".b");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -154,7 +154,6 @@ public class PackageServiceTests
     {
         CreateProjectPackage("good", "good", "Good", "custom", ".good");
 
-        // Create an invalid package
         var badDir = Path.Combine(_tempProjectFolder, "packages", "bad");
         Directory.CreateDirectory(badDir);
         File.WriteAllText(Path.Combine(badDir, "package.toml"), "{ invalid toml }");
@@ -169,9 +168,8 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_FolderWithoutManifest_IsSkipped()
     {
-        CreateProjectPackage("with-manifest", "with-manifest", "Found", "code", ".found");
+        CreateProjectPackage("with-manifest", "with-manifest", "Found", "custom", ".found");
 
-        // Create a folder without a manifest
         var folderWithoutManifest = Path.Combine(_tempProjectFolder, "packages", "no-manifest");
         Directory.CreateDirectory(folderWithoutManifest);
 
@@ -243,9 +241,8 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_ProjectPackageWithDottedName_Skipped()
     {
-        // Until a namespace registry exists, project packages cannot claim a
-        // dotted name because there is no way to validate namespace ownership.
-        // Only flat global-namespace names are permitted for project packages.
+        // Project packages cannot claim a dotted name. Only flat global-namespace
+        // names are permitted for project packages.
         CreateProjectPackage("dotted", "acme.tool", "Dotted", "custom", ".dot");
         CreateProjectPackage("flat", "legit-tool", "Flat", "custom", ".flat");
 
@@ -262,7 +259,7 @@ public class PackageServiceTests
     {
         // Document types cannot register inside the reserved .cel namespace.
         // The check rejects both the bare suffix and multi-part forms that end
-        // in .cel; the classifier would otherwise pre-empt the editor.
+        // in .cel.
         CreateProjectPackage("reserved", "reserved-ext", "Reserved", "custom", reservedExtension);
         CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
 
@@ -291,8 +288,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_BundledPackageWithCelExtension_Skipped()
     {
-        // The reservation applies to bundled and project packages alike —
-        // first-party code can't register in the .cel namespace either.
+        // The reservation applies to bundled and project packages alike.
         var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge.reserved", "Bundled Reserved", "custom", ".cel");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = reservedDir } });
@@ -373,8 +369,6 @@ public class PackageServiceTests
     [Test]
     public async Task GetLoadFailures_AfterDuplicateName_ReportsCollidingPackages()
     {
-        // package_status reads load failures from here after the load-time error
-        // banner has already fired, so the failures must be retained.
         CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
         CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
 
@@ -400,8 +394,8 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_NestedManifest_DiscoveredOutsidePackagesFolder()
     {
-        // Discovery is no longer tied to packages/: a manifest anywhere under the
-        // project root is found, honouring the gateway's visibility rules.
+        // Discovery is not tied to packages/: a manifest anywhere under the project
+        // root is found, honouring the gateway's visibility rules.
         var toolsDir = Path.Combine(_tempProjectFolder, "tools", "my-editor");
         Directory.CreateDirectory(toolsDir);
         WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", "custom", ".nst");
@@ -427,8 +421,6 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_RecordsDiscoveryInProjectLoadReport()
     {
-        // The error banner points users at the project load report, so the
-        // discovery outcome must be recorded and flushed during registration.
         CreateProjectPackage("good", "good", "Good", "custom", ".good");
         var badDir = Path.Combine(_tempProjectFolder, "packages", "bad");
         Directory.CreateDirectory(badDir);
@@ -489,7 +481,6 @@ public class PackageServiceTests
         await _service.RegisterPackagesAsync(_tempProjectFolder);
         _service.GetAllDocumentEditors().Should().HaveCount(1);
 
-        // Create a second temp folder with different packages
         var secondFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(PackageServiceTests) + "_2");
         try
         {
@@ -504,7 +495,6 @@ public class PackageServiceTests
                 return Result<string>.Ok(Path.Combine(secondFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
             });
 
-            // Discover from empty folder - should clear previous contributions
             await _service.RegisterPackagesAsync(secondFolder);
             _service.GetAllDocumentEditors().Should().BeEmpty();
         }
@@ -525,9 +515,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // CustomDocumentViewFactory builds editor IDs as "{packageName}.{contributionId}".
-        // The contributionId comes from the [document] table key in package.toml,
-        // which CreateBundledPackage sets to the docType argument.
+        // Editor instance ids are composed as "{packageName}.{contributionId}".
         var editorId = new EditorInstanceId("celbridge.notes.custom");
 
         var package = _service.GetContributingPackage(editorId);

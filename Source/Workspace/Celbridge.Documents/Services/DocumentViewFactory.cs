@@ -35,8 +35,7 @@ public class DocumentViewFactory
 
     /// <summary>
     /// Selects an editor for the given resource and constructs its document view.
-    /// The view is returned without content loaded. The caller drives
-    /// SetFileResource and LoadContent.
+    /// The view is returned without content loaded.
     /// </summary>
     public async Task<Result<IDocumentView>> CreateAsync(
         ResourceKey fileResource,
@@ -52,9 +51,8 @@ public class DocumentViewFactory
 
         if (!requestedEditorId.IsEmpty)
         {
-            // Explicit editor request short-circuits the resolution chain. Failing
-            // here rather than falling through surfaces wrong-editor requests
-            // (e.g. an MCP call handing a .png to a code editor by mistake).
+            // An explicit editor request short-circuits the resolution chain, and fails rather
+            // than falling through to another editor.
             return CreateForRequestedEditor(fileResource, requestedEditorId);
         }
 
@@ -180,10 +178,9 @@ public class DocumentViewFactory
             return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        // Markdown is plain text, so when no Markdown editor is available it can still be edited as
-        // text. This is the path taken on the Skia heads where the WebView-backed Markdown editor is
-        // gated off. The plain TextBox is the built-in fallback. WebViewDocument and FileViewer are
-        // not text-representable, so they correctly fail here rather than opening as text.
+        // Markdown is plain text, so it can still be edited as text when no Markdown editor is
+        // available. WebViewDocument and FileViewer are not text-representable, so they fail here
+        // rather than opening as text.
         if (viewType != DocumentViewType.TextDocument
             && viewType != DocumentViewType.Markdown)
         {
@@ -224,8 +221,7 @@ public class DocumentViewFactory
 
     private Result<IDocumentView> CreateTextDocumentView(ResourceKey fileResource)
     {
-        // Try every non-placeholder factory in priority order. Placeholders cannot
-        // produce a view, so calling them here would burn cycles and fall through.
+        // Try every non-placeholder factory in priority order. Placeholders never produce a view.
         foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(candidate => candidate.Priority))
         {
             if (factory.IsPlaceholder)
@@ -259,9 +255,8 @@ public class DocumentViewFactory
                 $"Code editor '{DocumentConstants.CodeEditorId}' failed to create view for '{fileResource}'; using TextBoxDocumentView");
         }
 
-        // Last-resort fallback. Used on non-Windows hosts (Monaco runs in
-        // Windows-only WebView2) and when the code editor factory fails.
-        // Stamped here because the TextBox is not produced by a factory.
+        // Last-resort fallback, used when the code editor is unavailable or fails. The TextBox is
+        // not produced by a factory, so its editor id is stamped here.
         var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
         textBoxView.EditorId = DocumentConstants.TextBoxFallbackEditorId;
         return textBoxView.OkResult<IDocumentView>();

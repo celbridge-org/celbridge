@@ -35,8 +35,8 @@ public class DocumentsService : IDocumentsService, IDisposable
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
     /// <summary>
-    /// The currently active document, sourced from the documents panel. Returns
-    /// Empty before the workspace page is loaded (the panel does not exist yet).
+    /// The currently active document. Returns Empty before the workspace page is loaded, because
+    /// the documents panel does not exist yet.
     /// </summary>
     public ResourceKey ActiveDocument =>
         _workspaceWrapper.IsWorkspacePageLoaded
@@ -44,9 +44,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             : ResourceKey.Empty;
 
     /// <summary>
-    /// Returns the currently open documents from the documents panel.
-    /// Reads TabView-backed state, so callers must be on the UI thread. MCP tools satisfy this
-    /// by going through a query command on the command-queue worker, which executes on the UI thread.
+    /// Returns the currently open documents. Reads TabView-backed state, so callers must be on the
+    /// UI thread.
     /// </summary>
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
@@ -84,13 +83,11 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
-        // The layout / active / section subscriptions are deferred to
-        // OnWorkspaceLoadedMessage so the messages fired by RestorePanelState
-        // (which runs before workspace-loaded is published) do not trigger
-        // settings writes for what we just read out of settings.
+        // The layout / active / section subscriptions are deferred to OnWorkspaceLoadedMessage so the
+        // messages fired by RestorePanelState (which runs first) do not write back what was just read
+        // out of settings.
 
-        // Register document editor factories from all loaded modules.
-        // This must happen before FileTypeHelper initialization so factories can provide language mappings.
+        // Must happen before FileTypeHelper initialization so factories can provide language mappings.
         RegisterModuleDocumentEditorFactories(moduleService);
 
         _fileTypeHelper = new FileTypeHelper();
@@ -112,8 +109,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             _workspaceWrapper,
             serviceProvider.GetRequiredService<ILogger<DocumentEditorPreferenceStore>>());
 
-        // Built after the registry is fully populated so the factory sees
-        // every editor it might choose.
+        // Built after the registry is fully populated so the factory sees every editor it might choose.
         _viewFactory = new DocumentViewFactory(
             _documentEditorRegistry,
             _workspaceWrapper,
@@ -163,10 +159,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 try
                 {
-                    // Register a document editor factory for each editor instance, including utilities: a
-                    // utility's factory is what lets it be docked into a document tab. Its IsUtility flag keeps
-                    // it out of the New File dialog and the Reopen-with menu, and its utils: backing resource
-                    // keeps it out of the project-scoped resource tree and search.
+                    // Register an editor factory for each editor instance, including utilities: a utility's
+                    // factory is what lets it be docked into a document tab.
                     var factory = new CustomDocumentViewFactory(_serviceProvider, instance, _featureFlags, localizationService);
                     var result = _documentEditorRegistry.RegisterFactory(factory);
                     if (result.IsFailure)
@@ -213,10 +207,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default)
     {
-        //
-        // Create the appropriate document view control for this document type
-        //
-
         var createResult = await CreateDocumentViewInternalAsync(fileResource, editorId);
         if (createResult.IsFailure)
         {
@@ -225,17 +215,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
         var documentView = createResult.Value;
 
-        // Factories must set view.EditorId before returning; catch a missed stamp here.
+        // Factories must set view.EditorId before returning. Catch a missed stamp here.
         if (documentView.EditorId.IsEmpty)
         {
             return Result.Fail(
                 $"Document view for '{fileResource}' was returned with an empty EditorId. " +
                 "The factory that produced it must set view.EditorId before returning.");
         }
-
-        //
-        // Load the content from the document file
-        //
 
         var setFileResult = await documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
@@ -244,10 +230,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 .WithErrors(setFileResult);
         }
 
-        // Applied after SetFileResource and before LoadContent so the editor
-        // enters read-only mode before its first setValue. For CustomDocumentView
-        // the state ships through the document/initialize handshake; for editors
-        // that drive their surface directly, OnWritableStateChanged fires here.
+        // Applied after SetFileResource and before LoadContent so the editor enters read-only mode
+        // before its first setValue.
         var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
         var writableState = await operationService.GetWritableStateAsync(fileResource);
         documentView.SetWritableState(writableState);
@@ -259,8 +243,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                 .WithErrors(loadResult);
         }
 
-        // IDocumentView is an interface, so the implicit T -> Result<T> conversion doesn't apply;
-        // use the OkResult extension method to wrap the value.
+        // IDocumentView is an interface, so the implicit T -> Result<T> conversion does not apply.
         return documentView.OkResult();
     }
 
@@ -299,8 +282,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             await _preferenceStore.SetExtensionPreferenceAsync(extension, editorId);
         }
 
-        // ToString() forces a string value; passing the EditorInstanceId struct
-        // directly boxes it and SidecarService rejects non-scalar values.
+        // ToString() forces a string value. Passing the EditorInstanceId struct directly boxes it,
+        // and SidecarService rejects non-scalar values.
         var fields = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             [SidecarFieldNames.Editor] = editorId.ToString(),
@@ -315,8 +298,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        // A utility is only ever presented by docking, never opened as an ordinary document. This is the
-        // chokepoint every open routes through, so refusing utils: here prevents a second, uncontrolled instance.
+        // A utility is only ever presented by docking, never opened as an ordinary document.
         if (fileResource.Root == ProjectConstants.UtilsFolder)
         {
             return Result.Fail($"Cannot open utility resource '{fileResource}' as a document. Utilities are presented through the Utility Panel and docked into a tab, never opened directly.");

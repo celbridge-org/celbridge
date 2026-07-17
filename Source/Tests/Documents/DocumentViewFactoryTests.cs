@@ -90,9 +90,8 @@ public class DocumentViewFactoryTests
     public async Task CreateAsync_SidecarEditor_WinsOverEverythingElse()
     {
         // A registered factory exists for the extension, but the sidecar names a
-        // different editor and that's the one that wins. Both factories can
-        // handle the resource; without the sidecar, priority would pick the
-        // specialized one.
+        // different editor and that's the one that wins. Both factories can handle
+        // the resource. Without the sidecar, priority would pick the specialized one.
         var sidecarEditorId = new EditorInstanceId("test.sidecar-editor");
         var sidecarView = Substitute.For<IDocumentView>();
         var sidecarFactory = CreateFakeFactory(sidecarEditorId, ".md", sidecarView, EditorPriority.General);
@@ -113,9 +112,9 @@ public class DocumentViewFactoryTests
     [Test]
     public async Task CreateAsync_SidecarEditor_FallsThroughWhenIdIsUnregistered()
     {
-        // A persisted sidecar id whose package was uninstalled must not block
-        // the open; the priority-based resolution kicks in and finds the
-        // currently-registered editor for the extension.
+        // A persisted sidecar id whose package was uninstalled must not block the
+        // open. Priority-based resolution kicks in and finds the currently-registered
+        // editor for the extension.
         var defaultView = Substitute.For<IDocumentView>();
         var defaultFactory = CreateFakeFactory(new EditorInstanceId("test.default-editor"), ".md", defaultView);
         _registry.RegisterFactory(defaultFactory);
@@ -189,8 +188,6 @@ public class DocumentViewFactoryTests
     [Test]
     public async Task CreateAsync_RequestedEditor_FailsLoudlyWhenFactoryCannotHandle()
     {
-        // Failing to honour an explicit caller request would hide bugs like
-        // an MCP document_open call passing the wrong extension to a tool.
         var requestedFactory = CreateFakeFactory(
             new EditorInstanceId("test.requested"), ".md",
             Substitute.For<IDocumentView>(), canHandle: false);
@@ -311,9 +308,8 @@ public class DocumentViewFactoryTests
     [Test]
     public async Task CreateAsync_TextFallback_FactoryScanSkipsPlaceholders()
     {
-        // The text-file scan walks every registered factory; placeholder
-        // factories must not be invoked even if their CanHandleResource would
-        // accept the file.
+        // The text-file scan walks every registered factory. Placeholder factories
+        // must not be invoked even if their CanHandleResource would accept the file.
         _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(true));
 
         var placeholderFactory = CreatePlaceholderFactory(
@@ -377,7 +373,7 @@ public class DocumentViewFactoryTests
         EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
-        // Production factories stamp view.EditorId themselves; mocks don't, so stub it.
+        // Production factories stamp view.EditorId themselves. Mocks don't, so stub it.
         view.EditorId.Returns(editorId);
 
         var factory = Substitute.For<IDocumentEditorFactory>();

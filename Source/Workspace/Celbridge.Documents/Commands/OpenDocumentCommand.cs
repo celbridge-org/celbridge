@@ -35,11 +35,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public string? EditorStateJson { get; set; }
 
-    /// <summary>
-    /// The outcome of the open operation. Only meaningful when ExecuteAsync returned Result.Ok.
-    /// Defaults to Opened so that ExecuteAsync<IOpenDocumentCommand, OpenDocumentOutcome> callers
-    /// see a sane value even if they mistakenly read it after a failure.
-    /// </summary>
     public OpenDocumentOutcome ResultValue { get; private set; } = OpenDocumentOutcome.Opened;
 
     public OpenDocumentCommand(
@@ -60,7 +55,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        // Restore console if maximized so user can see the document
         if (_layoutService.IsConsoleMaximized)
         {
             _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
@@ -107,7 +101,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
         if (openResult.IsFailure)
         {
-            // Alert the user that the document failed to open
             var title = _stringLocalizer.GetString("Documents_OpenDocumentFailedTitle");
             var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedGeneric", FileResource.Path);
             await _dialogService.ShowAlertDialogAsync(title, message);
@@ -116,11 +109,10 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
                 .WithErrors(openResult);
         }
 
-        // Propagate the outcome to callers that need the result of the operation.
         ResultValue = openResult.Value;
 
-        // Flash the tab to draw the eye to it, but only when the document was actually opened (not a cancelled
-        // open) and brought to the front. A background open (Activate = false) does not flash.
+        // Flash the tab to draw the eye to it, but only when the document was actually opened (not a
+        // cancelled open) and brought to the front.
         if (Activate
             && ResultValue == OpenDocumentOutcome.Opened)
         {
@@ -129,10 +121,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
 
     public static void OpenDocument(ResourceKey fileResource)
     {

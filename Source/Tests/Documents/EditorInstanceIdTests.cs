@@ -18,7 +18,6 @@ public class EditorInstanceIdTests
     [Test]
     public void Default_IsEmpty_ReturnsTrue()
     {
-        // Struct default must be equivalent to Empty to avoid surprising the caller.
         EditorInstanceId defaultValue = default;
 
         defaultValue.IsEmpty.Should().BeTrue();

@@ -21,11 +21,9 @@ public interface IPackageService
     Task RegisterPackagesAsync(string projectFolderPath);
 
     /// <summary>
-    /// Re-runs project-package discovery against the on-disk state and refreshes
-    /// the load report, without firing PackagesInitializedMessage. Lets a
-    /// session-mid caller (such as package_status) see packages added or
-    /// removed after the workspace loaded. Editor-contribution registration is
-    /// workspace-load-scoped and is not refreshed by this call.
+    /// Re-runs project-package discovery against the on-disk state, refreshing the discovered packages and
+    /// the load failures. Does not fire PackagesInitializedMessage, rewrite the project load report, or
+    /// re-register editor contributions.
     /// </summary>
     Task RescanProjectPackagesAsync(string projectFolderPath);
 
@@ -41,14 +39,13 @@ public interface IPackageService
     IReadOnlyList<Package> GetAllPackages();
 
     /// <summary>
-    /// Returns the package load failures from the most recent discovery pass,
-    /// so a status query can surface them after the load-time error banner has
-    /// fired. Empty before the first discovery.
+    /// Returns the package load failures from the most recent discovery pass.
+    /// Empty before the first discovery.
     /// </summary>
     IReadOnlyList<PackageLoadFailure> GetLoadFailures();
 
     /// <summary>
-    /// Returns all document editor contributions from all discovered packages.
+    /// Returns all editor contributions from all discovered packages.
     /// </summary>
     IReadOnlyList<EditorContribution> GetAllDocumentEditors();
 
@@ -61,13 +58,12 @@ public interface IPackageService
     /// <summary>
     /// Returns the package that contributes the editor instance with the
     /// specified instance ID, or null if no contributing package is registered.
-    /// Instance IDs follow the "{packageName}.{contributionId}" format.
     /// </summary>
     Package? GetContributingPackage(EditorInstanceId editorId);
 
     /// <summary>
-    /// Gets the default template content for a file extension, if provided by a package.
-    /// Returns null if no package provides a default template for this extension.
+    /// Gets the default template content for a file extension, or null if no package
+    /// provides a default template for that extension.
     /// </summary>
     byte[]? GetDefaultTemplateContent(string fileExtension);
 

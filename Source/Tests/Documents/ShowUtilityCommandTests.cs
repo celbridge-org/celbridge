@@ -70,9 +70,8 @@ public class ShowUtilityCommandTests
     [Test]
     public async Task Execute_DeclaredButNotLiveUtility_FailsRatherThanSilentlyDoingNothing()
     {
-        // A utility that was declared but skipped at load (disabled feature flag, failed seed or init) is not
-        // live. ShowUtility would reveal nothing for it, so the command must report the failure rather than
-        // return success for an operation that had no effect.
+        // A utility that was declared but skipped at load (disabled feature flag, failed seed or init) is
+        // not live, and ShowUtility would reveal nothing for it.
         _utilityService.HasUtility(NotepadUtilityId).Returns(false);
 
         var command = new ShowUtilityCommand(_workspaceWrapper)

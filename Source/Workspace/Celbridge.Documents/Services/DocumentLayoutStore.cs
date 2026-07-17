@@ -6,10 +6,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Owns the workspace-settings round trip for the documents panel: which tabs
-/// are open, in which sections, with which editor and saved view state.
-/// Reads and writes the settings keys directly; DocumentsService delegates its
-/// IDocumentsService persistence methods here.
+/// Owns the workspace-settings round trip for the documents panel: which tabs are open, in which
+/// sections, and their saved editor state.
 /// </summary>
 public class DocumentLayoutStore
 {
@@ -35,11 +33,7 @@ public class DocumentLayoutStore
     }
 
     /// <summary>
-    /// Serialization DTO for a single open document tab. Public so the
-    /// workspace-settings deserializer can reach it through the store. The
-    /// document's editor is recovered from the sidecar at restore time (or
-    /// from the per-extension default), so the layout never needs to persist
-    /// the editor id directly.
+    /// Serialization DTO for a single open document tab.
     /// </summary>
     public record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder);
 
@@ -67,11 +61,8 @@ public class DocumentLayoutStore
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        // Read the panel's active document directly rather than the gated
-        // IDocumentsService.ActiveDocument, which reports Empty until the workspace page finishes
-        // loading. WorkspaceLoader persists right after restore, before that milestone, so the
-        // gated value would clobber the setting to empty and the active document would never be
-        // remembered across loads.
+        // Read the panel's active document directly. The gated IDocumentsService.ActiveDocument
+        // reports Empty until the workspace page finishes loading, and this runs before that.
         var activeDocument = DocumentsPanel.ActiveDocument;
         await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
     }
@@ -109,11 +100,8 @@ public class DocumentLayoutStore
 
             try
             {
-                // A null / empty return from TrySaveEditorStateAsync means the editor is either
-                // still initialising or has no state to contribute. In both cases we keep the
-                // previously saved state rather than overwriting it. Losing state on a transient
-                // "not ready" would surprise the user who carefully set scroll/zoom and then
-                // happens to reload a workspace while a tab is mid-init.
+                // A null or empty return means the editor is still initialising or has no state to
+                // contribute. Keep the previously saved state rather than overwriting it.
                 var state = await documentView.TrySaveEditorStateAsync();
                 if (!string.IsNullOrEmpty(state))
                 {
@@ -161,7 +149,6 @@ public class DocumentLayoutStore
         catch (Exception ex)
         {
             // Best-effort persistence: losing editor state is a user convenience, not data loss.
-            // Log at debug level so unexpected failures are visible without being alarming.
             _logger.LogDebug(ex, $"Failed to store editor state for '{fileResource}'");
         }
     }
@@ -242,9 +229,9 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            // Project resources use the registry fast path; virtual-root keys (utils:, temp:, logs:) are
-            // never in the registry, so their existence is validated by the ResolveResourcePath +
-            // GetInfoAsync checks below instead.
+            // Project resources use the registry fast path. Virtual-root keys (utils:, temp:, logs:) are
+            // never in the registry, so the ResolveResourcePath and GetInfoAsync checks below validate
+            // their existence instead.
             if (fileResource.Root == ResourceKey.DefaultRoot)
             {
                 var getResourceResult = resourceRegistry.GetResource(fileResource);
@@ -262,12 +249,9 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            // A utils: resource is a utility (the root name equals its backing subfolder name by convention).
-            // Utilities are permanent Utility Panel surfaces, instantiated eagerly at workspace load, never
-            // opened as a second document instance. A stored utils: entry means the utility was docked last
-            // session, so drive the dock mechanism to reparent the already-live utility into its saved tab
-            // position instead of creating a new view. This runs after the utilities have been built (the load
-            // order guarantees it), so the utility exists to reparent.
+            // A stored utils: entry means the utility was docked last session. Utilities are created eagerly
+            // at workspace load, before this runs, so reparent the live utility into its saved tab position
+            // instead of creating a second view.
             if (fileResource.Root == ProjectConstants.UtilsFolder)
             {
                 int utilitySection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
@@ -295,10 +279,8 @@ public class DocumentLayoutStore
             int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
-            // Editor selection is resolved from the sidecar (or the per-extension
-            // default), not from any persisted layout state. Passing Empty here
-            // lets the factory consult the live sidecar instead of pinning a
-            // possibly-stale id captured at the last shutdown.
+            // An empty editor id makes the factory resolve the editor from the sidecar (or the
+            // per-extension default) rather than from persisted layout state.
             string? editorStateJson = null;
             editorStates?.TryGetValue(fileResource.ToString(), out editorStateJson);
 
@@ -334,9 +316,9 @@ public class DocumentLayoutStore
             }
         }
 
-        // Always delegate to the panel, even when the stored value is empty or invalid.
-        // SectionContainer.SetActiveDocument restores this document when it is still open and
-        // otherwise falls back so that any open documents leave exactly one active document.
+        // Always delegate to the panel, even when the stored value is empty or invalid. The panel
+        // restores this document when it is still open, and otherwise falls back so that any open
+        // documents leave exactly one active document.
         DocumentsPanel.ActiveDocument = activeDocument;
     }
 

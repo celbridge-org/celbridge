@@ -38,8 +38,8 @@ public sealed partial class CustomUtilityView : UserControl
         ToolTipService.SetToolTip(OpenAsDocumentButton, openAsDocumentTooltip.ToString());
         AutomationProperties.SetName(OpenAsDocumentButton, openAsDocumentTooltip.ToString());
 
-        // A utility in the panel is not a document, so it does not mark itself the active document on focus. The
-        // registry still reports its Utility focus identity from the registration, which is all a utility needs.
+        // A utility in the panel is not a document, so it does not mark itself the active document on focus.
+        // The registry still reports its Utility focus identity from the registration.
         _panelFocusContext = new CustomEditorFocusContext(
             WorkspacePanel.CustomUtility,
             () => { });
@@ -52,7 +52,7 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// The utility's persistent editor controller. Owned by this panel for the workspace lifetime; the dock
+    /// The utility's persistent editor controller. Owned by this panel for the workspace lifetime. The dock
     /// orchestration borrows it to present the utility in a document tab and hands it back when it returns.
     /// </summary>
     public CustomEditorController Controller => _controller;
@@ -69,14 +69,10 @@ public sealed partial class CustomUtilityView : UserControl
     /// </summary>
     public CustomEditorFocusContext PanelFocusContext => _panelFocusContext;
 
-    /// <summary>
-    /// The utility's id.
-    /// </summary>
     public EditorInstanceId UtilityId => _utilityId;
 
     /// <summary>
-    /// This utility's current dock location (the Utility Panel rail or a document tab). Set by the dock
-    /// orchestration on the documents service.
+    /// This utility's current dock location (the Utility Panel rail or a document tab).
     /// </summary>
     public DockLocation Location { get; set; } = DockLocation.UtilityPanel;
 
@@ -96,7 +92,7 @@ public sealed partial class CustomUtilityView : UserControl
 
     /// <summary>
     /// Binds the panel to its utility instance and backing resource, then initializes the WebView. The
-    /// backing file is expected to already exist (seeded by the documents service before this call).
+    /// backing file is expected to already exist, seeded before this call.
     /// </summary>
     public async Task<Result> InitializeAsync(EditorInstance instance, ResourceKey resource, string displayName)
     {

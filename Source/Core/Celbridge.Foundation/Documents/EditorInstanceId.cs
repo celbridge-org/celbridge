@@ -2,9 +2,7 @@ namespace Celbridge.Documents;
 
 /// <summary>
 /// A strongly-typed identifier for an editor instance, in lowercase kebab-case with optional dots
-/// (e.g. "celbridge.markdown-document", "celbridge.explorer"). The same value addresses the instance's
-/// editor factory, its rail button and dock location when it is a utility, and the agent tools.
-/// Empty is the "no instance" value.
+/// (e.g. "celbridge.markdown-document", "celbridge.explorer").
 /// </summary>
 public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
 {
@@ -74,7 +72,7 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
 
     /// <summary>
     /// Tries to parse a string into an EditorInstanceId without throwing on invalid input.
-    /// Returns true on success; false and EditorInstanceId.Empty on failure.
+    /// Returns false and EditorInstanceId.Empty when the string is not a valid id.
     /// </summary>
     public static bool TryParse(string? id, out EditorInstanceId result)
     {

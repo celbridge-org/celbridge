@@ -46,8 +46,8 @@ public class PackageServiceDocumentTypeTests
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
         });
-        // The package walk enumerates the project tree through the gateway, which
-        // resolves with validateCase:false; stub the two-argument overload too.
+        // The package walk enumerates the project tree through the gateway, which resolves
+        // with validateCase:false. Stub the two-argument overload too.
         resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
         {
             var key = callInfo.Arg<ResourceKey>();
@@ -346,7 +346,6 @@ public class PackageServiceDocumentTypeTests
                 ["templates/empty.orphan"] = "content"
             });
 
-        // Should still find bundled packages even without a project
         var content = _service.GetDefaultTemplateContent(".orphan");
         content.Should().NotBeNull();
     }
@@ -370,7 +369,6 @@ public class PackageServiceDocumentTypeTests
         var bundledName = $"test.{dirName}";
         var featureFlagLine = featureFlag is not null ? $"\nfeature_flag = \"{featureFlag}\"" : "";
 
-        // Write package.toml
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
             name = "{bundledName}"
@@ -410,7 +408,6 @@ public class PackageServiceDocumentTypeTests
             {templatesToml}
             """);
 
-        // Create localization files
         if (localizationStrings is not null)
         {
             var localizationFolder = Path.Combine(packageDir, PackageLocalizationService.LocalizationFolder);
@@ -421,7 +418,6 @@ public class PackageServiceDocumentTypeTests
             File.WriteAllText(Path.Combine(localizationFolder, "en.json"), localizationJson);
         }
 
-        // Create template files
         if (templateFiles is not null)
         {
             foreach (var kvp in templateFiles)

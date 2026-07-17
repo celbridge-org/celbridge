@@ -5,9 +5,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WebView.Services;
 
 /// <summary>
-/// Factory for the built-in HTML viewer. Claims .html and .htm at Specialized priority
-/// so the viewer is the default editor for those extensions; the code editor's General
-/// priority claim remains in the registry as a multi-claimant alternate.
+/// Factory for the built-in HTML viewer. Claims .html and .htm at Specialized priority, making
+/// the viewer the default editor for those extensions.
 /// </summary>
 public class HtmlViewerEditorFactory : DocumentEditorFactoryBase
 {

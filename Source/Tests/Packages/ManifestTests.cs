@@ -68,9 +68,8 @@ public class ManifestTests
     [Test]
     public void LoadPackage_NameAndTitle_PopulateInfo_StrayAuthorIgnored()
     {
-        // 'author' is no longer a manifest field (the publisher comes from
-        // Workshop settings), but a legacy manifest that still carries it must
-        // load fine with the key simply ignored.
+        // 'author' is not a manifest field, but a manifest that carries it must still
+        // load, with the key ignored.
         WritePackageToml("""
             [package]
             name = "my-widget"
@@ -641,7 +640,6 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().HaveCount(2);
 
-        // Both contributions share the same PackageInfo
         result.Value.Info.Title.Should().Be("Shared");
         result.Value.Info.FeatureFlag.Should().Be("shared-flag");
         result.Value.DocumentEditors[0].Package.Title.Should().Be("Shared");
@@ -904,8 +902,7 @@ public class ManifestTests
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
-        // A broken document manifest is silently skipped — matches the existing
-        // behavior for missing file-types sections and other per-document errors.
+        // A broken document manifest is silently skipped.
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().BeEmpty();
     }
@@ -1017,9 +1014,7 @@ public class ManifestTests
         contribution.UtilityDescriptor!.Template.Should().BeEmpty();
     }
 
-    // Loads the real bundled utility manifests (not synthetic ones) so a fixture that regresses -- for
-    // example by declaring both [utility] and [[document_file_types]], which the loader rejects, silently
-    // dropping the editor -- fails the build instead of only surfacing in a manual in-app run.
+    // Loads the real bundled utility manifests from the repo rather than synthetic fixtures.
     [TestCase("Notepad")]
     [TestCase("Process")]
     public void LoadPackage_BundledUtilityFixture_RegistersUtilityContribution(string editorFolder)
@@ -1051,7 +1046,7 @@ public class ManifestTests
             document_editors = ["emoji.document.toml"]
             """);
 
-        // A utility cannot also claim a file type across the project; the two forms are mutually exclusive.
+        // The [utility] and [[document_file_types]] forms are mutually exclusive.
         WriteDocumentToml("emoji.document.toml", """
             [document]
             id = "emoji-renderer"

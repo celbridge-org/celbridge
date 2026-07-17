@@ -47,11 +47,6 @@ public class PackageService : IPackageService
 
     public async Task RescanProjectPackagesAsync(string projectFolderPath)
     {
-        // Refreshes the registry mid-session (e.g. after a tool installs a
-        // package). Unlike RegisterPackagesAsync this is discovery only: it does
-        // not fire PackagesInitializedMessage (editor registration is one-shot at
-        // load), nor rewrite project-load.md or raise the error banner (those
-        // reflect the last actual load, not a tool-initiated rescan).
         await _registry.DiscoverPackagesAsync(projectFolderPath);
     }
 

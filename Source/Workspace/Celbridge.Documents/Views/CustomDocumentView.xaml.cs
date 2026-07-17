@@ -20,7 +20,7 @@ public sealed partial class CustomDocumentView : DocumentView
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     /// <summary>
-    /// The document contribution that configures this view.
+    /// The editor contribution that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
     public EditorContribution? Contribution { get; set; }

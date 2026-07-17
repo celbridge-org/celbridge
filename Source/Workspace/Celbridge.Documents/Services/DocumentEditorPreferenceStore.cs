@@ -7,7 +7,7 @@ namespace Celbridge.Documents.Services;
 /// Reads and writes the user's preferred editor for a file. Knows two
 /// preference sources: the per-file sidecar '_editor' field (set by
 /// "Open with...") and the per-extension workspace setting. The sidecar
-/// preference takes precedence; resolution stops at the first non-empty value.
+/// preference takes precedence. Resolution stops at the first non-empty value.
 /// </summary>
 public class DocumentEditorPreferenceStore
 {
@@ -34,8 +34,7 @@ public class DocumentEditorPreferenceStore
         var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
         var preferredId = await propertyBag.GetPropertyAsync<string>(preferenceKey);
 
-        // TryParse handles empty/null/malformed strings; callers are responsible
-        // for checking whether the returned id still maps to a registered editor.
+        // Callers must check that the returned id still maps to a registered editor.
         if (string.IsNullOrEmpty(preferredId)
             || !EditorInstanceId.TryParse(preferredId, out var editorId))
         {
@@ -69,8 +68,7 @@ public class DocumentEditorPreferenceStore
     /// Reads the resource's sidecar (if any) and returns its '_editor' field as
     /// an EditorInstanceId. Returns success with Empty when no sidecar exists,
     /// the sidecar has no '_editor' field, or the field value does not parse.
-    /// Returns failure only on unexpected sidecar service errors so callers can
-    /// fall through gracefully on success.
+    /// Returns failure only on unexpected sidecar service errors.
     /// </summary>
     public async Task<Result<EditorInstanceId>> GetSidecarPreferenceAsync(ResourceKey fileResource)
     {
@@ -78,7 +76,7 @@ public class DocumentEditorPreferenceStore
         if (sidecarService.IsSidecarKey(fileResource))
         {
             // The sidecar file itself does not have a sidecar pairing of its
-            // own; nothing to consult.
+            // own, so there is nothing to consult.
             return EditorInstanceId.Empty;
         }
 

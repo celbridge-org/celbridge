@@ -64,8 +64,7 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetExtensionPreferenceAsync_ReturnsEmptyWhenStoredValueIsMalformed()
     {
-        // EditorInstanceId.TryParse rejects strings that are not a valid id;
-        // a malformed value should fall through to Empty rather than throw.
+        // A stored value that is not a valid id falls through to Empty rather than throwing.
         StubExtensionPreference(".md", "not a valid id with spaces");
 
         var editorId = await _store.GetExtensionPreferenceAsync(".md");
@@ -85,9 +84,8 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task SetExtensionPreferenceAsync_WithEmptyDeletesTheProperty()
     {
-        // Passing Empty signals "clear my preference"; the store should remove
-        // the underlying key rather than persist an empty string that would
-        // round-trip as a malformed id.
+        // Passing Empty signals "clear my preference". The store removes the underlying
+        // key rather than persisting an empty string that would round-trip as a malformed id.
         await _store.SetExtensionPreferenceAsync(".md", EditorInstanceId.Empty);
 
         var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
@@ -146,9 +144,8 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetSidecarPreferenceAsync_ShortCircuitsForSidecarKey()
     {
-        // The sidecar file itself does not have its own sidecar pairing; the
-        // store must not call ReadAsync on a sidecar resource (which would
-        // recurse pointlessly through the gateway).
+        // A sidecar file has no sidecar pairing of its own, so the store must not
+        // call ReadAsync for one.
         _sidecarService.IsSidecarKey(Arg.Any<ResourceKey>()).Returns(true);
 
         var result = await _store.GetSidecarPreferenceAsync(new ResourceKey("doc.cel"));
@@ -161,10 +158,9 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetSidecarPreferenceAsync_SurfacesSidecarReadFailure()
     {
-        // A read failure (not NoSidecar/Broken — those are typed outcomes, but
-        // a Result.Fail from the service) is an unexpected error and should
-        // surface so the caller can log it rather than be silently treated as
-        // "no preference".
+        // A Result.Fail from the sidecar service is an unexpected error, unlike the
+        // typed NoSidecar and Broken outcomes, so it surfaces rather than being
+        // treated as "no preference".
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<SidecarReadResult>.Fail("read failed")));
 

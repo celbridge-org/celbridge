@@ -7,9 +7,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Direct unit test for GetUtilitiesStateCommand. Exercises the command's own catalog-building logic:
-/// the built-in Explorer/Search surfaces, filtering non-utility contributions, and the isShown rule
-/// (the utility that is the active rail surface).
+/// Covers GetUtilitiesStateCommand's catalog building: the built-in Explorer and Search surfaces,
+/// filtering out non-utility contributions, and the reported dock location and isShown state.
 /// </summary>
 [TestFixture]
 public class GetUtilitiesStateCommandTests
@@ -119,8 +118,8 @@ public class GetUtilitiesStateCommandTests
 
         var utilityResource = new ResourceKey("utils:notepad._notepad");
 
-        // The rail is showing Explorer; the utility is not the active rail surface. It is instead docked as a
-        // document tab and is the active document, so it must be reported as docked and shown.
+        // The rail is showing Explorer, so the utility is not the active rail surface. It is instead docked
+        // as a document tab and is the active document, so it must be reported as docked and shown.
         var utilityPanel = Substitute.For<IUtilityPanel>();
         utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
 

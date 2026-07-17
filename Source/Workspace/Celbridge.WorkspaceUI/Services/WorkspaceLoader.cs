@@ -112,10 +112,7 @@ public class WorkspaceLoader
             var initPolicyResult = await resourceService.Policy.InitializeAsync();
 
             // InitializeAsync degrades a missing or unreadable ignore-file to an
-            // empty ignore set, so it does not currently fail. This branch is the
-            // intended handling once [resources] config validation can fail: warn
-            // and continue rather than fail project load, because the *.celbridge
-            // config stays reachable (system-allow) for the user to correct.
+            // empty ignore set, so it does not currently fail.
             if (initPolicyResult.IsFailure)
             {
                 _logger.LogWarning(initPolicyResult, "Failed to initialize resource policy");
@@ -370,9 +367,9 @@ public class WorkspaceLoader
         _userInterfaceService.TitleBar?.ClearShortcutButtons();
     }
 
-    // Creates the persistent surface for every utility instance (bundled before project, each by id) and builds
-    // the rail. The utilities are owned by the documents service for the workspace lifetime. The utility
-    // mechanism is always on; individual utility packages can still gate themselves with a package feature flag.
+    // Creates the persistent surface for every utility instance and builds the rail. The utilities are owned by
+    // the utility service for the workspace lifetime. The utility mechanism is always on. Individual utility
+    // packages can still gate themselves with a package feature flag.
     private async Task BuildUtilities()
     {
         var utilityInstances = GetUtilityInstances();

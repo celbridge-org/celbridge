@@ -6,8 +6,8 @@ namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
 /// Owns the Utility Panel rail state: the ordered rail items, which one is selected, and whether the selected
-/// surface currently holds focus. The rail buttons bind to the per-item IsSelected/IsFocused/IsDocked flags,
-/// so selection and focus updates flow through data binding rather than imperative button mutation.
+/// surface currently holds focus. The rail buttons bind to the per-item IsSelected, IsFocused, and IsDocked
+/// flags.
 /// </summary>
 public partial class UtilityPanelViewModel : ObservableObject
 {
@@ -17,10 +17,8 @@ public partial class UtilityPanelViewModel : ObservableObject
     private WorkspacePanel _focusedPanel = WorkspacePanel.None;
 
     // True from a selection until focus lands on the selected surface. While it is true the accent is shown
-    // optimistically: selecting a surface is a request to focus it, and the focus lands a beat later (after the
-    // shown content is laid out). Rendering the accent immediately avoids a one-frame grey flash, and ignoring
-    // focus reports for other panels while awaiting suppresses the transient bounce that occurs when the
-    // outgoing panel is collapsed (WinUI briefly relocates focus off it before the new surface receives it).
+    // optimistically and focus reports for other panels are ignored, which suppresses the transient bounce as
+    // the outgoing panel is collapsed (WinUI briefly relocates focus off it before the new surface receives it).
     private bool _awaitingSelectionFocus;
 
     /// <summary>
@@ -73,7 +71,7 @@ public partial class UtilityPanelViewModel : ObservableObject
 
     /// <summary>
     /// Reports the currently focused workspace panel so the accent can reflect real focus. While awaiting the
-    /// selection's focus, a report for a different panel is ignored (the transient switch bounce); a report for
+    /// selection's focus, a report for a different panel is ignored (the transient switch bounce). A report for
     /// the selected surface settles the wait.
     /// </summary>
     public void ReconcileFocus(WorkspacePanel focusedPanel)

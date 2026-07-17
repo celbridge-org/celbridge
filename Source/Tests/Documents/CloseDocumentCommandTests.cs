@@ -6,8 +6,6 @@ namespace Celbridge.Tests.Documents;
 /// <summary>
 /// Verifies CloseDocumentCommand's routing: an ordinary document is closed through IDocumentsService.CloseDocument,
 /// while a docked utility is docked back into the Utility Panel (via IUtilityService) instead of destroyed.
-/// Centralizing the decision here means every close path (the tab close button, close shortcuts, the tab context
-/// menu, bulk closes, and programmatic and MCP callers) returns a utility to the panel rather than tearing it down.
 /// </summary>
 [TestFixture]
 public class CloseDocumentCommandTests
@@ -70,7 +68,6 @@ public class CloseDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
 
-        // The utility is docked back into the panel, never destroyed through the close path.
         await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, DockLocation.UtilityPanel);
         await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>());
     }

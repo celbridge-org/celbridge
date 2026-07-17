@@ -27,17 +27,16 @@ public interface IDocumentEditorRegistry
     IReadOnlyList<IDocumentEditorFactory> GetAllFactories();
 
     /// <summary>
-    /// Gets all factories indexed under the specified extension, sorted by
-    /// priority. Direct bucket lookup; does not walk the multi-part suffix
-    /// chain or apply CanHandleResource. Returns an empty list when no
-    /// factory is registered for the extension.
+    /// Gets all factories indexed under the specified extension, sorted by priority, without
+    /// walking the multi-part suffix chain or applying CanHandleResource. Returns an empty
+    /// list when no factory is registered for the extension.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension);
 
     /// <summary>
     /// Gets every factory that can handle the given file, sorted by priority
     /// (most specialized first), deduplicated by editor id and filtered by
-    /// CanHandleResource. Uses the same matching rules as GetFactory.
+    /// CanHandleResource.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource);
 

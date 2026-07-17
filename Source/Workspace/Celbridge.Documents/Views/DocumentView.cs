@@ -54,7 +54,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     private EditorInstanceId _editorId = EditorInstanceId.Empty;
 
-    // Set once by the constructing factory; throws on any subsequent set.
+    // Set once by the constructing factory. Throws on any subsequent set.
     public EditorInstanceId EditorId
     {
         get => _editorId;
@@ -71,16 +71,14 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
-    /// Sets the file resource for the document view.
-    /// Validates the resource exists in the registry and on disk, then sets the ViewModel properties.
-    /// Subclasses can override to add additional logic (call base first).
+    /// Validates that the resource exists in the registry and on disk, then sets the ViewModel properties.
+    /// Subclasses that override this must call base first.
     /// </summary>
     public virtual async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        // The registry only contains project: resources; virtual-root keys (utils:, temp:, logs:) are
-        // addressable but never enumerated in the tree. The ResolveResourcePath + GetInfoAsync checks below
-        // are root-resolver based and validate existence on all roots, so the registry-membership fast path
-        // is gated to project resources.
+        // The registry only contains project: resources. Virtual-root keys (utils:, temp:, logs:) are
+        // addressable but never in the registry, so the ResolveResourcePath and GetInfoAsync checks below
+        // validate their existence on all roots instead.
         if (fileResource.Root == ResourceKey.DefaultRoot
             && ResourceRegistry.GetResource(fileResource).IsFailure)
         {
@@ -112,11 +110,6 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public WritableState WritableState { get; private set; } = WritableState.Writable;
 
-    /// <summary>
-    /// Applies a writable state to the document view. Stores the value and
-    /// invokes OnWritableStateChanged so concrete views can apply the state
-    /// to their native editor surface.
-    /// </summary>
     public void SetWritableState(WritableState state)
     {
         if (WritableState == state)
@@ -129,8 +122,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
-    /// Hook for concrete views to react to a writable-state change. Subclasses
-    /// override to apply the state to their native editor surface.
+    /// Hook for concrete views to apply a writable-state change to their native editor surface.
     /// </summary>
     protected virtual void OnWritableStateChanged()
     {
@@ -145,7 +137,6 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     /// <summary>
     /// Saves the document and sends a DocumentSaveCompletedMessage on success.
-    /// Subclasses should override SaveDocumentContentAsync to implement document-specific save logic.
     /// </summary>
     public async Task<Result> SaveDocument()
     {
@@ -161,7 +152,6 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     /// <summary>
     /// Override this method to implement document-specific save logic.
-    /// The base SaveDocument() will automatically send DocumentSaveCompletedMessage on success.
     /// </summary>
     protected virtual async Task<Result> SaveDocumentContentAsync()
     {

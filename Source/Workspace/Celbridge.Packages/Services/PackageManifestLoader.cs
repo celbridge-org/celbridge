@@ -8,7 +8,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Parses package.toml and referenced document TOML files to produce EditorContribution objects.
-/// Handles the two-level manifest structure: package identity + document contributions.
+/// Handles the two-level manifest structure: package identity + editor contributions.
 /// </summary>
 public static class PackageManifestLoader
 {
@@ -51,8 +51,8 @@ public static class PackageManifestLoader
     /// secrets populates PackageInfo.Secrets for WebView injection.
     /// devToolsBlocked permanently disables DevTools on the package's WebViews.
     /// origin tags PackageInfo so downstream read sites pick the right IO path.
-    /// reader is the file-read primitive. Null selects DirectPackageReader (direct disk), the legacy
-    /// behaviour for callers (tests, bundled discovery) with no IResourceFileSystem to route through.
+    /// reader is the file-read primitive. Null selects DirectPackageReader (direct disk) for callers with no
+    /// IResourceFileSystem to route through, such as tests and bundled discovery.
     /// </summary>
     public static Result<Package> LoadPackage(
         string packageTomlPath,
@@ -351,8 +351,7 @@ public static class PackageManifestLoader
             }
 
             // An editor with external_content = true sources its content from outside the file bytes,
-            // so a starter template would never be written to disk. The combination is meaningless,
-            // and accepting it silently hides an authoring mistake.
+            // so a starter template would never be written to disk.
             if (templates.Count > 0 &&
                 (GetBoolOrNull(documentTable, ExternalContentKey) ?? false))
             {
@@ -361,10 +360,8 @@ public static class PackageManifestLoader
                     $"Templates cannot be used with external content.");
             }
 
-            // The instance id is composed as "{packageName}.{documentId}" at factory-construction time.
-            // Validate the composed id here so plugin authors fail fast at manifest parse with a clear
-            // message, rather than hitting an EditorInstanceId constructor throw later when someone
-            // tries to open a file of this type.
+            // The instance id is composed as "{packageName}.{documentId}" at factory-construction time. It is
+            // validated here so a bad id is reported at manifest parse rather than at editor construction.
             var composedEditorId = $"{packageInfo.Name}.{documentId}";
             if (!EditorInstanceId.IsValid(composedEditorId))
             {

@@ -5,7 +5,7 @@ namespace Celbridge.Packages;
 /// <summary>
 /// An editor contributed by a package, parsed from a TOML editor manifest. The package supplies the
 /// entire editor UI via an HTML entry point hosted in a WebView, communicating with the host via the
-/// IHostDocument JSON-RPC protocol. The presence of a UtilityDescriptor marks a utility editor.
+/// IHostDocument JSON-RPC protocol.
 /// </summary>
 public partial record EditorContribution
 {
@@ -52,11 +52,9 @@ public partial record EditorContribution
     public bool Binary { get; init; } = false;
 
     /// <summary>
-    /// Whether this editor sources its content from outside the file bytes
-    /// (e.g., the JS fetches the file directly from the project virtual host,
-    /// or a host-side IDocumentContentProvider supplies generated content).
-    /// When true, the host returns an empty content string from InitializeAsync / LoadAsync
-    /// unless a registered IDocumentContentProvider matches the resource.
+    /// Whether this editor sources its content from outside the file bytes.
+    /// When true, the host returns empty content unless a registered
+    /// IDocumentContentProvider matches the resource.
     /// </summary>
     public bool ExternalContent { get; init; } = false;
 
@@ -68,12 +66,11 @@ public partial record EditorContribution
 
     /// <summary>
     /// Utility metadata parsed from the [utility] section, or null for an ordinary file-type editor.
-    /// When present this contribution is a utility rather than an extension-claiming editor.
     /// </summary>
     public UtilityDescriptor? UtilityDescriptor { get; init; }
 
     /// <summary>
-    /// Whether this contribution is a utility, derived from the presence of a UtilityDescriptor.
+    /// Whether this contribution is a utility rather than an editor that claims file extensions.
     /// </summary>
     public bool IsUtility => UtilityDescriptor is not null;
 

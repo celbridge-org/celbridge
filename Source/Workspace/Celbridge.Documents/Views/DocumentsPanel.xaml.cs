@@ -14,9 +14,8 @@ using IDocumentsLogger = Logging.ILogger<DocumentsPanel>;
 
 /// <summary>
 /// Where to place a utility when docking it into a document tab. A null Address docks into the active
-/// document's section and appends the tab, matching the interactive "Open as document" behaviour; a non-null
-/// Address targets a specific section and tab order, used when restoring a docked utility to its saved
-/// position. Activate selects the docked tab and makes it the active document.
+/// document's section and appends the tab. A non-null Address targets a specific section and tab order.
+/// Activate selects the docked tab and makes it the active document.
 /// </summary>
 public record DockUtilityPlacement(DocumentAddress? Address, bool Activate);
 
@@ -37,18 +36,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     public DocumentsPanelViewModel ViewModel { get; }
 
-    /// <summary>
-    /// Gets or sets the current number of document sections (1-3).
-    /// </summary>
     public int SectionCount
     {
         get => SectionContainer.SectionCount;
         set => SectionContainer.SetSectionCount(value);
     }
 
-    /// <summary>
-    /// Gets or sets the active document - the document being inspected and where new documents open.
-    /// </summary>
     public ResourceKey ActiveDocument
     {
         get => SectionContainer.ActiveDocument;
@@ -125,8 +118,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void OnSectionCloseRequested(DocumentSection section, ResourceKey fileResource)
     {
         // A docked utility is never destroyed: closing its tab docks it back into the Utility Panel instead.
-        // That decision is centralized in CloseDocumentCommand so every close path (this close button included)
-        // shares it, so the tab close button routes through the normal close like any other document.
         ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
@@ -137,15 +128,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void OnSectionCountChanged(int newCount)
     {
-        // Update toolbar to reflect new section count
         _documentToolbar.UpdateSectionCount(newCount);
-        // Note: Ratios are persisted via OnSectionRatiosChanged which fires after count changes
     }
 
     private void OnSectionRatiosChanged(List<double> ratios)
     {
-        // Notify the ViewModel to persist the section ratios
-        // The section count is inferred from the ratios list length
+        // The section count is inferred from the ratios list length.
         ViewModel.OnSectionRatiosChanged(ratios);
     }
 
@@ -157,7 +145,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     }
 
     // The insertion slot is where the drop landed in the target section's tab order. The open is awaited
-    // so focus can transfer to the resulting document once its view exists; the command queue serializes
+    // so focus can transfer to the resulting document once its view exists. The command queue serializes
     // the opens either way, so this does not change the order documents open in.
     private async Task HandleDroppedFiles(DocumentSection targetSection, List<IResource> resources, int insertionSlot)
     {
@@ -375,8 +363,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         DispatcherQueue.TryEnqueue(() =>
         {
             // Route through the registry grant so the active document's web content gets keyboard focus
-            // (native first responder on macOS, managed focus on Windows) and the focus is reported. This
-            // closes the latent gap where entering Focus or Presentation layout focused without reporting.
+            // (native first responder on macOS, managed focus on Windows) and the focus is reported.
             var webView = VisualTree.FindDescendant<WebView2>(SectionContainer);
             if (webView is not null)
             {
@@ -569,9 +556,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         UpdateEditorDisplayName(documentTab, documentView.EditorId);
 
-        // Apply the manifest title and icon for paths that only learn the editor id from the created view
-        // (the launcher path already stamped it above; this is idempotent). Runs before UpdateAllTabDisplayNames
-        // so the utility title is not overwritten by filename disambiguation.
+        // Apply the manifest title and icon for paths that only learn the editor id from the created view.
+        // The launcher path already stamped it above, and re-applying is idempotent. Runs before
+        // UpdateAllTabDisplayNames so the utility title is not overwritten by filename disambiguation.
         ApplyUtilityTabMetadata(documentTab, documentView.EditorId);
 
         targetSectionForNew.RefreshSelectedTab();
@@ -659,9 +646,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     /// <summary>
     /// Docks a utility into a document tab: creates a tab hosting the utility's borrowed controller (reusing its
-    /// live WebView) and stamps the utility tab metadata. The placement selects the target section and tab order
-    /// and whether the tab is activated; the controller's WebView is reparented into the tab once it is in the
-    /// visual tree.
+    /// live WebView) and stamps the utility tab metadata. The controller's WebView is reparented into the tab
+    /// once it is in the visual tree.
     /// </summary>
     public Result DockUtility(CustomUtilityView panelView, DockUtilityPlacement placement)
     {
@@ -905,8 +891,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Section.SelectTab alone does not update the container's active-section
         // / active-document tracking, so the new tab would be selected within
         // its section but not surfaced as the workspace's active document.
-        // Route through SectionContainer.ActivateDocument, which performs both
-        // the tab selection and the container-level activation.
         SectionContainer.ActivateDocument(fileResource, location.Section.SectionIndex);
         return Result.Ok();
     }

@@ -20,17 +20,14 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// The hosting surface a consumer supplies to a CustomEditorController: the workspace panel the
-/// editor's web surface reports focus through, and the side effect to run when it gains focus. The document
-/// view reports the Documents panel and marks itself the active document; a panel host reports its own panel.
+/// editor's web surface reports focus through, and the side effect to run when it gains focus.
 /// </summary>
 public sealed record CustomEditorFocusContext(WorkspacePanel Panel, Action OnFocusGained);
 
 /// <summary>
 /// Drives a custom (WebView-based) editor: it acquires and tears down the WebView, owns the JSON-RPC
 /// host channel and its RPC targets, mirrors app/view state, bridges the webview_* tools, coordinates saves
-/// and external reloads, and implements the edit-target and link-routing behaviour. It has no dependency on
-/// DocumentView, the documents panel, or tab machinery; CustomDocumentView and (later) a panel view are
-/// thin adapters that construct one and forward their lifecycle to it.
+/// and external reloads, and implements the edit-target and link-routing behaviour.
 /// </summary>
 public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarget
 {
@@ -55,7 +52,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly CustomDocumentViewModel _viewModel;
 
     // The container the WebView currently lives in, and the focus identity it reports through. Both are
-    // reassigned by Redock when a utility moves between dock locations; the WebView is moved, never rebuilt.
+    // reassigned by Redock when a utility moves between dock locations. The WebView is moved, never rebuilt.
     private Panel _webViewContainer;
     private CustomEditorFocusContext _focusContext;
 
@@ -154,9 +151,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     /// <summary>
     /// Initializes the editor for the given contribution: acquires and configures the WebView and host, then
-    /// completes when the WebView and host are ready for RPCs. The init runs once; later calls await the same
-    /// result. The editor's own notifyContentLoaded signal is intentionally not awaited here, because some
-    /// heavyweight editors take seconds to import content and blocking open on that would feel slow.
+    /// completes when the WebView and host are ready for RPCs. The init runs once, and later calls await the
+    /// same result. The editor's own notifyContentLoaded signal is not awaited here.
     /// </summary>
     public async Task<Result> InitializeAsync(EditorContribution contribution)
     {
@@ -304,7 +300,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     // Configures a live WebView (CoreWebView2 ready): host channel, RPC targets, tool bridge, navigation gate,
-    // and the editor load. Shared by the pooled and in-place init paths.
+    // and the editor load.
     private async Task ConfigureWebViewHostAsync(ICustomEditorLoader editorLoader)
     {
         Guard.IsNotNull(_contribution);
@@ -316,7 +312,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         WebView.CoreWebView2.Settings.AreDevToolsEnabled =
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
-        // Register this editor's web surface; it hosts an edit target (this) for the Edit commands.
+        // Register this editor's web surface. It hosts an edit target (this) for the Edit commands.
         RegisterWebSurfaceFocus();
 
         // Every custom editor's assets (its lib, the shared client) are served from the loopback
@@ -405,7 +401,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _viewState = stateService.CreateViewState();
         _viewState.SetValue("writable", _writableState.ToString());
-        // The preview find bar is built only where the WebView backend has no find bar of its own; where it
+        // The preview find bar is built only where the WebView backend has no find bar of its own. Where it
         // does (Chromium's WebView2), the package stays hands-off and Ctrl+F reaches the built-in bar.
         _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
         _viewStateConnection = _viewState.RegisterConnection(
@@ -480,13 +476,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         if (WebView is null)
         {
-            // Not yet initialized; the pending init adds the WebView to this container and registers focus.
+            // Not yet initialized. The pending init adds the WebView to this container and registers focus.
             _webViewContainer = newContainer;
             return;
         }
 
-        // Drop the old registration first so the registry never holds a stale host identity, then move the
-        // WebView across containers and register it against the new host.
+        // Drop the old registration first so the registry never holds a stale host identity.
         if (WebView.CoreWebView2 is not null)
         {
             _webViewFocusRegistry.Unregister(WebView.CoreWebView2);
@@ -653,7 +648,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     /// <summary>
     /// Applies a writable state: stores it and mirrors it to the WebView over the viewState channel. The store
-    /// may not exist yet (set before init); the seed at registration captures the current value.
+    /// may not exist yet (set before init), in which case the seed at registration captures the current value.
     /// </summary>
     public void SetWritableState(WritableState state)
     {
@@ -749,7 +744,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(ReloadStateWaitSeconds)));
             if (completed != reloadComplete.Task)
             {
-                // Expected while the editor transport is mid-reconnect; the rebind resync re-runs the reload.
+                // Expected while the editor transport is mid-reconnect. The rebind resync re-runs the reload.
                 _logger.LogWarning(
                     "Editor did not confirm external reload within {Seconds}s. File: {File}",
                     ReloadStateWaitSeconds, _viewModel.FilePath);
@@ -776,8 +771,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         // Race the request against a hard timeout and abandon it on timeout. A CancellationToken does
         // not work here: StreamJsonRpc cancellation waits for the editor to acknowledge the cancel, and
-        // the unresponsive editor is exactly the failure being guarded against. State capture is
-        // best-effort, so abandoning the request and closing without state is the correct degradation.
+        // the unresponsive editor is exactly the failure being guarded against.
         var requestStateTask = Host.RequestStateAsync();
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(EditorStateRequestTimeoutSeconds));
         var completedTask = await Task.WhenAny(requestStateTask, timeoutTask);
@@ -899,7 +893,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     /// <summary>
     /// Sends a navigate-to-location request to the editor. The location is a JSON object describing the target
-    /// line and column range; a null host or empty location is a no-op.
+    /// line and column range. A null host or empty location is a no-op.
     /// </summary>
     public async Task<Result> NavigateToLocationAsync(string location)
     {
@@ -1087,7 +1081,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _forceReload = true;
         }
 
-        // Raised on the WebSocket endpoint's request thread; marshal to the UI thread where the
+        // Raised on the WebSocket endpoint's request thread, so marshal to the UI thread where the
         // reload pipeline runs.
         _webViewContainer.DispatcherQueue.TryEnqueue(() => ViewModel_ReloadRequested(this, EventArgs.Empty));
     }
@@ -1125,7 +1119,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "External reload failed for contribution document");
+                _logger.LogError(ex, "External reload failed for custom editor");
             }
 
             // Drain any pending request. Skip the follow-up reload when the disk

@@ -5,9 +5,7 @@ namespace Celbridge.Documents;
 
 /// <summary>
 /// How an upcoming external reload should treat the editor's current view state.
-/// View state is editor-specific — concrete examples include scroll position, cursor
-/// or selection, zoom level, and fold state — and the editor decides what to capture
-/// and restore.
+/// View state is editor-specific, e.g. scroll position, selection, zoom level, and fold state.
 /// </summary>
 public enum ReloadHint
 {
@@ -19,8 +17,7 @@ public enum ReloadHint
 
     /// <summary>
     /// The editor adopts the view state encoded in the on-disk file, or its default
-    /// view state when the file format does not persist view state. Used by commands
-    /// whose purpose is to update the document's persisted view.
+    /// view state when the file format does not persist view state.
     /// </summary>
     DiskWinsOnViewState
 }
@@ -72,7 +69,7 @@ public interface IDocumentsService
 
     /// <summary>
     /// Returns the active document's view as a findable document when it owns a host find bar, otherwise null
-    /// (including when no workspace is loaded). Used by the platform Find affordance to gate and drive find.
+    /// (including when no workspace is loaded).
     /// </summary>
     IFindableDocument? GetActiveFindableDocument();
 
@@ -144,17 +141,15 @@ public interface IDocumentsService
     Task StoreDocumentEditorStates();
 
     /// <summary>
-    /// Saves editor state for a single document. Called when a document tab is about to close
-    /// so its state survives close/reopen within the same workspace session. Pass a non-empty state
-    /// string to persist, or null/empty to clear any existing entry for the resource.
+    /// Saves editor state for a single document. Pass a non-empty state string to persist,
+    /// or null/empty to clear any existing entry for the resource.
     /// </summary>
     Task StoreDocumentEditorState(ResourceKey fileResource, string? state);
 
     /// <summary>
-    /// Records a hint that the next watcher-driven reload of the resource should
-    /// honour. Overwrites any prior hint for the same resource; hints expire if
-    /// not consumed within a short window so they do not bleed into later
-    /// unrelated reloads.
+    /// Records a hint that the next watcher-driven reload of the resource should honour,
+    /// overwriting any prior hint for the same resource. Hints expire if not consumed
+    /// within a short window.
     /// </summary>
     void RegisterReloadHint(ResourceKey fileResource, ReloadHint hint);
 

@@ -2,7 +2,7 @@ namespace Celbridge.Documents;
 
 /// <summary>
 /// Editor priority for conflict resolution when multiple editors support the same file type.
-/// When multiple factories support the same extension, lower priority values win.
+/// Lower values win.
 /// </summary>
 public enum EditorPriority
 {
@@ -33,25 +33,19 @@ public interface IDocumentEditorFactory
     string DisplayName { get; }
 
     /// <summary>
-    /// The file extensions this factory handles (e.g., ".md", ".txt", ".cs").
-    /// Extensions should be lowercase with leading dot. Multi-part forms (a name
-    /// ending in more than one dotted segment) are also accepted; the registry
-    /// resolves longest match first when a file's name matches more than one
-    /// registered suffix.
+    /// The file extensions this factory handles, lowercase with a leading dot (e.g. ".md", ".txt", ".cs").
+    /// Multi-part forms, a name ending in more than one dotted segment, are also accepted.
     /// </summary>
     IReadOnlyList<string> SupportedExtensions { get; }
 
     /// <summary>
-    /// Exact file names this factory handles (e.g., "package.toml"). Filename
-    /// matches are tried before extension matches. Names are compared
-    /// case-insensitively. Defaults to an empty list when the factory matches
-    /// purely by extension.
+    /// Exact file names this factory handles (e.g. "package.toml"), compared case-insensitively.
+    /// Empty when the factory matches purely by extension.
     /// </summary>
     IReadOnlyList<string> SupportedFilenames { get; }
 
     /// <summary>
     /// Priority for conflict resolution when multiple factories support the same extension.
-    /// Specialized editors take precedence over general-purpose editors.
     /// </summary>
     EditorPriority Priority { get; }
 

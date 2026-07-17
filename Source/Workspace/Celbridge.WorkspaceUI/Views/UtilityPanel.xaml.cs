@@ -22,13 +22,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly ISpotlightRegistry _spotlightRegistry;
     private readonly ICommandService _commandService;
 
-    // Spotlight landmark ids for the built-in rail buttons. Seeded as descriptors in SpotlightLandmarks and
-    // documented in the app_spotlight guide, so they must match those exactly.
+    // Spotlight landmark ids for the built-in rail buttons. These must match the descriptors seeded in
+    // SpotlightLandmarks exactly.
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
 
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
-    // utility id. The view owns content hosting and focus acquisition; the view model owns the rail selection
+    // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
     // and focus state, which the buttons bind to.
     private readonly Dictionary<EditorInstanceId, UtilityButton> _buttons = new();
     private readonly Dictionary<EditorInstanceId, ContentControl> _contentControls = new();
@@ -78,9 +78,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         Unloaded += UtilityPanel_Unloaded;
     }
 
-    // Registers the two built-in rail items with the view model, configures their buttons (icon, spotlight
-    // landmark id, click routing), binds them to their item view models, and records their content hosts and
-    // focus callbacks. Tooltips are applied later in ApplyTooltips once the localizer strings are read.
+    // Tooltips are applied later in ApplyTooltips, once the localizer strings are read.
     private void InitializeBuiltInButtons()
     {
         var explorerItem = ViewModel.AddItem(BuiltInUtilityIds.Explorer, WorkspacePanel.Explorer);
@@ -104,8 +102,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _focusActions[BuiltInUtilityIds.Search] = SearchPanel.FocusSearchInput;
     }
 
-    // Binds a rail button's visual state to its item view model, so selection and focus changes propagate
-    // through data binding rather than imperative mutation.
+    // Binds a rail button's visual state to its item view model.
     private static void BindButton(UtilityButton button, UtilityItemViewModel item)
     {
         button.SetBinding(UtilityButton.IsSelectedProperty, new Binding
@@ -133,10 +130,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ApplyTooltips();
 
         // Register how the hosted panels take keyboard focus, so the focus service can return focus to
-        // whichever is focused after a modal dialog closes or the resource tree rebuilds. Only Explorer
-        // and Search register a handler by design: the Documents and Console web surfaces and the
-        // Inspector intentionally have none, so focus restore is a deliberate no-op for those and the
-        // user re-focuses them with a single click.
+        // whichever is focused after a modal dialog closes or the resource tree rebuilds.
         _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, ExplorerPanel.FocusPanel);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Search, SearchPanel.FocusSearchInput);
 
@@ -169,13 +163,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public void ShowUtility(EditorInstanceId utilityId)
     {
-        // A utility docked as a document activates its document tab (without changing the shown panel surface or
-        // the rail highlight); a utility in the panel selects its rail surface.
+        // A utility docked as a document activates its document tab, without changing the shown panel surface or
+        // the rail highlight. A utility in the panel selects its rail surface.
         if (_dockedUtilityResources.TryGetValue(utilityId, out var documentResource))
         {
-            // Activate the docked utility's tab (a state change, so a command), then request an attention flash
-            // so the reveal gives visible feedback even when the tab was already the active document. The flash
-            // is a transient view effect, sent as a notification rather than run as a command.
+            // Activate the docked utility's tab, then request an attention flash so the reveal gives visible
+            // feedback even when the tab was already the active document.
             _commandService.Execute<IActivateDocumentCommand>(command => command.FileResource = documentResource);
             _messengerService.Send(new FlashDocumentMessage(documentResource));
             return;
@@ -252,7 +245,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // unrelated chrome (a document tab), clobbering the web view's just-reported CustomUtility panel.
         // Park managed focus on this utility's host - it carries the CustomUtility panel declaration - so
         // the collapse has nothing to relocate. Use Pointer state to match the focus the host receives
-        // naturally when switching in from a managed panel (which leaves web-view typing working);
+        // naturally when switching in from a managed panel, which leaves web-view typing working.
         // Programmatic focus would instead route keys away from the web content on macOS.
         if (IsCustomUtility(utilityId))
         {
@@ -264,7 +257,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         CollapseContentExcept(content);
     }
 
-    // Collapses every content host except the one shown.
     private void CollapseContentExcept(ContentControl shown)
     {
         foreach (var content in _contentControls.Values)
@@ -277,8 +269,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
     }
 
-    // Broadcasts the now-active rail surface as a unified utility id, so app-level state (e.g. app_get_state)
-    // can report it without touching this UI object off the UI thread.
+    // Broadcasts the now-active rail surface, so app-level state (e.g. app_get_state) can report it without
+    // touching this UI object off the UI thread.
     private void NotifyActiveUtilityChanged()
     {
         _messengerService.Send(new ActiveUtilityChangedMessage(ActiveUtilityId.ToString()));
@@ -432,10 +424,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             && utilityId != BuiltInUtilityIds.Search;
     }
 
-    // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button",
-    // matching the AutomationId set on the button and the app_spotlight guide so an agent can resolve it. The rail
-    // is always visible when the Primary region is shown, so these landmarks need only a region reveal, matching
-    // the built-in Explorer and Search rail buttons.
+    // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".
+    // This must match the AutomationId set on the button.
     private static string CustomLandmarkId(EditorInstanceId utilityId)
     {
         return $"{utilityId}-utility-button";

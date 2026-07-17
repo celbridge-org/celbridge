@@ -6,7 +6,7 @@ namespace Celbridge.Workspace;
 /// <summary>
 /// Owns the workspace's utilities: their lifecycle (created at project load, torn down at unload), their save
 /// tick, and the dock orchestration that moves each utility's single WebView between the Utility Panel and a
-/// document tab. Presentation lives in IUtilityPanel; this is the logic behind it.
+/// document tab.
 /// </summary>
 public interface IUtilityService
 {
@@ -19,9 +19,8 @@ public interface IUtilityService
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given
-    /// address, reparenting its already-instantiated WebView out of the Utility Panel. Unlike an interactive
-    /// dock this does not activate, flash, or change the shown panel surface. Fails if no utility owns the
-    /// resource.
+    /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
+    /// or change the shown panel surface. Fails if no utility owns the resource.
     /// </summary>
     Result RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
 
@@ -34,15 +33,14 @@ public interface IUtilityService
 
     /// <summary>
     /// Docks a utility at the given location, reparenting its single persistent WebView to that location's
-    /// container (the Utility Panel rail or a document tab in the active document's section) and reusing the
-    /// same instance. Reveals or activates the utility at the destination; a no-op when it is already there.
+    /// container (the Utility Panel rail or a document tab in the active document's section). Reveals or
+    /// activates the utility at the destination. A no-op when it is already there.
     /// </summary>
     Task<Result> DockUtilityAsync(EditorInstanceId utilityId, DockLocation location);
 
     /// <summary>
     /// Returns the id of the utility currently docked as the given document resource, or null when the resource
-    /// is not a docked utility. The close path uses this to dock a utility back into the panel rather than
-    /// destroy its document tab.
+    /// is not a docked utility.
     /// </summary>
     EditorInstanceId? GetDockedUtilityId(ResourceKey resource);
 

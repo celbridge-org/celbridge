@@ -29,7 +29,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         var utilityPanel = workspaceService.UtilityPanel;
 
         // Built-in utilities (Explorer, Search) are not contributions and are never docked, so a requested
-        // Location is ignored for them; reveal them directly.
+        // Location is ignored for them.
         if (UtilityId == BuiltInUtilityIds.Explorer
             || UtilityId == BuiltInUtilityIds.Search)
         {
@@ -37,15 +37,14 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
             return Result.Ok();
         }
 
-        // Guard against the live utilities rather than the declared contributions: a utility that was declared
-        // but skipped at load cannot be shown, and ShowUtility below reveals nothing for an id it does not hold.
+        // Guard against the live utilities rather than the declared contributions: a utility that was
+        // declared but skipped at load cannot be shown.
         var utilityService = workspaceService.UtilityService;
         if (!utilityService.HasUtility(UtilityId))
         {
             return Result.Fail($"No utility found with id '{UtilityId}'");
         }
 
-        // When a target location is given, move the utility there first; otherwise leave it where it is.
         if (Location is not null)
         {
             var dockResult = await utilityService.DockUtilityAsync(UtilityId, Location.Value);

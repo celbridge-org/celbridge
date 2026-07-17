@@ -151,9 +151,7 @@ public class PackageRegistry
         foreach (var contribution in contributions)
         {
             // A utility owns one fixed resource and is never created as an ordinary project file, so it
-            // must not appear as a creatable type in the New File dialog. The skip is also structural:
-            // a utility has no [[document_file_types]] entry to offer, so the FileTypes[0] read below
-            // would be meaningless for it.
+            // must not appear as a creatable type in the New File dialog.
             if (contribution.IsUtility)
             {
                 continue;
@@ -278,9 +276,7 @@ public class PackageRegistry
     }
 
     // Rejects packages whose document-type registration declares any file
-    // extension inside the reserved .cel sidecar namespace. The check runs
-    // after the manifest parses cleanly so the failure reason names the
-    // offending extension rather than a generic parse error.
+    // extension inside the reserved .cel sidecar namespace.
     private Result CheckReservedExtensions(Package package)
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
@@ -380,8 +376,7 @@ public class PackageRegistry
         }
 
         // Any group of bundled packages that share a name is a first-party build bug.
-        // Skip every colliding package so the conflict is visible rather than silently
-        // picking a winner, and log at Error level so CI and developers notice.
+        // Skip every colliding package rather than silently picking a winner.
         foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
@@ -421,11 +416,7 @@ public class PackageRegistry
         var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
 
         // Walk the project's visible resource set for package.toml manifests. A
-        // manifest is a package wherever it lives under the project root. The
-        // file-system gateway applies the project's ignore rules, so excluded
-        // content (vendored assets, build output) is never scanned. Descent stops
-        // at each package root so a package's own content is not searched for
-        // nested manifests.
+        // manifest is a package wherever it lives under the project root.
         var manifestResources = new List<ResourceKey>();
         await CollectProjectManifestsAsync(resourceFileSystem, ResourceKey.Empty, manifestResources);
 
@@ -496,9 +487,7 @@ public class PackageRegistry
 
             // Any other dotted name claims a namespace whose ownership a registry
             // would need to validate. Until such a registry exists, project
-            // packages must use flat global-namespace names. Allowing arbitrary
-            // dotted names now would let them collide with future registered
-            // namespaces once the registry is introduced.
+            // packages must use flat global-namespace names.
             if (package.Info.Name.Contains('.'))
             {
                 _logger.LogWarning(
@@ -530,8 +519,7 @@ public class PackageRegistry
 
         // When two project packages share a name we cannot tell the legitimate
         // one from an impostor, so skip every colliding package rather than pick
-        // a winner based on filesystem ordering. The user sees a missing editor,
-        // investigates, and resolves the conflict.
+        // a winner based on filesystem ordering.
         foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
@@ -593,11 +581,8 @@ public class PackageRegistry
         }
     }
 
-    // Runs after dedup so that duplicate-id packages rejected by the group
-    // passes do not appear in the log. Emits one Info-level line per accepted
-    // package so a support reader can tell at a glance which packages loaded,
-    // whether each is bundled or project-provided, and which file extensions
-    // each document editor handles.
+    // Emits one Info-level line per accepted package. Runs after dedup so
+    // packages rejected as duplicates do not appear in the log.
     private void LogDiscoveredPackages()
     {
         foreach (var package in _bundledPackages)

@@ -20,14 +20,10 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     public override string DisplayName => _resolvedDisplayName;
 
     /// <summary>
-    /// The editor instance this factory was built from. Exposed so the documents panel and the utility
-    /// seeder can reach the utility metadata (glyph, tooltip, template) when a utility is opened.
+    /// The editor instance this factory was built from.
     /// </summary>
     public EditorInstance Instance => _instance;
 
-    /// <summary>
-    /// The contribution the instance's editor was declared by.
-    /// </summary>
     public EditorContribution Contribution => _instance.Contribution;
 
     public override bool IsUtility => _instance.Contribution.IsUtility;
@@ -53,9 +49,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     {
         // The manifest loader requires every contribution to set display_name, so
         // DisplayName is guaranteed non-empty here. The value may be a localization
-        // key or a plain string. Run it through the package's localization dictionary
-        // and return the raw value when the key is not present (which also handles
-        // plain strings).
+        // key or a plain string.
         var displayKey = _instance.Contribution.DisplayName;
 
         var localizationStrings = localizationService.LoadStrings(_instance.Contribution.Package);

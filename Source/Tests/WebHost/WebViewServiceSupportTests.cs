@@ -74,8 +74,7 @@ public class WebViewServiceSupportTests
     public void GetWebViewToolSupport_NoWorkspaceLoaded_ReportsNoProjectLoaded()
     {
         // Without a workspace there can be no open documents, so the resource
-        // cannot be supported. The reason names the missing project so callers
-        // surface a useful message rather than a generic "not registered" one.
+        // cannot be supported.
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
         var support = _webViewService.GetWebViewToolSupport(new ResourceKey("any.html"));

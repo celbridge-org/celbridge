@@ -5,13 +5,6 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Commands;
 
-// Agent-facing state reads split by the shape of the state. Many-source, UI-thread-bound structural state (open
-// tabs, the utility catalog) is read live through a query command like this one: routing through the command
-// queue marshals the read onto the UI thread and serializes it after prior commands, so callers observe state
-// consistent with every previously enqueued command. Few-source scalar state (see AppStateProvider) is cached
-// from broadcasts instead, because keeping such a cache coherent across the many paths that mutate structural
-// state would drift. A general "cache everything" scheme was rejected: it moves the UI-thread read from
-// per-query to per-change, which is more work for agent workloads.
 public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
@@ -50,8 +43,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 
         var activeUtilityId = utilityPanel.ActiveUtilityId;
 
-        // A utility is docked when its backing resource is open as a document. Capture the open-document
-        // resources and the active document so each utility's mode and shown state can be resolved below.
+        // A utility is docked when its backing resource is open as a document.
         var openResources = new HashSet<ResourceKey>();
         foreach (var openDocument in documentsService.GetOpenDocuments())
         {
@@ -77,8 +69,6 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             IsShown: activeUtilityId == BuiltInUtilityIds.Search));
 
         // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
-        // When it is a document it is shown if its tab is the active document; when it is in the panel it is
-        // shown if it is the active rail surface.
         foreach (var instance in packageService.GetEditorInstances())
         {
             var utility = instance.Contribution;

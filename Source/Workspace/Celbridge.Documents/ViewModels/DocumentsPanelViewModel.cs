@@ -142,9 +142,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public record class EditorDisplayInfo(EditorInstanceId EditorId, string EditorDisplayName);
 
-    // Looks up the display name for the supplied editor id. Returns an empty
-    // label when only one factory claims the extension (no disambiguation
-    // needed); null when the editor id is empty or unregistered.
+    // Looks up the display name for the supplied editor id. Returns an empty label when only one
+    // factory claims the extension (no disambiguation needed), and null when the editor id is empty
+    // or unregistered.
     public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, EditorInstanceId editorId)
     {
         if (editorId.IsEmpty)
@@ -203,7 +203,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     // Resolves the tab title and glyph for a utility document from its editor factory, or null when the editor
     // is not a utility. The title is the factory's localized display name (a utility defaults its display name
-    // to the tooltip key); the glyph comes from the manifest.
+    // to the tooltip key). The glyph comes from the manifest.
     public UtilityTabInfo? ResolveUtilityTabInfo(EditorInstanceId editorId)
     {
         if (editorId.IsEmpty)

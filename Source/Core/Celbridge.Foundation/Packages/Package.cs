@@ -2,7 +2,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Represents a discovered package, containing its identity information
-/// and all document editor contributions it provides.
+/// and all editor contributions it provides.
 /// </summary>
 public record Package
 {
@@ -12,7 +12,7 @@ public record Package
     public PackageInfo Info { get; init; } = new();
 
     /// <summary>
-    /// Document editor contributions provided by this package.
+    /// Editor contributions provided by this package.
     /// </summary>
     public IReadOnlyList<EditorContribution> DocumentEditors { get; init; } = [];
 }

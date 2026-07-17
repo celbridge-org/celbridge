@@ -4,9 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Reveals a utility by its fully-qualified id, optionally moving it to a dock location first. Resolves the
-/// whole id space: a built-in id (BuiltInUtilityIds) selects its Utility Panel rail tab, and a custom
-/// utility is revealed wherever it lives. This is the single reveal entry point behind the agent tools.
+/// Reveals a utility by its fully-qualified id, optionally moving it to a dock location first.
+/// A built-in id selects its Utility Panel rail tab, while a custom utility is revealed wherever it lives.
 /// </summary>
 public interface IShowUtilityCommand : IExecutableCommand
 {
