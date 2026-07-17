@@ -20,8 +20,9 @@ public record class LayoutModeInfo(
 /// <summary>
 /// Result returned by app_get_state, reporting the running version, project load
 /// state, feature flag states, the focused panel ("None" when unfocused), the utility
-/// currently shown in the Utility Panel rail ("" when no project is loaded), the current
-/// panel layout, and the spotlightable landmark ids app_spotlight accepts.
+/// currently shown in the Utility Panel rail ("" when no project is loaded), whether the
+/// platform supplies a native menu bar, the current panel layout, and the spotlightable landmark ids
+/// app_spotlight accepts.
 /// </summary>
 public record class AppStateResult(
     string Version,
@@ -31,7 +32,8 @@ public record class AppStateResult(
     string FocusedPanel,
     string ActiveUtility,
     LayoutModeInfo LayoutMode,
-    IReadOnlyList<string> SpotlightLandmarks);
+    IReadOnlyList<string> SpotlightLandmarks,
+    bool UsesNativeMenuBar = false);
 
 /// <summary>
 /// Builds the AppStateResult snapshot describing current app and workspace state.
@@ -49,6 +51,7 @@ internal sealed class AppStateProvider : IAppStateProvider
     private static readonly IReadOnlyList<string> KnownFeatureFlagNames = ReadFeatureFlagNames();
 
     private readonly IAppEnvironment _environmentService;
+    private readonly IPlatformInfo _platformInfo;
     private readonly IProjectService _projectService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IFocusService _focusService;
@@ -62,6 +65,7 @@ internal sealed class AppStateProvider : IAppStateProvider
 
     public AppStateProvider(
         IAppEnvironment environmentService,
+        IPlatformInfo platformInfo,
         IProjectService projectService,
         IFeatureFlags featureFlags,
         IFocusService focusService,
@@ -70,6 +74,7 @@ internal sealed class AppStateProvider : IAppStateProvider
         IMessengerService messengerService)
     {
         _environmentService = environmentService;
+        _platformInfo = platformInfo;
         _projectService = projectService;
         _featureFlags = featureFlags;
         _focusService = focusService;
@@ -122,7 +127,8 @@ internal sealed class AppStateProvider : IAppStateProvider
             FocusedPanel: focusedPanel,
             ActiveUtility: activeUtility,
             LayoutMode: layoutMode,
-            SpotlightLandmarks: spotlightLandmarks);
+            SpotlightLandmarks: spotlightLandmarks,
+            UsesNativeMenuBar: _platformInfo.UsesNativeMenuBar);
     }
 
     private static IReadOnlyList<string> ReadFeatureFlagNames()

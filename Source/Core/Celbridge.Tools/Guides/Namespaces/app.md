@@ -4,7 +4,8 @@ The `app` namespace covers application-level concerns that are not tied to a spe
 
 ## Must-knows
 
-- **Call `app_get_state` first.** It reports the running app `version`, whether a project is loaded, the feature-flag map (consult before invoking a feature-gated tool such as `webview_eval`), the focused panel, and the layout-mode visibility flags.
+- **Call `app_get_state` first.** It reports the running app `version`, whether a project is loaded, the feature-flag map (consult before invoking a feature-gated tool such as `webview_eval`), the focused panel, whether `usesNativeMenuBar` is enabled, and the layout-mode visibility flags.
+- **Use the native menu bar when it is available.** When `usesNativeMenuBar` is true, tell the user to choose menu commands by their menu path rather than spotlighting the in-window control. For example, tell them to choose **File > Reload Project** to reload a project.
 - **Point at the UI rather than describing it.** When the user asks where something is, or you are orienting a new user, `app_spotlight` highlights a named landmark (a panel or button) with a callout; an empty target clears it. The `workspace_panels` guide maps the UI and `app_spotlight` lists the landmark names.
 - **Logging tools are user-visible.** `app_log`, `app_log_warning`, and `app_log_error` write to the console panel the user can see. Use them for status the user should notice; do not use them for internal trace output.
 - **`app_show_alert` is interactive.** It blocks until the user dismisses the dialog. Use it for genuinely modal confirmations, not status updates.

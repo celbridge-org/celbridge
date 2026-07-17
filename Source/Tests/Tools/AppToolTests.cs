@@ -88,6 +88,20 @@ public class AppToolTests
     }
 
     [Test]
+    public void GetState_IncludesWhetherThePlatformUsesNativeMenuBar()
+    {
+        WireAppStateDependencies(usesNativeMenuBar: true);
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        root.GetProperty("usesNativeMenuBar").GetBoolean().Should().BeTrue();
+    }
+
+    [Test]
     public void GetState_IncludesFocusedPanelAndLayoutMode()
     {
         WireAppStateDependencies(
@@ -143,6 +157,7 @@ public class AppToolTests
 
     private IFeatureFlags WireAppStateDependencies(
         WorkspacePanel focusedPanel = WorkspacePanel.None,
+        bool usesNativeMenuBar = false,
         bool contextVisible = false,
         bool inspectorVisible = false,
         bool consoleVisible = false,
@@ -156,6 +171,9 @@ public class AppToolTests
         var environmentInfo = new EnvironmentInfo(appVersion, "Windows", "Debug");
         environmentService.GetEnvironmentInfo().Returns(environmentInfo);
 
+        var platformInfo = Substitute.For<IPlatformInfo>();
+        platformInfo.UsesNativeMenuBar.Returns(usesNativeMenuBar);
+
         var focusService = Substitute.For<IFocusService>();
         focusService.FocusedPanel.Returns(focusedPanel);
 
@@ -167,6 +185,7 @@ public class AppToolTests
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
         _services.GetRequiredService<IAppEnvironment>().Returns(environmentService);
+        _services.GetRequiredService<IPlatformInfo>().Returns(platformInfo);
         _services.GetRequiredService<IFocusService>().Returns(focusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 
@@ -182,6 +201,7 @@ public class AppToolTests
         _services.GetRequiredService<IAppStateProvider>().Returns(
             _ => new AppStateProvider(
                 environmentService,
+                platformInfo,
                 _services.GetRequiredService<IProjectService>(),
                 featureFlags,
                 focusService,
