@@ -40,13 +40,15 @@
 
   <!--
     Gather all files in the template folder, excluding ephemeral runtime data
-    (.cache/.logs/.trash) and agent-generated config (.mcp.json and .claude/,
-    written when a maintainer opens the template project to test it).
+    (.celbridge/.cache/.logs/.trash) and agent-generated config (.mcp.json and .claude/,
+    written when a maintainer opens the template project to test it). Excluding
+    .celbridge/ matters beyond bloat: its python folder contains unsigned binaries
+    that Apple notarization rejects when zipped into the app bundle.
   -->
   <Target Name="CollectTemplateFiles">
     <ItemGroup>
       <TemplateInputFiles Include="$(TemplateFolder)\**\*"
-                          Exclude="$(TemplateFolder)\**\.cache\**;$(TemplateFolder)\**\.logs\**;$(TemplateFolder)\**\.trash\**;$(TemplateFolder)\**\.mcp.json;$(TemplateFolder)\**\.claude\**" />
+                          Exclude="$(TemplateFolder)\**\.celbridge\**;$(TemplateFolder)\**\.cache\**;$(TemplateFolder)\**\.logs\**;$(TemplateFolder)\**\.trash\**;$(TemplateFolder)\**\.mcp.json;$(TemplateFolder)\**\.claude\**" />
     </ItemGroup>
   </Target>
 
