@@ -1,7 +1,6 @@
 using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
-using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Animation;
 

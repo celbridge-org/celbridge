@@ -1,6 +1,3 @@
-using Celbridge.Packages;
-using Celbridge.Workspace;
-
 namespace Celbridge.Documents;
 
 /// <summary>

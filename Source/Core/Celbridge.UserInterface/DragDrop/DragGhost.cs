@@ -1,5 +1,3 @@
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Celbridge.UserInterface.DragDrop;

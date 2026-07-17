@@ -1,5 +1,3 @@
-using Celbridge.Platform;
-
 namespace Celbridge.Utilities.Platform;
 
 /// <summary>

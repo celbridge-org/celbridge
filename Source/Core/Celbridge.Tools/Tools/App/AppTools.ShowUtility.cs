@@ -1,5 +1,4 @@
 using Celbridge.Documents;
-using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 

@@ -1,7 +1,5 @@
 using System.Text;
-using Celbridge.Commands;
 using Celbridge.Console;
-using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;

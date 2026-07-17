@@ -3,7 +3,6 @@ using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 
 namespace Celbridge.Tools;
 

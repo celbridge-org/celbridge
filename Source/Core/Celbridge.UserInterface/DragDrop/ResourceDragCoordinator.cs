@@ -1,6 +1,3 @@
-using Celbridge.Core;
-using Microsoft.Extensions.Localization;
-using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 
 using KeyEventHandler = Microsoft.UI.Xaml.Input.KeyEventHandler;

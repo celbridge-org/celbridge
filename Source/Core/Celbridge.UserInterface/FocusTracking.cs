@@ -1,4 +1,3 @@
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface;

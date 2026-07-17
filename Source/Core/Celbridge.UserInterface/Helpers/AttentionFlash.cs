@@ -1,4 +1,3 @@
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.UserInterface.Helpers;

@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Workspace;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 

@@ -1,5 +1,4 @@
 using Celbridge.UserInterface.Helpers;
-using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;

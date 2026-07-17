@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Navigation;

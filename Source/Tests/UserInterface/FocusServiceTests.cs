@@ -1,4 +1,3 @@
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;

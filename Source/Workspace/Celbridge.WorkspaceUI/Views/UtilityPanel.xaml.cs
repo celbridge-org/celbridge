@@ -1,15 +1,12 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
-using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
-using Microsoft.UI.Xaml.Data;
 
 namespace Celbridge.WorkspaceUI.Views;
 

@@ -1,5 +1,3 @@
-using Microsoft.UI.Xaml;
-
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>

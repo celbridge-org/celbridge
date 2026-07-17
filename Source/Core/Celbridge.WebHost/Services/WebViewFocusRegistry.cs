@@ -1,6 +1,5 @@
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using Microsoft.UI.Xaml;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;

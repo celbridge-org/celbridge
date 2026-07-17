@@ -1,8 +1,6 @@
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
-using Microsoft.UI.Xaml;
 
 namespace Celbridge.Tests.UserInterface;
 
