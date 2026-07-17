@@ -26,7 +26,7 @@ public class DocumentEditorPreferenceStore
     /// Returns the per-extension workspace preference, or Empty when no
     /// preference is stored or the stored value does not parse.
     /// </summary>
-    public async Task<DocumentEditorId> GetExtensionPreferenceAsync(string extension)
+    public async Task<EditorInstanceId> GetExtensionPreferenceAsync(string extension)
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
@@ -37,9 +37,9 @@ public class DocumentEditorPreferenceStore
         // TryParse handles empty/null/malformed strings; callers are responsible
         // for checking whether the returned id still maps to a registered editor.
         if (string.IsNullOrEmpty(preferredId)
-            || !DocumentEditorId.TryParse(preferredId, out var editorId))
+            || !EditorInstanceId.TryParse(preferredId, out var editorId))
         {
-            return DocumentEditorId.Empty;
+            return EditorInstanceId.Empty;
         }
 
         return editorId;
@@ -49,7 +49,7 @@ public class DocumentEditorPreferenceStore
     /// Stores the user's preferred editor for an extension. Pass Empty to clear
     /// the preference.
     /// </summary>
-    public async Task SetExtensionPreferenceAsync(string extension, DocumentEditorId editorId)
+    public async Task SetExtensionPreferenceAsync(string extension, EditorInstanceId editorId)
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
@@ -67,25 +67,25 @@ public class DocumentEditorPreferenceStore
 
     /// <summary>
     /// Reads the resource's sidecar (if any) and returns its '_editor' field as
-    /// a DocumentEditorId. Returns success with Empty when no sidecar exists,
+    /// an EditorInstanceId. Returns success with Empty when no sidecar exists,
     /// the sidecar has no '_editor' field, or the field value does not parse.
     /// Returns failure only on unexpected sidecar service errors so callers can
     /// fall through gracefully on success.
     /// </summary>
-    public async Task<Result<DocumentEditorId>> GetSidecarPreferenceAsync(ResourceKey fileResource)
+    public async Task<Result<EditorInstanceId>> GetSidecarPreferenceAsync(ResourceKey fileResource)
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         if (sidecarService.IsSidecarKey(fileResource))
         {
             // The sidecar file itself does not have a sidecar pairing of its
             // own; nothing to consult.
-            return DocumentEditorId.Empty;
+            return EditorInstanceId.Empty;
         }
 
         var readResult = await sidecarService.ReadAsync(fileResource);
         if (readResult.IsFailure)
         {
-            return Result<DocumentEditorId>.Fail($"Failed to read sidecar for '{fileResource}'")
+            return Result<EditorInstanceId>.Fail($"Failed to read sidecar for '{fileResource}'")
                 .WithErrors(readResult);
         }
 
@@ -93,20 +93,20 @@ public class DocumentEditorPreferenceStore
         if (sidecar.Outcome != SidecarReadOutcome.Healthy
             || sidecar.Content is null)
         {
-            return DocumentEditorId.Empty;
+            return EditorInstanceId.Empty;
         }
 
         if (!sidecar.Content.Fields.TryGetValue(SidecarFieldNames.Editor, out var editorValue)
             || editorValue is not string editorIdString
             || string.IsNullOrWhiteSpace(editorIdString))
         {
-            return DocumentEditorId.Empty;
+            return EditorInstanceId.Empty;
         }
 
-        if (!DocumentEditorId.TryParse(editorIdString, out var editorId))
+        if (!EditorInstanceId.TryParse(editorIdString, out var editorId))
         {
             _logger.LogDebug($"Sidecar for '{fileResource}' has malformed editor value '{editorIdString}'");
-            return DocumentEditorId.Empty;
+            return EditorInstanceId.Empty;
         }
 
         return editorId;
@@ -117,7 +117,7 @@ public class DocumentEditorPreferenceStore
     /// field when set, otherwise the per-extension workspace preference, or
     /// Empty when neither source has a preference.
     /// </summary>
-    public async Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource)
+    public async Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource)
     {
         var sidecarPreferenceResult = await GetSidecarPreferenceAsync(fileResource);
         if (sidecarPreferenceResult.IsSuccess

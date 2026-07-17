@@ -164,7 +164,7 @@ public class DocumentLayoutStoreTests
         await _documentsPanel.Received(1).OpenDocument(
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
-                options.EditorId == DocumentEditorId.Empty
+                options.EditorId == EditorInstanceId.Empty
                 && options.Activate == false
                 && options.Address!.SectionIndex == 0
                 && options.Address.TabOrder == 2));

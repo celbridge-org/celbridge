@@ -11,8 +11,8 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<DocumentEditorId> _registeredEditorIds = new();
-    private readonly Dictionary<DocumentEditorId, IDocumentEditorFactory> _idToFactory = new();
+    private readonly HashSet<EditorInstanceId> _registeredEditorIds = new();
+    private readonly Dictionary<EditorInstanceId, IDocumentEditorFactory> _idToFactory = new();
 
     public DocumentEditorRegistry(ITextBinarySniffer textBinarySniffer)
     {
@@ -107,7 +107,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         // both a filename and an extension does not appear twice in the
         // "Open with..." dialog.
         var fileName = fileResource.ResourceName;
-        var seenEditorIds = new HashSet<DocumentEditorId>();
+        var seenEditorIds = new HashSet<EditorInstanceId>();
         var candidates = new List<IDocumentEditorFactory>();
 
         if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
@@ -198,16 +198,16 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     }
 
     /// <summary>
-    /// Gets a factory by its DocumentEditorId.
+    /// Gets a factory by its EditorInstanceId.
     /// </summary>
-    public Result<IDocumentEditorFactory> GetFactoryById(DocumentEditorId documentEditorId)
+    public Result<IDocumentEditorFactory> GetFactoryById(EditorInstanceId editorId)
     {
-        if (_idToFactory.TryGetValue(documentEditorId, out var factory))
+        if (_idToFactory.TryGetValue(editorId, out var factory))
         {
             return Result<IDocumentEditorFactory>.Ok(factory);
         }
 
-        return Result<IDocumentEditorFactory>.Fail($"No factory found with DocumentEditorId: '{documentEditorId}'");
+        return Result<IDocumentEditorFactory>.Fail($"No factory found with EditorInstanceId: '{editorId}'");
     }
 
     /// <summary>

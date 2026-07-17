@@ -11,11 +11,11 @@ namespace Celbridge.Packages;
 /// "Open with..." picker treats a .document.toml file as a known manifest form
 /// rather than a generic TOML file the user might want to edit by hand.
 /// </summary>
-public class DocumentContributionFactory : DocumentEditorFactoryBase
+public class EditorManifestFactory : DocumentEditorFactoryBase
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override DocumentEditorId EditorId { get; } = new("celbridge.document-contribution");
+    public override EditorInstanceId EditorId { get; } = new("celbridge.document-contribution");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_DocumentContribution");
 
@@ -23,7 +23,7 @@ public class DocumentContributionFactory : DocumentEditorFactoryBase
 
     public override bool IsPlaceholder => true;
 
-    public DocumentContributionFactory(IStringLocalizer stringLocalizer)
+    public EditorManifestFactory(IStringLocalizer stringLocalizer)
     {
         _stringLocalizer = stringLocalizer;
     }

@@ -50,7 +50,7 @@ public class DocumentEditorPreferenceStoreTests
 
         var editorId = await _store.GetExtensionPreferenceAsync(".md");
 
-        editorId.Should().Be(new DocumentEditorId("test.markdown-editor"));
+        editorId.Should().Be(new EditorInstanceId("test.markdown-editor"));
     }
 
     [Test]
@@ -64,7 +64,7 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetExtensionPreferenceAsync_ReturnsEmptyWhenStoredValueIsMalformed()
     {
-        // DocumentEditorId.TryParse rejects strings that are not a valid id;
+        // EditorInstanceId.TryParse rejects strings that are not a valid id;
         // a malformed value should fall through to Empty rather than throw.
         StubExtensionPreference(".md", "not a valid id with spaces");
 
@@ -76,7 +76,7 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task SetExtensionPreferenceAsync_WritesTheEditorIdString()
     {
-        await _store.SetExtensionPreferenceAsync(".md", new DocumentEditorId("test.markdown-editor"));
+        await _store.SetExtensionPreferenceAsync(".md", new EditorInstanceId("test.markdown-editor"));
 
         var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
         await _propertyBag.Received(1).SetPropertyAsync(expectedKey, "test.markdown-editor");
@@ -88,7 +88,7 @@ public class DocumentEditorPreferenceStoreTests
         // Passing Empty signals "clear my preference"; the store should remove
         // the underlying key rather than persist an empty string that would
         // round-trip as a malformed id.
-        await _store.SetExtensionPreferenceAsync(".md", DocumentEditorId.Empty);
+        await _store.SetExtensionPreferenceAsync(".md", EditorInstanceId.Empty);
 
         var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
         await _propertyBag.Received(1).DeletePropertyAsync(expectedKey);
@@ -103,7 +103,7 @@ public class DocumentEditorPreferenceStoreTests
         var result = await _store.GetSidecarPreferenceAsync(new ResourceKey("doc.md"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(new DocumentEditorId("test.specific-editor"));
+        result.Value.Should().Be(new EditorInstanceId("test.specific-editor"));
     }
 
     [Test]
@@ -181,7 +181,7 @@ public class DocumentEditorPreferenceStoreTests
 
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
-        editorId.Should().Be(new DocumentEditorId("test.sidecar-editor"));
+        editorId.Should().Be(new EditorInstanceId("test.sidecar-editor"));
     }
 
     [Test]
@@ -191,7 +191,7 @@ public class DocumentEditorPreferenceStoreTests
 
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
-        editorId.Should().Be(new DocumentEditorId("test.extension-editor"));
+        editorId.Should().Be(new EditorInstanceId("test.extension-editor"));
     }
 
     [Test]

@@ -8,5 +8,5 @@ public record OpenDocumentOptions(
     bool ForceReload = false,
     string Location = "",
     bool Activate = true,
-    DocumentEditorId EditorId = default,
+    EditorInstanceId EditorId = default,
     string? EditorStateJson = null);

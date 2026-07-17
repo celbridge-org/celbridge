@@ -23,7 +23,7 @@ public sealed partial class CustomDocumentView : DocumentView
     /// The document contribution that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public CustomDocumentEditorContribution? Contribution { get; set; }
+    public EditorContribution? Contribution { get; set; }
 
     public CustomDocumentView(
         IServiceProvider serviceProvider,

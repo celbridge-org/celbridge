@@ -90,7 +90,7 @@ public class OpenWithMenuOptionTests
     private static IDocumentEditorFactory CreateFactory(string editorId)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId(editorId));
+        factory.EditorId.Returns(new EditorInstanceId(editorId));
         return factory;
     }
 
@@ -223,7 +223,7 @@ public class OpenWithMenuOptionTests
     public void GetState_HiddenForPlaceholderFactoryPlusTextFallback()
     {
         // Placeholder factories (PackageManifestFactory, ProjectFileFactory,
-        // DocumentContributionFactory) exist only to register an extension for
+        // EditorManifestFactory) exist only to register an extension for
         // resource classification; they cannot create document views and must
         // not appear in the "Open with..." picker. With one placeholder plus
         // the text fallback, only the fallback survives the filter, so the

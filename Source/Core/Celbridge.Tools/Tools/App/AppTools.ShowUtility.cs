@@ -15,9 +15,9 @@ public partial class AppTools
     [RelatedGuides("workspace_panels")]
     public async partial Task<CallToolResult> ShowUtility(string utilityId, string? location = null)
     {
-        if (!UtilityId.TryCreate(utilityId, out var parsedUtilityId))
+        if (!EditorInstanceId.TryParse(utilityId, out var parsedUtilityId))
         {
-            return ToolResponse.Error(Result.Fail("A utilityId is required."));
+            return ToolResponse.Error(Result.Fail("A valid utilityId is required: lowercase letters, digits, dots, and hyphens."));
         }
 
         DockLocation? dockLocation = null;

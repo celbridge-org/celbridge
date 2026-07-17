@@ -63,7 +63,7 @@ public interface IDocumentsService
     /// non-empty, uses that specific editor instead of the default resolution
     /// chain. Fails if the resource does not exist.
     /// </summary>
-    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId editorId = default);
+    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default);
 
     /// <summary>
     /// Returns the document view type for the specified file resource.
@@ -91,16 +91,16 @@ public interface IDocumentsService
     /// <summary>
     /// Returns the editor that would open this file: the sidecar's '_editor'
     /// field when set, otherwise the per-extension preference, otherwise
-    /// DocumentEditorId.Empty.
+    /// EditorInstanceId.Empty.
     /// </summary>
-    Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource);
+    Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource);
 
     /// <summary>
     /// Writes the per-file editor selection to the resource's sidecar '_editor'
     /// field. When useAsExtensionDefault is true, also stores the editor as the
     /// per-extension preference.
     /// </summary>
-    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault);
+    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId, bool useAsExtensionDefault);
 
     /// <summary>
     /// Opens a file resource as a document in the documents panel.

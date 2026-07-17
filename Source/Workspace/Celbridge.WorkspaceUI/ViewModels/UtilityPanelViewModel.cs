@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -12,7 +13,7 @@ public partial class UtilityPanelViewModel : ObservableObject
 {
     private readonly List<UtilityItemViewModel> _items = new();
 
-    private UtilityId _selectedUtilityId = UtilityId.Empty;
+    private EditorInstanceId _selectedUtilityId = EditorInstanceId.Empty;
     private WorkspacePanel _focusedPanel = WorkspacePanel.None;
 
     // True from a selection until focus lands on the selected surface. While it is true the accent is shown
@@ -30,13 +31,13 @@ public partial class UtilityPanelViewModel : ObservableObject
     /// <summary>
     /// The utility id of the currently selected rail surface, or Empty when none is selected.
     /// </summary>
-    public UtilityId SelectedUtilityId => _selectedUtilityId;
+    public EditorInstanceId SelectedUtilityId => _selectedUtilityId;
 
     /// <summary>
     /// Appends a rail item and returns its view model. focusIdentity is the workspace panel this surface
     /// reports focus as (WorkspacePanel.CustomUtility for every custom utility).
     /// </summary>
-    public UtilityItemViewModel AddItem(UtilityId id, WorkspacePanel focusIdentity)
+    public UtilityItemViewModel AddItem(EditorInstanceId id, WorkspacePanel focusIdentity)
     {
         var item = new UtilityItemViewModel(id, focusIdentity);
         _items.Add(item);
@@ -48,7 +49,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     /// <summary>
     /// Removes the rail item with the given id. A no-op when no item has that id.
     /// </summary>
-    public void RemoveItem(UtilityId id)
+    public void RemoveItem(EditorInstanceId id)
     {
         var item = FindItem(id);
         if (item is null)
@@ -63,7 +64,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     /// <summary>
     /// Selects the rail surface with the given id and shows the accent optimistically until focus settles on it.
     /// </summary>
-    public void SelectUtility(UtilityId id)
+    public void SelectUtility(EditorInstanceId id)
     {
         _selectedUtilityId = id;
         _awaitingSelectionFocus = true;
@@ -91,7 +92,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     /// <summary>
     /// Sets whether the utility with the given id is docked as a document, which dims its rail button.
     /// </summary>
-    public void SetDocked(UtilityId id, bool isDocked)
+    public void SetDocked(EditorInstanceId id, bool isDocked)
     {
         var item = FindItem(id);
         if (item is not null)
@@ -100,7 +101,7 @@ public partial class UtilityPanelViewModel : ObservableObject
         }
     }
 
-    private UtilityItemViewModel? FindItem(UtilityId id)
+    private UtilityItemViewModel? FindItem(EditorInstanceId id)
     {
         foreach (var item in _items)
         {

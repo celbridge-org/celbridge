@@ -65,12 +65,17 @@ public class PackageService : IPackageService
         return _registry.GetLoadFailures();
     }
 
-    public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
+    public IReadOnlyList<EditorContribution> GetAllDocumentEditors()
     {
         return _registry.GetAllDocumentEditors();
     }
 
-    public Package? GetContributingPackage(DocumentEditorId editorId)
+    public IReadOnlyList<EditorInstance> GetEditorInstances()
+    {
+        return _registry.GetEditorInstances();
+    }
+
+    public Package? GetContributingPackage(EditorInstanceId editorId)
     {
         return _registry.GetContributingPackage(editorId);
     }
@@ -85,7 +90,7 @@ public class PackageService : IPackageService
         return _registry.GetDefaultTemplateContent(fileExtension);
     }
 
-    public byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution)
+    public byte[]? GetUtilityTemplateContent(EditorContribution contribution)
     {
         return _registry.GetUtilityTemplateContent(contribution);
     }

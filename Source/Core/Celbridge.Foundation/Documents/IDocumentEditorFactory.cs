@@ -25,7 +25,7 @@ public interface IDocumentEditorFactory
     /// <summary>
     /// Stable identifier for this editor.
     /// </summary>
-    DocumentEditorId EditorId { get; }
+    EditorInstanceId EditorId { get; }
 
     /// <summary>
     /// Localized display name for this editor, shown in menus and tooltips.

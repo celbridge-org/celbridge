@@ -17,7 +17,7 @@ public class GetUtilitiesStateCommandTests
     [Test]
     public async Task Execute_ReturnsBuiltInsAndCustomUtilitiesWithShownState()
     {
-        var panelUtility = new CustomDocumentEditorContribution
+        var panelUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
             Id = "emoji-panel",
@@ -25,7 +25,7 @@ public class GetUtilitiesStateCommandTests
             UtilityDescriptor = new UtilityDescriptor { Resource = "utils:emoji._emoji" }
         };
 
-        var documentUtility = new CustomDocumentEditorContribution
+        var documentUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
             Id = "notepad",
@@ -34,26 +34,26 @@ public class GetUtilitiesStateCommandTests
         };
 
         // A non-utility editor contribution must be filtered out of the catalog.
-        var nonUtility = new CustomDocumentEditorContribution
+        var nonUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "celbridge" },
             Id = "code-editor",
             DisplayName = "Code Editor"
         };
 
-        var contributions = new List<DocumentEditorContribution>
+        var instances = new List<EditorInstance>
         {
-            panelUtility,
-            documentUtility,
-            nonUtility
+            CreateInstance(panelUtility),
+            CreateInstance(documentUtility),
+            CreateInstance(nonUtility)
         };
 
         // The emoji-panel utility is the active rail surface, so it is the only utility shown.
         var utilityPanel = Substitute.For<IUtilityPanel>();
-        utilityPanel.ActiveUtilityId.Returns(UtilityId.Create("acme", "emoji-panel"));
+        utilityPanel.ActiveUtilityId.Returns(EditorInstanceId.Create("acme", "emoji-panel"));
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetAllDocumentEditors().Returns(contributions);
+        packageService.GetEditorInstances().Returns(instances);
 
         // No utilities are docked: no documents are open.
         var documentsService = Substitute.For<IDocumentsService>();
@@ -93,12 +93,12 @@ public class GetUtilitiesStateCommandTests
         utilities[1].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[1].IsShown.Should().BeFalse();
 
-        utilities[2].UtilityId.Should().Be(UtilityId.Create("acme", "emoji-panel"));
+        utilities[2].UtilityId.Should().Be(EditorInstanceId.Create("acme", "emoji-panel"));
         utilities[2].DisplayName.Should().Be("Emoji Panel");
         utilities[2].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[2].IsShown.Should().BeTrue();
 
-        utilities[3].UtilityId.Should().Be(UtilityId.Create("acme", "notepad"));
+        utilities[3].UtilityId.Should().Be(EditorInstanceId.Create("acme", "notepad"));
         utilities[3].DisplayName.Should().Be("Notepad");
         utilities[3].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[3].IsShown.Should().BeFalse();
@@ -107,7 +107,7 @@ public class GetUtilitiesStateCommandTests
     [Test]
     public async Task Execute_DockedUtility_ReportsDockedAndShownByActiveDocument()
     {
-        var dockedUtility = new CustomDocumentEditorContribution
+        var dockedUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
             Id = "notepad",
@@ -115,7 +115,7 @@ public class GetUtilitiesStateCommandTests
             UtilityDescriptor = new UtilityDescriptor { Resource = "utils:notepad._notepad" }
         };
 
-        var contributions = new List<DocumentEditorContribution> { dockedUtility };
+        var instances = new List<EditorInstance> { CreateInstance(dockedUtility) };
 
         var utilityResource = new ResourceKey("utils:notepad._notepad");
 
@@ -125,12 +125,12 @@ public class GetUtilitiesStateCommandTests
         utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetAllDocumentEditors().Returns(contributions);
+        packageService.GetEditorInstances().Returns(instances);
 
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
-            new(utilityResource, new DocumentAddress(0, 0, 0), new DocumentEditorId("acme.notepad"))
+            new(utilityResource, new DocumentAddress(0, 0, 0), new EditorInstanceId("acme.notepad"))
         });
         documentsService.ActiveDocument.Returns(utilityResource);
 
@@ -155,9 +155,18 @@ public class GetUtilitiesStateCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == UtilityId.Create("acme", "notepad"));
+        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == EditorInstanceId.Create("acme", "notepad"));
         notepad.Location.Should().Be(DockLocation.Document);
         notepad.IsShown.Should().BeTrue();
+    }
+
+    private static EditorInstance CreateInstance(EditorContribution contribution)
+    {
+        return new EditorInstance
+        {
+            InstanceId = EditorInstanceId.Create(contribution.Package.Name, contribution.Id),
+            Contribution = contribution
+        };
     }
 
     [Test]

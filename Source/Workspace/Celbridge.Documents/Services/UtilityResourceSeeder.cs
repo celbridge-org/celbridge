@@ -5,18 +5,18 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Seeds a utility document's backing file from its manifest template when the file is absent. Runs when the
+/// Seeds a utility's backing resource from its manifest template when the file is absent. Runs when the
 /// utility's panel is created at workspace load, so both a first run and a session where the user has deleted
 /// the .celbridge state file recover with the utility's default state.
 /// </summary>
-public class UtilityDocumentSeeder
+public class UtilityResourceSeeder
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ILogger<UtilityDocumentSeeder> _logger;
+    private readonly ILogger<UtilityResourceSeeder> _logger;
 
-    public UtilityDocumentSeeder(
+    public UtilityResourceSeeder(
         IWorkspaceWrapper workspaceWrapper,
-        ILogger<UtilityDocumentSeeder> logger)
+        ILogger<UtilityResourceSeeder> logger)
     {
         _workspaceWrapper = workspaceWrapper;
         _logger = logger;
@@ -26,7 +26,7 @@ public class UtilityDocumentSeeder
     /// Seeds the backing file for a utility contribution when it does not yet exist, resolving the resource from
     /// its descriptor. Returns Fail if the descriptor's resource is malformed or the seed write fails.
     /// </summary>
-    public async Task<Result> SeedIfMissingAsync(CustomDocumentEditorContribution contribution)
+    public async Task<Result> SeedIfMissingAsync(EditorContribution contribution)
     {
         var descriptor = contribution.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
@@ -39,7 +39,7 @@ public class UtilityDocumentSeeder
         return await SeedFromContributionAsync(resource, contribution);
     }
 
-    private async Task<Result> SeedFromContributionAsync(ResourceKey resource, CustomDocumentEditorContribution contribution)
+    private async Task<Result> SeedFromContributionAsync(ResourceKey resource, EditorContribution contribution)
     {
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 

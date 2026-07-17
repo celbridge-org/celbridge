@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -13,7 +14,7 @@ public partial class UtilityItemViewModel : ObservableObject
     /// <summary>
     /// The utility id this rail item represents.
     /// </summary>
-    public UtilityId Id { get; }
+    public EditorInstanceId Id { get; }
 
     /// <summary>
     /// The workspace panel identity used to decide whether this surface currently holds focus. Built-in
@@ -30,7 +31,7 @@ public partial class UtilityItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDocked;
 
-    public UtilityItemViewModel(UtilityId id, WorkspacePanel focusIdentity)
+    public UtilityItemViewModel(EditorInstanceId id, WorkspacePanel focusIdentity)
     {
         Id = id;
         FocusIdentity = focusIdentity;

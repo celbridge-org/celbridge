@@ -50,15 +50,20 @@ public interface IPackageService
     /// <summary>
     /// Returns all document editor contributions from all discovered packages.
     /// </summary>
-    IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors();
+    IReadOnlyList<EditorContribution> GetAllDocumentEditors();
 
     /// <summary>
-    /// Returns the package that contributes the document editor with the
-    /// specified editor ID, or null if no contributing package is registered.
-    /// Editor IDs follow the "{packageId}.{contributionId}" format assigned by
-    /// CustomDocumentViewFactory.
+    /// Returns the editor instances derived from the discovered contributions. Each contribution
+    /// yields one instance whose id is the composed "{packageName}.{contributionId}" id.
     /// </summary>
-    Package? GetContributingPackage(DocumentEditorId editorId);
+    IReadOnlyList<EditorInstance> GetEditorInstances();
+
+    /// <summary>
+    /// Returns the package that contributes the editor instance with the
+    /// specified instance ID, or null if no contributing package is registered.
+    /// Instance IDs follow the "{packageName}.{contributionId}" format.
+    /// </summary>
+    Package? GetContributingPackage(EditorInstanceId editorId);
 
     /// <summary>
     /// Gets the default template content for a file extension, if provided by a package.
@@ -71,5 +76,5 @@ public interface IPackageService
     /// Returns an empty array when the utility declares no template, and null when a declared
     /// template file is missing or unreadable.
     /// </summary>
-    byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution);
+    byte[]? GetUtilityTemplateContent(EditorContribution contribution);
 }

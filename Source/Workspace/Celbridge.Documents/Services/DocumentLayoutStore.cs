@@ -305,7 +305,7 @@ public class DocumentLayoutStore
             var restoreOptions = new OpenDocumentOptions(
                 Address: address,
                 Activate: false,
-                EditorId: DocumentEditorId.Empty,
+                EditorId: EditorInstanceId.Empty,
                 EditorStateJson: editorStateJson);
 
             var openResult = await DocumentsPanel.OpenDocument(fileResource, restoreOptions);

@@ -254,7 +254,7 @@ public class PackageServiceDocumentTypeTests
         // The utility registered as a document editor, but must not appear as a creatable New File type.
         var editors = _service.GetAllDocumentEditors();
         editors.Should().ContainSingle();
-        ((CustomDocumentEditorContribution)editors[0]).IsUtility.Should().BeTrue();
+        ((EditorContribution)editors[0]).IsUtility.Should().BeTrue();
 
         _service.GetDocumentTypes().Should().BeEmpty();
     }

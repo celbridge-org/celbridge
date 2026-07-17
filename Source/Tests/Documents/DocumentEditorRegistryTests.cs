@@ -22,7 +22,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId("test.empty"));
+        factory.EditorId.Returns(new EditorInstanceId("test.empty"));
         factory.DisplayName.Returns("Empty");
         factory.SupportedExtensions.Returns(new List<string>());
 
@@ -47,7 +47,7 @@ public class DocumentEditorRegistryTests
     }
 
     [Test]
-    public void RegisterFactory_SkipsDuplicateDocumentEditorId()
+    public void RegisterFactory_SkipsDuplicateEditorInstanceId()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
@@ -152,7 +152,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId("test.multi-ext"));
+        factory.EditorId.Returns(new EditorInstanceId("test.multi-ext"));
         factory.DisplayName.Returns("Multi Extension Editor");
         factory.SupportedExtensions.Returns(new List<string> { ".md", ".markdown", ".mdown" });
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
@@ -226,7 +226,7 @@ public class DocumentEditorRegistryTests
         var factory = CreateMockFactory("test.my-editor", ".md");
         registry.RegisterFactory(factory);
 
-        var result = registry.GetFactoryById(new DocumentEditorId("test.my-editor"));
+        var result = registry.GetFactoryById(new EditorInstanceId("test.my-editor"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(factory);
@@ -237,7 +237,7 @@ public class DocumentEditorRegistryTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var result = registry.GetFactoryById(new DocumentEditorId("nonexistent.editor"));
+        var result = registry.GetFactoryById(new EditorInstanceId("nonexistent.editor"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -315,14 +315,14 @@ public class DocumentEditorRegistryTests
     }
 
     private static IDocumentEditorFactory CreateMockFactory(
-        string documentEditorId,
+        string editorId,
         string extension,
         EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId(documentEditorId));
-        factory.DisplayName.Returns(documentEditorId);
+        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(new List<string> { extension });
         factory.Priority.Returns(priority);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);

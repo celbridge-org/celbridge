@@ -60,7 +60,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private CustomEditorFocusContext _focusContext;
 
     // Set by InitializeAsync before the WebView is configured.
-    private CustomDocumentEditorContribution? _contribution;
+    private EditorContribution? _contribution;
 
     // Writable state mirrored to the WebView over the viewState channel. Seeded at init and updated by the
     // consumer via SetWritableState.
@@ -158,7 +158,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     /// result. The editor's own notifyContentLoaded signal is intentionally not awaited here, because some
     /// heavyweight editors take seconds to import content and blocking open on that would feel slow.
     /// </summary>
-    public async Task<Result> InitializeAsync(CustomDocumentEditorContribution contribution)
+    public async Task<Result> InitializeAsync(EditorContribution contribution)
     {
         _contribution = contribution;
         _viewModel.Contribution = contribution;

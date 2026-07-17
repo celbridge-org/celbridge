@@ -131,7 +131,7 @@ public class PackageServiceTests
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Title.Should().Be("My Editor");
-        contributions[0].Should().BeOfType<CustomDocumentEditorContribution>();
+        contributions[0].Should().BeOfType<EditorContribution>();
     }
 
     [Test]
@@ -528,7 +528,7 @@ public class PackageServiceTests
         // CustomDocumentViewFactory builds editor IDs as "{packageName}.{contributionId}".
         // The contributionId comes from the [document] table key in package.toml,
         // which CreateBundledPackage sets to the docType argument.
-        var editorId = new DocumentEditorId("celbridge.notes.custom");
+        var editorId = new EditorInstanceId("celbridge.notes.custom");
 
         var package = _service.GetContributingPackage(editorId);
 
@@ -542,7 +542,7 @@ public class PackageServiceTests
         CreateProjectPackage("known", "known", "Known", "custom", ".known");
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(new DocumentEditorId("thirdparty.binary-editor"));
+        var package = _service.GetContributingPackage(new EditorInstanceId("thirdparty.binary-editor"));
 
         package.Should().BeNull();
     }
@@ -558,7 +558,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(new DocumentEditorId("celbridge.notes.custom"));
+        var package = _service.GetContributingPackage(new EditorInstanceId("celbridge.notes.custom"));
 
         package.Should().NotBeNull();
         package!.Info.Name.Should().Be("celbridge.notes");

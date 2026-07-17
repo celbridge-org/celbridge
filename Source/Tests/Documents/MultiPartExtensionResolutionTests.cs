@@ -129,7 +129,7 @@ public class MultiPartExtensionResolutionTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId("test.empty-both"));
+        factory.EditorId.Returns(new EditorInstanceId("test.empty-both"));
         factory.DisplayName.Returns("Empty");
         factory.SupportedExtensions.Returns(new List<string>());
         factory.SupportedFilenames.Returns(new List<string>());
@@ -140,23 +140,23 @@ public class MultiPartExtensionResolutionTests
     }
 
     private static IDocumentEditorFactory CreateMockFactory(
-        string documentEditorId,
+        string editorId,
         string extension,
         EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
-        return CreateMockFactoryWithExtensions(documentEditorId, new[] { extension }, priority, canHandle);
+        return CreateMockFactoryWithExtensions(editorId, new[] { extension }, priority, canHandle);
     }
 
     private static IDocumentEditorFactory CreateMockFactoryWithExtensions(
-        string documentEditorId,
+        string editorId,
         IReadOnlyList<string> extensions,
         EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId(documentEditorId));
-        factory.DisplayName.Returns(documentEditorId);
+        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(extensions);
         factory.SupportedFilenames.Returns(Array.Empty<string>());
         factory.Priority.Returns(priority);
@@ -165,14 +165,14 @@ public class MultiPartExtensionResolutionTests
     }
 
     private static IDocumentEditorFactory CreateMockFactoryWithFilenames(
-        string documentEditorId,
+        string editorId,
         IReadOnlyList<string> filenames,
         EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId(documentEditorId));
-        factory.DisplayName.Returns(documentEditorId);
+        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(Array.Empty<string>());
         factory.SupportedFilenames.Returns(filenames);
         factory.Priority.Returns(priority);

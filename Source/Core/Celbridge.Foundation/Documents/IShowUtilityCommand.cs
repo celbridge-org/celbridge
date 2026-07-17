@@ -13,7 +13,7 @@ public interface IShowUtilityCommand : IExecutableCommand
     /// <summary>
     /// The id of the utility to reveal: a built-in id (e.g. "celbridge.explorer") or a custom id.
     /// </summary>
-    UtilityId UtilityId { get; set; }
+    EditorInstanceId UtilityId { get; set; }
 
     /// <summary>
     /// Optional dock location to move the utility to before revealing it. Null reveals the utility wherever it

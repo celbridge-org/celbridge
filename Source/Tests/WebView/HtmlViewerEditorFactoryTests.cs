@@ -41,7 +41,7 @@ public class HtmlViewerEditorFactoryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var codeEditor = Substitute.For<IDocumentEditorFactory>();
-        codeEditor.EditorId.Returns(new DocumentEditorId("celbridge.code-editor"));
+        codeEditor.EditorId.Returns(new EditorInstanceId("celbridge.code-editor"));
         codeEditor.DisplayName.Returns("Code Editor");
         codeEditor.SupportedExtensions.Returns(new List<string> { ".html", ".htm" });
         codeEditor.Priority.Returns(EditorPriority.General);

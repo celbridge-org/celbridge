@@ -51,7 +51,7 @@ public interface IDocumentEditorRegistry
     /// <summary>
     /// Gets a factory by its editor ID.
     /// </summary>
-    Result<IDocumentEditorFactory> GetFactoryById(DocumentEditorId documentEditorId);
+    Result<IDocumentEditorFactory> GetFactoryById(EditorInstanceId editorId);
 
     /// <summary>
     /// Gets the editor language identifier for the specified file extension.

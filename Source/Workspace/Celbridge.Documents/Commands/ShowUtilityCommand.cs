@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Packages;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -10,7 +9,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public UtilityId UtilityId { get; set; } = UtilityId.Empty;
+    public EditorInstanceId UtilityId { get; set; } = EditorInstanceId.Empty;
 
     public DockLocation? Location { get; set; }
 
@@ -38,17 +37,18 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
             return Result.Ok();
         }
 
-        var packageService = workspaceService.PackageService;
-        var utilityContribution = FindUtilityContribution(packageService, UtilityId);
-        if (utilityContribution is null)
+        // Guard against the live utilities rather than the declared contributions: a utility that was declared
+        // but skipped at load cannot be shown, and ShowUtility below reveals nothing for an id it does not hold.
+        var utilityService = workspaceService.UtilityService;
+        if (!utilityService.HasUtility(UtilityId))
         {
-            return Result.Fail($"No registered utility found with id '{UtilityId}'");
+            return Result.Fail($"No utility found with id '{UtilityId}'");
         }
 
         // When a target location is given, move the utility there first; otherwise leave it where it is.
         if (Location is not null)
         {
-            var dockResult = await workspaceService.UtilityService.DockUtilityAsync(UtilityId, Location.Value);
+            var dockResult = await utilityService.DockUtilityAsync(UtilityId, Location.Value);
             if (dockResult.IsFailure)
             {
                 return Result.Fail($"Failed to dock utility '{UtilityId}' at location '{Location.Value}'")
@@ -60,24 +60,5 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         // or activates its document tab when it is docked as a document.
         utilityPanel.ShowUtility(UtilityId);
         return Result.Ok();
-    }
-
-    private static CustomDocumentEditorContribution? FindUtilityContribution(IPackageService packageService, UtilityId utilityId)
-    {
-        foreach (var contribution in packageService.GetAllDocumentEditors())
-        {
-            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } custom)
-            {
-                continue;
-            }
-
-            var contributionId = UtilityId.Create(custom.Package.Name, custom.Id);
-            if (contributionId == utilityId)
-            {
-                return custom;
-            }
-        }
-
-        return null;
     }
 }

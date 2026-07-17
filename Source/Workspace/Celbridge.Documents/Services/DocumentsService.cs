@@ -156,34 +156,29 @@ public class DocumentsService : IDocumentsService, IDisposable
         try
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var contributions = workspaceService.PackageService.GetAllDocumentEditors();
+            var instances = workspaceService.PackageService.GetEditorInstances();
             var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-            foreach (var contribution in contributions)
+            foreach (var instance in instances)
             {
                 try
                 {
-                    if (contribution is not CustomDocumentEditorContribution customContribution)
-                    {
-                        continue;
-                    }
-
-                    // Register a document editor factory for each custom contribution, including utilities: a
+                    // Register a document editor factory for each editor instance, including utilities: a
                     // utility's factory is what lets it be docked into a document tab. Its IsUtility flag keeps
                     // it out of the New File dialog and the Reopen-with menu, and its utils: backing resource
                     // keeps it out of the project-scoped resource tree and search.
-                    var factory = new CustomDocumentViewFactory(_serviceProvider, customContribution, _featureFlags, localizationService);
+                    var factory = new CustomDocumentViewFactory(_serviceProvider, instance, _featureFlags, localizationService);
                     var result = _documentEditorRegistry.RegisterFactory(factory);
                     if (result.IsFailure)
                     {
                         _logger.LogWarning(result,
-                            $"Failed to register custom editor factory for: {contribution?.Package?.Name}");
+                            $"Failed to register custom editor factory for: {instance.InstanceId}");
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex,
-                        $"An exception occurred while registering custom editor for: {contribution.Package?.Name ?? contribution.Id}");
+                        $"An exception occurred while registering custom editor for: {instance.InstanceId}");
                 }
             }
 
@@ -216,13 +211,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         _ = _layoutStore.StoreSectionRatiosAsync(message.SectionRatios);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default)
     {
         //
         // Create the appropriate document view control for this document type
         //
 
-        var createResult = await CreateDocumentViewInternalAsync(fileResource, documentEditorId);
+        var createResult = await CreateDocumentViewInternalAsync(fileResource, editorId);
         if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
@@ -293,10 +288,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
-    public Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource) =>
+    public Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource) =>
         _preferenceStore.GetPreferredEditorAsync(fileResource);
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId, bool useAsExtensionDefault)
     {
         if (useAsExtensionDefault)
         {
@@ -304,7 +299,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             await _preferenceStore.SetExtensionPreferenceAsync(extension, editorId);
         }
 
-        // ToString() forces a string value; passing the DocumentEditorId struct
+        // ToString() forces a string value; passing the EditorInstanceId struct
         // directly boxes it and SidecarService rejects non-scalar values.
         var fields = new Dictionary<string, object>(StringComparer.Ordinal)
         {
@@ -407,9 +402,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Task RestorePanelState() => _layoutStore.RestorePanelStateAsync();
 
-    private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
+    private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, EditorInstanceId editorId = default)
     {
-        return _viewFactory.CreateAsync(fileResource, documentEditorId);
+        return _viewFactory.CreateAsync(fileResource, editorId);
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)

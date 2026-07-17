@@ -13,7 +13,7 @@ public class UtilityService : IUtilityService, IDisposable
     private readonly ILogger<UtilityService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly UtilityDocumentSeeder _utilityDocumentSeeder;
+    private readonly UtilityResourceSeeder _utilityResourceSeeder;
 
     private readonly List<CustomUtilityView> _utilities = new();
 
@@ -35,25 +35,26 @@ public class UtilityService : IUtilityService, IDisposable
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
 
-        _utilityDocumentSeeder = new UtilityDocumentSeeder(
+        _utilityResourceSeeder = new UtilityResourceSeeder(
             _workspaceWrapper,
-            serviceProvider.GetRequiredService<ILogger<UtilityDocumentSeeder>>());
+            serviceProvider.GetRequiredService<ILogger<UtilityResourceSeeder>>());
     }
 
-    public async Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<CustomDocumentEditorContribution> contributions)
+    public async Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<EditorInstance> instances)
     {
         var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
         var tabs = new List<CustomUtility>();
-        foreach (var contribution in contributions)
+        foreach (var instance in instances)
         {
+            var contribution = instance.Contribution;
             var descriptor = contribution.UtilityDescriptor;
             if (descriptor is null)
             {
                 continue;
             }
 
-            var utilityId = UtilityId.Create(contribution.Package.Name, contribution.Id);
+            var utilityId = instance.InstanceId;
 
             if (!ResourceKey.TryCreate(descriptor.Resource, out var resource))
             {
@@ -61,7 +62,7 @@ public class UtilityService : IUtilityService, IDisposable
                 continue;
             }
 
-            var seedResult = await _utilityDocumentSeeder.SeedIfMissingAsync(contribution);
+            var seedResult = await _utilityResourceSeeder.SeedIfMissingAsync(contribution);
             if (seedResult.IsFailure)
             {
                 _logger.LogError(seedResult, $"Failed to seed utility backing file: '{resource}'");
@@ -71,7 +72,7 @@ public class UtilityService : IUtilityService, IDisposable
             var displayName = ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
 
             var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
-            var initResult = await panelView.InitializeAsync(contribution, resource, displayName);
+            var initResult = await panelView.InitializeAsync(instance, resource, displayName);
             if (initResult.IsFailure)
             {
                 _logger.LogError(initResult, $"Failed to initialize utility: '{resource}'");
@@ -124,7 +125,12 @@ public class UtilityService : IUtilityService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> DockUtilityAsync(UtilityId utilityId, DockLocation location)
+    public bool HasUtility(EditorInstanceId utilityId)
+    {
+        return _utilities.Any(utility => utility.UtilityId == utilityId);
+    }
+
+    public async Task<Result> DockUtilityAsync(EditorInstanceId utilityId, DockLocation location)
     {
         await Task.CompletedTask;
 
@@ -213,7 +219,7 @@ public class UtilityService : IUtilityService, IDisposable
         return Result.Ok();
     }
 
-    public UtilityId? GetDockedUtilityId(ResourceKey resource)
+    public EditorInstanceId? GetDockedUtilityId(ResourceKey resource)
     {
         var panelView = _utilities.FirstOrDefault(utility => utility.Location == DockLocation.Document
             && utility.FileResource == resource);

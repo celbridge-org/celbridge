@@ -12,7 +12,7 @@ public class ProjectFileFactory : DocumentEditorFactoryBase
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override DocumentEditorId EditorId { get; } = new("celbridge.project-file");
+    public override EditorInstanceId EditorId { get; } = new("celbridge.project-file");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_ProjectFile");
 

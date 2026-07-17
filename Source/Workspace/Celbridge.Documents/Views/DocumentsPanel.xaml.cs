@@ -666,8 +666,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public Result DockUtility(CustomUtilityView panelView, DockUtilityPlacement placement)
     {
         var resource = panelView.FileResource;
-        // A custom utility's id string is its document editor id.
-        var editorId = new DocumentEditorId(panelView.UtilityId.ToString());
+        var editorId = panelView.UtilityId;
 
         var resolveResult = ViewModel.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
@@ -992,9 +991,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     }
 
     // Sets the tab's recorded editor id and display label.
-    private void UpdateEditorDisplayName(DocumentTab documentTab, DocumentEditorId documentEditorId)
+    private void UpdateEditorDisplayName(DocumentTab documentTab, EditorInstanceId editorId)
     {
-        var displayInfo = ViewModel.ResolveEditorDisplayInfo(documentTab.ViewModel.FileResource, documentEditorId);
+        var displayInfo = ViewModel.ResolveEditorDisplayInfo(documentTab.ViewModel.FileResource, editorId);
         if (displayInfo is not null)
         {
             documentTab.ViewModel.EditorId = displayInfo.EditorId;
@@ -1002,9 +1001,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
-    private void ApplyUtilityTabMetadata(DocumentTab documentTab, DocumentEditorId documentEditorId)
+    private void ApplyUtilityTabMetadata(DocumentTab documentTab, EditorInstanceId editorId)
     {
-        var utilityInfo = ViewModel.ResolveUtilityTabInfo(documentEditorId);
+        var utilityInfo = ViewModel.ResolveUtilityTabInfo(editorId);
         if (utilityInfo is null)
         {
             return;
@@ -1334,7 +1333,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         await ReopenTabWithEditor(tab, selectedEditorId);
     }
 
-    private async Task ReopenTabWithEditor(DocumentTab tab, DocumentEditorId editorId)
+    private async Task ReopenTabWithEditor(DocumentTab tab, EditorInstanceId editorId)
     {
         var fileResource = tab.ViewModel.FileResource;
 

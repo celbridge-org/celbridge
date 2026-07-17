@@ -12,7 +12,7 @@ namespace Celbridge.Tests.Documents;
 [TestFixture]
 public class CloseDocumentCommandTests
 {
-    private static readonly UtilityId NotepadUtilityId = UtilityId.Create("acme", "notepad");
+    private static readonly EditorInstanceId NotepadUtilityId = EditorInstanceId.Create("acme", "notepad");
 
     private IDocumentsService _documentsService = null!;
     private IUtilityService _utilityService = null!;
@@ -25,10 +25,10 @@ public class CloseDocumentCommandTests
         _documentsService.CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(Result.Ok());
 
         _utilityService = Substitute.For<IUtilityService>();
-        _utilityService.DockUtilityAsync(Arg.Any<UtilityId>(), Arg.Any<DockLocation>()).Returns(Result.Ok());
+        _utilityService.DockUtilityAsync(Arg.Any<EditorInstanceId>(), Arg.Any<DockLocation>()).Returns(Result.Ok());
 
         // By default a resource is not a docked utility, so the command takes the ordinary close path.
-        _utilityService.GetDockedUtilityId(Arg.Any<ResourceKey>()).Returns((UtilityId?)null);
+        _utilityService.GetDockedUtilityId(Arg.Any<ResourceKey>()).Returns((EditorInstanceId?)null);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.DocumentsService.Returns(_documentsService);
@@ -54,7 +54,7 @@ public class CloseDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
         await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), true);
-        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<UtilityId>(), Arg.Any<DockLocation>());
+        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorInstanceId>(), Arg.Any<DockLocation>());
     }
 
     [Test]

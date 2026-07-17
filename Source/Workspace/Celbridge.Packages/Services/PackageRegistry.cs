@@ -94,7 +94,7 @@ public class PackageRegistry
         return _lastFailures;
     }
 
-    public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
+    public IReadOnlyList<EditorContribution> GetAllDocumentEditors()
     {
         return GetAllPackages()
             .SelectMany(package => package.DocumentEditors)
@@ -102,12 +102,27 @@ public class PackageRegistry
             .AsReadOnly();
     }
 
-    public Package? GetContributingPackage(DocumentEditorId editorId)
+    public IReadOnlyList<EditorInstance> GetEditorInstances()
     {
-        // Custom editor IDs are formatted as "{packageName}.{contributionId}"
-        // by CustomDocumentViewFactory. Bundled package names themselves contain
-        // dots (e.g. "celbridge.notes"), so match by full-name prefix rather than
-        // splitting on the first separator.
+        var instances = new List<EditorInstance>();
+        foreach (var contribution in GetAllDocumentEditors())
+        {
+            var instanceId = EditorInstanceId.Create(contribution.Package.Name, contribution.Id);
+            instances.Add(new EditorInstance
+            {
+                InstanceId = instanceId,
+                Contribution = contribution
+            });
+        }
+
+        return instances.AsReadOnly();
+    }
+
+    public Package? GetContributingPackage(EditorInstanceId editorId)
+    {
+        // Instance ids are composed as "{packageName}.{contributionId}". Bundled
+        // package names themselves contain dots (e.g. "celbridge.notes"), so match
+        // by full-name prefix rather than splitting on the first separator.
         var editorIdString = editorId.ToString();
         foreach (var package in GetAllPackages())
         {
@@ -139,7 +154,7 @@ public class PackageRegistry
             // must not appear as a creatable type in the New File dialog. The skip is also structural:
             // a utility has no [[document_file_types]] entry to offer, so the FileTypes[0] read below
             // would be meaningless for it.
-            if (contribution is CustomDocumentEditorContribution { IsUtility: true })
+            if (contribution.IsUtility)
             {
                 continue;
             }
@@ -230,7 +245,7 @@ public class PackageRegistry
     // path, choosing the reader by package origin (direct File.* for bundled, gateway for
     // project). Returns an empty array when the utility declares no template, and null when a
     // declared template file is missing or unreadable so callers can log and seed an empty file.
-    public byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution)
+    public byte[]? GetUtilityTemplateContent(EditorContribution contribution)
     {
         var descriptor = contribution.UtilityDescriptor;
         if (descriptor is null)

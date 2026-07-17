@@ -370,19 +370,19 @@ public class WorkspaceLoader
         _userInterfaceService.TitleBar?.ClearShortcutButtons();
     }
 
-    // Creates the persistent surface for every utility (bundled before project, each by id) and builds the rail.
-    // The utilities are owned by the documents service for the workspace lifetime. The utility mechanism is
-    // always on; individual utility packages can still gate themselves with a package feature flag.
+    // Creates the persistent surface for every utility instance (bundled before project, each by id) and builds
+    // the rail. The utilities are owned by the documents service for the workspace lifetime. The utility
+    // mechanism is always on; individual utility packages can still gate themselves with a package feature flag.
     private async Task BuildUtilities()
     {
-        var utilityContributions = GetUtilityContributions();
-        if (utilityContributions.Count == 0)
+        var utilityInstances = GetUtilityInstances();
+        if (utilityInstances.Count == 0)
         {
             return;
         }
 
         var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-        var tabs = await utilityService.CreateUtilitiesAsync(utilityContributions);
+        var tabs = await utilityService.CreateUtilitiesAsync(utilityInstances);
         if (tabs.Count == 0)
         {
             return;
@@ -391,43 +391,37 @@ public class WorkspaceLoader
         _workspaceWrapper.WorkspaceService.UtilityPanel.BuildCustomUtilities(tabs);
     }
 
-    // Enumerates enabled utility contributions in the rail's stable order: bundled before project, each
-    // group sorted by fully-qualified id. Feature-flag-disabled packages are filtered out.
-    private List<CustomDocumentEditorContribution> GetUtilityContributions()
+    // Enumerates enabled utility instances in the rail's stable order: bundled before project, each
+    // group sorted by instance id. Feature-flag-disabled packages are filtered out.
+    private List<EditorInstance> GetUtilityInstances()
     {
         var packageService = _workspaceWrapper.WorkspaceService.PackageService;
 
-        var utilityContributions = new List<CustomDocumentEditorContribution>();
-        foreach (var contribution in packageService.GetAllDocumentEditors())
+        var utilityInstances = new List<EditorInstance>();
+        foreach (var instance in packageService.GetEditorInstances())
         {
-            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utilityContribution)
+            if (!instance.Contribution.IsUtility)
             {
                 continue;
             }
 
-            if (!IsPackageEnabled(utilityContribution.Package))
+            if (!IsPackageEnabled(instance.Contribution.Package))
             {
                 continue;
             }
 
-            utilityContributions.Add(utilityContribution);
+            utilityInstances.Add(instance);
         }
 
-        var bundledContributions = utilityContributions
-            .Where(contribution => contribution.Package.Origin == PackageOrigin.Bundled)
-            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+        var bundledInstances = utilityInstances
+            .Where(instance => instance.Contribution.Package.Origin == PackageOrigin.Bundled)
+            .OrderBy(instance => instance.InstanceId.ToString(), StringComparer.Ordinal);
 
-        var projectContributions = utilityContributions
-            .Where(contribution => contribution.Package.Origin == PackageOrigin.Project)
-            .OrderBy(GetUtilityId, StringComparer.Ordinal);
+        var projectInstances = utilityInstances
+            .Where(instance => instance.Contribution.Package.Origin == PackageOrigin.Project)
+            .OrderBy(instance => instance.InstanceId.ToString(), StringComparer.Ordinal);
 
-        return bundledContributions.Concat(projectContributions).ToList();
-    }
-
-    // The utility id string, used only as a stable ordinal sort key for the rail ordering.
-    private static string GetUtilityId(CustomDocumentEditorContribution contribution)
-    {
-        return UtilityId.Create(contribution.Package.Name, contribution.Id).ToString();
+        return bundledInstances.Concat(projectInstances).ToList();
     }
 
     private bool IsPackageEnabled(PackageInfo package)

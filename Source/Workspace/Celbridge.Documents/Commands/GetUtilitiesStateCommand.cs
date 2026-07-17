@@ -79,14 +79,15 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
         // When it is a document it is shown if its tab is the active document; when it is in the panel it is
         // shown if it is the active rail surface.
-        foreach (var contribution in packageService.GetAllDocumentEditors())
+        foreach (var instance in packageService.GetEditorInstances())
         {
-            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utility)
+            var utility = instance.Contribution;
+            if (!utility.IsUtility)
             {
                 continue;
             }
 
-            var utilityId = UtilityId.Create(utility.Package.Name, utility.Id);
+            var utilityId = instance.InstanceId;
             var displayName = ResolveLocalizedString(utility.Package, utility.DisplayName);
 
             var isDocumentDocked = false;

@@ -81,7 +81,7 @@ public class DocumentViewFactoryTests
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Fail("missing"));
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("missing.md"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("missing.md"), EditorInstanceId.Empty);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -93,17 +93,17 @@ public class DocumentViewFactoryTests
         // different editor and that's the one that wins. Both factories can
         // handle the resource; without the sidecar, priority would pick the
         // specialized one.
-        var sidecarEditorId = new DocumentEditorId("test.sidecar-editor");
+        var sidecarEditorId = new EditorInstanceId("test.sidecar-editor");
         var sidecarView = Substitute.For<IDocumentView>();
         var sidecarFactory = CreateFakeFactory(sidecarEditorId, ".md", sidecarView, EditorPriority.General);
-        var defaultFactory = CreateFakeFactory(new DocumentEditorId("test.default-editor"), ".md",
+        var defaultFactory = CreateFakeFactory(new EditorInstanceId("test.default-editor"), ".md",
             Substitute.For<IDocumentView>(), EditorPriority.Specialized);
         _registry.RegisterFactory(sidecarFactory);
         _registry.RegisterFactory(defaultFactory);
 
         StubSidecarEditor("test.sidecar-editor");
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(sidecarView);
@@ -117,12 +117,12 @@ public class DocumentViewFactoryTests
         // the open; the priority-based resolution kicks in and finds the
         // currently-registered editor for the extension.
         var defaultView = Substitute.For<IDocumentView>();
-        var defaultFactory = CreateFakeFactory(new DocumentEditorId("test.default-editor"), ".md", defaultView);
+        var defaultFactory = CreateFakeFactory(new EditorInstanceId("test.default-editor"), ".md", defaultView);
         _registry.RegisterFactory(defaultFactory);
 
         StubSidecarEditor("test.uninstalled-editor");
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(defaultView);
@@ -134,16 +134,16 @@ public class DocumentViewFactoryTests
         // The sidecar names an editor that's registered but its CanHandleResource
         // rejects this file. Resolution continues without losing the open.
         var rejectingFactory = CreateFakeFactory(
-            new DocumentEditorId("test.rejecting"), ".md",
+            new EditorInstanceId("test.rejecting"), ".md",
             Substitute.For<IDocumentView>(), canHandle: false);
         var defaultView = Substitute.For<IDocumentView>();
-        var defaultFactory = CreateFakeFactory(new DocumentEditorId("test.default"), ".md", defaultView);
+        var defaultFactory = CreateFakeFactory(new EditorInstanceId("test.default"), ".md", defaultView);
         _registry.RegisterFactory(rejectingFactory);
         _registry.RegisterFactory(defaultFactory);
 
         StubSidecarEditor("test.rejecting");
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(defaultView);
@@ -162,7 +162,7 @@ public class DocumentViewFactoryTests
 
         StubSidecarEditor(DocumentConstants.CodeEditorId.ToString());
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.txt"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.txt"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(codeView);
@@ -172,15 +172,15 @@ public class DocumentViewFactoryTests
     public async Task CreateAsync_RequestedEditor_IsUsedDirectly()
     {
         var requestedView = Substitute.For<IDocumentView>();
-        var requestedFactory = CreateFakeFactory(new DocumentEditorId("test.requested"), ".md", requestedView);
-        var otherFactory = CreateFakeFactory(new DocumentEditorId("test.other"), ".md",
+        var requestedFactory = CreateFakeFactory(new EditorInstanceId("test.requested"), ".md", requestedView);
+        var otherFactory = CreateFakeFactory(new EditorInstanceId("test.other"), ".md",
             Substitute.For<IDocumentView>(), EditorPriority.Specialized);
         _registry.RegisterFactory(requestedFactory);
         _registry.RegisterFactory(otherFactory);
 
         var result = await CreateFactory().CreateAsync(
             new ResourceKey("doc.md"),
-            new DocumentEditorId("test.requested"));
+            new EditorInstanceId("test.requested"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(requestedView);
@@ -192,13 +192,13 @@ public class DocumentViewFactoryTests
         // Failing to honour an explicit caller request would hide bugs like
         // an MCP document_open call passing the wrong extension to a tool.
         var requestedFactory = CreateFakeFactory(
-            new DocumentEditorId("test.requested"), ".md",
+            new EditorInstanceId("test.requested"), ".md",
             Substitute.For<IDocumentView>(), canHandle: false);
         _registry.RegisterFactory(requestedFactory);
 
         var result = await CreateFactory().CreateAsync(
             new ResourceKey("doc.md"),
-            new DocumentEditorId("test.requested"));
+            new EditorInstanceId("test.requested"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -224,7 +224,7 @@ public class DocumentViewFactoryTests
     {
         var result = await CreateFactory().CreateAsync(
             new ResourceKey("doc.md"),
-            new DocumentEditorId("test.never-registered"));
+            new EditorInstanceId("test.never-registered"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -237,16 +237,16 @@ public class DocumentViewFactoryTests
         // over the priority-default.
         var preferredView = Substitute.For<IDocumentView>();
         var preferredFactory = CreateFakeFactory(
-            new DocumentEditorId("test.preferred"), ".md", preferredView, EditorPriority.General);
+            new EditorInstanceId("test.preferred"), ".md", preferredView, EditorPriority.General);
         var specializedFactory = CreateFakeFactory(
-            new DocumentEditorId("test.specialized"), ".md",
+            new EditorInstanceId("test.specialized"), ".md",
             Substitute.For<IDocumentView>(), EditorPriority.Specialized);
         _registry.RegisterFactory(preferredFactory);
         _registry.RegisterFactory(specializedFactory);
 
         StubExtensionPreference(".md", "test.preferred");
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(preferredView);
@@ -257,10 +257,10 @@ public class DocumentViewFactoryTests
     {
         var specializedView = Substitute.For<IDocumentView>();
         var specializedFactory = CreateFakeFactory(
-            new DocumentEditorId("test.specialized"), ".md", specializedView, EditorPriority.Specialized);
+            new EditorInstanceId("test.specialized"), ".md", specializedView, EditorPriority.Specialized);
         _registry.RegisterFactory(specializedFactory);
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(specializedView);
@@ -275,14 +275,14 @@ public class DocumentViewFactoryTests
         _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(true));
 
         var placeholderFactory = CreatePlaceholderFactory(
-            new DocumentEditorId("test.placeholder"), ".xyz");
+            new EditorInstanceId("test.placeholder"), ".xyz");
         _registry.RegisterFactory(placeholderFactory);
 
         var codeView = Substitute.For<IDocumentView>();
         var codeFactory = CreateFakeFactory(DocumentConstants.CodeEditorId, ".cs", codeView);
         _registry.RegisterFactory(codeFactory);
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(codeView);
@@ -302,7 +302,7 @@ public class DocumentViewFactoryTests
             DocumentConstants.CodeEditorId, ".cs", codeView, canHandle: false);
         _registry.RegisterFactory(codeFactory);
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(codeView);
@@ -317,14 +317,14 @@ public class DocumentViewFactoryTests
         _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(true));
 
         var placeholderFactory = CreatePlaceholderFactory(
-            new DocumentEditorId("test.placeholder"), ".xyz");
+            new EditorInstanceId("test.placeholder"), ".xyz");
         _registry.RegisterFactory(placeholderFactory);
 
         var codeView = Substitute.For<IDocumentView>();
         var codeFactory = CreateFakeFactory(DocumentConstants.CodeEditorId, ".cs", codeView);
         _registry.RegisterFactory(codeFactory);
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(codeView);
@@ -336,7 +336,7 @@ public class DocumentViewFactoryTests
     {
         _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(false));
 
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), DocumentEditorId.Empty);
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), EditorInstanceId.Empty);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -371,7 +371,7 @@ public class DocumentViewFactoryTests
     }
 
     private static IDocumentEditorFactory CreateFakeFactory(
-        DocumentEditorId editorId,
+        EditorInstanceId editorId,
         string extension,
         IDocumentView view,
         EditorPriority priority = EditorPriority.Specialized,
@@ -392,7 +392,7 @@ public class DocumentViewFactoryTests
     }
 
     private static IDocumentEditorFactory CreatePlaceholderFactory(
-        DocumentEditorId editorId,
+        EditorInstanceId editorId,
         string extension)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();

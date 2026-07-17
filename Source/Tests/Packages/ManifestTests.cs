@@ -58,10 +58,10 @@ public class ManifestTests
         package.DocumentEditors.Should().ContainSingle();
 
         var contribution = package.DocumentEditors[0];
-        contribution.Should().BeOfType<CustomDocumentEditorContribution>();
+        contribution.Should().BeOfType<EditorContribution>();
         contribution.Id.Should().Be("my-editor-doc");
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".myext");
-        ((CustomDocumentEditorContribution)contribution).EntryPoint.Should().Be("index.html");
+        ((EditorContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Package.PackageFolder.Should().Be(_tempFolder);
     }
 
@@ -102,48 +102,6 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.Name.Should().Be("my-widget");
         result.Value.Info.Title.Should().BeEmpty();
-    }
-
-    [Test]
-    public void LoadPackage_ValidCodeDocument_WithPreview_ReturnsContribution()
-    {
-        WritePackageToml("""
-            [package]
-            name = "test.code-preview"
-            title = "Code Preview"
-
-            [contributes]
-            document_editors = ["cpv.document.toml"]
-            """);
-
-        WriteDocumentToml("cpv.document.toml", """
-            [document]
-            id = "cpv-doc"
-            type = "code"
-            display_name = "TestEditor"
-
-            [[document_file_types]]
-            extension = ".cpv"
-            display_name = "TestFileType"
-
-            [code_editor]
-            customizations = "customize.js"
-
-            [code_preview]
-            entry_point = "preview/index.html"
-            """);
-
-        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
-
-        result.IsSuccess.Should().BeTrue();
-        var contribution = result.Value.DocumentEditors[0];
-        contribution.Should().BeOfType<CodeDocumentEditorContribution>();
-
-        var codeContribution = (CodeDocumentEditorContribution)contribution;
-        codeContribution.CodePreview.Should().NotBeNull();
-        codeContribution.CodePreview!.EntryPoint.Should().Be("preview/index.html");
-        codeContribution.CodeEditor.Should().NotBeNull();
-        codeContribution.CodeEditor!.CustomizationScript.Should().Be("customize.js");
     }
 
     [Test]
@@ -349,7 +307,7 @@ public class ManifestTests
         WriteDocumentToml("doc.document.toml", """
             [document]
             id = "basic-doc"
-            type = "code"
+            type = "custom"
             display_name = "TestEditor"
 
             [[document_file_types]]
@@ -378,7 +336,7 @@ public class ManifestTests
         WriteDocumentToml("doc.document.toml", """
             [document]
             id = "priority-doc"
-            type = "code"
+            type = "custom"
             priority = "general"
             display_name = "TestEditor"
 
@@ -575,10 +533,10 @@ public class ManifestTests
         package.Info.FeatureFlag.Should().Be("full-pkg");
 
         var contribution = package.DocumentEditors[0];
-        contribution.Should().BeOfType<CustomDocumentEditorContribution>();
+        contribution.Should().BeOfType<EditorContribution>();
         contribution.Id.Should().Be("full-doc");
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".full");
-        ((CustomDocumentEditorContribution)contribution).EntryPoint.Should().Be("index.html");
+        ((EditorContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Priority.Should().Be(EditorPriority.Specialized);
         contribution.Templates.Should().HaveCount(1);
     }
@@ -609,7 +567,7 @@ public class ManifestTests
         WriteDocumentToml("b.document.toml", """
             [document]
             id = "doc-b"
-            type = "code"
+            type = "custom"
             display_name = "TestEditor"
 
             [[document_file_types]]
@@ -621,51 +579,8 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().HaveCount(2);
-        result.Value.DocumentEditors[0].Should().BeOfType<CustomDocumentEditorContribution>();
         result.Value.DocumentEditors[0].Id.Should().Be("doc-a");
-        result.Value.DocumentEditors[1].Should().BeOfType<CodeDocumentEditorContribution>();
         result.Value.DocumentEditors[1].Id.Should().Be("doc-b");
-    }
-
-    [Test]
-    public void LoadPackage_CodeEditorOptions_Parsed()
-    {
-        WritePackageToml("""
-            [package]
-            name = "test.code-editor"
-            title = "CodeEditor"
-
-            [contributes]
-            document_editors = ["doc.document.toml"]
-            """);
-
-        WriteDocumentToml("doc.document.toml", """
-            [document]
-            id = "code-editor-doc"
-            type = "code"
-            display_name = "TestEditor"
-
-            [[document_file_types]]
-            extension = ".mon"
-            display_name = "TestFileType"
-
-            [code_editor]
-            word_wrap = true
-            scroll_beyond_last_line = false
-            minimap_enabled = true
-            customizations = "custom.js"
-            """);
-
-        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
-
-        result.IsSuccess.Should().BeTrue();
-        var codeContribution = result.Value.DocumentEditors[0] as CodeDocumentEditorContribution;
-        codeContribution.Should().NotBeNull();
-        codeContribution!.CodeEditor.Should().NotBeNull();
-        codeContribution.CodeEditor!.WordWrap.Should().BeTrue();
-        codeContribution.CodeEditor.ScrollBeyondLastLine.Should().BeFalse();
-        codeContribution.CodeEditor.MinimapEnabled.Should().BeTrue();
-        codeContribution.CodeEditor.CustomizationScript.Should().Be("custom.js");
     }
 
     [Test]
@@ -713,7 +628,7 @@ public class ManifestTests
         WriteDocumentToml("b.document.toml", """
             [document]
             id = "doc-b"
-            type = "code"
+            type = "custom"
             display_name = "TestEditor"
 
             [[document_file_types]]
@@ -759,7 +674,7 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var customContribution = result.Value.DocumentEditors[0] as CustomDocumentEditorContribution;
+        var customContribution = result.Value.DocumentEditors[0] as EditorContribution;
         customContribution.Should().NotBeNull();
         customContribution!.EntryPoint.Should().Be("index.html");
     }
@@ -1057,7 +972,7 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().ContainSingle();
 
-        var contribution = (CustomDocumentEditorContribution)result.Value.DocumentEditors[0];
+        var contribution = (EditorContribution)result.Value.DocumentEditors[0];
         contribution.IsUtility.Should().BeTrue();
 
         // The editor extension is derived from the backing resource, and the display name defaults to the
@@ -1098,7 +1013,7 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var contribution = (CustomDocumentEditorContribution)result.Value.DocumentEditors[0];
+        var contribution = (EditorContribution)result.Value.DocumentEditors[0];
         contribution.UtilityDescriptor!.Template.Should().BeEmpty();
     }
 
@@ -1120,7 +1035,7 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
 
         var contribution = result.Value.DocumentEditors.Should().ContainSingle()
-            .Which.Should().BeOfType<CustomDocumentEditorContribution>().Which;
+            .Which.Should().BeOfType<EditorContribution>().Which;
         contribution.IsUtility.Should().BeTrue();
     }
 
@@ -1155,36 +1070,6 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         // A failed document manifest is skipped, so the package loads with no document editors.
-        result.IsSuccess.Should().BeTrue();
-        result.Value.DocumentEditors.Should().BeEmpty();
-    }
-
-    [Test]
-    public void LoadPackage_UtilityWithCodeType_IsRejected()
-    {
-        WritePackageToml("""
-            [package]
-            name = "test.emoji"
-            title = "Emoji Renderer"
-
-            [contributes]
-            document_editors = ["emoji.document.toml"]
-            """);
-
-        WriteDocumentToml("emoji.document.toml", """
-            [document]
-            id = "emoji-renderer"
-            type = "code"
-            display_name = "Emoji"
-
-            [utility]
-            resource = "utils:settings._emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
-            """);
-
-        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
-
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().BeEmpty();
     }

@@ -40,7 +40,7 @@ public class DocumentViewFactory
     /// </summary>
     public async Task<Result<IDocumentView>> CreateAsync(
         ResourceKey fileResource,
-        DocumentEditorId requestedEditorId)
+        EditorInstanceId requestedEditorId)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
@@ -193,7 +193,7 @@ public class DocumentViewFactory
         return CreateTextDocumentView(fileResource);
     }
 
-    private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, DocumentEditorId requestedEditorId)
+    private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, EditorInstanceId requestedEditorId)
     {
         var getFactoryResult = _documentEditorRegistry.GetFactoryById(requestedEditorId);
         if (getFactoryResult.IsFailure)
@@ -267,7 +267,7 @@ public class DocumentViewFactory
         return textBoxView.OkResult<IDocumentView>();
     }
 
-    private static bool IsCodeEditor(DocumentEditorId editorId)
+    private static bool IsCodeEditor(EditorInstanceId editorId)
     {
         return editorId == DocumentConstants.CodeEditorId;
     }

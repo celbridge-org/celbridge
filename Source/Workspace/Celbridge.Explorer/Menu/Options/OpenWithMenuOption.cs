@@ -95,7 +95,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
         // Pre-select the editor that's currently being used for this document (if open),
         // falling back to the workspace preference for this extension.
-        var currentEditorId = DocumentEditorId.Empty;
+        var currentEditorId = EditorInstanceId.Empty;
         var openDocument = _workspaceWrapper.WorkspaceService.DocumentsService
             .GetOpenDocuments()
             .FirstOrDefault(document => document.FileResource == resourceKey);

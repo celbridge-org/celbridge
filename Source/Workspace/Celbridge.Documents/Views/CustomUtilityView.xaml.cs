@@ -23,7 +23,7 @@ public sealed partial class CustomUtilityView : UserControl
     private readonly CustomEditorFocusContext _panelFocusContext;
 
     // The utility's id, set on Initialize. Used by the dock orchestration to address this panel.
-    private UtilityId _utilityId = UtilityId.Empty;
+    private EditorInstanceId _utilityId = EditorInstanceId.Empty;
 
     public CustomUtilityView(IServiceProvider serviceProvider)
     {
@@ -72,7 +72,7 @@ public sealed partial class CustomUtilityView : UserControl
     /// <summary>
     /// The utility's id.
     /// </summary>
-    public UtilityId UtilityId => _utilityId;
+    public EditorInstanceId UtilityId => _utilityId;
 
     /// <summary>
     /// This utility's current dock location (the Utility Panel rail or a document tab). Set by the dock
@@ -95,12 +95,12 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// Binds the panel to its utility contribution and backing resource, then initializes the WebView. The
+    /// Binds the panel to its utility instance and backing resource, then initializes the WebView. The
     /// backing file is expected to already exist (seeded by the documents service before this call).
     /// </summary>
-    public async Task<Result> InitializeAsync(CustomDocumentEditorContribution contribution, ResourceKey resource, string displayName)
+    public async Task<Result> InitializeAsync(EditorInstance instance, ResourceKey resource, string displayName)
     {
-        _utilityId = UtilityId.Create(contribution.Package.Name, contribution.Id);
+        _utilityId = instance.InstanceId;
 
         PanelHeaderControl.Title = displayName;
 
@@ -120,7 +120,7 @@ public sealed partial class CustomUtilityView : UserControl
         var writableState = await operations.GetWritableStateAsync(resource);
         _controller.SetWritableState(writableState);
 
-        var initResult = await _controller.InitializeAsync(contribution);
+        var initResult = await _controller.InitializeAsync(instance.Contribution);
         if (initResult.IsFailure)
         {
             return Result.Fail($"Failed to initialize utility: '{resource}'")
