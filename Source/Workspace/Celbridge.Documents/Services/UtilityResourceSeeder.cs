@@ -21,18 +21,12 @@ public class UtilityResourceSeeder
     }
 
     /// <summary>
-    /// Seeds the backing file for a utility contribution when it does not yet exist, resolving the resource from
-    /// its descriptor. Returns Fail if the descriptor's resource is malformed or the seed write fails.
+    /// Seeds an instance's backing file from the contribution's template when the file does not
+    /// yet exist. Returns Fail when the seed write fails.
     /// </summary>
-    public async Task<Result> SeedIfMissingAsync(EditorContribution contribution)
+    public async Task<Result> SeedIfMissingAsync(ResourceKey resource, EditorContribution contribution)
     {
-        var descriptor = contribution.UtilityDescriptor;
-        Guard.IsNotNull(descriptor);
-
-        if (!ResourceKey.TryCreate(descriptor.Resource, out var resource))
-        {
-            return Result.Fail($"Utility declares an invalid resource: '{descriptor.Resource}'");
-        }
+        Guard.IsNotNull(contribution.UtilityDescriptor);
 
         return await SeedFromContributionAsync(resource, contribution);
     }

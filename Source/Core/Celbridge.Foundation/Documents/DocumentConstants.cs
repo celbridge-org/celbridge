@@ -6,9 +6,9 @@ namespace Celbridge.Documents;
 public static class DocumentConstants
 {
     /// <summary>
-    /// Id of the bundled code editor.
+    /// Built-in id of the code editor.
     /// </summary>
-    public static readonly EditorInstanceId CodeEditorId = new("celbridge.code-editor.code-document");
+    public static readonly EditorInstanceId CodeEditorId = Packages.BuiltInEditors.CodeEditorId;
 
     /// <summary>
     /// Id of the last-resort text fallback view, used when no other editor claims the file.

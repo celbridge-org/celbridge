@@ -1,6 +1,6 @@
 # Document editor contributions
 
-A package contribution that takes over a file extension in the documents panel. The editor runs in a WebView and talks to the host through the shared client at `/assets/celbridge-client/celbridge.js`, addressed root-relative against the page's own loopback origin. Read `packages_overview` first.
+A package contributes editors; a project instantiates them. A document editor edits files matching its declared file types in the documents panel. The editor runs in a WebView and talks to the host through the shared client at `/assets/celbridge-client/celbridge.js`, addressed root-relative against the page's own loopback origin. Read `packages_overview` first.
 
 ## Manifest
 
@@ -12,34 +12,62 @@ name = "my-editor"
 title = "My Editor"
 
 [contributes]
-document_editors = ["my-editor.document.toml"]
+editors = ["my-editor.editor.toml"]
 
 [permissions]
 tools = ["document.*", "file.*"]
 ```
 
-`packages/my-editor/my-editor.document.toml`:
+`packages/my-editor/my-editor.editor.toml`:
 
 ```toml
-[document]
-id = "my-editor-document"
-type = "custom"
-entry_point = "index.html"
-priority = "specialized"
-display_name = "MyEditor_Editor_Name"
+[editor]
+id = "my-editor"
+type = "document"
+entry-point = "index.html"
+display-name = "MyEditor_Editor_Name"
 
-[[document_file_types]]
+[[file-types]]
 extension = ".myext"
-display_name = "MyEditor_FileType_MyExt"
+display-name = "MyEditor_FileType_MyExt"
 
-[[document_templates]]
+[[templates]]
 id = "empty"
-display_name = "MyEditor_Template_Empty"
-template_file = "templates/empty.myext"
+display-name = "MyEditor_Template_Empty"
+template-file = "templates/empty.myext"
 default = true
 ```
 
-`priority`: `"specialized"` wins over `"general"` for the same extension. `display_name` values are localization keys. Templates are optional.
+`type` is `"document"` (edits matching files, shown in document tabs) or `"utility"` (a workspace fixture; see `utility_documents`). A document editor requires at least one `[[file-types]]` entry and must not declare a `[utility]` section. `display-name` values are localization keys. Templates are optional. All Celbridge-owned manifest keys are kebab-case.
+
+## Activation and instances
+
+A contribution alone does nothing. The project's `.celbridge` file activates the package and declares an instance of the editor:
+
+```toml
+[celbridge]
+packages = ["my-editor"]
+
+[my-files]
+package      = "my-editor"
+contribution = "my-editor"
+```
+
+Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first declared instance (in declaration order) whose editor supports the extension, then the built-in editors in host order. See `project_structure` for the full `.celbridge` schema.
+
+## Config descriptors (optional)
+
+An editor declares its per-instance configuration surface as typed `[[config]]` descriptors:
+
+```toml
+[[config]]
+key          = "grid-size"
+type         = "number"
+default      = 16
+display-name = "MyEditor_Config_GridSize"
+```
+
+Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Instance tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the instance's keys). Descriptor keys must not collide with the reserved instance properties (`package`, `contribution`, `title`, `icon`, `tooltip`).
 
 ## JS handlers
 

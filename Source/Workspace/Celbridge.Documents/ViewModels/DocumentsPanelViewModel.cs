@@ -226,6 +226,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var descriptor = utilityFactory.Contribution.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
 
-        return new UtilityTabInfo(descriptor.Icon, utilityFactory.DisplayName);
+        var iconGlyphName = utilityFactory.Instance.Icon ?? descriptor.Icon;
+
+        return new UtilityTabInfo(iconGlyphName, utilityFactory.DisplayName);
     }
 }

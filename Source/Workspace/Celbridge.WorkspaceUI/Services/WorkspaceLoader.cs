@@ -58,6 +58,9 @@ public class WorkspaceLoader
         {
             var projectFeatures = currentProject.Config.Features;
             _featureFlags.ApplyProjectOverrides(projectFeatures);
+
+            // Surface entries the config parser skipped or degraded. The rest of the file applied.
+            HandleConfigEntryErrors(currentProject.Config.EntryErrors, currentProject.ProjectFilePath);
         }
 
         // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
@@ -366,8 +369,7 @@ public class WorkspaceLoader
     }
 
     // Creates the persistent surface for every utility instance and builds the rail. The utilities are owned by
-    // the utility service for the workspace lifetime. The utility mechanism is always on. Individual utility
-    // packages can still gate themselves with a package feature flag.
+    // the utility service for the workspace lifetime.
     private async Task BuildUtilities()
     {
         var utilityInstances = GetUtilityInstances();
@@ -386,8 +388,8 @@ public class WorkspaceLoader
         _workspaceWrapper.WorkspaceService.UtilityPanel.BuildCustomUtilities(tabs);
     }
 
-    // Enumerates enabled utility instances in the rail's stable order: bundled before project, each
-    // group sorted by instance id. Feature-flag-disabled packages are filtered out.
+    // Enumerates the declared utility instances. Declaration order in the project config is the
+    // rail order.
     private List<EditorInstance> GetUtilityInstances()
     {
         var packageService = _workspaceWrapper.WorkspaceService.PackageService;
@@ -400,33 +402,32 @@ public class WorkspaceLoader
                 continue;
             }
 
-            if (!IsPackageEnabled(instance.Contribution.Package))
-            {
-                continue;
-            }
-
             utilityInstances.Add(instance);
         }
 
-        var bundledInstances = utilityInstances
-            .Where(instance => instance.Contribution.Package.Origin == PackageOrigin.Bundled)
-            .OrderBy(instance => instance.InstanceId.ToString(), StringComparer.Ordinal);
-
-        var projectInstances = utilityInstances
-            .Where(instance => instance.Contribution.Package.Origin == PackageOrigin.Project)
-            .OrderBy(instance => instance.InstanceId.ToString(), StringComparer.Ordinal);
-
-        return bundledInstances.Concat(projectInstances).ToList();
+        return utilityInstances;
     }
 
-    private bool IsPackageEnabled(PackageInfo package)
+    private void HandleConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors, string projectFilePath)
     {
-        if (string.IsNullOrEmpty(package.FeatureFlag))
+        if (entryErrors.Count == 0)
         {
-            return true;
+            return;
         }
 
-        return _featureFlags.IsEnabled(package.FeatureFlag);
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Project config entries in '{projectFileName}' were skipped or degraded:");
+        foreach (var entryError in entryErrors)
+        {
+            sb.AppendLine($"  [{entryError.EntryName}]: {entryError.Message}");
+        }
+        _logger.LogError(sb.ToString());
+
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectFileName);
+        messengerService.Send(message);
     }
 
     private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)

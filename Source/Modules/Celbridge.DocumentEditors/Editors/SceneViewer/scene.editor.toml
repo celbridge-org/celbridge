@@ -1,0 +1,10 @@
+[editor]
+id = "scene-viewer"
+type = "document"
+entry-point = "index.html"
+external-content = true
+display-name = "SceneViewer_Editor_Name"
+
+[[file-types]]
+extension = ".scene"
+display-name = "SceneViewer_FileType_Scene"

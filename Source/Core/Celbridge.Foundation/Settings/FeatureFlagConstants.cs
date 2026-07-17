@@ -41,10 +41,4 @@ public static class FeatureFlagConstants
     /// Enables the built-in WebFetch and WebSearch tools for coding agents.
     /// </summary>
     public const string WebAccessTools = "web-access-tools";
-
-    /// <summary>
-    /// The built-in example utilities (Notepad, Process) that exercise the utility mechanism. Off for real
-    /// projects, which contribute their own utilities.
-    /// </summary>
-    public const string ExampleUtilities = "example-utilities";
 }

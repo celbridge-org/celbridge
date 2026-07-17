@@ -1,8 +1,9 @@
 namespace Celbridge.Documents;
 
 /// <summary>
-/// A strongly-typed identifier for an editor instance, in lowercase kebab-case with optional dots
-/// (e.g. "celbridge.markdown-document", "celbridge.explorer").
+/// A strongly-typed identifier for an editor, in lowercase kebab-case with optional dots. Holds
+/// both dot-free project-declared instance ids (e.g. "python-repl") and dotted host-assigned
+/// built-in ids (e.g. "celbridge.markdown", "celbridge.explorer").
 /// </summary>
 public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
 {
@@ -43,6 +44,31 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
         }
 
         return new EditorInstanceId($"{packageName}.{contributionId}");
+    }
+
+    /// <summary>
+    /// Returns true if the string is a valid project-declared instance name: non-empty, using
+    /// only lowercase letters, digits, and hyphens. Dots are reserved for the host-assigned
+    /// built-in editor ids.
+    /// </summary>
+    public static bool IsValidDeclaredName(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return false;
+        }
+
+        foreach (var character in id)
+        {
+            if (!char.IsAsciiLetterLower(character) &&
+                !char.IsAsciiDigit(character) &&
+                character != '-')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

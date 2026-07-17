@@ -181,10 +181,12 @@ public class ProjectFactoryTests
         var projectPath = Path.Combine(tempFolder, "test.celbridge");
         var content = """
             [celbridge]
-            version = "1.0.0"
-            
+            celbridge-version = "1.0.0"
+            project-version = "0.1.0"
+
             [project]
-            name = "TestProject"
+            requires-python = "3.12"
+            dependencies = []
             """;
         File.WriteAllText(projectPath, content);
         return projectPath;

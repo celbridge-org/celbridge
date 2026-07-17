@@ -176,6 +176,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             return;
         }
 
+        // A lazy-load utility creates its WebView on first show. The surface is shown
+        // immediately; the WebView attaches to it when initialization completes.
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        _ = workspaceWrapper.WorkspaceService.UtilityService.EnsureUtilityInitializedAsync(utilityId);
+
         ShowSurface(utilityId);
         PersistSelectedUtility(utilityId.ToString());
     }

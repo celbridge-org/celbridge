@@ -52,6 +52,12 @@ public enum ConsoleErrorType
     /// The ConsoleErrorMessage.ConfigFileName field carries the summary text.
     /// </summary>
     ProjectCheckError,
+
+    /// <summary>
+    /// One or more entries in the .celbridge project config were skipped or degraded.
+    /// The project loads with the remaining entries applied.
+    /// </summary>
+    ProjectConfigEntryError,
 }
 
 /// <summary>

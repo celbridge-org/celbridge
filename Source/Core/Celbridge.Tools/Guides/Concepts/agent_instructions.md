@@ -69,7 +69,7 @@ Type `help(cel)` to list the namespaces, or `help(cel.file)` to see the methods 
 
 ## JavaScript proxy conventions
 
-Package extensions run inside a WebView hosted by a document editor contribution (declared in `package.toml` under `[contributes].document_editors`). Before writing any JS that calls `cel.*`, declare the tools your package needs in `package.toml` under `[permissions].tools`:
+Package extensions run inside a WebView hosted by an editor contribution (declared in `package.toml` under `[contributes].editors`). Before writing any JS that calls `cel.*`, declare the tools your package needs in `package.toml` under `[permissions].tools`:
 
 ```toml
 [permissions]

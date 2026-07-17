@@ -1,11 +1,11 @@
 using Celbridge.Commands;
+using Celbridge.Console;
 using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -18,7 +18,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
-    private readonly IFeatureFlags _featureFlags;
     private readonly FileTypeHelper _fileTypeHelper;
     private readonly DocumentEditorRegistry _documentEditorRegistry;
     private readonly FileTypeClassifier _fileTypeClassifier;
@@ -61,8 +60,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         ICommandService commandService,
         IModuleService moduleService,
         IWorkspaceWrapper workspaceWrapper,
-        ITextBinarySniffer textBinarySniffer,
-        IFeatureFlags featureFlags)
+        ITextBinarySniffer textBinarySniffer)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -73,7 +71,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
-        _featureFlags = featureFlags;
         _documentEditorRegistry = new DocumentEditorRegistry(_textBinarySniffer);
 
         _messengerService.Register<PackagesInitializedMessage>(this, OnPackagesInitializedMessage);
@@ -149,35 +146,102 @@ public class DocumentsService : IDocumentsService, IDisposable
         try
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var instances = workspaceService.PackageService.GetEditorInstances();
+            var packageService = workspaceService.PackageService;
             var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-            foreach (var instance in instances)
+            // Declared instances register first, in declaration order, then the built-ins.
+            // Registration order carries the editor resolution precedence.
+            foreach (var instance in packageService.GetEditorInstances())
             {
-                try
-                {
-                    // Register an editor factory for each editor instance, including utilities: a utility's
-                    // factory is what lets it be docked into a document tab.
-                    var factory = new CustomDocumentViewFactory(_serviceProvider, instance, _featureFlags, localizationService);
-                    var result = _documentEditorRegistry.RegisterFactory(factory);
-                    if (result.IsFailure)
-                    {
-                        _logger.LogWarning(result,
-                            $"Failed to register custom editor factory for: {instance.InstanceId}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        $"An exception occurred while registering custom editor for: {instance.InstanceId}");
-                }
+                RegisterEditorInstanceFactory(instance, localizationService);
             }
 
+            foreach (var builtIn in packageService.GetBuiltInEditors())
+            {
+                RegisterEditorInstanceFactory(builtIn, localizationService);
+            }
+
+            ApplyEditorAssociations();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "An exception occurred while initializing package document editors");
         }
+    }
+
+    private void RegisterEditorInstanceFactory(EditorInstance instance, IPackageLocalizationService localizationService)
+    {
+        try
+        {
+            // Register an editor factory for each editor instance, including utilities: a utility's
+            // factory is what lets it be docked into a document tab.
+            var factory = new CustomDocumentViewFactory(_serviceProvider, instance, localizationService);
+            var result = _documentEditorRegistry.RegisterFactory(factory);
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(result,
+                    $"Failed to register custom editor factory for: {instance.InstanceId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                $"An exception occurred while registering custom editor for: {instance.InstanceId}");
+        }
+    }
+
+    // Validates the project's editor-associations map against the registered editors and hands the
+    // valid entries to the registry. An entry naming an unknown editor, or an editor that does
+    // not support its extension, is reported and ignored.
+    private void ApplyEditorAssociations()
+    {
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var config = projectService.CurrentProject?.Config;
+        if (config is null)
+        {
+            return;
+        }
+
+        var validatedAssociations = new Dictionary<string, string>();
+        var invalidEntries = new List<string>();
+
+        foreach (var (extension, editorIdValue) in config.Celbridge.EditorAssociations)
+        {
+            if (!EditorInstanceId.TryParse(editorIdValue, out var editorId))
+            {
+                invalidEntries.Add($"'{extension}': '{editorIdValue}' is not a valid editor id");
+                continue;
+            }
+
+            var factoryResult = _documentEditorRegistry.GetFactoryById(editorId);
+            if (factoryResult.IsFailure)
+            {
+                invalidEntries.Add($"'{extension}': no editor '{editorIdValue}' is registered");
+                continue;
+            }
+            var factory = factoryResult.Value;
+
+            var supportsExtension = factory.SupportedExtensions
+                .Any(supported => extension.EndsWith(supported, StringComparison.Ordinal));
+            if (!supportsExtension)
+            {
+                invalidEntries.Add($"'{extension}': editor '{editorIdValue}' does not support the extension");
+                continue;
+            }
+
+            validatedAssociations[extension] = editorIdValue;
+        }
+
+        if (invalidEntries.Count > 0)
+        {
+            _logger.LogWarning(
+                $"Ignored invalid editor-associations entries: {string.Join("; ", invalidEntries)}");
+
+            var projectName = Path.GetFileName(projectService.CurrentProject!.ProjectFilePath);
+            _messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName));
+        }
+
+        _documentEditorRegistry.SetEditorAssociations(validatedAssociations);
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)

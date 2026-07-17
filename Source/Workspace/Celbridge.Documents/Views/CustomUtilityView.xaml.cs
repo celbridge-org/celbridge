@@ -20,8 +20,11 @@ public sealed partial class CustomUtilityView : UserControl
     private readonly CustomEditorController _controller;
     private readonly CustomEditorFocusContext _panelFocusContext;
 
-    // The utility's id, set on Initialize. Used by the dock orchestration to address this panel.
+    // The utility's id, set on Bind. Used by the dock orchestration to address this panel.
     private EditorInstanceId _utilityId = EditorInstanceId.Empty;
+
+    // The bound instance, held so a lazy utility can initialize its WebView on first show.
+    private EditorInstance? _instance;
 
     public CustomUtilityView(IServiceProvider serviceProvider)
     {
@@ -89,11 +92,12 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// Binds the panel to its utility instance and backing resource, then initializes the WebView. The
-    /// backing file is expected to already exist, seeded before this call.
+    /// Binds the panel to its utility instance and backing resource without creating the WebView.
+    /// The backing file is expected to already exist, seeded before this call.
     /// </summary>
-    public async Task<Result> InitializeAsync(EditorInstance instance, ResourceKey resource, string displayName)
+    public async Task<Result> BindAsync(EditorInstance instance, ResourceKey resource, string displayName)
     {
+        _instance = instance;
         _utilityId = instance.InstanceId;
 
         PanelHeaderControl.Title = displayName;
@@ -114,10 +118,24 @@ public sealed partial class CustomUtilityView : UserControl
         var writableState = await operations.GetWritableStateAsync(resource);
         _controller.SetWritableState(writableState);
 
-        var initResult = await _controller.InitializeAsync(instance.Contribution);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Initializes the WebView for the bound instance. The controller runs the initialization
+    /// once; later calls await the same result, so this is safe to call on every show.
+    /// </summary>
+    public async Task<Result> EnsureInitializedAsync()
+    {
+        if (_instance is null)
+        {
+            return Result.Fail("Cannot initialize utility: the view is not bound to an instance");
+        }
+
+        var initResult = await _controller.InitializeAsync(_instance);
         if (initResult.IsFailure)
         {
-            return Result.Fail($"Failed to initialize utility: '{resource}'")
+            return Result.Fail($"Failed to initialize utility: '{_viewModel.FileResource}'")
                 .WithErrors(initResult);
         }
 

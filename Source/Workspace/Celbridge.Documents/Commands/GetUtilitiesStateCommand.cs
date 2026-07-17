@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Packages;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -78,14 +79,18 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             }
 
             var utilityId = instance.InstanceId;
-            var displayName = ResolveLocalizedString(utility.Package, utility.DisplayName);
+            var displayName = instance.Title
+                ?? ResolveLocalizedString(utility.Package, utility.DisplayName);
 
             var isDocumentDocked = false;
             var utilityResource = ResourceKey.Empty;
-            if (utility.UtilityDescriptor is not null
-                && ResourceKey.TryCreate(utility.UtilityDescriptor.Resource, out utilityResource))
+            if (utility.UtilityDescriptor is not null)
             {
-                isDocumentDocked = openResources.Contains(utilityResource);
+                var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{utility.UtilityDescriptor.ResourceExtension}";
+                if (ResourceKey.TryCreate(resourceValue, out utilityResource))
+                {
+                    isDocumentDocked = openResources.Contains(utilityResource);
+                }
             }
 
             var location = isDocumentDocked ? DockLocation.Document : DockLocation.UtilityPanel;

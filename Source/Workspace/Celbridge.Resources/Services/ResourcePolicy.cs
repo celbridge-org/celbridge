@@ -322,10 +322,10 @@ public sealed class ResourcePolicy : IResourcePolicy
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemAllow,
-            pattern: "document.toml",
+            pattern: "editor.toml",
             gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-            description: "The document manifest is always visible and writable.",
-            matcher: ResourcePathMatcher.Compile("document.toml")));
+            description: "The editor manifest is always visible and writable.",
+            matcher: ResourcePathMatcher.Compile("editor.toml")));
 
         return rules;
     }

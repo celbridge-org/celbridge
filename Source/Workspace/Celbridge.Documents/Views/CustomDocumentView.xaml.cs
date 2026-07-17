@@ -19,10 +19,10 @@ public sealed partial class CustomDocumentView : DocumentView
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     /// <summary>
-    /// The editor contribution that configures this view.
+    /// The editor instance that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public EditorContribution? Contribution { get; set; }
+    public EditorInstance? Instance { get; set; }
 
     public CustomDocumentView(
         IServiceProvider serviceProvider,
@@ -63,12 +63,12 @@ public sealed partial class CustomDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        if (Contribution is null)
+        if (Instance is null)
         {
-            return Result.Fail("Cannot initialize custom view: Contribution is not set");
+            return Result.Fail("Cannot initialize custom view: Instance is not set");
         }
 
-        return await _controller.InitializeAsync(Contribution);
+        return await _controller.InitializeAsync(Instance);
     }
 
     public override async Task<Result> NavigateToLocation(string location)

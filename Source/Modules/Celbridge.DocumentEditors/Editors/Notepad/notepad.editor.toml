@@ -1,0 +1,12 @@
+[editor]
+id = "notepad"
+type = "utility"
+entry-point = "index.html"
+
+# A utility editor: each instance declared in the project config is a persistent surface,
+# appearing as a rail item in the Utility Panel beside Explorer and Search.
+[utility]
+resource-extension = "._notepad"
+template = "templates/default._notepad"
+icon = "sticky"
+tooltip = "Utility_Notepad_Tooltip"

@@ -1,3 +1,5 @@
+using Celbridge.Packages;
+
 namespace Celbridge.Documents.Services;
 
 /// <summary>
@@ -6,6 +8,33 @@ namespace Celbridge.Documents.Services;
 /// </summary>
 public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
+    // The resolution band a factory falls into, ordered highest priority first: placeholders
+    // reserve their names ahead of everything, then declared instances in registration order,
+    // then built-ins in the pinned host order, then built-ins outside that list.
+    private enum EditorRankBand
+    {
+        Placeholder,
+        DeclaredInstance,
+        BuiltIn,
+        UnlistedBuiltIn,
+    }
+
+    // A factory's resolution rank: its band first, then its position within the band (host order
+    // for built-ins, registration order otherwise). Lower sorts first.
+    private readonly record struct EditorRank(EditorRankBand Band, int SubOrder) : IComparable<EditorRank>
+    {
+        public int CompareTo(EditorRank other)
+        {
+            var bandComparison = Band.CompareTo(other.Band);
+            if (bandComparison != 0)
+            {
+                return bandComparison;
+            }
+
+            return SubOrder.CompareTo(other.SubOrder);
+        }
+    }
+
     private bool _disposed;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly List<IDocumentEditorFactory> _factories = new();
@@ -13,6 +42,9 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<EditorInstanceId> _registeredEditorIds = new();
     private readonly Dictionary<EditorInstanceId, IDocumentEditorFactory> _idToFactory = new();
+    private readonly Dictionary<EditorInstanceId, EditorRank> _factoryRanks = new();
+    private IReadOnlyDictionary<string, string> _editorAssociations = new Dictionary<string, string>();
+    private int _registrationCounter;
 
     public DocumentEditorRegistry(ITextBinarySniffer textBinarySniffer)
     {
@@ -46,8 +78,9 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
         _idToFactory[factory.EditorId] = factory;
         _factories.Add(factory);
+        _factoryRanks[factory.EditorId] = ComputeRank(factory);
 
-        // Multi-part extensions such as ".document.toml" are indexed as-is. The
+        // Multi-part extensions such as ".editor.toml" are indexed as-is. The
         // longest-suffix walk in GetFactory tries the most specific form first.
         foreach (var extension in supportedExtensions)
         {
@@ -60,9 +93,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             }
 
             factoryList.Add(factory);
-
-            // Sort by priority so GetFactory returns the specialized editor first
-            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+            SortByRank(factoryList);
         }
 
         // Filename matches are tried before any extension match in GetFactory.
@@ -75,10 +106,51 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             }
 
             factoryList.Add(factory);
-            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+            SortByRank(factoryList);
         }
 
         return Result.Ok();
+    }
+
+    public void SetEditorAssociations(IReadOnlyDictionary<string, string> editorAssociations)
+    {
+        _editorAssociations = editorAssociations;
+    }
+
+    public Result<IDocumentEditorFactory> GetAssociatedEditorFactory(ResourceKey fileResource)
+    {
+        // Map lookup answers "which map entry describes this file": the longest matching
+        // suffix of the filename applies.
+        var lowerFileName = fileResource.ResourceName.ToLowerInvariant();
+        foreach (var suffix in GetExtensionSuffixes(lowerFileName))
+        {
+            if (!_editorAssociations.TryGetValue(suffix, out var editorIdValue))
+            {
+                continue;
+            }
+
+            if (!EditorInstanceId.TryParse(editorIdValue, out var editorId))
+            {
+                return Result<IDocumentEditorFactory>.Fail($"Editor association '{editorIdValue}' is not a valid editor id.");
+            }
+
+            var factoryResult = GetFactoryById(editorId);
+            if (factoryResult.IsFailure)
+            {
+                return Result<IDocumentEditorFactory>.Fail($"Editor association '{editorIdValue}' is not a registered editor.");
+            }
+            var factory = factoryResult.Value;
+
+            if (!factory.CanHandleResource(fileResource))
+            {
+                return Result<IDocumentEditorFactory>.Fail(
+                    $"Editor association '{editorIdValue}' does not support '{fileResource}'.");
+            }
+
+            return Result<IDocumentEditorFactory>.Ok(factory);
+        }
+
+        return Result<IDocumentEditorFactory>.Fail($"No editor association matches '{fileResource}'.");
     }
 
     public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource)
@@ -198,7 +270,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             return null;
         }
 
-        // Factories are sorted by priority, so return the first non-null language
+        // Factories are sorted in resolution order, so return the first non-null language
         foreach (var factory in factoryList)
         {
             var language = factory.GetLanguageForExtension(normalizedExtension);
@@ -216,8 +288,48 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return _extensionToFactories.Keys.ToList().AsReadOnly();
     }
 
+    // Assigns the factory's resolution rank at registration time. The registration counter
+    // breaks ties within a band, preserving registration order.
+    private EditorRank ComputeRank(IDocumentEditorFactory factory)
+    {
+        var registrationOrder = _registrationCounter;
+        _registrationCounter++;
+
+        if (factory.IsPlaceholder)
+        {
+            return new EditorRank(EditorRankBand.Placeholder, registrationOrder);
+        }
+
+        var hostOrderIndex = -1;
+        for (int i = 0; i < BuiltInEditors.HostResolutionOrder.Count; i++)
+        {
+            if (BuiltInEditors.HostResolutionOrder[i] == factory.EditorId)
+            {
+                hostOrderIndex = i;
+                break;
+            }
+        }
+        if (hostOrderIndex >= 0)
+        {
+            return new EditorRank(EditorRankBand.BuiltIn, hostOrderIndex);
+        }
+
+        // Native factories outside the pinned host list rank after the listed built-ins.
+        if (!EditorInstanceId.IsValidDeclaredName(factory.EditorId.ToString()))
+        {
+            return new EditorRank(EditorRankBand.UnlistedBuiltIn, registrationOrder);
+        }
+
+        return new EditorRank(EditorRankBand.DeclaredInstance, registrationOrder);
+    }
+
+    private void SortByRank(List<IDocumentEditorFactory> factoryList)
+    {
+        factoryList.Sort((a, b) => _factoryRanks[a.EditorId].CompareTo(_factoryRanks[b.EditorId]));
+    }
+
     // Yields the extension suffixes of a filename from longest to shortest.
-    // "foo.document.toml" produces ".document.toml" then ".toml". "foo.md"
+    // "foo.editor.toml" produces ".editor.toml" then ".toml". "foo.md"
     // produces ".md". "Makefile" produces nothing. A leading dot
     // (".gitignore") is skipped so the file's full name is not treated as
     // an extension.
@@ -266,5 +378,6 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         _filenameToFactories.Clear();
         _registeredEditorIds.Clear();
         _idToFactory.Clear();
+        _factoryRanks.Clear();
     }
 }

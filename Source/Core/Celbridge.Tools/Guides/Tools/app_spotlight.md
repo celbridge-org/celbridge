@@ -29,7 +29,7 @@ Explorer toolbar (its buttons are revealed automatically when spotlighted):
 - `collapse-folders-button` — the collapse-all-folders button in the Explorer toolbar.
 - `project-settings-button` — the project-settings button in the Explorer toolbar.
 
-Utilities (dynamic; the `{utilityId}` is the id `app_list_utilities` reports, e.g. `acme.emoji-picker-utility-button`):
+Utilities (dynamic; the `{utilityId}` is the id `app_list_utilities` reports, e.g. `emoji-picker-utility-button`):
 
 - `{utilityId}-utility-button` — a utility's button in the Utility Panel rail.
 

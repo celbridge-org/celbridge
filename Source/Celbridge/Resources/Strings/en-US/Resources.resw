@@ -716,6 +716,12 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_ProjectCheckFindingsMessage" xml:space="preserve">
     <value>Project check found {0} issue(s). See log for details.</value>
   </data>
+  <data name="ConsolePanel_ProjectConfigEntryErrorTitle" xml:space="preserve">
+    <value>Project Config Issues</value>
+  </data>
+  <data name="ConsolePanel_ProjectConfigEntryErrorMessage" xml:space="preserve">
+    <value>Some entries in {0} were skipped or degraded. See log for details.</value>
+  </data>
   <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
     <value>Split Editor</value>
   </data>
@@ -1253,8 +1259,8 @@ Do you wish to continue?</value>
   <data name="DocumentEditor_PackageManifest" xml:space="preserve">
     <value>Package Manifest</value>
   </data>
-  <data name="DocumentEditor_DocumentContribution" xml:space="preserve">
-    <value>Document Contribution</value>
+  <data name="DocumentEditor_EditorManifest" xml:space="preserve">
+    <value>Editor Manifest</value>
   </data>
   <data name="WebView_Find_Placeholder" xml:space="preserve">
     <value>Find</value>

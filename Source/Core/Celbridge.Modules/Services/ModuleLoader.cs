@@ -12,7 +12,9 @@ public class ModuleLoader : IDisposable
     private AssemblyLoadContext? _loadContext;
     private bool _disposed = false; // To detect redundant calls
 
-    public Dictionary<string, IModule> LoadedModules { get; } = new();
+    // Ordered so module load order (and the editor registration and resolution precedence that
+    // rides on it) is deterministic by contract, not by Dictionary enumeration order.
+    public OrderedDictionary<string, IModule> LoadedModules { get; } = new();
 
     public ModuleLoader()
     {

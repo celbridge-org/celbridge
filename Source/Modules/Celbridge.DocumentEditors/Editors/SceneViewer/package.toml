@@ -3,4 +3,4 @@ name = "celbridge.scene-viewer"
 title = "SceneViewer_Package_Name"
 
 [contributes]
-document_editors = ["scene.document.toml"]
+editors = ["scene.editor.toml"]

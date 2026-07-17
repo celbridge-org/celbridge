@@ -68,7 +68,13 @@ public class DocumentViewFactory
             return extensionView.OkResult<IDocumentView>();
         }
 
-        var factoryView = CreateFromPriorityFactory(fileResource);
+        var associatedEditorView = CreateFromEditorAssociations(fileResource);
+        if (associatedEditorView is not null)
+        {
+            return associatedEditorView.OkResult<IDocumentView>();
+        }
+
+        var factoryView = CreateFromResolvedFactory(fileResource);
         if (factoryView is not null)
         {
             return factoryView.OkResult<IDocumentView>();
@@ -147,10 +153,33 @@ public class DocumentViewFactory
         return null;
     }
 
-    // Highest-priority factory for the resource. Placeholder factories
-    // (package.toml, *.celbridge, *.document.toml) reserve extensions but
-    // never produce a view, so they are skipped here.
-    private IDocumentView? CreateFromPriorityFactory(ResourceKey fileResource)
+    // Editor associations: the [celbridge].editor-associations entry whose extension is the
+    // longest matching suffix of the file name. Entries are validated at workspace load, so a
+    // failed lookup here just falls through.
+    private IDocumentView? CreateFromEditorAssociations(ResourceKey fileResource)
+    {
+        var factoryResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
+        if (factoryResult.IsFailure)
+        {
+            return null;
+        }
+
+        var factory = factoryResult.Value;
+        var createResult = factory.CreateDocumentView(fileResource);
+        if (createResult.IsSuccess)
+        {
+            return createResult.Value;
+        }
+
+        _logger.LogWarning(createResult,
+            $"Associated editor '{factory.EditorId}' failed to create view for '{fileResource}'; falling through");
+        return null;
+    }
+
+    // First factory in resolution order for the resource: declared instances in declaration
+    // order, then built-ins in host order. Placeholder factories (package.toml, *.celbridge,
+    // *.editor.toml) reserve extensions but never produce a view, so they are skipped here.
+    private IDocumentView? CreateFromResolvedFactory(ResourceKey fileResource)
     {
         var factoryResult = _documentEditorRegistry.GetFactory(fileResource);
         if (factoryResult.IsFailure
@@ -221,8 +250,8 @@ public class DocumentViewFactory
 
     private Result<IDocumentView> CreateTextDocumentView(ResourceKey fileResource)
     {
-        // Try every non-placeholder factory in priority order. Placeholders never produce a view.
-        foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(candidate => candidate.Priority))
+        // Try every non-placeholder factory. Placeholders never produce a view.
+        foreach (var factory in _documentEditorRegistry.GetAllFactories())
         {
             if (factory.IsPlaceholder)
             {

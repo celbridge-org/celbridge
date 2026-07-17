@@ -1,10 +1,10 @@
 # Packages
 
-Packages extend Celbridge with custom document editors and other contributions. Each package lives in its own kebab-case subfolder (conventionally under `packages/`, e.g. `packages/my-widget`). Packages run inside a WebView2 control and communicate with the host via JSON-RPC. Web content (HTML, JavaScript, CSS) is typical but not required.
+Packages extend Celbridge with editor contributions: packages contribute, projects instantiate. Each package lives in its own kebab-case subfolder (conventionally under `packages/`, e.g. `packages/my-widget`). Packages run inside a WebView2 control and communicate with the host via JSON-RPC. Web content (HTML, JavaScript, CSS) is typical but not required.
 
 ## Creating a package
 
-There is no scaffolding tool — a package is a folder with a manifest. Write `packages/my-widget/package.toml` with the file tools using the manifest shape below, and the package is discovered on the next project load.
+There is no scaffolding tool — a package is a folder with a manifest. Write `packages/my-widget/package.toml` with the file tools using the manifest shape below, and the package is discovered on the next project load. A discovered package is inert until the project activates it in the `.celbridge` file's `[celbridge].packages` list, and its editors serve nothing until the project declares instances of them (see `project_structure`).
 
 ## Manifest (`package.toml`)
 
@@ -16,10 +16,10 @@ name = "my-widget"        # identifier; matches the workshop's package name
 title = "My Widget"       # display name
 
 [contributes]
-document_editors = ["my-editor.document.toml"]
+editors = ["my-editor.editor.toml"]
 ```
 
-**Required:** `name`. **Optional:** `title`, `feature_flag`. The `[contributes]` section lists document editor manifests provided by the package. If your package contributes a document editor, also read `document_editor_contributions` for the manifest, handler, and read-only contract. For a self-contained tool that owns a fixed backing resource under the hidden `utils:` root — surfaced as a document tab or a Utility Panel rail item rather than by opening a file — read `utility_documents`.
+**Required:** `name`. **Optional:** `title`. The `[contributes].editors` array lists the editor manifests (`*.editor.toml`) provided by the package. Every editor declares a `type`: `"document"` editors edit matching files (read `document_editor_contributions` for the manifest, handler, and read-only contract); `"utility"` editors are workspace fixtures whose instances own state files under the hidden `utils:` root (read `utility_documents`).
 
 The manifest carries no author: the publisher recorded on each version is the **Author** set once in Workshop settings (Settings page), not a per-package field. `package_publish` fails if no Author is configured.
 

@@ -1,14 +1,16 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
+using Celbridge.Projects;
 using Celbridge.Resources;
-using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Discovers, stores, and queries packages from bundled and project sources.
+/// Discovers packages from bundled and project sources, applies the project's activation list,
+/// and resolves the declared editor instances and built-in editors against the discovered
+/// contributions.
 /// </summary>
 public class PackageRegistry
 {
@@ -18,13 +20,16 @@ public class PackageRegistry
 
     private readonly ILogger<PackageRegistry> _logger;
     private readonly IModuleService _moduleService;
-    private readonly IFeatureFlags _featureFlags;
     private readonly IPackageLocalizationService _localizationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
+
+    private List<EditorInstance> _editorInstances = [];
+    private List<EditorInstance> _builtInEditors = [];
 
     // Failures from the most recent discovery pass, retained so package_status
     // can report them after load (the error banner only fires once).
@@ -38,16 +43,16 @@ public class PackageRegistry
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
         IModuleService moduleService,
-        IFeatureFlags featureFlags,
         IPackageLocalizationService localizationService,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _moduleService = moduleService;
-        _featureFlags = featureFlags;
         _localizationService = localizationService;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _fileSystem = fileSystem;
         _bundledReader = new DirectPackageReader(fileSystem);
     }
@@ -64,11 +69,19 @@ public class PackageRegistry
         failures.AddRange(bundledFailures);
         failures.AddRange(projectFailures);
 
+        var instanceFailures = new List<EditorInstanceLoadFailure>();
+        var instanceWarnings = new List<EditorInstanceLoadFailure>();
+        ResolveEditorInstances(instanceFailures, instanceWarnings);
+        ResolveBuiltInEditors();
+
         var report = new PackageDiscoveryReport
         {
             BundledPackageCount = _bundledPackages.Count,
             ProjectPackageCount = _projectPackages.Count,
-            Failures = failures.AsReadOnly()
+            Failures = failures.AsReadOnly(),
+            EditorInstanceCount = _editorInstances.Count,
+            EditorInstanceFailures = instanceFailures.AsReadOnly(),
+            EditorInstanceWarnings = instanceWarnings.AsReadOnly()
         };
 
         _lastFailures = report.Failures;
@@ -76,7 +89,7 @@ public class PackageRegistry
         LogDiscoveredPackages();
 
         _logger.LogInformation(
-            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed");
+            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed, {report.EditorInstanceCount} instances");
 
         return report;
     }
@@ -94,64 +107,46 @@ public class PackageRegistry
         return _lastFailures;
     }
 
-    public IReadOnlyList<EditorContribution> GetAllDocumentEditors()
+    public IReadOnlyList<EditorContribution> GetAllEditors()
     {
         return GetAllPackages()
-            .SelectMany(package => package.DocumentEditors)
+            .SelectMany(package => package.Editors)
             .ToList()
             .AsReadOnly();
     }
 
     public IReadOnlyList<EditorInstance> GetEditorInstances()
     {
-        var instances = new List<EditorInstance>();
-        foreach (var contribution in GetAllDocumentEditors())
-        {
-            var instanceId = EditorInstanceId.Create(contribution.Package.Name, contribution.Id);
-            instances.Add(new EditorInstance
-            {
-                InstanceId = instanceId,
-                Contribution = contribution
-            });
-        }
+        return _editorInstances.AsReadOnly();
+    }
 
-        return instances.AsReadOnly();
+    public IReadOnlyList<EditorInstance> GetBuiltInEditors()
+    {
+        return _builtInEditors.AsReadOnly();
     }
 
     public Package? GetContributingPackage(EditorInstanceId editorId)
     {
-        // Instance ids are composed as "{packageName}.{contributionId}". Bundled
-        // package names themselves contain dots (e.g. "celbridge.notes"), so match
-        // by full-name prefix rather than splitting on the first separator.
-        var editorIdString = editorId.ToString();
-        foreach (var package in GetAllPackages())
+        var editor = FindEditor(editorId);
+        if (editor is null)
         {
-            var packageName = package.Info.Name;
-            if (packageName.Length == 0)
-            {
-                continue;
-            }
-
-            if (editorIdString.Length > packageName.Length
-                && editorIdString.StartsWith(packageName, StringComparison.Ordinal)
-                && editorIdString[packageName.Length] == '.')
-            {
-                return package;
-            }
+            return null;
         }
 
-        return null;
+        var packageName = editor.Contribution.Package.Name;
+
+        return GetAllPackages().FirstOrDefault(p => p.Info.Name.Equals(packageName, StringComparison.Ordinal));
     }
 
     public IReadOnlyList<DocumentTypeInfo> GetDocumentTypes()
     {
-        var contributions = GetAllDocumentEditors();
         var documentTypes = new List<DocumentTypeInfo>();
+        var seenContributions = new HashSet<EditorContribution>();
 
-        foreach (var contribution in contributions)
+        foreach (var contribution in GetAvailableContributions())
         {
-            // A utility owns one fixed resource and is never created as an ordinary project file, so it
-            // must not appear as a creatable type in the New File dialog.
+            // A utility owns per-instance state files and is never created as an ordinary project
+            // file, so it must not appear as a creatable type in the New File dialog.
             if (contribution.IsUtility)
             {
                 continue;
@@ -162,8 +157,8 @@ public class PackageRegistry
                 continue;
             }
 
-            var featureFlag = contribution.Package.FeatureFlag;
-            if (!string.IsNullOrEmpty(featureFlag) && !_featureFlags.IsEnabled(featureFlag))
+            // Multiple instances of one contribution offer one document type.
+            if (!seenContributions.Add(contribution))
             {
                 continue;
             }
@@ -190,16 +185,15 @@ public class PackageRegistry
     }
 
     // Reads the default template bytes for the given file extension, picking the
-    // first contribution that handles the extension and declares a default template.
+    // first available contribution that handles the extension and declares a default template.
     // The reader is chosen by package origin: bundled packages stay on direct File.*
     // because their bytes live outside any registry root, project packages route
     // through IResourceFileSystem by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
-        var contributions = GetAllDocumentEditors();
 
-        foreach (var contribution in contributions)
+        foreach (var contribution in GetAvailableContributions())
         {
             var handlesExtension = contribution.FileTypes
                 .Any(ft => ft.FileExtension.Equals(normalizedExtension, StringComparison.OrdinalIgnoreCase));
@@ -275,19 +269,228 @@ public class PackageRegistry
         return readResult.Value;
     }
 
+    // Resolves the project's declared instance tables against the activated packages, preserving
+    // declaration order. Skipped entries and dropped config keys are reported so the load path can
+    // surface them as console banners.
+    private void ResolveEditorInstances(
+        List<EditorInstanceLoadFailure> instanceFailures,
+        List<EditorInstanceLoadFailure> instanceWarnings)
+    {
+        _editorInstances = [];
+
+        var config = _projectService.CurrentProject?.Config;
+        if (config is null)
+        {
+            return;
+        }
+
+        var activatedPackages = new HashSet<string>(config.Celbridge.Packages, StringComparer.Ordinal);
+
+        foreach (var activationEntry in activatedPackages)
+        {
+            if (!GetAllPackages().Any(p => p.Info.Name.Equals(activationEntry, StringComparison.Ordinal)))
+            {
+                _logger.LogWarning($"Activated package '{activationEntry}' was not discovered.");
+            }
+        }
+
+        foreach (var declaration in config.Instances)
+        {
+            var package = GetAllPackages()
+                .FirstOrDefault(p => p.Info.Name.Equals(declaration.PackageName, StringComparison.Ordinal));
+            if (package is null)
+            {
+                instanceFailures.Add(new EditorInstanceLoadFailure
+                {
+                    InstanceId = declaration.InstanceId,
+                    Detail = $"References unknown package '{declaration.PackageName}'."
+                });
+                continue;
+            }
+
+            // Built-in packages are always active, so an instance may reference them without an
+            // activation entry.
+            var isActivated = activatedPackages.Contains(package.Info.Name) ||
+                BuiltInEditors.IsAlwaysActivePackage(package.Info.Name);
+            if (!isActivated)
+            {
+                instanceFailures.Add(new EditorInstanceLoadFailure
+                {
+                    InstanceId = declaration.InstanceId,
+                    Detail = $"Package '{declaration.PackageName}' is not activated. Add it to [celbridge].packages."
+                });
+                continue;
+            }
+
+            var contribution = package.Editors
+                .FirstOrDefault(e => e.Id.Equals(declaration.ContributionId, StringComparison.Ordinal));
+            if (contribution is null)
+            {
+                instanceFailures.Add(new EditorInstanceLoadFailure
+                {
+                    InstanceId = declaration.InstanceId,
+                    Detail = $"Package '{declaration.PackageName}' has no contribution '{declaration.ContributionId}'."
+                });
+                continue;
+            }
+
+            var effectiveConfig = BuildEffectiveConfig(contribution, declaration, out var droppedKeys);
+            if (droppedKeys.Count > 0)
+            {
+                instanceWarnings.Add(new EditorInstanceLoadFailure
+                {
+                    InstanceId = declaration.InstanceId,
+                    Detail = $"Dropped invalid config keys: {string.Join(", ", droppedKeys)}."
+                });
+            }
+
+            var instance = new EditorInstance
+            {
+                InstanceId = new EditorInstanceId(declaration.InstanceId),
+                Contribution = contribution,
+                Config = effectiveConfig,
+                Title = declaration.Title,
+                Icon = declaration.Icon,
+                Tooltip = declaration.Tooltip
+            };
+
+            _editorInstances.Add(instance);
+        }
+    }
+
+    // Wraps the always-active package contributions in EditorInstance records under their
+    // host-assigned ids, in catalog order.
+    private void ResolveBuiltInEditors()
+    {
+        _builtInEditors = [];
+
+        foreach (var definition in BuiltInEditors.PackageBuiltIns)
+        {
+            var package = _bundledPackages
+                .FirstOrDefault(p => p.Info.Name.Equals(definition.PackageName, StringComparison.Ordinal));
+            var contribution = package?.Editors
+                .FirstOrDefault(e => e.Id.Equals(definition.ContributionId, StringComparison.Ordinal));
+            if (contribution is null)
+            {
+                if (definition.Optional)
+                {
+                    // An optional built-in ships in the installer but is absent from a source build
+                    // without its private library, so its file types degrade to having no editor.
+                    _logger.LogInformation(
+                        $"Optional built-in editor '{definition.EditorId}' is not available: package '{definition.PackageName}' was not discovered.");
+                    continue;
+                }
+
+                // A missing required built-in is a build or packaging error.
+                _logger.LogError(
+                    $"Built-in editor '{definition.EditorId}' is missing: package '{definition.PackageName}' has no contribution '{definition.ContributionId}'.");
+                continue;
+            }
+
+            var builtInInstance = new EditorInstance
+            {
+                InstanceId = definition.EditorId,
+                Contribution = contribution,
+                Config = BuildEffectiveConfig(contribution, declaration: null, out _)
+            };
+
+            _builtInEditors.Add(builtInInstance);
+        }
+    }
+
+    // Computes the configuration delivered to an editor's views: the manifest [options] table,
+    // overlaid with the contribution's descriptor defaults, overlaid with the instance's
+    // type-checked config keys. Keys that fail descriptor type-checking are dropped and reported.
+    private IReadOnlyDictionary<string, string> BuildEffectiveConfig(
+        EditorContribution contribution,
+        EditorInstanceDeclaration? declaration,
+        out List<string> droppedKeys)
+    {
+        droppedKeys = [];
+
+        var effectiveConfig = new Dictionary<string, string>(contribution.Options);
+
+        foreach (var descriptor in contribution.ConfigDescriptors)
+        {
+            if (descriptor.DefaultValue is not null)
+            {
+                effectiveConfig[descriptor.Key] = descriptor.DefaultValue;
+            }
+        }
+
+        if (declaration is null)
+        {
+            return effectiveConfig;
+        }
+
+        foreach (var (key, rawValue) in declaration.Config)
+        {
+            var descriptor = contribution.ConfigDescriptors
+                .FirstOrDefault(d => d.Key.Equals(key, StringComparison.Ordinal));
+            if (descriptor is null)
+            {
+                droppedKeys.Add(key);
+                _logger.LogWarning(
+                    $"Instance '{declaration.InstanceId}' sets unknown config key '{key}' for contribution '{contribution.Id}'.");
+                continue;
+            }
+
+            var encodeResult = ConfigValueEncoder.Encode(rawValue, descriptor);
+            if (encodeResult.IsFailure)
+            {
+                droppedKeys.Add(key);
+                _logger.LogWarning(
+                    $"Instance '{declaration.InstanceId}' config key '{key}' was dropped: {encodeResult.FirstErrorMessage}");
+                continue;
+            }
+            var encodedValue = encodeResult.Value;
+
+            effectiveConfig[key] = encodedValue;
+        }
+
+        return effectiveConfig;
+    }
+
+    // Finds a declared instance or built-in editor by id.
+    private EditorInstance? FindEditor(EditorInstanceId editorId)
+    {
+        var declaredInstance = _editorInstances.FirstOrDefault(i => i.InstanceId == editorId);
+        if (declaredInstance is not null)
+        {
+            return declaredInstance;
+        }
+
+        return _builtInEditors.FirstOrDefault(i => i.InstanceId == editorId);
+    }
+
+    // Enumerates the contributions of the available editors: declared instances first (in
+    // declaration order), then the built-ins.
+    private IEnumerable<EditorContribution> GetAvailableContributions()
+    {
+        foreach (var instance in _editorInstances)
+        {
+            yield return instance.Contribution;
+        }
+
+        foreach (var builtIn in _builtInEditors)
+        {
+            yield return builtIn.Contribution;
+        }
+    }
+
     // Rejects packages whose document-type registration declares any file
     // extension inside the reserved .cel sidecar namespace.
     private Result CheckReservedExtensions(Package package)
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
-        foreach (var documentEditor in package.DocumentEditors)
+        foreach (var editor in package.Editors)
         {
-            foreach (var fileType in documentEditor.FileTypes)
+            foreach (var fileType in editor.FileTypes)
             {
                 if (sidecarService.IsSidecarFileName(fileType.FileExtension))
                 {
                     return Result.Fail(
-                        $"Package '{package.Info.Name}' declares document-file-type extension '{fileType.FileExtension}'. "
+                        $"Package '{package.Info.Name}' declares file-type extension '{fileType.FileExtension}'. "
                         + $"The .cel namespace is reserved for project metadata sidecars.");
                 }
             }
@@ -598,17 +801,17 @@ public class PackageRegistry
 
     private void LogDiscoveredPackage(Package package, string source)
     {
-        var editorCount = package.DocumentEditors.Count;
+        var editorCount = package.Editors.Count;
 
         if (editorCount == 0)
         {
             _logger.LogInformation(
-                $"Discovered {source} package '{package.Info.Name}' (no document editors)");
+                $"Discovered {source} package '{package.Info.Name}' (no editors)");
             return;
         }
 
         var editorDescriptions = new List<string>(editorCount);
-        foreach (var editor in package.DocumentEditors)
+        foreach (var editor in package.Editors)
         {
             var extensionCount = editor.FileTypes.Count;
             string extensionList;
@@ -623,7 +826,7 @@ public class PackageRegistry
             editorDescriptions.Add($"{editor.Id} [{extensionList}]");
         }
 
-        var editorLabel = editorCount == 1 ? "document editor" : "document editors";
+        var editorLabel = editorCount == 1 ? "editor" : "editors";
         var editorList = string.Join("; ", editorDescriptions);
 
         _logger.LogInformation(

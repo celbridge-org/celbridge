@@ -1,9 +1,8 @@
-[document]
-id = "markdown-document"
-type = "custom"
-entry_point = "index.html"
-priority = "specialized"
-display_name = "CodeEditor_Editor_Markdown"
+[editor]
+id = "markdown"
+type = "document"
+entry-point = "index.html"
+display-name = "CodeEditor_Editor_Markdown"
 
 # Surfaced on the JS side as celbridge.options.
 [options]
@@ -14,10 +13,10 @@ initial_view_mode = "preview"
 enable_snippet_toolbar = "true"
 snippet_set = "markdown"
 
-[[document_file_types]]
+[[file-types]]
 extension = ".md"
-display_name = "CodeEditor_FileType_Markdown"
+display-name = "CodeEditor_FileType_Markdown"
 
-[[document_file_types]]
+[[file-types]]
 extension = ".markdown"
-display_name = "CodeEditor_FileType_Markdown"
+display-name = "CodeEditor_FileType_Markdown"

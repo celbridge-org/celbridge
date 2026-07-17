@@ -1,0 +1,10 @@
+[editor]
+id = "spreadsheet"
+type = "document"
+entry-point = "index.html"
+binary = true
+display-name = "Spreadsheet_Editor_Name"
+
+[[file-types]]
+extension = ".xlsx"
+display-name = "Spreadsheet_FileType_Xlsx"

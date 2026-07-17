@@ -19,7 +19,6 @@ public static class ServiceConfiguration
         services.AddTransient<IProjectLoader, ProjectLoader>();
         services.AddSingleton<IProjectLoadReporter, ProjectLoadReporter>();
         services.AddTransient<ProjectUnloader>();
-        services.AddTransient<ProjectConfigReader>();
         services.AddTransient<ProjectFactory>();
 
         //

@@ -2,6 +2,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
@@ -56,44 +57,80 @@ public class UtilityService : IUtilityService, IDisposable
 
             var utilityId = instance.InstanceId;
 
-            if (!ResourceKey.TryCreate(descriptor.Resource, out var resource))
+            // Each instance owns its own state file, derived from the instance id.
+            var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{descriptor.ResourceExtension}";
+            if (!ResourceKey.TryCreate(resourceValue, out var resource))
             {
-                _logger.LogError($"Utility '{utilityId}' declares an invalid resource: '{descriptor.Resource}'");
+                _logger.LogError($"Utility '{utilityId}' has an invalid backing resource: '{resourceValue}'");
                 continue;
             }
 
-            var seedResult = await _utilityResourceSeeder.SeedIfMissingAsync(contribution);
+            var seedResult = await _utilityResourceSeeder.SeedIfMissingAsync(resource, contribution);
             if (seedResult.IsFailure)
             {
                 _logger.LogError(seedResult, $"Failed to seed utility backing file: '{resource}'");
                 continue;
             }
 
-            var displayName = ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
+            var displayName = instance.Title
+                ?? ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
 
             var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
-            var initResult = await panelView.InitializeAsync(instance, resource, displayName);
-            if (initResult.IsFailure)
+            var bindResult = await panelView.BindAsync(instance, resource, displayName);
+            if (bindResult.IsFailure)
             {
-                _logger.LogError(initResult, $"Failed to initialize utility: '{resource}'");
+                _logger.LogError(bindResult, $"Failed to bind utility: '{resource}'");
                 continue;
+            }
+
+            // A lazy-load utility defers its WebView to the first show; every other utility
+            // initializes now.
+            if (!descriptor.LazyLoad)
+            {
+                var initResult = await panelView.EnsureInitializedAsync();
+                if (initResult.IsFailure)
+                {
+                    _logger.LogError(initResult, $"Failed to initialize utility: '{resource}'");
+                    continue;
+                }
             }
 
             _utilities.Add(panelView);
 
-            var tooltip = ResolveLocalizedString(localizationService, contribution.Package, descriptor.Tooltip);
-            tabs.Add(new CustomUtility(utilityId, descriptor.Icon, tooltip, displayName, panelView, panelView.FocusPanel));
+            var icon = instance.Icon ?? descriptor.Icon;
+            var tooltip = instance.Tooltip
+                ?? ResolveLocalizedString(localizationService, contribution.Package, descriptor.Tooltip);
+            tabs.Add(new CustomUtility(utilityId, icon, tooltip, displayName, panelView, panelView.FocusPanel));
         }
 
         return tabs;
     }
 
-    public Result RestoreDockedUtility(ResourceKey resource, DocumentAddress address)
+    public async Task<Result> EnsureUtilityInitializedAsync(EditorInstanceId utilityId)
+    {
+        var panelView = _utilities.FirstOrDefault(utility => utility.UtilityId == utilityId);
+        if (panelView is null)
+        {
+            // Built-in utilities and unknown ids have no deferred initialization.
+            return Result.Ok();
+        }
+
+        var initResult = await panelView.EnsureInitializedAsync();
+        if (initResult.IsFailure)
+        {
+            _logger.LogError(initResult, $"Failed to initialize utility: '{utilityId}'");
+        }
+
+        return initResult;
+    }
+
+    public async Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address)
     {
         var panelView = _utilities.FirstOrDefault(utility => utility.FileResource == resource);
         if (panelView is null)
         {
-            // The utility no longer exists: its package was removed or disabled since the layout was saved.
+            // The utility no longer exists: its package or instance declaration was removed since
+            // the layout was saved.
             return Result.Fail($"Cannot restore docked utility: no utility found for resource '{resource}'");
         }
 
@@ -101,6 +138,14 @@ public class UtilityService : IUtilityService, IDisposable
         {
             // Defensive: a resource should appear at most once in the stored layout.
             return Result.Ok();
+        }
+
+        // A lazy utility restored into the tab layout as a docked document initializes at restore.
+        var initResult = await panelView.EnsureInitializedAsync();
+        if (initResult.IsFailure)
+        {
+            return Result.Fail($"Failed to initialize docked utility for resource '{resource}'")
+                .WithErrors(initResult);
         }
 
         // Restore into the saved section and tab position without activating, because the active document is
@@ -131,12 +176,18 @@ public class UtilityService : IUtilityService, IDisposable
 
     public async Task<Result> DockUtilityAsync(EditorInstanceId utilityId, DockLocation location)
     {
-        await Task.CompletedTask;
-
         var panelView = _utilities.FirstOrDefault(utility => utility.UtilityId == utilityId);
         if (panelView is null)
         {
             return Result.Fail($"Cannot dock utility: no utility found for '{utilityId}'");
+        }
+
+        // Docking presents the utility, so a lazy utility initializes here.
+        var initResult = await panelView.EnsureInitializedAsync();
+        if (initResult.IsFailure)
+        {
+            return Result.Fail($"Failed to initialize utility '{utilityId}' for docking")
+                .WithErrors(initResult);
         }
 
         if (location == DockLocation.Document)

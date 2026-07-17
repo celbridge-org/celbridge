@@ -1,23 +1,93 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Root Celbridge project config.
+/// An entry in the .celbridge project config that was skipped or degraded during parsing,
+/// with the entry name and the reason. The rest of the file still applies.
 /// </summary>
-public sealed record class ProjectConfig
+public record ProjectConfigEntryError(string EntryName, string Message);
+
+/// <summary>
+/// A declared editor instance parsed from a top-level [instance-id] table in the .celbridge
+/// project config. The editor is identified by its package and contribution ids; the instance's
+/// nature (utility or document) follows from the editor's declared type.
+/// </summary>
+public sealed record EditorInstanceDeclaration
 {
-    public ProjectSection Project { get; init; } = new();
-    public CelbridgeSection Celbridge { get; init; } = new();
-    public ShortcutsSection Shortcuts { get; init; } = new();
-    public ResourcesSection Resources { get; init; } = new();
+    /// <summary>
+    /// The instance id: the TOML table name, using only lowercase letters, digits, and hyphens.
+    /// </summary>
+    public required string InstanceId { get; init; }
 
     /// <summary>
-    /// Feature flags dictionary from [features] section.
+    /// Name of the activated package that provides the editor.
     /// </summary>
-    public IReadOnlyDictionary<string, bool> Features { get; init; } = new Dictionary<string, bool>();
+    public required string PackageName { get; init; }
+
+    /// <summary>
+    /// Contribution id of the editor within its package.
+    /// </summary>
+    public required string ContributionId { get; init; }
+
+    /// <summary>
+    /// Optional literal display title override for this instance.
+    /// </summary>
+    public string? Title { get; init; }
+
+    /// <summary>
+    /// Optional icon name override for this instance, from the host icon set.
+    /// </summary>
+    public string? Icon { get; init; }
+
+    /// <summary>
+    /// Optional literal tooltip override for this instance.
+    /// </summary>
+    public string? Tooltip { get; init; }
+
+    /// <summary>
+    /// The instance's configuration: every non-reserved key on the table, holding the raw TOML
+    /// value (string, bool, long, double, or IReadOnlyList of string). Type-checked against the
+    /// editor's config descriptors when the workspace loads.
+    /// </summary>
+    public IReadOnlyDictionary<string, object?> Config { get; init; } = EmptyConfig;
+
+    private static readonly IReadOnlyDictionary<string, object?> EmptyConfig =
+        new Dictionary<string, object?>();
 }
 
 /// <summary>
-/// Models the [resources] section from the .celbridge project config.
+/// Models the [celbridge] table from the .celbridge project config: every host-level declaration
+/// as flat keys, plus the [celbridge.resources] sub-table modeled separately on ProjectConfig.
+/// </summary>
+public sealed record class CelbridgeSection
+{
+    /// <summary>
+    /// Schema version of the project config, driving versioned migrations.
+    /// </summary>
+    public string? CelbridgeVersion { get; init; }
+
+    /// <summary>
+    /// The project's own version.
+    /// </summary>
+    public string? ProjectVersion { get; init; }
+
+    /// <summary>
+    /// Activated package names. A discovered package that is not listed is inert. Built-in
+    /// packages are always active and need no entry.
+    /// </summary>
+    public IReadOnlyList<string> Packages { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Optional map of file extension to editor id: the project's association of a contested
+    /// extension with a specific editor. The longest matching suffix applies.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> EditorAssociations { get; init; } = EmptyEditorAssociations;
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyEditorAssociations =
+        new Dictionary<string, string>();
+}
+
+/// <summary>
+/// Models the [celbridge.resources] sub-table from the .celbridge project config.
 /// Inputs to the workspace-scoped policy engine. The resource set is computed
 /// as (not ignored by the ignore-file, or matched by Add) and not matched by
 /// Remove. Lock is a separate axis that freezes paths in place.
@@ -53,25 +123,12 @@ public sealed record class ResourcesSection
 }
 
 /// <summary>
-/// Models the [project] section from the .celbridge project config.
-/// Uses pyproject.toml naming conventions for Python-related fields.
-/// The [project] section can be copied to a pyproject.toml file for use with 
-/// the Python packaging tools such as twine. 
-/// Note that the requires-python field in pyproject.toml expects a version range, e.g. ">=3.12" rather 
-/// than a specific version number.
+/// Models the interim [project] table from the .celbridge project config, carrying only the
+/// Python environment keys until they move to console instance config. Uses pyproject.toml
+/// naming conventions so the section can be copied to a pyproject.toml file.
 /// </summary>
 public sealed record class ProjectSection
 {
-    /// <summary>
-    /// Project name.
-    /// </summary>
-    public string? Name { get; init; }
-
-    /// <summary>
-    /// Project version.
-    /// </summary>
-    public string? Version { get; init; }
-
     /// <summary>
     /// Python version requirement (e.g., ">=3.12").
     /// </summary>
@@ -81,28 +138,6 @@ public sealed record class ProjectSection
     /// List of Python package dependencies to install in the environment.
     /// </summary>
     public IReadOnlyList<string>? Dependencies { get; init; }
-
-    /// <summary>
-    /// [project.properties] — key/value properties from the project config.
-    /// </summary>
-    public IReadOnlyDictionary<string, string> Properties { get; init; } = new Dictionary<string, string>();
-}
-
-/// <summary>
-/// Models the [celbridge] section from the project config.
-/// Contains Celbridge-specific settings.
-/// </summary>
-public sealed record class CelbridgeSection
-{
-    /// <summary>
-    /// Version of Celbridge used to create/last modify the project.
-    /// </summary>
-    public string? Version { get; init; }
-
-    /// <summary>
-    /// Dictionary of Python scripts to execute at specific points in the application lifecycle.
-    /// </summary>
-    public IReadOnlyDictionary<string, string> Scripts { get; init; } = new Dictionary<string, string>();
 }
 
 /// <summary>
@@ -191,4 +226,47 @@ public sealed record class ShortcutsSection
     /// Returns true if there are validation errors.
     /// </summary>
     public bool HasErrors => ValidationErrors.Count > 0;
+}
+
+/// <summary>
+/// Root Celbridge project config, parsed from the .celbridge file's v2 schema.
+/// </summary>
+public sealed record class ProjectConfig
+{
+    /// <summary>
+    /// The [celbridge] table: versions, package activation, and editor defaults.
+    /// </summary>
+    public CelbridgeSection Celbridge { get; init; } = new();
+
+    /// <summary>
+    /// The interim [project] table carrying the Python environment keys.
+    /// </summary>
+    public ProjectSection Project { get; init; } = new();
+
+    /// <summary>
+    /// Shortcut definitions from the interim top-level [[shortcut]] array.
+    /// </summary>
+    public ShortcutsSection Shortcuts { get; init; } = new();
+
+    /// <summary>
+    /// File policy from the [celbridge.resources] sub-table.
+    /// </summary>
+    public ResourcesSection Resources { get; init; } = new();
+
+    /// <summary>
+    /// Project feature-flag overrides from the [celbridge].features inline table.
+    /// </summary>
+    public IReadOnlyDictionary<string, bool> Features { get; init; } = new Dictionary<string, bool>();
+
+    /// <summary>
+    /// Declared editor instances, in declaration order. Utility instances declare rail order and
+    /// document instances declare editor precedence.
+    /// </summary>
+    public IReadOnlyList<EditorInstanceDeclaration> Instances { get; init; } = Array.Empty<EditorInstanceDeclaration>();
+
+    /// <summary>
+    /// Entries that were skipped or degraded during parsing, surfaced as console banners when
+    /// the workspace loads.
+    /// </summary>
+    public IReadOnlyList<ProjectConfigEntryError> EntryErrors { get; init; } = Array.Empty<ProjectConfigEntryError>();
 }

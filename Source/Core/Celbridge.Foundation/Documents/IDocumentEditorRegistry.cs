@@ -11,8 +11,20 @@ public interface IDocumentEditorRegistry
     Result RegisterFactory(IDocumentEditorFactory factory);
 
     /// <summary>
+    /// Sets the validated editor-associations map of file extension to editor id.
+    /// </summary>
+    void SetEditorAssociations(IReadOnlyDictionary<string, string> editorAssociations);
+
+    /// <summary>
+    /// Gets the factory named by the editor-associations entry whose extension is the longest
+    /// matching suffix of the file name. Fails when no entry matches or the named editor cannot
+    /// handle the resource.
+    /// </summary>
+    Result<IDocumentEditorFactory> GetAssociatedEditorFactory(ResourceKey fileResource);
+
+    /// <summary>
     /// Gets the factory for the specified file resource.
-    /// Returns the highest priority factory that can handle the resource.
+    /// Returns the first factory in resolution order that can handle the resource.
     /// </summary>
     Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource);
 
@@ -27,16 +39,16 @@ public interface IDocumentEditorRegistry
     IReadOnlyList<IDocumentEditorFactory> GetAllFactories();
 
     /// <summary>
-    /// Gets all factories indexed under the specified extension, sorted by priority, without
+    /// Gets all factories indexed under the specified extension, in resolution order, without
     /// walking the multi-part suffix chain or applying CanHandleResource. Returns an empty
     /// list when no factory is registered for the extension.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension);
 
     /// <summary>
-    /// Gets every factory that can handle the given file, sorted by priority
-    /// (most specialized first), deduplicated by editor id and filtered by
-    /// CanHandleResource.
+    /// Gets every factory that can handle the given file, in resolution order (declared
+    /// instances in declaration order, then built-ins in host order), deduplicated by editor
+    /// id and filtered by CanHandleResource.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource);
 

@@ -1,23 +1,6 @@
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Editor priority for conflict resolution when multiple editors support the same file type.
-/// Lower values win.
-/// </summary>
-public enum EditorPriority
-{
-    /// <summary>
-    /// Purpose-built editor for a specific file type (e.g., Markdown editor, Spreadsheet editor).
-    /// </summary>
-    Specialized,
-
-    /// <summary>
-    /// General-purpose editor that handles many file types (e.g., code/text editor).
-    /// </summary>
-    General
-}
-
-/// <summary>
 /// Factory for creating document views for specific file extensions.
 /// </summary>
 public interface IDocumentEditorFactory
@@ -45,14 +28,9 @@ public interface IDocumentEditorFactory
     IReadOnlyList<string> SupportedFilenames { get; }
 
     /// <summary>
-    /// Priority for conflict resolution when multiple factories support the same extension.
-    /// </summary>
-    EditorPriority Priority { get; }
-
-    /// <summary>
     /// True for factories that exist solely to reserve a filename or extension
     /// for a known non-document role (e.g. package.toml, *.celbridge,
-    /// *.document.toml). Placeholders do not produce real document views and
+    /// *.editor.toml). Placeholders do not produce real document views and
     /// are hidden from user-facing pickers such as the "Open with..." menu.
     /// </summary>
     bool IsPlaceholder { get; }

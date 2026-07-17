@@ -15,7 +15,7 @@ public partial record EditorContribution
     public PackageInfo Package { get; init; } = new();
 
     /// <summary>
-    /// Unique identifier for this contribution within its package (e.g., "note-document").
+    /// Unique identifier for this contribution within its package (e.g., "note").
     /// </summary>
     public string Id { get; init; } = string.Empty;
 
@@ -29,11 +29,6 @@ public partial record EditorContribution
     /// an optional display name or localization key for the Add File dialog.
     /// </summary>
     public IReadOnlyList<EditorFileType> FileTypes { get; init; } = [];
-
-    /// <summary>
-    /// Priority for conflict resolution when multiple editors support the same extension.
-    /// </summary>
-    public EditorPriority Priority { get; init; }
 
     /// <summary>
     /// Optional list of document templates provided by this package.
@@ -63,6 +58,12 @@ public partial record EditorContribution
     /// Keys and values are opaque to the host, the editor interprets them.
     /// </summary>
     public IReadOnlyDictionary<string, string> Options { get; init; } = EmptyOptions;
+
+    /// <summary>
+    /// Typed configuration keys declared by the manifest's [[config]] entries. Instance tables in
+    /// the project config are type-checked against these descriptors.
+    /// </summary>
+    public IReadOnlyList<ConfigDescriptor> ConfigDescriptors { get; init; } = [];
 
     /// <summary>
     /// Utility metadata parsed from the [utility] section, or null for an ordinary file-type editor.

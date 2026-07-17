@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Documents;
+using Celbridge.Projects;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -7,47 +8,58 @@ using Tomlyn.Parsing;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Parses package.toml and referenced document TOML files to produce EditorContribution objects.
-/// Handles the two-level manifest structure: package identity + editor contributions.
+/// Parses package.toml and referenced editor manifests (*.editor.toml) to produce
+/// EditorContribution objects. Handles the two-level manifest structure: package identity +
+/// editor contributions.
 /// </summary>
 public static class PackageManifestLoader
 {
     private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
     private const string PermissionsSection = "permissions";
-    private const string DocumentSection = "document";
-    private const string DocumentEditorsKey = "document_editors";
-    private const string DocumentFileTypesSection = "document_file_types";
-    private const string DocumentTemplatesSection = "document_templates";
+    private const string EditorSection = "editor";
+    private const string EditorsKey = "editors";
+    private const string FileTypesSection = "file-types";
+    private const string TemplatesSection = "templates";
     private const string OptionsSection = "options";
     private const string UtilitySection = "utility";
+    private const string ConfigSection = "config";
     private const string ToolsKey = "tools";
 
     private const string IdKey = "id";
     private const string NameKey = "name";
     private const string TitleKey = "title";
-    private const string FeatureFlagKey = "feature_flag";
-    private const string PriorityKey = "priority";
+    private const string TypeKey = "type";
     private const string ExtensionKey = "extension";
-    private const string ExtensionsFileKey = "extensions_file";
-    private const string DisplayNameKey = "display_name";
-    private const string TemplateFileKey = "template_file";
+    private const string ExtensionsFileKey = "extensions-file";
+    private const string DisplayNameKey = "display-name";
+    private const string DescriptionKey = "description";
+    private const string TemplateFileKey = "template-file";
     private const string DefaultKey = "default";
-    private const string EntryPointKey = "entry_point";
+    private const string ValuesKey = "values";
+    private const string KeyKey = "key";
+    private const string EntryPointKey = "entry-point";
     private const string BinaryKey = "binary";
-    private const string ExternalContentKey = "external_content";
-    private const string ResourcePropertyKey = "resource";
+    private const string ExternalContentKey = "external-content";
+    private const string ResourceExtensionKey = "resource-extension";
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
     private const string TooltipKey = "tooltip";
+    private const string LazyLoadKey = "lazy-load";
 
-    private const string GeneralPriorityValue = "general";
+    private const string DocumentTypeValue = "document";
+    private const string UtilityTypeValue = "utility";
     private const string DefaultEntryPoint = "index.html";
+
+    /// <summary>
+    /// File extension of an editor manifest.
+    /// </summary>
+    public const string EditorManifestExtension = ".editor.toml";
 
     private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
 
     /// <summary>
-    /// Loads a package from a package.toml file, including all referenced document editor contributions.
+    /// Loads a package from a package.toml file, including all referenced editor contributions.
     /// secrets populates PackageInfo.Secrets for WebView injection.
     /// devToolsBlocked permanently disables DevTools on the package's WebViews.
     /// origin tags PackageInfo so downstream read sites pick the right IO path.
@@ -108,7 +120,6 @@ public static class PackageManifestLoader
             }
 
             var packageTitle = GetString(packageTable, TitleKey);
-            var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
             var permittedTools = Array.Empty<string>() as IReadOnlyList<string>;
             if (root.TryGetValue(PermissionsSection, out var permissionsObject) &&
@@ -123,7 +134,6 @@ public static class PackageManifestLoader
             {
                 Name = packageName,
                 Title = packageTitle,
-                FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,
                 PermittedTools = permittedTools,
                 Secrets = packageSecrets,
@@ -131,38 +141,57 @@ public static class PackageManifestLoader
                 Origin = origin
             };
 
-            var documentPaths = new List<string>();
+            var editorManifestPaths = new List<string>();
             if (root.TryGetValue(ContributesSection, out var contributesObject) &&
                 contributesObject is TomlTable contributesTable)
             {
-                if (contributesTable.TryGetValue(DocumentEditorsKey, out var documentEditorsObject) &&
-                    documentEditorsObject is TomlArray documentEditorsArray)
+                if (contributesTable.TryGetValue(EditorsKey, out var editorsObject) &&
+                    editorsObject is TomlArray editorsArray)
                 {
-                    foreach (var documentEditor in documentEditorsArray)
+                    foreach (var editorEntry in editorsArray)
                     {
-                        if (documentEditor is string documentPath)
+                        if (editorEntry is string editorManifestPath)
                         {
-                            documentPaths.Add(documentPath);
+                            editorManifestPaths.Add(editorManifestPath);
                         }
                     }
                 }
             }
 
-            var documentEditors = new List<EditorContribution>();
-            foreach (var relativePath in documentPaths)
+            var editors = new List<EditorContribution>();
+            foreach (var relativePath in editorManifestPaths)
             {
-                var fullPath = Path.Combine(packageFolder, relativePath);
-                var loadResult = LoadDocument(fullPath, packageInfo, reader);
-                if (loadResult.IsSuccess)
+                if (!relativePath.EndsWith(EditorManifestExtension, StringComparison.Ordinal))
                 {
-                    documentEditors.Add(loadResult.Value);
+                    return Result.Fail(
+                        $"Editor manifest reference '{relativePath}' must use the '{EditorManifestExtension}' extension: {packageTomlPath}");
                 }
+
+                var fullPath = Path.Combine(packageFolder, relativePath);
+                var loadResult = LoadEditor(fullPath, packageInfo, reader);
+                if (loadResult.IsFailure)
+                {
+                    // The reason is folded into the message rather than nested, because the
+                    // package load failure reports only the first error message.
+                    return Result<Package>.Fail(
+                        $"Package '{packageName}' has an invalid editor manifest '{relativePath}': {loadResult.FirstErrorMessage}")
+                        .WithErrors(loadResult);
+                }
+                var contribution = loadResult.Value;
+
+                if (editors.Any(e => string.Equals(e.Id, contribution.Id, StringComparison.Ordinal)))
+                {
+                    return Result.Fail(
+                        $"Package '{packageName}' declares more than one editor with id '{contribution.Id}': {packageTomlPath}");
+                }
+
+                editors.Add(contribution);
             }
 
             var package = new Package
             {
                 Info = packageInfo,
-                DocumentEditors = documentEditors.AsReadOnly()
+                Editors = editors.AsReadOnly()
             };
 
             return Result<Package>.Ok(package);
@@ -174,24 +203,24 @@ public static class PackageManifestLoader
     }
 
     /// <summary>
-    /// Parses a single document TOML file into an EditorContribution.
+    /// Parses a single editor manifest into an EditorContribution.
     /// </summary>
-    private static Result<EditorContribution> LoadDocument(
-        string documentTomlPath,
+    private static Result<EditorContribution> LoadEditor(
+        string editorTomlPath,
         PackageInfo packageInfo,
         IPackageReader reader)
     {
         try
         {
-            if (!reader.Exists(documentTomlPath))
+            if (!reader.Exists(editorTomlPath))
             {
-                return Result.Fail($"Document manifest not found: {documentTomlPath}");
+                return Result.Fail($"Editor manifest not found: {editorTomlPath}");
             }
 
-            var readResult = reader.ReadAllText(documentTomlPath);
+            var readResult = reader.ReadAllText(editorTomlPath);
             if (readResult.IsFailure)
             {
-                return Result.Fail($"Failed to read document manifest: {documentTomlPath}")
+                return Result.Fail($"Failed to read editor manifest: {editorTomlPath}")
                     .WithErrors(readResult);
             }
             var toml = readResult.Value;
@@ -200,55 +229,97 @@ public static class PackageManifestLoader
             if (parsed.HasErrors)
             {
                 var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result.Fail($"TOML parse error in {documentTomlPath}: {errors}");
+                return Result.Fail($"TOML parse error in {editorTomlPath}: {errors}");
             }
 
             var root = TomlSerializer.Deserialize<TomlTable>(toml);
             if (root is null)
             {
-                return Result.Fail($"Failed to deserialize document manifest: {documentTomlPath}");
+                return Result.Fail($"Failed to deserialize editor manifest: {editorTomlPath}");
             }
 
-            if (!root.TryGetValue(DocumentSection, out var documentObject) ||
-                documentObject is not TomlTable documentTable)
+            if (!root.TryGetValue(EditorSection, out var editorObject) ||
+                editorObject is not TomlTable editorTable)
             {
-                return Result.Fail($"Missing [{DocumentSection}] section: {documentTomlPath}");
+                return Result.Fail($"Missing [{EditorSection}] section: {editorTomlPath}");
             }
 
-            var documentId = GetString(documentTable, IdKey);
-            if (string.IsNullOrEmpty(documentId))
+            var editorId = GetString(editorTable, IdKey);
+            if (string.IsNullOrEmpty(editorId))
             {
-                return Result.Fail($"Document missing required '{IdKey}' field: {documentTomlPath}");
+                return Result.Fail($"Editor missing required '{IdKey}' field: {editorTomlPath}");
             }
 
-            // A [utility] section turns this contribution into a utility. Its presence relaxes
-            // the display_name requirement (the tooltip doubles as the label) and replaces
-            // [[document_file_types]] (the editor extension is derived from the backing resource).
+            if (!EditorInstanceId.IsValidDeclaredName(editorId))
+            {
+                return Result.Fail(
+                    $"Invalid editor id '{editorId}' in manifest: {editorTomlPath}. " +
+                    $"Editor ids use only lowercase letters, digits, and hyphens.");
+            }
+
+            var editorType = GetStringOrNull(editorTable, TypeKey);
+            if (string.IsNullOrEmpty(editorType))
+            {
+                return Result.Fail(
+                    $"Editor missing required '{TypeKey}' field: {editorTomlPath}. " +
+                    $"Valid values are \"{DocumentTypeValue}\" and \"{UtilityTypeValue}\".");
+            }
+
+            if (editorType != DocumentTypeValue &&
+                editorType != UtilityTypeValue)
+            {
+                return Result.Fail(
+                    $"Unknown editor type '{editorType}': {editorTomlPath}. " +
+                    $"Valid values are \"{DocumentTypeValue}\" and \"{UtilityTypeValue}\".");
+            }
+
+            // Per-type section validation: the type names the sections the manifest must and
+            // must not declare.
+            var hasUtilitySection = root.ContainsKey(UtilitySection);
+            var hasFileTypesSection = root.ContainsKey(FileTypesSection);
+
             UtilityDescriptor? utilityDescriptor = null;
-            if (root.TryGetValue(UtilitySection, out var utilityObject))
+            if (editorType == UtilityTypeValue)
             {
-                if (utilityObject is not TomlTable utilityTable)
-                {
-                    return Result.Fail($"[{UtilitySection}] must be a table: {documentTomlPath}");
-                }
-
-                if (root.ContainsKey(DocumentFileTypesSection))
+                if (!hasUtilitySection)
                 {
                     return Result.Fail(
-                        $"A document manifest cannot declare both [{UtilitySection}] and [[{DocumentFileTypesSection}]]: {documentTomlPath}. " +
-                        $"A utility owns one fixed resource and derives its editor extension from it.");
+                        $"'{TypeKey} = \"{UtilityTypeValue}\"' requires a [{UtilitySection}] section: {editorTomlPath}");
+                }
+                if (hasFileTypesSection)
+                {
+                    return Result.Fail(
+                        $"'{TypeKey} = \"{UtilityTypeValue}\"' forbids [[{FileTypesSection}]]: {editorTomlPath}");
                 }
 
-                var utilityResult = ParseUtilitySection(utilityTable, documentTomlPath);
+                if (root[UtilitySection] is not TomlTable utilityTable)
+                {
+                    return Result.Fail($"[{UtilitySection}] must be a table: {editorTomlPath}");
+                }
+
+                var utilityResult = ParseUtilitySection(utilityTable, editorTomlPath);
                 if (utilityResult.IsFailure)
                 {
-                    return Result.Fail($"Invalid [{UtilitySection}] section: {documentTomlPath}")
+                    return Result<EditorContribution>.Fail(utilityResult.FirstErrorMessage)
                         .WithErrors(utilityResult);
                 }
                 utilityDescriptor = utilityResult.Value;
             }
+            else
+            {
+                if (hasUtilitySection)
+                {
+                    return Result.Fail(
+                        $"'{TypeKey} = \"{DocumentTypeValue}\"' forbids a [{UtilitySection}] section: {editorTomlPath}");
+                }
+                if (!hasFileTypesSection)
+                {
+                    return Result.Fail(
+                        $"'{TypeKey} = \"{DocumentTypeValue}\"' requires at least one [[{FileTypesSection}]] entry: {editorTomlPath}");
+                }
+            }
 
-            var displayName = GetString(documentTable, DisplayNameKey);
+            var displayName = GetString(editorTable, DisplayNameKey);
             if (string.IsNullOrEmpty(displayName))
             {
                 if (utilityDescriptor is not null)
@@ -260,32 +331,13 @@ public static class PackageManifestLoader
                 else
                 {
                     return Result.Fail(
-                        $"Document missing required '{DisplayNameKey}' field in [{DocumentSection}] section: {documentTomlPath}. " +
+                        $"Editor missing required '{DisplayNameKey}' field in [{EditorSection}] section: {editorTomlPath}. " +
                         $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
                 }
             }
-            var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
             var fileTypes = new List<EditorFileType>();
-            if (utilityDescriptor is not null)
-            {
-                // The utility registers under the extension derived from its backing resource, so
-                // OpenDocument resolution finds it in the normal extension bucket without a
-                // [[document_file_types]] declaration.
-                var derivedExtension = Path.GetExtension(utilityDescriptor.Resource).ToLowerInvariant();
-                if (string.IsNullOrEmpty(derivedExtension))
-                {
-                    return Result.Fail(
-                        $"The [{UtilitySection}] '{ResourcePropertyKey}' must include a file extension so the editor can register: {documentTomlPath}");
-                }
-
-                fileTypes.Add(new EditorFileType
-                {
-                    FileExtension = derivedExtension,
-                    DisplayName = displayName
-                });
-            }
-            else if (root.TryGetValue(DocumentFileTypesSection, out var fileTypesObject) &&
+            if (root.TryGetValue(FileTypesSection, out var fileTypesObject) &&
                 fileTypesObject is TomlTableArray fileTypesArray)
             {
                 foreach (var fileTypeTable in fileTypesArray)
@@ -294,7 +346,7 @@ public static class PackageManifestLoader
                     if (string.IsNullOrEmpty(fileTypeDisplayName))
                     {
                         return Result.Fail(
-                            $"File type missing required '{DisplayNameKey}' field in [[{DocumentFileTypesSection}]] entry: {documentTomlPath}. " +
+                            $"File type missing required '{DisplayNameKey}' field in [[{FileTypesSection}]] entry: {editorTomlPath}. " +
                             $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
                     }
 
@@ -306,13 +358,13 @@ public static class PackageManifestLoader
                         if (!string.IsNullOrEmpty(extensionLiteral))
                         {
                             return Result.Fail(
-                                $"A [[document_file_types]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {documentTomlPath}");
+                                $"A [[{FileTypesSection}]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {editorTomlPath}");
                         }
 
                         var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName, reader);
                         if (expandResult.IsFailure)
                         {
-                            return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {documentTomlPath}")
+                            return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {editorTomlPath}")
                                 .WithErrors(expandResult);
                         }
 
@@ -329,13 +381,14 @@ public static class PackageManifestLoader
                 }
             }
 
-            if (fileTypes.Count == 0)
+            if (utilityDescriptor is null &&
+                fileTypes.Count == 0)
             {
-                return Result.Fail($"Document must declare at least one file type: {documentTomlPath}");
+                return Result.Fail($"A document editor must declare at least one file type: {editorTomlPath}");
             }
 
             var templates = new List<DocumentTemplate>();
-            if (root.TryGetValue(DocumentTemplatesSection, out var templatesObject) &&
+            if (root.TryGetValue(TemplatesSection, out var templatesObject) &&
                 templatesObject is TomlTableArray templatesArray)
             {
                 foreach (var templateTable in templatesArray)
@@ -350,100 +403,238 @@ public static class PackageManifestLoader
                 }
             }
 
-            // An editor with external_content = true sources its content from outside the file bytes,
+            // An editor with external-content = true sources its content from outside the file bytes,
             // so a starter template would never be written to disk.
             if (templates.Count > 0 &&
-                (GetBoolOrNull(documentTable, ExternalContentKey) ?? false))
+                (GetBoolOrNull(editorTable, ExternalContentKey) ?? false))
             {
                 return Result.Fail(
-                    $"Document manifest '{documentTomlPath}' declares both '{ExternalContentKey} = true' and '{DocumentTemplatesSection}'. " +
+                    $"Editor manifest '{editorTomlPath}' declares both '{ExternalContentKey} = true' and [[{TemplatesSection}]]. " +
                     $"Templates cannot be used with external content.");
             }
 
-            // The instance id is composed as "{packageName}.{documentId}" at factory-construction time. It is
-            // validated here so a bad id is reported at manifest parse rather than at editor construction.
-            var composedEditorId = $"{packageInfo.Name}.{documentId}";
-            if (!EditorInstanceId.IsValid(composedEditorId))
+            var descriptorsResult = ParseConfigDescriptors(root, editorTomlPath);
+            if (descriptorsResult.IsFailure)
             {
-                return Result.Fail(
-                    $"Invalid editor instance id '{composedEditorId}' in manifest: {documentTomlPath}. " +
-                    $"Package name and document id must combine to form an EditorInstanceId using only lowercase letters, digits, dots, and hyphens.");
+                return Result<EditorContribution>.Fail(descriptorsResult.FirstErrorMessage)
+                    .WithErrors(descriptorsResult);
             }
+            var configDescriptors = descriptorsResult.Value;
 
-            var contribution = BuildContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates, documentTable, utilityDescriptor);
+            var contribution = BuildContribution(root, packageInfo, editorId, displayName, fileTypes, templates, configDescriptors, editorTable, utilityDescriptor);
 
             return Result<EditorContribution>.Ok(contribution);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load document manifest: {documentTomlPath}").WithException(ex);
+            return Result.Fail($"Failed to load editor manifest: {editorTomlPath}").WithException(ex);
         }
     }
 
     private static EditorContribution BuildContribution(
         TomlTable root,
         PackageInfo packageInfo,
-        string documentId,
+        string editorId,
         string displayName,
         List<EditorFileType> fileTypes,
-        EditorPriority priority,
         List<DocumentTemplate> templates,
-        TomlTable documentTable,
+        List<ConfigDescriptor> configDescriptors,
+        TomlTable editorTable,
         UtilityDescriptor? utilityDescriptor)
     {
-        var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
-        var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
-        var externalContent = GetBoolOrNull(documentTable, ExternalContentKey) ?? false;
+        var entryPoint = GetStringOrNull(editorTable, EntryPointKey) ?? DefaultEntryPoint;
+        var binary = GetBoolOrNull(editorTable, BinaryKey) ?? false;
+        var externalContent = GetBoolOrNull(editorTable, ExternalContentKey) ?? false;
 
         var options = ParseOptionsTable(root);
 
         return new EditorContribution
         {
             Package = packageInfo,
-            Id = documentId,
+            Id = editorId,
             DisplayName = displayName,
             FileTypes = fileTypes.AsReadOnly(),
-            Priority = priority,
             Templates = templates.AsReadOnly(),
             EntryPoint = entryPoint,
             Binary = binary,
             ExternalContent = externalContent,
             Options = options,
+            ConfigDescriptors = configDescriptors.AsReadOnly(),
             UtilityDescriptor = utilityDescriptor
         };
     }
 
-    private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string documentTomlPath)
+    private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string editorTomlPath)
     {
-        var resource = GetString(utilityTable, ResourcePropertyKey);
-        if (string.IsNullOrEmpty(resource))
+        var resourceExtension = GetString(utilityTable, ResourceExtensionKey);
+        if (string.IsNullOrEmpty(resourceExtension))
         {
-            return Result.Fail($"[{UtilitySection}] missing required '{ResourcePropertyKey}' field: {documentTomlPath}");
+            return Result.Fail($"[{UtilitySection}] missing required '{ResourceExtensionKey}' field: {editorTomlPath}");
+        }
+
+        if (!resourceExtension.StartsWith('.') ||
+            resourceExtension.Length < 2)
+        {
+            return Result.Fail(
+                $"[{UtilitySection}] '{ResourceExtensionKey}' value '{resourceExtension}' must be a file extension with a leading dot: {editorTomlPath}");
         }
 
         var icon = GetString(utilityTable, IconKey);
         if (string.IsNullOrEmpty(icon))
         {
-            return Result.Fail($"[{UtilitySection}] missing required '{IconKey}' field: {documentTomlPath}");
+            return Result.Fail($"[{UtilitySection}] missing required '{IconKey}' field: {editorTomlPath}");
         }
 
         var tooltip = GetString(utilityTable, TooltipKey);
         if (string.IsNullOrEmpty(tooltip))
         {
-            return Result.Fail($"[{UtilitySection}] missing required '{TooltipKey}' field: {documentTomlPath}");
+            return Result.Fail($"[{UtilitySection}] missing required '{TooltipKey}' field: {editorTomlPath}");
         }
 
         var template = GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
+        var lazyLoad = GetBoolOrNull(utilityTable, LazyLoadKey) ?? false;
 
         var descriptor = new UtilityDescriptor
         {
-            Resource = resource,
+            ResourceExtension = resourceExtension.ToLowerInvariant(),
             Template = template,
             Icon = icon,
-            Tooltip = tooltip
+            Tooltip = tooltip,
+            LazyLoad = lazyLoad
         };
 
         return descriptor;
+    }
+
+    private static Result<List<ConfigDescriptor>> ParseConfigDescriptors(TomlTable root, string editorTomlPath)
+    {
+        var descriptors = new List<ConfigDescriptor>();
+        if (!root.TryGetValue(ConfigSection, out var configObject))
+        {
+            return descriptors;
+        }
+
+        if (configObject is not TomlTableArray configArray)
+        {
+            return Result.Fail($"[[{ConfigSection}]] must be an array of tables: {editorTomlPath}");
+        }
+
+        foreach (var configTable in configArray)
+        {
+            var key = GetString(configTable, KeyKey);
+            if (string.IsNullOrEmpty(key))
+            {
+                return Result.Fail($"Config descriptor missing required '{KeyKey}' field: {editorTomlPath}");
+            }
+
+            if (!EditorInstanceId.IsValidDeclaredName(key))
+            {
+                return Result.Fail(
+                    $"Config descriptor key '{key}' must use only lowercase letters, digits, and hyphens: {editorTomlPath}");
+            }
+
+            // Reserved names are checked at package load so the error reaches the package
+            // author, never a project.
+            if (InstancePropertyKeys.All.Contains(key))
+            {
+                return Result.Fail(
+                    $"Config descriptor key '{key}' collides with a reserved instance property: {editorTomlPath}");
+            }
+
+            if (descriptors.Any(d => string.Equals(d.Key, key, StringComparison.Ordinal)))
+            {
+                return Result.Fail($"Duplicate config descriptor key '{key}': {editorTomlPath}");
+            }
+
+            var typeValue = GetStringOrNull(configTable, TypeKey);
+            var descriptorType = typeValue switch
+            {
+                "bool" => ConfigValueType.Bool,
+                "string" => ConfigValueType.String,
+                "number" => ConfigValueType.Number,
+                "enum" => ConfigValueType.Enum,
+                "string-list" => ConfigValueType.StringList,
+                _ => (ConfigValueType?)null
+            };
+            if (descriptorType is null)
+            {
+                return Result.Fail(
+                    $"Config descriptor '{key}' has unknown type '{typeValue}': {editorTomlPath}. " +
+                    $"Valid types are \"bool\", \"string\", \"number\", \"enum\", and \"string-list\".");
+            }
+
+            var values = GetStringArray(configTable, ValuesKey);
+            if (descriptorType == ConfigValueType.Enum)
+            {
+                if (values.Count == 0)
+                {
+                    return Result.Fail(
+                        $"Config descriptor '{key}' of type \"enum\" requires a non-empty '{ValuesKey}' list: {editorTomlPath}");
+                }
+            }
+            else if (configTable.ContainsKey(ValuesKey))
+            {
+                return Result.Fail(
+                    $"Config descriptor '{key}' declares '{ValuesKey}' but is not of type \"enum\": {editorTomlPath}");
+            }
+
+            var displayName = GetString(configTable, DisplayNameKey);
+            if (string.IsNullOrEmpty(displayName))
+            {
+                return Result.Fail($"Config descriptor '{key}' missing required '{DisplayNameKey}' field: {editorTomlPath}");
+            }
+
+            var description = GetString(configTable, DescriptionKey);
+
+            var descriptor = new ConfigDescriptor
+            {
+                Key = key,
+                Type = descriptorType.Value,
+                Values = values,
+                DisplayName = displayName,
+                Description = description
+            };
+
+            if (configTable.TryGetValue(DefaultKey, out var defaultObject))
+            {
+                var rawDefault = NormalizeTomlValue(defaultObject);
+                var encodeResult = ConfigValueEncoder.Encode(rawDefault, descriptor);
+                if (encodeResult.IsFailure)
+                {
+                    return Result.Fail($"Config descriptor '{key}' has an invalid '{DefaultKey}' value: {editorTomlPath}")
+                        .WithErrors(encodeResult);
+                }
+                var encodedDefault = encodeResult.Value;
+
+                descriptor = descriptor with { DefaultValue = encodedDefault };
+            }
+
+            descriptors.Add(descriptor);
+        }
+
+        return descriptors;
+    }
+
+    // Converts a TOML value into the closed raw-value set shared with the project config parser:
+    // string, bool, long, double, or IReadOnlyList of string. Other shapes pass through and fail
+    // descriptor type-checking with a clear message.
+    private static object? NormalizeTomlValue(object? value)
+    {
+        if (value is TomlArray array)
+        {
+            var items = new List<string>(array.Count);
+            foreach (var entry in array)
+            {
+                if (entry is not string stringEntry)
+                {
+                    return value;
+                }
+                items.Add(stringEntry);
+            }
+            return items;
+        }
+
+        return value;
     }
 
     private static IReadOnlyDictionary<string, string> ParseOptionsTable(TomlTable root)
@@ -519,20 +710,6 @@ public static class PackageManifestLoader
         {
             return Result.Fail($"Failed to parse extensions file: {fullPath}").WithException(ex);
         }
-    }
-
-    private static EditorPriority ParseEditorPriority(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return EditorPriority.Specialized;
-        }
-
-        return value.ToLowerInvariant() switch
-        {
-            GeneralPriorityValue => EditorPriority.General,
-            _ => EditorPriority.Specialized
-        };
     }
 
     private static string GetString(TomlTable table, string key)

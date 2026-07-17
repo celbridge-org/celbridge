@@ -18,8 +18,10 @@ public class PackageServiceDocumentTypeTests
     private string _tempProjectFolder = null!;
     private PackageService _service = null!;
     private IModuleService _moduleService = null!;
-    private IFeatureFlags _featureFlags = null!;
+    private IProjectService _projectService = null!;
     private List<string> _bundledPackagePaths = null!;
+    private List<string> _activatedPackages = null!;
+    private List<EditorInstanceDeclaration> _instanceDeclarations = null!;
 
     [SetUp]
     public void Setup()
@@ -33,8 +35,18 @@ public class PackageServiceDocumentTypeTests
             .Select(folder => new BundledPackageDescriptor { Folder = folder })
             .ToList());
 
-        _featureFlags = Substitute.For<IFeatureFlags>();
-        _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
+        // Document types come from the available editors, so each created package is activated
+        // and instantiated unless a test opts out.
+        _activatedPackages = [];
+        _instanceDeclarations = [];
+        _projectService = Substitute.For<IProjectService>();
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(_ => new ProjectConfig
+        {
+            Celbridge = new CelbridgeSection { Packages = _activatedPackages },
+            Instances = _instanceDeclarations
+        });
+        _projectService.CurrentProject.Returns(project);
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
@@ -87,7 +99,7 @@ public class PackageServiceDocumentTypeTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper, fileSystem);
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem);
         var loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(messengerService, loadReporter, registry);
     }
@@ -161,43 +173,22 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public async Task GetDocumentTypes_DisabledFeatureFlag_Excluded()
+    public async Task GetDocumentTypes_UninstantiatedContribution_Excluded()
     {
+        // The package is discovered and activated, but the project declares no instance of its
+        // editor, so it offers no creatable document type.
         await CreateBundledPackage(
-            "flagged-editor",
-            "FlaggedEditor",
-            [(".flagged", "FlaggedEditor")],
-            featureFlag: "my-flag",
+            "undeclared-editor",
+            "UndeclaredEditor",
+            [(".undeclared", "UndeclaredEditor")],
             templates:
             [
-                ("empty", "Empty", "templates/empty.flagged", true)
-            ]);
+                ("empty", "Empty", "templates/empty.undeclared", true)
+            ],
+            declareInstance: false);
 
-        _featureFlags.IsEnabled("my-flag").Returns(false);
-
-        var documentTypes = _service.GetDocumentTypes();
-
-        documentTypes.Should().BeEmpty();
-    }
-
-    [Test]
-    public async Task GetDocumentTypes_EnabledFeatureFlag_Included()
-    {
-        await CreateBundledPackage(
-            "flagged-editor",
-            "FlaggedEditor",
-            [(".flagged", "FlaggedEditor")],
-            featureFlag: "my-flag",
-            templates:
-            [
-                ("empty", "Empty", "templates/empty.flagged", true)
-            ]);
-
-        _featureFlags.IsEnabled("my-flag").Returns(true);
-
-        var documentTypes = _service.GetDocumentTypes();
-
-        documentTypes.Should().HaveCount(1);
+        _service.GetAllEditors().Should().HaveCount(1);
+        _service.GetDocumentTypes().Should().BeEmpty();
     }
 
     [Test]
@@ -232,29 +223,37 @@ public class PackageServiceDocumentTypeTests
             title = "Emoji"
 
             [contributes]
-            document_editors = ["emoji.document.toml"]
+            editors = ["emoji.editor.toml"]
             """);
 
-        File.WriteAllText(Path.Combine(packageDir, "emoji.document.toml"), """
-            [document]
+        File.WriteAllText(Path.Combine(packageDir, "emoji.editor.toml"), """
+            [editor]
             id = "emoji-renderer"
-            type = "custom"
-            entry_point = "index.html"
+            type = "utility"
+            entry-point = "index.html"
 
             [utility]
-            resource = "utils:settings._emoji"
+            resource-extension = "._emoji"
             template = "templates/default._emoji"
             icon = "emoji-smile"
             tooltip = "Emoji_Utility_Tooltip"
             """);
 
         _bundledPackagePaths.Add(packageDir);
+        _activatedPackages.Add("test.emoji");
+        _instanceDeclarations.Add(new EditorInstanceDeclaration
+        {
+            InstanceId = "emoji",
+            PackageName = "test.emoji",
+            ContributionId = "emoji-renderer"
+        });
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // The utility registered as a document editor, but must not appear as a creatable New File type.
-        var editors = _service.GetAllDocumentEditors();
+        // The utility is instantiated, but must not appear as a creatable New File type.
+        var editors = _service.GetAllEditors();
         editors.Should().ContainSingle();
-        ((EditorContribution)editors[0]).IsUtility.Should().BeTrue();
+        editors[0].IsUtility.Should().BeTrue();
+        _service.GetEditorInstances().Should().ContainSingle();
 
         _service.GetDocumentTypes().Should().BeEmpty();
     }
@@ -352,61 +351,72 @@ public class PackageServiceDocumentTypeTests
 
     /// <summary>
     /// Helper to create a bundled package folder with TOML manifests and optional files.
-    /// Registers the path with the module service mock and re-discovers packages.
+    /// Registers the path with the module service mock, activates the package, declares an
+    /// instance of its editor unless declareInstance is false, and re-discovers packages.
     /// </summary>
     private async Task CreateBundledPackage(
         string dirName,
         string packageName,
         (string Extension, string DisplayName)[] fileTypes,
         (string Id, string DisplayName, string File, bool Default)[]? templates = null,
-        string? featureFlag = null,
         Dictionary<string, string>? localizationStrings = null,
-        Dictionary<string, string>? templateFiles = null)
+        Dictionary<string, string>? templateFiles = null,
+        bool declareInstance = true)
     {
         var packageDir = Path.Combine(_tempProjectFolder, "bundled", dirName);
         Directory.CreateDirectory(packageDir);
 
         var bundledName = $"test.{dirName}";
-        var featureFlagLine = featureFlag is not null ? $"\nfeature_flag = \"{featureFlag}\"" : "";
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
             name = "{bundledName}"
-            title = "{packageName}"{featureFlagLine}
+            title = "{packageName}"
 
             [contributes]
-            document_editors = ["editor.document.toml"]
+            editors = ["editor.editor.toml"]
             """);
 
         var fileTypesToml = string.Join("\n", fileTypes.Select(ft => $"""
-            [[document_file_types]]
+            [[file-types]]
             extension = "{ft.Extension}"
-            display_name = "{ft.DisplayName}"
+            display-name = "{ft.DisplayName}"
             """));
 
         var templatesToml = "";
         if (templates is not null)
         {
             templatesToml = string.Join("\n", templates.Select(t => $"""
-                [[document_templates]]
+                [[templates]]
                 id = "{t.Id}"
-                display_name = "{t.DisplayName}"
-                template_file = "{t.File}"
+                display-name = "{t.DisplayName}"
+                template-file = "{t.File}"
                 default = {t.Default.ToString().ToLower()}
                 """));
         }
 
-        File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
-            [document]
-            id = "{bundledName}-doc"
-            type = "custom"
-            entry_point = "index.html"
-            display_name = "{packageName}"
+        File.WriteAllText(Path.Combine(packageDir, "editor.editor.toml"), $"""
+            [editor]
+            id = "editor"
+            type = "document"
+            entry-point = "index.html"
+            display-name = "{packageName}"
 
             {fileTypesToml}
 
             {templatesToml}
             """);
+
+        _activatedPackages.Add(bundledName);
+        if (declareInstance)
+        {
+            _instanceDeclarations.Add(new EditorInstanceDeclaration
+            {
+                InstanceId = dirName,
+                PackageName = bundledName,
+                ContributionId = "editor"
+            });
+        }
 
         if (localizationStrings is not null)
         {

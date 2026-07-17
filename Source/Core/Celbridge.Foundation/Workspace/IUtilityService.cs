@@ -12,21 +12,28 @@ public interface IUtilityService
     /// <summary>
     /// Creates each utility instance as a persistent workspace surface and returns the rail tabs describing
     /// them. Each utility is owned by this service until the workspace unloads. Instances are given in
-    /// display order.
+    /// declaration order, which is the rail order. A lazy-load utility is bound but its WebView is
+    /// deferred to the first show.
     /// </summary>
     Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<EditorInstance> instances);
+
+    /// <summary>
+    /// Initializes a lazy-load utility's WebView if it has not been created yet. A no-op for
+    /// already-initialized utilities, built-in utilities, and unknown ids.
+    /// </summary>
+    Task<Result> EnsureUtilityInitializedAsync(EditorInstanceId utilityId);
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given
     /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
     /// or change the shown panel surface. Fails if no utility owns the resource.
     /// </summary>
-    Result RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
+    Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
 
     /// <summary>
     /// Returns true when a live utility with this id exists, meaning one that was created at workspace load and
-    /// can be shown or docked. A declared utility that was skipped at load is not live: its package feature flag
-    /// is disabled, or its backing resource, seed, or initialization failed.
+    /// can be shown or docked. A declared utility that was skipped at load is not live: its backing resource,
+    /// seed, or initialization failed.
     /// </summary>
     bool HasUtility(EditorInstanceId utilityId);
 

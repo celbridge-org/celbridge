@@ -34,11 +34,21 @@ public class PackageService : IPackageService
         _loadReporter.RecordPackageReport(report);
         await _loadReporter.FlushAsync();
 
+        var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
+
         if (report.Failures.Count > 0)
         {
             // Surface the failures via the console panel error banner.
-            var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
             var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
+            _messengerService.Send(message);
+        }
+
+        if (report.EditorInstanceFailures.Count > 0 ||
+            report.EditorInstanceWarnings.Count > 0)
+        {
+            // Skipped or degraded instance declarations are project config errors, surfaced on
+            // the advisory banner because the rest of the file still applied.
+            var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName);
             _messengerService.Send(message);
         }
 
@@ -60,14 +70,19 @@ public class PackageService : IPackageService
         return _registry.GetLoadFailures();
     }
 
-    public IReadOnlyList<EditorContribution> GetAllDocumentEditors()
+    public IReadOnlyList<EditorContribution> GetAllEditors()
     {
-        return _registry.GetAllDocumentEditors();
+        return _registry.GetAllEditors();
     }
 
     public IReadOnlyList<EditorInstance> GetEditorInstances()
     {
         return _registry.GetEditorInstances();
+    }
+
+    public IReadOnlyList<EditorInstance> GetBuiltInEditors()
+    {
+        return _registry.GetBuiltInEditors();
     }
 
     public Package? GetContributingPackage(EditorInstanceId editorId)

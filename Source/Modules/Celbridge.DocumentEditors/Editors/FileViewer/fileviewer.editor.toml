@@ -1,0 +1,82 @@
+[editor]
+id = "file-viewer"
+type = "document"
+entry-point = "index.html"
+external-content = true
+display-name = "FileViewer_Editor_Name"
+
+[[file-types]]
+extension = ".jpg"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".jpeg"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".png"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".gif"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".webp"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".svg"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".bmp"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".ico"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".mp3"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".wav"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".ogg"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".flac"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".m4a"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".mp4"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
+extension = ".webm"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
+extension = ".avi"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
+extension = ".mov"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
+extension = ".mkv"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
+extension = ".pdf"
+display-name = "FileViewer_FileType_Pdf"

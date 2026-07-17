@@ -225,7 +225,7 @@ public class DocumentLayoutStoreTests
 
         await _store.RestorePanelStateAsync();
 
-        _utilityService.Received(1).RestoreDockedUtility(
+        await _utilityService.Received(1).RestoreDockedUtility(
             utilityResource,
             Arg.Is<DocumentAddress>(address => address.SectionIndex == 0 && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());

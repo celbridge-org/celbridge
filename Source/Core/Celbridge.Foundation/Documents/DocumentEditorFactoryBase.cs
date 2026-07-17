@@ -2,7 +2,7 @@ namespace Celbridge.Documents;
 
 /// <summary>
 /// Base class for document editor factories, providing default implementations of
-/// filename and extension matching, and a default priority.
+/// filename and extension matching.
 /// </summary>
 public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 {
@@ -13,8 +13,6 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
     public abstract IReadOnlyList<string> SupportedExtensions { get; }
 
     public virtual IReadOnlyList<string> SupportedFilenames { get; } = Array.Empty<string>();
-
-    public virtual EditorPriority Priority => EditorPriority.Specialized;
 
     public virtual bool IsPlaceholder => false;
 

@@ -1,3 +1,5 @@
+using Celbridge.Packages;
+
 namespace Celbridge.Tests.Documents;
 
 [TestFixture]
@@ -8,8 +10,8 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var noteCelFactory = CreateMockFactory("test.note-cel", ".note.cel", EditorPriority.Specialized);
-        var celFactory = CreateMockFactory("test.cel-fallback", ".cel", EditorPriority.General);
+        var noteCelFactory = CreateMockFactory("note-cel", ".note.cel");
+        var celFactory = CreateMockFactory("cel-fallback", ".cel");
 
         registry.RegisterFactory(noteCelFactory);
         registry.RegisterFactory(celFactory);
@@ -26,7 +28,7 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var celFactory = CreateMockFactory("test.cel-fallback", ".cel", EditorPriority.General);
+        var celFactory = CreateMockFactory("cel-fallback", ".cel");
         registry.RegisterFactory(celFactory);
 
         var fileResource = new ResourceKey("foo.cel");
@@ -37,17 +39,17 @@ public class MultiPartExtensionResolutionTests
     }
 
     [Test]
-    public void GetFactory_MultiPartWinsEvenWhenSingleCelIsAlsoRegistered()
+    public void GetFactory_MultiPartWinsEvenWhenRegisteredAfterSingleCel()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         // Both extensions present and both can handle the resource. Longest match
-        // wins extension selection independently of the priority bands.
-        var noteCelFactory = CreateMockFactory("test.note-cel", ".note.cel", EditorPriority.Specialized);
-        var celFactory = CreateMockFactory("test.cel-fallback", ".cel", EditorPriority.General);
+        // selects the extension bucket, independently of registration order.
+        var celFactory = CreateMockFactory("cel-fallback", ".cel");
+        var noteCelFactory = CreateMockFactory("note-cel", ".note.cel");
 
-        registry.RegisterFactory(noteCelFactory);
         registry.RegisterFactory(celFactory);
+        registry.RegisterFactory(noteCelFactory);
 
         var fileResource = new ResourceKey("foo.note.cel");
         var result = registry.GetFactory(fileResource);
@@ -61,7 +63,7 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var multiFactory = CreateMockFactoryWithExtensions("test.multi-cel", new[] { ".note.cel", ".theme.cel" });
+        var multiFactory = CreateMockFactoryWithExtensions("multi-cel", new[] { ".note.cel", ".theme.cel" });
         registry.RegisterFactory(multiFactory);
 
         var noteResult = registry.GetFactory(new ResourceKey("foo.note.cel"));
@@ -74,20 +76,40 @@ public class MultiPartExtensionResolutionTests
     }
 
     [Test]
-    public void GetFactory_SpecializedStillBeatsGeneralOnSameMultiPartExtension()
+    public void GetFactory_SameMultiPartExtensionResolvesInRegistrationOrder()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var specialized = CreateMockFactory("test.special-cel", ".note.cel", EditorPriority.Specialized);
-        var general = CreateMockFactory("test.general-cel", ".note.cel", EditorPriority.General);
+        // Two instances claiming one extension resolve in declaration order, which the
+        // registry records as registration order.
+        var firstDeclared = CreateMockFactory("first-cel", ".note.cel");
+        var secondDeclared = CreateMockFactory("second-cel", ".note.cel");
 
-        registry.RegisterFactory(general);
-        registry.RegisterFactory(specialized);
+        registry.RegisterFactory(firstDeclared);
+        registry.RegisterFactory(secondDeclared);
 
         var result = registry.GetFactory(new ResourceKey("foo.note.cel"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(specialized);
+        result.Value.Should().Be(firstDeclared);
+    }
+
+    [Test]
+    public void GetFactory_DeclaredInstanceBeatsBuiltInOnSameExtension()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        // The built-in registers first, but declared instances rank ahead of every built-in.
+        var builtInFactory = CreateMockFactory(BuiltInEditors.CodeEditorId.ToString(), ".note.cel");
+        var declaredInstance = CreateMockFactory("my-notes", ".note.cel");
+
+        registry.RegisterFactory(builtInFactory);
+        registry.RegisterFactory(declaredInstance);
+
+        var result = registry.GetFactory(new ResourceKey("foo.note.cel"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(declaredInstance);
     }
 
     [Test]
@@ -95,8 +117,8 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var packageTomlFactory = CreateMockFactoryWithFilenames("test.package-toml", new[] { "package.toml" });
-        var tomlFactory = CreateMockFactory("test.toml-fallback", ".toml", EditorPriority.General);
+        var packageTomlFactory = CreateMockFactoryWithFilenames("package-toml", new[] { "package.toml" });
+        var tomlFactory = CreateMockFactory("toml-fallback", ".toml");
 
         registry.RegisterFactory(packageTomlFactory);
         registry.RegisterFactory(tomlFactory);
@@ -116,7 +138,7 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var factory = CreateMockFactoryWithFilenames("test.filename-only", new[] { "package.toml" });
+        var factory = CreateMockFactoryWithFilenames("filename-only", new[] { "package.toml" });
 
         var result = registry.RegisterFactory(factory);
 
@@ -142,16 +164,14 @@ public class MultiPartExtensionResolutionTests
     private static IDocumentEditorFactory CreateMockFactory(
         string editorId,
         string extension,
-        EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
-        return CreateMockFactoryWithExtensions(editorId, new[] { extension }, priority, canHandle);
+        return CreateMockFactoryWithExtensions(editorId, new[] { extension }, canHandle);
     }
 
     private static IDocumentEditorFactory CreateMockFactoryWithExtensions(
         string editorId,
         IReadOnlyList<string> extensions,
-        EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
@@ -159,7 +179,6 @@ public class MultiPartExtensionResolutionTests
         factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(extensions);
         factory.SupportedFilenames.Returns(Array.Empty<string>());
-        factory.Priority.Returns(priority);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);
         return factory;
     }
@@ -167,7 +186,6 @@ public class MultiPartExtensionResolutionTests
     private static IDocumentEditorFactory CreateMockFactoryWithFilenames(
         string editorId,
         IReadOnlyList<string> filenames,
-        EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
@@ -175,7 +193,6 @@ public class MultiPartExtensionResolutionTests
         factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(Array.Empty<string>());
         factory.SupportedFilenames.Returns(filenames);
-        factory.Priority.Returns(priority);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);
         return factory;
     }

@@ -258,7 +258,7 @@ public class DocumentLayoutStore
                 var utilityAddress = new DocumentAddress(stored.WindowIndex, utilitySection, stored.TabOrder);
 
                 var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-                var restoreResult = utilityService.RestoreDockedUtility(fileResource, utilityAddress);
+                var restoreResult = await utilityService.RestoreDockedUtility(fileResource, utilityAddress);
                 if (restoreResult.IsFailure)
                 {
                     _logger.LogWarning(restoreResult, $"Failed to restore docked utility '{fileResource}'");

@@ -22,6 +22,7 @@ public class PackageServiceTests
     private IMessengerService _messengerService = null!;
     private IProjectLoadReporter _loadReporter = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private IProjectService _projectService = null!;
 
     [SetUp]
     public void Setup()
@@ -33,8 +34,11 @@ public class PackageServiceTests
         _messengerService = Substitute.For<IMessengerService>();
         _moduleService = Substitute.For<IModuleService>();
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor>());
-        var featureFlags = Substitute.For<IFeatureFlags>();
-        featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
+
+        // Discovery is independent of the project config. Tests that exercise declared
+        // instances call SetProjectConfig to supply an activation list and declarations.
+        _projectService = Substitute.For<IProjectService>();
+        _projectService.CurrentProject.Returns((IProject?)null);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
@@ -89,7 +93,7 @@ public class PackageServiceTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper, fileSystem);
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem);
         _loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(_messengerService, _loadReporter, registry);
     }
@@ -104,11 +108,231 @@ public class PackageServiceTests
     }
 
     [Test]
+    public async Task GetEditorInstances_DeclaredInstances_ResolveInDeclarationOrder()
+    {
+        CreateProjectPackage("editor-a", "editor-a", "Editor A", ".a");
+        CreateProjectPackage("editor-b", "editor-b", "Editor B", ".b");
+        SetProjectConfig(
+            ["editor-a", "editor-b"],
+            CreateDeclaration("second-editor", "editor-b"),
+            CreateDeclaration("first-editor", "editor-a"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var instances = _service.GetEditorInstances();
+        instances.Should().HaveCount(2);
+        instances[0].InstanceId.Should().Be(new EditorInstanceId("second-editor"));
+        instances[1].InstanceId.Should().Be(new EditorInstanceId("first-editor"));
+    }
+
+    [Test]
+    public async Task GetEditorInstances_DiscoveredButUndeclaredPackage_YieldsNoInstances()
+    {
+        // Discovery still finds the package, but nothing instantiates its editor.
+        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
+        SetProjectConfig(["my-editor"]);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetAllEditors().Should().HaveCount(1);
+        _service.GetEditorInstances().Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetEditorInstances_UnactivatedPackage_SkipsInstanceAndReportsFailure()
+    {
+        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
+        SetProjectConfig([], CreateDeclaration("my-files", "my-editor"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetEditorInstances().Should().BeEmpty();
+        _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
+            report.EditorInstanceFailures.Count == 1
+            && report.EditorInstanceFailures[0].InstanceId == "my-files"
+            && report.EditorInstanceFailures[0].Detail.Contains("not activated")));
+    }
+
+    [Test]
+    public async Task GetEditorInstances_UnknownPackageReference_SkipsInstanceAndReportsFailure()
+    {
+        SetProjectConfig(["ghost-editor"], CreateDeclaration("my-files", "ghost-editor"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetEditorInstances().Should().BeEmpty();
+        _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
+            report.EditorInstanceFailures.Count == 1
+            && report.EditorInstanceFailures[0].Detail.Contains("unknown package")));
+    }
+
+    [Test]
+    public async Task GetEditorInstances_UnknownContributionReference_SkipsInstanceAndReportsFailure()
+    {
+        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
+        SetProjectConfig(["my-editor"], CreateDeclaration("my-files", "my-editor", contributionId: "nonexistent"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetEditorInstances().Should().BeEmpty();
+        _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
+            report.EditorInstanceFailures.Count == 1
+            && report.EditorInstanceFailures[0].Detail.Contains("no contribution")));
+    }
+
+    [Test]
+    public async Task GetEditorInstances_InstanceOverrides_AreCarriedOntoTheInstance()
+    {
+        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
+        var declaration = new EditorInstanceDeclaration
+        {
+            InstanceId = "my-files",
+            PackageName = "my-editor",
+            ContributionId = "editor",
+            Title = "My Files",
+            Icon = "journal",
+            Tooltip = "Edit my files"
+        };
+        SetProjectConfig(["my-editor"], declaration);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var instance = _service.GetEditorInstances().Should().ContainSingle().Subject;
+        instance.Title.Should().Be("My Files");
+        instance.Icon.Should().Be("journal");
+        instance.Tooltip.Should().Be("Edit my files");
+    }
+
+    [Test]
+    public async Task GetEditorInstances_InstanceConfig_MergesOverDescriptorDefaults()
+    {
+        CreateConfigurablePackage("console", "console");
+        var declaration = new EditorInstanceDeclaration
+        {
+            InstanceId = "python-repl",
+            PackageName = "console",
+            ContributionId = "editor",
+            Config = new Dictionary<string, object?>
+            {
+                ["shell"] = "pwsh",
+                ["dependencies"] = new List<string> { "numpy" }
+            }
+        };
+        SetProjectConfig(["console"], declaration);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var instance = _service.GetEditorInstances().Should().ContainSingle().Subject;
+
+        // The instance's own values override the descriptor defaults, and a string list is
+        // delivered on the Options channel as a JSON array.
+        instance.Config["shell"].Should().Be("pwsh");
+        instance.Config["dependencies"].Should().Be("[\"numpy\"]");
+
+        // A descriptor default the instance did not set still reaches the editor.
+        instance.Config["scrollback"].Should().Be("500");
+    }
+
+    [Test]
+    public async Task GetEditorInstances_InvalidConfigKeys_AreDroppedAndReportedAsWarnings()
+    {
+        CreateConfigurablePackage("console", "console");
+        var declaration = new EditorInstanceDeclaration
+        {
+            InstanceId = "python-repl",
+            PackageName = "console",
+            ContributionId = "editor",
+            Config = new Dictionary<string, object?>
+            {
+                // Not one of the declared enum values.
+                ["shell"] = "fish",
+                // Not a declared descriptor key at all.
+                ["nonsense"] = "value"
+            }
+        };
+        SetProjectConfig(["console"], declaration);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        // The instance still loads: a typo degrades one setting, not the instance.
+        var instance = _service.GetEditorInstances().Should().ContainSingle().Subject;
+        instance.Config["shell"].Should().Be("python");
+        instance.Config.Should().NotContainKey("nonsense");
+
+        _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
+            report.EditorInstanceWarnings.Count == 1
+            && report.EditorInstanceWarnings[0].InstanceId == "python-repl"
+            && report.EditorInstanceWarnings[0].Detail.Contains("shell")
+            && report.EditorInstanceWarnings[0].Detail.Contains("nonsense")));
+    }
+
+    [Test]
+    public async Task GetBuiltInEditors_AlwaysActivePackage_IsPresentWithoutActivationEntry()
+    {
+        var bundledDir = CreateBuiltInCodeEditorPackage();
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        SetProjectConfig([]);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var builtIns = _service.GetBuiltInEditors();
+        builtIns.Should().Contain(builtIn => builtIn.InstanceId == BuiltInEditors.CodeEditorId);
+    }
+
+    [Test]
+    public async Task GetBuiltInEditors_OptionalBuiltInPackage_IsPresentWithoutActivationEntry()
+    {
+        // The spreadsheet package ships in the installer, so its editor is a built-in that the
+        // project never activates or declares.
+        var bundledDir = CreateBuiltInSpreadsheetPackage();
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        SetProjectConfig([]);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetBuiltInEditors().Should().Contain(builtIn => builtIn.InstanceId == BuiltInEditors.SpreadsheetEditorId);
+    }
+
+    [Test]
+    public async Task GetBuiltInEditors_OptionalBuiltInPackageAbsent_IsSkippedAndOthersStillResolve()
+    {
+        // A source build without the SpreadJS library never discovers the spreadsheet package.
+        // Its editor degrades to being unavailable, and the required built-ins are unaffected.
+        var bundledDir = CreateBuiltInCodeEditorPackage();
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        SetProjectConfig([]);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var builtIns = _service.GetBuiltInEditors();
+        builtIns.Should().NotContain(builtIn => builtIn.InstanceId == BuiltInEditors.SpreadsheetEditorId);
+        builtIns.Should().Contain(builtIn => builtIn.InstanceId == BuiltInEditors.CodeEditorId);
+    }
+
+    [Test]
+    public async Task GetBuiltInEditors_DeclaredInstanceOfBuiltInContribution_CoexistsWithTheBuiltIn()
+    {
+        var bundledDir = CreateBuiltInCodeEditorPackage();
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+
+        // The built-in package is always active, so the instance needs no activation entry.
+        SetProjectConfig([], CreateDeclaration("my-code", "celbridge.code-editor", contributionId: "code"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        // The instance takes over resolution by ranking ahead of every built-in, but the built-in
+        // stays available under its own id so host constants keep resolving.
+        _service.GetEditorInstances().Should().ContainSingle()
+            .Which.InstanceId.Should().Be(new EditorInstanceId("my-code"));
+        _service.GetBuiltInEditors().Should().Contain(builtIn => builtIn.InstanceId == BuiltInEditors.CodeEditorId);
+    }
+
+    [Test]
     public async Task RegisterPackages_NoPackagesFolder_ReturnsEmpty()
     {
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
@@ -118,17 +342,17 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
     public async Task RegisterPackages_ValidManifest_ReturnsManifest()
     {
-        CreateProjectPackage("my-editor", "my-editor", "My Editor", "custom", ".myext");
+        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Title.Should().Be("My Editor");
         contributions[0].Should().BeOfType<EditorContribution>();
@@ -137,12 +361,12 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_MultiplePackages_ReturnsAll()
     {
-        CreateProjectPackage("editor-a", "editor-a", "Editor A", "custom", ".a");
-        CreateProjectPackage("editor-b", "editor-b", "Editor B", "custom", ".b");
+        CreateProjectPackage("editor-a", "editor-a", "Editor A", ".a");
+        CreateProjectPackage("editor-b", "editor-b", "Editor B", ".b");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(2);
         var names = contributions.Select(m => m.Package.Title).ToList();
         names.Should().Contain("Editor A");
@@ -152,7 +376,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_InvalidManifest_SkipsAndContinues()
     {
-        CreateProjectPackage("good", "good", "Good", "custom", ".good");
+        CreateProjectPackage("good", "good", "Good", ".good");
 
         var badDir = Path.Combine(_tempProjectFolder, "packages", "bad");
         Directory.CreateDirectory(badDir);
@@ -160,7 +384,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Title.Should().Be("Good");
     }
@@ -168,14 +392,14 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_FolderWithoutManifest_IsSkipped()
     {
-        CreateProjectPackage("with-manifest", "with-manifest", "Found", "custom", ".found");
+        CreateProjectPackage("with-manifest", "with-manifest", "Found", ".found");
 
         var folderWithoutManifest = Path.Combine(_tempProjectFolder, "packages", "no-manifest");
         Directory.CreateDirectory(folderWithoutManifest);
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Title.Should().Be("Found");
     }
@@ -183,13 +407,13 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_IncludesModulePackages()
     {
-        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", "custom", ".bnd");
+        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", ".bnd");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Title.Should().Be("Bundled");
     }
@@ -197,14 +421,14 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_CombinesProjectAndBundled()
     {
-        CreateProjectPackage("proj-editor", "proj", "Project", "custom", ".proj");
-        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", "custom", ".bnd");
+        CreateProjectPackage("proj-editor", "proj", "Project", ".proj");
+        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", ".bnd");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(2);
         var names = contributions.Select(m => m.Package.Title).ToList();
         names.Should().Contain("Project");
@@ -215,12 +439,12 @@ public class PackageServiceTests
     public async Task RegisterPackages_ProjectPackageWithReservedNamePrefix_Skipped()
     {
         // Project packages may not claim a name under the reserved "celbridge." namespace.
-        CreateProjectPackage("impostor", "celbridge.notes", "Impostor Notes", "custom", ".imp");
-        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+        CreateProjectPackage("impostor", "celbridge.notes", "Impostor Notes", ".imp");
+        CreateProjectPackage("legit", "legit", "Legit", ".legit");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("legit");
     }
@@ -231,11 +455,11 @@ public class PackageServiceTests
         // Package names are lowercase-only. A mixed-case name fails manifest validation
         // before the reserved-prefix check runs, so "Celbridge.Something" cannot be
         // used as a workaround for the prefix block.
-        CreateProjectPackage("mixed-case", "Celbridge.Something", "Mixed Case", "custom", ".mc");
+        CreateProjectPackage("mixed-case", "Celbridge.Something", "Mixed Case", ".mc");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
@@ -243,12 +467,12 @@ public class PackageServiceTests
     {
         // Project packages cannot claim a dotted name. Only flat global-namespace
         // names are permitted for project packages.
-        CreateProjectPackage("dotted", "acme.tool", "Dotted", "custom", ".dot");
-        CreateProjectPackage("flat", "legit-tool", "Flat", "custom", ".flat");
+        CreateProjectPackage("dotted", "acme.tool", "Dotted", ".dot");
+        CreateProjectPackage("flat", "legit-tool", "Flat", ".flat");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("legit-tool");
     }
@@ -260,12 +484,12 @@ public class PackageServiceTests
         // Document types cannot register inside the reserved .cel namespace.
         // The check rejects both the bare suffix and multi-part forms that end
         // in .cel.
-        CreateProjectPackage("reserved", "reserved-ext", "Reserved", "custom", reservedExtension);
-        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+        CreateProjectPackage("reserved", "reserved-ext", "Reserved", reservedExtension);
+        CreateProjectPackage("legit", "legit", "Legit", ".legit");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("legit");
     }
@@ -276,11 +500,11 @@ public class PackageServiceTests
         // Only the trailing extension is reserved. .cel.bar ends in .bar and
         // does not conflict with sidecar pairing — the editor binds normally
         // and the sidecar lives next to the parent at <name>.cel.bar.cel.
-        CreateProjectPackage("midcel", "mid-cel", "MidCel", "custom", ".cel.bar");
+        CreateProjectPackage("midcel", "mid-cel", "MidCel", ".cel.bar");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("mid-cel");
     }
@@ -289,26 +513,26 @@ public class PackageServiceTests
     public async Task RegisterPackages_BundledPackageWithCelExtension_Skipped()
     {
         // The reservation applies to bundled and project packages alike.
-        var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge.reserved", "Bundled Reserved", "custom", ".cel");
+        var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge.reserved", "Bundled Reserved", ".cel");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = reservedDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
     public async Task RegisterPackages_BundledPackageWithReservedNamePrefix_Allowed()
     {
         // Bundled packages are the intended owners of the "celbridge." namespace.
-        var bundledDir = CreateBundledPackage("bundled-official", "celbridge.notes", "Official Notes", "custom", ".note");
+        var bundledDir = CreateBundledPackage("bundled-official", "celbridge.notes", "Official Notes", ".note");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("celbridge.notes");
     }
@@ -318,8 +542,8 @@ public class PackageServiceTests
     {
         // Two bundled packages with the same name is a first-party build bug.
         // Both are skipped rather than silently picking a winner.
-        var dirA = CreateBundledPackage("bundled-a", "celbridge.conflict", "Conflict A", "custom", ".a");
-        var dirB = CreateBundledPackage("bundled-b", "celbridge.conflict", "Conflict B", "custom", ".b");
+        var dirA = CreateBundledPackage("bundled-a", "celbridge.conflict", "Conflict A", ".a");
+        var dirB = CreateBundledPackage("bundled-b", "celbridge.conflict", "Conflict B", ".b");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor>
         {
@@ -329,7 +553,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
@@ -338,14 +562,14 @@ public class PackageServiceTests
         // Bundled wins over project when names collide. Both use flat names here
         // so the collision check is what rejects the project package, not the
         // reserved-prefix or unregistered-namespace rules.
-        var bundledDir = CreateBundledPackage("bundled", "shared-id", "Bundled", "custom", ".bnd");
-        CreateProjectPackage("project", "shared-id", "Project", "custom", ".prj");
+        var bundledDir = CreateBundledPackage("bundled", "shared-id", "Bundled", ".bnd");
+        CreateProjectPackage("project", "shared-id", "Project", ".prj");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Title.Should().Be("Bundled");
     }
@@ -355,13 +579,13 @@ public class PackageServiceTests
     {
         // Two project packages with the same name cannot be distinguished so
         // both are skipped. A non-colliding sibling continues to load.
-        CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
-        CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
-        CreateProjectPackage("legit", "other-tool", "Legit", "custom", ".legit");
+        CreateProjectPackage("dup-a", "dup-tool", "Dup A", ".a");
+        CreateProjectPackage("dup-b", "dup-tool", "Dup B", ".b");
+        CreateProjectPackage("legit", "other-tool", "Legit", ".legit");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("other-tool");
     }
@@ -369,8 +593,8 @@ public class PackageServiceTests
     [Test]
     public async Task GetLoadFailures_AfterDuplicateName_ReportsCollidingPackages()
     {
-        CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
-        CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
+        CreateProjectPackage("dup-a", "dup-tool", "Dup A", ".a");
+        CreateProjectPackage("dup-b", "dup-tool", "Dup B", ".b");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -384,7 +608,7 @@ public class PackageServiceTests
     [Test]
     public async Task GetLoadFailures_AllValid_IsEmpty()
     {
-        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+        CreateProjectPackage("legit", "legit", "Legit", ".legit");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -398,11 +622,11 @@ public class PackageServiceTests
         // root is found, honouring the gateway's visibility rules.
         var toolsDir = Path.Combine(_tempProjectFolder, "tools", "my-editor");
         Directory.CreateDirectory(toolsDir);
-        WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", "custom", ".nst");
+        WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", ".nst");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllDocumentEditors();
+        var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("nested-tool");
     }
@@ -410,8 +634,8 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_LoadFailures_SendPackageLoadErrorMessage()
     {
-        CreateProjectPackage("dup-a", "dup-tool", "Dup A", "custom", ".a");
-        CreateProjectPackage("dup-b", "dup-tool", "Dup B", "custom", ".b");
+        CreateProjectPackage("dup-a", "dup-tool", "Dup A", ".a");
+        CreateProjectPackage("dup-b", "dup-tool", "Dup B", ".b");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -421,7 +645,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_RecordsDiscoveryInProjectLoadReport()
     {
-        CreateProjectPackage("good", "good", "Good", "custom", ".good");
+        CreateProjectPackage("good", "good", "Good", ".good");
         var badDir = Path.Combine(_tempProjectFolder, "packages", "bad");
         Directory.CreateDirectory(badDir);
         File.WriteAllText(Path.Combine(badDir, "package.toml"), "{ invalid toml }");
@@ -439,7 +663,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_NoFailures_DoesNotSendPackageLoadErrorMessage()
     {
-        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+        CreateProjectPackage("legit", "legit", "Legit", ".legit");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -457,7 +681,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
@@ -470,16 +694,16 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetAllDocumentEditors().Should().BeEmpty();
+        _service.GetAllEditors().Should().BeEmpty();
     }
 
     [Test]
     public async Task RegisterPackages_ClearsPreviousContributions()
     {
-        CreateProjectPackage("editor-a", "editor-a", "Editor A", "custom", ".a");
+        CreateProjectPackage("editor-a", "editor-a", "Editor A", ".a");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
-        _service.GetAllDocumentEditors().Should().HaveCount(1);
+        _service.GetAllEditors().Should().HaveCount(1);
 
         var secondFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(PackageServiceTests) + "_2");
         try
@@ -496,7 +720,7 @@ public class PackageServiceTests
             });
 
             await _service.RegisterPackagesAsync(secondFolder);
-            _service.GetAllDocumentEditors().Should().BeEmpty();
+            _service.GetAllEditors().Should().BeEmpty();
         }
         finally
         {
@@ -508,17 +732,15 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task GetContributingPackage_KnownEditorId_ReturnsThePackage()
+    public async Task GetContributingPackage_DeclaredInstanceId_ReturnsThePackage()
     {
-        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", "custom", ".note");
+        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        SetProjectConfig(["celbridge.notes"], CreateDeclaration("my-notes", "celbridge.notes"));
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // Editor instance ids are composed as "{packageName}.{contributionId}".
-        var editorId = new EditorInstanceId("celbridge.notes.custom");
-
-        var package = _service.GetContributingPackage(editorId);
+        var package = _service.GetContributingPackage(new EditorInstanceId("my-notes"));
 
         package.Should().NotBeNull();
         package!.Info.Name.Should().Be("celbridge.notes");
@@ -527,54 +749,58 @@ public class PackageServiceTests
     [Test]
     public async Task GetContributingPackage_UnknownEditorId_ReturnsNull()
     {
-        CreateProjectPackage("known", "known", "Known", "custom", ".known");
+        CreateProjectPackage("known", "known", "Known", ".known");
+        SetProjectConfig(["known"], CreateDeclaration("known-editor", "known"));
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(new EditorInstanceId("thirdparty.binary-editor"));
+        var package = _service.GetContributingPackage(new EditorInstanceId("binary-editor"));
 
         package.Should().BeNull();
     }
 
     [Test]
-    public async Task GetContributingPackage_DistinguishesPackagesWithDottedNamePrefixes()
+    public async Task GetContributingPackage_UndeclaredContribution_ReturnsNull()
     {
-        // A naive split-on-first-dot would mismatch "celbridge.notes.custom" against
-        // a package whose name is just "celbridge". The lookup must match the longest
-        // package-name prefix, not split heuristically.
-        var notesDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", "custom", ".note");
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = notesDir } });
+        // The package is discovered and activated, but nothing instantiates its editor, so no
+        // editor id addresses it.
+        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        SetProjectConfig(["celbridge.notes"]);
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(new EditorInstanceId("celbridge.notes.custom"));
+        var package = _service.GetContributingPackage(new EditorInstanceId("celbridge.notes"));
 
-        package.Should().NotBeNull();
-        package!.Info.Name.Should().Be("celbridge.notes");
+        package.Should().BeNull();
     }
 
     /// <summary>
     /// Creates a package in the project's packages/ folder with a standard structure.
     /// </summary>
-    private string CreateProjectPackage(string dirName, string packageName, string packageTitle, string docType, string fileExt)
+    private string CreateProjectPackage(string dirName, string packageName, string packageTitle, string fileExt)
     {
         var packageDir = Path.Combine(_tempProjectFolder, "packages", dirName);
         Directory.CreateDirectory(packageDir);
-        WritePackageFiles(packageDir, packageName, packageTitle, docType, fileExt);
+        WritePackageFiles(packageDir, packageName, packageTitle, fileExt);
         return packageDir;
     }
 
     /// <summary>
     /// Creates a bundled package in a standalone folder.
     /// </summary>
-    private string CreateBundledPackage(string dirName, string packageName, string packageTitle, string docType, string fileExt)
+    private string CreateBundledPackage(string dirName, string packageName, string packageTitle, string fileExt)
     {
         var packageDir = Path.Combine(_tempProjectFolder, dirName);
         Directory.CreateDirectory(packageDir);
-        WritePackageFiles(packageDir, packageName, packageTitle, docType, fileExt);
+        WritePackageFiles(packageDir, packageName, packageTitle, fileExt);
         return packageDir;
     }
 
-    private static void WritePackageFiles(string packageDir, string packageName, string packageTitle, string docType, string fileExt)
+    /// <summary>
+    /// Writes a package manifest and a single document-editor manifest whose contribution id is
+    /// always "editor".
+    /// </summary>
+    private static void WritePackageFiles(string packageDir, string packageName, string packageTitle, string fileExt)
     {
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
@@ -582,18 +808,163 @@ public class PackageServiceTests
             title = "{packageTitle}"
 
             [contributes]
-            document_editors = ["editor.document.toml"]
+            editors = ["editor.editor.toml"]
             """);
 
-        File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
-            [document]
-            id = "{packageName}-doc"
-            type = "{docType}"
-            display_name = "TestEditor"
+        File.WriteAllText(Path.Combine(packageDir, "editor.editor.toml"), $"""
+            [editor]
+            id = "editor"
+            type = "document"
+            display-name = "TestEditor"
 
-            [[document_file_types]]
+            [[file-types]]
             extension = "{fileExt}"
-            display_name = "TestFileType"
+            display-name = "TestFileType"
             """);
+    }
+
+    /// <summary>
+    /// Creates a project package whose editor declares config descriptors of several types.
+    /// </summary>
+    private void CreateConfigurablePackage(string dirName, string packageName)
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, "packages", dirName);
+        Directory.CreateDirectory(packageDir);
+
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
+            [package]
+            name = "{packageName}"
+            title = "Console"
+
+            [contributes]
+            editors = ["editor.editor.toml"]
+            """);
+
+        File.WriteAllText(Path.Combine(packageDir, "editor.editor.toml"), """
+            [editor]
+            id = "editor"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".console"
+            display-name = "TestFileType"
+
+            [[config]]
+            key = "shell"
+            type = "enum"
+            values = ["python", "pwsh"]
+            default = "python"
+            display-name = "Console_Config_Shell"
+
+            [[config]]
+            key = "dependencies"
+            type = "string-list"
+            default = []
+            display-name = "Console_Config_Dependencies"
+
+            [[config]]
+            key = "scrollback"
+            type = "number"
+            default = 500
+            display-name = "Console_Config_Scrollback"
+            """);
+    }
+
+    /// <summary>
+    /// Creates a bundled package standing in for the real code-editor package, whose "code"
+    /// contribution backs the built-in code editor.
+    /// </summary>
+    private string CreateBuiltInCodeEditorPackage()
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, "code-editor-pkg");
+        Directory.CreateDirectory(packageDir);
+
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
+            [package]
+            name = "celbridge.code-editor"
+            title = "Code Editor"
+
+            [contributes]
+            editors = ["code.editor.toml"]
+            """);
+
+        File.WriteAllText(Path.Combine(packageDir, "code.editor.toml"), """
+            [editor]
+            id = "code"
+            type = "document"
+            display-name = "CodeEditor_Editor_Code"
+
+            [[file-types]]
+            extension = ".txt"
+            display-name = "CodeEditor_FileType_Code"
+            """);
+
+        return packageDir;
+    }
+
+    /// <summary>
+    /// Creates a bundled package standing in for the real spreadsheet package, whose
+    /// "spreadsheet" contribution backs the optional built-in spreadsheet editor.
+    /// </summary>
+    private string CreateBuiltInSpreadsheetPackage()
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, "spreadsheet-pkg");
+        Directory.CreateDirectory(packageDir);
+
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
+            [package]
+            name = "celbridge.spreadsheet"
+            title = "Spreadsheet"
+
+            [contributes]
+            editors = ["spreadsheet.editor.toml"]
+            """);
+
+        File.WriteAllText(Path.Combine(packageDir, "spreadsheet.editor.toml"), """
+            [editor]
+            id = "spreadsheet"
+            type = "document"
+            binary = true
+            display-name = "Spreadsheet_Editor_Name"
+
+            [[file-types]]
+            extension = ".xlsx"
+            display-name = "Spreadsheet_FileType_Xlsx"
+            """);
+
+        return packageDir;
+    }
+
+    /// <summary>
+    /// Points the project service at a config with the given activation list and instance
+    /// declarations, so the registry can resolve declared instances.
+    /// </summary>
+    private void SetProjectConfig(
+        IReadOnlyList<string> activatedPackages,
+        params EditorInstanceDeclaration[] instances)
+    {
+        var config = new ProjectConfig
+        {
+            Celbridge = new CelbridgeSection { Packages = activatedPackages },
+            Instances = instances
+        };
+
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(config);
+        _projectService.CurrentProject.Returns(project);
+    }
+
+    private static EditorInstanceDeclaration CreateDeclaration(
+        string instanceId,
+        string packageName,
+        string contributionId = "editor")
+    {
+        return new EditorInstanceDeclaration
+        {
+            InstanceId = instanceId,
+            PackageName = packageName,
+            ContributionId = contributionId
+        };
     }
 }

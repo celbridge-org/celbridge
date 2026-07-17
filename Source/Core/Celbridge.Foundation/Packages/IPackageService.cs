@@ -10,13 +10,15 @@ public record DocumentTypeInfo(
     IReadOnlyList<string> FileExtensions);
 
 /// <summary>
-/// Provides package discovery, document type information, and template content.
+/// Provides package discovery, editor instance resolution, document type information, and
+/// template content.
 /// </summary>
 public interface IPackageService
 {
     /// <summary>
-    /// Discovers all packages (bundled module packages and project packages)
-    /// and registers all package behaviors (e.g. custom document editor factories).
+    /// Discovers all packages (bundled module packages and project packages), resolves the
+    /// project's declared editor instances against the activated packages, and registers all
+    /// package behaviors (e.g. custom document editor factories).
     /// </summary>
     Task RegisterPackagesAsync(string projectFolderPath);
 
@@ -28,13 +30,14 @@ public interface IPackageService
     Task RescanProjectPackagesAsync(string projectFolderPath);
 
     /// <summary>
-    /// Gets document type entries from discovered packages that declare templates.
-    /// Packages with a disabled feature flag are excluded from the results.
+    /// Gets document type entries for the available editors (declared instances and built-ins)
+    /// that declare templates.
     /// </summary>
     IReadOnlyList<DocumentTypeInfo> GetDocumentTypes();
 
     /// <summary>
-    /// Returns all discovered packages from both bundled and project sources.
+    /// Returns all discovered packages from both bundled and project sources, including
+    /// discovered-but-inactive packages.
     /// </summary>
     IReadOnlyList<Package> GetAllPackages();
 
@@ -47,22 +50,28 @@ public interface IPackageService
     /// <summary>
     /// Returns all editor contributions from all discovered packages.
     /// </summary>
-    IReadOnlyList<EditorContribution> GetAllDocumentEditors();
+    IReadOnlyList<EditorContribution> GetAllEditors();
 
     /// <summary>
-    /// Returns the editor instances derived from the discovered contributions. Each contribution
-    /// yields one instance whose id is the composed "{packageName}.{contributionId}" id.
+    /// Returns the project's declared editor instances, in declaration order. Only instances
+    /// that resolved to an activated package and a known contribution are included.
     /// </summary>
     IReadOnlyList<EditorInstance> GetEditorInstances();
 
     /// <summary>
-    /// Returns the package that contributes the editor instance with the
-    /// specified instance ID, or null if no contributing package is registered.
+    /// Returns the built-in editors served from the always-active packages, in host catalog
+    /// order. An optional built-in whose package is not present is omitted.
+    /// </summary>
+    IReadOnlyList<EditorInstance> GetBuiltInEditors();
+
+    /// <summary>
+    /// Returns the package that provides the declared instance or built-in editor with the
+    /// specified id, or null if no such editor is registered.
     /// </summary>
     Package? GetContributingPackage(EditorInstanceId editorId);
 
     /// <summary>
-    /// Gets the default template content for a file extension, or null if no package
+    /// Gets the default template content for a file extension, or null if no available editor
     /// provides a default template for that extension.
     /// </summary>
     byte[]? GetDefaultTemplateContent(string fileExtension);

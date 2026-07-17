@@ -5,10 +5,10 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Covers DocumentViewFactory.CreateAsync across each step of the
-/// resolution chain: sidecar wins, requested editor used directly, workspace
-/// preference, priority-based factory, and the text-file fallback that prefers
-/// the code editor and skips placeholder factories.
+/// Covers DocumentViewFactory.CreateAsync across each step of the resolution chain: sidecar wins,
+/// requested editor used directly, workspace preference, the project editor-associations map, the
+/// first factory in resolution order, and the text-file fallback that prefers the code editor and
+/// skips placeholder factories.
 /// </summary>
 [TestFixture]
 public class DocumentViewFactoryTests
@@ -91,14 +91,14 @@ public class DocumentViewFactoryTests
     {
         // A registered factory exists for the extension, but the sidecar names a
         // different editor and that's the one that wins. Both factories can handle
-        // the resource. Without the sidecar, priority would pick the specialized one.
+        // the resource. Without the sidecar, the first-registered one would win.
         var sidecarEditorId = new EditorInstanceId("test.sidecar-editor");
         var sidecarView = Substitute.For<IDocumentView>();
-        var sidecarFactory = CreateFakeFactory(sidecarEditorId, ".md", sidecarView, EditorPriority.General);
         var defaultFactory = CreateFakeFactory(new EditorInstanceId("test.default-editor"), ".md",
-            Substitute.For<IDocumentView>(), EditorPriority.Specialized);
-        _registry.RegisterFactory(sidecarFactory);
+            Substitute.For<IDocumentView>());
+        var sidecarFactory = CreateFakeFactory(sidecarEditorId, ".md", sidecarView);
         _registry.RegisterFactory(defaultFactory);
+        _registry.RegisterFactory(sidecarFactory);
 
         StubSidecarEditor("test.sidecar-editor");
 
@@ -113,7 +113,7 @@ public class DocumentViewFactoryTests
     public async Task CreateAsync_SidecarEditor_FallsThroughWhenIdIsUnregistered()
     {
         // A persisted sidecar id whose package was uninstalled must not block the
-        // open. Priority-based resolution kicks in and finds the currently-registered
+        // open. Registry resolution kicks in and finds the currently-registered
         // editor for the extension.
         var defaultView = Substitute.For<IDocumentView>();
         var defaultFactory = CreateFakeFactory(new EditorInstanceId("test.default-editor"), ".md", defaultView);
@@ -170,12 +170,14 @@ public class DocumentViewFactoryTests
     [Test]
     public async Task CreateAsync_RequestedEditor_IsUsedDirectly()
     {
+        // The other factory registers first, so it would win resolution. The explicit
+        // request overrides it.
         var requestedView = Substitute.For<IDocumentView>();
-        var requestedFactory = CreateFakeFactory(new EditorInstanceId("test.requested"), ".md", requestedView);
         var otherFactory = CreateFakeFactory(new EditorInstanceId("test.other"), ".md",
-            Substitute.For<IDocumentView>(), EditorPriority.Specialized);
-        _registry.RegisterFactory(requestedFactory);
+            Substitute.For<IDocumentView>());
+        var requestedFactory = CreateFakeFactory(new EditorInstanceId("test.requested"), ".md", requestedView);
         _registry.RegisterFactory(otherFactory);
+        _registry.RegisterFactory(requestedFactory);
 
         var result = await CreateFactory().CreateAsync(
             new ResourceKey("doc.md"),
@@ -230,16 +232,15 @@ public class DocumentViewFactoryTests
     public async Task CreateAsync_WorkspacePreference_PicksConfiguredEditor()
     {
         // No sidecar, no explicit request, but the workspace preference for
-        // this extension points at a non-specialized editor that should win
-        // over the priority-default.
+        // this extension points at an editor that is not the resolution default.
         var preferredView = Substitute.For<IDocumentView>();
+        var defaultFactory = CreateFakeFactory(
+            new EditorInstanceId("test.default-editor"), ".md",
+            Substitute.For<IDocumentView>());
         var preferredFactory = CreateFakeFactory(
-            new EditorInstanceId("test.preferred"), ".md", preferredView, EditorPriority.General);
-        var specializedFactory = CreateFakeFactory(
-            new EditorInstanceId("test.specialized"), ".md",
-            Substitute.For<IDocumentView>(), EditorPriority.Specialized);
+            new EditorInstanceId("test.preferred"), ".md", preferredView);
+        _registry.RegisterFactory(defaultFactory);
         _registry.RegisterFactory(preferredFactory);
-        _registry.RegisterFactory(specializedFactory);
 
         StubExtensionPreference(".md", "test.preferred");
 
@@ -250,17 +251,66 @@ public class DocumentViewFactoryTests
     }
 
     [Test]
-    public async Task CreateAsync_PriorityFactory_ChosenWhenNoPreferenceSet()
+    public async Task CreateAsync_EditorAssociations_WinOverResolutionOrder()
     {
-        var specializedView = Substitute.For<IDocumentView>();
-        var specializedFactory = CreateFakeFactory(
-            new EditorInstanceId("test.specialized"), ".md", specializedView, EditorPriority.Specialized);
-        _registry.RegisterFactory(specializedFactory);
+        // No sidecar and no workspace preference, so the project's editor-associations map
+        // decides, overriding the first-registered factory for the extension.
+        var mappedView = Substitute.For<IDocumentView>();
+        var defaultFactory = CreateFakeFactory(
+            new EditorInstanceId("test.default-editor"), ".md",
+            Substitute.For<IDocumentView>());
+        var mappedFactory = CreateFakeFactory(new EditorInstanceId("test.mapped"), ".md", mappedView);
+        _registry.RegisterFactory(defaultFactory);
+        _registry.RegisterFactory(mappedFactory);
+
+        _registry.SetEditorAssociations(new Dictionary<string, string>
+        {
+            [".md"] = "test.mapped"
+        });
 
         var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(specializedView);
+        result.Value.Should().Be(mappedView);
+    }
+
+    [Test]
+    public async Task CreateAsync_EditorAssociations_YieldToSidecarOverride()
+    {
+        // The sidecar names a deviation from the project default, and deviations win.
+        var sidecarEditorId = new EditorInstanceId("test.sidecar-editor");
+        var sidecarView = Substitute.For<IDocumentView>();
+        var mappedFactory = CreateFakeFactory(
+            new EditorInstanceId("test.mapped"), ".md",
+            Substitute.For<IDocumentView>());
+        var sidecarFactory = CreateFakeFactory(sidecarEditorId, ".md", sidecarView);
+        _registry.RegisterFactory(mappedFactory);
+        _registry.RegisterFactory(sidecarFactory);
+
+        _registry.SetEditorAssociations(new Dictionary<string, string>
+        {
+            [".md"] = "test.mapped"
+        });
+        StubSidecarEditor("test.sidecar-editor");
+
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(sidecarView);
+    }
+
+    [Test]
+    public async Task CreateAsync_ResolvedFactory_ChosenWhenNoPreferenceSet()
+    {
+        var resolvedView = Substitute.For<IDocumentView>();
+        var resolvedFactory = CreateFakeFactory(
+            new EditorInstanceId("test.resolved"), ".md", resolvedView);
+        _registry.RegisterFactory(resolvedFactory);
+
+        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(resolvedView);
     }
 
     [Test]
@@ -370,7 +420,6 @@ public class DocumentViewFactoryTests
         EditorInstanceId editorId,
         string extension,
         IDocumentView view,
-        EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         // Production factories stamp view.EditorId themselves. Mocks don't, so stub it.
@@ -380,7 +429,6 @@ public class DocumentViewFactoryTests
         factory.EditorId.Returns(editorId);
         factory.DisplayName.Returns(editorId.ToString());
         factory.SupportedExtensions.Returns(new List<string> { extension });
-        factory.Priority.Returns(priority);
         factory.IsPlaceholder.Returns(false);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);
         factory.CreateDocumentView(Arg.Any<ResourceKey>()).Returns(Result<IDocumentView>.Ok(view));
@@ -395,7 +443,6 @@ public class DocumentViewFactoryTests
         factory.EditorId.Returns(editorId);
         factory.DisplayName.Returns(editorId.ToString());
         factory.SupportedExtensions.Returns(new List<string> { extension });
-        factory.Priority.Returns(EditorPriority.General);
         factory.IsPlaceholder.Returns(true);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
         return factory;
