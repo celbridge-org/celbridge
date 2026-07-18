@@ -46,12 +46,6 @@ public interface IPlatformInfo
     bool PickersRequireWindowHandle { get; }
 
     /// <summary>
-    /// Whether the host chrome (the custom title bar) shows the open project's name, so the explorer banner
-    /// shows a generic title instead of duplicating it. True on the packaged Windows head only.
-    /// </summary>
-    bool HostShowsProjectTitleInChrome { get; }
-
-    /// <summary>
     /// The keyboard modifier that issues application commands. Command on macOS. Control on Windows and Linux.
     /// </summary>
     CommandModifierKey CommandModifier { get; }

@@ -1,6 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Platform;
-using Celbridge.Projects;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 
@@ -15,26 +13,13 @@ public partial class ExplorerPanelViewModel : ObservableObject
     private string _titleText = string.Empty;
 
     public ExplorerPanelViewModel(
-        IProjectService projectService,
-        ICommandService commandService,
-        IPlatformInfo platformInfo)
+        ICommandService commandService)
     {
         _commandService = commandService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        // The project data is guaranteed to have been loaded at this point, so it's safe to just
-        // acquire a reference via the ProjectService.
-        var project = projectService.CurrentProject!;
-
-        // When the host chrome (the custom title bar) shows the project name, the banner shows a generic
-        // title instead of duplicating it. Otherwise the banner carries the project name.
-        if (platformInfo.HostShowsProjectTitleInChrome)
-        {
-            TitleText = _stringLocalizer.GetString("ExplorerPanel_Title");
-        }
-        else
-        {
-            TitleText = project.ProjectName;
-        }
+        // The open project's name is shown in the page navigation toolbar, so the panel header carries the
+        // generic utility title to match the other workspace panels.
+        TitleText = _stringLocalizer.GetString("ExplorerPanel_Title");
     }
 }

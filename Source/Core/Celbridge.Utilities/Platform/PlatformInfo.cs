@@ -36,18 +36,6 @@ public sealed class PlatformInfo : IPlatformInfo
         }
     }
 
-    public bool HostShowsProjectTitleInChrome
-    {
-        get
-        {
-#if WINDOWS
-            return true;
-#else
-            return false;
-#endif
-        }
-    }
-
     public CommandModifierKey CommandModifier => OperatingSystem.IsMacOS()
         ? CommandModifierKey.Command
         : CommandModifierKey.Control;
