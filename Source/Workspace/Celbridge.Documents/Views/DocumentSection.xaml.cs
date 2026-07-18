@@ -84,6 +84,27 @@ public sealed partial class DocumentSection : UserControl
 
         // Disable tab add/remove animations so tabs snap into place immediately
         TabView.Loaded += (s, e) => DisableTabViewAnimations();
+
+        // On macOS the strip does not re-reveal the selected tab when it gets narrower, so a window resize
+        // or a change in the number of sections can leave the active tab clipped off-screen. Re-scroll it
+        // into view whenever the strip's width changes.
+        if (_platformInfo.RequiresMacOSTabScrollIntoView)
+        {
+            TabView.SizeChanged += OnTabViewSizeChanged;
+        }
+    }
+
+    private void OnTabViewSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        if (TabView.SelectedItem is DocumentTab selectedTab)
+        {
+            ScrollTabIntoView(selectedTab);
+        }
     }
 
     /// <summary>
@@ -308,7 +329,9 @@ public sealed partial class DocumentSection : UserControl
     }
 
     /// <summary>
-    /// Scrolls the tab strip so the given tab is visible when it lies outside the visible area.
+    /// Scrolls the tab strip so the given tab is visible when it lies outside the visible area. macOS only:
+    /// the Uno TabView does not bring the selected tab into view on its own, so the strip's scroll offset is
+    /// driven directly once its layout has settled.
     /// </summary>
     private void ScrollTabIntoView(DocumentTab tab)
     {
@@ -320,12 +343,71 @@ public sealed partial class DocumentSection : UserControl
 
         // Defer to the next dispatcher cycle so the tab strip has completed layout. A tab that was just
         // added, or a selection that changes the strip's extent, has no scroll geometry to act on until
-        // the layout pass runs, so scrolling synchronously here would be a no-op.
+        // the layout pass runs, so measuring synchronously here would read stale bounds.
         DispatcherQueue.TryEnqueue(() =>
         {
             var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-            tabListView?.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
+            if (tabListView is null)
+            {
+                return;
+            }
+
+            var scrollViewer = VisualTree.FindDescendant<ScrollViewer>(tabListView);
+            if (scrollViewer is null)
+            {
+                return;
+            }
+
+            // Realize the container for an off-screen (virtualized) tab and force the strip to lay out, so
+            // the measurements below reflect the settled geometry rather than a transient resize state.
+            tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
+            tabListView.UpdateLayout();
+
+            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
+            if (container is null ||
+                container.ActualWidth == 0)
+            {
+                // Uno can realize a tab many positions off-screen without arranging it (zero bounds). Its
+                // ScrollIntoView above is the best available fallback; driving the scroll from zero geometry
+                // would only push the strip to the wrong place.
+                return;
+            }
+
+            // Position of the tab relative to the visible viewport. A negative value means the tab is clipped
+            // off the leading edge; a right edge past the viewport width means it is clipped off the trailing
+            // edge. The minimum scroll that clears the offending edge keeps the rest of the strip stable.
+            double tabViewportX = TabViewportLeft(container, scrollViewer);
+            double tabWidth = container.ActualWidth;
+            double viewportWidth = scrollViewer.ViewportWidth;
+            double currentOffset = scrollViewer.HorizontalOffset;
+
+            double? targetOffset = null;
+            if (tabViewportX < 0)
+            {
+                targetOffset = currentOffset + tabViewportX;
+            }
+            else if (tabViewportX + tabWidth > viewportWidth)
+            {
+                targetOffset = currentOffset + (tabViewportX + tabWidth - viewportWidth);
+            }
+
+            if (targetOffset is null)
+            {
+                return;
+            }
+
+            double clampedOffset = Math.Clamp(targetOffset.Value, 0, scrollViewer.ScrollableWidth);
+            scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
         });
+    }
+
+    /// <summary>
+    /// The x offset of a tab container relative to the tab strip's scroll viewport.
+    /// </summary>
+    private static double TabViewportLeft(FrameworkElement container, ScrollViewer scrollViewer)
+    {
+        var origin = new Windows.Foundation.Point(0, 0);
+        return container.TransformToVisual(scrollViewer).TransformPoint(origin).X;
     }
 
     /// <summary>
