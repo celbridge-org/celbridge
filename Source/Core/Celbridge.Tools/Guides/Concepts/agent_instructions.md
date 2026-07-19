@@ -6,7 +6,7 @@ You are reading this because the auto-attach response filter prepended it to the
 
 The first non-proxy tool call this session also delivered two state snapshots ahead of these instructions:
 
-- **App state** — the running app `version`, whether a project is loaded, the `featureFlags` map (consult before invoking a feature-gated tool such as `webview_eval`), the `focusedPanel`, and the `layoutMode` visibility flags.
+- **App state** — the running app `version`, whether a project is loaded, the `featureFlags` map (consult before invoking a feature-gated tool such as `webview_eval`), the `focusedPanel`, whether `usesNativeMenuBar` is enabled, and the `layoutMode` visibility flags.
 - **Open documents** — the active document and the full list of open editor tabs with their `resource`, `sectionIndex`, `tabOrder`, `isActive`, and `editorId`.
 
 These are **snapshots taken at session start**. The user can switch tabs, open new files, or change focus at any time, and your snapshot will not update with them. Whenever current state matters — resolving an ambiguous file reference, deciding whether a feature flag is enabled, checking which document is active before a `webview_*` call — call `app_get_state` or `document_get_state` to refresh.
