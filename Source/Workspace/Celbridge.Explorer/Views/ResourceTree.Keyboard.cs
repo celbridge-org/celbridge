@@ -104,13 +104,15 @@ public sealed partial class ResourceTree : IEditTarget
 
     private static EditIntent? ResolveEditIntent(VirtualKey key)
     {
+        // Delete is modifier-agnostic so the macOS native Cmd+Backspace shortcut deletes the selection
+        // just as plain Backspace and Delete do.
+        if (EditKeyboard.IsDeleteKey(key))
+        {
+            return EditIntent.Delete;
+        }
+
         if (!EditKeyboard.IsCommandModifierDown())
         {
-            if (EditKeyboard.IsDeleteKey(key))
-            {
-                return EditIntent.Delete;
-            }
-
             if (key == VirtualKey.F2)
             {
                 return EditIntent.Rename;
