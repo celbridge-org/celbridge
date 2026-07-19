@@ -758,6 +758,9 @@ Do you wish to continue?</value>
   <data name="DocumentTab_CloseAllShortcutControl" xml:space="preserve">
     <value>Ctrl+Shift+W</value>
   </data>
+  <data name="DocumentTab_CloseTabTooltip" xml:space="preserve">
+    <value>Close tab ({0})</value>
+  </data>
   <data name="DocumentTab_MoveLeft" xml:space="preserve">
     <value>Move Left</value>
   </data>

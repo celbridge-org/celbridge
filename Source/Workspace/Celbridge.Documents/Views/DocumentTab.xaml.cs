@@ -121,17 +121,46 @@ public partial class DocumentTab : TabViewItem
     }
 
     // Displays the close shortcut hints next to the Close and Close All menu items. These are display-only
-    // labels matching the shortcuts handled in KeyboardShortcutService. The platform command modifier selects
-    // between the Command-glyph form shown on macOS and the "Ctrl" form shown on Windows.
+    // labels matching the shortcuts handled in KeyboardShortcutService.
     private void ApplyCloseShortcutHints()
     {
         bool usesCommandModifier = _platformInfo.CommandModifier == CommandModifierKey.Command;
-
-        string closeHintKey = usesCommandModifier ? "DocumentTab_CloseShortcutCommand" : "DocumentTab_CloseShortcutControl";
         string closeAllHintKey = usesCommandModifier ? "DocumentTab_CloseAllShortcutCommand" : "DocumentTab_CloseAllShortcutControl";
 
-        CloseMenuItem.KeyboardAcceleratorTextOverride = _stringLocalizer.GetString(closeHintKey);
+        CloseMenuItem.KeyboardAcceleratorTextOverride = GetCloseShortcutHint();
         CloseAllMenuItem.KeyboardAcceleratorTextOverride = _stringLocalizer.GetString(closeAllHintKey);
+    }
+
+    // The display form of the close-document shortcut for the current platform: the Command-glyph form on macOS,
+    // the "Ctrl" form on Windows. Matches the shortcut handled in KeyboardShortcutService.
+    private string GetCloseShortcutHint()
+    {
+        bool usesCommandModifier = _platformInfo.CommandModifier == CommandModifierKey.Command;
+        string closeHintKey = usesCommandModifier ? "DocumentTab_CloseShortcutCommand" : "DocumentTab_CloseShortcutControl";
+
+        return _stringLocalizer.GetString(closeHintKey);
+    }
+
+    protected override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+
+        OverrideCloseButtonTooltip();
+    }
+
+    // Uno's TabViewItem seeds the close button with a hardcoded "Close tab (Ctrl+F4)" tooltip that ignores the
+    // platform and the app's actual binding. Replace it with the close shortcut the app binds, so macOS shows the
+    // Command glyph and both platforms match the close hint on the tab context menu.
+    private void OverrideCloseButtonTooltip()
+    {
+        if (GetTemplateChild("CloseButton") is not Button closeButton)
+        {
+            return;
+        }
+
+        string shortcutHint = GetCloseShortcutHint();
+        string tooltipText = _stringLocalizer.GetString("DocumentTab_CloseTabTooltip", shortcutHint);
+        ToolTipService.SetToolTip(closeButton, tooltipText);
     }
 
     /// <summary>
