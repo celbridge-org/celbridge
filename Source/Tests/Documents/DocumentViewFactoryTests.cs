@@ -6,16 +6,15 @@ namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// Covers DocumentViewFactory.CreateAsync across each step of the resolution chain: sidecar wins,
-/// requested editor used directly, workspace preference, the project editor-associations map, the
-/// first factory in resolution order, and the text-file fallback that prefers the code editor and
-/// skips placeholder factories.
+/// requested editor used directly, the project editor-associations map, the first factory in
+/// resolution order, and the text-file fallback that prefers the code editor and skips placeholder
+/// factories.
 /// </summary>
 [TestFixture]
 public class DocumentViewFactoryTests
 {
     private DocumentEditorRegistry _registry = null!;
     private ISidecarService _sidecarService = null!;
-    private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ITextBinarySniffer _textBinarySniffer = null!;
@@ -35,9 +34,6 @@ public class DocumentViewFactoryTests
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
 
-        _propertyBag = Substitute.For<IWorkspacePropertyBag>();
-        _propertyBag.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
-
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Ok("c:/test/fake/path"));
@@ -47,10 +43,6 @@ public class DocumentViewFactoryTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         resourceService.Sidecars.Returns(_sidecarService);
-
-        var workspaceSettingsService = Substitute.For<IWorkspaceSettingsService>();
-        workspaceSettingsService.PropertyBag.Returns(_propertyBag);
-        workspaceService.WorkspaceSettings.Returns(workspaceSettingsService);
         workspaceService.ResourceService.Returns(resourceService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();

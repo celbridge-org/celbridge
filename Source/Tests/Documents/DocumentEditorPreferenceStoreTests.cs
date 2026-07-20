@@ -11,7 +11,6 @@ namespace Celbridge.Tests.Documents;
 public class DocumentEditorPreferenceStoreTests
 {
     private ISidecarService _sidecarService = null!;
-    private IWorkspacePropertyBag _propertyBag = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private DocumentEditorPreferenceStore _store = null!;
 
@@ -24,15 +23,8 @@ public class DocumentEditorPreferenceStoreTests
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
 
-        _propertyBag = Substitute.For<IWorkspacePropertyBag>();
-        _propertyBag.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
-
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
-
-        var workspaceSettingsService = Substitute.For<IWorkspaceSettingsService>();
-        workspaceSettingsService.PropertyBag.Returns(_propertyBag);
-        workspaceService.WorkspaceSettings.Returns(workspaceSettingsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);

@@ -77,11 +77,10 @@ public class DocumentViewFactory
         return CreateTextFallback(fileResource);
     }
 
-    // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins
-    // over per-extension preference and priority fallback. Returns the view
-    // on success, or null when no preference is set, the editor is unregistered,
-    // it cannot handle the resource, or construction fails (logged before
-    // fall-through).
+    // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins over the
+    // editor-associations map and the resolution-order fallback. Returns the view on success, or null
+    // when no override is set, the editor is unregistered, it cannot handle the resource, or
+    // construction fails (logged before fall-through).
     private async Task<IDocumentView?> CreateFromSidecarPreferenceAsync(ResourceKey fileResource)
     {
         var sidecarEditorResult = await _preferenceStore.GetSidecarPreferenceAsync(fileResource);
