@@ -178,14 +178,12 @@ internal sealed class SettingsService : ISettingsService
         return _applicationStore.FlushAsync();
     }
 
-    // The live per-project store, or null when no workspace is loaded. Resolved
-    // at call time through the workspace hub rather than injected, since the
-    // store's lifetime is the loaded project, not the application.
+    // The live per-project settings store, or null when no workspace is present.
     private ISettingsStore? WorkspaceStore
     {
         get
         {
-            if (!_workspaceWrapper.IsWorkspacePageLoaded)
+            if (!_workspaceWrapper.HasWorkspaceService)
             {
                 return null;
             }

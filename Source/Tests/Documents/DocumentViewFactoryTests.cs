@@ -229,31 +229,9 @@ public class DocumentViewFactoryTests
     }
 
     [Test]
-    public async Task CreateAsync_WorkspacePreference_PicksConfiguredEditor()
-    {
-        // No sidecar, no explicit request, but the workspace preference for
-        // this extension points at an editor that is not the resolution default.
-        var preferredView = Substitute.For<IDocumentView>();
-        var defaultFactory = CreateFakeFactory(
-            new EditorInstanceId("test.default-editor"), ".md",
-            Substitute.For<IDocumentView>());
-        var preferredFactory = CreateFakeFactory(
-            new EditorInstanceId("test.preferred"), ".md", preferredView);
-        _registry.RegisterFactory(defaultFactory);
-        _registry.RegisterFactory(preferredFactory);
-
-        StubExtensionPreference(".md", "test.preferred");
-
-        var result = await CreateFactory().CreateAsync(new ResourceKey("doc.md"), EditorInstanceId.Empty);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(preferredView);
-    }
-
-    [Test]
     public async Task CreateAsync_EditorAssociations_WinOverResolutionOrder()
     {
-        // No sidecar and no workspace preference, so the project's editor-associations map
+        // No sidecar override, so the project's editor-associations map
         // decides, overriding the first-registered factory for the extension.
         var mappedView = Substitute.For<IDocumentView>();
         var defaultFactory = CreateFakeFactory(
@@ -408,12 +386,6 @@ public class DocumentViewFactoryTests
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.Healthy, content, null))));
-    }
-
-    private void StubExtensionPreference(string extension, string editorId)
-    {
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        _propertyBag.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
     }
 
     private static IDocumentEditorFactory CreateFakeFactory(

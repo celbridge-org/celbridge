@@ -62,19 +62,24 @@ public static class BuiltInEditors
     ];
 
     /// <summary>
-    /// The package built-ins: bundled contributions registered under host-assigned ids.
+    /// The package built-ins: bundled contributions registered under host-assigned ids. Ordered to
+    /// match the shared editors' relative order in HostResolutionOrder, which is the authority for
+    /// open precedence; the two lists differ only in that HostResolutionOrder also carries the
+    /// natively registered HtmlViewer and WebView editors, which are not package contributions.
     /// </summary>
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
     [
         new BuiltInEditorDefinition(MarkdownEditorId, "celbridge.code-editor", "markdown"),
-        new BuiltInEditorDefinition(FileViewerId, "celbridge.file-viewer", "file-viewer"),
         new BuiltInEditorDefinition(SpreadsheetEditorId, "celbridge.spreadsheet", "spreadsheet", Optional: true),
+        new BuiltInEditorDefinition(FileViewerId, "celbridge.file-viewer", "file-viewer"),
         new BuiltInEditorDefinition(CodeEditorId, "celbridge.code-editor", "code"),
     ];
 
     /// <summary>
-    /// Fixed resolution order for built-in editors, applied after every declared instance. Pinned
-    /// to preserve the pre-instance defaults: specialized editors ahead of the general code editor.
+    /// Fixed resolution order for built-in editors, applied after every declared instance. Pinned to
+    /// preserve the pre-instance defaults: specialized editors ahead of the general code editor. This
+    /// is the authority for built-in open precedence; PackageBuiltIns lists the same contributions
+    /// (minus the natively registered HtmlViewer and WebView) in the same relative order.
     /// </summary>
     public static readonly IReadOnlyList<EditorInstanceId> HostResolutionOrder =
     [

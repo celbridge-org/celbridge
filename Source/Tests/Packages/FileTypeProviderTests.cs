@@ -3,6 +3,7 @@ using Celbridge.Packages;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
@@ -20,8 +21,7 @@ public class PackageServiceDocumentTypeTests
     private IModuleService _moduleService = null!;
     private IProjectService _projectService = null!;
     private List<string> _bundledPackagePaths = null!;
-    private List<string> _activatedPackages = null!;
-    private List<EditorInstanceDeclaration> _instanceDeclarations = null!;
+    private List<ContributionOverride> _contributionOverrides = null!;
 
     [SetUp]
     public void Setup()
@@ -35,18 +35,30 @@ public class PackageServiceDocumentTypeTests
             .Select(folder => new BundledPackageDescriptor { Folder = folder })
             .ToList());
 
-        // Document types come from the available editors, so each created package is activated
-        // and instantiated unless a test opts out.
-        _activatedPackages = [];
-        _instanceDeclarations = [];
+        // Activation is discovery-driven, so a discovered default-active contribution is active and
+        // offers its document type without any project-file entry.
+        _contributionOverrides = [];
         _projectService = Substitute.For<IProjectService>();
         var project = Substitute.For<IProject>();
         project.Config.Returns(_ => new ProjectConfig
         {
-            Celbridge = new CelbridgeSection { Packages = _activatedPackages },
-            Instances = _instanceDeclarations
+            ContributionOverrides = _contributionOverrides
         });
         _projectService.CurrentProject.Returns(project);
+
+        // The registry reconciles and persists through IProjectService; mirror the real delegation to
+        // the static reconciler so the mocked service produces the same active set.
+        _projectService.ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), Arg.Any<bool>())
+            .Returns(callInfo =>
+            {
+                var config = _projectService.CurrentProject?.Config;
+                if (config is null)
+                {
+                    return Task.FromResult<ProjectConfigReconcileResult?>(null);
+                }
+                return Task.FromResult<ProjectConfigReconcileResult?>(
+                    ProjectConfigReconciler.Reconcile(config, callInfo.Arg<IReadOnlyList<EditorContribution>>()));
+            });
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
@@ -173,10 +185,10 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public async Task GetDocumentTypes_UninstantiatedContribution_Excluded()
+    public async Task GetDocumentTypes_UninstantiatedOptionalContribution_Excluded()
     {
-        // The package is discovered and activated, but the project declares no instance of its
-        // editor, so it offers no creatable document type.
+        // The package is discovered, but its editor is optional and the project has not enabled it,
+        // so no instance materializes and it offers no creatable document type.
         await CreateBundledPackage(
             "undeclared-editor",
             "UndeclaredEditor",
@@ -185,7 +197,7 @@ public class PackageServiceDocumentTypeTests
             [
                 ("empty", "Empty", "templates/empty.undeclared", true)
             ],
-            declareInstance: false);
+            activation: ActivationPolicy.Optional);
 
         _service.GetAllEditors().Should().HaveCount(1);
         _service.GetDocumentTypes().Should().BeEmpty();
@@ -240,16 +252,9 @@ public class PackageServiceDocumentTypeTests
             """);
 
         _bundledPackagePaths.Add(packageDir);
-        _activatedPackages.Add("test.emoji");
-        _instanceDeclarations.Add(new EditorInstanceDeclaration
-        {
-            InstanceId = "emoji",
-            PackageName = "test.emoji",
-            ContributionId = "emoji-renderer"
-        });
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // The utility is instantiated, but must not appear as a creatable New File type.
+        // The utility is active by discovery, but must not appear as a creatable New File type.
         var editors = _service.GetAllEditors();
         editors.Should().ContainSingle();
         editors[0].IsUtility.Should().BeTrue();
@@ -350,9 +355,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     /// <summary>
-    /// Helper to create a bundled package folder with TOML manifests and optional files.
-    /// Registers the path with the module service mock, activates the package, declares an
-    /// instance of its editor unless declareInstance is false, and re-discovers packages.
+    /// Helper to create a bundled package folder with TOML manifests and optional files. Registers the
+    /// path with the module service mock and re-discovers packages. A required editor is active by
+    /// discovery; pass activation: ActivationPolicy.Optional to ship it inert.
     /// </summary>
     private async Task CreateBundledPackage(
         string dirName,
@@ -361,7 +366,7 @@ public class PackageServiceDocumentTypeTests
         (string Id, string DisplayName, string File, bool Default)[]? templates = null,
         Dictionary<string, string>? localizationStrings = null,
         Dictionary<string, string>? templateFiles = null,
-        bool declareInstance = true)
+        ActivationPolicy activation = ActivationPolicy.Required)
     {
         var packageDir = Path.Combine(_tempProjectFolder, "bundled", dirName);
         Directory.CreateDirectory(packageDir);
@@ -401,22 +406,12 @@ public class PackageServiceDocumentTypeTests
             type = "document"
             entry-point = "index.html"
             display-name = "{packageName}"
+            activation = "{activation.ToString().ToLowerInvariant()}"
 
             {fileTypesToml}
 
             {templatesToml}
             """);
-
-        _activatedPackages.Add(bundledName);
-        if (declareInstance)
-        {
-            _instanceDeclarations.Add(new EditorInstanceDeclaration
-            {
-                InstanceId = dirName,
-                PackageName = bundledName,
-                ContributionId = "editor"
-            });
-        }
 
         if (localizationStrings is not null)
         {

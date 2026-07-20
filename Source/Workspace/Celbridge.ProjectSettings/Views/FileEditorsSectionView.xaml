@@ -1,0 +1,54 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.FileEditorsSectionView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
+  xmlns:services="using:Celbridge.UserInterface.Services">
+
+  <UserControl.Resources>
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+  </UserControl.Resources>
+
+  <ScrollViewer Padding="12">
+    <StackPanel Spacing="8">
+
+      <ComboBox HorizontalAlignment="Stretch"
+                ToolTipService.ToolTip="{x:Bind CategoryPickerTooltip}"
+                ItemsSource="{x:Bind ViewModel.CategoryOptions}"
+                SelectedItem="{x:Bind ViewModel.SelectedCategoryOption, Mode=TwoWay}"/>
+
+      <TextBox PlaceholderText="{x:Bind FilterExtensionsPlaceholder}"
+               Visibility="{x:Bind ViewModel.IsAllCategorySelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+               Text="{x:Bind ViewModel.FileTypeFilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+      <ItemsControl ItemsSource="{x:Bind ViewModel.FileTypeRows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:FileTypeRowViewModel">
+            <Grid Margin="0,3,0,3">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="96"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0"
+                         Text="{x:Bind Extension}"
+                         VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis"/>
+              <ComboBox Grid.Column="1"
+                        HorizontalAlignment="Stretch"
+                        ToolTipService.ToolTip="{x:Bind EditorPickerTooltip}"
+                        Visibility="{x:Bind IsContested, Converter={StaticResource BoolToVisibilityConverter}}"
+                        ItemsSource="{x:Bind Candidates}"
+                        SelectedItem="{x:Bind SelectedCandidate, Mode=TwoWay}"/>
+              <TextBlock Grid.Column="1"
+                         Text="{x:Bind EditorName}"
+                         Opacity="0.75"
+                         VerticalAlignment="Center"
+                         Visibility="{x:Bind IsSingleEditor, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

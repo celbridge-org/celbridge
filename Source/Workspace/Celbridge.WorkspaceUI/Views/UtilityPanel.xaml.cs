@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.ProjectSettings;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -23,6 +24,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // SpotlightLandmarks exactly.
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
+    private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
 
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
@@ -41,6 +43,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public IExplorerPanel ExplorerPanel { get; }
     public ISearchPanel SearchPanel { get; }
+    public IProjectSettingsPanel ProjectSettingsPanel { get; }
 
     public UtilityPanelViewModel ViewModel { get; }
 
@@ -60,8 +63,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // Acquire panel views via DI and host them in ContentControls
         ExplorerPanel = ServiceLocator.AcquireService<IExplorerPanel>();
         SearchPanel = ServiceLocator.AcquireService<ISearchPanel>();
+        ProjectSettingsPanel = ServiceLocator.AcquireService<IProjectSettingsPanel>();
         ExplorerPanelControl.Content = ExplorerPanel as UIElement;
         SearchPanelControl.Content = SearchPanel as UIElement;
+        ProjectSettingsPanelControl.Content = ProjectSettingsPanel as UIElement;
 
         ViewModel = ServiceLocator.AcquireService<UtilityPanelViewModel>();
         DataContext = ViewModel;
@@ -91,12 +96,22 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         BindButton(SearchButton, searchItem);
         SearchButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Search);
 
+        var projectSettingsItem = ViewModel.AddItem(BuiltInUtilityIds.ProjectSettings, WorkspacePanel.ProjectSettings);
+
+        ProjectSettingsButton.SetIcon(IconSymbol.Sliders);
+        ProjectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
+        BindButton(ProjectSettingsButton, projectSettingsItem);
+        ProjectSettingsButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.ProjectSettings);
+
         _buttons[BuiltInUtilityIds.Explorer] = ExplorerButton;
         _buttons[BuiltInUtilityIds.Search] = SearchButton;
+        _buttons[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsButton;
         _contentControls[BuiltInUtilityIds.Explorer] = ExplorerPanelControl;
         _contentControls[BuiltInUtilityIds.Search] = SearchPanelControl;
+        _contentControls[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsPanelControl;
         _focusActions[BuiltInUtilityIds.Explorer] = ExplorerPanel.FocusPanel;
         _focusActions[BuiltInUtilityIds.Search] = SearchPanel.FocusSearchInput;
+        _focusActions[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsPanel.FocusPanel;
     }
 
     // Binds a rail button's visual state to its item view model.
@@ -130,6 +145,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // whichever is focused after a modal dialog closes or the resource tree rebuilds.
         _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, ExplorerPanel.FocusPanel);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Search, SearchPanel.FocusSearchInput);
+        _focusService.SetPanelFocusHandler(WorkspacePanel.ProjectSettings, ProjectSettingsPanel.FocusPanel);
 
         // The utility panels drop their own header focus indicator and show focus on the selected rail button
         // instead, so feed panel focus changes into the view model to colour the indicator accordingly.
@@ -142,6 +158,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Unregister<PanelFocusChangedMessage>(this);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, null);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Search, null);
+        _focusService.SetPanelFocusHandler(WorkspacePanel.ProjectSettings, null);
     }
 
     private void ApplyTooltips()
@@ -151,6 +168,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         var searchTooltip = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
         SearchButton.SetTooltip(searchTooltip);
+
+        var projectSettingsTooltip = _stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
+        ProjectSettingsButton.SetTooltip(projectSettingsTooltip);
     }
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
@@ -174,6 +194,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         if (!_contentControls.ContainsKey(utilityId))
         {
             return;
+        }
+
+        // Re-read the project config each time Project Settings is shown so it reflects the on-disk file.
+        if (utilityId == BuiltInUtilityIds.ProjectSettings)
+        {
+            ProjectSettingsPanel.Refresh();
         }
 
         // A lazy-load utility creates its WebView on first show. The surface is shown
@@ -423,7 +449,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         return !utilityId.IsEmpty
             && utilityId != BuiltInUtilityIds.Explorer
-            && utilityId != BuiltInUtilityIds.Search;
+            && utilityId != BuiltInUtilityIds.Search
+            && utilityId != BuiltInUtilityIds.ProjectSettings;
     }
 
     // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".

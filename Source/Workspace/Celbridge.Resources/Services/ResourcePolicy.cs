@@ -70,7 +70,9 @@ public sealed class ResourcePolicy : IResourcePolicy
         _project = projectService.CurrentProject;
         _resourcesSection = _project?.Config.Resources ?? new ResourcesSection();
 
-        _systemDeny = BuildSystemDenyRules();
+        // On a healthy load the project file is hidden from the resource tree (see BuildSystemDenyRules);
+        // a faulted load leaves it visible so the code editor can repair it.
+        _systemDeny = BuildSystemDenyRules(hideProjectFile: _project?.ConfigIsHealthy ?? false);
         _systemAllow = BuildSystemAllowRules();
         _add = CompileProjectRules(
             _resourcesSection.Add,
@@ -245,9 +247,24 @@ public sealed class ResourcePolicy : IResourcePolicy
         return Result.Fail(error.Message).WithException(error);
     }
 
-    private static List<CompiledPolicyRule> BuildSystemDenyRules()
+    private static List<CompiledPolicyRule> BuildSystemDenyRules(bool hideProjectFile)
     {
         var rules = new List<CompiledPolicyRule>();
+
+        // On a healthy load the project file is edited only through the Project Settings document and
+        // the config commands, so it is hidden from the resource tree (List denied) while staying
+        // readable and writable through the resource layer. A faulted load skips this rule so the file
+        // reappears in the tree for the code editor to repair. System deny is non-overridable and is
+        // evaluated before the *.celbridge system-allow, so List is denied while Read and Write pass.
+        if (hideProjectFile)
+        {
+            rules.Add(new CompiledPolicyRule(
+                source: PolicyRuleSource.SystemDeny,
+                pattern: "*.celbridge",
+                gatedActions: ResourceAction.List,
+                description: "The Celbridge project file is edited through Project Settings, not as a tree resource.",
+                matcher: ResourcePathMatcher.Compile("*.celbridge")));
+        }
 
         // The hidden project metadata folder is invisible to every consumer
         // by design. Reads of files under it must use ILocalFileSystem with

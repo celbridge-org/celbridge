@@ -1287,31 +1287,26 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private async Task ReopenTabWithDialog(DocumentTab tab)
     {
         var fileResource = tab.ViewModel.FileResource;
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
 
         var selectedEditorId = tab.ViewModel.EditorId;
 
-        var editorChoices = ViewModel.GetChoicesForFileExtension(extension, tab.ViewModel.EditorId);
-        if (editorChoices is not null)
+        var pickList = ViewModel.GetEditorPickList(fileResource, tab.ViewModel.EditorId);
+        if (pickList is not null)
         {
-            // Multiple editors available, show choice dialog
+            // Multiple editors available, show choice dialog.
             var title = _stringLocalizer.GetString("OpenWithDialog_Title");
             var message = _stringLocalizer.GetString("OpenWithDialog_Message");
-            var checkbox = new ChoiceDialogCheckbox(_stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
 
             var choiceResult = await _dialogService.ShowChoiceDialogAsync(
-                title, message, editorChoices.DisplayNames, editorChoices.DefaultIndex, checkbox);
+                title, message, pickList.Labels, pickList.SelectedIndex, checkbox: null);
             if (choiceResult.IsFailure)
             {
                 return;
             }
 
-            selectedEditorId = editorChoices.Factories[choiceResult.Value.SelectedIndex].EditorId;
+            selectedEditorId = pickList.EditorIds[choiceResult.Value.SelectedIndex];
 
-            await ViewModel.SetPreferredEditorAsync(
-                fileResource,
-                selectedEditorId,
-                useAsExtensionDefault: choiceResult.Value.CheckboxChecked);
+            await ViewModel.SetPreferredEditorAsync(fileResource, selectedEditorId);
         }
 
         await ReopenTabWithEditor(tab, selectedEditorId);

@@ -46,9 +46,10 @@ public interface IDocumentEditorRegistry
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension);
 
     /// <summary>
-    /// Gets every factory that can handle the given file, in resolution order (declared
-    /// instances in declaration order, then built-ins in host order), deduplicated by editor
-    /// id and filtered by CanHandleResource.
+    /// Gets every factory that can handle the given file, in resolution order, deduplicated by
+    /// editor id and filtered by CanHandleResource. More specific matches win first: a longer
+    /// extension suffix outranks a shorter one, and within one suffix declared instances come in
+    /// declaration order, then built-ins in host order.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource);
 
@@ -58,6 +59,13 @@ public interface IDocumentEditorRegistry
     /// editor appended as a "view as text" option for text-shaped files.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForResource(ResourceKey fileResource);
+
+    /// <summary>
+    /// The user-pickable factories for a bare file extension, in resolution order. Resolves the same
+    /// way an actual file of that extension would, for the Project Settings File Types page. Empty when
+    /// nothing claims the extension and it is not text-shaped.
+    /// </summary>
+    IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForExtension(string fileExtension);
 
     /// <summary>
     /// Gets a factory by its editor ID.

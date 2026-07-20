@@ -7,19 +7,14 @@ namespace Celbridge.Projects;
 public record ProjectConfigEntryError(string EntryName, string Message);
 
 /// <summary>
-/// A declared editor instance parsed from a top-level [instance-id] table in the .celbridge
-/// project config. The editor is identified by its package and contribution ids; the instance's
-/// nature (utility or document) follows from the editor's declared type.
+/// A per-contribution override parsed from a [[contribution]] entry in the .celbridge project
+/// config: the contribution it targets, an optional activation flip, and any non-default config
+/// values. A contribution running at its manifest default with default config has no entry.
 /// </summary>
-public sealed record EditorInstanceDeclaration
+public sealed record ContributionOverride
 {
     /// <summary>
-    /// The instance id: the TOML table name, using only lowercase letters, digits, and hyphens.
-    /// </summary>
-    public required string InstanceId { get; init; }
-
-    /// <summary>
-    /// Name of the activated package that provides the editor.
+    /// Name of the package that provides the editor.
     /// </summary>
     public required string PackageName { get; init; }
 
@@ -29,22 +24,19 @@ public sealed record EditorInstanceDeclaration
     public required string ContributionId { get; init; }
 
     /// <summary>
-    /// Optional literal display title override for this instance.
+    /// True when a default-active contribution is turned off, persisted as disabled = true. Ignored
+    /// on an optional contribution, which is off unless Enabled.
     /// </summary>
-    public string? Title { get; init; }
+    public bool Disabled { get; init; }
 
     /// <summary>
-    /// Optional icon name override for this instance, from the host icon set.
+    /// True when an optional contribution is turned on, persisted as enabled = true. Ignored on a
+    /// default-active contribution, which is on unless Disabled.
     /// </summary>
-    public string? Icon { get; init; }
+    public bool Enabled { get; init; }
 
     /// <summary>
-    /// Optional literal tooltip override for this instance.
-    /// </summary>
-    public string? Tooltip { get; init; }
-
-    /// <summary>
-    /// The instance's configuration: every non-reserved key on the table, holding the raw TOML
+    /// The contribution's configuration: every non-reserved key on the entry, holding the raw TOML
     /// value (string, bool, long, double, or IReadOnlyList of string). Type-checked against the
     /// editor's config descriptors when the workspace loads.
     /// </summary>
@@ -71,10 +63,11 @@ public sealed record class CelbridgeSection
     public string? ProjectVersion { get; init; }
 
     /// <summary>
-    /// Activated package names. A discovered package that is not listed is inert. Built-in
-    /// packages are always active and need no entry.
+    /// Package names the project has turned off. A discovered package not listed here contributes its
+    /// default-active contributions; a listed package contributes nothing. Activation is otherwise
+    /// discovery-driven, so this records opt-outs rather than opt-ins.
     /// </summary>
-    public IReadOnlyList<string> Packages { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> DisabledPackages { get; init; } = Array.Empty<string>();
 
     /// <summary>
     /// Optional map of file extension to editor id: the project's association of a contested
@@ -259,10 +252,10 @@ public sealed record class ProjectConfig
     public IReadOnlyDictionary<string, bool> Features { get; init; } = new Dictionary<string, bool>();
 
     /// <summary>
-    /// Declared editor instances, in declaration order. Utility instances declare rail order and
-    /// document instances declare editor precedence.
+    /// Per-contribution overrides of the discovered defaults, from the [[contribution]] entries.
+    /// A contribution running at its manifest default with default config has no entry.
     /// </summary>
-    public IReadOnlyList<EditorInstanceDeclaration> Instances { get; init; } = Array.Empty<EditorInstanceDeclaration>();
+    public IReadOnlyList<ContributionOverride> ContributionOverrides { get; init; } = Array.Empty<ContributionOverride>();
 
     /// <summary>
     /// Entries that were skipped or degraded during parsing, surfaced as console banners when

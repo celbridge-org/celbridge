@@ -3,44 +3,28 @@ using Celbridge.Documents;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// A named, configured use of an editor contribution. Declared instances come from the project
-/// config; built-in editors are wrapped in the same record under their host-assigned ids.
+/// The resolved, single activation of an editor contribution: one per active contribution, plus the
+/// built-in editors wrapped in the same record under their host-assigned ids. Presentation (title,
+/// icon, tooltip) comes from the contribution manifest, not from the project.
 /// </summary>
 public record EditorInstance
 {
     /// <summary>
-    /// The id that addresses this instance: the project-declared table name for declared
-    /// instances, or the host-assigned dotted id for a built-in editor.
+    /// The id that addresses this editor: the "{package}.{contribution}" contribution reference for a
+    /// discovered contribution, or the host-assigned dotted id for a built-in editor.
     /// </summary>
     public EditorInstanceId InstanceId { get; init; }
 
     /// <summary>
-    /// The editor contribution this instance instantiates.
+    /// The editor contribution this activates.
     /// </summary>
     public EditorContribution Contribution { get; init; } = new();
 
     /// <summary>
-    /// Effective configuration for this instance: the contribution's descriptor defaults merged
-    /// with the instance's project-config keys, in the Options channel string encoding.
+    /// Effective configuration: the contribution's descriptor defaults merged with the project's
+    /// per-contribution config keys, in the Options channel string encoding.
     /// </summary>
     public IReadOnlyDictionary<string, string> Config { get; init; } = EmptyConfig;
-
-    /// <summary>
-    /// Literal display title from the instance declaration, or null to use the contribution's
-    /// localized display name.
-    /// </summary>
-    public string? Title { get; init; }
-
-    /// <summary>
-    /// Icon name from the instance declaration, or null to use the contribution's manifest icon.
-    /// </summary>
-    public string? Icon { get; init; }
-
-    /// <summary>
-    /// Literal tooltip from the instance declaration, or null to use the contribution's localized
-    /// tooltip.
-    /// </summary>
-    public string? Tooltip { get; init; }
 
     private static readonly IReadOnlyDictionary<string, string> EmptyConfig =
         new Dictionary<string, string>();

@@ -7,6 +7,7 @@ using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Services;
 
@@ -221,6 +222,14 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
             var factory = factoryResult.Value;
 
+            if (factory.IsPlaceholder)
+            {
+                // A placeholder factory is a stand-in that opens nothing, so it must never become the
+                // resolved default via an association, or it would badge a default that cannot open.
+                invalidEntries.Add($"'{extension}': editor '{editorIdValue}' cannot be used as an association");
+                continue;
+            }
+
             var supportsExtension = factory.SupportedExtensions
                 .Any(supported => extension.EndsWith(supported, StringComparison.Ordinal));
             if (!supportsExtension)
@@ -335,12 +344,19 @@ public class DocumentsService : IDocumentsService, IDisposable
     public Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource) =>
         _preferenceStore.GetPreferredEditorAsync(fileResource);
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId, bool useAsExtensionDefault)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId)
     {
-        if (useAsExtensionDefault)
+        var defaultEditorId = GetDefaultEditorId(fileResource);
+
+        // The sidecar only records a deviation from the project default: choosing the default clears the
+        // override so the file follows the project, choosing anything else pins it.
+        if (editorId == defaultEditorId)
         {
-            var extension = Path.GetExtension(fileResource.Path).ToLowerInvariant();
-            await _preferenceStore.SetExtensionPreferenceAsync(extension, editorId);
+            return await _commandService.ExecuteAsync<IRemoveFieldsCommand>(command =>
+            {
+                command.Resource = fileResource;
+                command.Names = new[] { SidecarFieldNames.Editor };
+            });
         }
 
         // ToString() forces a string value. Passing the EditorInstanceId struct directly boxes it,
@@ -355,6 +371,91 @@ public class DocumentsService : IDocumentsService, IDisposable
             command.Resource = fileResource;
             command.Fields = fields;
         });
+    }
+
+    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId)
+    {
+        var factories = _documentEditorRegistry.GetUserPickableFactoriesForResource(fileResource);
+        if (factories.Count < 2)
+        {
+            return null;
+        }
+
+        var defaultEditorId = GetDefaultEditorId(fileResource);
+
+        // Preselect the current editor; if it is no longer a candidate (a stale override), preselect the
+        // project default instead.
+        var currentIsCandidate = factories.Any(factory => factory.EditorId == currentEditorId);
+        var preselectId = currentIsCandidate ? currentEditorId : defaultEditorId;
+
+        var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+
+        var editorIds = new List<EditorInstanceId>();
+        var labels = new List<string>();
+        var selectedIndex = 0;
+        for (var i = 0; i < factories.Count; i++)
+        {
+            var factory = factories[i];
+            editorIds.Add(factory.EditorId);
+
+            string label;
+            if (factory.EditorId == defaultEditorId)
+            {
+                label = stringLocalizer.GetString("OpenWithDialog_DefaultFormat", factory.DisplayName);
+            }
+            else
+            {
+                label = factory.DisplayName;
+            }
+            labels.Add(label);
+
+            if (factory.EditorId == preselectId)
+            {
+                selectedIndex = i;
+            }
+        }
+
+        return new EditorPickList(editorIds, labels, selectedIndex);
+    }
+
+    public ExtensionEditorCandidates GetEditorCandidatesForExtension(string fileExtension)
+    {
+        var factories = _documentEditorRegistry.GetUserPickableFactoriesForExtension(fileExtension);
+
+        var candidates = new List<EditorCandidate>();
+        foreach (var factory in factories)
+        {
+            candidates.Add(new EditorCandidate(factory.EditorId, factory.DisplayName));
+        }
+
+        // The first user-pickable factory is the editor that opens the extension by default, matching
+        // the runtime resolution order (and the code-editor "view as text" fallback for text files).
+        var defaultEditorId = factories.Count > 0 ? factories[0].EditorId : EditorInstanceId.Empty;
+
+        return new ExtensionEditorCandidates(candidates, defaultEditorId);
+    }
+
+    // The editor the resolution rules pick when the file has no per-file override: the
+    // editor-associations entry if one matches, else the first non-placeholder supporting factory in
+    // resolution order.
+    private EditorInstanceId GetDefaultEditorId(ResourceKey fileResource)
+    {
+        var associatedResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
+        if (associatedResult.IsSuccess)
+        {
+            return associatedResult.Value.EditorId;
+        }
+
+        var factories = _documentEditorRegistry.GetFactoriesForResource(fileResource);
+        foreach (var factory in factories)
+        {
+            if (!factory.IsPlaceholder)
+            {
+                return factory.EditorId;
+            }
+        }
+
+        return EditorInstanceId.Empty;
     }
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)

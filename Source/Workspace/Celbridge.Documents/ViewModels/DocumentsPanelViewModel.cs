@@ -165,38 +165,14 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
     }
 
-    public record class EditorChoiceInfo(
-        IReadOnlyList<IDocumentEditorFactory> Factories,
-        List<string> DisplayNames,
-        int DefaultIndex);
-
-    public EditorChoiceInfo? GetChoicesForFileExtension(string extension, EditorInstanceId currentEditorId)
+    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId)
     {
-        var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForExtension(extension);
-
-        if (factories.Count < 2)
-        {
-            return null;
-        }
-
-        int defaultIndex = 0;
-        for (int i = 0; i < factories.Count; i++)
-        {
-            if (factories[i].EditorId == currentEditorId)
-            {
-                defaultIndex = i;
-                break;
-            }
-        }
-
-        var displayNames = factories.Select(factory => factory.DisplayName).ToList();
-        return new EditorChoiceInfo(factories, displayNames, defaultIndex);
+        return _documentsService.GetEditorPickList(fileResource, currentEditorId);
     }
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId, bool useAsExtensionDefault)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId)
     {
-        return await _documentsService.SetPreferredEditorAsync(fileResource, editorId, useAsExtensionDefault);
+        return await _documentsService.SetPreferredEditorAsync(fileResource, editorId);
     }
 
     public record class UtilityTabInfo(string IconGlyphName, string Title);
@@ -226,7 +202,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var descriptor = utilityFactory.Contribution.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
 
-        var iconGlyphName = utilityFactory.Instance.Icon ?? descriptor.Icon;
+        var iconGlyphName = descriptor.Icon;
 
         return new UtilityTabInfo(iconGlyphName, utilityFactory.DisplayName);
     }

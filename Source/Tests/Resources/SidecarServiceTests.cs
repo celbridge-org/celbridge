@@ -432,7 +432,7 @@ public class SidecarServiceTests
         _resourceFileSystem.GetInfoAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<string>.Ok("title = \"x\"\n")));
+            .Returns(Task.FromResult(Result<string>.Ok("title = \"x\"\nversion = 2\n")));
         _resourceFileSystem.WriteAllTextAsync(siblingSidecar, Arg.Any<string>())
             .Returns(Task.FromResult(Result.Ok()));
 
@@ -440,6 +440,53 @@ public class SidecarServiceTests
 
         removeResult.IsSuccess.Should().BeTrue();
         await _resourceFileSystem.Received(1).WriteAllTextAsync(siblingSidecar, Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task RemoveFieldsAsync_DeletesSidecar_WhenLastFieldRemoved()
+    {
+        // Removing the final field empties the sidecar. Rather than leave a
+        // blank .cel file, the service deletes it and reports Deleted so the
+        // calling command forces the registry to drop the removed file.
+        var regularFile = new ResourceKey("photo.png");
+        var siblingSidecar = new ResourceKey("photo.png.cel");
+
+        _resourceFileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<string>.Ok("title = \"only\"\n")));
+        _resourceFileSystem.DeleteAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<DeleteResult>.Ok(new DeleteResult(SidecarOutcome.NotPresent))));
+
+        var removeResult = await _sidecarService.RemoveFieldsAsync(regularFile, new[] { "title" });
+
+        removeResult.IsSuccess.Should().BeTrue();
+        removeResult.Value.Should().Be(SidecarWriteOutcome.Deleted);
+        await _resourceFileSystem.Received(1).DeleteAsync(siblingSidecar);
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task RemoveTagsAsync_DeletesSidecar_WhenLastTagRemovedAndNoOtherFields()
+    {
+        // Removing the last tag from a sidecar that holds nothing else empties
+        // it, so the now-blank file is deleted rather than written.
+        var regularFile = new ResourceKey("photo.png");
+        var siblingSidecar = new ResourceKey("photo.png.cel");
+
+        _resourceFileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<string>.Ok("_tags = [\"hero\"]\n")));
+        _resourceFileSystem.DeleteAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<DeleteResult>.Ok(new DeleteResult(SidecarOutcome.NotPresent))));
+
+        var removeResult = await _sidecarService.RemoveTagsAsync(regularFile, new[] { "hero" });
+
+        removeResult.IsSuccess.Should().BeTrue();
+        removeResult.Value.Should().Be(SidecarWriteOutcome.Deleted);
+        await _resourceFileSystem.Received(1).DeleteAsync(siblingSidecar);
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]

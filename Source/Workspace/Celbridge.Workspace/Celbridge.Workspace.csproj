@@ -30,6 +30,7 @@
     <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
     <ProjectReference Include="..\Celbridge.Packages\Celbridge.Packages.csproj" />
     <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
+    <ProjectReference Include="..\Celbridge.ProjectSettings\Celbridge.ProjectSettings.csproj" />
     <ProjectReference Include="..\Celbridge.Python\Celbridge.Python.csproj" />
     <ProjectReference Include="..\Celbridge.Resources\Celbridge.Resources.csproj" />
     <ProjectReference Include="..\Celbridge.Search\Celbridge.Search.csproj" />

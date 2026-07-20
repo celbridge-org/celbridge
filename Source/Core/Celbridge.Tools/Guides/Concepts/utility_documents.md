@@ -1,33 +1,30 @@
 # Utility documents
 
-A utility is a custom WebView editor whose instances are workspace fixtures rather than editors of user-authored files. Instead of claiming a file extension across the project, each declared instance owns its own state file under the hidden `utils:` root. It is the right shape for a tool the user reaches for occasionally — a colour picker, a sprite renderer, a scratchpad, a long-running process view. A utility is an ordinary editor contribution with `type = "utility"`, so read `document_editor_contributions` first: everything about the manifest, the JS handlers, save, and read-only handling applies unchanged. This guide covers only what is specific to a utility.
+A utility is a custom WebView editor that is a workspace fixture rather than an editor of user-authored files. Instead of claiming a file extension across the project, it owns a single state file under the hidden `utils:` root. It is the right shape for a tool the user reaches for occasionally — a colour picker, a sprite renderer, a scratchpad, a long-running process view. A utility is an ordinary editor contribution with `type = "utility"`, so read `document_editor_contributions` first: everything about the manifest, the JS handlers, save, and read-only handling applies unchanged. This guide covers only what is specific to a utility.
 
-## Contributions and instances
+## One utility per contribution
 
-A package contributes a utility editor; the project declares instances of it in the `.celbridge` file. Each instance is an independent surface with its own rail button, backing state file, and configuration. Three consoles declared from one console contribution read as Python, Claude, and PowerShell — not three identical terminals. Instance declarations use the same shape as every editor instance:
+A package contributes a utility editor, and a discovered package is active by default — so its utility appears automatically, with its own rail button and backing state file. There is one utility per contribution: the project does not declare it, name it, or spin up several copies. A tool that needs several variants (say Python, Claude, and PowerShell consoles) ships them as separate contributions, not as repeated instances of one.
+
+The `.celbridge` file touches a utility only to *deviate* from its manifest defaults, through the same `[[contribution]]` entry any editor uses — to set config keys, or to disable a `recommended` utility / enable an `optional` one:
 
 ```toml
-[celbridge]
-packages = ["notepad"]
-
-[scratchpad]
+[[contribution]]
 package      = "notepad"
 contribution = "notepad"
-title        = "Scratchpad"      # optional literal overrides
-icon         = "journal"
-tooltip      = "My scratchpad"
+wrap         = true              # a config key from the utility's [[config]] descriptors
 ```
 
-Declaration order is rail order. The optional `title`, `icon`, and `tooltip` keys override the contribution's manifest defaults per instance; remaining keys are instance configuration, type-checked against the contribution's `[[config]]` descriptors.
+A utility's title, icon, and tooltip come from its manifest; the project cannot override them per contribution. Rail order follows discovery order (package load order, then manifest order).
 
-## An instance is a permanent fixture
+## A utility is a permanent fixture
 
-Every utility instance is **workspace-scoped**: it is created when the project loads and lives until the project closes. It is never destroyed by the user — like Explorer and Search, it is always there. What the user controls is only *where* it is docked. A utility instance always occupies exactly one **dock location**:
+Every utility is **workspace-scoped**: it is created when the project loads and lives until the project closes. It is never destroyed by the user — like Explorer and Search, it is always there. What the user controls is only *where* it is docked. A utility always occupies exactly one **dock location**:
 
 - **Utility Panel** — the instance is a rail surface in the Utility Panel (the left sidebar), selected by clicking its rail button, shown one at a time alongside Explorer and Search.
 - **Document** — the instance is a tab in the documents area, sitting among the open documents.
 
-Both are docked locations inside the app; neither is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group. Every instance has both a permanent rail button and a document tab it can occupy; the manifest does not pre-decide the location.
+Both are docked locations inside the app; neither is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group. Every utility has both a permanent rail button and a document tab it can occupy; the manifest does not pre-decide the location.
 
 ## Moving between dock locations
 
@@ -70,11 +67,11 @@ lazy-load = false                          # optional; true defers the WebView t
 
 | Field | Required | Default | Meaning |
 |---|---|---|---|
-| `resource-extension` | yes | — | File extension of an instance's backing state file. The host derives the full path from the instance id, as `utils:{instanceId}{resource-extension}`. |
-| `icon` | yes | — | Default Bootstrap Icons glyph name for the rail button and the docked tab icon (resolved by name, not limited to the curated symbol set). Instances may override it. |
-| `tooltip` | yes | — | Localization key. Default for the rail button tooltip, the accessible name, and the docked tab title. Instances may override it with a literal string. |
+| `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
+| `icon` | yes | — | Bootstrap Icons glyph name for the rail button and the docked tab icon (resolved by name, not limited to the curated symbol set). |
+| `tooltip` | yes | — | Localization key for the rail button tooltip, the accessible name, and the docked tab title. |
 | `template` | no | empty file | Package-relative path to a file that seeds an instance's backing resource when it is absent. |
-| `lazy-load` | no | `false` | When true, an instance's WebView is created on its first show rather than at project load. Declared once by the editor; not settable per instance. A lazy instance restored into the tab layout as a docked document initializes at restore. |
+| `lazy-load` | no | `false` | When true, the utility's WebView is created on its first show rather than at project load. Declared by the editor, not by the project. A lazy utility restored into the tab layout as a docked document initializes at restore. |
 
 `display-name` in `[editor]` is optional. When omitted it defaults to the `tooltip` key; it labels the Utility Panel header.
 
@@ -88,11 +85,11 @@ A utility is never created as a normal project file — it does not appear in Ne
 
 Utility state lives under the `utils:` root (`.celbridge/utils/`). Like `temp:` and `logs:` it is hidden from the Explorer, text search, and the New File dialog, and is ungoverned by resource policy (no locks, no sidecars). Unlike `temp:`, it is **not wiped on load** — it is the durable home for per-project utility state. `.celbridge/` is gitignored, so the state is local to the machine and never committed. See `resource_keys` for the root itself.
 
-An instance's backing file is `utils:{instanceId}{resource-extension}` — for the `[scratchpad]` instance above, `utils:scratchpad._notepad`. Backing resources are routed by instance identity, so multiple instances of one contribution coexist without extension uniqueness rules. Renaming an instance id orphans its old state file, which lingers harmlessly in the gitignored `utils:` folder.
+A utility's backing file is `utils:{package}.{contribution}{resource-extension}` — for the Notepad utility (package `notepad`, contribution `notepad`, extension `._notepad`), `utils:notepad.notepad._notepad`. The path is derived from the contribution identity, so no extension-uniqueness rules are needed.
 
 ## Create-if-missing
 
-The backing file does not have to exist. When an instance is created on project load and its file is absent, the host seeds it from the manifest `template` (or an empty file when `template` is omitted) with a direct filesystem write, then proceeds. This also covers session restore and doubles as the recovery path when the user deletes the `.celbridge` folder. Author the template as the utility's default state (for example a Notepad template of `{"text":""}`).
+The backing file does not have to exist. When a utility is created on project load and its file is absent, the host seeds it from the manifest `template` (or an empty file when `template` is omitted) with a direct filesystem write, then proceeds. This also covers session restore and doubles as the recovery path when the user deletes the `.celbridge` folder. Author the template as the utility's default state (for example a Notepad template of `{"text":""}`).
 
 ## Persistence
 
@@ -100,8 +97,8 @@ A utility persists through the standard editable-save path: the WebView calls `c
 
 ## Agent interaction
 
-- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus declared utility instances — with each one's id, display name, `location` (`"panel"` or `"document"`, its current dock location), and whether it is currently shown.
-- `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `location` (`"panel"` or `"document"`) to move it there first. A declared utility's id is its instance id (the `.celbridge` table name).
+- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus the active utility contributions — with each one's id, display name, `location` (`"panel"` or `"document"`, its current dock location), and whether it is currently shown.
+- `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `location` (`"panel"` or `"document"`) to move it there first. A utility's id is `package.contribution` (for example `notepad.notepad`).
 - `app_get_state` reports `activeUtility`, the id of the surface currently shown in the Utility Panel rail.
 - `app_spotlight` can point at a utility's button: `{utilityId}-utility-button` for its rail item in the Utility Panel.
 - `utils:` is a registered root, so `file.*` tools can read and write an instance's backing file when the package declares `file.*` under `[permissions] tools`. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract needs no permission — it is framework-level, distinct from the `cel.*` tool proxies.

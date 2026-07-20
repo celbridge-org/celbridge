@@ -113,15 +113,23 @@ public static class PackageManifestLoader
             if (root.TryGetValue(ContributesSection, out var contributesObject) &&
                 contributesObject is TomlTable contributesTable)
             {
-                if (contributesTable.TryGetValue(EditorsKey, out var editorsObject) &&
-                    editorsObject is TomlArray editorsArray)
+                if (contributesTable.TryGetValue(EditorsKey, out var editorsObject))
                 {
+                    if (editorsObject is not TomlArray editorsArray)
+                    {
+                        return Result<Package>.Fail(
+                            $"'{ContributesSection}.{EditorsKey}' must be an array of editor manifest paths: {packageTomlPath}");
+                    }
+
                     foreach (var editorEntry in editorsArray)
                     {
-                        if (editorEntry is string editorManifestPath)
+                        if (editorEntry is not string editorManifestPath)
                         {
-                            editorManifestPaths.Add(editorManifestPath);
+                            return Result<Package>.Fail(
+                                $"'{ContributesSection}.{EditorsKey}' entries must be strings: {packageTomlPath}");
                         }
+
+                        editorManifestPaths.Add(editorManifestPath);
                     }
                 }
             }

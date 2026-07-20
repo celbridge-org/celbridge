@@ -40,24 +40,24 @@ default = true
 
 `type` is `"document"` (edits matching files, shown in document tabs) or `"utility"` (a workspace fixture; see `utility_documents`). A document editor requires at least one `[[file-types]]` entry and must not declare a `[utility]` section. `display-name` values are localization keys. Templates are optional. All Celbridge-owned manifest keys are kebab-case.
 
-## Activation and instances
+## Activation and configuration
 
-A contribution alone does nothing. The project's `.celbridge` file activates the package and declares an instance of the editor:
+A discovered package is active by default — bundling it, or dropping it into the project's `packages/` folder, is enough for its editors to open matching files. There is no activation list to opt in to. A project only touches the `.celbridge` file to *deviate* from an editor's defaults: a `[[contribution]]` entry sets the editor's config keys, or flips its activation when the manifest marks the contribution `recommended` (add `disabled = true`) or `optional` (add `enabled = true`):
 
 ```toml
-[celbridge]
-packages = ["my-editor"]
-
-[my-files]
+[[contribution]]
 package      = "my-editor"
 contribution = "my-editor"
+grid-size    = 16              # a config key declared by the editor's [[config]] descriptors
 ```
 
-Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first declared instance (in declaration order) whose editor supports the extension, then the built-in editors in host order. See `project_structure` for the full `.celbridge` schema.
+To turn a whole package off, list it in `[celbridge].disabled-packages`. Each contribution has exactly one instance, referenced as `package.contribution`; a project cannot declare several instances or override an editor's title, icon, or tooltip.
+
+Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in host order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. See `project_structure` for the full `.celbridge` schema.
 
 ## Config descriptors (optional)
 
-An editor declares its per-instance configuration surface as typed `[[config]]` descriptors:
+An editor declares its per-contribution configuration surface as typed `[[config]]` descriptors:
 
 ```toml
 [[config]]

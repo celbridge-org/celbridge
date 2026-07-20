@@ -12,7 +12,7 @@ The left sidebar is the **Utility Panel**: an icon rail switches its content bet
 
 ## Utilities
 
-A utility is an auxiliary surface — a colour picker, a scratchpad, a process view. A package contributes the utility editor; the project's `.celbridge` file declares instances of it, each a rail item in the Utility Panel alongside Explorer and Search. The user can dock an instance into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and declared) with its current `location` (panel or document), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to a `location` first). See `utility_documents` for how they are authored and declared.
+A utility is an auxiliary surface — a colour picker, a scratchpad, a process view. A package contributes the utility editor, and a discovered package's utility appears automatically as a rail item in the Utility Panel alongside Explorer and Search — one per contribution. The user can dock a utility into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and contributed) with its current `location` (panel or document), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to a `location` first). See `utility_documents` for how they are authored.
 
 ## Resolving ambiguous file references
 

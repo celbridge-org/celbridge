@@ -1,3 +1,5 @@
+using Celbridge.Packages;
+
 namespace Celbridge.Projects;
 
 /// <summary>
@@ -25,6 +27,16 @@ public interface IProjectService
     /// The migrationResult should be obtained from ProjectLoader before calling this method.
     /// </summary>
     Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult);
+
+    /// <summary>
+    /// Reconciles the current project's config against the discovered editor contributions and returns
+    /// the resolved active set plus the normalized config. Null when no project is loaded. When
+    /// persistNormalizedConfig is set, the normalized config is also written back to the project file,
+    /// unless the load was unhealthy or carried recoverable entry errors.
+    /// </summary>
+    Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(
+        IReadOnlyList<EditorContribution> discoveredContributions,
+        bool persistNormalizedConfig);
 
     /// <summary>
     /// Clears the CurrentProject reference without disposing it.

@@ -15,10 +15,4 @@ public static class DocumentConstants
     /// Has no registered factory.
     /// </summary>
     public static readonly EditorInstanceId TextBoxFallbackEditorId = new("celbridge.text-box-fallback");
-
-    /// <summary>
-    /// Returns the workspace settings key for the user's preferred document editor for a file extension.
-    /// </summary>
-    public static string GetEditorPreferenceKey(string fileExtension) =>
-        $"DocumentEditorPreference:{fileExtension}";
 }

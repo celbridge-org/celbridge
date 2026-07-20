@@ -62,12 +62,6 @@ public class DocumentViewFactory
             return sidecarView.OkResult<IDocumentView>();
         }
 
-        var extensionView = await CreateFromExtensionPreferenceAsync(fileResource);
-        if (extensionView is not null)
-        {
-            return extensionView.OkResult<IDocumentView>();
-        }
-
         var associatedEditorView = CreateFromEditorAssociations(fileResource);
         if (associatedEditorView is not null)
         {
@@ -119,37 +113,6 @@ public class DocumentViewFactory
 
         _logger.LogWarning(createResult,
             $"Sidecar editor '{sidecarEditorId}' failed to create view for '{fileResource}'; falling through");
-        return null;
-    }
-
-    // Per-extension preference: same fall-through contract as sidecar.
-    private async Task<IDocumentView?> CreateFromExtensionPreferenceAsync(ResourceKey fileResource)
-    {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        var preferredEditorId = await _preferenceStore.GetExtensionPreferenceAsync(extension);
-        if (preferredEditorId.IsEmpty)
-        {
-            return null;
-        }
-
-        var preferredFactoryResult = _documentEditorRegistry.GetFactoryById(preferredEditorId);
-        if (preferredFactoryResult.IsFailure)
-        {
-            return null;
-        }
-
-        var preferredFactory = preferredFactoryResult.Value;
-        if (!preferredFactory.CanHandleResource(fileResource))
-        {
-            return null;
-        }
-
-        var createResult = preferredFactory.CreateDocumentView(fileResource);
-        if (createResult.IsSuccess)
-        {
-            return createResult.Value;
-        }
-
         return null;
     }
 

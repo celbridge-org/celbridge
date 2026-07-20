@@ -4,10 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Reads and writes the user's preferred editor for a file. Knows two
-/// preference sources: the per-file sidecar '_editor' field (set by
-/// "Open with...") and the per-extension workspace setting. The sidecar
-/// preference takes precedence. Resolution stops at the first non-empty value.
+/// Reads the user's preferred editor for a file from the per-file sidecar '_editor' field, set by
+/// "Open with...".
 /// </summary>
 public class DocumentEditorPreferenceStore
 {
@@ -20,48 +18,6 @@ public class DocumentEditorPreferenceStore
     {
         _workspaceWrapper = workspaceWrapper;
         _logger = logger;
-    }
-
-    /// <summary>
-    /// Returns the per-extension workspace preference, or Empty when no
-    /// preference is stored or the stored value does not parse.
-    /// </summary>
-    public async Task<EditorInstanceId> GetExtensionPreferenceAsync(string extension)
-    {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
-
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        var preferredId = await propertyBag.GetPropertyAsync<string>(preferenceKey);
-
-        // Callers must check that the returned id still maps to a registered editor.
-        if (string.IsNullOrEmpty(preferredId)
-            || !EditorInstanceId.TryParse(preferredId, out var editorId))
-        {
-            return EditorInstanceId.Empty;
-        }
-
-        return editorId;
-    }
-
-    /// <summary>
-    /// Stores the user's preferred editor for an extension. Pass Empty to clear
-    /// the preference.
-    /// </summary>
-    public async Task SetExtensionPreferenceAsync(string extension, EditorInstanceId editorId)
-    {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
-
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-
-        if (editorId.IsEmpty)
-        {
-            await propertyBag.DeletePropertyAsync(preferenceKey);
-            return;
-        }
-
-        await propertyBag.SetPropertyAsync(preferenceKey, editorId.ToString());
     }
 
     /// <summary>
@@ -111,9 +67,8 @@ public class DocumentEditorPreferenceStore
     }
 
     /// <summary>
-    /// Returns the editor that should open the given file: the sidecar '_editor'
-    /// field when set, otherwise the per-extension workspace preference, or
-    /// Empty when neither source has a preference.
+    /// Returns the editor that should open the given file from its sidecar '_editor' field, or Empty
+    /// when the file has no per-file editor override.
     /// </summary>
     public async Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource)
     {
@@ -124,8 +79,6 @@ public class DocumentEditorPreferenceStore
             return sidecarPreferenceResult.Value;
         }
 
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        var extensionPreference = await GetExtensionPreferenceAsync(extension);
-        return extensionPreference;
+        return EditorInstanceId.Empty;
     }
 }

@@ -29,28 +29,28 @@ my-project/
 
 ## The `.celbridge` project file
 
-The project file stores project-level configuration as TOML. Host-level declarations are flat keys on the single `[celbridge]` table; every other top-level table declares an editor instance. All changes apply on project reload.
+The project file stores project-level configuration as TOML. Host-level declarations are flat keys on the single `[celbridge]` table; `[[contribution]]` entries record how the project deviates from each editor's discovered defaults. All changes apply on project reload.
 
 ```toml
 [celbridge]
 celbridge-version = "0.4.0"
 project-version   = "0.1.0"
-packages = ["acme.pixel-editor"]                 # activation: unlisted packages are inert
-editor-associations = { ".png" = "pixel-art" }   # associate an extension with a specific editor
+disabled-packages = ["acme.unused"]                            # opt a discovered package out
+editor-associations = { ".png" = "acme.pixel-editor.pixel" }   # pin an extension to one editor
 
-[celbridge.resources]                            # file policy (ignore-file, add, remove, lock)
+[celbridge.resources]                                          # file policy (ignore-file, add, remove, lock)
 ignore-file = ".gitignore"
 
-[pixel-art]                                      # an editor instance; the table name is its id
+[[contribution]]                                               # an override of an editor's defaults
 package      = "acme.pixel-editor"
 contribution = "pixel"
-grid-size    = 16                                # config keys, checked against the editor's descriptors
+grid-size    = 16                                              # config keys, checked against the editor's descriptors
 ```
 
-- **Activation**: discovery scans bundled modules and the project tree, but a discovered package that is not listed in `packages` registers nothing. The built-in packages (code editor, Markdown, File Viewer) are always active and need no entry.
-- **Instances**: `package` and `contribution` identify the editor; its declared type (`document` or `utility`) determines what the instance is. Optional `title`, `icon`, and `tooltip` are literal display overrides. Remaining keys are the instance's configuration. Declaration order is significant: rail order for utility instances, editor precedence for document instances.
-- **Editor resolution**: per-file sidecar override, then `editor-associations` (longest matching extension suffix), then the first supporting instance in declaration order, then the built-in editors in host order.
-- **Interim sections**: `[project]` carries the Python keys (`requires-python`, `dependencies`) and `[[shortcut]]` declares title-bar shortcut buttons, until both move to console instance config.
+- **Activation is opt-out**: discovery scans bundled modules and the project tree, and every discovered package is active by default. Listing a package in `disabled-packages` turns it and all its contributions off. (The exception is a contribution its manifest marks `optional`, which stays inert until a `[[contribution]]` entry enables it.) The built-in editors (code editor, Markdown, File Viewer, spreadsheet) are always active and cannot be disabled.
+- **Contributions**: a `[[contribution]]` entry names an editor by `package` and `contribution` and records this project's overrides of its defaults. Any non-reserved key is configuration, type-checked against the editor's descriptors; a default-active editor running with default config needs no entry. `disabled = true` turns off a contribution its package marked *recommended*; `enabled = true` turns on one marked *optional*. There is exactly one instance per contribution — a project cannot declare several, nor override an editor's title, icon, or tooltip.
+- **Editor resolution**: per-file sidecar override, then `editor-associations` (longest matching extension suffix), then the first supporting contribution in discovery order, then the built-in editors in host order. Editors are referenced as `package.contribution` (e.g. `acme.pixel-editor.pixel`).
+- **Interim sections**: `[project]` carries the Python keys (`requires-python`, `dependencies`) and `[[shortcut]]` declares title-bar shortcut buttons, until both move to console config.
 - A malformed entry is skipped with a console banner and the rest of the file applies; a TOML syntax error fails loudly and the project opens with nothing active.
 
 Agents may edit the file with the ordinary file tools; changes take effect when the project reloads.

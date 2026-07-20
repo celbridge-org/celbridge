@@ -8,9 +8,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Discovers packages from bundled and project sources, applies the project's activation list,
-/// and resolves the declared editor instances and built-in editors against the discovered
-/// contributions.
+/// Discovers packages from bundled and project sources, reconciles the project config against the
+/// discovered contributions (materializing default-active instances and honouring disables), and
+/// resolves the resulting editor instances and the built-in editors.
 /// </summary>
 public class PackageRegistry
 {
@@ -23,13 +23,16 @@ public class PackageRegistry
     private readonly IPackageLocalizationService _localizationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
-    private readonly ILocalFileSystem _fileSystem;
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
 
     private List<EditorInstance> _editorInstances = [];
     private List<EditorInstance> _builtInEditors = [];
+
+    // The reconciled, normalized config from the most recent discovery pass. RegisterPackagesAsync
+    // persists it; a rescan leaves it unwritten.
+    private ProjectConfig? _normalizedConfig;
 
     // Failures from the most recent discovery pass, retained so package_status
     // can report them after load (the error banner only fires once).
@@ -53,11 +56,10 @@ public class PackageRegistry
         _localizationService = localizationService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
-        _fileSystem = fileSystem;
         _bundledReader = new DirectPackageReader(fileSystem);
     }
 
-    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath)
+    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath, bool persistNormalizedConfig)
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
@@ -71,7 +73,7 @@ public class PackageRegistry
 
         var instanceFailures = new List<EditorInstanceLoadFailure>();
         var instanceWarnings = new List<EditorInstanceLoadFailure>();
-        ResolveEditorInstances(instanceFailures, instanceWarnings);
+        await ResolveEditorInstancesAsync(persistNormalizedConfig && failures.Count == 0, instanceFailures, instanceWarnings);
         ResolveBuiltInEditors();
 
         var report = new PackageDiscoveryReport
@@ -118,6 +120,11 @@ public class PackageRegistry
     public IReadOnlyList<EditorInstance> GetEditorInstances()
     {
         return _editorInstances.AsReadOnly();
+    }
+
+    public ProjectConfig? GetNormalizedConfig()
+    {
+        return _normalizedConfig;
     }
 
     public IReadOnlyList<EditorInstance> GetBuiltInEditors()
@@ -269,89 +276,49 @@ public class PackageRegistry
         return readResult.Value;
     }
 
-    // Resolves the project's declared instance tables against the activated packages, preserving
-    // declaration order. Skipped entries and dropped config keys are reported so the load path can
-    // surface them as console banners.
-    private void ResolveEditorInstances(
+    // Reconciles the project config against the discovered contributions and builds the live instance
+    // set from the result. Default-active contributions materialize, disabled instances and disabled
+    // packages drop out, and reconcile warnings surface as advisory banners. On a persisting load the
+    // reconcile also writes the normalized config back to the project file.
+    private async Task ResolveEditorInstancesAsync(
+        bool persistNormalizedConfig,
         List<EditorInstanceLoadFailure> instanceFailures,
         List<EditorInstanceLoadFailure> instanceWarnings)
     {
         _editorInstances = [];
+        _normalizedConfig = null;
 
-        var config = _projectService.CurrentProject?.Config;
-        if (config is null)
+        var discoveredContributions = GetAllPackages()
+            .SelectMany(package => package.Editors)
+            .ToList();
+
+        var reconcileResult = await _projectService.ReconcileConfigAsync(discoveredContributions, persistNormalizedConfig);
+        if (reconcileResult is null)
         {
             return;
         }
 
-        var activatedPackages = new HashSet<string>(config.Celbridge.Packages, StringComparer.Ordinal);
+        _normalizedConfig = reconcileResult.Config;
 
-        foreach (var activationEntry in activatedPackages)
+        foreach (var warning in reconcileResult.Warnings)
         {
-            if (!GetAllPackages().Any(p => p.Info.Name.Equals(activationEntry, StringComparison.Ordinal)))
+            instanceWarnings.Add(new EditorInstanceLoadFailure
             {
-                _logger.LogWarning($"Activated package '{activationEntry}' was not discovered.");
-            }
+                InstanceId = string.Empty,
+                Detail = warning
+            });
         }
 
-        foreach (var declaration in config.Instances)
+        foreach (var resolved in reconcileResult.ActiveContributions)
         {
-            var package = GetAllPackages()
-                .FirstOrDefault(p => p.Info.Name.Equals(declaration.PackageName, StringComparison.Ordinal));
-            if (package is null)
-            {
-                instanceFailures.Add(new EditorInstanceLoadFailure
-                {
-                    InstanceId = declaration.InstanceId,
-                    Detail = $"References unknown package '{declaration.PackageName}'."
-                });
-                continue;
-            }
-
-            // Built-in packages are always active, so an instance may reference them without an
-            // activation entry.
-            var isActivated = activatedPackages.Contains(package.Info.Name) ||
-                BuiltInEditors.IsAlwaysActivePackage(package.Info.Name);
-            if (!isActivated)
-            {
-                instanceFailures.Add(new EditorInstanceLoadFailure
-                {
-                    InstanceId = declaration.InstanceId,
-                    Detail = $"Package '{declaration.PackageName}' is not activated. Add it to [celbridge].packages."
-                });
-                continue;
-            }
-
-            var contribution = package.Editors
-                .FirstOrDefault(e => e.Id.Equals(declaration.ContributionId, StringComparison.Ordinal));
-            if (contribution is null)
-            {
-                instanceFailures.Add(new EditorInstanceLoadFailure
-                {
-                    InstanceId = declaration.InstanceId,
-                    Detail = $"Package '{declaration.PackageName}' has no contribution '{declaration.ContributionId}'."
-                });
-                continue;
-            }
-
-            var effectiveConfig = BuildEffectiveConfig(contribution, declaration, out var droppedKeys);
-            if (droppedKeys.Count > 0)
-            {
-                instanceWarnings.Add(new EditorInstanceLoadFailure
-                {
-                    InstanceId = declaration.InstanceId,
-                    Detail = $"Dropped invalid config keys: {string.Join(", ", droppedKeys)}."
-                });
-            }
+            var contribution = resolved.Contribution;
+            var effectiveConfig = BuildEffectiveConfig(contribution, resolved.Config, out _);
 
             var instance = new EditorInstance
             {
-                InstanceId = new EditorInstanceId(declaration.InstanceId),
+                InstanceId = EditorInstanceId.Create(contribution.Package.Name, contribution.Id),
                 Contribution = contribution,
                 Config = effectiveConfig,
-                Title = declaration.Title,
-                Icon = declaration.Icon,
-                Tooltip = declaration.Tooltip
             };
 
             _editorInstances.Add(instance);
@@ -391,7 +358,7 @@ public class PackageRegistry
             {
                 InstanceId = definition.EditorId,
                 Contribution = contribution,
-                Config = BuildEffectiveConfig(contribution, declaration: null, out _)
+                Config = BuildEffectiveConfig(contribution, rawConfig: null, out _)
             };
 
             _builtInEditors.Add(builtInInstance);
@@ -399,11 +366,12 @@ public class PackageRegistry
     }
 
     // Computes the configuration delivered to an editor's views: the manifest [options] table,
-    // overlaid with the contribution's descriptor defaults, overlaid with the instance's
-    // type-checked config keys. Keys that fail descriptor type-checking are dropped and reported.
+    // overlaid with the contribution's descriptor defaults, overlaid with the project's per-contribution
+    // config keys. Keys that fail descriptor type-checking are dropped and reported. rawConfig is null
+    // for a built-in editor, which carries no project config.
     private IReadOnlyDictionary<string, string> BuildEffectiveConfig(
         EditorContribution contribution,
-        EditorInstanceDeclaration? declaration,
+        IReadOnlyDictionary<string, object?>? rawConfig,
         out List<string> droppedKeys)
     {
         droppedKeys = [];
@@ -418,12 +386,14 @@ public class PackageRegistry
             }
         }
 
-        if (declaration is null)
+        if (rawConfig is null)
         {
             return effectiveConfig;
         }
 
-        foreach (var (key, rawValue) in declaration.Config)
+        var reference = $"{contribution.Package.Name}/{contribution.Id}";
+
+        foreach (var (key, rawValue) in rawConfig)
         {
             var descriptor = contribution.ConfigDescriptors
                 .FirstOrDefault(d => d.Key.Equals(key, StringComparison.Ordinal));
@@ -431,7 +401,7 @@ public class PackageRegistry
             {
                 droppedKeys.Add(key);
                 _logger.LogWarning(
-                    $"Instance '{declaration.InstanceId}' sets unknown config key '{key}' for contribution '{contribution.Id}'.");
+                    $"Contribution '{reference}' sets unknown config key '{key}'.");
                 continue;
             }
 
@@ -440,7 +410,7 @@ public class PackageRegistry
             {
                 droppedKeys.Add(key);
                 _logger.LogWarning(
-                    $"Instance '{declaration.InstanceId}' config key '{key}' was dropped: {encodeResult.FirstErrorMessage}");
+                    $"Contribution '{reference}' config key '{key}' was dropped: {encodeResult.FirstErrorMessage}");
                 continue;
             }
             var encodedValue = encodeResult.Value;

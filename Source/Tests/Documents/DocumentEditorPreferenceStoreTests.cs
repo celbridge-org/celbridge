@@ -4,9 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Covers DocumentEditorPreferenceStore: per-extension reads/writes against
-/// workspace settings, sidecar 'editor' lookups, and the effective resolution
-/// that prefers the sidecar over the per-extension preference.
+/// Covers DocumentEditorPreferenceStore: sidecar '_editor' lookups and the effective per-file editor
+/// resolution.
 /// </summary>
 [TestFixture]
 public class DocumentEditorPreferenceStoreTests
@@ -41,56 +40,6 @@ public class DocumentEditorPreferenceStoreTests
         _store = new DocumentEditorPreferenceStore(
             _workspaceWrapper,
             Substitute.For<ILogger<DocumentEditorPreferenceStore>>());
-    }
-
-    [Test]
-    public async Task GetExtensionPreferenceAsync_ReturnsParsedEditorId()
-    {
-        StubExtensionPreference(".md", "test.markdown-editor");
-
-        var editorId = await _store.GetExtensionPreferenceAsync(".md");
-
-        editorId.Should().Be(new EditorInstanceId("test.markdown-editor"));
-    }
-
-    [Test]
-    public async Task GetExtensionPreferenceAsync_ReturnsEmptyWhenNoPreference()
-    {
-        var editorId = await _store.GetExtensionPreferenceAsync(".md");
-
-        editorId.IsEmpty.Should().BeTrue();
-    }
-
-    [Test]
-    public async Task GetExtensionPreferenceAsync_ReturnsEmptyWhenStoredValueIsMalformed()
-    {
-        // A stored value that is not a valid id falls through to Empty rather than throwing.
-        StubExtensionPreference(".md", "not a valid id with spaces");
-
-        var editorId = await _store.GetExtensionPreferenceAsync(".md");
-
-        editorId.IsEmpty.Should().BeTrue();
-    }
-
-    [Test]
-    public async Task SetExtensionPreferenceAsync_WritesTheEditorIdString()
-    {
-        await _store.SetExtensionPreferenceAsync(".md", new EditorInstanceId("test.markdown-editor"));
-
-        var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
-        await _propertyBag.Received(1).SetPropertyAsync(expectedKey, "test.markdown-editor");
-    }
-
-    [Test]
-    public async Task SetExtensionPreferenceAsync_WithEmptyDeletesTheProperty()
-    {
-        // Passing Empty signals "clear my preference". The store removes the underlying
-        // key rather than persisting an empty string that would round-trip as a malformed id.
-        await _store.SetExtensionPreferenceAsync(".md", EditorInstanceId.Empty);
-
-        var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
-        await _propertyBag.Received(1).DeletePropertyAsync(expectedKey);
-        await _propertyBag.DidNotReceive().SetPropertyAsync(Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Test]
@@ -170,10 +119,9 @@ public class DocumentEditorPreferenceStoreTests
     }
 
     [Test]
-    public async Task GetPreferredEditorAsync_PrefersSidecarOverExtensionPreference()
+    public async Task GetPreferredEditorAsync_ReturnsSidecarEditorWhenSet()
     {
         StubSidecarEditor("test.sidecar-editor");
-        StubExtensionPreference(".md", "test.extension-editor");
 
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
@@ -181,27 +129,11 @@ public class DocumentEditorPreferenceStoreTests
     }
 
     [Test]
-    public async Task GetPreferredEditorAsync_FallsBackToExtensionPreferenceWhenSidecarSilent()
-    {
-        StubExtensionPreference(".md", "test.extension-editor");
-
-        var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
-
-        editorId.Should().Be(new EditorInstanceId("test.extension-editor"));
-    }
-
-    [Test]
-    public async Task GetPreferredEditorAsync_ReturnsEmptyWhenNeitherSourceHasPreference()
+    public async Task GetPreferredEditorAsync_ReturnsEmptyWhenSidecarHasNoOverride()
     {
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
         editorId.IsEmpty.Should().BeTrue();
-    }
-
-    private void StubExtensionPreference(string extension, string editorId)
-    {
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        _propertyBag.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
     }
 
     private void StubSidecarEditor(string editorId)

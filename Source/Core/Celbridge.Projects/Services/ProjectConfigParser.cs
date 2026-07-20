@@ -1,4 +1,4 @@
-using Celbridge.Documents;
+using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -14,15 +14,18 @@ namespace Celbridge.Projects.Services;
 public static class ProjectConfigParser
 {
     private const string PathSeparator = "/";
-    private const string DefaultPythonVersion = "3.12";
+
+    // Mirrors Assets/Python/python_version.txt; kept in sync manually because this static parser can't read the asset.
+    private const string DefaultPythonVersion = "3.13";
 
     private const string CelbridgeSectionName = "celbridge";
     private const string ProjectSectionName = "project";
     private const string ShortcutSectionName = "shortcut";
+    private const string ContributionSectionName = "contribution";
 
     private const string CelbridgeVersionKey = "celbridge-version";
     private const string ProjectVersionKey = "project-version";
-    private const string PackagesKey = "packages";
+    private const string DisabledPackagesKey = "disabled-packages";
     private const string EditorAssociationsKey = "editor-associations";
     private const string FeaturesKey = "features";
     private const string ResourcesKey = "resources";
@@ -31,7 +34,7 @@ public static class ProjectConfigParser
     [
         CelbridgeVersionKey,
         ProjectVersionKey,
-        PackagesKey,
+        DisabledPackagesKey,
         EditorAssociationsKey,
         FeaturesKey,
         ResourcesKey,
@@ -84,32 +87,40 @@ public static class ProjectConfigParser
                     .WithErrors(readResult);
             }
 
-            // Tomlyn rejects bare-\r line terminators. Normalize once here so
-            // a project config written with non-standard line endings still
-            // parses cleanly.
-            var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
-            var parse = SyntaxParser.Parse(text);
-            if (parse.HasErrors)
-            {
-                var errors = string.Join("; ", parse.Diagnostics.Select(d => d.ToString()));
-                return Result<ProjectConfig>.Fail($"TOML parse error(s): {errors}");
-            }
-
-            var root = TomlSerializer.Deserialize<TomlTable>(text);
-            if (root is null)
-            {
-                return Result<ProjectConfig>.Fail($"Failed to deserialize TOML file: {configFilePath}");
-            }
-
-            var config = MapRootToModel(root);
-
-            return Result<ProjectConfig>.Ok(config);
+            return ParseFromText(readResult.Value);
         }
         catch (Exception ex)
         {
             return Result<ProjectConfig>.Fail($"Failed to read TOML file: {configFilePath}")
                 .WithException(ex);
         }
+    }
+
+    /// <summary>
+    /// Parses a project config from TOML text. A syntax error fails the whole parse.
+    /// </summary>
+    public static Result<ProjectConfig> ParseFromText(string tomlText)
+    {
+        // Tomlyn rejects bare-\r line terminators. Normalize once here so
+        // a project config written with non-standard line endings still
+        // parses cleanly.
+        var text = LineEndingHelper.ConvertLineEndings(tomlText, "\n");
+        var parse = SyntaxParser.Parse(text);
+        if (parse.HasErrors)
+        {
+            var errors = string.Join("; ", parse.Diagnostics.Select(d => d.ToString()));
+            return Result<ProjectConfig>.Fail($"TOML parse error(s): {errors}");
+        }
+
+        var root = TomlSerializer.Deserialize<TomlTable>(text);
+        if (root is null)
+        {
+            return Result<ProjectConfig>.Fail("Failed to deserialize TOML text.");
+        }
+
+        var config = MapRootToModel(root);
+
+        return Result<ProjectConfig>.Ok(config);
     }
 
     private static ProjectConfig MapRootToModel(TomlTable root)
@@ -140,14 +151,36 @@ public static class ProjectConfigParser
             shortcutsSection = ParseShortcutsArray(shortcutsArray);
         }
 
-        // Every remaining top-level table declares an editor instance. Tomlyn preserves the
-        // file's table order, which carries the declaration-order semantics.
-        var instances = new List<EditorInstanceDeclaration>();
-        foreach (var (key, value) in root)
+        // Editor overrides of the discovered defaults are declared as [[contribution]] entries.
+        var contributions = new List<ContributionOverride>();
+        if (root.TryGetValue(ContributionSectionName, out var contributionObject))
+        {
+            if (contributionObject is TomlTableArray contributionArray)
+            {
+                for (int i = 0; i < contributionArray.Count; i++)
+                {
+                    var contributionOverride = ParseContributionEntry(contributionArray[i], i + 1, entryErrors);
+                    if (contributionOverride is not null)
+                    {
+                        contributions.Add(contributionOverride);
+                    }
+                }
+            }
+            else
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    ContributionSectionName,
+                    $"'{ContributionSectionName}' must be declared as [[{ContributionSectionName}]] entries. The section was ignored."));
+            }
+        }
+
+        // Any other top-level key is not part of the schema.
+        foreach (var (key, _) in root)
         {
             if (key == CelbridgeSectionName ||
                 key == ProjectSectionName ||
-                key == ShortcutSectionName)
+                key == ShortcutSectionName ||
+                key == ContributionSectionName)
             {
                 continue;
             }
@@ -160,25 +193,9 @@ public static class ProjectConfigParser
                 continue;
             }
 
-            if (value is TomlTableArray)
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    key, $"[[{key}]] is not a valid instance declaration. Declare an instance as a [{key}] table."));
-                continue;
-            }
-
-            if (value is not TomlTable instanceTable)
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    key, $"Top-level key '{key}' is not allowed. Host-level keys belong on the [{CelbridgeSectionName}] table."));
-                continue;
-            }
-
-            var declaration = ParseInstanceTable(key, instanceTable, entryErrors);
-            if (declaration is not null)
-            {
-                instances.Add(declaration);
-            }
+            entryErrors.Add(new ProjectConfigEntryError(
+                key,
+                $"Top-level key '{key}' is not allowed. Declare an editor override as a [[{ContributionSectionName}]] entry; host-level keys belong on the [{CelbridgeSectionName}] table."));
         }
 
         return new ProjectConfig
@@ -188,7 +205,7 @@ public static class ProjectConfigParser
             Shortcuts = shortcutsSection,
             Resources = resourcesSection,
             Features = featuresDict,
-            Instances = instances,
+            ContributionOverrides = contributions,
             EntryErrors = entryErrors
         };
     }
@@ -211,28 +228,28 @@ public static class ProjectConfigParser
             }
         }
 
-        var packages = new List<string>();
-        if (celbridgeTable.TryGetValue(PackagesKey, out var packagesObject))
+        var disabledPackages = new List<string>();
+        if (celbridgeTable.TryGetValue(DisabledPackagesKey, out var disabledPackagesObject))
         {
-            if (packagesObject is TomlArray packagesArray)
+            if (disabledPackagesObject is TomlArray disabledPackagesArray)
             {
-                foreach (var entry in packagesArray)
+                foreach (var entry in disabledPackagesArray)
                 {
                     if (entry is string packageName && !string.IsNullOrWhiteSpace(packageName))
                     {
-                        packages.Add(packageName);
+                        disabledPackages.Add(packageName);
                     }
                     else
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"Ignored a non-string entry in '{PackagesKey}'."));
+                            CelbridgeSectionName, $"Ignored a non-string entry in '{DisabledPackagesKey}'."));
                     }
                 }
             }
             else
             {
                 entryErrors.Add(new ProjectConfigEntryError(
-                    CelbridgeSectionName, $"'{PackagesKey}' must be an array of package names."));
+                    CelbridgeSectionName, $"'{DisabledPackagesKey}' must be an array of package names."));
             }
         }
 
@@ -250,10 +267,10 @@ public static class ProjectConfigParser
                         continue;
                     }
 
-                    if (!extension.StartsWith('.'))
+                    if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"'{EditorAssociationsKey}' key '{extension}' must be a file extension with a leading dot. The entry was ignored."));
+                            CelbridgeSectionName, $"'{EditorAssociationsKey}' key '{extension}' must be a well-formed file extension (e.g. \".txt\"). The entry was ignored."));
                         continue;
                     }
 
@@ -327,7 +344,7 @@ public static class ProjectConfigParser
         {
             CelbridgeVersion = ReadString(celbridgeTable, CelbridgeVersionKey),
             ProjectVersion = ReadString(celbridgeTable, ProjectVersionKey),
-            Packages = packages,
+            DisabledPackages = disabledPackages,
             EditorAssociations = editorAssociations
         };
     }
@@ -369,44 +386,39 @@ public static class ProjectConfigParser
         };
     }
 
-    private static EditorInstanceDeclaration? ParseInstanceTable(
-        string instanceId,
-        TomlTable instanceTable,
+    private static ContributionOverride? ParseContributionEntry(
+        TomlTable entryTable,
+        int entryIndex,
         List<ProjectConfigEntryError> entryErrors)
     {
-        if (!EditorInstanceId.IsValidDeclaredName(instanceId))
-        {
-            entryErrors.Add(new ProjectConfigEntryError(
-                instanceId, "Instance ids use only lowercase letters, digits, and hyphens. The instance was skipped."));
-            return null;
-        }
+        var entryName = $"[[{ContributionSectionName}]] #{entryIndex}";
 
-        var packageName = ReadString(instanceTable, InstancePropertyKeys.Package);
+        var packageName = ReadString(entryTable, ContributionPropertyKeys.Package);
         if (string.IsNullOrWhiteSpace(packageName))
         {
             entryErrors.Add(new ProjectConfigEntryError(
-                instanceId, $"Missing required '{InstancePropertyKeys.Package}' key. The instance was skipped."));
+                entryName, $"Missing required '{ContributionPropertyKeys.Package}' key. The entry was skipped."));
             return null;
         }
 
-        var contributionId = ReadString(instanceTable, InstancePropertyKeys.Contribution);
+        var contributionId = ReadString(entryTable, ContributionPropertyKeys.Contribution);
         if (string.IsNullOrWhiteSpace(contributionId))
         {
             entryErrors.Add(new ProjectConfigEntryError(
-                instanceId, $"Missing required '{InstancePropertyKeys.Contribution}' key. The instance was skipped."));
+                entryName, $"Missing required '{ContributionPropertyKeys.Contribution}' key. The entry was skipped."));
             return null;
         }
 
-        var title = ReadDisplayOverride(instanceTable, InstancePropertyKeys.Title, instanceId, entryErrors);
-        var icon = ReadDisplayOverride(instanceTable, InstancePropertyKeys.Icon, instanceId, entryErrors);
-        var tooltip = ReadDisplayOverride(instanceTable, InstancePropertyKeys.Tooltip, instanceId, entryErrors);
+        var reference = $"{packageName}/{contributionId}";
+        var disabled = ReadBoolFlag(entryTable, ContributionPropertyKeys.Disabled, reference, entryErrors);
+        var enabled = ReadBoolFlag(entryTable, ContributionPropertyKeys.Enabled, reference, entryErrors);
 
-        // Every non-reserved key is instance configuration, kept as its raw TOML value for
+        // Every non-reserved key is contribution configuration, kept as its raw TOML value for
         // descriptor type-checking at workspace load.
         var config = new Dictionary<string, object?>();
-        foreach (var (key, value) in instanceTable)
+        foreach (var (key, value) in entryTable)
         {
-            if (InstancePropertyKeys.All.Contains(key))
+            if (ContributionPropertyKeys.All.Contains(key))
             {
                 continue;
             }
@@ -418,73 +430,55 @@ public static class ProjectConfigParser
                     break;
 
                 case TomlArray array:
-                    var items = new List<string>(array.Count);
-                    var allStrings = true;
-                    foreach (var entry in array)
-                    {
-                        if (entry is string stringEntry)
-                        {
-                            items.Add(stringEntry);
-                        }
-                        else
-                        {
-                            allStrings = false;
-                            break;
-                        }
-                    }
-
-                    if (allStrings)
+                    if (TomlValueConverter.TryConvertStringList(array, out var items))
                     {
                         config[key] = items;
                     }
                     else
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            instanceId, $"Config key '{key}' must be a list of strings. The key was dropped."));
+                            reference, $"Config key '{key}' must be a list of strings. The key was dropped."));
                     }
                     break;
 
                 default:
                     entryErrors.Add(new ProjectConfigEntryError(
-                        instanceId, $"Config key '{key}' has an unsupported value shape. The key was dropped."));
+                        reference, $"Config key '{key}' has an unsupported value shape. The key was dropped."));
                     break;
             }
         }
 
-        return new EditorInstanceDeclaration
+        return new ContributionOverride
         {
-            InstanceId = instanceId,
             PackageName = packageName,
             ContributionId = contributionId,
-            Title = title,
-            Icon = icon,
-            Tooltip = tooltip,
+            Disabled = disabled,
+            Enabled = enabled,
             Config = config
         };
     }
 
-    // Reads an optional string-valued display override, reporting and dropping a value of any
-    // other type so a typo degrades one setting rather than the instance.
-    private static string? ReadDisplayOverride(
-        TomlTable instanceTable,
+    // Reads an optional boolean activation flag, reporting and ignoring a value of any other type.
+    private static bool ReadBoolFlag(
+        TomlTable entryTable,
         string key,
-        string instanceId,
+        string reference,
         List<ProjectConfigEntryError> entryErrors)
     {
-        if (!instanceTable.TryGetValue(key, out var value))
+        if (!entryTable.TryGetValue(key, out var value))
         {
-            return null;
+            return false;
         }
 
-        if (value is string stringValue && !string.IsNullOrWhiteSpace(stringValue))
+        if (value is bool boolValue)
         {
-            return stringValue;
+            return boolValue;
         }
 
         entryErrors.Add(new ProjectConfigEntryError(
-            instanceId, $"'{key}' must be a non-empty string. The key was dropped."));
+            reference, $"'{key}' must be a boolean. The value was ignored."));
 
-        return null;
+        return false;
     }
 
     // Returns the string value for the key, or null when the key is absent or

@@ -4,7 +4,7 @@ Packages extend Celbridge with editor contributions: packages contribute, projec
 
 ## Creating a package
 
-There is no scaffolding tool — a package is a folder with a manifest. Write `packages/my-widget/package.toml` with the file tools using the manifest shape below, and the package is discovered on the next project load. A discovered package is inert until the project activates it in the `.celbridge` file's `[celbridge].packages` list, and its editors serve nothing until the project declares instances of them (see `project_structure`).
+There is no scaffolding tool — a package is a folder with a manifest. Write `packages/my-widget/package.toml` with the file tools using the manifest shape below, and the package is discovered on the next project load. A discovered package is active by default: its editors open matching files with no `.celbridge` entry required. A project touches the `.celbridge` file only to deviate — to disable a package via `[celbridge].disabled-packages`, or to configure a contribution with a `[[contribution]]` entry (see `project_structure`).
 
 ## Manifest (`package.toml`)
 

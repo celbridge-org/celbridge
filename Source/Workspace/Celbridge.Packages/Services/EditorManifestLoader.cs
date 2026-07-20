@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Celbridge.Documents;
 using Celbridge.Projects;
+using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -25,6 +26,7 @@ internal static class EditorManifestLoader
     private const string TypeKey = "type";
     private const string ExtensionKey = "extension";
     private const string ExtensionsFileKey = "extensions-file";
+    private const string CategoryKey = "category";
     private const string DisplayNameKey = "display-name";
     private const string DescriptionKey = "description";
     private const string TemplateFileKey = "template-file";
@@ -34,6 +36,10 @@ internal static class EditorManifestLoader
     private const string EntryPointKey = "entry-point";
     private const string BinaryKey = "binary";
     private const string ExternalContentKey = "external-content";
+    private const string ActivationKey = "activation";
+    private const string RequiredActivationValue = "required";
+    private const string RecommendedActivationValue = "recommended";
+    private const string OptionalActivationValue = "optional";
     private const string ResourceExtensionKey = "resource-extension";
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
@@ -92,7 +98,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Editor missing required '{IdKey}' field: {editorTomlPath}");
             }
 
-            if (!EditorInstanceId.IsValidDeclaredName(editorId))
+            if (!EditorInstanceId.IsValidName(editorId))
             {
                 return Result.Fail(
                     $"Invalid editor id '{editorId}' in manifest: {editorTomlPath}. " +
@@ -192,6 +198,18 @@ internal static class EditorManifestLoader
                             $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
                     }
 
+                    FileTypeCategory? category = null;
+                    var categoryValue = TomlTableReader.GetStringOrNull(fileTypeTable, CategoryKey);
+                    if (categoryValue is not null)
+                    {
+                        var categoryResult = ParseCategoryValue(categoryValue, editorTomlPath);
+                        if (categoryResult.IsFailure)
+                        {
+                            return Result.Fail(categoryResult.FirstErrorMessage).WithErrors(categoryResult);
+                        }
+                        category = categoryResult.Value;
+                    }
+
                     var extensionLiteral = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionKey);
                     var extensionsFilePath = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionsFileKey);
 
@@ -203,7 +221,7 @@ internal static class EditorManifestLoader
                                 $"A [[{FileTypesSection}]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {editorTomlPath}");
                         }
 
-                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName, reader);
+                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName, category, reader);
                         if (expandResult.IsFailure)
                         {
                             return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {editorTomlPath}")
@@ -214,10 +232,18 @@ internal static class EditorManifestLoader
                     }
                     else
                     {
+                        var extension = extensionLiteral ?? string.Empty;
+                        if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
+                        {
+                            return Result.Fail(
+                                $"A [[{FileTypesSection}]] '{ExtensionKey}' value '{extension}' must be a well-formed file extension (e.g. \".txt\"): {editorTomlPath}");
+                        }
+
                         fileTypes.Add(new EditorFileType
                         {
-                            FileExtension = extensionLiteral ?? string.Empty,
-                            DisplayName = fileTypeDisplayName
+                            FileExtension = extension.ToLowerInvariant(),
+                            DisplayName = fileTypeDisplayName,
+                            Category = category
                         });
                     }
                 }
@@ -263,7 +289,15 @@ internal static class EditorManifestLoader
             }
             var configDescriptors = descriptorsResult.Value;
 
-            var contribution = BuildContribution(root, packageInfo, editorId, displayName, fileTypes, templates, configDescriptors, editorTable, utilityDescriptor);
+            var activationResult = ParseActivation(editorTable, editorTomlPath);
+            if (activationResult.IsFailure)
+            {
+                return Result<EditorContribution>.Fail(activationResult.FirstErrorMessage)
+                    .WithErrors(activationResult);
+            }
+            var activation = activationResult.Value;
+
+            var contribution = BuildContribution(root, packageInfo, editorId, displayName, fileTypes, templates, configDescriptors, activation, editorTable, utilityDescriptor);
 
             return Result<EditorContribution>.Ok(contribution);
         }
@@ -281,6 +315,7 @@ internal static class EditorManifestLoader
         List<EditorFileType> fileTypes,
         List<DocumentTemplate> templates,
         List<ConfigDescriptor> configDescriptors,
+        ActivationPolicy activation,
         TomlTable editorTable,
         UtilityDescriptor? utilityDescriptor)
     {
@@ -300,10 +335,64 @@ internal static class EditorManifestLoader
             EntryPoint = entryPoint,
             Binary = binary,
             ExternalContent = externalContent,
+            Activation = activation,
             Options = options,
             ConfigDescriptors = configDescriptors.AsReadOnly(),
             UtilityDescriptor = utilityDescriptor
         };
+    }
+
+    private static Result<ActivationPolicy> ParseActivation(TomlTable editorTable, string editorTomlPath)
+    {
+        var activationValue = TomlTableReader.GetStringOrNull(editorTable, ActivationKey);
+        if (activationValue is null)
+        {
+            return ActivationPolicy.Required;
+        }
+
+        if (activationValue == RequiredActivationValue)
+        {
+            return ActivationPolicy.Required;
+        }
+
+        if (activationValue == RecommendedActivationValue)
+        {
+            return ActivationPolicy.Recommended;
+        }
+
+        if (activationValue == OptionalActivationValue)
+        {
+            return ActivationPolicy.Optional;
+        }
+
+        return Result.Fail(
+            $"[{EditorSection}] '{ActivationKey}' value '{activationValue}' must be one of " +
+            $"'{RequiredActivationValue}', '{RecommendedActivationValue}', or '{OptionalActivationValue}': {editorTomlPath}");
+    }
+
+    // Maps a declared category value to its enum. The caller supplies null when no category is declared,
+    // in which case the host classifies the extension from its catalog instead.
+    private static Result<FileTypeCategory> ParseCategoryValue(string categoryValue, string editorTomlPath)
+    {
+        switch (categoryValue)
+        {
+            case "text":
+                return FileTypeCategory.Text;
+            case "image":
+                return FileTypeCategory.Image;
+            case "audio":
+                return FileTypeCategory.Audio;
+            case "video":
+                return FileTypeCategory.Video;
+            case "data":
+                return FileTypeCategory.Data;
+            case "document":
+                return FileTypeCategory.Document;
+            default:
+                return Result.Fail(
+                    $"[[{FileTypesSection}]] '{CategoryKey}' value '{categoryValue}' is not a recognized category " +
+                    $"(text, image, audio, video, data, document): {editorTomlPath}");
+        }
     }
 
     private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string editorTomlPath)
@@ -314,11 +403,10 @@ internal static class EditorManifestLoader
             return Result.Fail($"[{UtilitySection}] missing required '{ResourceExtensionKey}' field: {editorTomlPath}");
         }
 
-        if (!resourceExtension.StartsWith('.') ||
-            resourceExtension.Length < 2)
+        if (!FileExtensionUtils.IsWellFormedFileExtension(resourceExtension))
         {
             return Result.Fail(
-                $"[{UtilitySection}] '{ResourceExtensionKey}' value '{resourceExtension}' must be a file extension with a leading dot: {editorTomlPath}");
+                $"[{UtilitySection}] '{ResourceExtensionKey}' value '{resourceExtension}' must be a well-formed file extension (e.g. \".txt\"): {editorTomlPath}");
         }
 
         var icon = TomlTableReader.GetString(utilityTable, IconKey);
@@ -369,7 +457,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Config descriptor missing required '{KeyKey}' field: {editorTomlPath}");
             }
 
-            if (!EditorInstanceId.IsValidDeclaredName(key))
+            if (!EditorInstanceId.IsValidName(key))
             {
                 return Result.Fail(
                     $"Config descriptor key '{key}' must use only lowercase letters, digits, and hyphens: {editorTomlPath}");
@@ -377,10 +465,10 @@ internal static class EditorManifestLoader
 
             // Reserved names are checked at package load so the error reaches the package
             // author, never a project.
-            if (InstancePropertyKeys.All.Contains(key))
+            if (ContributionPropertyKeys.All.Contains(key))
             {
                 return Result.Fail(
-                    $"Config descriptor key '{key}' collides with a reserved instance property: {editorTomlPath}");
+                    $"Config descriptor key '{key}' collides with a reserved contribution property: {editorTomlPath}");
             }
 
             if (descriptors.Any(d => string.Equals(d.Key, key, StringComparison.Ordinal)))
@@ -464,16 +552,12 @@ internal static class EditorManifestLoader
     {
         if (value is TomlArray array)
         {
-            var items = new List<string>(array.Count);
-            foreach (var entry in array)
+            if (TomlValueConverter.TryConvertStringList(array, out var items))
             {
-                if (entry is not string stringEntry)
-                {
-                    return value;
-                }
-                items.Add(stringEntry);
+                return items;
             }
-            return items;
+
+            return value;
         }
 
         return value;
@@ -512,6 +596,7 @@ internal static class EditorManifestLoader
         string packageFolder,
         string relativePath,
         string displayName,
+        FileTypeCategory? category,
         IPackageReader reader)
     {
         var fullPath = Path.Combine(packageFolder, relativePath);
@@ -539,10 +624,18 @@ internal static class EditorManifestLoader
             var result = new List<EditorFileType>();
             foreach (var property in document.RootElement.EnumerateObject())
             {
+                var extension = property.Name;
+                if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
+                {
+                    return Result.Fail(
+                        $"Extension key '{extension}' in the extensions file must be a well-formed file extension (e.g. \".txt\"): {fullPath}");
+                }
+
                 result.Add(new EditorFileType
                 {
-                    FileExtension = property.Name,
-                    DisplayName = displayName
+                    FileExtension = extension.ToLowerInvariant(),
+                    DisplayName = displayName,
+                    Category = category
                 });
             }
 

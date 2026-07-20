@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
@@ -39,6 +40,20 @@ public class PackageServiceTests
         // instances call SetProjectConfig to supply an activation list and declarations.
         _projectService = Substitute.For<IProjectService>();
         _projectService.CurrentProject.Returns((IProject?)null);
+
+        // The registry reconciles and persists through IProjectService; mirror the real delegation to
+        // the static reconciler so the mocked service produces the same active set.
+        _projectService.ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), Arg.Any<bool>())
+            .Returns(callInfo =>
+            {
+                var config = _projectService.CurrentProject?.Config;
+                if (config is null)
+                {
+                    return Task.FromResult<ProjectConfigReconcileResult?>(null);
+                }
+                return Task.FromResult<ProjectConfigReconcileResult?>(
+                    ProjectConfigReconciler.Reconcile(config, callInfo.Arg<IReadOnlyList<EditorContribution>>()));
+            });
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
@@ -108,108 +123,73 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task GetEditorInstances_DeclaredInstances_ResolveInDeclarationOrder()
+    public async Task GetEditorInstances_MultipleDiscoveredPackages_ResolveInDiscoveryOrder()
     {
+        // Activation is discovery-driven, so both default-active packages materialize instances
+        // whose order follows discovery order (ordinal folder enumeration).
         CreateProjectPackage("editor-a", "editor-a", "Editor A", ".a");
         CreateProjectPackage("editor-b", "editor-b", "Editor B", ".b");
-        SetProjectConfig(
-            ["editor-a", "editor-b"],
-            CreateDeclaration("second-editor", "editor-b"),
-            CreateDeclaration("first-editor", "editor-a"));
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         var instances = _service.GetEditorInstances();
         instances.Should().HaveCount(2);
-        instances[0].InstanceId.Should().Be(new EditorInstanceId("second-editor"));
-        instances[1].InstanceId.Should().Be(new EditorInstanceId("first-editor"));
+        instances[0].InstanceId.Should().Be(EditorInstanceId.Create("editor-a", "editor"));
+        instances[1].InstanceId.Should().Be(EditorInstanceId.Create("editor-b", "editor"));
     }
 
     [Test]
-    public async Task GetEditorInstances_DiscoveredButUndeclaredPackage_YieldsNoInstances()
+    public async Task GetEditorInstances_DiscoveredDefaultActivePackage_MaterializesDefaultInstance()
     {
-        // Discovery still finds the package, but nothing instantiates its editor.
+        // A discovered default-active contribution materializes an instance with no project-file entry.
         CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
-        SetProjectConfig(["my-editor"]);
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         _service.GetAllEditors().Should().HaveCount(1);
-        _service.GetEditorInstances().Should().BeEmpty();
+        _service.GetEditorInstances().Should().ContainSingle()
+            .Which.InstanceId.Should().Be(EditorInstanceId.Create("my-editor", "editor"));
     }
 
     [Test]
-    public async Task GetEditorInstances_UnactivatedPackage_SkipsInstanceAndReportsFailure()
+    public async Task GetEditorInstances_OrphanedOverride_IsDroppedWithWarning()
     {
-        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
-        SetProjectConfig([], CreateDeclaration("my-files", "my-editor"));
+        // The override references a package that was never discovered, so reconcile drops it.
+        SetProjectConfig(CreateOverride("ghost-editor"));
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         _service.GetEditorInstances().Should().BeEmpty();
         _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
-            report.EditorInstanceFailures.Count == 1
-            && report.EditorInstanceFailures[0].InstanceId == "my-files"
-            && report.EditorInstanceFailures[0].Detail.Contains("not activated")));
+            report.EditorInstanceWarnings.Count == 1
+            && report.EditorInstanceWarnings[0].Detail.Contains("ghost-editor")));
     }
 
     [Test]
-    public async Task GetEditorInstances_UnknownPackageReference_SkipsInstanceAndReportsFailure()
-    {
-        SetProjectConfig(["ghost-editor"], CreateDeclaration("my-files", "ghost-editor"));
-
-        await _service.RegisterPackagesAsync(_tempProjectFolder);
-
-        _service.GetEditorInstances().Should().BeEmpty();
-        _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
-            report.EditorInstanceFailures.Count == 1
-            && report.EditorInstanceFailures[0].Detail.Contains("unknown package")));
-    }
-
-    [Test]
-    public async Task GetEditorInstances_UnknownContributionReference_SkipsInstanceAndReportsFailure()
+    public async Task GetEditorInstances_UnknownContributionOverride_IsDroppedAndDefaultStillMaterializes()
     {
         CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
-        SetProjectConfig(["my-editor"], CreateDeclaration("my-files", "my-editor", contributionId: "nonexistent"));
+        SetProjectConfig(CreateOverride("my-editor", contributionId: "nonexistent"));
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _service.GetEditorInstances().Should().BeEmpty();
+        // The bogus override is dropped with a warning, but the package's real editor still
+        // materializes its default instance.
+        _service.GetEditorInstances().Should().ContainSingle()
+            .Which.InstanceId.Should().Be(EditorInstanceId.Create("my-editor", "editor"));
         _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
-            report.EditorInstanceFailures.Count == 1
-            && report.EditorInstanceFailures[0].Detail.Contains("no contribution")));
+            report.EditorInstanceWarnings.Count == 1
+            && report.EditorInstanceWarnings[0].Detail.Contains("nonexistent")));
     }
 
     [Test]
-    public async Task GetEditorInstances_InstanceOverrides_AreCarriedOntoTheInstance()
-    {
-        CreateProjectPackage("my-editor", "my-editor", "My Editor", ".myext");
-        var declaration = new EditorInstanceDeclaration
-        {
-            InstanceId = "my-files",
-            PackageName = "my-editor",
-            ContributionId = "editor",
-            Title = "My Files",
-            Icon = "journal",
-            Tooltip = "Edit my files"
-        };
-        SetProjectConfig(["my-editor"], declaration);
-
-        await _service.RegisterPackagesAsync(_tempProjectFolder);
-
-        var instance = _service.GetEditorInstances().Should().ContainSingle().Subject;
-        instance.Title.Should().Be("My Files");
-        instance.Icon.Should().Be("journal");
-        instance.Tooltip.Should().Be("Edit my files");
-    }
-
-    [Test]
-    public async Task GetEditorInstances_InstanceConfig_MergesOverDescriptorDefaults()
+    public async Task GetEditorInstances_OverrideConfig_MergesOverDescriptorDefaults()
     {
         CreateConfigurablePackage("console", "console");
-        var declaration = new EditorInstanceDeclaration
+        var contributionOverride = new ContributionOverride
         {
-            InstanceId = "python-repl",
             PackageName = "console",
             ContributionId = "editor",
             Config = new Dictionary<string, object?>
@@ -218,18 +198,18 @@ public class PackageServiceTests
                 ["dependencies"] = new List<string> { "numpy" }
             }
         };
-        SetProjectConfig(["console"], declaration);
+        SetProjectConfig(contributionOverride);
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         var instance = _service.GetEditorInstances().Should().ContainSingle().Subject;
 
-        // The instance's own values override the descriptor defaults, and a string list is
+        // The override's own values take precedence over the descriptor defaults, and a string list is
         // delivered on the Options channel as a JSON array.
         instance.Config["shell"].Should().Be("pwsh");
         instance.Config["dependencies"].Should().Be("[\"numpy\"]");
 
-        // A descriptor default the instance did not set still reaches the editor.
+        // A descriptor default the override did not set still reaches the editor.
         instance.Config["scrollback"].Should().Be("500");
     }
 
@@ -237,9 +217,8 @@ public class PackageServiceTests
     public async Task GetEditorInstances_InvalidConfigKeys_AreDroppedAndReportedAsWarnings()
     {
         CreateConfigurablePackage("console", "console");
-        var declaration = new EditorInstanceDeclaration
+        var contributionOverride = new ContributionOverride
         {
-            InstanceId = "python-repl",
             PackageName = "console",
             ContributionId = "editor",
             Config = new Dictionary<string, object?>
@@ -250,7 +229,7 @@ public class PackageServiceTests
                 ["nonsense"] = "value"
             }
         };
-        SetProjectConfig(["console"], declaration);
+        SetProjectConfig(contributionOverride);
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -260,10 +239,8 @@ public class PackageServiceTests
         instance.Config.Should().NotContainKey("nonsense");
 
         _loadReporter.Received(1).RecordPackageReport(Arg.Is<PackageDiscoveryReport>(report =>
-            report.EditorInstanceWarnings.Count == 1
-            && report.EditorInstanceWarnings[0].InstanceId == "python-repl"
-            && report.EditorInstanceWarnings[0].Detail.Contains("shell")
-            && report.EditorInstanceWarnings[0].Detail.Contains("nonsense")));
+            report.EditorInstanceWarnings.Any(warning => warning.Detail.Contains("shell"))
+            && report.EditorInstanceWarnings.Any(warning => warning.Detail.Contains("nonsense"))));
     }
 
     [Test]
@@ -271,7 +248,7 @@ public class PackageServiceTests
     {
         var bundledDir = CreateBuiltInCodeEditorPackage();
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
-        SetProjectConfig([]);
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -286,7 +263,7 @@ public class PackageServiceTests
         // project never activates or declares.
         var bundledDir = CreateBuiltInSpreadsheetPackage();
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
-        SetProjectConfig([]);
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -300,31 +277,13 @@ public class PackageServiceTests
         // Its editor degrades to being unavailable, and the required built-ins are unaffected.
         var bundledDir = CreateBuiltInCodeEditorPackage();
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
-        SetProjectConfig([]);
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         var builtIns = _service.GetBuiltInEditors();
         builtIns.Should().NotContain(builtIn => builtIn.InstanceId == BuiltInEditors.SpreadsheetEditorId);
         builtIns.Should().Contain(builtIn => builtIn.InstanceId == BuiltInEditors.CodeEditorId);
-    }
-
-    [Test]
-    public async Task GetBuiltInEditors_DeclaredInstanceOfBuiltInContribution_CoexistsWithTheBuiltIn()
-    {
-        var bundledDir = CreateBuiltInCodeEditorPackage();
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
-
-        // The built-in package is always active, so the instance needs no activation entry.
-        SetProjectConfig([], CreateDeclaration("my-code", "celbridge.code-editor", contributionId: "code"));
-
-        await _service.RegisterPackagesAsync(_tempProjectFolder);
-
-        // The instance takes over resolution by ranking ahead of every built-in, but the built-in
-        // stays available under its own id so host constants keep resolving.
-        _service.GetEditorInstances().Should().ContainSingle()
-            .Which.InstanceId.Should().Be(new EditorInstanceId("my-code"));
-        _service.GetBuiltInEditors().Should().Contain(builtIn => builtIn.InstanceId == BuiltInEditors.CodeEditorId);
     }
 
     [Test]
@@ -732,15 +691,15 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task GetContributingPackage_DeclaredInstanceId_ReturnsThePackage()
+    public async Task GetContributingPackage_ActiveContributionId_ReturnsThePackage()
     {
         var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
-        SetProjectConfig(["celbridge.notes"], CreateDeclaration("my-notes", "celbridge.notes"));
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(new EditorInstanceId("my-notes"));
+        var package = _service.GetContributingPackage(EditorInstanceId.Create("celbridge.notes", "editor"));
 
         package.Should().NotBeNull();
         package!.Info.Name.Should().Be("celbridge.notes");
@@ -750,7 +709,7 @@ public class PackageServiceTests
     public async Task GetContributingPackage_UnknownEditorId_ReturnsNull()
     {
         CreateProjectPackage("known", "known", "Known", ".known");
-        SetProjectConfig(["known"], CreateDeclaration("known-editor", "known"));
+        SetProjectConfig();
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         var package = _service.GetContributingPackage(new EditorInstanceId("binary-editor"));
@@ -759,13 +718,13 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task GetContributingPackage_UndeclaredContribution_ReturnsNull()
+    public async Task GetContributingPackage_PackageNameWithoutContribution_ReturnsNull()
     {
-        // The package is discovered and activated, but nothing instantiates its editor, so no
-        // editor id addresses it.
+        // Editors are addressed by the "{package}.{contribution}" reference, not the bare package
+        // name, so a lookup by package name alone resolves to nothing.
         var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
-        SetProjectConfig(["celbridge.notes"]);
+        SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -937,32 +896,29 @@ public class PackageServiceTests
     }
 
     /// <summary>
-    /// Points the project service at a config with the given activation list and instance
-    /// declarations, so the registry can resolve declared instances.
+    /// Points the project service at a config with the given per-contribution overrides. Activation is
+    /// discovery-driven, so the config carries only the project's overrides of the discovered
+    /// defaults.
     /// </summary>
-    private void SetProjectConfig(
-        IReadOnlyList<string> activatedPackages,
-        params EditorInstanceDeclaration[] instances)
+    private void SetProjectConfig(params ContributionOverride[] overrides)
     {
         var config = new ProjectConfig
         {
-            Celbridge = new CelbridgeSection { Packages = activatedPackages },
-            Instances = instances
+            ContributionOverrides = overrides
         };
 
         var project = Substitute.For<IProject>();
         project.Config.Returns(config);
+        project.ConfigIsHealthy.Returns(true);
         _projectService.CurrentProject.Returns(project);
     }
 
-    private static EditorInstanceDeclaration CreateDeclaration(
-        string instanceId,
+    private static ContributionOverride CreateOverride(
         string packageName,
         string contributionId = "editor")
     {
-        return new EditorInstanceDeclaration
+        return new ContributionOverride
         {
-            InstanceId = instanceId,
             PackageName = packageName,
             ContributionId = contributionId
         };

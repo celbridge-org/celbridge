@@ -1,9 +1,9 @@
 namespace Celbridge.Documents;
 
 /// <summary>
-/// A strongly-typed identifier for an editor, in lowercase kebab-case with optional dots. Holds
-/// both dot-free project-declared instance ids (e.g. "python-repl") and dotted host-assigned
-/// built-in ids (e.g. "celbridge.markdown", "celbridge.explorer").
+/// A strongly-typed identifier for an editor, in lowercase kebab-case with optional dots. Holds a
+/// "{package}.{contribution}" contribution reference for a discovered contribution (e.g.
+/// "acme.notes.note") and a dotted host-assigned id for a built-in editor (e.g. "celbridge.markdown").
 /// </summary>
 public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
 {
@@ -47,11 +47,10 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
     }
 
     /// <summary>
-    /// Returns true if the string is a valid project-declared instance name: non-empty, using
-    /// only lowercase letters, digits, and hyphens. Dots are reserved for the host-assigned
-    /// built-in editor ids.
+    /// Returns true if the string is a valid dot-free identifier: non-empty, using only lowercase
+    /// letters, digits, and hyphens. Used to validate manifest editor ids and config keys.
     /// </summary>
-    public static bool IsValidDeclaredName(string id)
+    public static bool IsValidName(string id)
     {
         if (string.IsNullOrEmpty(id))
         {
@@ -72,8 +71,8 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
     }
 
     /// <summary>
-    /// Returns true if the string is a valid editor instance ID: non-empty, using only lowercase
-    /// letters, digits, dots, and hyphens.
+    /// Returns true if the string is a valid editor id: non-empty, using only lowercase letters,
+    /// digits, dots, and hyphens.
     /// </summary>
     public static bool IsValid(string id)
     {

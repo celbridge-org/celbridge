@@ -60,6 +60,7 @@ public class WorkspaceSettingsFacadeTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.HasWorkspaceService.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var settingsService = new SettingsService(

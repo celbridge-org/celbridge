@@ -57,7 +57,7 @@ public class UtilityService : IUtilityService, IDisposable
 
             var utilityId = instance.InstanceId;
 
-            // Each instance owns its own state file, derived from the instance id.
+            // Each utility owns one state file, named from its contribution reference.
             var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{descriptor.ResourceExtension}";
             if (!ResourceKey.TryCreate(resourceValue, out var resource))
             {
@@ -72,8 +72,7 @@ public class UtilityService : IUtilityService, IDisposable
                 continue;
             }
 
-            var displayName = instance.Title
-                ?? ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
+            var displayName = ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
 
             var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
             var bindResult = await panelView.BindAsync(instance, resource, displayName);
@@ -97,9 +96,8 @@ public class UtilityService : IUtilityService, IDisposable
 
             _utilities.Add(panelView);
 
-            var icon = instance.Icon ?? descriptor.Icon;
-            var tooltip = instance.Tooltip
-                ?? ResolveLocalizedString(localizationService, contribution.Package, descriptor.Tooltip);
+            var icon = descriptor.Icon;
+            var tooltip = ResolveLocalizedString(localizationService, contribution.Package, descriptor.Tooltip);
             tabs.Add(new CustomUtility(utilityId, icon, tooltip, displayName, panelView, panelView.FocusPanel));
         }
 

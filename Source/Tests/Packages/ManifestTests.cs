@@ -66,6 +66,51 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_FileTypeExtensionWithoutLeadingDot_ReturnsFailure()
+    {
+        // An extension with no leading dot would register an editor that never matches any file,
+        // so it is rejected at load rather than failing silently.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            entry-point = "index.html"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = "myext"
+            display-name = "WidgetFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("well-formed file extension");
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeExtensionUppercase_IsLowercased()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            entry-point = "index.html"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".MyExt"
+            display-name = "WidgetFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].FileTypes.Should().ContainSingle()
+            .Which.FileExtension.Should().Be(".myext");
+    }
+
+    [Test]
     public void LoadPackage_NameAndTitle_PopulateInfo_StrayAuthorIgnored()
     {
         // 'author' is not a manifest field, but a manifest that carries it must still
@@ -1225,9 +1270,8 @@ public class ManifestTests
 
     [TestCase("package")]
     [TestCase("contribution")]
-    [TestCase("title")]
-    [TestCase("icon")]
-    [TestCase("tooltip")]
+    [TestCase("disabled")]
+    [TestCase("enabled")]
     public void LoadPackage_ConfigDescriptorReservedKey_ReturnsFailure(string reservedKey)
     {
         WriteEditorWithConfig($"""
@@ -1351,6 +1395,160 @@ public class ManifestTests
         var result = LoadPackage();
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [TestCase("required", ActivationPolicy.Required)]
+    [TestCase("recommended", ActivationPolicy.Recommended)]
+    [TestCase("optional", ActivationPolicy.Optional)]
+    public void LoadPackage_EditorActivation_ParsesPolicy(string activationValue, ActivationPolicy expected)
+    {
+        WriteSingleEditorPackage($"""
+            [editor]
+            id = "activated"
+            type = "document"
+            display-name = "TestEditor"
+            activation = "{activationValue}"
+
+            [[file-types]]
+            extension = ".act"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].Activation.Should().Be(expected);
+    }
+
+    [Test]
+    public void LoadPackage_EditorWithoutActivation_DefaultsToRequired()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "unmarked"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".unm"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].Activation.Should().Be(ActivationPolicy.Required);
+    }
+
+    [Test]
+    public void LoadPackage_EditorInvalidActivation_ReturnsFailure()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "bad-activation"
+            type = "document"
+            display-name = "TestEditor"
+            activation = "sometimes"
+
+            [[file-types]]
+            extension = ".ba"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("activation");
+    }
+
+    [TestCase("text", FileTypeCategory.Text)]
+    [TestCase("image", FileTypeCategory.Image)]
+    [TestCase("data", FileTypeCategory.Data)]
+    [TestCase("document", FileTypeCategory.Document)]
+    public void LoadPackage_FileTypeCategory_ParsesCategory(string categoryValue, FileTypeCategory expected)
+    {
+        WriteSingleEditorPackage($"""
+            [editor]
+            id = "categorized"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".cat"
+            display-name = "TestFileType"
+            category = "{categoryValue}"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].FileTypes[0].Category.Should().Be(expected);
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeWithoutCategory_HasNullCategory()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "uncategorized"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".unc"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].FileTypes[0].Category.Should().BeNull();
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeInvalidCategory_ReturnsFailure()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "bad-category"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".bc"
+            display-name = "TestFileType"
+            category = "spreadsheet"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("category");
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFileCategory_AppliesToEveryExpandedType()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "code-editor"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extensions-file = "types.json"
+            display-name = "Code_FileType_Code"
+            category = "text"
+            """);
+
+        File.WriteAllText(Path.Combine(_tempFolder, "types.json"),
+            """{ ".js": "javascript", ".py": "python" }""");
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].FileTypes.Should().AllSatisfy(fileType =>
+            fileType.Category.Should().Be(FileTypeCategory.Text));
     }
 
     private Result<Package> LoadPackage()

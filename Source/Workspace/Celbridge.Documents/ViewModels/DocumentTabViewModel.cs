@@ -135,9 +135,8 @@ public partial class DocumentTabViewModel : ObservableObject
             return false;
         }
 
-        var extension = Path.GetExtension(FileResource.ToString()).ToLowerInvariant();
         var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
-            .GetFactoriesForExtension(extension);
+            .GetUserPickableFactoriesForResource(FileResource);
 
         return factories.Count >= 2;
     }

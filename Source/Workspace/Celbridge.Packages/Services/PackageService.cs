@@ -26,7 +26,10 @@ public class PackageService : IPackageService
 
     public async Task RegisterPackagesAsync(string projectFolderPath)
     {
-        var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
+        // Persisting discovery: DiscoverPackagesAsync writes the normalized config back only when
+        // discovery is clean (so a package that failed to load never nukes its own config on disk) and
+        // the config parsed cleanly. Both gates are applied inside the reconcile.
+        var report = await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: true);
 
         // Record the outcome in the project load report before raising the
         // error banner, so the details the banner points at are already on
@@ -57,7 +60,8 @@ public class PackageService : IPackageService
 
     public async Task RescanProjectPackagesAsync(string projectFolderPath)
     {
-        await _registry.DiscoverPackagesAsync(projectFolderPath);
+        // A rescan refreshes the in-memory registry but never rewrites the project file.
+        await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: false);
     }
 
     public IReadOnlyList<Package> GetAllPackages()
@@ -78,6 +82,11 @@ public class PackageService : IPackageService
     public IReadOnlyList<EditorInstance> GetEditorInstances()
     {
         return _registry.GetEditorInstances();
+    }
+
+    public ProjectConfig? GetNormalizedConfig()
+    {
+        return _registry.GetNormalizedConfig();
     }
 
     public IReadOnlyList<EditorInstance> GetBuiltInEditors()

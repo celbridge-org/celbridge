@@ -3,9 +3,9 @@ id = "process"
 type = "utility"
 entry-point = "index.html"
 
-# A utility editor: each instance declared in the project config is a persistent surface, alive
-# until the project unloads, appearing as a rail item beside Explorer and Search. Demonstrates
-# the long-running per-project surface pattern.
+# A utility editor: a persistent per-project surface, one per contribution, alive until the
+# project unloads, appearing as a rail item beside Explorer and Search. Demonstrates the
+# long-running per-project surface pattern.
 [utility]
 resource-extension = "._process"
 template = "templates/default._process"

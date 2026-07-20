@@ -41,6 +41,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         var utilityPanel = workspaceService.UtilityPanel;
         var packageService = workspaceService.PackageService;
         var documentsService = workspaceService.DocumentsService;
+        var utilityService = workspaceService.UtilityService;
 
         var activeUtilityId = utilityPanel.ActiveUtilityId;
 
@@ -79,8 +80,15 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             }
 
             var utilityId = instance.InstanceId;
-            var displayName = instance.Title
-                ?? ResolveLocalizedString(utility.Package, utility.DisplayName);
+
+            // Only report utilities that were actually created. A utility whose seed/bind/init
+            // failed is skipped here, so this list matches what app_show_utility will accept.
+            if (!utilityService.HasUtility(utilityId))
+            {
+                continue;
+            }
+
+            var displayName = ResolveLocalizedString(utility.Package, utility.DisplayName);
 
             var isDocumentDocked = false;
             var utilityResource = ResourceKey.Empty;

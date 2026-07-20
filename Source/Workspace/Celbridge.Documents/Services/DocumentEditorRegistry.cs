@@ -228,6 +228,19 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return candidates;
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForExtension(string fileExtension)
+    {
+        var normalizedExtension = fileExtension.ToLowerInvariant();
+
+        // Synthesize a file name from the extension so it resolves exactly as a real file would.
+        if (!ResourceKey.TryCreate($"file{normalizedExtension}", out var syntheticResource))
+        {
+            return [];
+        }
+
+        return GetUserPickableFactoriesForResource(syntheticResource);
+    }
+
     public bool IsExtensionSupported(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -314,12 +327,8 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             return new EditorRank(EditorRankBand.BuiltIn, hostOrderIndex);
         }
 
-        // Native factories outside the pinned host list rank after the listed built-ins.
-        if (!EditorInstanceId.IsValidDeclaredName(factory.EditorId.ToString()))
-        {
-            return new EditorRank(EditorRankBand.UnlistedBuiltIn, registrationOrder);
-        }
-
+        // Every other registered factory is a package-contributed editor, which outranks the built-ins
+        // for the extensions it claims. Registration order (discovery order) breaks ties within the band.
         return new EditorRank(EditorRankBand.DeclaredInstance, registrationOrder);
     }
 

@@ -3,6 +3,18 @@ using Celbridge.Documents;
 namespace Celbridge.Packages;
 
 /// <summary>
+/// How a contribution activates when its package is present. Required is always live and cannot be
+/// turned off per project; recommended is live by default but a project may disable it; optional ships
+/// inert until a project enables it.
+/// </summary>
+public enum ActivationPolicy
+{
+    Required,
+    Recommended,
+    Optional,
+}
+
+/// <summary>
 /// An editor contributed by a package, parsed from a TOML editor manifest. The package supplies the
 /// entire editor UI via an HTML entry point hosted in a WebView, communicating with the host via the
 /// IHostDocument JSON-RPC protocol.
@@ -52,6 +64,13 @@ public partial record EditorContribution
     /// IDocumentContentProvider matches the resource.
     /// </summary>
     public bool ExternalContent { get; init; } = false;
+
+    /// <summary>
+    /// How this contribution activates when its package is present. Required (the default) is always
+    /// live with no per-project off switch; recommended is live by default but a project may disable
+    /// it; optional ships inert until the project enables it in Project Settings.
+    /// </summary>
+    public ActivationPolicy Activation { get; init; } = ActivationPolicy.Required;
 
     /// <summary>
     /// Package-defined options parsed from the [options] table of the editor manifest.

@@ -6,8 +6,8 @@ namespace Celbridge.Tests.Projects;
 
 /// <summary>
 /// Unit tests for ProjectConfigParser covering the v2 .celbridge schema: host-level
-/// declarations on the [celbridge] table, editor instance tables, and per-entry
-/// error recovery for malformed entries.
+/// declarations on the [celbridge] table, [[contribution]] override entries, and per-entry
+/// error recovery for malformed entries and stray top-level tables.
 /// </summary>
 [TestFixture]
 public class ProjectConfigParserTests
@@ -51,7 +51,7 @@ public class ProjectConfigParserTests
             [celbridge]
             celbridge-version = "1.0.0"
             project-version = "0.2.0"
-            packages = ["acme-notes", "acme-charts"]
+            disabled-packages = ["acme-notes", "acme-charts"]
             editor-associations = { ".md" = "acme-notes.markdown", ".TXT" = "acme-notes.text" }
             features = { generative-ai = true, experimental = false }
 
@@ -65,19 +65,16 @@ public class ProjectConfigParserTests
             requires-python = ">=3.12"
             dependencies = ["numpy", "pandas"]
 
-            [notepad]
+            [[contribution]]
             package = "acme-notes"
             contribution = "notepad"
-            title = "Notes"
-            icon = "Edit"
-            tooltip = "Project notes"
             theme = "dark"
             auto-save = true
             max-items = 42
             scale = 1.5
             tags = ["alpha", "beta"]
 
-            [charts]
+            [[contribution]]
             package = "acme-charts"
             contribution = "chart-editor"
             """;
@@ -91,7 +88,7 @@ public class ProjectConfigParserTests
 
         config.Celbridge.CelbridgeVersion.Should().Be("1.0.0");
         config.Celbridge.ProjectVersion.Should().Be("0.2.0");
-        config.Celbridge.Packages.Should().Equal("acme-notes", "acme-charts");
+        config.Celbridge.DisabledPackages.Should().Equal("acme-notes", "acme-charts");
 
         // Editor-defaults extensions are lowercased on parse.
         config.Celbridge.EditorAssociations.Should().HaveCount(2);
@@ -111,30 +108,26 @@ public class ProjectConfigParserTests
         config.Project.Dependencies.Should().Equal("numpy", "pandas");
 
         // Declaration order in the file is preserved.
-        config.Instances.Should().HaveCount(2);
+        config.ContributionOverrides.Should().HaveCount(2);
 
-        var notepadInstance = config.Instances[0];
-        notepadInstance.InstanceId.Should().Be("notepad");
-        notepadInstance.PackageName.Should().Be("acme-notes");
-        notepadInstance.ContributionId.Should().Be("notepad");
-        notepadInstance.Title.Should().Be("Notes");
-        notepadInstance.Icon.Should().Be("Edit");
-        notepadInstance.Tooltip.Should().Be("Project notes");
-        notepadInstance.Config["theme"].Should().Be("dark");
-        notepadInstance.Config["auto-save"].Should().Be(true);
-        notepadInstance.Config["max-items"].Should().Be(42L);
-        notepadInstance.Config["scale"].Should().Be(1.5);
+        var notepadOverride = config.ContributionOverrides[0];
+        notepadOverride.PackageName.Should().Be("acme-notes");
+        notepadOverride.ContributionId.Should().Be("notepad");
+        notepadOverride.Disabled.Should().BeFalse();
+        notepadOverride.Enabled.Should().BeFalse();
+        notepadOverride.Config["theme"].Should().Be("dark");
+        notepadOverride.Config["auto-save"].Should().Be(true);
+        notepadOverride.Config["max-items"].Should().Be(42L);
+        notepadOverride.Config["scale"].Should().Be(1.5);
 
-        var tags = notepadInstance.Config["tags"] as IReadOnlyList<string>;
+        var tags = notepadOverride.Config["tags"] as IReadOnlyList<string>;
         tags.Should().NotBeNull();
         tags!.Should().Equal("alpha", "beta");
 
-        var chartsInstance = config.Instances[1];
-        chartsInstance.InstanceId.Should().Be("charts");
-        chartsInstance.PackageName.Should().Be("acme-charts");
-        chartsInstance.ContributionId.Should().Be("chart-editor");
-        chartsInstance.Title.Should().BeNull();
-        chartsInstance.Config.Should().BeEmpty();
+        var chartsOverride = config.ContributionOverrides[1];
+        chartsOverride.PackageName.Should().Be("acme-charts");
+        chartsOverride.ContributionId.Should().Be("chart-editor");
+        chartsOverride.Config.Should().BeEmpty();
     }
 
     [Test]
@@ -150,14 +143,17 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Project.RequiresPython.Should().Be("3.12");
+        config.Project.RequiresPython.Should().Be("3.13");
     }
 
     [Test]
-    public void ParseFromFile_InstanceIdWithInvalidCharacters_SkipsInstanceWithEntryError()
+    public void ParseFromFile_ArbitraryTopLevelTable_IsRejectedWithEntryError()
     {
+        // v1 declared editor instances as arbitrary [instance-id] tables. Those are no longer part
+        // of the schema: any top-level table other than the known sections is rejected with an
+        // entry error rather than parsed as an instance.
         var content = """
-            [My_Notes]
+            [my-notes]
             package = "acme-notes"
             contribution = "notepad"
             """;
@@ -167,17 +163,17 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Instances.Should().BeEmpty();
+        config.ContributionOverrides.Should().BeEmpty();
         config.EntryErrors.Should().ContainSingle();
-        config.EntryErrors[0].EntryName.Should().Be("My_Notes");
-        config.EntryErrors[0].Message.Should().Contain("lowercase");
+        config.EntryErrors[0].EntryName.Should().Be("my-notes");
+        config.EntryErrors[0].Message.Should().Contain("not allowed");
     }
 
     [Test]
-    public void ParseFromFile_InstanceMissingPackageKey_SkipsInstanceWithEntryError()
+    public void ParseFromFile_ContributionMissingPackageKey_SkipsEntryWithEntryError()
     {
         var content = """
-            [notepad]
+            [[contribution]]
             contribution = "notepad"
             """;
         var configFilePath = WriteConfigFile(content);
@@ -186,9 +182,9 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Instances.Should().BeEmpty();
+        config.ContributionOverrides.Should().BeEmpty();
         config.EntryErrors.Should().ContainSingle();
-        config.EntryErrors[0].EntryName.Should().Be("notepad");
+        config.EntryErrors[0].EntryName.Should().Be("[[contribution]] #1");
         config.EntryErrors[0].Message.Should().Contain("package");
     }
 
@@ -212,7 +208,7 @@ public class ProjectConfigParserTests
         // The legacy sections are ignored, not parsed from the old location.
         config.Features.Should().BeEmpty();
         config.Resources.IgnoreFile.Should().Be(".gitignore");
-        config.Instances.Should().BeEmpty();
+        config.ContributionOverrides.Should().BeEmpty();
 
         config.EntryErrors.Should().HaveCount(2);
         config.EntryErrors.Should().OnlyContain(error => error.Message.Contains("moved to [celbridge]"));
@@ -229,7 +225,7 @@ public class ProjectConfigParserTests
 
             [celbridge.resources]
             ignore-file = ".gitignore"
-            packages = ["acme-notes"]
+            disabled-packages = ["acme-notes"]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -237,11 +233,11 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Celbridge.Packages.Should().BeEmpty();
+        config.Celbridge.DisabledPackages.Should().BeEmpty();
         config.Resources.IgnoreFile.Should().Be(".gitignore");
         config.EntryErrors.Should().ContainSingle();
         config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
-        config.EntryErrors[0].Message.Should().Contain("Unknown key 'packages'");
+        config.EntryErrors[0].Message.Should().Contain("Unknown key 'disabled-packages'");
     }
 
     [Test]
@@ -280,17 +276,19 @@ public class ProjectConfigParserTests
         config.Celbridge.EditorAssociations.Should().BeEmpty();
         config.EntryErrors.Should().HaveCount(2);
         config.EntryErrors.Should().Contain(error => error.Message.Contains("must name an editor id"));
-        config.EntryErrors.Should().Contain(error => error.Message.Contains("leading dot"));
+        config.EntryErrors.Should().Contain(error => error.Message.Contains("well-formed file extension"));
     }
 
     [Test]
-    public void ParseFromFile_TitleWithWrongType_DropsKeyButKeepsInstance()
+    public void ParseFromFile_ConfigKeyWithUnsupportedShape_DropsKeyButKeepsEntry()
     {
+        // A config key whose value is a mixed-type array cannot be encoded, so it is dropped while
+        // the rest of the entry survives.
         var content = """
-            [notepad]
+            [[contribution]]
             package = "acme-notes"
             contribution = "notepad"
-            title = true
+            tags = ["alpha", 42]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -298,16 +296,15 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Instances.Should().ContainSingle();
+        config.ContributionOverrides.Should().ContainSingle();
 
-        var instance = config.Instances[0];
-        instance.InstanceId.Should().Be("notepad");
-        instance.Title.Should().BeNull();
-        instance.Config.Should().NotContainKey("title");
+        var contributionOverride = config.ContributionOverrides[0];
+        contributionOverride.PackageName.Should().Be("acme-notes");
+        contributionOverride.ContributionId.Should().Be("notepad");
+        contributionOverride.Config.Should().NotContainKey("tags");
 
         config.EntryErrors.Should().ContainSingle();
-        config.EntryErrors[0].EntryName.Should().Be("notepad");
-        config.EntryErrors[0].Message.Should().Contain("'title' must be a non-empty string");
+        config.EntryErrors[0].Message.Should().Contain("must be a list of strings");
     }
 
     [Test]
@@ -334,7 +331,7 @@ public class ProjectConfigParserTests
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
         config.Celbridge.CelbridgeVersion.Should().BeNull();
-        config.Instances.Should().BeEmpty();
+        config.ContributionOverrides.Should().BeEmpty();
         config.EntryErrors.Should().BeEmpty();
     }
 

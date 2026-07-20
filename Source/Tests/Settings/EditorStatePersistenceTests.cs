@@ -102,21 +102,4 @@ public class EditorStatePersistenceTests
         roundTripped.Should().NotBeNull();
         roundTripped!.Should().BeEmpty();
     }
-
-    [Test]
-    public async Task EditorPreference_RoundTripsThroughSettings()
-    {
-        // Locks in the storage shape used by DocumentEditorPreferenceStore. The key
-        // format is a private detail of the store but the value contract (a string
-        // editor id) needs to round-trip cleanly.
-        var settings = _workspaceSettingsService.PropertyBag!;
-        var preferenceKey = "DocumentEditorPreference:.md";
-        var editorId = "celbridge.markdown-editor";
-
-        await settings.SetPropertyAsync(preferenceKey, editorId);
-
-        var roundTripped = await settings.GetPropertyAsync<string>(preferenceKey);
-
-        roundTripped.Should().Be(editorId);
-    }
 }

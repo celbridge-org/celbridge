@@ -56,12 +56,6 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     private string ResolveDisplayName(IPackageLocalizationService localizationService)
     {
-        // An instance-level title override is a literal project-authored string.
-        if (!string.IsNullOrEmpty(_instance.Title))
-        {
-            return _instance.Title;
-        }
-
         // The manifest loader requires every contribution to set display-name, so
         // DisplayName is guaranteed non-empty here. The value may be a localization
         // key or a plain string.

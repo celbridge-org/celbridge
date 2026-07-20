@@ -3,8 +3,8 @@ id = "notepad"
 type = "utility"
 entry-point = "index.html"
 
-# A utility editor: each instance declared in the project config is a persistent surface,
-# appearing as a rail item in the Utility Panel beside Explorer and Search.
+# A utility editor: a persistent per-project surface, one per contribution, appearing as a
+# rail item in the Utility Panel beside Explorer and Search.
 [utility]
 resource-extension = "._notepad"
 template = "templates/default._notepad"

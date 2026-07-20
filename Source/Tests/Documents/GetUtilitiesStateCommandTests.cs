@@ -53,6 +53,10 @@ public class GetUtilitiesStateCommandTests
         var packageService = Substitute.For<IPackageService>();
         packageService.GetEditorInstances().Returns(instances);
 
+        // Both declared utilities were created, so both are live and listed.
+        var utilityService = Substitute.For<IUtilityService>();
+        utilityService.HasUtility(Arg.Any<EditorInstanceId>()).Returns(true);
+
         // No utilities are docked: no documents are open.
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
@@ -62,6 +66,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityPanel.Returns(utilityPanel);
         workspaceService.PackageService.Returns(packageService);
         workspaceService.DocumentsService.Returns(documentsService);
+        workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
@@ -103,65 +108,6 @@ public class GetUtilitiesStateCommandTests
     }
 
     [Test]
-    public async Task Execute_TwoInstancesOfOneContribution_AreReportedSeparatelyWithTitleOverrides()
-    {
-        // Two instances of one utility contribution are distinguished by their instance-level
-        // title override, each backed by its own state file.
-        var consoleContribution = new EditorContribution
-        {
-            Package = new PackageInfo { Name = "acme" },
-            Id = "console",
-            DisplayName = "Console",
-            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._console" }
-        };
-
-        var instances = new List<EditorInstance>
-        {
-            CreateInstance("python-repl", consoleContribution, title: "Python"),
-            CreateInstance("claude-cli", consoleContribution, title: "Claude")
-        };
-
-        var utilityPanel = Substitute.For<IUtilityPanel>();
-        utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
-
-        var packageService = Substitute.For<IPackageService>();
-        packageService.GetEditorInstances().Returns(instances);
-
-        var documentsService = Substitute.For<IDocumentsService>();
-        documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
-        documentsService.ActiveDocument.Returns(ResourceKey.Empty);
-
-        var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.UtilityPanel.Returns(utilityPanel);
-        workspaceService.PackageService.Returns(packageService);
-        workspaceService.DocumentsService.Returns(documentsService);
-
-        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
-        workspaceWrapper.WorkspaceService.Returns(workspaceService);
-
-        var stringLocalizer = Substitute.For<IStringLocalizer>();
-        stringLocalizer["UtilityPanel_ExplorerTooltip"].Returns(new LocalizedString("UtilityPanel_ExplorerTooltip", "Explorer"));
-        stringLocalizer["UtilityPanel_SearchTooltip"].Returns(new LocalizedString("UtilityPanel_SearchTooltip", "Search"));
-
-        var packageLocalization = Substitute.For<IPackageLocalizationService>();
-        packageLocalization.LoadStrings(Arg.Any<PackageInfo>(), Arg.Any<string?>()).Returns(new Dictionary<string, string>());
-
-        var command = new GetUtilitiesStateCommand(workspaceWrapper, stringLocalizer, packageLocalization);
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        var utilities = command.ResultValue.Utilities;
-
-        var pythonConsole = utilities.Single(utility => utility.UtilityId == new EditorInstanceId("python-repl"));
-        pythonConsole.DisplayName.Should().Be("Python");
-
-        var claudeConsole = utilities.Single(utility => utility.UtilityId == new EditorInstanceId("claude-cli"));
-        claudeConsole.DisplayName.Should().Be("Claude");
-    }
-
-    [Test]
     public async Task Execute_DockedUtility_ReportsDockedAndShownByActiveDocument()
     {
         var dockedUtility = new EditorContribution
@@ -185,6 +131,9 @@ public class GetUtilitiesStateCommandTests
         var packageService = Substitute.For<IPackageService>();
         packageService.GetEditorInstances().Returns(instances);
 
+        var utilityService = Substitute.For<IUtilityService>();
+        utilityService.HasUtility(Arg.Any<EditorInstanceId>()).Returns(true);
+
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
@@ -196,6 +145,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityPanel.Returns(utilityPanel);
         workspaceService.PackageService.Returns(packageService);
         workspaceService.DocumentsService.Returns(documentsService);
+        workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
@@ -218,13 +168,80 @@ public class GetUtilitiesStateCommandTests
         notepad.IsShown.Should().BeTrue();
     }
 
-    private static EditorInstance CreateInstance(string instanceId, EditorContribution contribution, string? title = null)
+    [Test]
+    public async Task Execute_UtilityNotCreated_IsExcludedFromList()
+    {
+        // A declared utility whose creation failed is not live, so it must not be listed: app_show_utility
+        // gates on the same HasUtility check and would refuse it.
+        var liveUtility = new EditorContribution
+        {
+            Package = new PackageInfo { Name = "acme" },
+            Id = "notepad",
+            DisplayName = "Notepad",
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._notepad" }
+        };
+
+        var deadUtility = new EditorContribution
+        {
+            Package = new PackageInfo { Name = "acme" },
+            Id = "broken",
+            DisplayName = "Broken",
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._broken" }
+        };
+
+        var instances = new List<EditorInstance>
+        {
+            CreateInstance("notepad", liveUtility),
+            CreateInstance("broken", deadUtility)
+        };
+
+        var utilityPanel = Substitute.For<IUtilityPanel>();
+        utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
+
+        var packageService = Substitute.For<IPackageService>();
+        packageService.GetEditorInstances().Returns(instances);
+
+        var utilityService = Substitute.For<IUtilityService>();
+        utilityService.HasUtility(new EditorInstanceId("notepad")).Returns(true);
+        utilityService.HasUtility(new EditorInstanceId("broken")).Returns(false);
+
+        var documentsService = Substitute.For<IDocumentsService>();
+        documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
+        documentsService.ActiveDocument.Returns(ResourceKey.Empty);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.UtilityPanel.Returns(utilityPanel);
+        workspaceService.PackageService.Returns(packageService);
+        workspaceService.DocumentsService.Returns(documentsService);
+        workspaceService.UtilityService.Returns(utilityService);
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var stringLocalizer = Substitute.For<IStringLocalizer>();
+        stringLocalizer["UtilityPanel_ExplorerTooltip"].Returns(new LocalizedString("UtilityPanel_ExplorerTooltip", "Explorer"));
+        stringLocalizer["UtilityPanel_SearchTooltip"].Returns(new LocalizedString("UtilityPanel_SearchTooltip", "Search"));
+
+        var packageLocalization = Substitute.For<IPackageLocalizationService>();
+        packageLocalization.LoadStrings(Arg.Any<PackageInfo>(), Arg.Any<string?>()).Returns(new Dictionary<string, string>());
+
+        var command = new GetUtilitiesStateCommand(workspaceWrapper, stringLocalizer, packageLocalization);
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var utilities = command.ResultValue.Utilities;
+        utilities.Should().Contain(utility => utility.UtilityId == new EditorInstanceId("notepad"));
+        utilities.Should().NotContain(utility => utility.UtilityId == new EditorInstanceId("broken"));
+    }
+
+    private static EditorInstance CreateInstance(string instanceId, EditorContribution contribution)
     {
         return new EditorInstance
         {
             InstanceId = new EditorInstanceId(instanceId),
-            Contribution = contribution,
-            Title = title
+            Contribution = contribution
         };
     }
 

@@ -1,4 +1,5 @@
 using Celbridge.Documents;
+using Celbridge.Projects;
 
 namespace Celbridge.Packages;
 
@@ -53,10 +54,18 @@ public interface IPackageService
     IReadOnlyList<EditorContribution> GetAllEditors();
 
     /// <summary>
-    /// Returns the project's declared editor instances, in declaration order. Only instances
-    /// that resolved to an activated package and a known contribution are included.
+    /// Returns the resolved active editors from the reconcile pass, one per active contribution, in
+    /// discovery order, each carrying its effective config. Disabled contributions and contributions of
+    /// disabled packages are excluded; built-in editors are returned separately by GetBuiltInEditors.
     /// </summary>
     IReadOnlyList<EditorInstance> GetEditorInstances();
+
+    /// <summary>
+    /// Returns the normalized project config from the most recent reconcile — the per-contribution
+    /// override entries plus the disabled-packages list — or null before the first discovery. This is
+    /// the source Project Settings reads to show which discovered contributions the project has changed.
+    /// </summary>
+    ProjectConfig? GetNormalizedConfig();
 
     /// <summary>
     /// Returns the built-in editors served from the always-active packages, in host catalog
