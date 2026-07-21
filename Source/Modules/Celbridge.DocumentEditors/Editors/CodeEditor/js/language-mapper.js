@@ -1,6 +1,5 @@
-// Maps a file's extension to a Monaco language id. The extension-to-language
-// dictionary ships alongside the package as code-editor-types.json and is
-// loaded once at startup.
+// Maps a file's extension to a Monaco language id. The host's file type catalog
+// supplies the language for each extension and is loaded once at startup.
 
 let languageMap = null;
 
@@ -10,10 +9,15 @@ async function loadLanguageMap() {
     }
 
     try {
-        const url = new URL('./code-editor-types.json', import.meta.url).href;
-        const response = await fetch(url);
+        const response = await fetch('/assets/celbridge-client/file-types.json');
         if (response.ok) {
-            languageMap = await response.json();
+            const catalog = await response.json();
+            languageMap = {};
+            for (const [extension, entry] of Object.entries(catalog)) {
+                if (entry.language) {
+                    languageMap[extension] = entry.language;
+                }
+            }
         } else {
             languageMap = {};
         }

@@ -108,7 +108,7 @@ public class PackageServiceTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem);
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>());
         _loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(_messengerService, _loadReporter, registry);
     }

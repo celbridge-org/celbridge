@@ -5,5 +5,5 @@ entry-point = "index.html"
 display-name = "CodeEditor_Editor_Code"
 
 [[file-types]]
-extensions-file = "js/code-editor-types.json"
+from-catalog = "languages"
 display-name = "CodeEditor_FileType_Code"

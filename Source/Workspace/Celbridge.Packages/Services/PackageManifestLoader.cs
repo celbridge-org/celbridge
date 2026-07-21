@@ -5,6 +5,21 @@ using Tomlyn.Parsing;
 namespace Celbridge.Packages;
 
 /// <summary>
+/// Stands in for the host catalog when a caller supplies none, so a manifest that claims catalog
+/// extensions loads with none rather than failing.
+/// </summary>
+internal sealed class EmptyFileTypeCatalog : IFileTypeCatalog
+{
+    public static readonly EmptyFileTypeCatalog Instance = new();
+
+    public Task LoadAsync() => Task.CompletedTask;
+    public IReadOnlyList<FileTypeCategory> GetCategories(string extension) => Array.Empty<FileTypeCategory>();
+    public string GetLanguage(string extension) => string.Empty;
+    public string GetDisplayName(string extension) => string.Empty;
+    public IReadOnlyList<string> LanguageExtensions => Array.Empty<string>();
+}
+
+/// <summary>
 /// Parses a package.toml manifest into a Package: the [package] identity and permissions, plus the
 /// list of editor contributions, each loaded from its referenced *.editor.toml by EditorManifestLoader.
 /// </summary>
@@ -39,9 +54,11 @@ public static class PackageManifestLoader
         IReadOnlyDictionary<string, string>? secrets = null,
         bool devToolsBlocked = false,
         PackageOrigin origin = PackageOrigin.Bundled,
-        IPackageReader? reader = null)
+        IPackageReader? reader = null,
+        IFileTypeCatalog? fileTypeCatalog = null)
     {
         reader ??= new DirectPackageReader();
+        fileTypeCatalog ??= EmptyFileTypeCatalog.Instance;
         try
         {
             var packageFolder = Path.GetFullPath(Path.GetDirectoryName(packageTomlPath) ?? string.Empty);
@@ -144,7 +161,7 @@ public static class PackageManifestLoader
                 }
 
                 var fullPath = Path.Combine(packageFolder, relativePath);
-                var loadResult = EditorManifestLoader.LoadEditor(fullPath, packageInfo, reader);
+                var loadResult = EditorManifestLoader.LoadEditor(fullPath, packageInfo, reader, fileTypeCatalog);
                 if (loadResult.IsFailure)
                 {
                     // The reason is folded into the message rather than nested, because the

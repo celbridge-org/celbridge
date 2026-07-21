@@ -43,12 +43,14 @@ public partial class FileTypeRowViewModel : ObservableObject
 
     public FileTypeRowViewModel(
         string extension,
+        string typeName,
         IReadOnlyList<AssociationCandidate> candidates,
         string defaultEditorId,
         string? associatedEditorId,
         Action<string, string?> commit)
     {
         Extension = extension;
+        TypeName = typeName;
         Candidates = candidates;
         _defaultEditorId = defaultEditorId;
         _commit = commit;
@@ -61,6 +63,18 @@ public partial class FileTypeRowViewModel : ObservableObject
     }
 
     public string Extension { get; }
+
+    /// <summary>
+    /// The name the host catalog knows this file type by, or empty for an extension it does not
+    /// catalogue.
+    /// </summary>
+    public string TypeName { get; }
+
+    /// <summary>
+    /// Whether the catalog names this file type.
+    /// </summary>
+    public bool HasTypeName => !string.IsNullOrEmpty(TypeName);
+
     public IReadOnlyList<AssociationCandidate> Candidates { get; }
 
     public string EditorPickerTooltip => ProjectSettingsLabels.EditorPickerTooltip;

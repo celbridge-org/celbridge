@@ -32,8 +32,15 @@ public interface IAppEnvironment
     string LaunchWorkingFolderPath { get; }
 
     /// <summary>
+    /// The folder of app-bundled web assets shared by every WebView, which the file server publishes
+    /// at /assets/.
+    /// </summary>
+    string SharedWebAssetsFolderPath { get; }
+
+    /// <summary>
     /// Returns the on-disk path to a bundled asset (file or folder) shipped by the given library module,
-    /// at the forward-slashed relative path within that module's bundled files.
+    /// at the forward-slashed relative path within that module's bundled files. The relative path must
+    /// start with the module's Assets folder; other content roots are not addressable this way.
     /// </summary>
     string GetBundledAssetPath(string moduleFolderName, string relativePath);
 }

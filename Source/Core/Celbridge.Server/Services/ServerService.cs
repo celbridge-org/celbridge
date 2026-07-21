@@ -1,4 +1,5 @@
 using Celbridge.Host;
+using Celbridge.Platform;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -25,6 +26,7 @@ public class ServerService : IServerService, IDisposable
     private readonly IFeatureFlags _featureFlags;
     private readonly AgentMonitor _agentMonitor;
     private readonly IHostChannelBroker _hostChannelBroker;
+    private readonly IAppEnvironment _appEnvironment;
     private readonly ILogger<ServerService> _logger;
 
     private WebApplication? _webApplication;
@@ -44,6 +46,7 @@ public class ServerService : IServerService, IDisposable
         IFeatureFlags featureFlags,
         AgentMonitor agentMonitor,
         IHostChannelBroker hostChannelBroker,
+        IAppEnvironment appEnvironment,
         ILogger<ServerService> logger)
     {
         _agentServer = agentServer;
@@ -54,6 +57,7 @@ public class ServerService : IServerService, IDisposable
         _featureFlags = featureFlags;
         _agentMonitor = agentMonitor;
         _hostChannelBroker = hostChannelBroker;
+        _appEnvironment = appEnvironment;
         _logger = logger;
     }
 
@@ -143,8 +147,7 @@ public class ServerService : IServerService, IDisposable
 
             // Serve the app-bundled web assets (celbridge-client JS, bootstrap-icons, cascadia-mono)
             // at /assets/.
-            var sharedAssetsFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
-            _fileServer.RegisterAssetsFolder(sharedAssetsFolder);
+            _fileServer.RegisterAssetsFolder(_appEnvironment.SharedWebAssetsFolderPath);
 
             Status = ServerStatus.Ready;
             _logger.LogInformation("Server started on port {Port}", Port);

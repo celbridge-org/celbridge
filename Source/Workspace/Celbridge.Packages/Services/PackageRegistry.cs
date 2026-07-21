@@ -43,19 +43,23 @@ public class PackageRegistry
     // the discovery and template-fetch paths to keep the bundled branch cheap.
     private readonly IPackageReader _bundledReader;
 
+    private readonly IFileTypeCatalog _fileTypeCatalog;
+
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
         IModuleService moduleService,
         IPackageLocalizationService localizationService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
-        ILocalFileSystem fileSystem)
+        ILocalFileSystem fileSystem,
+        IFileTypeCatalog fileTypeCatalog)
     {
         _logger = logger;
         _moduleService = moduleService;
         _localizationService = localizationService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
+        _fileTypeCatalog = fileTypeCatalog;
         _bundledReader = new DirectPackageReader(fileSystem);
     }
 
@@ -63,6 +67,9 @@ public class PackageRegistry
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
+
+        // Manifests that claim their extensions from the catalog need it populated before they load.
+        await _fileTypeCatalog.LoadAsync();
 
         var bundledFailures = DiscoverBundledPackages();
         var projectFailures = await DiscoverProjectPackagesAsync(projectFolderPath);
@@ -515,7 +522,8 @@ public class PackageRegistry
                 descriptor.Secrets,
                 descriptor.DevToolsBlocked,
                 origin: PackageOrigin.Bundled,
-                reader: _bundledReader);
+                reader: _bundledReader,
+                fileTypeCatalog: _fileTypeCatalog);
             if (loadResult.IsFailure)
             {
                 _logger.LogError(loadResult, $"Failed to load bundled package: {manifestPath}");
@@ -611,7 +619,8 @@ public class PackageRegistry
                 manifestPath,
                 secrets: null,
                 origin: PackageOrigin.Project,
-                reader: projectReader);
+                reader: projectReader,
+                fileTypeCatalog: _fileTypeCatalog);
             if (loadResult.IsFailure)
             {
                 _logger.LogWarning(loadResult, $"Skipping invalid project package: {manifestPath}");

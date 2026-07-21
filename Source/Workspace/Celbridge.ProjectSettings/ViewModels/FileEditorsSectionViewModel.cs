@@ -153,7 +153,8 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
             var categories = ResolveCategories(extension, manifestCategoryByExtension[extension], isPackageContributed);
             config.Celbridge.EditorAssociations.TryGetValue(extension, out var associatedEditorId);
 
-            var row = new FileTypeRowViewModel(extension, candidates, defaultEditorId, associatedEditorId, CommitAssociation);
+            var typeName = _fileTypeCatalog.GetDisplayName(extension);
+            var row = new FileTypeRowViewModel(extension, typeName, candidates, defaultEditorId, associatedEditorId, CommitAssociation);
             _allFileTypeRows.Add((categories, row));
         }
 
