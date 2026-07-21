@@ -80,7 +80,7 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        // Two instances claiming one extension resolve in declaration order, which the
+        // Two editors claiming one extension resolve in declaration order, which the
         // registry records as registration order.
         var firstDeclared = CreateMockFactory("first-cel", ".note.cel");
         var secondDeclared = CreateMockFactory("second-cel", ".note.cel");
@@ -99,17 +99,17 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        // The built-in registers first, but declared instances rank ahead of every built-in.
+        // The built-in registers first, but declared editors rank ahead of every built-in.
         var builtInFactory = CreateMockFactory(BuiltInEditors.CodeEditorId.ToString(), ".note.cel");
-        var declaredInstance = CreateMockFactory("my-notes", ".note.cel");
+        var declaredEditor = CreateMockFactory("my-notes", ".note.cel");
 
         registry.RegisterFactory(builtInFactory);
-        registry.RegisterFactory(declaredInstance);
+        registry.RegisterFactory(declaredEditor);
 
         var result = registry.GetFactory(new ResourceKey("foo.note.cel"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(declaredInstance);
+        result.Value.Should().Be(declaredEditor);
     }
 
     [Test]
@@ -151,7 +151,7 @@ public class MultiPartExtensionResolutionTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId("test.empty-both"));
+        factory.EditorId.Returns(new EditorId("test.empty-both"));
         factory.DisplayName.Returns("Empty");
         factory.SupportedExtensions.Returns(new List<string>());
         factory.SupportedFilenames.Returns(new List<string>());
@@ -175,7 +175,7 @@ public class MultiPartExtensionResolutionTests
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.EditorId.Returns(new EditorId(editorId));
         factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(extensions);
         factory.SupportedFilenames.Returns(Array.Empty<string>());
@@ -189,7 +189,7 @@ public class MultiPartExtensionResolutionTests
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.EditorId.Returns(new EditorId(editorId));
         factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(Array.Empty<string>());
         factory.SupportedFilenames.Returns(filenames);

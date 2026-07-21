@@ -11,14 +11,14 @@ public record DocumentTypeInfo(
     IReadOnlyList<string> FileExtensions);
 
 /// <summary>
-/// Provides package discovery, editor instance resolution, document type information, and
+/// Provides package discovery, editor resolution, document type information, and
 /// template content.
 /// </summary>
 public interface IPackageService
 {
     /// <summary>
     /// Discovers all packages (bundled module packages and project packages), resolves the
-    /// project's declared editor instances against the activated packages, and registers all
+    /// project's declared contributions against the activated packages, and registers all
     /// package behaviors (e.g. custom document editor factories).
     /// </summary>
     Task RegisterPackagesAsync(string projectFolderPath);
@@ -31,7 +31,7 @@ public interface IPackageService
     Task RescanProjectPackagesAsync(string projectFolderPath);
 
     /// <summary>
-    /// Gets document type entries for the available editors (declared instances and built-ins)
+    /// Gets document type entries for the available editors (declared contributions and built-ins)
     /// that declare templates.
     /// </summary>
     IReadOnlyList<DocumentTypeInfo> GetDocumentTypes();
@@ -54,11 +54,11 @@ public interface IPackageService
     IReadOnlyList<EditorContribution> GetAllEditors();
 
     /// <summary>
-    /// Returns the resolved active editors from the reconcile pass, one per active contribution, in
+    /// Returns the resolved editors from the reconcile pass, one per active contribution, in
     /// discovery order, each carrying its effective config. Disabled contributions and contributions of
     /// disabled packages are excluded; built-in editors are returned separately by GetBuiltInEditors.
     /// </summary>
-    IReadOnlyList<EditorInstance> GetEditorInstances();
+    IReadOnlyList<ResolvedEditor> GetResolvedEditors();
 
     /// <summary>
     /// Returns the normalized project config from the most recent reconcile — the per-contribution
@@ -71,13 +71,13 @@ public interface IPackageService
     /// Returns the built-in editors served from the always-active packages, in host catalog
     /// order. An optional built-in whose package is not present is omitted.
     /// </summary>
-    IReadOnlyList<EditorInstance> GetBuiltInEditors();
+    IReadOnlyList<ResolvedEditor> GetBuiltInEditors();
 
     /// <summary>
-    /// Returns the package that provides the declared instance or built-in editor with the
+    /// Returns the package that provides the declared contribution or built-in editor with the
     /// specified id, or null if no such editor is registered.
     /// </summary>
-    Package? GetContributingPackage(EditorInstanceId editorId);
+    Package? GetContributingPackage(EditorId editorId);
 
     /// <summary>
     /// Gets the default template content for a file extension, or null if no available editor

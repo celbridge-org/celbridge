@@ -19,10 +19,10 @@ public sealed partial class CustomDocumentView : DocumentView
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     /// <summary>
-    /// The editor instance that configures this view.
+    /// The resolved editor that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public EditorInstance? Instance { get; set; }
+    public ResolvedEditor? ResolvedEditor { get; set; }
 
     public CustomDocumentView(
         IServiceProvider serviceProvider,
@@ -63,12 +63,12 @@ public sealed partial class CustomDocumentView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        if (Instance is null)
+        if (ResolvedEditor is null)
         {
-            return Result.Fail("Cannot initialize custom view: Instance is not set");
+            return Result.Fail("Cannot initialize custom view: the resolved editor is not set");
         }
 
-        return await _controller.InitializeAsync(Instance);
+        return await _controller.InitializeAsync(ResolvedEditor);
     }
 
     public override async Task<Result> NavigateToLocation(string location)

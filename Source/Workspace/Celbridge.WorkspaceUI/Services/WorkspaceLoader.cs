@@ -390,12 +390,12 @@ public class WorkspaceLoader
 
     // Enumerates the declared utility instances. Declaration order in the project config is the
     // rail order.
-    private List<EditorInstance> GetUtilityInstances()
+    private List<ResolvedEditor> GetUtilityInstances()
     {
         var packageService = _workspaceWrapper.WorkspaceService.PackageService;
 
-        var utilityInstances = new List<EditorInstance>();
-        foreach (var instance in packageService.GetEditorInstances())
+        var utilityInstances = new List<ResolvedEditor>();
+        foreach (var instance in packageService.GetResolvedEditors())
         {
             if (!instance.Contribution.IsUtility)
             {

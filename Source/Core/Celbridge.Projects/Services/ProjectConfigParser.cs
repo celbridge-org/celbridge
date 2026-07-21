@@ -8,7 +8,7 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// Static utility class for parsing Celbridge project configuration files (v2 schema).
 /// Host-level declarations live on the [celbridge] table; every other top-level table declares
-/// an editor instance. Malformed entries are skipped with a recorded entry error; a TOML syntax
+/// an editor contribution. Malformed entries are skipped with a recorded entry error; a TOML syntax
 /// error fails the whole parse.
 /// </summary>
 public static class ProjectConfigParser

@@ -4,7 +4,7 @@ A utility is a custom WebView editor that is a workspace fixture rather than an 
 
 ## One utility per contribution
 
-A package contributes a utility editor, and a discovered package is active by default — so its utility appears automatically, with its own rail button and backing state file. There is one utility per contribution: the project does not declare it, name it, or spin up several copies. A tool that needs several variants (say Python, Claude, and PowerShell consoles) ships them as separate contributions, not as repeated instances of one.
+A package contributes a utility editor, and a discovered package is active by default — so its utility appears automatically, with its own rail button and backing state file. There is one utility per contribution: the project does not declare it, name it, or spin up several copies. A tool that needs several variants (say Python, Claude, and PowerShell consoles) ships them as separate contributions, not as repeated copies of one.
 
 The `.celbridge` file touches a utility only to *deviate* from its manifest defaults, through the same `[[contribution]]` entry any editor uses — to set config keys, or to disable a `recommended` utility / enable an `optional` one:
 
@@ -21,8 +21,8 @@ A utility's display name, icon, and description (shown as its tooltip) come from
 
 Every utility is **workspace-scoped**: it is created when the project loads and lives until the project closes. It is never destroyed by the user — like Explorer and Search, it is always there. What the user controls is only *where* it is docked. A utility always occupies exactly one **dock location**:
 
-- **Utility Panel** — the instance is a rail surface in the Utility Panel (the left sidebar), selected by clicking its rail button, shown one at a time alongside Explorer and Search.
-- **Document** — the instance is a tab in the documents area, sitting among the open documents.
+- **Utility Panel** — the utility is a rail surface in the Utility Panel (the left sidebar), selected by clicking its rail button, shown one at a time alongside Explorer and Search.
+- **Document** — the utility is a tab in the documents area, sitting among the open documents.
 
 Both are docked locations inside the app; neither is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group. Every utility has both a permanent rail button and a document tab it can occupy; the manifest does not pre-decide the location.
 
@@ -60,7 +60,7 @@ display-name = "Notepad_DisplayName"       # required; labels the rail button an
 description = "Notepad_Description"         # localization key; the rail-button and docked-tab tooltip
 
 [utility]
-resource-extension = "._notepad"          # file format of the instance state file (required)
+resource-extension = "._notepad"          # file format of the utility state file (required)
 template = "templates/default._notepad"   # seeds the file when absent (optional)
 icon     = "sticky"                        # Bootstrap Icons glyph name (required)
 lazy-load = false                          # optional; true defers the WebView to first show
@@ -70,7 +70,7 @@ lazy-load = false                          # optional; true defers the WebView t
 |---|---|---|---|
 | `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
 | `icon` | yes | — | Bootstrap Icons glyph name for the rail button and the docked tab icon (resolved by name, not limited to the curated symbol set). |
-| `template` | no | empty file | Package-relative path to a file that seeds an instance's backing resource when it is absent. |
+| `template` | no | empty file | Package-relative path to a file that seeds a utility's backing resource when it is absent. |
 | `lazy-load` | no | `false` | When true, the utility's WebView is created on its first show rather than at project load. Declared by the editor, not by the project. A lazy utility restored into the tab layout as a docked document initializes at restore. |
 
 `display-name` in `[editor]` is required (as for any editor) and labels the rail button and the docked tab. The tooltip comes from `[editor].description` — the same field a document editor uses — so a utility's rail-button and docked-tab tooltip are authored once there, not in `[utility]`.
@@ -101,7 +101,7 @@ A utility persists through the standard editable-save path: the WebView calls `c
 - `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `location` (`"panel"` or `"document"`) to move it there first. A utility's id is `package.contribution` (for example `notepad.notepad`).
 - `app_get_state` reports `activeUtility`, the id of the surface currently shown in the Utility Panel rail.
 - `app_spotlight` can point at a utility's button: `{utilityId}-utility-button` for its rail item in the Utility Panel.
-- `utils:` is a registered root, so `file.*` tools can read and write an instance's backing file when the package declares `file.*` under `[permissions] tools`. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract needs no permission — it is framework-level, distinct from the `cel.*` tool proxies.
+- `utils:` is a registered root, so `file.*` tools can read and write a utility's backing file when the package declares `file.*` under `[permissions] tools`. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract needs no permission — it is framework-level, distinct from the `cel.*` tool proxies.
 
 ## Reference contributions
 

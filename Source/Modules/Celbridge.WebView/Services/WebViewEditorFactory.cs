@@ -13,7 +13,7 @@ public class WebViewEditorFactory : DocumentEditorFactoryBase
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override EditorInstanceId EditorId { get; } = new("celbridge.webview-editor");
+    public override EditorId EditorId { get; } = new("celbridge.webview-editor");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_WebViewEditor");
 

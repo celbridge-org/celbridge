@@ -46,10 +46,10 @@ public class PackageService : IPackageService
             _messengerService.Send(message);
         }
 
-        if (report.EditorInstanceFailures.Count > 0 ||
-            report.EditorInstanceWarnings.Count > 0)
+        if (report.ResolvedEditorFailures.Count > 0 ||
+            report.ResolvedEditorWarnings.Count > 0)
         {
-            // Skipped or degraded instance declarations are project config errors, surfaced on
+            // Skipped or degraded contribution declarations are project config errors, surfaced on
             // the advisory banner because the rest of the file still applied.
             var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName);
             _messengerService.Send(message);
@@ -79,9 +79,9 @@ public class PackageService : IPackageService
         return _registry.GetAllEditors();
     }
 
-    public IReadOnlyList<EditorInstance> GetEditorInstances()
+    public IReadOnlyList<ResolvedEditor> GetResolvedEditors()
     {
-        return _registry.GetEditorInstances();
+        return _registry.GetResolvedEditors();
     }
 
     public ProjectConfig? GetNormalizedConfig()
@@ -89,12 +89,12 @@ public class PackageService : IPackageService
         return _registry.GetNormalizedConfig();
     }
 
-    public IReadOnlyList<EditorInstance> GetBuiltInEditors()
+    public IReadOnlyList<ResolvedEditor> GetBuiltInEditors()
     {
         return _registry.GetBuiltInEditors();
     }
 
-    public Package? GetContributingPackage(EditorInstanceId editorId)
+    public Package? GetContributingPackage(EditorId editorId)
     {
         return _registry.GetContributingPackage(editorId);
     }

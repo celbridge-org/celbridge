@@ -21,10 +21,10 @@ public sealed partial class CustomUtilityView : UserControl
     private readonly CustomEditorFocusContext _panelFocusContext;
 
     // The utility's id, set on Bind. Used by the dock orchestration to address this panel.
-    private EditorInstanceId _utilityId = EditorInstanceId.Empty;
+    private EditorId _utilityId = EditorId.Empty;
 
-    // The bound instance, held so a lazy utility can initialize its WebView on first show.
-    private EditorInstance? _instance;
+    // The bound resolved editor, held so a lazy utility can initialize its WebView on first show.
+    private ResolvedEditor? _resolvedEditor;
 
     public CustomUtilityView(IServiceProvider serviceProvider)
     {
@@ -70,7 +70,7 @@ public sealed partial class CustomUtilityView : UserControl
     /// </summary>
     public CustomEditorFocusContext PanelFocusContext => _panelFocusContext;
 
-    public EditorInstanceId UtilityId => _utilityId;
+    public EditorId UtilityId => _utilityId;
 
     /// <summary>
     /// This utility's current dock location (the Utility Panel rail or a document tab).
@@ -92,13 +92,13 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// Binds the panel to its utility instance and backing resource without creating the WebView.
+    /// Binds the panel to its resolved editor and backing resource without creating the WebView.
     /// The backing file is expected to already exist, seeded before this call.
     /// </summary>
-    public async Task<Result> BindAsync(EditorInstance instance, ResourceKey resource, string displayName)
+    public async Task<Result> BindAsync(ResolvedEditor resolvedEditor, ResourceKey resource, string displayName)
     {
-        _instance = instance;
-        _utilityId = instance.InstanceId;
+        _resolvedEditor = resolvedEditor;
+        _utilityId = resolvedEditor.EditorId;
 
         PanelHeaderControl.Title = displayName;
 
@@ -122,17 +122,17 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// Initializes the WebView for the bound instance. The controller runs the initialization
+    /// Initializes the WebView for the bound resolved editor. The controller runs the initialization
     /// once; later calls await the same result, so this is safe to call on every show.
     /// </summary>
     public async Task<Result> EnsureInitializedAsync()
     {
-        if (_instance is null)
+        if (_resolvedEditor is null)
         {
-            return Result.Fail("Cannot initialize utility: the view is not bound to an instance");
+            return Result.Fail("Cannot initialize utility: the view is not bound to a resolved editor");
         }
 
-        var initResult = await _controller.InitializeAsync(_instance);
+        var initResult = await _controller.InitializeAsync(_resolvedEditor);
         if (initResult.IsFailure)
         {
             return Result.Fail($"Failed to initialize utility: '{_viewModel.FileResource}'")

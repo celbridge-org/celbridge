@@ -52,10 +52,10 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public virtual ResourceKey FileResource => DocumentViewModel.FileResource;
 
-    private EditorInstanceId _editorId = EditorInstanceId.Empty;
+    private EditorId _editorId = EditorId.Empty;
 
     // Set once by the constructing factory. Throws on any subsequent set.
-    public EditorInstanceId EditorId
+    public EditorId EditorId
     {
         get => _editorId;
         set

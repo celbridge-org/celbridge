@@ -25,7 +25,7 @@ public enum ReloadHint
 /// default when that editor is no longer a candidate).
 /// </summary>
 public sealed record EditorPickList(
-    IReadOnlyList<EditorInstanceId> EditorIds,
+    IReadOnlyList<EditorId> EditorIds,
     IReadOnlyList<string> Labels,
     int SelectedIndex);
 
@@ -33,7 +33,7 @@ public sealed record EditorPickList(
 /// A candidate editor for a file extension on the Project Settings File Types page: the editor id
 /// written to the associations map, paired with its display name.
 /// </summary>
-public sealed record EditorCandidate(EditorInstanceId EditorId, string DisplayName);
+public sealed record EditorCandidate(EditorId EditorId, string DisplayName);
 
 /// <summary>
 /// The editors that can open a given file extension and the one used by default (the first candidate),
@@ -42,7 +42,7 @@ public sealed record EditorCandidate(EditorInstanceId EditorId, string DisplayNa
 /// </summary>
 public sealed record ExtensionEditorCandidates(
     IReadOnlyList<EditorCandidate> Candidates,
-    EditorInstanceId DefaultEditorId);
+    EditorId DefaultEditorId);
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
@@ -82,7 +82,7 @@ public interface IDocumentsService
     /// non-empty, uses that specific editor instead of the default resolution
     /// chain. Fails if the resource does not exist.
     /// </summary>
-    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default);
+    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default);
 
     /// <summary>
     /// Returns the document view type for the specified file resource.
@@ -109,23 +109,23 @@ public interface IDocumentsService
 
     /// <summary>
     /// Returns the file's per-file editor override from the sidecar's '_editor' field, or
-    /// EditorInstanceId.Empty when the file has none.
+    /// EditorId.Empty when the file has none.
     /// </summary>
-    Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource);
+    Task<EditorId> GetPreferredEditorAsync(ResourceKey fileResource);
 
     /// <summary>
     /// Records the user's editor choice for a file. Writes the sidecar '_editor' override when the
     /// choice differs from the project default, and clears it when the choice is the default, so the
     /// sidecar only ever stores a deviation.
     /// </summary>
-    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId);
+    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId);
 
     /// <summary>
     /// Builds the "Open with..." choices for a file: the pickable editors, their badged labels, and the
     /// index to preselect. Returns null when fewer than two editors can open the file, so no choice is
     /// worth offering.
     /// </summary>
-    EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId);
+    EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId);
 
     /// <summary>
     /// The editors that can open the given file extension, and the default among them, for the Project

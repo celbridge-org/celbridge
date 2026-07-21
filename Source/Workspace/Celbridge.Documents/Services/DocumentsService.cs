@@ -150,16 +150,16 @@ public class DocumentsService : IDocumentsService, IDisposable
             var packageService = workspaceService.PackageService;
             var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-            // Declared instances register first, in declaration order, then the built-ins.
+            // Declared editors register first, in declaration order, then the built-ins.
             // Registration order carries the editor resolution precedence.
-            foreach (var instance in packageService.GetEditorInstances())
+            foreach (var resolvedEditor in packageService.GetResolvedEditors())
             {
-                RegisterEditorInstanceFactory(instance, localizationService);
+                RegisterResolvedEditorFactory(resolvedEditor, localizationService);
             }
 
             foreach (var builtIn in packageService.GetBuiltInEditors())
             {
-                RegisterEditorInstanceFactory(builtIn, localizationService);
+                RegisterResolvedEditorFactory(builtIn, localizationService);
             }
 
             ApplyEditorAssociations();
@@ -170,24 +170,24 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    private void RegisterEditorInstanceFactory(EditorInstance instance, IPackageLocalizationService localizationService)
+    private void RegisterResolvedEditorFactory(ResolvedEditor resolvedEditor, IPackageLocalizationService localizationService)
     {
         try
         {
-            // Register an editor factory for each editor instance, including utilities: a utility's
+            // Register an editor factory for each resolved editor, including utilities: a utility's
             // factory is what lets it be docked into a document tab.
-            var factory = new CustomDocumentViewFactory(_serviceProvider, instance, localizationService);
+            var factory = new CustomDocumentViewFactory(_serviceProvider, resolvedEditor, localizationService);
             var result = _documentEditorRegistry.RegisterFactory(factory);
             if (result.IsFailure)
             {
                 _logger.LogWarning(result,
-                    $"Failed to register custom editor factory for: {instance.InstanceId}");
+                    $"Failed to register custom editor factory for: {resolvedEditor.EditorId}");
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                $"An exception occurred while registering custom editor for: {instance.InstanceId}");
+                $"An exception occurred while registering custom editor for: {resolvedEditor.EditorId}");
         }
     }
 
@@ -208,7 +208,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         foreach (var (extension, editorIdValue) in config.Celbridge.EditorAssociations)
         {
-            if (!EditorInstanceId.TryParse(editorIdValue, out var editorId))
+            if (!EditorId.TryParse(editorIdValue, out var editorId))
             {
                 invalidEntries.Add($"'{extension}': '{editorIdValue}' is not a valid editor id");
                 continue;
@@ -275,7 +275,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _ = _layoutStore.StoreSectionRatiosAsync(message.SectionRatios);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default)
     {
         var createResult = await CreateDocumentViewInternalAsync(fileResource, editorId);
         if (createResult.IsFailure)
@@ -341,10 +341,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
-    public Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource) =>
+    public Task<EditorId> GetPreferredEditorAsync(ResourceKey fileResource) =>
         _preferenceStore.GetPreferredEditorAsync(fileResource);
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
     {
         var defaultEditorId = GetDefaultEditorId(fileResource);
 
@@ -359,7 +359,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             });
         }
 
-        // ToString() forces a string value. Passing the EditorInstanceId struct directly boxes it,
+        // ToString() forces a string value. Passing the EditorId struct directly boxes it,
         // and SidecarService rejects non-scalar values.
         var fields = new Dictionary<string, object>(StringComparer.Ordinal)
         {
@@ -373,7 +373,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         });
     }
 
-    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId)
+    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId)
     {
         var factories = _documentEditorRegistry.GetUserPickableFactoriesForResource(fileResource);
         if (factories.Count < 2)
@@ -390,7 +390,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
 
-        var editorIds = new List<EditorInstanceId>();
+        var editorIds = new List<EditorId>();
         var labels = new List<string>();
         var selectedIndex = 0;
         for (var i = 0; i < factories.Count; i++)
@@ -430,7 +430,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         // The first user-pickable factory is the editor that opens the extension by default, matching
         // the runtime resolution order (and the code-editor "view as text" fallback for text files).
-        var defaultEditorId = factories.Count > 0 ? factories[0].EditorId : EditorInstanceId.Empty;
+        var defaultEditorId = factories.Count > 0 ? factories[0].EditorId : EditorId.Empty;
 
         return new ExtensionEditorCandidates(candidates, defaultEditorId);
     }
@@ -438,7 +438,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     // The editor the resolution rules pick when the file has no per-file override: the
     // editor-associations entry if one matches, else the first non-placeholder supporting factory in
     // resolution order.
-    private EditorInstanceId GetDefaultEditorId(ResourceKey fileResource)
+    private EditorId GetDefaultEditorId(ResourceKey fileResource)
     {
         var associatedResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
         if (associatedResult.IsSuccess)
@@ -455,7 +455,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
         }
 
-        return EditorInstanceId.Empty;
+        return EditorId.Empty;
     }
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
@@ -546,7 +546,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Task RestorePanelState() => _layoutStore.RestorePanelStateAsync();
 
-    private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, EditorInstanceId editorId = default)
+    private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, EditorId editorId = default)
     {
         return _viewFactory.CreateAsync(fileResource, editorId);
     }

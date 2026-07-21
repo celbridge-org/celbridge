@@ -8,7 +8,7 @@ Call `app_list_utilities` first to discover the valid ids, each utility's curren
 
 - `utilityId` — the id of the utility to show. Two forms, one scheme:
   - Built-in Utility Panel surfaces: `celbridge.explorer` and `celbridge.search`.
-  - Custom utilities: the instance id declared in the `.celbridge` file (the same id `app_list_utilities` reports).
+  - Custom utilities: the editor id of the contributed utility (the same id `app_list_utilities` reports).
 - `location` (optional) — a dock location to move the utility to before revealing it: `"panel"` (the Utility Panel rail) or `"document"` (a document tab). Omit to reveal the utility wherever it currently is without moving it. Ignored for the built-in utilities, which are always in the panel.
 
 ## Behaviour

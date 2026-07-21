@@ -3,4 +3,4 @@ namespace Celbridge.Documents;
 /// <summary>
 /// Snapshot of an open document's state, used for persistence and querying.
 /// </summary>
-public record OpenDocumentInfo(ResourceKey FileResource, DocumentAddress Address, EditorInstanceId EditorId);
+public record OpenDocumentInfo(ResourceKey FileResource, DocumentAddress Address, EditorId EditorId);

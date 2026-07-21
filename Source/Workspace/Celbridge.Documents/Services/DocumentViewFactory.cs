@@ -39,7 +39,7 @@ public class DocumentViewFactory
     /// </summary>
     public async Task<Result<IDocumentView>> CreateAsync(
         ResourceKey fileResource,
-        EditorInstanceId requestedEditorId)
+        EditorId requestedEditorId)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
@@ -138,7 +138,7 @@ public class DocumentViewFactory
         return null;
     }
 
-    // First factory in resolution order for the resource: declared instances in declaration
+    // First factory in resolution order for the resource: declared editors in declaration
     // order, then built-ins in host order. Placeholder factories (package.toml, *.celbridge,
     // *.editor.toml) reserve extensions but never produce a view, so they are skipped here.
     private IDocumentView? CreateFromResolvedFactory(ResourceKey fileResource)
@@ -181,7 +181,7 @@ public class DocumentViewFactory
         return CreateTextDocumentView(fileResource);
     }
 
-    private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, EditorInstanceId requestedEditorId)
+    private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, EditorId requestedEditorId)
     {
         var getFactoryResult = _documentEditorRegistry.GetFactoryById(requestedEditorId);
         if (getFactoryResult.IsFailure)
@@ -253,7 +253,7 @@ public class DocumentViewFactory
         return textBoxView.OkResult<IDocumentView>();
     }
 
-    private static bool IsCodeEditor(EditorInstanceId editorId)
+    private static bool IsCodeEditor(EditorId editorId)
     {
         return editorId == DocumentConstants.CodeEditorId;
     }

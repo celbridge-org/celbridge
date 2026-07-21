@@ -1,24 +1,24 @@
 namespace Celbridge.Tests.Documents;
 
 [TestFixture]
-public class EditorInstanceIdTests
+public class EditorIdTests
 {
     [Test]
     public void Empty_IsEmpty_ReturnsTrue()
     {
-        EditorInstanceId.Empty.IsEmpty.Should().BeTrue();
+        EditorId.Empty.IsEmpty.Should().BeTrue();
     }
 
     [Test]
     public void Empty_ToString_ReturnsEmptyString()
     {
-        EditorInstanceId.Empty.ToString().Should().BeEmpty();
+        EditorId.Empty.ToString().Should().BeEmpty();
     }
 
     [Test]
     public void Default_IsEmpty_ReturnsTrue()
     {
-        EditorInstanceId defaultValue = default;
+        EditorId defaultValue = default;
 
         defaultValue.IsEmpty.Should().BeTrue();
     }
@@ -31,7 +31,7 @@ public class EditorInstanceIdTests
     [TestCase("dot-free-id")]
     public void IsValid_AcceptsWellFormedIds(string input)
     {
-        EditorInstanceId.IsValid(input).Should().BeTrue();
+        EditorId.IsValid(input).Should().BeTrue();
     }
 
     [TestCase("")]
@@ -41,22 +41,22 @@ public class EditorInstanceIdTests
     [TestCase("under_score.bad")]
     public void IsValid_RejectsInvalidIds(string input)
     {
-        EditorInstanceId.IsValid(input).Should().BeFalse();
+        EditorId.IsValid(input).Should().BeFalse();
     }
 
     [Test]
     public void Create_ComposesPackageNameAndContributionId()
     {
-        var instanceId = EditorInstanceId.Create("acme", "notepad");
+        var editorId = EditorId.Create("acme", "notepad");
 
-        instanceId.ToString().Should().Be("acme.notepad");
+        editorId.ToString().Should().Be("acme.notepad");
     }
 
     [Test]
     public void Create_ThrowsOnEmptyPart()
     {
-        var missingPackage = () => EditorInstanceId.Create(string.Empty, "notepad");
-        var missingContribution = () => EditorInstanceId.Create("acme", string.Empty);
+        var missingPackage = () => EditorId.Create(string.Empty, "notepad");
+        var missingContribution = () => EditorId.Create("acme", string.Empty);
 
         missingPackage.Should().Throw<ArgumentException>();
         missingContribution.Should().Throw<ArgumentException>();
@@ -65,13 +65,13 @@ public class EditorInstanceIdTests
     [Test]
     public void IsValid_RejectsNullInput()
     {
-        EditorInstanceId.IsValid(null!).Should().BeFalse();
+        EditorId.IsValid(null!).Should().BeFalse();
     }
 
     [Test]
     public void Constructor_ThrowsOnInvalidInput()
     {
-        var invocation = () => new EditorInstanceId("INVALID");
+        var invocation = () => new EditorId("INVALID");
 
         invocation.Should().Throw<ArgumentException>();
     }
@@ -79,7 +79,7 @@ public class EditorInstanceIdTests
     [Test]
     public void Constructor_ThrowsOnEmptyInput()
     {
-        var invocation = () => new EditorInstanceId(string.Empty);
+        var invocation = () => new EditorId(string.Empty);
 
         invocation.Should().Throw<ArgumentException>();
     }
@@ -87,7 +87,7 @@ public class EditorInstanceIdTests
     [Test]
     public void TryParse_SucceedsForValidInput()
     {
-        var parsed = EditorInstanceId.TryParse("celbridge.code-editor", out var editorId);
+        var parsed = EditorId.TryParse("celbridge.code-editor", out var editorId);
 
         parsed.Should().BeTrue();
         editorId.ToString().Should().Be("celbridge.code-editor");
@@ -97,7 +97,7 @@ public class EditorInstanceIdTests
     [Test]
     public void TryParse_FailsForInvalidInputAndReturnsEmpty()
     {
-        var parsed = EditorInstanceId.TryParse("NOT-VALID", out var editorId);
+        var parsed = EditorId.TryParse("NOT-VALID", out var editorId);
 
         parsed.Should().BeFalse();
         editorId.IsEmpty.Should().BeTrue();
@@ -106,7 +106,7 @@ public class EditorInstanceIdTests
     [Test]
     public void TryParse_FailsForNullAndReturnsEmpty()
     {
-        var parsed = EditorInstanceId.TryParse(null, out var editorId);
+        var parsed = EditorId.TryParse(null, out var editorId);
 
         parsed.Should().BeFalse();
         editorId.IsEmpty.Should().BeTrue();
@@ -115,7 +115,7 @@ public class EditorInstanceIdTests
     [Test]
     public void TryParse_FailsForEmptyAndReturnsEmpty()
     {
-        var parsed = EditorInstanceId.TryParse(string.Empty, out var editorId);
+        var parsed = EditorId.TryParse(string.Empty, out var editorId);
 
         parsed.Should().BeFalse();
         editorId.IsEmpty.Should().BeTrue();
@@ -124,8 +124,8 @@ public class EditorInstanceIdTests
     [Test]
     public void Equality_MatchesIdsWithSameValue()
     {
-        var left = new EditorInstanceId("celbridge.code-editor");
-        var right = new EditorInstanceId("celbridge.code-editor");
+        var left = new EditorId("celbridge.code-editor");
+        var right = new EditorId("celbridge.code-editor");
 
         (left == right).Should().BeTrue();
         left.Equals(right).Should().BeTrue();
@@ -135,8 +135,8 @@ public class EditorInstanceIdTests
     [Test]
     public void Equality_DistinguishesDifferentIds()
     {
-        var left = new EditorInstanceId("celbridge.code-editor");
-        var right = new EditorInstanceId("celbridge.markdown-preview");
+        var left = new EditorId("celbridge.code-editor");
+        var right = new EditorId("celbridge.markdown-preview");
 
         (left == right).Should().BeFalse();
         (left != right).Should().BeTrue();
@@ -145,8 +145,8 @@ public class EditorInstanceIdTests
     [Test]
     public void Equality_EmptyEqualsDefault()
     {
-        EditorInstanceId empty = EditorInstanceId.Empty;
-        EditorInstanceId defaultValue = default;
+        EditorId empty = EditorId.Empty;
+        EditorId defaultValue = default;
 
         (empty == defaultValue).Should().BeTrue();
     }

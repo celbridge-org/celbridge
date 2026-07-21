@@ -118,7 +118,7 @@ public class OpenDocumentCommandTests
         command.ForceReload = true;
         command.Location = "line:42";
         command.Activate = false;
-        command.EditorId = new EditorInstanceId("celbridge.markdown-editor");
+        command.EditorId = new EditorId("celbridge.markdown-editor");
         command.EditorStateJson = "{\"scroll\":0.5}";
 
         var result = await command.ExecuteAsync();
@@ -130,7 +130,7 @@ public class OpenDocumentCommandTests
                 options.ForceReload == true &&
                 options.Location == "line:42" &&
                 options.Activate == false &&
-                options.EditorId == new EditorInstanceId("celbridge.markdown-editor") &&
+                options.EditorId == new EditorId("celbridge.markdown-editor") &&
                 options.EditorStateJson == "{\"scroll\":0.5}"));
     }
 

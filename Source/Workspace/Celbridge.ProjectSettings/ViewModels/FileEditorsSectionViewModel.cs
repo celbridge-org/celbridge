@@ -117,7 +117,7 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
         var manifestCategoryByExtension = new Dictionary<string, FileTypeCategory?>(StringComparer.OrdinalIgnoreCase);
         var packageContributedByExtension = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var instance in packageService.GetEditorInstances())
+        foreach (var instance in packageService.GetResolvedEditors())
         {
             if (instance.Contribution.IsUtility)
             {

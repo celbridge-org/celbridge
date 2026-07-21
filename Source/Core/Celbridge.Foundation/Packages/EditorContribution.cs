@@ -90,7 +90,7 @@ public partial record EditorContribution
     public IReadOnlyDictionary<string, string> Options { get; init; } = EmptyOptions;
 
     /// <summary>
-    /// Typed configuration keys declared by the manifest's [[config]] entries. Instance tables in
+    /// Typed configuration keys declared by the manifest's [[config]] entries. Contribution tables in
     /// the project config are type-checked against these descriptors.
     /// </summary>
     public IReadOnlyList<ConfigDescriptor> ConfigDescriptors { get; init; } = [];

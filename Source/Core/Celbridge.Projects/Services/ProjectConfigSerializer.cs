@@ -6,7 +6,7 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// Serializes a project config to canonical, deterministic TOML. The same resolved model always
 /// produces the same bytes: a fixed section and key order, uniform inline arrays and tables, and
-/// config keys sorted per instance. This is the counterpart of ProjectConfigParser and the write half
+/// config keys sorted per contribution. This is the counterpart of ProjectConfigParser and the write half
 /// of the normalize-on-load contract, so it round-trips every section the parser reads.
 /// </summary>
 public static class ProjectConfigSerializer

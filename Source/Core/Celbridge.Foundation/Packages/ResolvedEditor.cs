@@ -3,17 +3,18 @@ using Celbridge.Documents;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// The resolved, single activation of an editor contribution: one per active contribution, plus the
-/// built-in editors wrapped in the same record under their host-assigned ids. Presentation (title,
-/// icon, tooltip) comes from the contribution manifest, not from the project.
+/// What a declared contribution resolves to, holding the contribution and the config it runs with.
+/// There is one per active contribution, whatever its type, plus the built-in editors wrapped in the
+/// same record under their host-assigned ids. The views that open on top of it are created by the
+/// editor's factory: one for a utility, one per open document for a document editor.
 /// </summary>
-public record EditorInstance
+public record ResolvedEditor
 {
     /// <summary>
     /// The id that addresses this editor: the "{package}.{contribution}" contribution reference for a
     /// discovered contribution, or the host-assigned dotted id for a built-in editor.
     /// </summary>
-    public EditorInstanceId InstanceId { get; init; }
+    public EditorId EditorId { get; init; }
 
     /// <summary>
     /// The editor contribution this activates.

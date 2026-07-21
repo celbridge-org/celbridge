@@ -14,7 +14,7 @@ public partial class AppTools
     [RelatedGuides("workspace_panels")]
     public async partial Task<CallToolResult> ShowUtility(string utilityId, string? location = null)
     {
-        if (!EditorInstanceId.TryParse(utilityId, out var parsedUtilityId))
+        if (!EditorId.TryParse(utilityId, out var parsedUtilityId))
         {
             return ToolResponse.Error(Result.Fail("A valid utilityId is required: lowercase letters, digits, dots, and hyphens."));
         }

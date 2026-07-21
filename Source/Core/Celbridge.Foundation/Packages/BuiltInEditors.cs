@@ -8,48 +8,48 @@ namespace Celbridge.Packages;
 /// libraries are not available, in which case its editor is simply not offered.
 /// </summary>
 public record BuiltInEditorDefinition(
-    EditorInstanceId EditorId,
+    EditorId EditorId,
     string PackageName,
     string ContributionId,
     bool Optional = false);
 
 /// <summary>
 /// Catalog of the built-in editors present in every project. Built-ins need no activation entry and
-/// no instance declaration; they carry host-assigned dotted ids so the registry's key space holds
-/// them beside the dot-free project-declared instance ids.
+/// no contribution declaration; they carry host-assigned dotted ids so the registry's key space holds
+/// them beside the project-declared editor ids.
 /// </summary>
 public static class BuiltInEditors
 {
     /// <summary>
     /// Built-in id of the Monaco code editor.
     /// </summary>
-    public static readonly EditorInstanceId CodeEditorId = new("celbridge.code");
+    public static readonly EditorId CodeEditorId = new("celbridge.code");
 
     /// <summary>
     /// Built-in id of the Markdown editor.
     /// </summary>
-    public static readonly EditorInstanceId MarkdownEditorId = new("celbridge.markdown");
+    public static readonly EditorId MarkdownEditorId = new("celbridge.markdown");
 
     /// <summary>
     /// Built-in id of the File Viewer.
     /// </summary>
-    public static readonly EditorInstanceId FileViewerId = new("celbridge.file-viewer");
+    public static readonly EditorId FileViewerId = new("celbridge.file-viewer");
 
     /// <summary>
     /// Built-in id of the spreadsheet editor. Present in installer builds; absent from a source
     /// build without the SpreadJS library.
     /// </summary>
-    public static readonly EditorInstanceId SpreadsheetEditorId = new("celbridge.spreadsheet");
+    public static readonly EditorId SpreadsheetEditorId = new("celbridge.spreadsheet");
 
     /// <summary>
     /// Built-in id of the web view editor, registered natively by the WebView module.
     /// </summary>
-    public static readonly EditorInstanceId WebViewEditorId = new("celbridge.webview-editor");
+    public static readonly EditorId WebViewEditorId = new("celbridge.webview-editor");
 
     /// <summary>
     /// Built-in id of the HTML viewer, registered natively by the WebView module.
     /// </summary>
-    public static readonly EditorInstanceId HtmlViewerId = new("celbridge.html-viewer");
+    public static readonly EditorId HtmlViewerId = new("celbridge.html-viewer");
 
     /// <summary>
     /// Bundled packages the host always activates, independent of the project's activation list.
@@ -76,12 +76,12 @@ public static class BuiltInEditors
     ];
 
     /// <summary>
-    /// Fixed resolution order for built-in editors, applied after every declared instance. Pinned to
-    /// preserve the pre-instance defaults: specialized editors ahead of the general code editor. This
+    /// Fixed resolution order for built-in editors, applied after every declared editor. Specialized
+    /// editors rank ahead of the general code editor. This
     /// is the authority for built-in open precedence; PackageBuiltIns lists the same contributions
     /// (minus the natively registered HtmlViewer and WebView) in the same relative order.
     /// </summary>
-    public static readonly IReadOnlyList<EditorInstanceId> HostResolutionOrder =
+    public static readonly IReadOnlyList<EditorId> HostResolutionOrder =
     [
         MarkdownEditorId,
         HtmlViewerId,

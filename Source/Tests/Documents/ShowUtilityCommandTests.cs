@@ -11,7 +11,7 @@ namespace Celbridge.Tests.Documents;
 [TestFixture]
 public class ShowUtilityCommandTests
 {
-    private static readonly EditorInstanceId NotepadUtilityId = EditorInstanceId.Create("acme", "notepad");
+    private static readonly EditorId NotepadUtilityId = EditorId.Create("acme", "notepad");
 
     private IUtilityPanel _utilityPanel = null!;
     private IUtilityService _utilityService = null!;
@@ -81,7 +81,7 @@ public class ShowUtilityCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
-        _utilityPanel.DidNotReceive().ShowUtility(Arg.Any<EditorInstanceId>());
+        _utilityPanel.DidNotReceive().ShowUtility(Arg.Any<EditorId>());
     }
 
     [Test]
@@ -98,7 +98,7 @@ public class ShowUtilityCommandTests
 
         result.IsSuccess.Should().BeTrue();
         _utilityPanel.Received(1).ShowUtility(BuiltInUtilityIds.Explorer);
-        _utilityService.DidNotReceive().HasUtility(Arg.Any<EditorInstanceId>());
+        _utilityService.DidNotReceive().HasUtility(Arg.Any<EditorId>());
     }
 
     [Test]

@@ -29,13 +29,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
     // and focus state, which the buttons bind to.
-    private readonly Dictionary<EditorInstanceId, UtilityButton> _buttons = new();
-    private readonly Dictionary<EditorInstanceId, ContentControl> _contentControls = new();
-    private readonly Dictionary<EditorInstanceId, Action> _focusActions = new();
+    private readonly Dictionary<EditorId, UtilityButton> _buttons = new();
+    private readonly Dictionary<EditorId, ContentControl> _contentControls = new();
+    private readonly Dictionary<EditorId, Action> _focusActions = new();
 
     // Docked utilities (utility id -> the document resource its WebView is docked into). A docked utility's rail
     // click activates its document tab instead of showing the panel surface.
-    private readonly Dictionary<EditorInstanceId, ResourceKey> _dockedUtilityResources = new();
+    private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
 
     // Selection is persisted only after RestoreSelectedUtility runs, so the constructor's default selection and
     // the restore itself do not overwrite the saved selection before it is read.
@@ -47,7 +47,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public UtilityPanelViewModel ViewModel { get; }
 
-    public EditorInstanceId ActiveUtilityId => ViewModel.SelectedUtilityId;
+    public EditorId ActiveUtilityId => ViewModel.SelectedUtilityId;
 
     public UtilityPanel()
     {
@@ -178,7 +178,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ViewModel.ReconcileFocus(message.FocusedPanel);
     }
 
-    public void ShowUtility(EditorInstanceId utilityId)
+    public void ShowUtility(EditorId utilityId)
     {
         // A utility docked as a document activates its document tab, without changing the shown panel surface or
         // the rail highlight. A utility in the panel selects its rail surface.
@@ -212,7 +212,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     // Selects the surface in the view model (which lights the accent optimistically) and shows its content.
-    private void ShowSurface(EditorInstanceId utilityId)
+    private void ShowSurface(EditorId utilityId)
     {
         if (!_contentControls.TryGetValue(utilityId, out var content))
         {
@@ -228,7 +228,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // content hosts. Keeping the outgoing content visible until focus has moved onto the incoming surface stops
     // WinUI from relocating focus to another panel when the previously focused element would otherwise be
     // collapsed. Focusing after layout (rather than this tick) lands on a control that is actually focusable.
-    private void ShowContentWithFocus(EditorInstanceId utilityId, ContentControl content)
+    private void ShowContentWithFocus(EditorId utilityId, ContentControl content)
     {
         // A surface that is already visible (re-selected while another panel holds focus, e.g. after a
         // docked utility moved focus to a document) is already laid out and setting it visible again may
@@ -254,7 +254,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         content.LayoutUpdated += OnLayoutUpdated;
     }
 
-    private void FocusShownContent(EditorInstanceId utilityId, ContentControl content)
+    private void FocusShownContent(EditorId utilityId, ContentControl content)
     {
         // Drop a stale attempt when a later selection superseded this one before layout ran.
         if (ViewModel.SelectedUtilityId != utilityId
@@ -381,7 +381,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
     }
 
-    public void SetUtilityDockLocation(EditorInstanceId utilityId, DockLocation location, ResourceKey documentResource)
+    public void SetUtilityDockLocation(EditorId utilityId, DockLocation location, ResourceKey documentResource)
     {
         bool isDocument = location == DockLocation.Document;
         if (isDocument)
@@ -396,7 +396,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ViewModel.SetDocked(utilityId, isDocument);
     }
 
-    public void FlashUtility(EditorInstanceId utilityId)
+    public void FlashUtility(EditorId utilityId)
     {
         if (!_buttons.TryGetValue(utilityId, out var button))
         {
@@ -413,7 +413,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         var tag = _settings.Get(SettingCatalog.Layout.UtilityPanelSelectedUtility);
 
-        if (EditorInstanceId.TryParse(tag, out var utilityId)
+        if (EditorId.TryParse(tag, out var utilityId)
             && _contentControls.ContainsKey(utilityId)
             && !_dockedUtilityResources.ContainsKey(utilityId))
         {
@@ -445,7 +445,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         return IsCustomUtility(ViewModel.SelectedUtilityId);
     }
 
-    private static bool IsCustomUtility(EditorInstanceId utilityId)
+    private static bool IsCustomUtility(EditorId utilityId)
     {
         return !utilityId.IsEmpty
             && utilityId != BuiltInUtilityIds.Explorer
@@ -455,14 +455,14 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".
     // This must match the AutomationId set on the button.
-    private static string CustomLandmarkId(EditorInstanceId utilityId)
+    private static string CustomLandmarkId(EditorId utilityId)
     {
         return $"{utilityId}-utility-button";
     }
 
-    private List<EditorInstanceId> GetCustomUtilityIds()
+    private List<EditorId> GetCustomUtilityIds()
     {
-        var customUtilityIds = new List<EditorInstanceId>();
+        var customUtilityIds = new List<EditorId>();
         foreach (var utilityId in _contentControls.Keys)
         {
             if (IsCustomUtility(utilityId))

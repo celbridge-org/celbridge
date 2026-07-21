@@ -52,7 +52,7 @@ contribution = "my-editor"
 grid-size    = 16              # a config key declared by the editor's [[config]] descriptors
 ```
 
-To turn a whole package off, list it in `[celbridge].disabled-packages`. Each contribution has exactly one instance, referenced as `package.contribution`; a project cannot declare several instances or override an editor's display name, icon, or description.
+To turn a whole package off, list it in `[celbridge].disabled-packages`. A contribution is referenced as `package.contribution`; a project cannot declare several copies of one contribution, nor override an editor's display name, icon, or description.
 
 Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in host order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. See `project_structure` for the full `.celbridge` schema.
 
@@ -68,7 +68,7 @@ default      = 16
 display-name = "MyEditor_Config_GridSize"
 ```
 
-Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Instance tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the instance's keys). Descriptor keys must not collide with the reserved deviation-entry keys (`package`, `contribution`, `disabled`, `enabled`).
+Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Contribution tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the contribution's keys). Descriptor keys must not collide with the reserved deviation-entry keys (`package`, `contribution`, `disabled`, `enabled`).
 
 ## JS handlers
 

@@ -97,7 +97,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Editor missing required '{IdKey}' field: {editorTomlPath}");
             }
 
-            if (!EditorInstanceId.IsValidName(editorId))
+            if (!EditorId.IsValidName(editorId))
             {
                 return Result.Fail(
                     $"Invalid editor id '{editorId}' in manifest: {editorTomlPath}. " +
@@ -446,7 +446,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Config descriptor missing required '{KeyKey}' field: {editorTomlPath}");
             }
 
-            if (!EditorInstanceId.IsValidName(key))
+            if (!EditorId.IsValidName(key))
             {
                 return Result.Fail(
                     $"Config descriptor key '{key}' must use only lowercase letters, digits, and hyphens: {editorTomlPath}");

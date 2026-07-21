@@ -13,17 +13,17 @@ public static class BuiltInUtilityIds
     /// <summary>
     /// The Explorer panel's utility id.
     /// </summary>
-    public static readonly EditorInstanceId Explorer = EditorInstanceId.Create("celbridge", "explorer");
+    public static readonly EditorId Explorer = EditorId.Create("celbridge", "explorer");
 
     /// <summary>
     /// The Search panel's utility id.
     /// </summary>
-    public static readonly EditorInstanceId Search = EditorInstanceId.Create("celbridge", "search");
+    public static readonly EditorId Search = EditorId.Create("celbridge", "search");
 
     /// <summary>
     /// The Project Settings panel's utility id.
     /// </summary>
-    public static readonly EditorInstanceId ProjectSettings = EditorInstanceId.Create("celbridge", "project-settings");
+    public static readonly EditorId ProjectSettings = EditorId.Create("celbridge", "project-settings");
 }
 
 /// <summary>
@@ -31,7 +31,7 @@ public static class BuiltInUtilityIds
 /// view (a UIElement) and FocusPanel gives that view keyboard focus.
 /// </summary>
 public sealed record CustomUtility(
-    EditorInstanceId UtilityId,
+    EditorId UtilityId,
     string IconGlyphName,
     string Tooltip,
     string DisplayName,
@@ -61,13 +61,13 @@ public interface IUtilityPanel
     /// <summary>
     /// The utility id of the surface currently active in the rail. Empty when no rail surface is active.
     /// </summary>
-    EditorInstanceId ActiveUtilityId { get; }
+    EditorId ActiveUtilityId { get; }
 
     /// <summary>
     /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
     /// otherwise selects its rail surface in the Utility Panel. A no-op when no utility has that id.
     /// </summary>
-    void ShowUtility(EditorInstanceId utilityId);
+    void ShowUtility(EditorId utilityId);
 
     /// <summary>
     /// Appends custom utility rail items and their content hosts after the built-in items. Replaces any
@@ -87,12 +87,12 @@ public interface IUtilityPanel
     /// UtilityPanel the button returns to normal, its click shows the panel surface, and documentResource
     /// is ignored.
     /// </summary>
-    void SetUtilityDockLocation(EditorInstanceId utilityId, DockLocation location, ResourceKey documentResource);
+    void SetUtilityDockLocation(EditorId utilityId, DockLocation location, ResourceKey documentResource);
 
     /// <summary>
     /// Briefly flashes a utility's rail button to draw attention to it. A no-op when no utility has that id.
     /// </summary>
-    void FlashUtility(EditorInstanceId utilityId);
+    void FlashUtility(EditorId utilityId);
 
     /// <summary>
     /// Restores the previously active rail surface from workspace settings, falling back to Explorer when the

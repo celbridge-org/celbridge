@@ -11,7 +11,7 @@ public class ProjectFileFactory : DocumentEditorFactoryBase
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override EditorInstanceId EditorId { get; } = new("celbridge.project-file");
+    public override EditorId EditorId { get; } = new("celbridge.project-file");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_ProjectFile");
 

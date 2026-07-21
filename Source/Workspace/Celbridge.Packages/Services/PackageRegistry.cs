@@ -9,8 +9,8 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Discovers packages from bundled and project sources, reconciles the project config against the
-/// discovered contributions (materializing default-active instances and honouring disables), and
-/// resolves the resulting editor instances and the built-in editors.
+/// discovered contributions (materializing default-active editors and honouring disables), and
+/// resolves the resulting editors and the built-ins.
 /// </summary>
 public class PackageRegistry
 {
@@ -27,8 +27,8 @@ public class PackageRegistry
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
 
-    private List<EditorInstance> _editorInstances = [];
-    private List<EditorInstance> _builtInEditors = [];
+    private List<ResolvedEditor> _resolvedEditors = [];
+    private List<ResolvedEditor> _builtInEditors = [];
 
     // The reconciled, normalized config from the most recent discovery pass. RegisterPackagesAsync
     // persists it; a rescan leaves it unwritten.
@@ -71,9 +71,9 @@ public class PackageRegistry
         failures.AddRange(bundledFailures);
         failures.AddRange(projectFailures);
 
-        var instanceFailures = new List<EditorInstanceLoadFailure>();
-        var instanceWarnings = new List<EditorInstanceLoadFailure>();
-        await ResolveEditorInstancesAsync(persistNormalizedConfig && failures.Count == 0, instanceFailures, instanceWarnings);
+        var resolvedEditorFailures = new List<ResolvedEditorLoadFailure>();
+        var resolvedEditorWarnings = new List<ResolvedEditorLoadFailure>();
+        await ResolveResolvedEditorsAsync(persistNormalizedConfig && failures.Count == 0, resolvedEditorFailures, resolvedEditorWarnings);
         ResolveBuiltInEditors();
 
         var report = new PackageDiscoveryReport
@@ -81,9 +81,9 @@ public class PackageRegistry
             BundledPackageCount = _bundledPackages.Count,
             ProjectPackageCount = _projectPackages.Count,
             Failures = failures.AsReadOnly(),
-            EditorInstanceCount = _editorInstances.Count,
-            EditorInstanceFailures = instanceFailures.AsReadOnly(),
-            EditorInstanceWarnings = instanceWarnings.AsReadOnly()
+            ResolvedEditorCount = _resolvedEditors.Count,
+            ResolvedEditorFailures = resolvedEditorFailures.AsReadOnly(),
+            ResolvedEditorWarnings = resolvedEditorWarnings.AsReadOnly()
         };
 
         _lastFailures = report.Failures;
@@ -91,7 +91,7 @@ public class PackageRegistry
         LogDiscoveredPackages();
 
         _logger.LogInformation(
-            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed, {report.EditorInstanceCount} instances");
+            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed, {report.ResolvedEditorCount} resolved editors");
 
         return report;
     }
@@ -117,9 +117,9 @@ public class PackageRegistry
             .AsReadOnly();
     }
 
-    public IReadOnlyList<EditorInstance> GetEditorInstances()
+    public IReadOnlyList<ResolvedEditor> GetResolvedEditors()
     {
-        return _editorInstances.AsReadOnly();
+        return _resolvedEditors.AsReadOnly();
     }
 
     public ProjectConfig? GetNormalizedConfig()
@@ -127,12 +127,12 @@ public class PackageRegistry
         return _normalizedConfig;
     }
 
-    public IReadOnlyList<EditorInstance> GetBuiltInEditors()
+    public IReadOnlyList<ResolvedEditor> GetBuiltInEditors()
     {
         return _builtInEditors.AsReadOnly();
     }
 
-    public Package? GetContributingPackage(EditorInstanceId editorId)
+    public Package? GetContributingPackage(EditorId editorId)
     {
         var editor = FindEditor(editorId);
         if (editor is null)
@@ -152,7 +152,7 @@ public class PackageRegistry
 
         foreach (var contribution in GetAvailableContributions())
         {
-            // A utility owns per-instance state files and is never created as an ordinary project
+            // A utility owns its own state file and is never created as an ordinary project
             // file, so it must not appear as a creatable type in the New File dialog.
             if (contribution.IsUtility)
             {
@@ -164,7 +164,7 @@ public class PackageRegistry
                 continue;
             }
 
-            // Multiple instances of one contribution offer one document type.
+            // One contribution offers one document type.
             if (!seenContributions.Add(contribution))
             {
                 continue;
@@ -276,16 +276,16 @@ public class PackageRegistry
         return readResult.Value;
     }
 
-    // Reconciles the project config against the discovered contributions and builds the live instance
-    // set from the result. Default-active contributions materialize, disabled instances and disabled
+    // Reconciles the project config against the discovered contributions and builds the resolved editor
+    // set from the result. Default-active contributions materialize, disabled contributions and disabled
     // packages drop out, and reconcile warnings surface as advisory banners. On a persisting load the
     // reconcile also writes the normalized config back to the project file.
-    private async Task ResolveEditorInstancesAsync(
+    private async Task ResolveResolvedEditorsAsync(
         bool persistNormalizedConfig,
-        List<EditorInstanceLoadFailure> instanceFailures,
-        List<EditorInstanceLoadFailure> instanceWarnings)
+        List<ResolvedEditorLoadFailure> resolvedEditorFailures,
+        List<ResolvedEditorLoadFailure> resolvedEditorWarnings)
     {
-        _editorInstances = [];
+        _resolvedEditors = [];
         _normalizedConfig = null;
 
         var discoveredContributions = GetAllPackages()
@@ -302,9 +302,9 @@ public class PackageRegistry
 
         foreach (var warning in reconcileResult.Warnings)
         {
-            instanceWarnings.Add(new EditorInstanceLoadFailure
+            resolvedEditorWarnings.Add(new ResolvedEditorLoadFailure
             {
-                InstanceId = string.Empty,
+                EditorId = string.Empty,
                 Detail = warning
             });
         }
@@ -314,18 +314,18 @@ public class PackageRegistry
             var contribution = resolved.Contribution;
             var effectiveConfig = BuildEffectiveConfig(contribution, resolved.Config, out _);
 
-            var instance = new EditorInstance
+            var resolvedEditor = new ResolvedEditor
             {
-                InstanceId = EditorInstanceId.Create(contribution.Package.Name, contribution.Id),
+                EditorId = EditorId.Create(contribution.Package.Name, contribution.Id),
                 Contribution = contribution,
                 Config = effectiveConfig,
             };
 
-            _editorInstances.Add(instance);
+            _resolvedEditors.Add(resolvedEditor);
         }
     }
 
-    // Wraps the always-active package contributions in EditorInstance records under their
+    // Wraps the always-active package contributions in ResolvedEditor records under their
     // host-assigned ids, in catalog order.
     private void ResolveBuiltInEditors()
     {
@@ -354,14 +354,14 @@ public class PackageRegistry
                 continue;
             }
 
-            var builtInInstance = new EditorInstance
+            var builtInEditor = new ResolvedEditor
             {
-                InstanceId = definition.EditorId,
+                EditorId = definition.EditorId,
                 Contribution = contribution,
                 Config = BuildEffectiveConfig(contribution, rawConfig: null, out _)
             };
 
-            _builtInEditors.Add(builtInInstance);
+            _builtInEditors.Add(builtInEditor);
         }
     }
 
@@ -421,25 +421,25 @@ public class PackageRegistry
         return effectiveConfig;
     }
 
-    // Finds a declared instance or built-in editor by id.
-    private EditorInstance? FindEditor(EditorInstanceId editorId)
+    // Finds a declared or built-in editor by id.
+    private ResolvedEditor? FindEditor(EditorId editorId)
     {
-        var declaredInstance = _editorInstances.FirstOrDefault(i => i.InstanceId == editorId);
-        if (declaredInstance is not null)
+        var declaredEditor = _resolvedEditors.FirstOrDefault(i => i.EditorId == editorId);
+        if (declaredEditor is not null)
         {
-            return declaredInstance;
+            return declaredEditor;
         }
 
-        return _builtInEditors.FirstOrDefault(i => i.InstanceId == editorId);
+        return _builtInEditors.FirstOrDefault(i => i.EditorId == editorId);
     }
 
-    // Enumerates the contributions of the available editors: declared instances first (in
+    // Enumerates the contributions of the available editors: declared editors first (in
     // declaration order), then the built-ins.
     private IEnumerable<EditorContribution> GetAvailableContributions()
     {
-        foreach (var instance in _editorInstances)
+        foreach (var resolvedEditor in _resolvedEditors)
         {
-            yield return instance.Contribution;
+            yield return resolvedEditor.Contribution;
         }
 
         foreach (var builtIn in _builtInEditors)
@@ -556,7 +556,7 @@ public class PackageRegistry
             if (members.Count > 1)
             {
                 _logger.LogError(
-                    $"Multiple bundled packages declare name '{group.Key}'. All {members.Count} instances skipped.");
+                    $"Multiple bundled packages declare name '{group.Key}'. All {members.Count} packages skipped.");
                 foreach (var member in members)
                 {
                     failures.Add(new PackageLoadFailure
@@ -699,7 +699,7 @@ public class PackageRegistry
             if (members.Count > 1)
             {
                 _logger.LogWarning(
-                    $"Multiple project packages declare name '{group.Key}'. All {members.Count} instances skipped to avoid ambiguity.");
+                    $"Multiple project packages declare name '{group.Key}'. All {members.Count} packages skipped to avoid ambiguity.");
                 foreach (var member in members)
                 {
                     failures.Add(new PackageLoadFailure

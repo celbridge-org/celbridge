@@ -188,7 +188,7 @@ public class PackageServiceDocumentTypeTests
     public async Task GetDocumentTypes_UninstantiatedOptionalContribution_Excluded()
     {
         // The package is discovered, but its editor is optional and the project has not enabled it,
-        // so no instance materializes and it offers no creatable document type.
+        // so no editor materializes and it offers no creatable document type.
         await CreateBundledPackage(
             "undeclared-editor",
             "UndeclaredEditor",
@@ -258,7 +258,7 @@ public class PackageServiceDocumentTypeTests
         var editors = _service.GetAllEditors();
         editors.Should().ContainSingle();
         editors[0].IsUtility.Should().BeTrue();
-        _service.GetEditorInstances().Should().ContainSingle();
+        _service.GetResolvedEditors().Should().ContainSingle();
 
         _service.GetDocumentTypes().Should().BeEmpty();
     }

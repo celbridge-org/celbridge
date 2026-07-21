@@ -42,21 +42,21 @@ public class UtilityService : IUtilityService, IDisposable
             serviceProvider.GetRequiredService<ILogger<UtilityResourceSeeder>>());
     }
 
-    public async Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<EditorInstance> instances)
+    public async Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors)
     {
         var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
         var tabs = new List<CustomUtility>();
-        foreach (var instance in instances)
+        foreach (var resolvedEditor in resolvedEditors)
         {
-            var contribution = instance.Contribution;
+            var contribution = resolvedEditor.Contribution;
             var descriptor = contribution.UtilityDescriptor;
             if (descriptor is null)
             {
                 continue;
             }
 
-            var utilityId = instance.InstanceId;
+            var utilityId = resolvedEditor.EditorId;
 
             // Each utility owns one state file, named from its contribution reference.
             var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{descriptor.ResourceExtension}";
@@ -76,7 +76,7 @@ public class UtilityService : IUtilityService, IDisposable
             var displayName = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.DisplayName);
 
             var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
-            var bindResult = await panelView.BindAsync(instance, resource, displayName);
+            var bindResult = await panelView.BindAsync(resolvedEditor, resource, displayName);
             if (bindResult.IsFailure)
             {
                 _logger.LogError(bindResult, $"Failed to bind utility: '{resource}'");
@@ -105,7 +105,7 @@ public class UtilityService : IUtilityService, IDisposable
         return tabs;
     }
 
-    public async Task<Result> EnsureUtilityInitializedAsync(EditorInstanceId utilityId)
+    public async Task<Result> EnsureUtilityInitializedAsync(EditorId utilityId)
     {
         var panelView = _utilities.FirstOrDefault(utility => utility.UtilityId == utilityId);
         if (panelView is null)
@@ -128,7 +128,7 @@ public class UtilityService : IUtilityService, IDisposable
         var panelView = _utilities.FirstOrDefault(utility => utility.FileResource == resource);
         if (panelView is null)
         {
-            // The utility no longer exists: its package or instance declaration was removed since
+            // The utility no longer exists: its package or contribution declaration was removed since
             // the layout was saved.
             return Result.Fail($"Cannot restore docked utility: no utility found for resource '{resource}'");
         }
@@ -168,12 +168,12 @@ public class UtilityService : IUtilityService, IDisposable
         return Result.Ok();
     }
 
-    public bool HasUtility(EditorInstanceId utilityId)
+    public bool HasUtility(EditorId utilityId)
     {
         return _utilities.Any(utility => utility.UtilityId == utilityId);
     }
 
-    public async Task<Result> DockUtilityAsync(EditorInstanceId utilityId, DockLocation location)
+    public async Task<Result> DockUtilityAsync(EditorId utilityId, DockLocation location)
     {
         var panelView = _utilities.FirstOrDefault(utility => utility.UtilityId == utilityId);
         if (panelView is null)
@@ -265,7 +265,7 @@ public class UtilityService : IUtilityService, IDisposable
         return Result.Ok();
     }
 
-    public EditorInstanceId? GetDockedUtilityId(ResourceKey resource)
+    public EditorId? GetDockedUtilityId(ResourceKey resource)
     {
         var panelView = _utilities.FirstOrDefault(utility => utility.Location == DockLocation.Document
             && utility.FileResource == resource);

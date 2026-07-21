@@ -532,7 +532,7 @@ public class ManifestTests
     [Test]
     public void LoadPackage_UtilityWithFileTypes_ReturnsFailure()
     {
-        // A utility owns per-instance state files and must not claim file extensions.
+        // A utility owns its own state file and must not claim file extensions.
         WriteSingleEditorPackage("""
             [editor]
             id = "widget-renderer"

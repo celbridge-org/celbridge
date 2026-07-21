@@ -12,7 +12,7 @@ public class EditorManifestFactory : DocumentEditorFactoryBase
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override EditorInstanceId EditorId { get; } = new("celbridge.editor-manifest");
+    public override EditorId EditorId { get; } = new("celbridge.editor-manifest");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_EditorManifest");
 

@@ -21,7 +21,7 @@ public class UtilityResourceSeeder
     }
 
     /// <summary>
-    /// Seeds an instance's backing file from the contribution's template when the file does not
+    /// Seeds a utility's backing file from the contribution's template when the file does not
     /// yet exist. Returns Fail when the seed write fails.
     /// </summary>
     public async Task<Result> SeedIfMissingAsync(ResourceKey resource, EditorContribution contribution)
