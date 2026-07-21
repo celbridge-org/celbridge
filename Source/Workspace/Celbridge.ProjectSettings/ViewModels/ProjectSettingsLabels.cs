@@ -17,4 +17,14 @@ internal static class ProjectSettingsLabels
     public static string EditorPickerTooltip => Localizer.GetString("ProjectSettings_EditorPickerTooltip");
     public static string PackageToggleTooltip => Localizer.GetString("ProjectSettings_PackageToggleTooltip");
     public static string ContributionToggleTooltip => Localizer.GetString("ProjectSettings_ContributionToggleTooltip");
+    public static string PackageEnabledLabel => Localizer.GetString("ProjectSettings_PackageEnabledLabel");
+    public static string ContributionEnabledLabel => Localizer.GetString("ProjectSettings_ContributionEnabledLabel");
+    public static string OpenManifestTooltip => Localizer.GetString("ProjectSettings_OpenManifestTooltip");
+    public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
+    public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
+    public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");
+
+    public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
+
+    public static string BuiltInPackageName(string name) => Localizer.GetString("ProjectSettings_BuiltInPackageNameFormat", name);
 }

@@ -43,7 +43,6 @@ internal static class EditorManifestLoader
     private const string ResourceExtensionKey = "resource-extension";
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
-    private const string TooltipKey = "tooltip";
     private const string LazyLoadKey = "lazy-load";
 
     private const string DocumentTypeValue = "document";
@@ -170,19 +169,13 @@ internal static class EditorManifestLoader
             var displayName = TomlTableReader.GetString(editorTable, DisplayNameKey);
             if (string.IsNullOrEmpty(displayName))
             {
-                if (utilityDescriptor is not null)
-                {
-                    // A utility has no separate label field, so its tooltip localization key doubles as the
-                    // editor display name used for the tab title and any diagnostics.
-                    displayName = utilityDescriptor.Tooltip;
-                }
-                else
-                {
-                    return Result.Fail(
-                        $"Editor missing required '{DisplayNameKey}' field in [{EditorSection}] section: {editorTomlPath}. " +
-                        $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
-                }
+                return Result.Fail(
+                    $"Editor missing required '{DisplayNameKey}' field in [{EditorSection}] section: {editorTomlPath}. " +
+                    $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
             }
+
+            // Optional; when set it is the tooltip on the Utility Panel rail button and the docked tab.
+            var description = TomlTableReader.GetStringOrNull(editorTable, DescriptionKey) ?? string.Empty;
 
             var fileTypes = new List<EditorFileType>();
             if (root.TryGetValue(FileTypesSection, out var fileTypesObject) &&
@@ -297,9 +290,10 @@ internal static class EditorManifestLoader
             }
             var activation = activationResult.Value;
 
-            var contribution = BuildContribution(root, packageInfo, editorId, displayName, fileTypes, templates, configDescriptors, activation, editorTable, utilityDescriptor);
+            var contribution = BuildContribution(root, packageInfo, editorId, displayName, description, fileTypes, templates, configDescriptors, activation, editorTable, utilityDescriptor);
+            var contributionWithPath = contribution with { ManifestPath = editorTomlPath };
 
-            return Result<EditorContribution>.Ok(contribution);
+            return Result<EditorContribution>.Ok(contributionWithPath);
         }
         catch (Exception ex)
         {
@@ -312,6 +306,7 @@ internal static class EditorManifestLoader
         PackageInfo packageInfo,
         string editorId,
         string displayName,
+        string description,
         List<EditorFileType> fileTypes,
         List<DocumentTemplate> templates,
         List<ConfigDescriptor> configDescriptors,
@@ -330,6 +325,7 @@ internal static class EditorManifestLoader
             Package = packageInfo,
             Id = editorId,
             DisplayName = displayName,
+            Description = description,
             FileTypes = fileTypes.AsReadOnly(),
             Templates = templates.AsReadOnly(),
             EntryPoint = entryPoint,
@@ -415,12 +411,6 @@ internal static class EditorManifestLoader
             return Result.Fail($"[{UtilitySection}] missing required '{IconKey}' field: {editorTomlPath}");
         }
 
-        var tooltip = TomlTableReader.GetString(utilityTable, TooltipKey);
-        if (string.IsNullOrEmpty(tooltip))
-        {
-            return Result.Fail($"[{UtilitySection}] missing required '{TooltipKey}' field: {editorTomlPath}");
-        }
-
         var template = TomlTableReader.GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
         var lazyLoad = TomlTableReader.GetBoolOrNull(utilityTable, LazyLoadKey) ?? false;
 
@@ -429,7 +419,6 @@ internal static class EditorManifestLoader
             ResourceExtension = resourceExtension.ToLowerInvariant(),
             Template = template,
             Icon = icon,
-            Tooltip = tooltip,
             LazyLoad = lazyLoad
         };
 

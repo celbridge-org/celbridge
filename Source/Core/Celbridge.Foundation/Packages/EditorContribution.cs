@@ -37,6 +37,17 @@ public partial record EditorContribution
     public string DisplayName { get; init; } = string.Empty;
 
     /// <summary>
+    /// Optional description or localization key for this editor. Shown as the tooltip on the Utility
+    /// Panel rail button and the docked tab. Empty when the manifest declares none.
+    /// </summary>
+    public string Description { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Absolute path of the editor manifest this contribution was parsed from.
+    /// </summary>
+    public string ManifestPath { get; init; } = string.Empty;
+
+    /// <summary>
     /// The file types this editor handles. Each entry declares the file extension and
     /// an optional display name or localization key for the Add File dialog.
     /// </summary>

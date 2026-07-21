@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
+using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.ProjectSettings.ViewModels;
 
@@ -13,6 +16,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
 {
     private readonly IPackageLocalizationService _packageLocalization;
+    private readonly ILogger<PackagesSectionViewModel> _logger;
 
     public ObservableCollection<PackageItemViewModel> Packages { get; } = new();
 
@@ -20,6 +24,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         : base(context)
     {
         _packageLocalization = packageLocalization;
+        _logger = ServiceLocator.AcquireService<ILogger<PackagesSectionViewModel>>();
     }
 
     public override void Load()
@@ -63,7 +68,17 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             }
 
             var isEnabled = !disabledPackages.Contains(name);
-            var packageItem = new PackageItemViewModel(name, PackageDisplayName(package), isEnabled, SetPackageDisabled);
+
+            var packageInfo = new PackageItemInfo
+            {
+                Name = name,
+                NameLabel = PackageNameLabel(package),
+                DisplayName = PackageDisplayName(package),
+                ManifestPath = System.IO.Path.Combine(package.Info.PackageFolder, PackageConstants.ManifestFileName),
+                CanOpenManifest = package.Info.Origin == PackageOrigin.Project
+            };
+
+            var packageItem = new PackageItemViewModel(packageInfo, isEnabled, SetPackageDisabled, OpenManifest);
 
             foreach (var contribution in package.Editors)
             {
@@ -92,29 +107,64 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             .Select(fileType => new FileTypeInfo(fileType.FileExtension.ToLowerInvariant(), fileType.Category))
             .ToArray();
         var editorId = EditorInstanceId.Create(packageName, contribution.Id).ToString();
+        var iconGlyph = contribution.UtilityDescriptor?.Icon ?? string.Empty;
 
-        var row = new ContributionItemViewModel(
-            packageName,
-            contribution.Id,
-            displayName,
-            contribution.IsUtility,
-            contribution.Activation == ActivationPolicy.Optional,
-            contribution.Activation != ActivationPolicy.Required,
-            editorId,
-            fileTypes,
-            SetContributionEnabled);
+        var description = string.Empty;
+        if (!string.IsNullOrWhiteSpace(contribution.Description))
+        {
+            description = PackageDisplayText.Resolve(_packageLocalization, contribution.Package, contribution.Description);
+        }
+
+        var info = new ContributionItemInfo
+        {
+            PackageName = packageName,
+            ContributionId = contribution.Id,
+            DisplayName = displayName,
+            Description = description,
+            IsUtility = contribution.IsUtility,
+            IconGlyph = iconGlyph,
+            ManifestPath = contribution.ManifestPath,
+            CanOpenManifest = contribution.Package.Origin == PackageOrigin.Project,
+            IsOptional = contribution.Activation == ActivationPolicy.Optional,
+            CanToggle = contribution.Activation != ActivationPolicy.Required,
+            EditorId = editorId,
+            FileTypes = fileTypes
+        };
+
+        var row = new ContributionItemViewModel(info, SetContributionEnabled, OpenManifest);
 
         foreach (var descriptor in contribution.ConfigDescriptors)
         {
             object? rawValue = null;
             contributionOverride?.Config.TryGetValue(descriptor.Key, out rawValue);
-            var field = new ConfigFieldViewModel(descriptor, packageName, contribution.Id, rawValue, Humanize(descriptor.Key), CommitContributionValue);
+            var field = new ConfigFieldViewModel(descriptor, packageName, contribution.Id, rawValue, PackageDisplayText.Humanize(descriptor.Key), CommitContributionValue);
             row.ConfigFields.Add(field);
         }
 
         row.InitializeState(isEnabled);
 
         return row;
+    }
+
+    // Opens a package or editor manifest as a document. Only project manifests reach here, so a path that
+    // resolves to no resource key means the package moved out from under the registry since discovery.
+    private void OpenManifest(string manifestPath)
+    {
+        var resourceRegistry = WorkspaceService?.ResourceService.Registry;
+        if (resourceRegistry is null)
+        {
+            return;
+        }
+
+        var getKeyResult = resourceRegistry.GetResourceKey(manifestPath);
+        if (getKeyResult.IsFailure)
+        {
+            _logger.LogWarning(getKeyResult, $"Failed to open manifest: {manifestPath}");
+            return;
+        }
+        var manifestResource = getKeyResult.Value;
+
+        CommandService.Execute<IOpenDocumentCommand>(command => command.FileResource = manifestResource);
     }
 
     private void SetPackageDisabled(string packageName, bool disabled)
@@ -154,60 +204,40 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
 
     private string PackageDisplayName(Package package)
     {
-        var localized = TryResolveLocalizedString(package.Info, package.Info.Title);
-        if (localized is not null)
+        var title = package.Info.Title;
+
+        string name;
+        if (string.IsNullOrWhiteSpace(title))
         {
-            return localized;
+            name = PackageDisplayText.HumanizeLastSegment(package.Info.Name);
+        }
+        else
+        {
+            name = PackageDisplayText.Resolve(_packageLocalization, package.Info, title);
         }
 
-        return HumanizeLastSegment(package.Info.Name);
+        return ProjectSettingsLabels.PackageName(name);
+    }
+
+    private string PackageNameLabel(Package package)
+    {
+        var name = package.Info.Name;
+        if (package.Info.Origin == PackageOrigin.Bundled)
+        {
+            return ProjectSettingsLabels.BuiltInPackageName(name);
+        }
+
+        return name;
     }
 
     private string ContributionDisplayName(EditorContribution contribution)
     {
-        var localized = TryResolveLocalizedString(contribution.Package, contribution.DisplayName);
-        if (localized is not null)
+        var displayName = contribution.DisplayName;
+        if (string.IsNullOrWhiteSpace(displayName))
         {
-            return localized;
+            return PackageDisplayText.Humanize(contribution.Id);
         }
 
-        return Humanize(contribution.Id);
-    }
-
-    // Resolves a manifest string that may be a localization key against the package's own localization
-    // files. Returns null when the manifest value is blank or the key has no entry, so the caller falls
-    // back to a humanized identifier rather than showing a raw key.
-    private string? TryResolveLocalizedString(PackageInfo package, string key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return null;
-        }
-
-        var localizationStrings = _packageLocalization.LoadStrings(package);
-        if (localizationStrings.TryGetValue(key, out var localized))
-        {
-            return localized;
-        }
-
-        return null;
-    }
-
-    private static string HumanizeLastSegment(string identifier)
-    {
-        var segments = identifier.Split('.');
-        var lastSegment = segments[^1];
-
-        return Humanize(lastSegment);
-    }
-
-    private static string Humanize(string identifier)
-    {
-        var words = identifier
-            .Split('-', '.')
-            .Where(word => word.Length > 0)
-            .Select(word => char.ToUpperInvariant(word[0]) + word[1..]);
-
-        return string.Join(" ", words);
+        return PackageDisplayText.Resolve(_packageLocalization, contribution.Package, displayName);
     }
 }

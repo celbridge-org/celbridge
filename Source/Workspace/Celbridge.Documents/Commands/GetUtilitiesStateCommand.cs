@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -88,7 +89,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
                 continue;
             }
 
-            var displayName = ResolveLocalizedString(utility.Package, utility.DisplayName);
+            var displayName = PackageDisplayText.Resolve(_packageLocalizationService, utility.Package, utility.DisplayName);
 
             var isDocumentDocked = false;
             var utilityResource = ResourceKey.Empty;
@@ -113,16 +114,5 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         ResultValue = new UtilitiesStateSnapshot(utilities);
 
         return Result.Ok();
-    }
-
-    private string ResolveLocalizedString(PackageInfo package, string key)
-    {
-        var localizationStrings = _packageLocalizationService.LoadStrings(package);
-        if (localizationStrings.TryGetValue(key, out var localized))
-        {
-            return localized;
-        }
-
-        return key;
     }
 }

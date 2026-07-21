@@ -1,0 +1,14 @@
+[editor]
+id = "utility-demo"
+type = "utility"
+entry-point = "index.html"
+display-name = "UtilityDemo_DisplayName"
+description = "UtilityDemo_Description"
+
+# A utility editor: a persistent per-project surface, one per contribution, alive until the
+# project unloads, appearing as a rail item beside Explorer and Search. The reference example
+# for consuming the shared styling tokens: the UI font, host-styled controls, and a bordered input.
+[utility]
+resource-extension = "._utildemo"
+template = "templates/default._utildemo"
+icon = "cpu"

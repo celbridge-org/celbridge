@@ -1,6 +1,0 @@
-[package]
-name = "celbridge.notepad"
-title = "Utility_Notepad_Package"
-
-[contributes]
-editors = ["notepad.editor.toml"]

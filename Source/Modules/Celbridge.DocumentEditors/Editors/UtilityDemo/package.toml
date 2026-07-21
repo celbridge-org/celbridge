@@ -1,0 +1,6 @@
+[package]
+name = "celbridge.utility-demo"
+title = "UtilityDemo_Package"
+
+[contributes]
+editors = ["utility-demo.editor.toml"]

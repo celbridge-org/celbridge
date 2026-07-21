@@ -845,6 +845,30 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_ContributionToggleTooltip" xml:space="preserve">
     <value>Enable or disable this editor for the project.</value>
   </data>
+  <data name="ProjectSettings_PackageEnabledLabel" xml:space="preserve">
+    <value>Package Enabled</value>
+  </data>
+  <data name="ProjectSettings_PackageNameFormat" xml:space="preserve">
+    <value>{0} Package</value>
+  </data>
+  <data name="ProjectSettings_ContributionEnabledLabel" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="ProjectSettings_BuiltInPackageNameFormat" xml:space="preserve">
+    <value>{0} (Built-in)</value>
+  </data>
+  <data name="ProjectSettings_FileExtensionsLabel" xml:space="preserve">
+    <value>File Extensions</value>
+  </data>
+  <data name="ProjectSettings_OpenManifestTooltip" xml:space="preserve">
+    <value>Open the manifest file</value>
+  </data>
+  <data name="ProjectSettings_ContributionType_Document" xml:space="preserve">
+    <value>Document Editor</value>
+  </data>
+  <data name="ProjectSettings_ContributionType_Utility" xml:space="preserve">
+    <value>Utility</value>
+  </data>
   <data name="ProjectSettings_SchemaVersionTooltip" xml:space="preserve">
     <value>The version of Celbridge that last opened this project. Updated automatically.</value>
   </data>

@@ -1,6 +1,0 @@
-[package]
-name = "celbridge.process"
-title = "Utility_Process_Package"
-
-[contributes]
-editors = ["process.editor.toml"]

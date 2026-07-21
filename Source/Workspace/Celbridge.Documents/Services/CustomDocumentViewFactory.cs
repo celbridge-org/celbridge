@@ -1,5 +1,6 @@
 using Celbridge.Documents.Views;
 using Celbridge.Packages;
+using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.Documents.Services;
 
@@ -12,11 +13,18 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     private readonly IServiceProvider _serviceProvider;
     private readonly EditorInstance _instance;
     private readonly string _resolvedDisplayName;
+    private readonly string _resolvedDescription;
     private readonly IReadOnlyList<string> _supportedFilenames;
 
     public override EditorInstanceId EditorId => _instance.InstanceId;
 
     public override string DisplayName => _resolvedDisplayName;
+
+    /// <summary>
+    /// The localized editor description, used as the docked tab tooltip. Empty when the manifest
+    /// declares no description.
+    /// </summary>
+    public string Description => _resolvedDescription;
 
     /// <summary>
     /// The editor instance this factory was built from.
@@ -39,7 +47,8 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     {
         _serviceProvider = serviceProvider;
         _instance = instance;
-        _resolvedDisplayName = ResolveDisplayName(localizationService);
+        _resolvedDisplayName = PackageDisplayText.Resolve(localizationService, instance.Contribution.Package, instance.Contribution.DisplayName);
+        _resolvedDescription = PackageDisplayText.Resolve(localizationService, instance.Contribution.Package, instance.Contribution.Description);
 
         // A utility instance owns one backing state file, routed by instance identity. Its
         // factory claims that exact filename rather than a project-wide extension.
@@ -52,22 +61,6 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
         {
             _supportedFilenames = Array.Empty<string>();
         }
-    }
-
-    private string ResolveDisplayName(IPackageLocalizationService localizationService)
-    {
-        // The manifest loader requires every contribution to set display-name, so
-        // DisplayName is guaranteed non-empty here. The value may be a localization
-        // key or a plain string.
-        var displayKey = _instance.Contribution.DisplayName;
-
-        var localizationStrings = localizationService.LoadStrings(_instance.Contribution.Package);
-        if (localizationStrings.TryGetValue(displayKey, out var localizedName))
-        {
-            return localizedName;
-        }
-
-        return displayKey;
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

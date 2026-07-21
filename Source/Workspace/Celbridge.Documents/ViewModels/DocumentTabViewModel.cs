@@ -58,6 +58,13 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _utilityIconGlyphName = string.Empty;
 
     /// <summary>
+    /// The manifest description shown as a utility tab's tooltip. Empty for ordinary document tabs and
+    /// for utilities whose manifest declares no description.
+    /// </summary>
+    [ObservableProperty]
+    private string _utilityTooltip = string.Empty;
+
+    /// <summary>
     /// The editor that created this tab's document view.
     /// </summary>
     public EditorInstanceId EditorId { get; set; }
@@ -68,16 +75,34 @@ public partial class DocumentTabViewModel : ObservableObject
     public string FileExtension => Path.GetExtension(FileResource.ResourceName);
 
     /// <summary>
-    /// Tooltip text for the tab. A utility tab shows its manifest title. An ordinary tab shows its file
-    /// path plus the editor name when multiple editors are available.
+    /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
+    /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
+    /// editors are available.
     /// </summary>
-    public string TabTooltip => IsUtility
-        ? DocumentName
-        : string.IsNullOrEmpty(EditorDisplayName)
-            ? FilePath
-            : $"{FilePath} - {EditorDisplayName}";
+    public string TabTooltip
+    {
+        get
+        {
+            if (IsUtility)
+            {
+                return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
+            }
+
+            if (string.IsNullOrEmpty(EditorDisplayName))
+            {
+                return FilePath;
+            }
+
+            return $"{FilePath} - {EditorDisplayName}";
+        }
+    }
 
     partial void OnFilePathChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnUtilityTooltipChanged(string value)
     {
         OnPropertyChanged(nameof(TabTooltip));
     }

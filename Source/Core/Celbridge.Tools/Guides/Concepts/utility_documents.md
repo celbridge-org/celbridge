@@ -15,7 +15,7 @@ contribution = "notepad"
 wrap         = true              # a config key from the utility's [[config]] descriptors
 ```
 
-A utility's title, icon, and tooltip come from its manifest; the project cannot override them per contribution. Rail order follows discovery order (package load order, then manifest order).
+A utility's display name, icon, and description (shown as its tooltip) come from its manifest; the project cannot override them per contribution. Rail order follows discovery order (package load order, then manifest order).
 
 ## A utility is a permanent fixture
 
@@ -56,12 +56,13 @@ editors = ["notepad.editor.toml"]
 id = "notepad"
 type = "utility"
 entry-point = "index.html"
+display-name = "Notepad_DisplayName"       # required; labels the rail button and docked tab
+description = "Notepad_Description"         # localization key; the rail-button and docked-tab tooltip
 
 [utility]
 resource-extension = "._notepad"          # file format of the instance state file (required)
 template = "templates/default._notepad"   # seeds the file when absent (optional)
 icon     = "sticky"                        # Bootstrap Icons glyph name (required)
-tooltip  = "Notepad_Tooltip"              # localization key (required)
 lazy-load = false                          # optional; true defers the WebView to first show
 ```
 
@@ -69,11 +70,10 @@ lazy-load = false                          # optional; true defers the WebView t
 |---|---|---|---|
 | `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
 | `icon` | yes | — | Bootstrap Icons glyph name for the rail button and the docked tab icon (resolved by name, not limited to the curated symbol set). |
-| `tooltip` | yes | — | Localization key for the rail button tooltip, the accessible name, and the docked tab title. |
 | `template` | no | empty file | Package-relative path to a file that seeds an instance's backing resource when it is absent. |
 | `lazy-load` | no | `false` | When true, the utility's WebView is created on its first show rather than at project load. Declared by the editor, not by the project. A lazy utility restored into the tab layout as a docked document initializes at restore. |
 
-`display-name` in `[editor]` is optional. When omitted it defaults to the `tooltip` key; it labels the Utility Panel header.
+`display-name` in `[editor]` is required (as for any editor) and labels the rail button and the docked tab. The tooltip comes from `[editor].description` — the same field a document editor uses — so a utility's rail-button and docked-tab tooltip are authored once there, not in `[utility]`.
 
 The manifest declares no dock location: it is a runtime, user-controlled property (the user moves the utility between the Utility Panel and a document tab), never a manifest choice.
 

@@ -26,6 +26,7 @@ id = "my-editor"
 type = "document"
 entry-point = "index.html"
 display-name = "MyEditor_Editor_Name"
+description = "MyEditor_Editor_Description"
 
 [[file-types]]
 extension = ".myext"
@@ -38,7 +39,7 @@ template-file = "templates/empty.myext"
 default = true
 ```
 
-`type` is `"document"` (edits matching files, shown in document tabs) or `"utility"` (a workspace fixture; see `utility_documents`). A document editor requires at least one `[[file-types]]` entry and must not declare a `[utility]` section. `display-name` values are localization keys. Templates are optional. All Celbridge-owned manifest keys are kebab-case.
+`type` is `"document"` (edits matching files, shown in document tabs) or `"utility"` (a workspace fixture; see `utility_documents`). A document editor requires at least one `[[file-types]]` entry and must not declare a `[utility]` section. `display-name` names the editor for what it is (e.g. `Markdown Editor`) while the package `title` names the product — keep them distinct so the two do not read identically in Project Settings. The optional `description` is a short sentence shown as the editor's tooltip. `display-name` and `description` values are localization keys. Templates are optional. All Celbridge-owned manifest keys are kebab-case.
 
 ## Activation and configuration
 
@@ -51,7 +52,7 @@ contribution = "my-editor"
 grid-size    = 16              # a config key declared by the editor's [[config]] descriptors
 ```
 
-To turn a whole package off, list it in `[celbridge].disabled-packages`. Each contribution has exactly one instance, referenced as `package.contribution`; a project cannot declare several instances or override an editor's title, icon, or tooltip.
+To turn a whole package off, list it in `[celbridge].disabled-packages`. Each contribution has exactly one instance, referenced as `package.contribution`; a project cannot declare several instances or override an editor's display name, icon, or description.
 
 Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in host order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. See `project_structure` for the full `.celbridge` schema.
 
@@ -67,7 +68,7 @@ default      = 16
 display-name = "MyEditor_Config_GridSize"
 ```
 
-Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Instance tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the instance's keys). Descriptor keys must not collide with the reserved instance properties (`package`, `contribution`, `title`, `icon`, `tooltip`).
+Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Instance tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the instance's keys). Descriptor keys must not collide with the reserved deviation-entry keys (`package`, `contribution`, `disabled`, `enabled`).
 
 ## JS handlers
 
@@ -123,7 +124,7 @@ Core tokens:
 
 The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and window background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
 
-The Notepad and Process utilities are the minimal reference for consuming these tokens — Notepad for a bare monospace surface, Process for the UI font, host-styled controls, and a bordered input.
+The Utility Demo utility is the minimal reference for consuming these tokens — the UI font, host-styled controls, and a bordered input.
 
 ## Edit verbs (optional)
 

@@ -19,7 +19,7 @@ title = "My Widget"       # display name
 editors = ["my-editor.editor.toml"]
 ```
 
-**Required:** `name`. **Optional:** `title`. The `[contributes].editors` array lists the editor manifests (`*.editor.toml`) provided by the package. Every editor declares a `type`: `"document"` editors edit matching files (read `document_editor_contributions` for the manifest, handler, and read-only contract); `"utility"` editors are workspace fixtures whose instances own state files under the hidden `utils:` root (read `utility_documents`).
+**Required:** `name`. **Optional:** `title` — the package's display name (the product), shown in Project Settings. Name it distinctly from its editors' `display-name` values, which name each editor for what it *is* (e.g. a `Notepad` package shipping a `Notepad Editor`), so a single-editor package does not read the same name twice. The `[contributes].editors` array lists the editor manifests (`*.editor.toml`) provided by the package. Every editor declares a `type`: `"document"` editors edit matching files (read `document_editor_contributions` for the manifest, handler, and read-only contract); `"utility"` editors are workspace fixtures whose instances own state files under the hidden `utils:` root (read `utility_documents`).
 
 The manifest carries no author: the publisher recorded on each version is the **Author** set once in Workshop settings (Settings page), not a per-package field. `package_publish` fails if no Author is configured.
 

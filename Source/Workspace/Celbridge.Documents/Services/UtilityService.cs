@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -72,7 +73,7 @@ public class UtilityService : IUtilityService, IDisposable
                 continue;
             }
 
-            var displayName = ResolveLocalizedString(localizationService, contribution.Package, contribution.DisplayName);
+            var displayName = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.DisplayName);
 
             var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
             var bindResult = await panelView.BindAsync(instance, resource, displayName);
@@ -97,7 +98,7 @@ public class UtilityService : IUtilityService, IDisposable
             _utilities.Add(panelView);
 
             var icon = descriptor.Icon;
-            var tooltip = ResolveLocalizedString(localizationService, contribution.Package, descriptor.Tooltip);
+            var tooltip = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.Description);
             tabs.Add(new CustomUtility(utilityId, icon, tooltip, displayName, panelView, panelView.FocusPanel));
         }
 
@@ -331,17 +332,6 @@ public class UtilityService : IUtilityService, IDisposable
         }
 
         _utilities.Clear();
-    }
-
-    private static string ResolveLocalizedString(IPackageLocalizationService localizationService, PackageInfo package, string key)
-    {
-        var localizationStrings = localizationService.LoadStrings(package);
-        if (localizationStrings.TryGetValue(key, out var localized))
-        {
-            return localized;
-        }
-
-        return key;
     }
 
     public void Dispose()

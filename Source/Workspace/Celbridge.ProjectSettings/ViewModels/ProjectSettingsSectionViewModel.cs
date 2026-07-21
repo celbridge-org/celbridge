@@ -34,6 +34,8 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
 
     protected IProjectService ProjectService => _context.ProjectService;
 
+    protected ICommandService CommandService => _context.CommandService;
+
     // The reconciled config (overrides only), falling back to the parsed config before reconcile.
     protected ProjectConfig? GetConfig()
     {

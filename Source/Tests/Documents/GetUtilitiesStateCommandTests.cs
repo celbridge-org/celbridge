@@ -18,9 +18,9 @@ public class GetUtilitiesStateCommandTests
         var panelUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
-            Id = "emoji",
-            DisplayName = "Emoji Panel",
-            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._emoji" }
+            Id = "widget",
+            DisplayName = "Widget Panel",
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._widget" }
         };
 
         var documentUtility = new EditorContribution
@@ -41,14 +41,14 @@ public class GetUtilitiesStateCommandTests
 
         var instances = new List<EditorInstance>
         {
-            CreateInstance("emoji-panel", panelUtility),
+            CreateInstance("widget-panel", panelUtility),
             CreateInstance("notepad", documentUtility),
             CreateInstance("code", nonUtility)
         };
 
-        // The emoji-panel utility is the active rail surface, so it is the only utility shown.
+        // The widget-panel utility is the active rail surface, so it is the only utility shown.
         var utilityPanel = Substitute.For<IUtilityPanel>();
-        utilityPanel.ActiveUtilityId.Returns(new EditorInstanceId("emoji-panel"));
+        utilityPanel.ActiveUtilityId.Returns(new EditorInstanceId("widget-panel"));
 
         var packageService = Substitute.For<IPackageService>();
         packageService.GetEditorInstances().Returns(instances);
@@ -96,8 +96,8 @@ public class GetUtilitiesStateCommandTests
         utilities[1].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[1].IsShown.Should().BeFalse();
 
-        utilities[2].UtilityId.Should().Be(new EditorInstanceId("emoji-panel"));
-        utilities[2].DisplayName.Should().Be("Emoji Panel");
+        utilities[2].UtilityId.Should().Be(new EditorInstanceId("widget-panel"));
+        utilities[2].DisplayName.Should().Be("Widget Panel");
         utilities[2].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[2].IsShown.Should().BeTrue();
 

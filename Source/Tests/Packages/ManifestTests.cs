@@ -63,6 +63,7 @@ public class ManifestTests
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".myext");
         contribution.EntryPoint.Should().Be("index.html");
         contribution.Package.PackageFolder.Should().Be(_tempFolder);
+        contribution.ManifestPath.Should().Be(Path.Combine(_tempFolder, "editor.editor.toml"));
     }
 
     [Test]
@@ -534,17 +535,17 @@ public class ManifestTests
         // A utility owns per-instance state files and must not claim file extensions.
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
 
             [utility]
-            resource-extension = "._emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._widget"
+            icon = "star"
+            tooltip = "Widget_Utility_Tooltip"
 
             [[file-types]]
-            extension = ".emoji"
-            display-name = "Emoji"
+            extension = ".widget"
+            display-name = "Widget"
             """);
 
         var result = LoadPackage();
@@ -981,15 +982,16 @@ public class ManifestTests
     {
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
             entry-point = "index.html"
+            display-name = "Widget_Utility_DisplayName"
+            description = "Widget_Utility_Description"
 
             [utility]
-            resource-extension = "._emoji"
-            template = "templates/default._emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._widget"
+            template = "templates/default._widget"
+            icon = "star"
             lazy-load = true
             """);
 
@@ -1001,16 +1003,15 @@ public class ManifestTests
         var contribution = result.Value.Editors[0];
         contribution.IsUtility.Should().BeTrue();
 
-        // A utility claims no file extensions, and the display name defaults to the
-        // tooltip key (a utility has no separate label field).
+        // A utility claims no file extensions. Its display name and description are its own manifest keys.
         contribution.FileTypes.Should().BeEmpty();
-        contribution.DisplayName.Should().Be("Emoji_Utility_Tooltip");
+        contribution.DisplayName.Should().Be("Widget_Utility_DisplayName");
+        contribution.Description.Should().Be("Widget_Utility_Description");
 
         var descriptor = contribution.UtilityDescriptor!;
-        descriptor.ResourceExtension.Should().Be("._emoji");
-        descriptor.Template.Should().Be("templates/default._emoji");
-        descriptor.Icon.Should().Be("emoji-smile");
-        descriptor.Tooltip.Should().Be("Emoji_Utility_Tooltip");
+        descriptor.ResourceExtension.Should().Be("._widget");
+        descriptor.Template.Should().Be("templates/default._widget");
+        descriptor.Icon.Should().Be("star");
         descriptor.LazyLoad.Should().BeTrue();
     }
 
@@ -1019,13 +1020,13 @@ public class ManifestTests
     {
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
-            resource-extension = "._emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._widget"
+            icon = "star"
             """);
 
         var result = LoadPackage();
@@ -1041,19 +1042,19 @@ public class ManifestTests
     {
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
-            resource-extension = "._Emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._Widget"
+            icon = "star"
             """);
 
         var result = LoadPackage();
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Editors[0].UtilityDescriptor!.ResourceExtension.Should().Be("._emoji");
+        result.Value.Editors[0].UtilityDescriptor!.ResourceExtension.Should().Be("._widget");
     }
 
     [Test]
@@ -1061,12 +1062,12 @@ public class ManifestTests
     {
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            icon = "star"
             """);
 
         var result = LoadPackage();
@@ -1074,19 +1075,19 @@ public class ManifestTests
         result.IsFailure.Should().BeTrue();
     }
 
-    [TestCase("_emoji", Description = "missing leading dot")]
+    [TestCase("_widget", Description = "missing leading dot")]
     [TestCase(".", Description = "bare dot")]
     public void LoadPackage_UtilityInvalidResourceExtension_ReturnsFailure(string invalidExtension)
     {
         WriteSingleEditorPackage($"""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
             resource-extension = "{invalidExtension}"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            icon = "star"
             """);
 
         var result = LoadPackage();
@@ -1099,12 +1100,12 @@ public class ManifestTests
     {
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
-            resource-extension = "._emoji"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._widget"
             """);
 
         var result = LoadPackage();
@@ -1113,16 +1114,16 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_UtilityMissingTooltip_ReturnsFailure()
+    public void LoadPackage_UtilityMissingDisplayName_ReturnsFailure()
     {
         WriteSingleEditorPackage("""
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
 
             [utility]
-            resource-extension = "._emoji"
-            icon = "emoji-smile"
+            resource-extension = "._widget"
+            icon = "star"
             """);
 
         var result = LoadPackage();
@@ -1130,9 +1131,8 @@ public class ManifestTests
         result.IsFailure.Should().BeTrue();
     }
 
-    // Loads the real bundled utility manifests from the repo rather than synthetic fixtures.
-    [TestCase("Notepad", "._notepad")]
-    [TestCase("Process", "._process")]
+    // Loads the real bundled utility manifest from the repo rather than a synthetic fixture.
+    [TestCase("UtilityDemo", "._utildemo")]
     public void LoadPackage_BundledUtilityFixture_RegistersUtilityContribution(string editorFolder, string expectedResourceExtension)
     {
         var sourceFolder = ArchitectureHelpers.FindSourceFolder();

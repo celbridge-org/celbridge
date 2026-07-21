@@ -226,29 +226,29 @@ public class PackageServiceDocumentTypeTests
     [Test]
     public async Task GetDocumentTypes_UtilityContribution_Excluded()
     {
-        var packageDir = Path.Combine(_tempProjectFolder, "bundled", "emoji");
+        var packageDir = Path.Combine(_tempProjectFolder, "bundled", "widget");
         Directory.CreateDirectory(packageDir);
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
             [package]
-            name = "test.emoji"
-            title = "Emoji"
+            name = "test.widget"
+            title = "Widget"
 
             [contributes]
-            editors = ["emoji.editor.toml"]
+            editors = ["widget.editor.toml"]
             """);
 
-        File.WriteAllText(Path.Combine(packageDir, "emoji.editor.toml"), """
+        File.WriteAllText(Path.Combine(packageDir, "widget.editor.toml"), """
             [editor]
-            id = "emoji-renderer"
+            id = "widget-renderer"
             type = "utility"
             entry-point = "index.html"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
-            resource-extension = "._emoji"
-            template = "templates/default._emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._widget"
+            template = "templates/default._widget"
+            icon = "star"
             """);
 
         _bundledPackagePaths.Add(packageDir);

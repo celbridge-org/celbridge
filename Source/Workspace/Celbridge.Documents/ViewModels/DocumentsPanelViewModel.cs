@@ -175,11 +175,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return await _documentsService.SetPreferredEditorAsync(fileResource, editorId);
     }
 
-    public record class UtilityTabInfo(string IconGlyphName, string Title);
+    public record class UtilityTabInfo(string IconGlyphName, string Title, string Tooltip);
 
-    // Resolves the tab title and glyph for a utility document from its editor factory, or null when the editor
-    // is not a utility. The title is the factory's localized display name (a utility defaults its display name
-    // to the tooltip key). The glyph comes from the manifest.
+    // Resolves how a utility document presents as a tab, or null when the editor is not a utility.
     public UtilityTabInfo? ResolveUtilityTabInfo(EditorInstanceId editorId)
     {
         if (editorId.IsEmpty)
@@ -204,6 +202,6 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
         var iconGlyphName = descriptor.Icon;
 
-        return new UtilityTabInfo(iconGlyphName, utilityFactory.DisplayName);
+        return new UtilityTabInfo(iconGlyphName, utilityFactory.DisplayName, utilityFactory.Description);
     }
 }

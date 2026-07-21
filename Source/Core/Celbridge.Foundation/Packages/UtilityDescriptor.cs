@@ -25,11 +25,6 @@ public record UtilityDescriptor
     public string Icon { get; init; } = string.Empty;
 
     /// <summary>
-    /// Localization key for the rail button tooltip and accessible name. Also drives the docked tab title.
-    /// </summary>
-    public string Tooltip { get; init; } = string.Empty;
-
-    /// <summary>
     /// When true, view creation is deferred to the first show of the utility. Declared once by the
     /// editor and applies to every instance of it.
     /// </summary>
