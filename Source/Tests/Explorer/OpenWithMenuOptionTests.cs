@@ -11,8 +11,6 @@ namespace Celbridge.Tests.Explorer;
 
 /// <summary>
 /// Unit tests for OpenWithMenuOption's visibility / display logic.
-/// The Execute path is async void with substantial UI state and dialog interaction, so it's
-/// better exercised by manual testing or integration tests rather than mocked unit tests.
 /// </summary>
 [TestFixture]
 public class OpenWithMenuOptionTests
@@ -35,7 +33,7 @@ public class OpenWithMenuOptionTests
         _logger = Substitute.For<Logging.ILogger<OpenWithMenuOption>>();
 
         _editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        // Default to an empty candidate list; tests opt-in by stubbing this.
+        // Default to an empty candidate list. Tests opt in by stubbing this.
         _editorRegistry.GetUserPickableFactoriesForResource(Arg.Any<ResourceKey>())
             .Returns(Array.Empty<IDocumentEditorFactory>());
 
@@ -90,7 +88,7 @@ public class OpenWithMenuOptionTests
     private static IDocumentEditorFactory CreateFactory(string editorId)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId(editorId));
+        factory.EditorId.Returns(new EditorInstanceId(editorId));
         return factory;
     }
 
@@ -140,7 +138,7 @@ public class OpenWithMenuOptionTests
     [Test]
     public void GetState_VisibleForMultiPartExtensionWithSingleSpecializedEditorPlusFallback()
     {
-        // Registry returns the specialized editor plus the code editor fallback;
+        // Registry returns the specialized editor plus the code editor fallback, so
         // two candidates make the menu visible.
         var clickedFile = CreateFileResource("design.widget.cel");
         var specializedEditor = CreateFactory("acme.widget-editor.widget-document");
@@ -223,13 +221,11 @@ public class OpenWithMenuOptionTests
     public void GetState_HiddenForPlaceholderFactoryPlusTextFallback()
     {
         // Placeholder factories (PackageManifestFactory, ProjectFileFactory,
-        // DocumentContributionFactory) exist only to register an extension for
-        // resource classification; they cannot create document views and must
-        // not appear in the "Open with..." picker. With one placeholder plus
-        // the text fallback, only the fallback survives the filter, so the
-        // menu stays hidden (one candidate, nothing to pick between). This
-        // closes the footgun where picking a placeholder would write a
-        // non-functional editor id into the manifest itself.
+        // EditorManifestFactory) exist only to register an extension for resource
+        // classification. They cannot create document views and must not appear in
+        // the "Open with..." picker. With one placeholder plus the text fallback,
+        // only the fallback survives the filter, so the menu stays hidden (one
+        // candidate, nothing to pick between).
         var clickedFile = CreateFileResource("package.toml");
         var placeholder = CreateFactory("celbridge.package-manifest");
         placeholder.IsPlaceholder.Returns(true);

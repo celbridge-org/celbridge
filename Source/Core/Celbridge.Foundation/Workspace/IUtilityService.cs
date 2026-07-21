@@ -1,42 +1,54 @@
 using Celbridge.Documents;
-using Celbridge.Packages;
 
 namespace Celbridge.Workspace;
 
 /// <summary>
 /// Owns the workspace's utilities: their lifecycle (created at project load, torn down at unload), their save
 /// tick, and the dock orchestration that moves each utility's single WebView between the Utility Panel and a
-/// document tab. Presentation lives in IUtilityPanel; this is the logic behind it.
+/// document tab.
 /// </summary>
 public interface IUtilityService
 {
     /// <summary>
-    /// Creates each utility as a persistent workspace surface and returns the rail tabs describing them. Each
-    /// utility is owned by this service until the workspace unloads. Contributions are given in display order.
+    /// Creates each utility instance as a persistent workspace surface and returns the rail tabs describing
+    /// them. Each utility is owned by this service until the workspace unloads. Instances are given in
+    /// declaration order, which is the rail order. A lazy-load utility is bound but its WebView is
+    /// deferred to the first show.
     /// </summary>
-    Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<CustomDocumentEditorContribution> contributions);
+    Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<EditorInstance> instances);
+
+    /// <summary>
+    /// Initializes a lazy-load utility's WebView if it has not been created yet. A no-op for
+    /// already-initialized utilities, built-in utilities, and unknown ids.
+    /// </summary>
+    Task<Result> EnsureUtilityInitializedAsync(EditorInstanceId utilityId);
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given
-    /// address, reparenting its already-instantiated WebView out of the Utility Panel. Unlike an interactive
-    /// dock this does not activate, flash, or change the shown panel surface. Fails if no utility owns the
-    /// resource.
+    /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
+    /// or change the shown panel surface. Fails if no utility owns the resource.
     /// </summary>
-    Result RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
+    Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
+
+    /// <summary>
+    /// Returns true when a live utility with this id exists, meaning one that was created at workspace load and
+    /// can be shown or docked. A declared utility that was skipped at load is not live: its backing resource,
+    /// seed, or initialization failed.
+    /// </summary>
+    bool HasUtility(EditorInstanceId utilityId);
 
     /// <summary>
     /// Docks a utility at the given location, reparenting its single persistent WebView to that location's
-    /// container (the Utility Panel rail or a document tab in the active document's section) and reusing the
-    /// same instance. Reveals or activates the utility at the destination; a no-op when it is already there.
+    /// container (the Utility Panel rail or a document tab in the active document's section). Reveals or
+    /// activates the utility at the destination. A no-op when it is already there.
     /// </summary>
-    Task<Result> DockUtilityAsync(UtilityId utilityId, DockLocation location);
+    Task<Result> DockUtilityAsync(EditorInstanceId utilityId, DockLocation location);
 
     /// <summary>
     /// Returns the id of the utility currently docked as the given document resource, or null when the resource
-    /// is not a docked utility. The close path uses this to dock a utility back into the panel rather than
-    /// destroy its document tab.
+    /// is not a docked utility.
     /// </summary>
-    UtilityId? GetDockedUtilityId(ResourceKey resource);
+    EditorInstanceId? GetDockedUtilityId(ResourceKey resource);
 
     /// <summary>
     /// Ticks each utility's save timer and flushes the ones that are due. Called on the workspace update loop.

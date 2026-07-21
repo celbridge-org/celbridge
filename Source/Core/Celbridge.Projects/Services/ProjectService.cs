@@ -1,4 +1,7 @@
+using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Settings;
+using Celbridge.Utilities;
 
 namespace Celbridge.Projects.Services;
 
@@ -6,6 +9,7 @@ public class ProjectService : IProjectService
 {
     private const int RecentProjectsMax = 10;
 
+    private readonly ILogger<ProjectService> _logger;
     private readonly ISettingsService _settingsService;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
@@ -14,11 +18,13 @@ public class ProjectService : IProjectService
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
+        ILogger<ProjectService> logger,
         ISettingsService settingsService,
         ProjectFactory projectFactory,
         IProjectTemplateService projectTemplateService,
         ILocalFileSystem fileSystem)
     {
+        _logger = logger;
         _settingsService = settingsService;
         _projectFactory = projectFactory;
         _projectTemplateService = projectTemplateService;
@@ -111,6 +117,74 @@ public class ProjectService : IProjectService
         {
             return Result<IProject>.Fail($"An exception occurred when loading the project database.")
                 .WithException(ex);
+        }
+    }
+
+    public async Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(
+        IReadOnlyList<EditorContribution> discoveredContributions,
+        bool persistNormalizedConfig)
+    {
+        var currentProject = CurrentProject;
+        var config = currentProject?.Config;
+        if (config is null)
+        {
+            return null;
+        }
+
+        var result = ProjectConfigReconciler.Reconcile(config, discoveredContributions);
+
+        if (persistNormalizedConfig)
+        {
+            await PersistNormalizedConfigAsync(currentProject!, result.Config);
+        }
+
+        return result;
+    }
+
+    // Writes the normalized config back to the project file, skipping the rewrite when it would clobber
+    // content the user still needs. A write failure is logged rather than propagated, so a failed persist
+    // never discards the reconcile result the caller relies on.
+    private async Task PersistNormalizedConfigAsync(IProject project, ProjectConfig normalizedConfig)
+    {
+        // Never rewrite a file that did not parse cleanly: a faulted load carries an empty config, and
+        // writing it would overwrite the user's broken .celbridge with a fresh default, destroying the
+        // content they need to hand-fix and reload.
+        if (!project.ConfigIsHealthy)
+        {
+            return;
+        }
+
+        // Skip the normalize rewrite when the file parsed but carried recoverable entry errors (an
+        // unknown key, a malformed entry, a section authored by a newer Celbridge). The canonical
+        // rewrite would silently drop that content; leaving the file untouched preserves it for the
+        // user to repair, and a clean reload will normalize it then.
+        if (project.Config.EntryErrors.Count > 0)
+        {
+            return;
+        }
+
+        var projectFilePath = project.ProjectFilePath;
+        if (string.IsNullOrEmpty(projectFilePath))
+        {
+            return;
+        }
+
+        var serialized = ProjectConfigSerializer.Serialize(normalizedConfig);
+
+        var readResult = await _fileSystem.ReadAllTextAsync(projectFilePath);
+        if (readResult.IsSuccess)
+        {
+            var existing = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
+            if (string.Equals(existing, serialized, StringComparison.Ordinal))
+            {
+                return;
+            }
+        }
+
+        var writeResult = await _fileSystem.WriteAllTextAsync(projectFilePath, serialized);
+        if (writeResult.IsFailure)
+        {
+            _logger.LogWarning(writeResult, "Failed to write the normalized project config.");
         }
     }
 

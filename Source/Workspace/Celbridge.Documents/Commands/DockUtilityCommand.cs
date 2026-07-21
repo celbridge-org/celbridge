@@ -9,7 +9,7 @@ public class DockUtilityCommand : CommandBase, IDockUtilityCommand
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public UtilityId UtilityId { get; set; } = UtilityId.Empty;
+    public EditorInstanceId UtilityId { get; set; } = EditorInstanceId.Empty;
 
     public DockLocation Location { get; set; } = DockLocation.Document;
 

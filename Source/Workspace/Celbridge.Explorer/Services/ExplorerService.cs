@@ -29,7 +29,6 @@ public class ExplorerService : IExplorerService, IDisposable
         "new-file-button",
         "new-folder-button",
         "collapse-folders-button",
-        "project-settings-button",
     };
 
     private IResourceRegistry? _resourceRegistry;

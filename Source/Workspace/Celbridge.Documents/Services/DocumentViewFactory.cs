@@ -35,12 +35,11 @@ public class DocumentViewFactory
 
     /// <summary>
     /// Selects an editor for the given resource and constructs its document view.
-    /// The view is returned without content loaded. The caller drives
-    /// SetFileResource and LoadContent.
+    /// The view is returned without content loaded.
     /// </summary>
     public async Task<Result<IDocumentView>> CreateAsync(
         ResourceKey fileResource,
-        DocumentEditorId requestedEditorId)
+        EditorInstanceId requestedEditorId)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
@@ -52,9 +51,8 @@ public class DocumentViewFactory
 
         if (!requestedEditorId.IsEmpty)
         {
-            // Explicit editor request short-circuits the resolution chain. Failing
-            // here rather than falling through surfaces wrong-editor requests
-            // (e.g. an MCP call handing a .png to a code editor by mistake).
+            // An explicit editor request short-circuits the resolution chain, and fails rather
+            // than falling through to another editor.
             return CreateForRequestedEditor(fileResource, requestedEditorId);
         }
 
@@ -64,13 +62,13 @@ public class DocumentViewFactory
             return sidecarView.OkResult<IDocumentView>();
         }
 
-        var extensionView = await CreateFromExtensionPreferenceAsync(fileResource);
-        if (extensionView is not null)
+        var associatedEditorView = CreateFromEditorAssociations(fileResource);
+        if (associatedEditorView is not null)
         {
-            return extensionView.OkResult<IDocumentView>();
+            return associatedEditorView.OkResult<IDocumentView>();
         }
 
-        var factoryView = CreateFromPriorityFactory(fileResource);
+        var factoryView = CreateFromResolvedFactory(fileResource);
         if (factoryView is not null)
         {
             return factoryView.OkResult<IDocumentView>();
@@ -79,11 +77,10 @@ public class DocumentViewFactory
         return CreateTextFallback(fileResource);
     }
 
-    // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins
-    // over per-extension preference and priority fallback. Returns the view
-    // on success, or null when no preference is set, the editor is unregistered,
-    // it cannot handle the resource, or construction fails (logged before
-    // fall-through).
+    // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins over the
+    // editor-associations map and the resolution-order fallback. Returns the view on success, or null
+    // when no override is set, the editor is unregistered, it cannot handle the resource, or
+    // construction fails (logged before fall-through).
     private async Task<IDocumentView?> CreateFromSidecarPreferenceAsync(ResourceKey fileResource)
     {
         var sidecarEditorResult = await _preferenceStore.GetSidecarPreferenceAsync(fileResource);
@@ -118,41 +115,33 @@ public class DocumentViewFactory
         return null;
     }
 
-    // Per-extension preference: same fall-through contract as sidecar.
-    private async Task<IDocumentView?> CreateFromExtensionPreferenceAsync(ResourceKey fileResource)
+    // Editor associations: the [celbridge].editor-associations entry whose extension is the
+    // longest matching suffix of the file name. Entries are validated at workspace load, so a
+    // failed lookup here just falls through.
+    private IDocumentView? CreateFromEditorAssociations(ResourceKey fileResource)
     {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        var preferredEditorId = await _preferenceStore.GetExtensionPreferenceAsync(extension);
-        if (preferredEditorId.IsEmpty)
+        var factoryResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
+        if (factoryResult.IsFailure)
         {
             return null;
         }
 
-        var preferredFactoryResult = _documentEditorRegistry.GetFactoryById(preferredEditorId);
-        if (preferredFactoryResult.IsFailure)
-        {
-            return null;
-        }
-
-        var preferredFactory = preferredFactoryResult.Value;
-        if (!preferredFactory.CanHandleResource(fileResource))
-        {
-            return null;
-        }
-
-        var createResult = preferredFactory.CreateDocumentView(fileResource);
+        var factory = factoryResult.Value;
+        var createResult = factory.CreateDocumentView(fileResource);
         if (createResult.IsSuccess)
         {
             return createResult.Value;
         }
 
+        _logger.LogWarning(createResult,
+            $"Associated editor '{factory.EditorId}' failed to create view for '{fileResource}'; falling through");
         return null;
     }
 
-    // Highest-priority factory for the resource. Placeholder factories
-    // (package.toml, *.celbridge, *.document.toml) reserve extensions but
-    // never produce a view, so they are skipped here.
-    private IDocumentView? CreateFromPriorityFactory(ResourceKey fileResource)
+    // First factory in resolution order for the resource: declared instances in declaration
+    // order, then built-ins in host order. Placeholder factories (package.toml, *.celbridge,
+    // *.editor.toml) reserve extensions but never produce a view, so they are skipped here.
+    private IDocumentView? CreateFromResolvedFactory(ResourceKey fileResource)
     {
         var factoryResult = _documentEditorRegistry.GetFactory(fileResource);
         if (factoryResult.IsFailure
@@ -180,10 +169,9 @@ public class DocumentViewFactory
             return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        // Markdown is plain text, so when no Markdown editor is available it can still be edited as
-        // text. This is the path taken on the Skia heads where the WebView-backed Markdown editor is
-        // gated off. The plain TextBox is the built-in fallback. WebViewDocument and FileViewer are
-        // not text-representable, so they correctly fail here rather than opening as text.
+        // Markdown is plain text, so it can still be edited as text when no Markdown editor is
+        // available. WebViewDocument and FileViewer are not text-representable, so they fail here
+        // rather than opening as text.
         if (viewType != DocumentViewType.TextDocument
             && viewType != DocumentViewType.Markdown)
         {
@@ -193,7 +181,7 @@ public class DocumentViewFactory
         return CreateTextDocumentView(fileResource);
     }
 
-    private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, DocumentEditorId requestedEditorId)
+    private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, EditorInstanceId requestedEditorId)
     {
         var getFactoryResult = _documentEditorRegistry.GetFactoryById(requestedEditorId);
         if (getFactoryResult.IsFailure)
@@ -224,9 +212,8 @@ public class DocumentViewFactory
 
     private Result<IDocumentView> CreateTextDocumentView(ResourceKey fileResource)
     {
-        // Try every non-placeholder factory in priority order. Placeholders cannot
-        // produce a view, so calling them here would burn cycles and fall through.
-        foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(candidate => candidate.Priority))
+        // Try every non-placeholder factory. Placeholders never produce a view.
+        foreach (var factory in _documentEditorRegistry.GetAllFactories())
         {
             if (factory.IsPlaceholder)
             {
@@ -259,15 +246,14 @@ public class DocumentViewFactory
                 $"Code editor '{DocumentConstants.CodeEditorId}' failed to create view for '{fileResource}'; using TextBoxDocumentView");
         }
 
-        // Last-resort fallback. Used on non-Windows hosts (Monaco runs in
-        // Windows-only WebView2) and when the code editor factory fails.
-        // Stamped here because the TextBox is not produced by a factory.
+        // Last-resort fallback, used when the code editor is unavailable or fails. The TextBox is
+        // not produced by a factory, so its editor id is stamped here.
         var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
         textBoxView.EditorId = DocumentConstants.TextBoxFallbackEditorId;
         return textBoxView.OkResult<IDocumentView>();
     }
 
-    private static bool IsCodeEditor(DocumentEditorId editorId)
+    private static bool IsCodeEditor(EditorInstanceId editorId)
     {
         return editorId == DocumentConstants.CodeEditorId;
     }

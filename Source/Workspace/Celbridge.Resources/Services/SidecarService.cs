@@ -256,12 +256,15 @@ public sealed class SidecarService : ISidecarService
     // the current values) does not trigger a watcher event or downstream
     // resource refresh. A missing storage file is either created
     // (createIfMissing=true) or quietly skipped (createIfMissing=false); a
-    // Broken sidecar fails rather than being overwritten with fresh content.
+    // Broken sidecar fails rather than being overwritten with fresh content. A
+    // mutation that leaves no fields deletes the now-blank sidecar instead of
+    // writing an empty file.
     //
     // The returned outcome lets callers distinguish a freshly-created sidecar
     // (registry needs to learn about the new file) from an in-place update
-    // (registry already tracks the file; classification unchanged) and from a
-    // no-op (nothing happened on disk).
+    // (registry already tracks the file; classification unchanged), from a
+    // deletion (the emptied file was removed; registry must drop it), and from
+    // a no-op (nothing happened on disk).
     private async Task<Result<SidecarWriteOutcome>> MutateFieldsAsync(
         ResourceKey resource,
         Action<Dictionary<string, object>> mutate,
@@ -329,6 +332,22 @@ public sealed class SidecarService : ISidecarService
         if (string.Equals(canonicalAfter, canonicalBefore, StringComparison.Ordinal))
         {
             return SidecarWriteOutcome.NoChange;
+        }
+
+        // A sidecar emptied by the mutation is deleted rather than left as a
+        // blank file, mirroring how the first field creates it. This point is
+        // reached only when the content changed, so an empty result means the
+        // sidecar previously held fields and therefore exists on disk.
+        if (canonicalAfter.Length == 0)
+        {
+            var deleteResult = await resourceFileSystem.DeleteAsync(sidecarKey);
+            if (deleteResult.IsFailure)
+            {
+                return Result<SidecarWriteOutcome>.Fail($"Failed to delete emptied sidecar '{sidecarKey}'.")
+                    .WithErrors(deleteResult);
+            }
+
+            return SidecarWriteOutcome.Deleted;
         }
 
         var writeResult = await resourceFileSystem.WriteAllTextAsync(sidecarKey, canonicalAfter);

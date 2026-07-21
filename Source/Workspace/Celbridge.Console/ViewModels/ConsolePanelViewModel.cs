@@ -215,6 +215,16 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ShowConsolePanel();
                 return;
 
+            case ConsoleErrorType.ProjectConfigEntryError:
+                // Per-entry config errors are advisory: the rest of the file
+                // applied and the project loaded. Route to the dismissable
+                // warning banner like project check findings.
+                ProjectCheckBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectConfigEntryErrorTitle");
+                ProjectCheckBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectConfigEntryErrorMessage", configFile);
+                IsProjectCheckBannerVisible = true;
+                ShowConsolePanel();
+                return;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }

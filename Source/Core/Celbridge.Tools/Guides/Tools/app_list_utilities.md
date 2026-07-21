@@ -13,7 +13,7 @@ Before `app_show_utility`, to learn the valid ids. Also when the user asks what 
 A JSON object with one field:
 
 - `utilities` (array) — every available utility. Each entry has:
-  - `utilityId` (string) — the id to pass to `app_show_utility` (e.g. `celbridge.explorer`, or `{packageName}.{documentId}` for a custom one).
+  - `utilityId` (string) — the id to pass to `app_show_utility` (e.g. `celbridge.explorer`, or the instance id declared in the `.celbridge` file for a custom one).
   - `displayName` (string) — the human-readable, localized name.
   - `location` (string) — the utility's current dock location: `"panel"` when it is a rail surface in the Utility Panel, or `"document"` when the user has docked it into a document tab. A utility can move between the two at runtime; the built-in Explorer and Search are always `"panel"`.
   - `isShown` (bool) — whether the utility is currently surfaced to the user: for a `panel`, whether it is the active rail tab; for a `document`, whether its tab is the active document.

@@ -9,9 +9,8 @@ namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// Covers DocumentLayoutStore: restore-parsing edge cases (corrupted layout,
-/// invalid resource keys, malformed editor ids, section clamps), the
-/// default-readme fallback when no layout is stored, and the basic
-/// settings-writing shape of the Store* methods.
+/// invalid resource keys, section clamps), the default-readme fallback when no
+/// layout is stored, and the basic settings-writing shape of the Store* methods.
 /// </summary>
 [TestFixture]
 public class DocumentLayoutStoreTests
@@ -64,7 +63,7 @@ public class DocumentLayoutStoreTests
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
-        // A stored utils: entry drives the dock mechanism through the utility service; default it to success.
+        // A stored utils: entry drives the dock mechanism through the utility service. Default it to success.
         _utilityService = Substitute.For<IUtilityService>();
         _utilityService.RestoreDockedUtility(Arg.Any<ResourceKey>(), Arg.Any<DocumentAddress>())
             .Returns(Result.Ok());
@@ -119,7 +118,7 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_NoStoredLayout_SkipsReadmeWhenItDoesNotResolve()
     {
-        // No readme.md in the workspace: NormalizeResourceKey fails; the
+        // No readme.md in the workspace: NormalizeResourceKey fails and the
         // fallback is a no-op rather than an error.
         _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
             .Returns(Result<ResourceKey>.Fail("not found"));
@@ -164,7 +163,7 @@ public class DocumentLayoutStoreTests
         await _documentsPanel.Received(1).OpenDocument(
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
-                options.EditorId == DocumentEditorId.Empty
+                options.EditorId == EditorInstanceId.Empty
                 && options.Activate == false
                 && options.Address!.SectionIndex == 0
                 && options.Address.TabOrder == 2));
@@ -226,8 +225,7 @@ public class DocumentLayoutStoreTests
 
         await _store.RestorePanelStateAsync();
 
-        // Docked via the utility service at the saved address, never opened as a document.
-        _utilityService.Received(1).RestoreDockedUtility(
+        await _utilityService.Received(1).RestoreDockedUtility(
             utilityResource,
             Arg.Is<DocumentAddress>(address => address.SectionIndex == 0 && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
@@ -236,8 +234,8 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
-        // ResolveResourcePath returns a path that does not exist on disk.
-        // ResourceFileSystem.GetInfoAsync reports NotFound; the restore skips.
+        // ResolveResourcePath returns a path that does not exist on disk, so
+        // ResourceFileSystem.GetInfoAsync reports NotFound and the restore skips.
         var missingPath = Path.Combine(_tempFolder, "does_not_exist.md");
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Ok(missingPath));
@@ -277,9 +275,9 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_AttachesEditorStateJsonByResourceKey()
     {
-        // Saved editor state is indexed by resource key (the canonical
-        // "project:..." form ResourceKey.ToString emits); the restore must
-        // forward only the entry that matches each opened tab.
+        // Saved editor state is indexed by resource key, the canonical "project:..."
+        // form ResourceKey.ToString emits. The restore forwards only the entry that
+        // matches each opened tab.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
             new("notes/readme.md", 0, 0, 0),
@@ -321,8 +319,7 @@ public class DocumentLayoutStoreTests
     public async Task RestorePanelStateAsync_NoStoredActiveDocument_StillSetsActiveDocument()
     {
         // Restored tabs with no persisted active document must still delegate to the panel so it
-        // can enforce the one-active-document invariant. The store used to return early here, which
-        // left the panel showing a selected tab with no active document.
+        // can enforce the one-active-document invariant.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
             new("notes/readme.md", 0, 0, 0),

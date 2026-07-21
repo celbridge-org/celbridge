@@ -1,9 +1,7 @@
 using Celbridge.Commands;
-using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Packages;
-using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -22,8 +20,11 @@ public sealed partial class CustomUtilityView : UserControl
     private readonly CustomEditorController _controller;
     private readonly CustomEditorFocusContext _panelFocusContext;
 
-    // The utility's id, set on Initialize. Used by the dock orchestration to address this panel.
-    private UtilityId _utilityId = UtilityId.Empty;
+    // The utility's id, set on Bind. Used by the dock orchestration to address this panel.
+    private EditorInstanceId _utilityId = EditorInstanceId.Empty;
+
+    // The bound instance, held so a lazy utility can initialize its WebView on first show.
+    private EditorInstance? _instance;
 
     public CustomUtilityView(IServiceProvider serviceProvider)
     {
@@ -38,8 +39,8 @@ public sealed partial class CustomUtilityView : UserControl
         ToolTipService.SetToolTip(OpenAsDocumentButton, openAsDocumentTooltip.ToString());
         AutomationProperties.SetName(OpenAsDocumentButton, openAsDocumentTooltip.ToString());
 
-        // A utility in the panel is not a document, so it does not mark itself the active document on focus. The
-        // registry still reports its Utility focus identity from the registration, which is all a utility needs.
+        // A utility in the panel is not a document, so it does not mark itself the active document on focus.
+        // The registry still reports its Utility focus identity from the registration.
         _panelFocusContext = new CustomEditorFocusContext(
             WorkspacePanel.CustomUtility,
             () => { });
@@ -52,7 +53,7 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// The utility's persistent editor controller. Owned by this panel for the workspace lifetime; the dock
+    /// The utility's persistent editor controller. Owned by this panel for the workspace lifetime. The dock
     /// orchestration borrows it to present the utility in a document tab and hands it back when it returns.
     /// </summary>
     public CustomEditorController Controller => _controller;
@@ -69,14 +70,10 @@ public sealed partial class CustomUtilityView : UserControl
     /// </summary>
     public CustomEditorFocusContext PanelFocusContext => _panelFocusContext;
 
-    /// <summary>
-    /// The utility's id.
-    /// </summary>
-    public UtilityId UtilityId => _utilityId;
+    public EditorInstanceId UtilityId => _utilityId;
 
     /// <summary>
-    /// This utility's current dock location (the Utility Panel rail or a document tab). Set by the dock
-    /// orchestration on the documents service.
+    /// This utility's current dock location (the Utility Panel rail or a document tab).
     /// </summary>
     public DockLocation Location { get; set; } = DockLocation.UtilityPanel;
 
@@ -95,12 +92,13 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// Binds the panel to its utility contribution and backing resource, then initializes the WebView. The
-    /// backing file is expected to already exist (seeded by the documents service before this call).
+    /// Binds the panel to its utility instance and backing resource without creating the WebView.
+    /// The backing file is expected to already exist, seeded before this call.
     /// </summary>
-    public async Task<Result> InitializeAsync(CustomDocumentEditorContribution contribution, ResourceKey resource, string displayName)
+    public async Task<Result> BindAsync(EditorInstance instance, ResourceKey resource, string displayName)
     {
-        _utilityId = UtilityId.Create(contribution.Package.Name, contribution.Id);
+        _instance = instance;
+        _utilityId = instance.InstanceId;
 
         PanelHeaderControl.Title = displayName;
 
@@ -120,10 +118,24 @@ public sealed partial class CustomUtilityView : UserControl
         var writableState = await operations.GetWritableStateAsync(resource);
         _controller.SetWritableState(writableState);
 
-        var initResult = await _controller.InitializeAsync(contribution);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Initializes the WebView for the bound instance. The controller runs the initialization
+    /// once; later calls await the same result, so this is safe to call on every show.
+    /// </summary>
+    public async Task<Result> EnsureInitializedAsync()
+    {
+        if (_instance is null)
+        {
+            return Result.Fail("Cannot initialize utility: the view is not bound to an instance");
+        }
+
+        var initResult = await _controller.InitializeAsync(_instance);
         if (initResult.IsFailure)
         {
-            return Result.Fail($"Failed to initialize utility: '{resource}'")
+            return Result.Fail($"Failed to initialize utility: '{_viewModel.FileResource}'")
                 .WithErrors(initResult);
         }
 

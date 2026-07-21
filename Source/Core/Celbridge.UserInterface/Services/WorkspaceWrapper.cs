@@ -38,6 +38,8 @@ public class WorkspaceWrapper : IWorkspaceWrapper
 
     public bool IsWorkspacePageLoaded { get; private set; }
 
+    public bool HasWorkspaceService => _workspaceService is not null;
+
     public IWorkspaceService WorkspaceService
     {
         get

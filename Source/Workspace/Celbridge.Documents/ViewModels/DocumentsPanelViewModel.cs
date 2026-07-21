@@ -31,9 +31,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.UnregisterAll(this);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default)
     {
-        var createResult = await _documentsService.CreateDocumentView(fileResource, documentEditorId);
+        var createResult = await _documentsService.CreateDocumentView(fileResource, editorId);
         if (createResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
@@ -140,20 +140,20 @@ public partial class DocumentsPanelViewModel : ObservableObject
         });
     }
 
-    public record class EditorDisplayInfo(DocumentEditorId EditorId, string EditorDisplayName);
+    public record class EditorDisplayInfo(EditorInstanceId EditorId, string EditorDisplayName);
 
-    // Looks up the display name for the supplied editor id. Returns an empty
-    // label when only one factory claims the extension (no disambiguation
-    // needed); null when the editor id is empty or unregistered.
-    public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, DocumentEditorId documentEditorId)
+    // Looks up the display name for the supplied editor id. Returns an empty label when only one
+    // factory claims the extension (no disambiguation needed), and null when the editor id is empty
+    // or unregistered.
+    public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, EditorInstanceId editorId)
     {
-        if (documentEditorId.IsEmpty)
+        if (editorId.IsEmpty)
         {
             return null;
         }
 
         var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
+        var factoryResult = editorRegistry.GetFactoryById(editorId);
         if (factoryResult.IsFailure)
         {
             return null;
@@ -165,54 +165,28 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
     }
 
-    public record class EditorChoiceInfo(
-        IReadOnlyList<IDocumentEditorFactory> Factories,
-        List<string> DisplayNames,
-        int DefaultIndex);
-
-    public EditorChoiceInfo? GetChoicesForFileExtension(string extension, DocumentEditorId currentEditorId)
+    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId)
     {
-        var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForExtension(extension);
-
-        if (factories.Count < 2)
-        {
-            return null;
-        }
-
-        int defaultIndex = 0;
-        for (int i = 0; i < factories.Count; i++)
-        {
-            if (factories[i].EditorId == currentEditorId)
-            {
-                defaultIndex = i;
-                break;
-            }
-        }
-
-        var displayNames = factories.Select(factory => factory.DisplayName).ToList();
-        return new EditorChoiceInfo(factories, displayNames, defaultIndex);
+        return _documentsService.GetEditorPickList(fileResource, currentEditorId);
     }
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId)
     {
-        return await _documentsService.SetPreferredEditorAsync(fileResource, editorId, useAsExtensionDefault);
+        return await _documentsService.SetPreferredEditorAsync(fileResource, editorId);
     }
 
-    public record class UtilityTabInfo(string IconGlyphName, string Title);
+    public record class UtilityTabInfo(string IconGlyphName, string Title, string Tooltip);
 
-    // Resolves the tab title and glyph for a utility document from its editor factory, or null when the editor
-    // is not a utility. The title is the factory's localized display name (a utility defaults its display name
-    // to the tooltip key); the glyph comes from the manifest.
-    public UtilityTabInfo? ResolveUtilityTabInfo(DocumentEditorId documentEditorId)
+    // Resolves how a utility document presents as a tab, or null when the editor is not a utility.
+    public UtilityTabInfo? ResolveUtilityTabInfo(EditorInstanceId editorId)
     {
-        if (documentEditorId.IsEmpty)
+        if (editorId.IsEmpty)
         {
             return null;
         }
 
         var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
+        var factoryResult = editorRegistry.GetFactoryById(editorId);
         if (factoryResult.IsFailure)
         {
             return null;
@@ -226,6 +200,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var descriptor = utilityFactory.Contribution.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
 
-        return new UtilityTabInfo(descriptor.Icon, utilityFactory.DisplayName);
+        var iconGlyphName = descriptor.Icon;
+
+        return new UtilityTabInfo(iconGlyphName, utilityFactory.DisplayName, utilityFactory.Description);
     }
 }

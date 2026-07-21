@@ -716,6 +716,12 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_ProjectCheckFindingsMessage" xml:space="preserve">
     <value>Project check found {0} issue(s). See log for details.</value>
   </data>
+  <data name="ConsolePanel_ProjectConfigEntryErrorTitle" xml:space="preserve">
+    <value>Project Config Issues</value>
+  </data>
+  <data name="ConsolePanel_ProjectConfigEntryErrorMessage" xml:space="preserve">
+    <value>Some entries in {0} were skipped or degraded. See log for details.</value>
+  </data>
   <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
     <value>Split Editor</value>
   </data>
@@ -800,8 +806,113 @@ Do you wish to continue?</value>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse All Folders</value>
   </data>
-  <data name="ResourceTreeToolbar_ProjectSettingsTooltip" xml:space="preserve">
-    <value>Open Project Settings</value>
+  <data name="ProjectSettingsPanel_Title" xml:space="preserve">
+    <value>Project Settings</value>
+  </data>
+  <data name="ProjectSettings_PackagesHeader" xml:space="preserve">
+    <value>Packages</value>
+  </data>
+  <data name="ProjectSettings_FileEditorsHeader" xml:space="preserve">
+    <value>File Editors</value>
+  </data>
+  <data name="ProjectSettings_InformationHeader" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="ProjectSettings_InformationDescription" xml:space="preserve">
+    <value>Review project details and set the project version and ignore file.</value>
+  </data>
+  <data name="ProjectSettings_PackagesDescription" xml:space="preserve">
+    <value>Enable or disable packages and configure their contributions.</value>
+  </data>
+  <data name="ProjectSettings_FileEditorsDescription" xml:space="preserve">
+    <value>Choose which editor opens each type of file.</value>
+  </data>
+  <data name="ProjectSettings_SchemaVersionLabel" xml:space="preserve">
+    <value>Celbridge version</value>
+  </data>
+  <data name="ProjectSettings_ProjectVersionLabel" xml:space="preserve">
+    <value>Project version</value>
+  </data>
+  <data name="ProjectSettings_IgnoreFileLabel" xml:space="preserve">
+    <value>Ignore file</value>
+  </data>
+  <data name="ProjectSettings_IgnoreFileTooltip" xml:space="preserve">
+    <value>The ignore file that lists paths to exclude from the project (e.g. .gitignore).</value>
+  </data>
+  <data name="ProjectSettings_EditorPickerTooltip" xml:space="preserve">
+    <value>Choose which editor opens this file type.</value>
+  </data>
+  <data name="ProjectSettings_PackageToggleTooltip" xml:space="preserve">
+    <value>Enable or disable this package for the project.</value>
+  </data>
+  <data name="ProjectSettings_ContributionToggleTooltip" xml:space="preserve">
+    <value>Enable or disable this editor for the project.</value>
+  </data>
+  <data name="ProjectSettings_PackageEnabledLabel" xml:space="preserve">
+    <value>Package Enabled</value>
+  </data>
+  <data name="ProjectSettings_PackageNameFormat" xml:space="preserve">
+    <value>{0} Package</value>
+  </data>
+  <data name="ProjectSettings_ContributionEnabledLabel" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="ProjectSettings_BuiltInPackageNameFormat" xml:space="preserve">
+    <value>{0} (Built-in)</value>
+  </data>
+  <data name="ProjectSettings_FileExtensionsLabel" xml:space="preserve">
+    <value>File Extensions</value>
+  </data>
+  <data name="ProjectSettings_OpenManifestTooltip" xml:space="preserve">
+    <value>Open the manifest file</value>
+  </data>
+  <data name="ProjectSettings_ContributionType_Document" xml:space="preserve">
+    <value>Document Editor</value>
+  </data>
+  <data name="ProjectSettings_ContributionType_Utility" xml:space="preserve">
+    <value>Utility</value>
+  </data>
+  <data name="ProjectSettings_SchemaVersionTooltip" xml:space="preserve">
+    <value>The version of Celbridge that last opened this project. Updated automatically.</value>
+  </data>
+  <data name="ProjectSettings_ProjectVersionTooltip" xml:space="preserve">
+    <value>A version number you can set to track your project, for your own use.</value>
+  </data>
+  <data name="ProjectSettings_CategoryPickerTooltip" xml:space="preserve">
+    <value>Filter file types by category</value>
+  </data>
+  <data name="ProjectSettings_FilterExtensionsPlaceholder" xml:space="preserve">
+    <value>Filter extensions</value>
+  </data>
+  <data name="ProjectSettings_Category_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="ProjectSettings_Category_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="ProjectSettings_Category_Text" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="ProjectSettings_Category_Image" xml:space="preserve">
+    <value>Image</value>
+  </data>
+  <data name="ProjectSettings_Category_Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="ProjectSettings_Category_Video" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="ProjectSettings_Category_Data" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="ProjectSettings_Category_Document" xml:space="preserve">
+    <value>Document</value>
+  </data>
+  <data name="ProjectSettings_StringListPlaceholder" xml:space="preserve">
+    <value>One value per line</value>
+  </data>
+  <data name="ProjectSettings_ApplyAndReload" xml:space="preserve">
+    <value>Apply and reload</value>
   </data>
   <data name="NewFileDialog_FileType" xml:space="preserve">
     <value>Type</value>
@@ -1121,6 +1232,9 @@ Do you wish to continue?</value>
   <data name="UtilityPanel_SearchTooltip" xml:space="preserve">
     <value>Search</value>
   </data>
+  <data name="UtilityPanel_ProjectSettingsTooltip" xml:space="preserve">
+    <value>Project Settings</value>
+  </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
     <value>Open as document</value>
   </data>
@@ -1256,8 +1370,8 @@ Do you wish to continue?</value>
   <data name="DocumentEditor_PackageManifest" xml:space="preserve">
     <value>Package Manifest</value>
   </data>
-  <data name="DocumentEditor_DocumentContribution" xml:space="preserve">
-    <value>Document Contribution</value>
+  <data name="DocumentEditor_EditorManifest" xml:space="preserve">
+    <value>Editor Manifest</value>
   </data>
   <data name="WebView_Find_Placeholder" xml:space="preserve">
     <value>Find</value>
@@ -1307,10 +1421,10 @@ Do you wish to continue?</value>
     <value>Choose Editor</value>
   </data>
   <data name="OpenWithDialog_Message" xml:space="preserve">
-    <value>Select which editor to use for this file type:</value>
+    <value>Select which editor opens this file:</value>
   </data>
-  <data name="OpenWithDialog_UseAsDefault" xml:space="preserve">
-    <value>Use as default for this file type</value>
+  <data name="OpenWithDialog_DefaultFormat" xml:space="preserve">
+    <value>{0} (default)</value>
   </data>
   <data name="OpenWithDialog_OpenButton" xml:space="preserve">
     <value>Open</value>

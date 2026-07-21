@@ -1,4 +1,3 @@
-using Celbridge.Documents;
 using Celbridge.Documents.Commands;
 using Celbridge.Packages;
 using Celbridge.Workspace;
@@ -7,9 +6,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Direct unit test for GetUtilitiesStateCommand. Exercises the command's own catalog-building logic:
-/// the built-in Explorer/Search surfaces, filtering non-utility contributions, and the isShown rule
-/// (the utility that is the active rail surface).
+/// Covers GetUtilitiesStateCommand's catalog building: the built-in Explorer and Search surfaces,
+/// filtering out non-utility contributions, and the reported dock location and isShown state.
 /// </summary>
 [TestFixture]
 public class GetUtilitiesStateCommandTests
@@ -17,43 +15,47 @@ public class GetUtilitiesStateCommandTests
     [Test]
     public async Task Execute_ReturnsBuiltInsAndCustomUtilitiesWithShownState()
     {
-        var panelUtility = new CustomDocumentEditorContribution
+        var panelUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
-            Id = "emoji-panel",
-            DisplayName = "Emoji Panel",
-            UtilityDescriptor = new UtilityDescriptor { Resource = "utils:emoji._emoji" }
+            Id = "widget",
+            DisplayName = "Widget Panel",
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._widget" }
         };
 
-        var documentUtility = new CustomDocumentEditorContribution
+        var documentUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
             Id = "notepad",
             DisplayName = "Notepad",
-            UtilityDescriptor = new UtilityDescriptor { Resource = "utils:notepad._notepad" }
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._notepad" }
         };
 
         // A non-utility editor contribution must be filtered out of the catalog.
-        var nonUtility = new CustomDocumentEditorContribution
+        var nonUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "celbridge" },
-            Id = "code-editor",
+            Id = "code",
             DisplayName = "Code Editor"
         };
 
-        var contributions = new List<DocumentEditorContribution>
+        var instances = new List<EditorInstance>
         {
-            panelUtility,
-            documentUtility,
-            nonUtility
+            CreateInstance("widget-panel", panelUtility),
+            CreateInstance("notepad", documentUtility),
+            CreateInstance("code", nonUtility)
         };
 
-        // The emoji-panel utility is the active rail surface, so it is the only utility shown.
+        // The widget-panel utility is the active rail surface, so it is the only utility shown.
         var utilityPanel = Substitute.For<IUtilityPanel>();
-        utilityPanel.ActiveUtilityId.Returns(UtilityId.Create("acme", "emoji-panel"));
+        utilityPanel.ActiveUtilityId.Returns(new EditorInstanceId("widget-panel"));
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetAllDocumentEditors().Returns(contributions);
+        packageService.GetEditorInstances().Returns(instances);
+
+        // Both declared utilities were created, so both are live and listed.
+        var utilityService = Substitute.For<IUtilityService>();
+        utilityService.HasUtility(Arg.Any<EditorInstanceId>()).Returns(true);
 
         // No utilities are docked: no documents are open.
         var documentsService = Substitute.For<IDocumentsService>();
@@ -64,6 +66,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityPanel.Returns(utilityPanel);
         workspaceService.PackageService.Returns(packageService);
         workspaceService.DocumentsService.Returns(documentsService);
+        workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
@@ -93,12 +96,12 @@ public class GetUtilitiesStateCommandTests
         utilities[1].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[1].IsShown.Should().BeFalse();
 
-        utilities[2].UtilityId.Should().Be(UtilityId.Create("acme", "emoji-panel"));
-        utilities[2].DisplayName.Should().Be("Emoji Panel");
+        utilities[2].UtilityId.Should().Be(new EditorInstanceId("widget-panel"));
+        utilities[2].DisplayName.Should().Be("Widget Panel");
         utilities[2].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[2].IsShown.Should().BeTrue();
 
-        utilities[3].UtilityId.Should().Be(UtilityId.Create("acme", "notepad"));
+        utilities[3].UtilityId.Should().Be(new EditorInstanceId("notepad"));
         utilities[3].DisplayName.Should().Be("Notepad");
         utilities[3].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[3].IsShown.Should().BeFalse();
@@ -107,30 +110,34 @@ public class GetUtilitiesStateCommandTests
     [Test]
     public async Task Execute_DockedUtility_ReportsDockedAndShownByActiveDocument()
     {
-        var dockedUtility = new CustomDocumentEditorContribution
+        var dockedUtility = new EditorContribution
         {
             Package = new PackageInfo { Name = "acme" },
             Id = "notepad",
             DisplayName = "Notepad",
-            UtilityDescriptor = new UtilityDescriptor { Resource = "utils:notepad._notepad" }
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._notepad" }
         };
 
-        var contributions = new List<DocumentEditorContribution> { dockedUtility };
+        var instances = new List<EditorInstance> { CreateInstance("notepad", dockedUtility) };
 
+        // The backing resource is derived from the instance id and the contribution's extension.
         var utilityResource = new ResourceKey("utils:notepad._notepad");
 
-        // The rail is showing Explorer; the utility is not the active rail surface. It is instead docked as a
-        // document tab and is the active document, so it must be reported as docked and shown.
+        // The rail is showing Explorer, so the utility is not the active rail surface. It is instead docked
+        // as a document tab and is the active document, so it must be reported as docked and shown.
         var utilityPanel = Substitute.For<IUtilityPanel>();
         utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetAllDocumentEditors().Returns(contributions);
+        packageService.GetEditorInstances().Returns(instances);
+
+        var utilityService = Substitute.For<IUtilityService>();
+        utilityService.HasUtility(Arg.Any<EditorInstanceId>()).Returns(true);
 
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
-            new(utilityResource, new DocumentAddress(0, 0, 0), new DocumentEditorId("acme.notepad"))
+            new(utilityResource, new DocumentAddress(0, 0, 0), new EditorInstanceId("notepad"))
         });
         documentsService.ActiveDocument.Returns(utilityResource);
 
@@ -138,6 +145,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityPanel.Returns(utilityPanel);
         workspaceService.PackageService.Returns(packageService);
         workspaceService.DocumentsService.Returns(documentsService);
+        workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
@@ -155,9 +163,86 @@ public class GetUtilitiesStateCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == UtilityId.Create("acme", "notepad"));
+        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == new EditorInstanceId("notepad"));
         notepad.Location.Should().Be(DockLocation.Document);
         notepad.IsShown.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Execute_UtilityNotCreated_IsExcludedFromList()
+    {
+        // A declared utility whose creation failed is not live, so it must not be listed: app_show_utility
+        // gates on the same HasUtility check and would refuse it.
+        var liveUtility = new EditorContribution
+        {
+            Package = new PackageInfo { Name = "acme" },
+            Id = "notepad",
+            DisplayName = "Notepad",
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._notepad" }
+        };
+
+        var deadUtility = new EditorContribution
+        {
+            Package = new PackageInfo { Name = "acme" },
+            Id = "broken",
+            DisplayName = "Broken",
+            UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._broken" }
+        };
+
+        var instances = new List<EditorInstance>
+        {
+            CreateInstance("notepad", liveUtility),
+            CreateInstance("broken", deadUtility)
+        };
+
+        var utilityPanel = Substitute.For<IUtilityPanel>();
+        utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
+
+        var packageService = Substitute.For<IPackageService>();
+        packageService.GetEditorInstances().Returns(instances);
+
+        var utilityService = Substitute.For<IUtilityService>();
+        utilityService.HasUtility(new EditorInstanceId("notepad")).Returns(true);
+        utilityService.HasUtility(new EditorInstanceId("broken")).Returns(false);
+
+        var documentsService = Substitute.For<IDocumentsService>();
+        documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
+        documentsService.ActiveDocument.Returns(ResourceKey.Empty);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.UtilityPanel.Returns(utilityPanel);
+        workspaceService.PackageService.Returns(packageService);
+        workspaceService.DocumentsService.Returns(documentsService);
+        workspaceService.UtilityService.Returns(utilityService);
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var stringLocalizer = Substitute.For<IStringLocalizer>();
+        stringLocalizer["UtilityPanel_ExplorerTooltip"].Returns(new LocalizedString("UtilityPanel_ExplorerTooltip", "Explorer"));
+        stringLocalizer["UtilityPanel_SearchTooltip"].Returns(new LocalizedString("UtilityPanel_SearchTooltip", "Search"));
+
+        var packageLocalization = Substitute.For<IPackageLocalizationService>();
+        packageLocalization.LoadStrings(Arg.Any<PackageInfo>(), Arg.Any<string?>()).Returns(new Dictionary<string, string>());
+
+        var command = new GetUtilitiesStateCommand(workspaceWrapper, stringLocalizer, packageLocalization);
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var utilities = command.ResultValue.Utilities;
+        utilities.Should().Contain(utility => utility.UtilityId == new EditorInstanceId("notepad"));
+        utilities.Should().NotContain(utility => utility.UtilityId == new EditorInstanceId("broken"));
+    }
+
+    private static EditorInstance CreateInstance(string instanceId, EditorContribution contribution)
+    {
+        return new EditorInstance
+        {
+            InstanceId = new EditorInstanceId(instanceId),
+            Contribution = contribution
+        };
     }
 
     [Test]

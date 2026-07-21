@@ -1,3 +1,5 @@
+using Celbridge.Packages;
+
 namespace Celbridge.Tests.Documents;
 
 [TestFixture]
@@ -22,7 +24,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId("test.empty"));
+        factory.EditorId.Returns(new EditorInstanceId("test.empty"));
         factory.DisplayName.Returns("Empty");
         factory.SupportedExtensions.Returns(new List<string>());
 
@@ -36,8 +38,8 @@ public class DocumentEditorRegistryTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var factory1 = CreateMockFactory("test.md-editor-1", ".md", EditorPriority.Specialized);
-        var factory2 = CreateMockFactory("test.md-editor-2", ".md", EditorPriority.Specialized);
+        var factory1 = CreateMockFactory("test.md-editor-1", ".md");
+        var factory2 = CreateMockFactory("test.md-editor-2", ".md");
 
         registry.RegisterFactory(factory1);
         registry.RegisterFactory(factory2);
@@ -47,7 +49,7 @@ public class DocumentEditorRegistryTests
     }
 
     [Test]
-    public void RegisterFactory_SkipsDuplicateDocumentEditorId()
+    public void RegisterFactory_SkipsDuplicateEditorInstanceId()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
@@ -63,39 +65,79 @@ public class DocumentEditorRegistryTests
     }
 
     [Test]
-    public void GetFactory_ReturnsSpecializedPriorityFactoryOverGeneral()
+    public void GetFactory_ReturnsDeclaredInstanceAheadOfBuiltIn()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        var generalPriority = CreateMockFactory("test.general", ".md", EditorPriority.General, canHandle: true);
-        var specializedPriority = CreateMockFactory("test.specialized", ".md", EditorPriority.Specialized, canHandle: true);
+        // The built-in registers first, but a project-declared instance (dot-free id)
+        // resolves ahead of the entire built-in band.
+        var builtInFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");
+        var instanceFactory = CreateMockFactory("my-editor", ".md");
 
-        registry.RegisterFactory(generalPriority);
-        registry.RegisterFactory(specializedPriority);
+        registry.RegisterFactory(builtInFactory);
+        registry.RegisterFactory(instanceFactory);
 
         var result = registry.GetFactory(fileResource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(specializedPriority);
+        result.Value.Should().Be(instanceFactory);
     }
 
     [Test]
-    public void GetFactory_FallsBackToGeneralWhenSpecializedCannotHandle()
+    public void GetFactory_DeclaredInstancesResolveInRegistrationOrder()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        var specializedButCantHandle = CreateMockFactory("test.specialized", ".md", EditorPriority.Specialized, canHandle: false);
-        var generalCanHandleResource = CreateMockFactory("test.general", ".md", EditorPriority.General, canHandle: true);
+        var firstInstance = CreateMockFactory("first-editor", ".md");
+        var secondInstance = CreateMockFactory("second-editor", ".md");
 
-        registry.RegisterFactory(specializedButCantHandle);
-        registry.RegisterFactory(generalCanHandleResource);
+        registry.RegisterFactory(firstInstance);
+        registry.RegisterFactory(secondInstance);
 
         var result = registry.GetFactory(fileResource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(generalCanHandleResource);
+        result.Value.Should().Be(firstInstance);
+    }
+
+    [Test]
+    public void GetFactory_BuiltInsResolveInHostOrder()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+        var fileResource = new ResourceKey("test.md");
+
+        // The code editor registers first, but the pinned host order places the
+        // markdown editor ahead of it.
+        var codeFactory = CreateMockFactory(BuiltInEditors.CodeEditorId.ToString(), ".md");
+        var markdownFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");
+
+        registry.RegisterFactory(codeFactory);
+        registry.RegisterFactory(markdownFactory);
+
+        var result = registry.GetFactory(fileResource);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(markdownFactory);
+    }
+
+    [Test]
+    public void GetFactory_FallsBackToNextFactoryWhenFirstInResolutionOrderCannotHandle()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+        var fileResource = new ResourceKey("test.md");
+
+        var rejectingInstance = CreateMockFactory("first-editor", ".md", canHandle: false);
+        var acceptingInstance = CreateMockFactory("second-editor", ".md", canHandle: true);
+
+        registry.RegisterFactory(rejectingInstance);
+        registry.RegisterFactory(acceptingInstance);
+
+        var result = registry.GetFactory(fileResource);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(acceptingInstance);
     }
 
     [Test]
@@ -152,7 +194,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId("test.multi-ext"));
+        factory.EditorId.Returns(new EditorInstanceId("test.multi-ext"));
         factory.DisplayName.Returns("Multi Extension Editor");
         factory.SupportedExtensions.Returns(new List<string> { ".md", ".markdown", ".mdown" });
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
@@ -191,21 +233,41 @@ public class DocumentEditorRegistryTests
     }
 
     [Test]
-    public void GetFactoriesForExtension_ReturnsAllFactoriesSortedByPriority()
+    public void GetFactoriesForExtension_ReturnsFactoriesInResolutionOrder()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var generalFactory = CreateMockFactory("test.general", ".md", EditorPriority.General);
-        var specializedFactory = CreateMockFactory("test.specialized", ".md", EditorPriority.Specialized);
+        // The built-in registers first but the declared instance band ranks ahead of it.
+        var builtInFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");
+        var instanceFactory = CreateMockFactory("my-editor", ".md");
 
-        registry.RegisterFactory(generalFactory);
-        registry.RegisterFactory(specializedFactory);
+        registry.RegisterFactory(builtInFactory);
+        registry.RegisterFactory(instanceFactory);
 
         var factories = registry.GetFactoriesForExtension(".md");
 
         factories.Should().HaveCount(2);
-        factories[0].Should().Be(specializedFactory);
-        factories[1].Should().Be(generalFactory);
+        factories[0].Should().Be(instanceFactory);
+        factories[1].Should().Be(builtInFactory);
+    }
+
+    [Test]
+    public void GetFactoriesForExtension_PlaceholdersRankAheadOfOtherFactories()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var instanceFactory = CreateMockFactory("my-editor", ".widget");
+        var placeholderFactory = CreateMockFactory("celbridge.widget-placeholder", ".widget");
+        placeholderFactory.IsPlaceholder.Returns(true);
+
+        registry.RegisterFactory(instanceFactory);
+        registry.RegisterFactory(placeholderFactory);
+
+        var factories = registry.GetFactoriesForExtension(".widget");
+
+        factories.Should().HaveCount(2);
+        factories[0].Should().Be(placeholderFactory);
+        factories[1].Should().Be(instanceFactory);
     }
 
     [Test]
@@ -226,7 +288,7 @@ public class DocumentEditorRegistryTests
         var factory = CreateMockFactory("test.my-editor", ".md");
         registry.RegisterFactory(factory);
 
-        var result = registry.GetFactoryById(new DocumentEditorId("test.my-editor"));
+        var result = registry.GetFactoryById(new EditorInstanceId("test.my-editor"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(factory);
@@ -237,7 +299,80 @@ public class DocumentEditorRegistryTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var result = registry.GetFactoryById(new DocumentEditorId("nonexistent.editor"));
+        var result = registry.GetFactoryById(new EditorInstanceId("nonexistent.editor"));
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void GetAssociatedEditorFactory_LongestMatchingSuffixWins()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var noteFactory = CreateMockFactory("note-editor", ".note.cel");
+        var celFactory = CreateMockFactory("cel-editor", ".cel");
+        registry.RegisterFactory(noteFactory);
+        registry.RegisterFactory(celFactory);
+
+        registry.SetEditorAssociations(new Dictionary<string, string>
+        {
+            [".note.cel"] = "note-editor",
+            [".cel"] = "cel-editor",
+        });
+
+        var result = registry.GetAssociatedEditorFactory(new ResourceKey("design.note.cel"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(noteFactory);
+    }
+
+    [Test]
+    public void GetAssociatedEditorFactory_FailsWhenNoEntryMatches()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var factory = CreateMockFactory("my-editor", ".md");
+        registry.RegisterFactory(factory);
+
+        registry.SetEditorAssociations(new Dictionary<string, string>
+        {
+            [".md"] = "my-editor",
+        });
+
+        var result = registry.GetAssociatedEditorFactory(new ResourceKey("notes.txt"));
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void GetAssociatedEditorFactory_FailsWhenNamedEditorIsUnregistered()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        registry.SetEditorAssociations(new Dictionary<string, string>
+        {
+            [".md"] = "ghost-editor",
+        });
+
+        var result = registry.GetAssociatedEditorFactory(new ResourceKey("notes.md"));
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void GetAssociatedEditorFactory_FailsWhenEditorCannotHandleResource()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var rejectingFactory = CreateMockFactory("my-editor", ".md", canHandle: false);
+        registry.RegisterFactory(rejectingFactory);
+
+        registry.SetEditorAssociations(new Dictionary<string, string>
+        {
+            [".md"] = "my-editor",
+        });
+
+        var result = registry.GetAssociatedEditorFactory(new ResourceKey("notes.md"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -315,16 +450,14 @@ public class DocumentEditorRegistryTests
     }
 
     private static IDocumentEditorFactory CreateMockFactory(
-        string documentEditorId,
+        string editorId,
         string extension,
-        EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new DocumentEditorId(documentEditorId));
-        factory.DisplayName.Returns(documentEditorId);
+        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(new List<string> { extension });
-        factory.Priority.Returns(priority);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);
         return factory;
     }

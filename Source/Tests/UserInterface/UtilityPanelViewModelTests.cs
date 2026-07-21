@@ -11,7 +11,7 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class UtilityPanelViewModelTests
 {
-    private static readonly UtilityId NotepadUtilityId = UtilityId.Create("acme", "notepad");
+    private static readonly EditorInstanceId NotepadUtilityId = EditorInstanceId.Create("acme", "notepad");
 
     private UtilityPanelViewModel _viewModel = null!;
     private UtilityItemViewModel _explorer = null!;

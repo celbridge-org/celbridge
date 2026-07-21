@@ -1,15 +1,13 @@
 using Celbridge.Commands;
+using Celbridge.Console;
 using Celbridge.Documents.Helpers;
-using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Settings;
-using Celbridge.UserInterface;
-using Celbridge.WebHost;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Services;
 
@@ -21,7 +19,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
-    private readonly IFeatureFlags _featureFlags;
     private readonly FileTypeHelper _fileTypeHelper;
     private readonly DocumentEditorRegistry _documentEditorRegistry;
     private readonly FileTypeClassifier _fileTypeClassifier;
@@ -35,8 +32,8 @@ public class DocumentsService : IDocumentsService, IDisposable
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
     /// <summary>
-    /// The currently active document, sourced from the documents panel. Returns
-    /// Empty before the workspace page is loaded (the panel does not exist yet).
+    /// The currently active document. Returns Empty before the workspace page is loaded, because
+    /// the documents panel does not exist yet.
     /// </summary>
     public ResourceKey ActiveDocument =>
         _workspaceWrapper.IsWorkspacePageLoaded
@@ -44,9 +41,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             : ResourceKey.Empty;
 
     /// <summary>
-    /// Returns the currently open documents from the documents panel.
-    /// Reads TabView-backed state, so callers must be on the UI thread. MCP tools satisfy this
-    /// by going through a query command on the command-queue worker, which executes on the UI thread.
+    /// Returns the currently open documents. Reads TabView-backed state, so callers must be on the
+    /// UI thread.
     /// </summary>
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
@@ -65,8 +61,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         ICommandService commandService,
         IModuleService moduleService,
         IWorkspaceWrapper workspaceWrapper,
-        ITextBinarySniffer textBinarySniffer,
-        IFeatureFlags featureFlags)
+        ITextBinarySniffer textBinarySniffer)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -77,20 +72,17 @@ public class DocumentsService : IDocumentsService, IDisposable
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
-        _featureFlags = featureFlags;
         _documentEditorRegistry = new DocumentEditorRegistry(_textBinarySniffer);
 
         _messengerService.Register<PackagesInitializedMessage>(this, OnPackagesInitializedMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
-        // The layout / active / section subscriptions are deferred to
-        // OnWorkspaceLoadedMessage so the messages fired by RestorePanelState
-        // (which runs before workspace-loaded is published) do not trigger
-        // settings writes for what we just read out of settings.
+        // The layout / active / section subscriptions are deferred to OnWorkspaceLoadedMessage so the
+        // messages fired by RestorePanelState (which runs first) do not write back what was just read
+        // out of settings.
 
-        // Register document editor factories from all loaded modules.
-        // This must happen before FileTypeHelper initialization so factories can provide language mappings.
+        // Must happen before FileTypeHelper initialization so factories can provide language mappings.
         RegisterModuleDocumentEditorFactories(moduleService);
 
         _fileTypeHelper = new FileTypeHelper();
@@ -112,8 +104,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             _workspaceWrapper,
             serviceProvider.GetRequiredService<ILogger<DocumentEditorPreferenceStore>>());
 
-        // Built after the registry is fully populated so the factory sees
-        // every editor it might choose.
+        // Built after the registry is fully populated so the factory sees every editor it might choose.
         _viewFactory = new DocumentViewFactory(
             _documentEditorRegistry,
             _workspaceWrapper,
@@ -156,42 +147,110 @@ public class DocumentsService : IDocumentsService, IDisposable
         try
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var contributions = workspaceService.PackageService.GetAllDocumentEditors();
+            var packageService = workspaceService.PackageService;
             var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-            foreach (var contribution in contributions)
+            // Declared instances register first, in declaration order, then the built-ins.
+            // Registration order carries the editor resolution precedence.
+            foreach (var instance in packageService.GetEditorInstances())
             {
-                try
-                {
-                    if (contribution is not CustomDocumentEditorContribution customContribution)
-                    {
-                        continue;
-                    }
-
-                    // Register a document editor factory for each custom contribution, including utilities: a
-                    // utility's factory is what lets it be docked into a document tab. Its IsUtility flag keeps
-                    // it out of the New File dialog and the Reopen-with menu, and its utils: backing resource
-                    // keeps it out of the project-scoped resource tree and search.
-                    var factory = new CustomDocumentViewFactory(_serviceProvider, customContribution, _featureFlags, localizationService);
-                    var result = _documentEditorRegistry.RegisterFactory(factory);
-                    if (result.IsFailure)
-                    {
-                        _logger.LogWarning(result,
-                            $"Failed to register custom editor factory for: {contribution?.Package?.Name}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        $"An exception occurred while registering custom editor for: {contribution.Package?.Name ?? contribution.Id}");
-                }
+                RegisterEditorInstanceFactory(instance, localizationService);
             }
 
+            foreach (var builtIn in packageService.GetBuiltInEditors())
+            {
+                RegisterEditorInstanceFactory(builtIn, localizationService);
+            }
+
+            ApplyEditorAssociations();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "An exception occurred while initializing package document editors");
         }
+    }
+
+    private void RegisterEditorInstanceFactory(EditorInstance instance, IPackageLocalizationService localizationService)
+    {
+        try
+        {
+            // Register an editor factory for each editor instance, including utilities: a utility's
+            // factory is what lets it be docked into a document tab.
+            var factory = new CustomDocumentViewFactory(_serviceProvider, instance, localizationService);
+            var result = _documentEditorRegistry.RegisterFactory(factory);
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(result,
+                    $"Failed to register custom editor factory for: {instance.InstanceId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                $"An exception occurred while registering custom editor for: {instance.InstanceId}");
+        }
+    }
+
+    // Validates the project's editor-associations map against the registered editors and hands the
+    // valid entries to the registry. An entry naming an unknown editor, or an editor that does
+    // not support its extension, is reported and ignored.
+    private void ApplyEditorAssociations()
+    {
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var config = projectService.CurrentProject?.Config;
+        if (config is null)
+        {
+            return;
+        }
+
+        var validatedAssociations = new Dictionary<string, string>();
+        var invalidEntries = new List<string>();
+
+        foreach (var (extension, editorIdValue) in config.Celbridge.EditorAssociations)
+        {
+            if (!EditorInstanceId.TryParse(editorIdValue, out var editorId))
+            {
+                invalidEntries.Add($"'{extension}': '{editorIdValue}' is not a valid editor id");
+                continue;
+            }
+
+            var factoryResult = _documentEditorRegistry.GetFactoryById(editorId);
+            if (factoryResult.IsFailure)
+            {
+                invalidEntries.Add($"'{extension}': no editor '{editorIdValue}' is registered");
+                continue;
+            }
+            var factory = factoryResult.Value;
+
+            if (factory.IsPlaceholder)
+            {
+                // A placeholder factory is a stand-in that opens nothing, so it must never become the
+                // resolved default via an association, or it would badge a default that cannot open.
+                invalidEntries.Add($"'{extension}': editor '{editorIdValue}' cannot be used as an association");
+                continue;
+            }
+
+            var supportsExtension = factory.SupportedExtensions
+                .Any(supported => extension.EndsWith(supported, StringComparison.Ordinal));
+            if (!supportsExtension)
+            {
+                invalidEntries.Add($"'{extension}': editor '{editorIdValue}' does not support the extension");
+                continue;
+            }
+
+            validatedAssociations[extension] = editorIdValue;
+        }
+
+        if (invalidEntries.Count > 0)
+        {
+            _logger.LogWarning(
+                $"Ignored invalid editor-associations entries: {string.Join("; ", invalidEntries)}");
+
+            var projectName = Path.GetFileName(projectService.CurrentProject!.ProjectFilePath);
+            _messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName));
+        }
+
+        _documentEditorRegistry.SetEditorAssociations(validatedAssociations);
     }
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
@@ -216,13 +275,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         _ = _layoutStore.StoreSectionRatiosAsync(message.SectionRatios);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default)
     {
-        //
-        // Create the appropriate document view control for this document type
-        //
-
-        var createResult = await CreateDocumentViewInternalAsync(fileResource, documentEditorId);
+        var createResult = await CreateDocumentViewInternalAsync(fileResource, editorId);
         if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
@@ -230,17 +285,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
         var documentView = createResult.Value;
 
-        // Factories must set view.EditorId before returning; catch a missed stamp here.
+        // Factories must set view.EditorId before returning. Catch a missed stamp here.
         if (documentView.EditorId.IsEmpty)
         {
             return Result.Fail(
                 $"Document view for '{fileResource}' was returned with an empty EditorId. " +
                 "The factory that produced it must set view.EditorId before returning.");
         }
-
-        //
-        // Load the content from the document file
-        //
 
         var setFileResult = await documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
@@ -249,10 +300,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 .WithErrors(setFileResult);
         }
 
-        // Applied after SetFileResource and before LoadContent so the editor
-        // enters read-only mode before its first setValue. For CustomDocumentView
-        // the state ships through the document/initialize handshake; for editors
-        // that drive their surface directly, OnWritableStateChanged fires here.
+        // Applied after SetFileResource and before LoadContent so the editor enters read-only mode
+        // before its first setValue.
         var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
         var writableState = await operationService.GetWritableStateAsync(fileResource);
         documentView.SetWritableState(writableState);
@@ -264,8 +313,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                 .WithErrors(loadResult);
         }
 
-        // IDocumentView is an interface, so the implicit T -> Result<T> conversion doesn't apply;
-        // use the OkResult extension method to wrap the value.
+        // IDocumentView is an interface, so the implicit T -> Result<T> conversion does not apply.
         return documentView.OkResult();
     }
 
@@ -293,19 +341,26 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
-    public Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource) =>
+    public Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource) =>
         _preferenceStore.GetPreferredEditorAsync(fileResource);
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId)
     {
-        if (useAsExtensionDefault)
+        var defaultEditorId = GetDefaultEditorId(fileResource);
+
+        // The sidecar only records a deviation from the project default: choosing the default clears the
+        // override so the file follows the project, choosing anything else pins it.
+        if (editorId == defaultEditorId)
         {
-            var extension = Path.GetExtension(fileResource.Path).ToLowerInvariant();
-            await _preferenceStore.SetExtensionPreferenceAsync(extension, editorId);
+            return await _commandService.ExecuteAsync<IRemoveFieldsCommand>(command =>
+            {
+                command.Resource = fileResource;
+                command.Names = new[] { SidecarFieldNames.Editor };
+            });
         }
 
-        // ToString() forces a string value; passing the DocumentEditorId struct
-        // directly boxes it and SidecarService rejects non-scalar values.
+        // ToString() forces a string value. Passing the EditorInstanceId struct directly boxes it,
+        // and SidecarService rejects non-scalar values.
         var fields = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             [SidecarFieldNames.Editor] = editorId.ToString(),
@@ -318,10 +373,94 @@ public class DocumentsService : IDocumentsService, IDisposable
         });
     }
 
+    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId)
+    {
+        var factories = _documentEditorRegistry.GetUserPickableFactoriesForResource(fileResource);
+        if (factories.Count < 2)
+        {
+            return null;
+        }
+
+        var defaultEditorId = GetDefaultEditorId(fileResource);
+
+        // Preselect the current editor; if it is no longer a candidate (a stale override), preselect the
+        // project default instead.
+        var currentIsCandidate = factories.Any(factory => factory.EditorId == currentEditorId);
+        var preselectId = currentIsCandidate ? currentEditorId : defaultEditorId;
+
+        var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+
+        var editorIds = new List<EditorInstanceId>();
+        var labels = new List<string>();
+        var selectedIndex = 0;
+        for (var i = 0; i < factories.Count; i++)
+        {
+            var factory = factories[i];
+            editorIds.Add(factory.EditorId);
+
+            string label;
+            if (factory.EditorId == defaultEditorId)
+            {
+                label = stringLocalizer.GetString("OpenWithDialog_DefaultFormat", factory.DisplayName);
+            }
+            else
+            {
+                label = factory.DisplayName;
+            }
+            labels.Add(label);
+
+            if (factory.EditorId == preselectId)
+            {
+                selectedIndex = i;
+            }
+        }
+
+        return new EditorPickList(editorIds, labels, selectedIndex);
+    }
+
+    public ExtensionEditorCandidates GetEditorCandidatesForExtension(string fileExtension)
+    {
+        var factories = _documentEditorRegistry.GetUserPickableFactoriesForExtension(fileExtension);
+
+        var candidates = new List<EditorCandidate>();
+        foreach (var factory in factories)
+        {
+            candidates.Add(new EditorCandidate(factory.EditorId, factory.DisplayName));
+        }
+
+        // The first user-pickable factory is the editor that opens the extension by default, matching
+        // the runtime resolution order (and the code-editor "view as text" fallback for text files).
+        var defaultEditorId = factories.Count > 0 ? factories[0].EditorId : EditorInstanceId.Empty;
+
+        return new ExtensionEditorCandidates(candidates, defaultEditorId);
+    }
+
+    // The editor the resolution rules pick when the file has no per-file override: the
+    // editor-associations entry if one matches, else the first non-placeholder supporting factory in
+    // resolution order.
+    private EditorInstanceId GetDefaultEditorId(ResourceKey fileResource)
+    {
+        var associatedResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
+        if (associatedResult.IsSuccess)
+        {
+            return associatedResult.Value.EditorId;
+        }
+
+        var factories = _documentEditorRegistry.GetFactoriesForResource(fileResource);
+        foreach (var factory in factories)
+        {
+            if (!factory.IsPlaceholder)
+            {
+                return factory.EditorId;
+            }
+        }
+
+        return EditorInstanceId.Empty;
+    }
+
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        // A utility is only ever presented by docking, never opened as an ordinary document. This is the
-        // chokepoint every open routes through, so refusing utils: here prevents a second, uncontrolled instance.
+        // A utility is only ever presented by docking, never opened as an ordinary document.
         if (fileResource.Root == ProjectConstants.UtilsFolder)
         {
             return Result.Fail($"Cannot open utility resource '{fileResource}' as a document. Utilities are presented through the Utility Panel and docked into a tab, never opened directly.");
@@ -407,9 +546,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Task RestorePanelState() => _layoutStore.RestorePanelStateAsync();
 
-    private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
+    private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, EditorInstanceId editorId = default)
     {
-        return _viewFactory.CreateAsync(fileResource, documentEditorId);
+        return _viewFactory.CreateAsync(fileResource, editorId);
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)

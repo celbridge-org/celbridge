@@ -50,7 +50,7 @@ A `.cel` sidecar is standard TOML. The writer picks the most readable on-disk re
 
 ```toml
 _tags = ["meeting", "draft"]
-editor = "celbridge.notes.note-document"
+editor = "my-notes"
 priority = "high"
 summary = '''
 A few lines of prose,

@@ -26,7 +26,10 @@ public class PackageService : IPackageService
 
     public async Task RegisterPackagesAsync(string projectFolderPath)
     {
-        var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
+        // Persisting discovery: DiscoverPackagesAsync writes the normalized config back only when
+        // discovery is clean (so a package that failed to load never nukes its own config on disk) and
+        // the config parsed cleanly. Both gates are applied inside the reconcile.
+        var report = await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: true);
 
         // Record the outcome in the project load report before raising the
         // error banner, so the details the banner points at are already on
@@ -34,11 +37,21 @@ public class PackageService : IPackageService
         _loadReporter.RecordPackageReport(report);
         await _loadReporter.FlushAsync();
 
+        var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
+
         if (report.Failures.Count > 0)
         {
             // Surface the failures via the console panel error banner.
-            var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
             var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
+            _messengerService.Send(message);
+        }
+
+        if (report.EditorInstanceFailures.Count > 0 ||
+            report.EditorInstanceWarnings.Count > 0)
+        {
+            // Skipped or degraded instance declarations are project config errors, surfaced on
+            // the advisory banner because the rest of the file still applied.
+            var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName);
             _messengerService.Send(message);
         }
 
@@ -47,12 +60,8 @@ public class PackageService : IPackageService
 
     public async Task RescanProjectPackagesAsync(string projectFolderPath)
     {
-        // Refreshes the registry mid-session (e.g. after a tool installs a
-        // package). Unlike RegisterPackagesAsync this is discovery only: it does
-        // not fire PackagesInitializedMessage (editor registration is one-shot at
-        // load), nor rewrite project-load.md or raise the error banner (those
-        // reflect the last actual load, not a tool-initiated rescan).
-        await _registry.DiscoverPackagesAsync(projectFolderPath);
+        // A rescan refreshes the in-memory registry but never rewrites the project file.
+        await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: false);
     }
 
     public IReadOnlyList<Package> GetAllPackages()
@@ -65,12 +74,27 @@ public class PackageService : IPackageService
         return _registry.GetLoadFailures();
     }
 
-    public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
+    public IReadOnlyList<EditorContribution> GetAllEditors()
     {
-        return _registry.GetAllDocumentEditors();
+        return _registry.GetAllEditors();
     }
 
-    public Package? GetContributingPackage(DocumentEditorId editorId)
+    public IReadOnlyList<EditorInstance> GetEditorInstances()
+    {
+        return _registry.GetEditorInstances();
+    }
+
+    public ProjectConfig? GetNormalizedConfig()
+    {
+        return _registry.GetNormalizedConfig();
+    }
+
+    public IReadOnlyList<EditorInstance> GetBuiltInEditors()
+    {
+        return _registry.GetBuiltInEditors();
+    }
+
+    public Package? GetContributingPackage(EditorInstanceId editorId)
     {
         return _registry.GetContributingPackage(editorId);
     }
@@ -85,7 +109,7 @@ public class PackageService : IPackageService
         return _registry.GetDefaultTemplateContent(fileExtension);
     }
 
-    public byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution)
+    public byte[]? GetUtilityTemplateContent(EditorContribution contribution)
     {
         return _registry.GetUtilityTemplateContent(contribution);
     }

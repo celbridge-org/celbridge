@@ -43,6 +43,7 @@ public class IconService : IIconService
         { IconSymbol.More, "three-dots" },
         { IconSymbol.Collapse, "arrows-collapse" },
         { IconSymbol.Settings, "gear" },
+        { IconSymbol.Sliders, "sliders" },
         { IconSymbol.Windowed, "window" },
         { IconSymbol.FullScreen, "arrows-fullscreen" },
         { IconSymbol.FocusMode, "fullscreen" },

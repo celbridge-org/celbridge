@@ -29,7 +29,7 @@ public class WebViewServiceSupportTests
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
 
         _documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
-        _packageService.GetContributingPackage(Arg.Any<DocumentEditorId>()).Returns((Package?)null);
+        _packageService.GetContributingPackage(Arg.Any<EditorInstanceId>()).Returns((Package?)null);
 
         _webViewService = new WebViewService(Substitute.For<IFeatureFlags>(), _workspaceWrapper);
     }
@@ -50,7 +50,7 @@ public class WebViewServiceSupportTests
     {
         var resource = new ResourceKey("budget.spreadsheet");
         var editorId = "celbridge.spreadsheet.spreadsheet-document";
-        SetOpenDocuments(new OpenDocumentInfo(resource, new DocumentAddress(0, 0, 0), new DocumentEditorId(editorId)));
+        SetOpenDocuments(new OpenDocumentInfo(resource, new DocumentAddress(0, 0, 0), new EditorInstanceId(editorId)));
 
         var blockedPackage = new Package
         {
@@ -60,7 +60,7 @@ public class WebViewServiceSupportTests
                 DevToolsBlocked = true
             }
         };
-        _packageService.GetContributingPackage(new DocumentEditorId(editorId)).Returns(blockedPackage);
+        _packageService.GetContributingPackage(new EditorInstanceId(editorId)).Returns(blockedPackage);
 
         var support = _webViewService.GetWebViewToolSupport(resource);
 
@@ -74,8 +74,7 @@ public class WebViewServiceSupportTests
     public void GetWebViewToolSupport_NoWorkspaceLoaded_ReportsNoProjectLoaded()
     {
         // Without a workspace there can be no open documents, so the resource
-        // cannot be supported. The reason names the missing project so callers
-        // surface a useful message rather than a generic "not registered" one.
+        // cannot be supported.
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
         var support = _webViewService.GetWebViewToolSupport(new ResourceKey("any.html"));
@@ -89,7 +88,7 @@ public class WebViewServiceSupportTests
     {
         var resource = new ResourceKey("notes/note.note");
         var editorId = "celbridge.notes.note-document";
-        SetOpenDocuments(new OpenDocumentInfo(resource, new DocumentAddress(0, 0, 0), new DocumentEditorId(editorId)));
+        SetOpenDocuments(new OpenDocumentInfo(resource, new DocumentAddress(0, 0, 0), new EditorInstanceId(editorId)));
 
         var allowedPackage = new Package
         {
@@ -99,7 +98,7 @@ public class WebViewServiceSupportTests
                 DevToolsBlocked = false
             }
         };
-        _packageService.GetContributingPackage(new DocumentEditorId(editorId)).Returns(allowedPackage);
+        _packageService.GetContributingPackage(new EditorInstanceId(editorId)).Returns(allowedPackage);
 
         var support = _webViewService.GetWebViewToolSupport(resource);
 

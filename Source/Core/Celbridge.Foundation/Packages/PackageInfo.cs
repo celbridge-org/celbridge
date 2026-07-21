@@ -36,11 +36,6 @@ public partial record PackageInfo
     public string Title { get; init; } = string.Empty;
 
     /// <summary>
-    /// Optional feature flag. When set, all contributions are disabled if this feature is off.
-    /// </summary>
-    public string? FeatureFlag { get; init; }
-
-    /// <summary>
     /// Tool allowlist declared under [permissions].tools.
     /// </summary>
     public IReadOnlyList<string> PermittedTools { get; init; } = Array.Empty<string>();

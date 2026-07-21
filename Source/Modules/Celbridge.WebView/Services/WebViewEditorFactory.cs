@@ -5,15 +5,15 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WebView.Services;
 
 /// <summary>
-/// Factory for the .webview editor. Produces a WebViewDocumentView configured for
-/// the external-URL role; the URL is read from the .webview document's JSON body.
+/// Factory for the .webview editor. Produces a WebViewDocumentView configured for the
+/// external-URL role, with the URL read from the .webview document's JSON body.
 /// </summary>
 public class WebViewEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override DocumentEditorId EditorId { get; } = new("celbridge.webview-editor");
+    public override EditorInstanceId EditorId { get; } = new("celbridge.webview-editor");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_WebViewEditor");
 

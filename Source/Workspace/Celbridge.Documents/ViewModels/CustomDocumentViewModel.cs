@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents.ViewModels;
 
 /// <summary>
-/// View model for contribution document editors.
+/// View model for custom editors.
 /// Provides text file I/O, file-change monitoring, path resolution, and template content
 /// for custom editors.
 /// </summary>
@@ -16,10 +16,10 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
     /// <summary>
-    /// The document contribution this view model serves.
+    /// The editor contribution this view model serves.
     /// Set by the view after construction.
     /// </summary>
-    public CustomDocumentEditorContribution? Contribution { get; set; }
+    public EditorContribution? Contribution { get; set; }
 
     public CustomDocumentViewModel(
         IWorkspaceWrapper workspaceWrapper,
@@ -285,8 +285,8 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Reads the default template content from the manifest's template file.
     /// Returns empty string if no default template is declared or the file cannot be read.
-    /// Routes through IResourceFileSystem when the template path is registry-addressable;
-    /// falls back to direct read for packages installed outside the project tree.
+    /// Routes through IResourceFileSystem when the template path is registry-addressable, and falls
+    /// back to a direct read for packages installed outside the project tree.
     /// </summary>
     private async Task<string> GetDefaultTemplateContentAsync()
     {

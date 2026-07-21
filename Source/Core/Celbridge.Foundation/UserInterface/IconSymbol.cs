@@ -25,6 +25,7 @@ public enum IconSymbol
     More,
     Collapse,
     Settings,
+    Sliders,
     Windowed,
     FullScreen,
     FocusMode,

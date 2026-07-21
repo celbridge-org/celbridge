@@ -9,4 +9,5 @@ public record Project(
     string ProjectFolderPath,
     string ProjectDataFolderPath,
     ProjectConfig Config,
-    MigrationResult MigrationResult) : IProject;
+    MigrationResult MigrationResult,
+    bool ConfigIsHealthy) : IProject;

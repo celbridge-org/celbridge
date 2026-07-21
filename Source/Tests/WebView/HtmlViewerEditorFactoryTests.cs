@@ -30,21 +30,16 @@ public class HtmlViewerEditorFactoryTests
     }
 
     [Test]
-    public void Factory_PriorityIsSpecialized()
-    {
-        _factory.Priority.Should().Be(EditorPriority.Specialized);
-    }
-
-    [Test]
     public void Registry_HtmlExtensionResolvesToHtmlViewerByDefault_AndCodeEditorIsListedAsAlternate()
     {
+        // The HTML viewer sits ahead of the general code editor in the built-in host order, so it
+        // is the default for .html even though the code editor registers first.
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var codeEditor = Substitute.For<IDocumentEditorFactory>();
-        codeEditor.EditorId.Returns(new DocumentEditorId("celbridge.code-editor"));
+        codeEditor.EditorId.Returns(DocumentConstants.CodeEditorId);
         codeEditor.DisplayName.Returns("Code Editor");
         codeEditor.SupportedExtensions.Returns(new List<string> { ".html", ".htm" });
-        codeEditor.Priority.Returns(EditorPriority.General);
         codeEditor.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
 
         registry.RegisterFactory(codeEditor);

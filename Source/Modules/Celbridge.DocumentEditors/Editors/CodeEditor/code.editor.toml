@@ -1,0 +1,9 @@
+[editor]
+id = "code"
+type = "document"
+entry-point = "index.html"
+display-name = "CodeEditor_Editor_Code"
+
+[[file-types]]
+extensions-file = "js/code-editor-types.json"
+display-name = "CodeEditor_FileType_Code"

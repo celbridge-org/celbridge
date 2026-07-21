@@ -7,8 +7,8 @@ future preview format.
 
 ## Adding a new file type
 
-Drop a new `<name>.document.toml` next to `code.document.toml` and reference it from
-`package.toml`'s `contributes.document_editors`. Use the `[options]` table to opt into
+Drop a new `<name>.editor.toml` next to `code.editor.toml` and reference it from
+`package.toml`'s `contributes.editors`. Use the `[options]` table to opt into
 the preview pane and snippet toolbar. Booleans are serialized as the literal strings
 `"true"` / `"false"`.
 
@@ -26,12 +26,11 @@ the preview pane and snippet toolbar. Booleans are serialized as the literal str
 Register `.adoc` files with a custom AsciiDoc preview:
 
 ```toml
-[document]
-id = "asciidoc-document"
-type = "custom"
-entry_point = "index.html"
-priority = "specialized"
-display_name = "CodeEditor_Editor_AsciiDoc"
+[editor]
+id = "asciidoc"
+type = "document"
+entry-point = "index.html"
+display-name = "CodeEditor_Editor_AsciiDoc"
 
 [options]
 preview_renderer_url = "https://pkg-celbridge-code-editor.celbridge/asciidoc-preview/preview-module.js"
@@ -39,12 +38,12 @@ initial_view_mode = "preview"
 enable_snippet_toolbar = "true"
 snippet_set = "asciidoc"
 
-[[document_file_types]]
+[[file-types]]
 extension = ".adoc"
-display_name = "CodeEditor_FileType_AsciiDoc"
+display-name = "CodeEditor_FileType_AsciiDoc"
 ```
 
-`display_name` in `[document]` is required — it labels the editor in the
+`display-name` in `[editor]` is required — it labels the editor in the
 Reopen-with dialog. Use a dedicated localization key per editor so adding a
 second editor to the package doesn't collide with the first.
 
@@ -53,6 +52,6 @@ The preview module bundle would live alongside `markdown-preview/` and a matchin
 
 ## References
 
-- `markdown.document.toml` — live example of a preview-enabled document.
+- `markdown.editor.toml` — live example of a preview-enabled document.
 - `js/main.js` (`parseOptions`) — authoritative option parsing.
 - `markdown-preview/preview-module.js` — reference implementation of the preview contract.

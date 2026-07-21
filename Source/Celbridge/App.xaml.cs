@@ -8,7 +8,6 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS

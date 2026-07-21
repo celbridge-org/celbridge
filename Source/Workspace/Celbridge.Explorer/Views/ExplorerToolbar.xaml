@@ -5,8 +5,8 @@
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-  <!-- Explorer toolbar actions: new file, new folder, collapse the tree, and open project settings. Left-aligned
-       so the button group lines up with the panel title above it and the resource tree below it. -->
+  <!-- Explorer toolbar actions: new file, new folder, and collapse the tree. Left-aligned so the button group
+       lines up with the panel title above it and the resource tree below it. -->
   <StackPanel Orientation="Horizontal"
               Spacing="0"
               HorizontalAlignment="Left">
@@ -45,15 +45,6 @@
             Click="CollapseFoldersButton_Click">
       <controls:Icon
                 Symbol="Collapse"
-                FontSize="16" />
-    </Button>
-    <Button x:Name="ProjectSettingsButton"
-            AutomationProperties.AutomationId="project-settings-button"
-            ToolTipService.ToolTip="{x:Bind ProjectSettingsTooltipString}"
-            Padding="4"
-            Click="ProjectSettingsButton_Click">
-      <controls:Icon
-                Symbol="Settings"
                 FontSize="16" />
     </Button>
   </StackPanel>

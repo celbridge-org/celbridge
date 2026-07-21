@@ -1,5 +1,3 @@
-using Celbridge.Workspace;
-
 namespace Celbridge.Tools;
 
 // The wire tokens the utility MCP tools use for a DockLocation. Kept explicit rather than derived from the enum

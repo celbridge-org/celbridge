@@ -1,7 +1,6 @@
 [package]
 name = "celbridge.notes"
-title = "Extension_Notes_Name"
-feature_flag = "note-editor"
+title = "Notes_Package_Name"
 
 [contributes]
-document_editors = ["note.document.toml"]
+editors = ["note.editor.toml"]

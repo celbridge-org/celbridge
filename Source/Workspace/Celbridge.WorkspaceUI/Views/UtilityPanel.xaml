@@ -19,12 +19,21 @@
               BorderBrush="{ThemeResource DividerBrush}"
               BorderThickness="0,0,1,0">
 
-            <StackPanel x:Name="RailItems"
-                        Orientation="Vertical"
+            <StackPanel Orientation="Vertical"
                         ui:FocusTracking.PreservePanelFocus="True">
 
-                <rail:UtilityButton x:Name="ExplorerButton" />
-                <rail:UtilityButton x:Name="SearchButton" />
+                <StackPanel x:Name="RailItems" Orientation="Vertical">
+                    <rail:UtilityButton x:Name="ExplorerButton" />
+                    <rail:UtilityButton x:Name="SearchButton" />
+                </StackPanel>
+
+                <!-- Project Settings sits just below the utilities, separated but grouped with them for
+                     discoverability, rather than pinned to the far bottom of the rail. -->
+                <Border Height="1"
+                        Margin="8,4"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+
+                <rail:UtilityButton x:Name="ProjectSettingsButton" />
             </StackPanel>
         </Grid>
 
@@ -41,6 +50,11 @@
                             VerticalContentAlignment="Stretch"
                             ui:FocusTracking.PreservePanelFocus="True" />
             <ContentControl x:Name="SearchPanelControl"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"
+                            Visibility="Collapsed"
+                            ui:FocusTracking.PreservePanelFocus="True" />
+            <ContentControl x:Name="ProjectSettingsPanelControl"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch"
                             Visibility="Collapsed"

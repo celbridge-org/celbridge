@@ -1,0 +1,15 @@
+[editor]
+id = "note"
+type = "document"
+entry-point = "index.html"
+display-name = "Note_Editor_Name"
+
+[[file-types]]
+extension = ".note"
+display-name = "Note_FileType_Note"
+
+[[templates]]
+id = "empty"
+display-name = "Note_Template_Empty"
+template-file = "templates/empty.note"
+default = true

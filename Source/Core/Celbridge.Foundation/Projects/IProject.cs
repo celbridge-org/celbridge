@@ -31,6 +31,14 @@ public interface IProject
     public ProjectConfig Config { get; }
 
     /// <summary>
+    /// True when the .celbridge file opened cleanly (migration succeeded and the config parsed). False
+    /// when the project opened in a degraded state with an empty config, in which case the file is
+    /// preserved for repair: the normalize-on-load write is suppressed and the file stays visible in
+    /// the resource tree so the code editor can fix it.
+    /// </summary>
+    bool ConfigIsHealthy { get; }
+
+    /// <summary>
     /// Gets the complete migration result from when the project was loaded.
     /// Contains the migration status, old/new versions, and operation result.
     /// </summary>

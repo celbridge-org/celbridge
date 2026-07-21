@@ -1,0 +1,24 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.InformationSectionView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <ScrollViewer Padding="12">
+    <StackPanel Spacing="12">
+      <StackPanel Spacing="2" ToolTipService.ToolTip="{x:Bind SchemaVersionTooltip}">
+        <TextBlock Text="{x:Bind SchemaVersionLabel}" Opacity="0.7" FontSize="12"/>
+        <TextBlock Text="{x:Bind ViewModel.SchemaVersionText, Mode=OneWay}"/>
+      </StackPanel>
+      <StackPanel Spacing="2">
+        <TextBlock Text="{x:Bind ProjectVersionLabel}" Opacity="0.7" FontSize="12"/>
+        <TextBox ToolTipService.ToolTip="{x:Bind ProjectVersionTooltip}"
+                 Text="{x:Bind ViewModel.ProjectVersionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+      </StackPanel>
+      <StackPanel Spacing="2">
+        <TextBlock Text="{x:Bind IgnoreFileLabel}" Opacity="0.7" FontSize="12"/>
+        <TextBox ToolTipService.ToolTip="{x:Bind IgnoreFileTooltip}"
+                 Text="{x:Bind ViewModel.IgnoreFileText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

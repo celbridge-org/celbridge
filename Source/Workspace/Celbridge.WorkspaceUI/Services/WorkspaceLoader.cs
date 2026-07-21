@@ -1,7 +1,5 @@
 using System.Text;
-using Celbridge.Commands;
 using Celbridge.Console;
-using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
@@ -60,6 +58,9 @@ public class WorkspaceLoader
         {
             var projectFeatures = currentProject.Config.Features;
             _featureFlags.ApplyProjectOverrides(projectFeatures);
+
+            // Surface entries the config parser skipped or degraded. The rest of the file applied.
+            HandleConfigEntryErrors(currentProject.Config.EntryErrors, currentProject.ProjectFilePath);
         }
 
         // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
@@ -112,10 +113,7 @@ public class WorkspaceLoader
             var initPolicyResult = await resourceService.Policy.InitializeAsync();
 
             // InitializeAsync degrades a missing or unreadable ignore-file to an
-            // empty ignore set, so it does not currently fail. This branch is the
-            // intended handling once [resources] config validation can fail: warn
-            // and continue rather than fail project load, because the *.celbridge
-            // config stays reachable (system-allow) for the user to correct.
+            // empty ignore set, so it does not currently fail.
             if (initPolicyResult.IsFailure)
             {
                 _logger.LogWarning(initPolicyResult, "Failed to initialize resource policy");
@@ -370,19 +368,18 @@ public class WorkspaceLoader
         _userInterfaceService.TitleBar?.ClearShortcutButtons();
     }
 
-    // Creates the persistent surface for every utility (bundled before project, each by id) and builds the rail.
-    // The utilities are owned by the documents service for the workspace lifetime. The utility mechanism is
-    // always on; individual utility packages can still gate themselves with a package feature flag.
+    // Creates the persistent surface for every utility instance and builds the rail. The utilities are owned by
+    // the utility service for the workspace lifetime.
     private async Task BuildUtilities()
     {
-        var utilityContributions = GetUtilityContributions();
-        if (utilityContributions.Count == 0)
+        var utilityInstances = GetUtilityInstances();
+        if (utilityInstances.Count == 0)
         {
             return;
         }
 
         var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-        var tabs = await utilityService.CreateUtilitiesAsync(utilityContributions);
+        var tabs = await utilityService.CreateUtilitiesAsync(utilityInstances);
         if (tabs.Count == 0)
         {
             return;
@@ -391,53 +388,46 @@ public class WorkspaceLoader
         _workspaceWrapper.WorkspaceService.UtilityPanel.BuildCustomUtilities(tabs);
     }
 
-    // Enumerates enabled utility contributions in the rail's stable order: bundled before project, each
-    // group sorted by fully-qualified id. Feature-flag-disabled packages are filtered out.
-    private List<CustomDocumentEditorContribution> GetUtilityContributions()
+    // Enumerates the declared utility instances. Declaration order in the project config is the
+    // rail order.
+    private List<EditorInstance> GetUtilityInstances()
     {
         var packageService = _workspaceWrapper.WorkspaceService.PackageService;
 
-        var utilityContributions = new List<CustomDocumentEditorContribution>();
-        foreach (var contribution in packageService.GetAllDocumentEditors())
+        var utilityInstances = new List<EditorInstance>();
+        foreach (var instance in packageService.GetEditorInstances())
         {
-            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utilityContribution)
+            if (!instance.Contribution.IsUtility)
             {
                 continue;
             }
 
-            if (!IsPackageEnabled(utilityContribution.Package))
-            {
-                continue;
-            }
-
-            utilityContributions.Add(utilityContribution);
+            utilityInstances.Add(instance);
         }
 
-        var bundledContributions = utilityContributions
-            .Where(contribution => contribution.Package.Origin == PackageOrigin.Bundled)
-            .OrderBy(GetUtilityId, StringComparer.Ordinal);
-
-        var projectContributions = utilityContributions
-            .Where(contribution => contribution.Package.Origin == PackageOrigin.Project)
-            .OrderBy(GetUtilityId, StringComparer.Ordinal);
-
-        return bundledContributions.Concat(projectContributions).ToList();
+        return utilityInstances;
     }
 
-    // The utility id string, used only as a stable ordinal sort key for the rail ordering.
-    private static string GetUtilityId(CustomDocumentEditorContribution contribution)
+    private void HandleConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors, string projectFilePath)
     {
-        return UtilityId.Create(contribution.Package.Name, contribution.Id).ToString();
-    }
-
-    private bool IsPackageEnabled(PackageInfo package)
-    {
-        if (string.IsNullOrEmpty(package.FeatureFlag))
+        if (entryErrors.Count == 0)
         {
-            return true;
+            return;
         }
 
-        return _featureFlags.IsEnabled(package.FeatureFlag);
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Project config entries in '{projectFileName}' were skipped or degraded:");
+        foreach (var entryError in entryErrors)
+        {
+            sb.AppendLine($"  [{entryError.EntryName}]: {entryError.Message}");
+        }
+        _logger.LogError(sb.ToString());
+
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectFileName);
+        messengerService.Send(message);
     }
 
     private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)

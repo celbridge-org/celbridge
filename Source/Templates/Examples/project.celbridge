@@ -1,20 +1,19 @@
 [celbridge]
 celbridge-version = "<application-version>"
-
-[project]
-name = "examples"
-version = "0.1.0"
-requires-python = "<python-version>"
-dependencies = ["pandas", "openpyxl", "requests", "faker"]
+project-version = "0.1.0"
 
 # Includes the files and folders the ignore-file allows, plus 'add', minus 'remove'.
 # 'lock' freezes resources so they can't be edited, moved, or deleted.
 # File patterns are globs, e.g. "Python/.venv/**"
-[resources]
+[celbridge.resources]
 ignore-file = ".gitignore"
 add = []
 remove = [".gitignore"]
 lock = []
+
+[project]
+requires-python = "<python-version>"
+dependencies = ["pandas", "openpyxl", "requests", "faker"]
 
 # Shortcut buttons
 

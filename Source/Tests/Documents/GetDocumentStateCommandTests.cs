@@ -4,9 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Direct unit test for GetDocumentStateCommand. Complements the DocumentTools tests which
-/// stub the command entirely and therefore don't exercise the command's own snapshot-building
-/// logic.
+/// Covers GetDocumentStateCommand's snapshot building: the active document, the section
+/// count, and the list of open documents.
 /// </summary>
 [TestFixture]
 public class GetDocumentStateCommandTests
@@ -18,8 +17,8 @@ public class GetDocumentStateCommandTests
         var otherDocument = new ResourceKey("src/main.cs");
         var openDocuments = new List<OpenDocumentInfo>
         {
-            new(activeDocument, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty),
-            new(otherDocument, new DocumentAddress(0, 1, 0), DocumentEditorId.Empty),
+            new(activeDocument, new DocumentAddress(0, 0, 0), EditorInstanceId.Empty),
+            new(otherDocument, new DocumentAddress(0, 1, 0), EditorInstanceId.Empty),
         };
 
         var documentsService = Substitute.For<IDocumentsService>();

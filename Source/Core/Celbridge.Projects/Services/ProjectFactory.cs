@@ -51,6 +51,7 @@ public class ProjectFactory
             }
 
             ProjectConfig config;
+            bool configIsHealthy = false;
             if (migrationSucceeded)
             {
                 var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath, _fileSystem);
@@ -62,6 +63,7 @@ public class ProjectFactory
                 else
                 {
                     config = parseResult.Value;
+                    configIsHealthy = true;
                 }
             }
             else
@@ -75,7 +77,8 @@ public class ProjectFactory
                 projectFolderPath,
                 projectDataFolderPath,
                 config,
-                migrationResult);
+                migrationResult,
+                configIsHealthy);
 
             return Result<IProject>.Ok(project);
         }

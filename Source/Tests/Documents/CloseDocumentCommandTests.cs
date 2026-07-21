@@ -6,13 +6,11 @@ namespace Celbridge.Tests.Documents;
 /// <summary>
 /// Verifies CloseDocumentCommand's routing: an ordinary document is closed through IDocumentsService.CloseDocument,
 /// while a docked utility is docked back into the Utility Panel (via IUtilityService) instead of destroyed.
-/// Centralizing the decision here means every close path (the tab close button, close shortcuts, the tab context
-/// menu, bulk closes, and programmatic and MCP callers) returns a utility to the panel rather than tearing it down.
 /// </summary>
 [TestFixture]
 public class CloseDocumentCommandTests
 {
-    private static readonly UtilityId NotepadUtilityId = UtilityId.Create("acme", "notepad");
+    private static readonly EditorInstanceId NotepadUtilityId = EditorInstanceId.Create("acme", "notepad");
 
     private IDocumentsService _documentsService = null!;
     private IUtilityService _utilityService = null!;
@@ -25,10 +23,10 @@ public class CloseDocumentCommandTests
         _documentsService.CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(Result.Ok());
 
         _utilityService = Substitute.For<IUtilityService>();
-        _utilityService.DockUtilityAsync(Arg.Any<UtilityId>(), Arg.Any<DockLocation>()).Returns(Result.Ok());
+        _utilityService.DockUtilityAsync(Arg.Any<EditorInstanceId>(), Arg.Any<DockLocation>()).Returns(Result.Ok());
 
         // By default a resource is not a docked utility, so the command takes the ordinary close path.
-        _utilityService.GetDockedUtilityId(Arg.Any<ResourceKey>()).Returns((UtilityId?)null);
+        _utilityService.GetDockedUtilityId(Arg.Any<ResourceKey>()).Returns((EditorInstanceId?)null);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.DocumentsService.Returns(_documentsService);
@@ -54,7 +52,7 @@ public class CloseDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
         await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), true);
-        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<UtilityId>(), Arg.Any<DockLocation>());
+        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorInstanceId>(), Arg.Any<DockLocation>());
     }
 
     [Test]
@@ -70,7 +68,6 @@ public class CloseDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
 
-        // The utility is docked back into the panel, never destroyed through the close path.
         await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, DockLocation.UtilityPanel);
         await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>());
     }

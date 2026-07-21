@@ -1,0 +1,210 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.PackagesSectionView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
+  xmlns:services="using:Celbridge.UserInterface.Services"
+  xmlns:icon="using:Celbridge.UserInterface.Views.Controls">
+
+  <UserControl.Resources>
+
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+    <Style x:Key="ContributionCardStyle" TargetType="Border">
+      <Setter Property="Background" Value="{ThemeResource PanelBackgroundABrush}"/>
+      <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Padding" Value="8"/>
+      <Setter Property="Margin" Value="0,0,0,4"/>
+    </Style>
+
+    <!-- The icon-only button that opens a manifest file, chromeless until hovered. -->
+    <Style x:Key="OpenManifestButtonStyle" TargetType="Button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="6,2"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- One config descriptor field: label plus the control chosen by the field type. -->
+    <DataTemplate x:Key="ConfigFieldTemplate" x:DataType="vm:ConfigFieldViewModel">
+      <Grid Margin="0,3,0,3">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="110"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Column="0"
+                   Text="{x:Bind DisplayName}"
+                   Style="{StaticResource PropertyLabelStyle}"/>
+
+        <ToggleSwitch Grid.Column="1"
+                      OnContent=""
+                      OffContent=""
+                      Visibility="{x:Bind IsBool, Converter={StaticResource BoolToVisibilityConverter}}"
+                      IsOn="{x:Bind BoolValue, Mode=TwoWay}"/>
+
+        <TextBox Grid.Column="1"
+                 Visibility="{x:Bind IsString, Converter={StaticResource BoolToVisibilityConverter}}"
+                 Text="{x:Bind StringValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+
+        <NumberBox Grid.Column="1"
+                   Visibility="{x:Bind IsNumber, Converter={StaticResource BoolToVisibilityConverter}}"
+                   Value="{x:Bind NumberValue, Mode=TwoWay}"/>
+
+        <ComboBox Grid.Column="1"
+                  Visibility="{x:Bind IsEnum, Converter={StaticResource BoolToVisibilityConverter}}"
+                  HorizontalAlignment="Stretch"
+                  ItemsSource="{x:Bind EnumValues}"
+                  SelectedItem="{x:Bind StringValue, Mode=TwoWay}"/>
+
+        <TextBox Grid.Column="1"
+                 Visibility="{x:Bind IsStringList, Converter={StaticResource BoolToVisibilityConverter}}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="54"
+                 PlaceholderText="{x:Bind StringListPlaceholder}"
+                 Text="{x:Bind StringListText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+      </Grid>
+    </DataTemplate>
+
+    <!-- One discovered contribution card, nested under its package: the identifying header, then the
+         contribution's properties as label-and-control rows. The enable row shows only for a curatable
+         (recommended or optional) contribution; a required one is always active. -->
+    <DataTemplate x:Key="ContributionCardTemplate" x:DataType="vm:ContributionItemViewModel">
+      <Border Style="{StaticResource ContributionCardStyle}"
+              ToolTipService.ToolTip="{x:Bind Tooltip}">
+        <StackPanel Spacing="4">
+
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <icon:Icon Grid.Column="0"
+                       GlyphName="{x:Bind IconGlyph}"
+                       FontSize="16"
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,0"
+                       Visibility="{x:Bind HasIcon, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+              <TextBlock Text="{x:Bind DisplayName}"/>
+              <TextBlock Text="{x:Bind TypeLabel}" FontSize="11" Opacity="0.6"/>
+            </StackPanel>
+
+            <Button Grid.Column="2"
+                    Style="{StaticResource OpenManifestButtonStyle}"
+                    Command="{x:Bind OpenManifestCommand}"
+                    ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"
+                    Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}">
+              <icon:Icon GlyphName="file-earmark-code" FontSize="14"/>
+            </Button>
+          </Grid>
+
+          <StackPanel Margin="0,3,0,3"
+                      Visibility="{x:Bind HasFileExtensions, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="{x:Bind FileExtensionsLabel}"/>
+            <TextBlock Text="{x:Bind FileExtensionsText}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <Grid Margin="0,3,0,3"
+                Visibility="{x:Bind CanToggle, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="110"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind EnabledLabel}"
+                       Style="{StaticResource PropertyLabelStyle}"/>
+
+            <ToggleSwitch Grid.Column="1"
+                          MinWidth="0"
+                          OnContent=""
+                          OffContent=""
+                          ToolTipService.ToolTip="{x:Bind ToggleTooltip}"
+                          IsOn="{x:Bind IsEnabled, Mode=TwoWay}"/>
+          </Grid>
+
+          <ItemsControl Visibility="{x:Bind HasConfigFields, Converter={StaticResource BoolToVisibilityConverter}}"
+                        ItemsSource="{x:Bind ConfigFields}"
+                        ItemTemplate="{StaticResource ConfigFieldTemplate}"/>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+    <!-- One discovered package, collapsed by default. The header carries the package identity; expanding
+         reveals the enable toggle and the contributions the package ships. -->
+    <DataTemplate x:Key="PackageCardTemplate" x:DataType="vm:PackageItemViewModel">
+      <Expander HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Margin="0,0,0,8">
+        <Expander.Header>
+          <Grid Opacity="{x:Bind HeaderOpacity, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Style="{StaticResource OpenManifestButtonStyle}"
+                    Command="{x:Bind OpenManifestCommand}"
+                    ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"
+                    Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}">
+              <icon:Icon GlyphName="file-earmark-code" FontSize="14"/>
+            </Button>
+          </Grid>
+        </Expander.Header>
+
+        <StackPanel>
+
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind EnabledLabel}"
+                       Margin="0,0,12,0"
+                       Style="{StaticResource PropertyLabelStyle}"/>
+
+            <ToggleSwitch Grid.Column="1"
+                          MinWidth="0"
+                          OnContent=""
+                          OffContent=""
+                          ToolTipService.ToolTip="{x:Bind ToggleTooltip}"
+                          IsOn="{x:Bind IsEnabled, Mode=TwoWay}"/>
+          </Grid>
+
+          <!-- A disabled package contributes nothing on reload, so its contributions read as inactive. -->
+          <ItemsControl IsEnabled="{x:Bind IsEnabled, Mode=OneWay}"
+                        Visibility="{x:Bind HasContributions, Converter={StaticResource BoolToVisibilityConverter}}"
+                        ItemsSource="{x:Bind Contributions}"
+                        ItemTemplate="{StaticResource ContributionCardTemplate}"/>
+        </StackPanel>
+      </Expander>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <ScrollViewer Padding="12">
+    <ItemsControl ItemsSource="{x:Bind ViewModel.Packages}"
+                  ItemTemplate="{StaticResource PackageCardTemplate}"/>
+  </ScrollViewer>
+</UserControl>

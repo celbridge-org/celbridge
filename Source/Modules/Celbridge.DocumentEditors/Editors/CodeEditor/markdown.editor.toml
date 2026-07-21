@@ -1,0 +1,22 @@
+[editor]
+id = "markdown"
+type = "document"
+entry-point = "index.html"
+display-name = "CodeEditor_Editor_Markdown"
+
+# Surfaced on the JS side as celbridge.options.
+[options]
+# Package-root-relative path to the preview renderer module. main.js resolves it against the
+# page's own URL, so it works on every head without baking in a host name.
+preview_renderer_url = "markdown-preview/preview-module.js"
+initial_view_mode = "preview"
+enable_snippet_toolbar = "true"
+snippet_set = "markdown"
+
+[[file-types]]
+extension = ".md"
+display-name = "CodeEditor_FileType_Markdown"
+
+[[file-types]]
+extension = ".markdown"
+display-name = "CodeEditor_FileType_Markdown"

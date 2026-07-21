@@ -3,9 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Open a document in the documents panel. ResultValue reports whether the open completed
-/// or was cancelled, so automation consumers (such as MCP tools and scripts) can distinguish
-/// a no-op close refusal from a genuine open.
+/// Open a document in the documents panel.
 /// </summary>
 public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
 {
@@ -45,7 +43,7 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
     /// <summary>
     /// When set, opens the document with this specific editor instead of the default.
     /// </summary>
-    DocumentEditorId EditorId { get; set; }
+    EditorInstanceId EditorId { get; set; }
 
     /// <summary>
     /// When set, restores this editor state after the document opens.

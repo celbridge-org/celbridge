@@ -1,0 +1,132 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.ProjectSettingsPanel"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Celbridge.ProjectSettings.Views"
+  xmlns:controls="using:Celbridge.WorkspaceUI.Views"
+  xmlns:icon="using:Celbridge.UserInterface.Views.Controls"
+  xmlns:services="using:Celbridge.UserInterface.Services"
+  xmlns:ui="using:Celbridge.UserInterface"
+  DataContext="{x:Bind ViewModel}"
+  Background="Transparent"
+  ui:FocusTracking.Panel="ProjectSettings">
+
+  <UserControl.Resources>
+
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+    <!-- A tappable navigation tab: transparent background for hit-testing, bottom-aligned. -->
+    <Style x:Key="NavTabStyle" TargetType="Grid">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+
+  </UserControl.Resources>
+
+  <Grid Background="Transparent">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <controls:PanelHeader x:Name="PanelHeader"
+                          Grid.Row="0"
+                          ShowFocusIndicator="False"
+                          Tapped="PanelHeader_Tapped"
+                          Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
+
+    <!-- Icon tab strip plus the active section name. Each tab is an icon with a tooltip (shown below the
+         icon) carrying its label. The accent underline sits in a fixed-height slot that is always present,
+         so selecting a tab shows the bar without shifting the icons. -->
+    <Border Grid.Row="1"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="12,6,12,8">
+      <StackPanel Spacing="6">
+
+        <StackPanel Orientation="Horizontal" Spacing="4">
+
+          <Grid Tag="0" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
+                ToolTipService.ToolTip="{x:Bind InformationHeader}"
+                ToolTipService.Placement="Bottom">
+            <StackPanel>
+              <icon:Icon GlyphName="info-circle" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <Grid Height="2" Margin="0,5,0,0">
+                <Border CornerRadius="1"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsInformationSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+
+          <Grid Tag="1" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
+                ToolTipService.ToolTip="{x:Bind PackagesHeader}"
+                ToolTipService.Placement="Bottom">
+            <StackPanel>
+              <icon:Icon GlyphName="box-seam" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <Grid Height="2" Margin="0,5,0,0">
+                <Border CornerRadius="1"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+
+          <Grid Tag="2" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
+                ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
+                ToolTipService.Placement="Bottom">
+            <StackPanel>
+              <icon:Icon GlyphName="file-earmark" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <Grid Height="2" Margin="0,5,0,0">
+                <Border CornerRadius="1"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+
+        </StackPanel>
+
+        <StackPanel Spacing="2" Margin="2,2,0,0">
+          <TextBlock Text="{x:Bind ViewModel.ActiveSectionName, Mode=OneWay}"
+                     FontSize="20"
+                     FontWeight="SemiBold"/>
+          <TextBlock Text="{x:Bind ViewModel.ActiveSectionDescription, Mode=OneWay}"
+                     Opacity="0.7"
+                     FontSize="12"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+
+      </StackPanel>
+    </Border>
+
+    <!-- The active section's view. Each is its own control bound to its section view model; the shell
+         toggles which one is visible. -->
+    <Grid Grid.Row="2">
+      <local:InformationSectionView
+          ViewModel="{x:Bind ViewModel.InformationSection}"
+          Visibility="{x:Bind ViewModel.IsInformationSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+      <local:PackagesSectionView
+          ViewModel="{x:Bind ViewModel.PackagesSection}"
+          Visibility="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+      <local:FileEditorsSectionView
+          ViewModel="{x:Bind ViewModel.FileEditorsSection}"
+          Visibility="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+    </Grid>
+
+    <!-- Apply and reload -->
+    <Border Grid.Row="3"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="12,8">
+      <Button HorizontalAlignment="Stretch"
+              Style="{StaticResource AccentButtonStyle}"
+              Content="{x:Bind ApplyAndReloadText}"
+              Command="{x:Bind ViewModel.ApplyAndReloadCommand}"/>
+    </Border>
+
+  </Grid>
+</UserControl>

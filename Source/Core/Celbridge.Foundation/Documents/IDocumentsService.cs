@@ -1,13 +1,8 @@
-using Celbridge.Packages;
-using Celbridge.Workspace;
-
 namespace Celbridge.Documents;
 
 /// <summary>
 /// How an upcoming external reload should treat the editor's current view state.
-/// View state is editor-specific — concrete examples include scroll position, cursor
-/// or selection, zoom level, and fold state — and the editor decides what to capture
-/// and restore.
+/// View state is editor-specific, e.g. scroll position, selection, zoom level, and fold state.
 /// </summary>
 public enum ReloadHint
 {
@@ -19,11 +14,35 @@ public enum ReloadHint
 
     /// <summary>
     /// The editor adopts the view state encoded in the on-disk file, or its default
-    /// view state when the file format does not persist view state. Used by commands
-    /// whose purpose is to update the document's persisted view.
+    /// view state when the file format does not persist view state.
     /// </summary>
     DiskWinsOnViewState
 }
+
+/// <summary>
+/// The editors offered by an "Open with..." dialog for a file: their ids, the display labels (with the
+/// project default badged), and the index to preselect (the file's current effective editor, or the
+/// default when that editor is no longer a candidate).
+/// </summary>
+public sealed record EditorPickList(
+    IReadOnlyList<EditorInstanceId> EditorIds,
+    IReadOnlyList<string> Labels,
+    int SelectedIndex);
+
+/// <summary>
+/// A candidate editor for a file extension on the Project Settings File Types page: the editor id
+/// written to the associations map, paired with its display name.
+/// </summary>
+public sealed record EditorCandidate(EditorInstanceId EditorId, string DisplayName);
+
+/// <summary>
+/// The editors that can open a given file extension and the one used by default (the first candidate),
+/// for the Project Settings File Types page. Candidates are in resolution order; empty when nothing
+/// claims the extension.
+/// </summary>
+public sealed record ExtensionEditorCandidates(
+    IReadOnlyList<EditorCandidate> Candidates,
+    EditorInstanceId DefaultEditorId);
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
@@ -63,7 +82,7 @@ public interface IDocumentsService
     /// non-empty, uses that specific editor instead of the default resolution
     /// chain. Fails if the resource does not exist.
     /// </summary>
-    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId editorId = default);
+    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default);
 
     /// <summary>
     /// Returns the document view type for the specified file resource.
@@ -72,7 +91,7 @@ public interface IDocumentsService
 
     /// <summary>
     /// Returns the active document's view as a findable document when it owns a host find bar, otherwise null
-    /// (including when no workspace is loaded). Used by the platform Find affordance to gate and drive find.
+    /// (including when no workspace is loaded).
     /// </summary>
     IFindableDocument? GetActiveFindableDocument();
 
@@ -89,18 +108,30 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
-    /// Returns the editor that would open this file: the sidecar's '_editor'
-    /// field when set, otherwise the per-extension preference, otherwise
-    /// DocumentEditorId.Empty.
+    /// Returns the file's per-file editor override from the sidecar's '_editor' field, or
+    /// EditorInstanceId.Empty when the file has none.
     /// </summary>
-    Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource);
+    Task<EditorInstanceId> GetPreferredEditorAsync(ResourceKey fileResource);
 
     /// <summary>
-    /// Writes the per-file editor selection to the resource's sidecar '_editor'
-    /// field. When useAsExtensionDefault is true, also stores the editor as the
-    /// per-extension preference.
+    /// Records the user's editor choice for a file. Writes the sidecar '_editor' override when the
+    /// choice differs from the project default, and clears it when the choice is the default, so the
+    /// sidecar only ever stores a deviation.
     /// </summary>
-    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault);
+    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId);
+
+    /// <summary>
+    /// Builds the "Open with..." choices for a file: the pickable editors, their badged labels, and the
+    /// index to preselect. Returns null when fewer than two editors can open the file, so no choice is
+    /// worth offering.
+    /// </summary>
+    EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId);
+
+    /// <summary>
+    /// The editors that can open the given file extension, and the default among them, for the Project
+    /// Settings File Types page. Mirrors the runtime resolution used to open a file of that extension.
+    /// </summary>
+    ExtensionEditorCandidates GetEditorCandidatesForExtension(string fileExtension);
 
     /// <summary>
     /// Opens a file resource as a document in the documents panel.
@@ -144,17 +175,15 @@ public interface IDocumentsService
     Task StoreDocumentEditorStates();
 
     /// <summary>
-    /// Saves editor state for a single document. Called when a document tab is about to close
-    /// so its state survives close/reopen within the same workspace session. Pass a non-empty state
-    /// string to persist, or null/empty to clear any existing entry for the resource.
+    /// Saves editor state for a single document. Pass a non-empty state string to persist,
+    /// or null/empty to clear any existing entry for the resource.
     /// </summary>
     Task StoreDocumentEditorState(ResourceKey fileResource, string? state);
 
     /// <summary>
-    /// Records a hint that the next watcher-driven reload of the resource should
-    /// honour. Overwrites any prior hint for the same resource; hints expire if
-    /// not consumed within a short window so they do not bleed into later
-    /// unrelated reloads.
+    /// Records a hint that the next watcher-driven reload of the resource should honour,
+    /// overwriting any prior hint for the same resource. Hints expire if not consumed
+    /// within a short window.
     /// </summary>
     void RegisterReloadHint(ResourceKey fileResource, ReloadHint hint);
 

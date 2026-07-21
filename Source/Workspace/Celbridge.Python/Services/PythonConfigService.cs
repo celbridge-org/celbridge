@@ -8,7 +8,7 @@ namespace Celbridge.Python.Services;
 /// </summary>
 public class PythonConfigService : IPythonConfigService
 {
-    private const string FallbackPythonVersion = "3.12";
+    private const string FallbackPythonVersion = "3.13";
     private const string PythonModuleFolder = "Celbridge.Python";
 
     private readonly ILocalFileSystem _fileSystem;

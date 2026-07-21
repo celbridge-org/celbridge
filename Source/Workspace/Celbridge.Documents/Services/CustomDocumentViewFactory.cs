@@ -1,82 +1,72 @@
 using Celbridge.Documents.Views;
 using Celbridge.Packages;
-using Celbridge.Settings;
+using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// Factory for creating CustomDocumentView instances for custom (WebView-based)
-/// editors. One instance per discovered CustomDocumentEditorContribution.
+/// editors. One factory per editor instance.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly CustomDocumentEditorContribution _contribution;
-    private readonly IFeatureFlags _featureFlags;
+    private readonly EditorInstance _instance;
     private readonly string _resolvedDisplayName;
+    private readonly string _resolvedDescription;
+    private readonly IReadOnlyList<string> _supportedFilenames;
 
-    public override DocumentEditorId EditorId => new($"{_contribution.Package.Name}.{_contribution.Id}");
+    public override EditorInstanceId EditorId => _instance.InstanceId;
 
     public override string DisplayName => _resolvedDisplayName;
 
     /// <summary>
-    /// The contribution this factory was built from. Exposed so the documents panel and the utility
-    /// seeder can reach the utility metadata (glyph, tooltip, template) when a utility document is opened.
+    /// The localized editor description, used as the docked tab tooltip. Empty when the manifest
+    /// declares no description.
     /// </summary>
-    public CustomDocumentEditorContribution Contribution => _contribution;
+    public string Description => _resolvedDescription;
 
-    public override bool IsUtility => _contribution.IsUtility;
+    /// <summary>
+    /// The editor instance this factory was built from.
+    /// </summary>
+    public EditorInstance Instance => _instance;
+
+    public EditorContribution Contribution => _instance.Contribution;
+
+    public override bool IsUtility => _instance.Contribution.IsUtility;
 
     public override IReadOnlyList<string> SupportedExtensions =>
-        _contribution.FileTypes.Select(fileType => fileType.FileExtension).ToList();
+        _instance.Contribution.FileTypes.Select(fileType => fileType.FileExtension).ToList();
 
-    public override EditorPriority Priority => _contribution.Priority;
+    public override IReadOnlyList<string> SupportedFilenames => _supportedFilenames;
 
     public CustomDocumentViewFactory(
         IServiceProvider serviceProvider,
-        CustomDocumentEditorContribution contribution,
-        IFeatureFlags featureFlags,
+        EditorInstance instance,
         IPackageLocalizationService localizationService)
     {
         _serviceProvider = serviceProvider;
-        _contribution = contribution;
-        _featureFlags = featureFlags;
-        _resolvedDisplayName = ResolveDisplayName(localizationService);
-    }
+        _instance = instance;
+        _resolvedDisplayName = PackageDisplayText.Resolve(localizationService, instance.Contribution.Package, instance.Contribution.DisplayName);
+        _resolvedDescription = PackageDisplayText.Resolve(localizationService, instance.Contribution.Package, instance.Contribution.Description);
 
-    private string ResolveDisplayName(IPackageLocalizationService localizationService)
-    {
-        // The manifest loader requires every document contribution to set
-        // display_name, so _contribution.DisplayName is guaranteed non-empty
-        // here. The value may be a localization key or a plain string. Run it
-        // through the package's localization dictionary and return the raw
-        // value when the key is not present (which also handles plain strings).
-        var displayKey = _contribution.DisplayName;
-
-        var localizationStrings = localizationService.LoadStrings(_contribution.Package);
-        if (localizationStrings.TryGetValue(displayKey, out var localizedName))
+        // A utility instance owns one backing state file, routed by instance identity. Its
+        // factory claims that exact filename rather than a project-wide extension.
+        var utilityDescriptor = instance.Contribution.UtilityDescriptor;
+        if (utilityDescriptor is not null)
         {
-            return localizedName;
+            _supportedFilenames = [$"{instance.InstanceId}{utilityDescriptor.ResourceExtension}"];
         }
-
-        return displayKey;
-    }
-
-    public override bool CanHandleResource(ResourceKey fileResource)
-    {
-        if (!string.IsNullOrEmpty(_contribution.Package.FeatureFlag) &&
-            !_featureFlags.IsEnabled(_contribution.Package.FeatureFlag))
+        else
         {
-            return false;
+            _supportedFilenames = Array.Empty<string>();
         }
-
-        return base.CanHandleResource(fileResource);
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
         var view = _serviceProvider.GetRequiredService<CustomDocumentView>();
-        view.Contribution = _contribution;
+        view.Instance = _instance;
         view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);

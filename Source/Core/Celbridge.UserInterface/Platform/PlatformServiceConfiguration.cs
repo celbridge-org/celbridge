@@ -1,4 +1,3 @@
-using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Helpers.FullScreen;
 using Celbridge.UserInterface.Platform.FullScreen;
 using Celbridge.UserInterface.Services;

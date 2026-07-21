@@ -34,7 +34,7 @@ public class Module : IModule
         [
             new ProjectFileFactory(stringLocalizer),
             new PackageManifestFactory(stringLocalizer),
-            new DocumentContributionFactory(stringLocalizer),
+            new EditorManifestFactory(stringLocalizer),
         ];
     }
 

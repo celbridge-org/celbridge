@@ -1,4 +1,3 @@
-using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;

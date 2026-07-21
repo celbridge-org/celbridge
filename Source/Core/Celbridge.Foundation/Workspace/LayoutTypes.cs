@@ -38,7 +38,12 @@ public enum WorkspacePanel
     /// <summary>
     /// The custom-utility surface in the Utility Panel (Explorer and Search have their own values).
     /// </summary>
-    CustomUtility
+    CustomUtility,
+
+    /// <summary>
+    /// The Project Settings panel.
+    /// </summary>
+    ProjectSettings
 }
 
 /// <summary>

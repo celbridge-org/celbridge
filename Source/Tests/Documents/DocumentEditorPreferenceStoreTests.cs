@@ -4,15 +4,13 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Covers DocumentEditorPreferenceStore: per-extension reads/writes against
-/// workspace settings, sidecar 'editor' lookups, and the effective resolution
-/// that prefers the sidecar over the per-extension preference.
+/// Covers DocumentEditorPreferenceStore: sidecar '_editor' lookups and the effective per-file editor
+/// resolution.
 /// </summary>
 [TestFixture]
 public class DocumentEditorPreferenceStoreTests
 {
     private ISidecarService _sidecarService = null!;
-    private IWorkspacePropertyBag _propertyBag = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private DocumentEditorPreferenceStore _store = null!;
 
@@ -25,15 +23,8 @@ public class DocumentEditorPreferenceStoreTests
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
 
-        _propertyBag = Substitute.For<IWorkspacePropertyBag>();
-        _propertyBag.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
-
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
-
-        var workspaceSettingsService = Substitute.For<IWorkspaceSettingsService>();
-        workspaceSettingsService.PropertyBag.Returns(_propertyBag);
-        workspaceService.WorkspaceSettings.Returns(workspaceSettingsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -44,58 +35,6 @@ public class DocumentEditorPreferenceStoreTests
     }
 
     [Test]
-    public async Task GetExtensionPreferenceAsync_ReturnsParsedEditorId()
-    {
-        StubExtensionPreference(".md", "test.markdown-editor");
-
-        var editorId = await _store.GetExtensionPreferenceAsync(".md");
-
-        editorId.Should().Be(new DocumentEditorId("test.markdown-editor"));
-    }
-
-    [Test]
-    public async Task GetExtensionPreferenceAsync_ReturnsEmptyWhenNoPreference()
-    {
-        var editorId = await _store.GetExtensionPreferenceAsync(".md");
-
-        editorId.IsEmpty.Should().BeTrue();
-    }
-
-    [Test]
-    public async Task GetExtensionPreferenceAsync_ReturnsEmptyWhenStoredValueIsMalformed()
-    {
-        // DocumentEditorId.TryParse rejects strings that are not a valid id;
-        // a malformed value should fall through to Empty rather than throw.
-        StubExtensionPreference(".md", "not a valid id with spaces");
-
-        var editorId = await _store.GetExtensionPreferenceAsync(".md");
-
-        editorId.IsEmpty.Should().BeTrue();
-    }
-
-    [Test]
-    public async Task SetExtensionPreferenceAsync_WritesTheEditorIdString()
-    {
-        await _store.SetExtensionPreferenceAsync(".md", new DocumentEditorId("test.markdown-editor"));
-
-        var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
-        await _propertyBag.Received(1).SetPropertyAsync(expectedKey, "test.markdown-editor");
-    }
-
-    [Test]
-    public async Task SetExtensionPreferenceAsync_WithEmptyDeletesTheProperty()
-    {
-        // Passing Empty signals "clear my preference"; the store should remove
-        // the underlying key rather than persist an empty string that would
-        // round-trip as a malformed id.
-        await _store.SetExtensionPreferenceAsync(".md", DocumentEditorId.Empty);
-
-        var expectedKey = DocumentConstants.GetEditorPreferenceKey(".md");
-        await _propertyBag.Received(1).DeletePropertyAsync(expectedKey);
-        await _propertyBag.DidNotReceive().SetPropertyAsync(Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [Test]
     public async Task GetSidecarPreferenceAsync_ReturnsParsedEditorIdFromFields()
     {
         StubSidecarEditor("test.specific-editor");
@@ -103,7 +42,7 @@ public class DocumentEditorPreferenceStoreTests
         var result = await _store.GetSidecarPreferenceAsync(new ResourceKey("doc.md"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(new DocumentEditorId("test.specific-editor"));
+        result.Value.Should().Be(new EditorInstanceId("test.specific-editor"));
     }
 
     [Test]
@@ -146,9 +85,8 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetSidecarPreferenceAsync_ShortCircuitsForSidecarKey()
     {
-        // The sidecar file itself does not have its own sidecar pairing; the
-        // store must not call ReadAsync on a sidecar resource (which would
-        // recurse pointlessly through the gateway).
+        // A sidecar file has no sidecar pairing of its own, so the store must not
+        // call ReadAsync for one.
         _sidecarService.IsSidecarKey(Arg.Any<ResourceKey>()).Returns(true);
 
         var result = await _store.GetSidecarPreferenceAsync(new ResourceKey("doc.cel"));
@@ -161,10 +99,9 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetSidecarPreferenceAsync_SurfacesSidecarReadFailure()
     {
-        // A read failure (not NoSidecar/Broken — those are typed outcomes, but
-        // a Result.Fail from the service) is an unexpected error and should
-        // surface so the caller can log it rather than be silently treated as
-        // "no preference".
+        // A Result.Fail from the sidecar service is an unexpected error, unlike the
+        // typed NoSidecar and Broken outcomes, so it surfaces rather than being
+        // treated as "no preference".
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<SidecarReadResult>.Fail("read failed")));
 
@@ -174,38 +111,21 @@ public class DocumentEditorPreferenceStoreTests
     }
 
     [Test]
-    public async Task GetPreferredEditorAsync_PrefersSidecarOverExtensionPreference()
+    public async Task GetPreferredEditorAsync_ReturnsSidecarEditorWhenSet()
     {
         StubSidecarEditor("test.sidecar-editor");
-        StubExtensionPreference(".md", "test.extension-editor");
 
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
-        editorId.Should().Be(new DocumentEditorId("test.sidecar-editor"));
+        editorId.Should().Be(new EditorInstanceId("test.sidecar-editor"));
     }
 
     [Test]
-    public async Task GetPreferredEditorAsync_FallsBackToExtensionPreferenceWhenSidecarSilent()
-    {
-        StubExtensionPreference(".md", "test.extension-editor");
-
-        var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
-
-        editorId.Should().Be(new DocumentEditorId("test.extension-editor"));
-    }
-
-    [Test]
-    public async Task GetPreferredEditorAsync_ReturnsEmptyWhenNeitherSourceHasPreference()
+    public async Task GetPreferredEditorAsync_ReturnsEmptyWhenSidecarHasNoOverride()
     {
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
         editorId.IsEmpty.Should().BeTrue();
-    }
-
-    private void StubExtensionPreference(string extension, string editorId)
-    {
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        _propertyBag.GetPropertyAsync<string>(preferenceKey).Returns(Task.FromResult<string?>(editorId));
     }
 
     private void StubSidecarEditor(string editorId)

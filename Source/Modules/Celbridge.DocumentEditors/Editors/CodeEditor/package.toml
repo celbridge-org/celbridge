@@ -3,4 +3,4 @@ name = "celbridge.code-editor"
 title = "CodeEditor_Package_Name"
 
 [contributes]
-document_editors = ["code.document.toml", "markdown.document.toml"]
+editors = ["code.editor.toml", "markdown.editor.toml"]

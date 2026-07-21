@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.UserInterface.Helpers;
 using Windows.Graphics;
 
 namespace Celbridge.UserInterface.Platform;

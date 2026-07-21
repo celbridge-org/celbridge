@@ -1,3 +1,5 @@
+using Celbridge.Packages;
+
 namespace Celbridge.Documents.Services;
 
 /// <summary>
@@ -6,22 +8,49 @@ namespace Celbridge.Documents.Services;
 /// </summary>
 public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
+    // The resolution band a factory falls into, ordered highest priority first: placeholders
+    // reserve their names ahead of everything, then declared instances in registration order,
+    // then built-ins in the pinned host order, then built-ins outside that list.
+    private enum EditorRankBand
+    {
+        Placeholder,
+        DeclaredInstance,
+        BuiltIn,
+        UnlistedBuiltIn,
+    }
+
+    // A factory's resolution rank: its band first, then its position within the band (host order
+    // for built-ins, registration order otherwise). Lower sorts first.
+    private readonly record struct EditorRank(EditorRankBand Band, int SubOrder) : IComparable<EditorRank>
+    {
+        public int CompareTo(EditorRank other)
+        {
+            var bandComparison = Band.CompareTo(other.Band);
+            if (bandComparison != 0)
+            {
+                return bandComparison;
+            }
+
+            return SubOrder.CompareTo(other.SubOrder);
+        }
+    }
+
     private bool _disposed;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<DocumentEditorId> _registeredEditorIds = new();
-    private readonly Dictionary<DocumentEditorId, IDocumentEditorFactory> _idToFactory = new();
+    private readonly HashSet<EditorInstanceId> _registeredEditorIds = new();
+    private readonly Dictionary<EditorInstanceId, IDocumentEditorFactory> _idToFactory = new();
+    private readonly Dictionary<EditorInstanceId, EditorRank> _factoryRanks = new();
+    private IReadOnlyDictionary<string, string> _editorAssociations = new Dictionary<string, string>();
+    private int _registrationCounter;
 
     public DocumentEditorRegistry(ITextBinarySniffer textBinarySniffer)
     {
         _textBinarySniffer = textBinarySniffer;
     }
 
-    /// <summary>
-    /// Registers a document editor factory.
-    /// </summary>
     public Result RegisterFactory(IDocumentEditorFactory factory)
     {
         Guard.IsNotNull(factory);
@@ -49,9 +78,9 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
         _idToFactory[factory.EditorId] = factory;
         _factories.Add(factory);
+        _factoryRanks[factory.EditorId] = ComputeRank(factory);
 
-        // Index the factory by each supported extension.
-        // Multi-part extensions such as ".document.toml" are indexed as-is; the
+        // Multi-part extensions such as ".editor.toml" are indexed as-is. The
         // longest-suffix walk in GetFactory tries the most specific form first.
         foreach (var extension in supportedExtensions)
         {
@@ -64,13 +93,10 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             }
 
             factoryList.Add(factory);
-
-            // Sort by priority so GetFactory returns the specialized editor first
-            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+            SortByRank(factoryList);
         }
 
-        // Index the factory by each supported exact filename. Filename matches
-        // are tried before any extension match in GetFactory.
+        // Filename matches are tried before any extension match in GetFactory.
         foreach (var filename in supportedFilenames)
         {
             if (!_filenameToFactories.TryGetValue(filename, out var factoryList))
@@ -80,16 +106,53 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             }
 
             factoryList.Add(factory);
-            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+            SortByRank(factoryList);
         }
 
         return Result.Ok();
     }
 
-    /// <summary>
-    /// Gets the factory for the specified file resource.
-    /// Returns the highest priority factory that can handle the resource.
-    /// </summary>
+    public void SetEditorAssociations(IReadOnlyDictionary<string, string> editorAssociations)
+    {
+        _editorAssociations = editorAssociations;
+    }
+
+    public Result<IDocumentEditorFactory> GetAssociatedEditorFactory(ResourceKey fileResource)
+    {
+        // Map lookup answers "which map entry describes this file": the longest matching
+        // suffix of the filename applies.
+        var lowerFileName = fileResource.ResourceName.ToLowerInvariant();
+        foreach (var suffix in GetExtensionSuffixes(lowerFileName))
+        {
+            if (!_editorAssociations.TryGetValue(suffix, out var editorIdValue))
+            {
+                continue;
+            }
+
+            if (!EditorInstanceId.TryParse(editorIdValue, out var editorId))
+            {
+                return Result<IDocumentEditorFactory>.Fail($"Editor association '{editorIdValue}' is not a valid editor id.");
+            }
+
+            var factoryResult = GetFactoryById(editorId);
+            if (factoryResult.IsFailure)
+            {
+                return Result<IDocumentEditorFactory>.Fail($"Editor association '{editorIdValue}' is not a registered editor.");
+            }
+            var factory = factoryResult.Value;
+
+            if (!factory.CanHandleResource(fileResource))
+            {
+                return Result<IDocumentEditorFactory>.Fail(
+                    $"Editor association '{editorIdValue}' does not support '{fileResource}'.");
+            }
+
+            return Result<IDocumentEditorFactory>.Ok(factory);
+        }
+
+        return Result<IDocumentEditorFactory>.Fail($"No editor association matches '{fileResource}'.");
+    }
+
     public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource)
     {
         var candidates = GetFactoriesForResource(fileResource);
@@ -107,7 +170,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         // both a filename and an extension does not appear twice in the
         // "Open with..." dialog.
         var fileName = fileResource.ResourceName;
-        var seenEditorIds = new HashSet<DocumentEditorId>();
+        var seenEditorIds = new HashSet<EditorInstanceId>();
         var candidates = new List<IDocumentEditorFactory>();
 
         if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
@@ -165,26 +228,30 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return candidates;
     }
 
-    /// <summary>
-    /// Checks if any registered factory can handle the specified extension.
-    /// </summary>
+    public IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForExtension(string fileExtension)
+    {
+        var normalizedExtension = fileExtension.ToLowerInvariant();
+
+        // Synthesize a file name from the extension so it resolves exactly as a real file would.
+        if (!ResourceKey.TryCreate($"file{normalizedExtension}", out var syntheticResource))
+        {
+            return [];
+        }
+
+        return GetUserPickableFactoriesForResource(syntheticResource);
+    }
+
     public bool IsExtensionSupported(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
         return _extensionToFactories.ContainsKey(normalizedExtension);
     }
 
-    /// <summary>
-    /// Gets all registered factories.
-    /// </summary>
     public IReadOnlyList<IDocumentEditorFactory> GetAllFactories()
     {
         return _factories.AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets all factories that can handle the specified extension, sorted by priority.
-    /// </summary>
     public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -197,23 +264,16 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return [];
     }
 
-    /// <summary>
-    /// Gets a factory by its DocumentEditorId.
-    /// </summary>
-    public Result<IDocumentEditorFactory> GetFactoryById(DocumentEditorId documentEditorId)
+    public Result<IDocumentEditorFactory> GetFactoryById(EditorInstanceId editorId)
     {
-        if (_idToFactory.TryGetValue(documentEditorId, out var factory))
+        if (_idToFactory.TryGetValue(editorId, out var factory))
         {
             return Result<IDocumentEditorFactory>.Ok(factory);
         }
 
-        return Result<IDocumentEditorFactory>.Fail($"No factory found with DocumentEditorId: '{documentEditorId}'");
+        return Result<IDocumentEditorFactory>.Fail($"No factory found with EditorInstanceId: '{editorId}'");
     }
 
-    /// <summary>
-    /// Gets the editor language identifier for the specified file extension.
-    /// Queries registered factories in priority order and returns the first non-null result.
-    /// </summary>
     public string? GetLanguageForExtension(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -223,7 +283,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             return null;
         }
 
-        // Factories are sorted by priority, so return the first non-null language
+        // Factories are sorted in resolution order, so return the first non-null language
         foreach (var factory in factoryList)
         {
             var language = factory.GetLanguageForExtension(normalizedExtension);
@@ -236,25 +296,56 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return null;
     }
 
-    /// <summary>
-    /// Gets all file extensions supported by registered factories.
-    /// </summary>
     public IReadOnlyList<string> GetAllSupportedExtensions()
     {
         return _extensionToFactories.Keys.ToList().AsReadOnly();
     }
 
+    // Assigns the factory's resolution rank at registration time. The registration counter
+    // breaks ties within a band, preserving registration order.
+    private EditorRank ComputeRank(IDocumentEditorFactory factory)
+    {
+        var registrationOrder = _registrationCounter;
+        _registrationCounter++;
+
+        if (factory.IsPlaceholder)
+        {
+            return new EditorRank(EditorRankBand.Placeholder, registrationOrder);
+        }
+
+        var hostOrderIndex = -1;
+        for (int i = 0; i < BuiltInEditors.HostResolutionOrder.Count; i++)
+        {
+            if (BuiltInEditors.HostResolutionOrder[i] == factory.EditorId)
+            {
+                hostOrderIndex = i;
+                break;
+            }
+        }
+        if (hostOrderIndex >= 0)
+        {
+            return new EditorRank(EditorRankBand.BuiltIn, hostOrderIndex);
+        }
+
+        // Every other registered factory is a package-contributed editor, which outranks the built-ins
+        // for the extensions it claims. Registration order (discovery order) breaks ties within the band.
+        return new EditorRank(EditorRankBand.DeclaredInstance, registrationOrder);
+    }
+
+    private void SortByRank(List<IDocumentEditorFactory> factoryList)
+    {
+        factoryList.Sort((a, b) => _factoryRanks[a.EditorId].CompareTo(_factoryRanks[b.EditorId]));
+    }
+
     // Yields the extension suffixes of a filename from longest to shortest.
-    // "foo.document.toml" produces ".document.toml" then ".toml"; "foo.md"
-    // produces ".md"; "Makefile" produces nothing. A leading dot
+    // "foo.editor.toml" produces ".editor.toml" then ".toml". "foo.md"
+    // produces ".md". "Makefile" produces nothing. A leading dot
     // (".gitignore") is skipped so the file's full name is not treated as
     // an extension.
     private static IEnumerable<string> GetExtensionSuffixes(string fileName)
     {
         int searchFrom = 0;
 
-        // Skip a leading '.' on dotfiles so the first yielded suffix is anchored
-        // on an interior dot rather than the leading one.
         if (fileName.Length > 0
             && fileName[0] == '.')
         {
@@ -283,7 +374,6 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
         _disposed = true;
 
-        // Dispose all registered factories that implement IDisposable
         foreach (var factory in _factories)
         {
             if (factory is IDisposable disposable)
@@ -297,5 +387,6 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         _filenameToFactories.Clear();
         _registeredEditorIds.Clear();
         _idToFactory.Clear();
+        _factoryRanks.Clear();
     }
 }

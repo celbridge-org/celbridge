@@ -70,6 +70,11 @@ public static class SettingCatalog
         // load, falling back to Explorer when the persisted id no longer resolves to a rail item.
         public static readonly SettingDescriptor<string> UtilityPanelSelectedUtility =
             new("Layout.UtilityPanelSelectedUtility", SettingScope.Workspace, "");
+
+        // The Project Settings section the user last viewed, as a stable section key. Restored when the
+        // Project Settings panel is rebuilt, so a reload returns to the same section.
+        public static readonly SettingDescriptor<string> ProjectSettingsSelectedSection =
+            new("Layout.ProjectSettingsSelectedSection", SettingScope.Workspace, "");
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using Celbridge.Packages;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
@@ -18,8 +19,9 @@ public class PackageServiceDocumentTypeTests
     private string _tempProjectFolder = null!;
     private PackageService _service = null!;
     private IModuleService _moduleService = null!;
-    private IFeatureFlags _featureFlags = null!;
+    private IProjectService _projectService = null!;
     private List<string> _bundledPackagePaths = null!;
+    private List<ContributionOverride> _contributionOverrides = null!;
 
     [SetUp]
     public void Setup()
@@ -33,8 +35,30 @@ public class PackageServiceDocumentTypeTests
             .Select(folder => new BundledPackageDescriptor { Folder = folder })
             .ToList());
 
-        _featureFlags = Substitute.For<IFeatureFlags>();
-        _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
+        // Activation is discovery-driven, so a discovered default-active contribution is active and
+        // offers its document type without any project-file entry.
+        _contributionOverrides = [];
+        _projectService = Substitute.For<IProjectService>();
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(_ => new ProjectConfig
+        {
+            ContributionOverrides = _contributionOverrides
+        });
+        _projectService.CurrentProject.Returns(project);
+
+        // The registry reconciles and persists through IProjectService; mirror the real delegation to
+        // the static reconciler so the mocked service produces the same active set.
+        _projectService.ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), Arg.Any<bool>())
+            .Returns(callInfo =>
+            {
+                var config = _projectService.CurrentProject?.Config;
+                if (config is null)
+                {
+                    return Task.FromResult<ProjectConfigReconcileResult?>(null);
+                }
+                return Task.FromResult<ProjectConfigReconcileResult?>(
+                    ProjectConfigReconciler.Reconcile(config, callInfo.Arg<IReadOnlyList<EditorContribution>>()));
+            });
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
@@ -46,8 +70,8 @@ public class PackageServiceDocumentTypeTests
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
         });
-        // The package walk enumerates the project tree through the gateway, which
-        // resolves with validateCase:false; stub the two-argument overload too.
+        // The package walk enumerates the project tree through the gateway, which resolves
+        // with validateCase:false. Stub the two-argument overload too.
         resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
         {
             var key = callInfo.Arg<ResourceKey>();
@@ -87,7 +111,7 @@ public class PackageServiceDocumentTypeTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper, fileSystem);
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem);
         var loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(messengerService, loadReporter, registry);
     }
@@ -161,43 +185,22 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public async Task GetDocumentTypes_DisabledFeatureFlag_Excluded()
+    public async Task GetDocumentTypes_UninstantiatedOptionalContribution_Excluded()
     {
+        // The package is discovered, but its editor is optional and the project has not enabled it,
+        // so no instance materializes and it offers no creatable document type.
         await CreateBundledPackage(
-            "flagged-editor",
-            "FlaggedEditor",
-            [(".flagged", "FlaggedEditor")],
-            featureFlag: "my-flag",
+            "undeclared-editor",
+            "UndeclaredEditor",
+            [(".undeclared", "UndeclaredEditor")],
             templates:
             [
-                ("empty", "Empty", "templates/empty.flagged", true)
-            ]);
+                ("empty", "Empty", "templates/empty.undeclared", true)
+            ],
+            activation: ActivationPolicy.Optional);
 
-        _featureFlags.IsEnabled("my-flag").Returns(false);
-
-        var documentTypes = _service.GetDocumentTypes();
-
-        documentTypes.Should().BeEmpty();
-    }
-
-    [Test]
-    public async Task GetDocumentTypes_EnabledFeatureFlag_Included()
-    {
-        await CreateBundledPackage(
-            "flagged-editor",
-            "FlaggedEditor",
-            [(".flagged", "FlaggedEditor")],
-            featureFlag: "my-flag",
-            templates:
-            [
-                ("empty", "Empty", "templates/empty.flagged", true)
-            ]);
-
-        _featureFlags.IsEnabled("my-flag").Returns(true);
-
-        var documentTypes = _service.GetDocumentTypes();
-
-        documentTypes.Should().HaveCount(1);
+        _service.GetAllEditors().Should().HaveCount(1);
+        _service.GetDocumentTypes().Should().BeEmpty();
     }
 
     [Test]
@@ -223,38 +226,39 @@ public class PackageServiceDocumentTypeTests
     [Test]
     public async Task GetDocumentTypes_UtilityContribution_Excluded()
     {
-        var packageDir = Path.Combine(_tempProjectFolder, "bundled", "emoji");
+        var packageDir = Path.Combine(_tempProjectFolder, "bundled", "widget");
         Directory.CreateDirectory(packageDir);
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
             [package]
-            name = "test.emoji"
-            title = "Emoji"
+            name = "test.widget"
+            title = "Widget"
 
             [contributes]
-            document_editors = ["emoji.document.toml"]
+            editors = ["widget.editor.toml"]
             """);
 
-        File.WriteAllText(Path.Combine(packageDir, "emoji.document.toml"), """
-            [document]
-            id = "emoji-renderer"
-            type = "custom"
-            entry_point = "index.html"
+        File.WriteAllText(Path.Combine(packageDir, "widget.editor.toml"), """
+            [editor]
+            id = "widget-renderer"
+            type = "utility"
+            entry-point = "index.html"
+            display-name = "Widget_Utility_DisplayName"
 
             [utility]
-            resource = "utils:settings._emoji"
-            template = "templates/default._emoji"
-            icon = "emoji-smile"
-            tooltip = "Emoji_Utility_Tooltip"
+            resource-extension = "._widget"
+            template = "templates/default._widget"
+            icon = "star"
             """);
 
         _bundledPackagePaths.Add(packageDir);
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // The utility registered as a document editor, but must not appear as a creatable New File type.
-        var editors = _service.GetAllDocumentEditors();
+        // The utility is active by discovery, but must not appear as a creatable New File type.
+        var editors = _service.GetAllEditors();
         editors.Should().ContainSingle();
-        ((CustomDocumentEditorContribution)editors[0]).IsUtility.Should().BeTrue();
+        editors[0].IsUtility.Should().BeTrue();
+        _service.GetEditorInstances().Should().ContainSingle();
 
         _service.GetDocumentTypes().Should().BeEmpty();
     }
@@ -346,71 +350,69 @@ public class PackageServiceDocumentTypeTests
                 ["templates/empty.orphan"] = "content"
             });
 
-        // Should still find bundled packages even without a project
         var content = _service.GetDefaultTemplateContent(".orphan");
         content.Should().NotBeNull();
     }
 
     /// <summary>
-    /// Helper to create a bundled package folder with TOML manifests and optional files.
-    /// Registers the path with the module service mock and re-discovers packages.
+    /// Helper to create a bundled package folder with TOML manifests and optional files. Registers the
+    /// path with the module service mock and re-discovers packages. A required editor is active by
+    /// discovery; pass activation: ActivationPolicy.Optional to ship it inert.
     /// </summary>
     private async Task CreateBundledPackage(
         string dirName,
         string packageName,
         (string Extension, string DisplayName)[] fileTypes,
         (string Id, string DisplayName, string File, bool Default)[]? templates = null,
-        string? featureFlag = null,
         Dictionary<string, string>? localizationStrings = null,
-        Dictionary<string, string>? templateFiles = null)
+        Dictionary<string, string>? templateFiles = null,
+        ActivationPolicy activation = ActivationPolicy.Required)
     {
         var packageDir = Path.Combine(_tempProjectFolder, "bundled", dirName);
         Directory.CreateDirectory(packageDir);
 
         var bundledName = $"test.{dirName}";
-        var featureFlagLine = featureFlag is not null ? $"\nfeature_flag = \"{featureFlag}\"" : "";
 
-        // Write package.toml
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
             name = "{bundledName}"
-            title = "{packageName}"{featureFlagLine}
+            title = "{packageName}"
 
             [contributes]
-            document_editors = ["editor.document.toml"]
+            editors = ["editor.editor.toml"]
             """);
 
         var fileTypesToml = string.Join("\n", fileTypes.Select(ft => $"""
-            [[document_file_types]]
+            [[file-types]]
             extension = "{ft.Extension}"
-            display_name = "{ft.DisplayName}"
+            display-name = "{ft.DisplayName}"
             """));
 
         var templatesToml = "";
         if (templates is not null)
         {
             templatesToml = string.Join("\n", templates.Select(t => $"""
-                [[document_templates]]
+                [[templates]]
                 id = "{t.Id}"
-                display_name = "{t.DisplayName}"
-                template_file = "{t.File}"
+                display-name = "{t.DisplayName}"
+                template-file = "{t.File}"
                 default = {t.Default.ToString().ToLower()}
                 """));
         }
 
-        File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
-            [document]
-            id = "{bundledName}-doc"
-            type = "custom"
-            entry_point = "index.html"
-            display_name = "{packageName}"
+        File.WriteAllText(Path.Combine(packageDir, "editor.editor.toml"), $"""
+            [editor]
+            id = "editor"
+            type = "document"
+            entry-point = "index.html"
+            display-name = "{packageName}"
+            activation = "{activation.ToString().ToLowerInvariant()}"
 
             {fileTypesToml}
 
             {templatesToml}
             """);
 
-        // Create localization files
         if (localizationStrings is not null)
         {
             var localizationFolder = Path.Combine(packageDir, PackageLocalizationService.LocalizationFolder);
@@ -421,7 +423,6 @@ public class PackageServiceDocumentTypeTests
             File.WriteAllText(Path.Combine(localizationFolder, "en.json"), localizationJson);
         }
 
-        // Create template files
         if (templateFiles is not null)
         {
             foreach (var kvp in templateFiles)

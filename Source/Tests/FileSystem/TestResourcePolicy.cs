@@ -1,3 +1,4 @@
+using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Resources.Services;
 
@@ -29,6 +30,7 @@ internal static class TestResourcePolicy
         public Result ValidateNewProjectConfig(NewProjectConfig config) => throw new NotImplementedException();
         public Task<Result> CreateProjectAsync(NewProjectConfig config) => throw new NotImplementedException();
         public Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult) => throw new NotImplementedException();
+        public Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(IReadOnlyList<EditorContribution> discoveredContributions, bool persistNormalizedConfig) => throw new NotImplementedException();
         public void ClearCurrentProject() => throw new NotImplementedException();
         public List<RecentProject> GetRecentProjects() => throw new NotImplementedException();
         public void ClearRecentProjects() => throw new NotImplementedException();

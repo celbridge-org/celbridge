@@ -1,5 +1,3 @@
-using Microsoft.UI.Xaml.Input;
-
 namespace Celbridge.UserInterface.DragDrop;
 
 /// <summary>

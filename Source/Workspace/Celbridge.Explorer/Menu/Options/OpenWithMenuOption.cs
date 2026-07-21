@@ -86,69 +86,48 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
 
-        var factories = GetCandidateFactories(clickedFile);
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        if (factories.Count < 2)
-        {
-            return;
-        }
-
-        // Pre-select the editor that's currently being used for this document (if open),
-        // falling back to the workspace preference for this extension.
-        var currentEditorId = DocumentEditorId.Empty;
-        var openDocument = _workspaceWrapper.WorkspaceService.DocumentsService
+        // Preselect the editor currently opening this document (if open), else the file's sidecar
+        // override; GetEditorPickList falls back to the project default when that is not a candidate.
+        var currentEditorId = EditorInstanceId.Empty;
+        var openDocument = documentsService
             .GetOpenDocuments()
             .FirstOrDefault(document => document.FileResource == resourceKey);
-
         if (openDocument is not null)
         {
             currentEditorId = openDocument.EditorId;
         }
-
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-
         if (currentEditorId.IsEmpty)
         {
             currentEditorId = await documentsService.GetPreferredEditorAsync(resourceKey);
         }
 
-        int defaultIndex = 0;
-        if (!currentEditorId.IsEmpty)
+        var pickList = documentsService.GetEditorPickList(resourceKey, currentEditorId);
+        if (pickList is null)
         {
-            for (int i = 0; i < factories.Count; i++)
-            {
-                if (factories[i].EditorId == currentEditorId)
-                {
-                    defaultIndex = i;
-                    break;
-                }
-            }
+            return;
         }
-
-        var displayNames = factories.Select(factory => factory.DisplayName).ToList();
 
         var title = _stringLocalizer.GetString("OpenWithDialog_Title");
         var message = _stringLocalizer.GetString("OpenWithDialog_Message");
-        var checkbox = new ChoiceDialogCheckbox(_stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
         var openButtonText = _stringLocalizer.GetString("OpenWithDialog_OpenButton");
 
-        var choiceResult = await _dialogService.ShowChoiceDialogAsync(title, message, displayNames, defaultIndex, checkbox, primaryButtonText: openButtonText);
+        var choiceResult = await _dialogService.ShowChoiceDialogAsync(
+            title, message, pickList.Labels, pickList.SelectedIndex, checkbox: null, primaryButtonText: openButtonText);
         if (choiceResult.IsFailure)
         {
             return;
         }
 
-        var selectedFactory = factories[choiceResult.Value.SelectedIndex];
+        var selectedEditorId = pickList.EditorIds[choiceResult.Value.SelectedIndex];
 
-        await documentsService.SetPreferredEditorAsync(
-            resourceKey,
-            selectedFactory.EditorId,
-            useAsExtensionDefault: choiceResult.Value.CheckboxChecked);
+        await documentsService.SetPreferredEditorAsync(resourceKey, selectedEditorId);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resourceKey;
-            command.EditorId = selectedFactory.EditorId;
+            command.EditorId = selectedEditorId;
         });
     }
 }

@@ -58,26 +58,51 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _utilityIconGlyphName = string.Empty;
 
     /// <summary>
-    /// The editor that created this tab's document view.
+    /// The manifest description shown as a utility tab's tooltip. Empty for ordinary document tabs and
+    /// for utilities whose manifest declares no description.
     /// </summary>
-    public DocumentEditorId EditorId { get; set; }
+    [ObservableProperty]
+    private string _utilityTooltip = string.Empty;
 
     /// <summary>
-    /// Returns the file extension for the current resource, used by the FileIcon control.
+    /// The editor that created this tab's document view.
+    /// </summary>
+    public EditorInstanceId EditorId { get; set; }
+
+    /// <summary>
+    /// Returns the file extension for the current resource.
     /// </summary>
     public string FileExtension => Path.GetExtension(FileResource.ResourceName);
 
     /// <summary>
-    /// Tooltip text for the tab. A utility tab shows its manifest title; an ordinary tab shows its file
-    /// path plus the editor name when multiple editors are available.
+    /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
+    /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
+    /// editors are available.
     /// </summary>
-    public string TabTooltip => IsUtility
-        ? DocumentName
-        : string.IsNullOrEmpty(EditorDisplayName)
-            ? FilePath
-            : $"{FilePath} - {EditorDisplayName}";
+    public string TabTooltip
+    {
+        get
+        {
+            if (IsUtility)
+            {
+                return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
+            }
+
+            if (string.IsNullOrEmpty(EditorDisplayName))
+            {
+                return FilePath;
+            }
+
+            return $"{FilePath} - {EditorDisplayName}";
+        }
+    }
 
     partial void OnFilePathChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnUtilityTooltipChanged(string value)
     {
         OnPropertyChanged(nameof(TabTooltip));
     }
@@ -114,15 +139,10 @@ public partial class DocumentTabViewModel : ObservableObject
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        // We can't use the view's Loaded & Unloaded methods to register & unregister here.
-        // Loaded and Unloaded are called when the UI element are added & removed from the visual tree.
-        // When a TabViewItem is reordered, it is first added in the new position and then removed in the old position.
-        // This means Unloaded is called first, followed by Load (opposite to what you might expect).
-
-        // To work around this, we register the message handlers in the constructor and then unregister in the
-        // CloseDocument() method if the tab is actually closed. There's one more case to consider, when the DocumentTabView
-        // unloads (e.g. closing the open workspace). In this case, WeakReferenceMessenger should automatically clean up the
-        // message handlers because the old DocumentTabViewModel has been destroyed.
+        // Reordering a TabViewItem adds it in the new position before removing it from the old, so Unloaded
+        // fires after Loaded. The message handlers are therefore registered here rather than on Loaded, and
+        // unregistered in CloseDocument() when the tab actually closes. When the view unloads with the
+        // workspace, WeakReferenceMessenger cleans the handlers up as this view model is collected.
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
@@ -131,7 +151,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// <summary>
     /// Returns true if more than one editor is registered for this document's file extension,
     /// meaning a "Reopen with..." menu option is worth showing to the user. Returns false during
-    /// workspace teardown so the context menu gracefully hides the item when state is transient.
+    /// workspace teardown.
     /// </summary>
     public bool HasMultipleCompatibleEditors()
     {
@@ -140,9 +160,8 @@ public partial class DocumentTabViewModel : ObservableObject
             return false;
         }
 
-        var extension = Path.GetExtension(FileResource.ToString()).ToLowerInvariant();
         var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
-            .GetFactoriesForExtension(extension);
+            .GetUserPickableFactoriesForResource(FileResource);
 
         return factories.Count >= 2;
     }
@@ -153,9 +172,8 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             // This open document's resource has been renamed just prior to this registry update.
             // Tell the document service to update the file resource for the document.
-            // The writable-state refresh below is skipped on this path: DocumentsService
-            // re-binds the document for the new key (see OpenDocument), which calls
-            // SetWritableState through the open flow.
+            // The writable-state refresh below is skipped on this path: the re-bind for the new
+            // key applies the writable state through the open flow.
 
             var oldResource = _pendingResourceKeyChangedMessage.SourceResource;
             var newResource = _pendingResourceKeyChangedMessage.DestResource;
@@ -182,9 +200,8 @@ public partial class DocumentTabViewModel : ObservableObject
                 return;
             }
 
-            // The resource no longer exists, so close the document.
-            // We force the close operation because the resource no longer exists.
-            // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
+            // The resource no longer exists, so force-close the document. Routed through a command
+            // instead of calling CloseDocument() directly to help avoid race conditions.
             _commandService.Execute<ICloseDocumentCommand>(command =>
             {
                 command.FileResource = FileResource;
@@ -245,7 +262,7 @@ public partial class DocumentTabViewModel : ObservableObject
         var canClose = forceClose || await DocumentView.CanClose();
         if (!canClose)
         {
-            // The document view refused to close (user save-prompt dialog or programmatic veto).
+            // The document view refused to close.
             return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Cancelled);
         }
 
@@ -259,10 +276,9 @@ public partial class DocumentTabViewModel : ObservableObject
                 // Discard the unsaved edits and proceed to teardown.
                 _logger.LogWarning(saveResult, $"Saving document failed during close. Discarding unsaved edits for file resource: '{FileResource}'");
 
-                // If the cached writable state still reads Writable, an external
-                // attribute change probably slipped past the watcher. Schedule a
-                // resource update so the cache catches up; debouncing inside the
-                // resource service coalesces bursts.
+                // If the cached writable state still reads Writable, an external attribute change
+                // probably slipped past the watcher. Schedule a resource update so the cache catches
+                // up. Debouncing inside the resource service coalesces bursts.
                 if (DocumentView.WritableState == WritableState.Writable)
                 {
                     _commandService.Execute<IUpdateResourcesCommand>();

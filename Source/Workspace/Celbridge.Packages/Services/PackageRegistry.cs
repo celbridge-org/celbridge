@@ -1,14 +1,16 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
+using Celbridge.Projects;
 using Celbridge.Resources;
-using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Discovers, stores, and queries packages from bundled and project sources.
+/// Discovers packages from bundled and project sources, reconciles the project config against the
+/// discovered contributions (materializing default-active instances and honouring disables), and
+/// resolves the resulting editor instances and the built-in editors.
 /// </summary>
 public class PackageRegistry
 {
@@ -18,13 +20,19 @@ public class PackageRegistry
 
     private readonly ILogger<PackageRegistry> _logger;
     private readonly IModuleService _moduleService;
-    private readonly IFeatureFlags _featureFlags;
     private readonly IPackageLocalizationService _localizationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ILocalFileSystem _fileSystem;
+    private readonly IProjectService _projectService;
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
+
+    private List<EditorInstance> _editorInstances = [];
+    private List<EditorInstance> _builtInEditors = [];
+
+    // The reconciled, normalized config from the most recent discovery pass. RegisterPackagesAsync
+    // persists it; a rescan leaves it unwritten.
+    private ProjectConfig? _normalizedConfig;
 
     // Failures from the most recent discovery pass, retained so package_status
     // can report them after load (the error banner only fires once).
@@ -38,21 +46,20 @@ public class PackageRegistry
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
         IModuleService moduleService,
-        IFeatureFlags featureFlags,
         IPackageLocalizationService localizationService,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _moduleService = moduleService;
-        _featureFlags = featureFlags;
         _localizationService = localizationService;
         _workspaceWrapper = workspaceWrapper;
-        _fileSystem = fileSystem;
+        _projectService = projectService;
         _bundledReader = new DirectPackageReader(fileSystem);
     }
 
-    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath)
+    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath, bool persistNormalizedConfig)
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
@@ -64,11 +71,19 @@ public class PackageRegistry
         failures.AddRange(bundledFailures);
         failures.AddRange(projectFailures);
 
+        var instanceFailures = new List<EditorInstanceLoadFailure>();
+        var instanceWarnings = new List<EditorInstanceLoadFailure>();
+        await ResolveEditorInstancesAsync(persistNormalizedConfig && failures.Count == 0, instanceFailures, instanceWarnings);
+        ResolveBuiltInEditors();
+
         var report = new PackageDiscoveryReport
         {
             BundledPackageCount = _bundledPackages.Count,
             ProjectPackageCount = _projectPackages.Count,
-            Failures = failures.AsReadOnly()
+            Failures = failures.AsReadOnly(),
+            EditorInstanceCount = _editorInstances.Count,
+            EditorInstanceFailures = instanceFailures.AsReadOnly(),
+            EditorInstanceWarnings = instanceWarnings.AsReadOnly()
         };
 
         _lastFailures = report.Failures;
@@ -76,7 +91,7 @@ public class PackageRegistry
         LogDiscoveredPackages();
 
         _logger.LogInformation(
-            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed");
+            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed, {report.EditorInstanceCount} instances");
 
         return report;
     }
@@ -94,52 +109,52 @@ public class PackageRegistry
         return _lastFailures;
     }
 
-    public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
+    public IReadOnlyList<EditorContribution> GetAllEditors()
     {
         return GetAllPackages()
-            .SelectMany(package => package.DocumentEditors)
+            .SelectMany(package => package.Editors)
             .ToList()
             .AsReadOnly();
     }
 
-    public Package? GetContributingPackage(DocumentEditorId editorId)
+    public IReadOnlyList<EditorInstance> GetEditorInstances()
     {
-        // Custom editor IDs are formatted as "{packageName}.{contributionId}"
-        // by CustomDocumentViewFactory. Bundled package names themselves contain
-        // dots (e.g. "celbridge.notes"), so match by full-name prefix rather than
-        // splitting on the first separator.
-        var editorIdString = editorId.ToString();
-        foreach (var package in GetAllPackages())
-        {
-            var packageName = package.Info.Name;
-            if (packageName.Length == 0)
-            {
-                continue;
-            }
+        return _editorInstances.AsReadOnly();
+    }
 
-            if (editorIdString.Length > packageName.Length
-                && editorIdString.StartsWith(packageName, StringComparison.Ordinal)
-                && editorIdString[packageName.Length] == '.')
-            {
-                return package;
-            }
+    public ProjectConfig? GetNormalizedConfig()
+    {
+        return _normalizedConfig;
+    }
+
+    public IReadOnlyList<EditorInstance> GetBuiltInEditors()
+    {
+        return _builtInEditors.AsReadOnly();
+    }
+
+    public Package? GetContributingPackage(EditorInstanceId editorId)
+    {
+        var editor = FindEditor(editorId);
+        if (editor is null)
+        {
+            return null;
         }
 
-        return null;
+        var packageName = editor.Contribution.Package.Name;
+
+        return GetAllPackages().FirstOrDefault(p => p.Info.Name.Equals(packageName, StringComparison.Ordinal));
     }
 
     public IReadOnlyList<DocumentTypeInfo> GetDocumentTypes()
     {
-        var contributions = GetAllDocumentEditors();
         var documentTypes = new List<DocumentTypeInfo>();
+        var seenContributions = new HashSet<EditorContribution>();
 
-        foreach (var contribution in contributions)
+        foreach (var contribution in GetAvailableContributions())
         {
-            // A utility owns one fixed resource and is never created as an ordinary project file, so it
-            // must not appear as a creatable type in the New File dialog. The skip is also structural:
-            // a utility has no [[document_file_types]] entry to offer, so the FileTypes[0] read below
-            // would be meaningless for it.
-            if (contribution is CustomDocumentEditorContribution { IsUtility: true })
+            // A utility owns per-instance state files and is never created as an ordinary project
+            // file, so it must not appear as a creatable type in the New File dialog.
+            if (contribution.IsUtility)
             {
                 continue;
             }
@@ -149,8 +164,8 @@ public class PackageRegistry
                 continue;
             }
 
-            var featureFlag = contribution.Package.FeatureFlag;
-            if (!string.IsNullOrEmpty(featureFlag) && !_featureFlags.IsEnabled(featureFlag))
+            // Multiple instances of one contribution offer one document type.
+            if (!seenContributions.Add(contribution))
             {
                 continue;
             }
@@ -177,16 +192,15 @@ public class PackageRegistry
     }
 
     // Reads the default template bytes for the given file extension, picking the
-    // first contribution that handles the extension and declares a default template.
+    // first available contribution that handles the extension and declares a default template.
     // The reader is chosen by package origin: bundled packages stay on direct File.*
     // because their bytes live outside any registry root, project packages route
     // through IResourceFileSystem by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
-        var contributions = GetAllDocumentEditors();
 
-        foreach (var contribution in contributions)
+        foreach (var contribution in GetAvailableContributions())
         {
             var handlesExtension = contribution.FileTypes
                 .Any(ft => ft.FileExtension.Equals(normalizedExtension, StringComparison.OrdinalIgnoreCase));
@@ -230,7 +244,7 @@ public class PackageRegistry
     // path, choosing the reader by package origin (direct File.* for bundled, gateway for
     // project). Returns an empty array when the utility declares no template, and null when a
     // declared template file is missing or unreadable so callers can log and seed an empty file.
-    public byte[]? GetUtilityTemplateContent(CustomDocumentEditorContribution contribution)
+    public byte[]? GetUtilityTemplateContent(EditorContribution contribution)
     {
         var descriptor = contribution.UtilityDescriptor;
         if (descriptor is null)
@@ -262,21 +276,191 @@ public class PackageRegistry
         return readResult.Value;
     }
 
+    // Reconciles the project config against the discovered contributions and builds the live instance
+    // set from the result. Default-active contributions materialize, disabled instances and disabled
+    // packages drop out, and reconcile warnings surface as advisory banners. On a persisting load the
+    // reconcile also writes the normalized config back to the project file.
+    private async Task ResolveEditorInstancesAsync(
+        bool persistNormalizedConfig,
+        List<EditorInstanceLoadFailure> instanceFailures,
+        List<EditorInstanceLoadFailure> instanceWarnings)
+    {
+        _editorInstances = [];
+        _normalizedConfig = null;
+
+        var discoveredContributions = GetAllPackages()
+            .SelectMany(package => package.Editors)
+            .ToList();
+
+        var reconcileResult = await _projectService.ReconcileConfigAsync(discoveredContributions, persistNormalizedConfig);
+        if (reconcileResult is null)
+        {
+            return;
+        }
+
+        _normalizedConfig = reconcileResult.Config;
+
+        foreach (var warning in reconcileResult.Warnings)
+        {
+            instanceWarnings.Add(new EditorInstanceLoadFailure
+            {
+                InstanceId = string.Empty,
+                Detail = warning
+            });
+        }
+
+        foreach (var resolved in reconcileResult.ActiveContributions)
+        {
+            var contribution = resolved.Contribution;
+            var effectiveConfig = BuildEffectiveConfig(contribution, resolved.Config, out _);
+
+            var instance = new EditorInstance
+            {
+                InstanceId = EditorInstanceId.Create(contribution.Package.Name, contribution.Id),
+                Contribution = contribution,
+                Config = effectiveConfig,
+            };
+
+            _editorInstances.Add(instance);
+        }
+    }
+
+    // Wraps the always-active package contributions in EditorInstance records under their
+    // host-assigned ids, in catalog order.
+    private void ResolveBuiltInEditors()
+    {
+        _builtInEditors = [];
+
+        foreach (var definition in BuiltInEditors.PackageBuiltIns)
+        {
+            var package = _bundledPackages
+                .FirstOrDefault(p => p.Info.Name.Equals(definition.PackageName, StringComparison.Ordinal));
+            var contribution = package?.Editors
+                .FirstOrDefault(e => e.Id.Equals(definition.ContributionId, StringComparison.Ordinal));
+            if (contribution is null)
+            {
+                if (definition.Optional)
+                {
+                    // An optional built-in ships in the installer but is absent from a source build
+                    // without its private library, so its file types degrade to having no editor.
+                    _logger.LogInformation(
+                        $"Optional built-in editor '{definition.EditorId}' is not available: package '{definition.PackageName}' was not discovered.");
+                    continue;
+                }
+
+                // A missing required built-in is a build or packaging error.
+                _logger.LogError(
+                    $"Built-in editor '{definition.EditorId}' is missing: package '{definition.PackageName}' has no contribution '{definition.ContributionId}'.");
+                continue;
+            }
+
+            var builtInInstance = new EditorInstance
+            {
+                InstanceId = definition.EditorId,
+                Contribution = contribution,
+                Config = BuildEffectiveConfig(contribution, rawConfig: null, out _)
+            };
+
+            _builtInEditors.Add(builtInInstance);
+        }
+    }
+
+    // Computes the configuration delivered to an editor's views: the manifest [options] table,
+    // overlaid with the contribution's descriptor defaults, overlaid with the project's per-contribution
+    // config keys. Keys that fail descriptor type-checking are dropped and reported. rawConfig is null
+    // for a built-in editor, which carries no project config.
+    private IReadOnlyDictionary<string, string> BuildEffectiveConfig(
+        EditorContribution contribution,
+        IReadOnlyDictionary<string, object?>? rawConfig,
+        out List<string> droppedKeys)
+    {
+        droppedKeys = [];
+
+        var effectiveConfig = new Dictionary<string, string>(contribution.Options);
+
+        foreach (var descriptor in contribution.ConfigDescriptors)
+        {
+            if (descriptor.DefaultValue is not null)
+            {
+                effectiveConfig[descriptor.Key] = descriptor.DefaultValue;
+            }
+        }
+
+        if (rawConfig is null)
+        {
+            return effectiveConfig;
+        }
+
+        var reference = $"{contribution.Package.Name}/{contribution.Id}";
+
+        foreach (var (key, rawValue) in rawConfig)
+        {
+            var descriptor = contribution.ConfigDescriptors
+                .FirstOrDefault(d => d.Key.Equals(key, StringComparison.Ordinal));
+            if (descriptor is null)
+            {
+                droppedKeys.Add(key);
+                _logger.LogWarning(
+                    $"Contribution '{reference}' sets unknown config key '{key}'.");
+                continue;
+            }
+
+            var encodeResult = ConfigValueEncoder.Encode(rawValue, descriptor);
+            if (encodeResult.IsFailure)
+            {
+                droppedKeys.Add(key);
+                _logger.LogWarning(
+                    $"Contribution '{reference}' config key '{key}' was dropped: {encodeResult.FirstErrorMessage}");
+                continue;
+            }
+            var encodedValue = encodeResult.Value;
+
+            effectiveConfig[key] = encodedValue;
+        }
+
+        return effectiveConfig;
+    }
+
+    // Finds a declared instance or built-in editor by id.
+    private EditorInstance? FindEditor(EditorInstanceId editorId)
+    {
+        var declaredInstance = _editorInstances.FirstOrDefault(i => i.InstanceId == editorId);
+        if (declaredInstance is not null)
+        {
+            return declaredInstance;
+        }
+
+        return _builtInEditors.FirstOrDefault(i => i.InstanceId == editorId);
+    }
+
+    // Enumerates the contributions of the available editors: declared instances first (in
+    // declaration order), then the built-ins.
+    private IEnumerable<EditorContribution> GetAvailableContributions()
+    {
+        foreach (var instance in _editorInstances)
+        {
+            yield return instance.Contribution;
+        }
+
+        foreach (var builtIn in _builtInEditors)
+        {
+            yield return builtIn.Contribution;
+        }
+    }
+
     // Rejects packages whose document-type registration declares any file
-    // extension inside the reserved .cel sidecar namespace. The check runs
-    // after the manifest parses cleanly so the failure reason names the
-    // offending extension rather than a generic parse error.
+    // extension inside the reserved .cel sidecar namespace.
     private Result CheckReservedExtensions(Package package)
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
-        foreach (var documentEditor in package.DocumentEditors)
+        foreach (var editor in package.Editors)
         {
-            foreach (var fileType in documentEditor.FileTypes)
+            foreach (var fileType in editor.FileTypes)
             {
                 if (sidecarService.IsSidecarFileName(fileType.FileExtension))
                 {
                     return Result.Fail(
-                        $"Package '{package.Info.Name}' declares document-file-type extension '{fileType.FileExtension}'. "
+                        $"Package '{package.Info.Name}' declares file-type extension '{fileType.FileExtension}'. "
                         + $"The .cel namespace is reserved for project metadata sidecars.");
                 }
             }
@@ -365,8 +549,7 @@ public class PackageRegistry
         }
 
         // Any group of bundled packages that share a name is a first-party build bug.
-        // Skip every colliding package so the conflict is visible rather than silently
-        // picking a winner, and log at Error level so CI and developers notice.
+        // Skip every colliding package rather than silently picking a winner.
         foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
@@ -406,11 +589,7 @@ public class PackageRegistry
         var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
 
         // Walk the project's visible resource set for package.toml manifests. A
-        // manifest is a package wherever it lives under the project root. The
-        // file-system gateway applies the project's ignore rules, so excluded
-        // content (vendored assets, build output) is never scanned. Descent stops
-        // at each package root so a package's own content is not searched for
-        // nested manifests.
+        // manifest is a package wherever it lives under the project root.
         var manifestResources = new List<ResourceKey>();
         await CollectProjectManifestsAsync(resourceFileSystem, ResourceKey.Empty, manifestResources);
 
@@ -481,9 +660,7 @@ public class PackageRegistry
 
             // Any other dotted name claims a namespace whose ownership a registry
             // would need to validate. Until such a registry exists, project
-            // packages must use flat global-namespace names. Allowing arbitrary
-            // dotted names now would let them collide with future registered
-            // namespaces once the registry is introduced.
+            // packages must use flat global-namespace names.
             if (package.Info.Name.Contains('.'))
             {
                 _logger.LogWarning(
@@ -515,8 +692,7 @@ public class PackageRegistry
 
         // When two project packages share a name we cannot tell the legitimate
         // one from an impostor, so skip every colliding package rather than pick
-        // a winner based on filesystem ordering. The user sees a missing editor,
-        // investigates, and resolves the conflict.
+        // a winner based on filesystem ordering.
         foreach (var group in candidates.GroupBy(p => p.Info.Name, StringComparer.Ordinal))
         {
             var members = group.ToList();
@@ -578,11 +754,8 @@ public class PackageRegistry
         }
     }
 
-    // Runs after dedup so that duplicate-id packages rejected by the group
-    // passes do not appear in the log. Emits one Info-level line per accepted
-    // package so a support reader can tell at a glance which packages loaded,
-    // whether each is bundled or project-provided, and which file extensions
-    // each document editor handles.
+    // Emits one Info-level line per accepted package. Runs after dedup so
+    // packages rejected as duplicates do not appear in the log.
     private void LogDiscoveredPackages()
     {
         foreach (var package in _bundledPackages)
@@ -598,17 +771,17 @@ public class PackageRegistry
 
     private void LogDiscoveredPackage(Package package, string source)
     {
-        var editorCount = package.DocumentEditors.Count;
+        var editorCount = package.Editors.Count;
 
         if (editorCount == 0)
         {
             _logger.LogInformation(
-                $"Discovered {source} package '{package.Info.Name}' (no document editors)");
+                $"Discovered {source} package '{package.Info.Name}' (no editors)");
             return;
         }
 
         var editorDescriptions = new List<string>(editorCount);
-        foreach (var editor in package.DocumentEditors)
+        foreach (var editor in package.Editors)
         {
             var extensionCount = editor.FileTypes.Count;
             string extensionList;
@@ -623,7 +796,7 @@ public class PackageRegistry
             editorDescriptions.Add($"{editor.Id} [{extensionList}]");
         }
 
-        var editorLabel = editorCount == 1 ? "document editor" : "document editors";
+        var editorLabel = editorCount == 1 ? "editor" : "editors";
         var editorList = string.Join("; ", editorDescriptions);
 
         _logger.LogInformation(

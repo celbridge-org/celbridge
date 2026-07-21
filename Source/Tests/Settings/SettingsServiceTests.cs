@@ -129,6 +129,7 @@ public class SettingsServiceTests
         workspaceService.WorkspaceSettings.Returns(settingsService);
 
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.HasWorkspaceService.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
     }
 }

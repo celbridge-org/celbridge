@@ -3,4 +3,4 @@ name = "celbridge.spreadsheet"
 title = "Spreadsheet_Package_Name"
 
 [contributes]
-document_editors = ["spreadsheet.document.toml"]
+editors = ["spreadsheet.editor.toml"]

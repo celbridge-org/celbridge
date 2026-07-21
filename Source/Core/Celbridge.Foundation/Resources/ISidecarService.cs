@@ -89,6 +89,12 @@ public enum SidecarWriteOutcome
     /// about the new file so subsequent reads see it.
     /// </summary>
     Created,
+
+    /// <summary>
+    /// The mutation emptied an existing sidecar, so the now-blank file was
+    /// deleted from disk. The registry needs to drop the removed file.
+    /// </summary>
+    Deleted,
 }
 
 /// <summary>

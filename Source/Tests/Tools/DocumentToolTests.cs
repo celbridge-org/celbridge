@@ -23,9 +23,8 @@ public class DocumentToolTests
 
         _services.GetRequiredService<ICommandService>().Returns(_commandService);
 
-        // DocumentTools.GetState resolves IDocumentStateProvider; the provider
-        // wraps the command service so the existing snapshot stubs still drive
-        // the full path.
+        // DocumentTools.GetState resolves IDocumentStateProvider. The provider wraps
+        // the command service, so the snapshot stubs drive the full path.
         _services.GetRequiredService<IDocumentStateProvider>().Returns(
             new DocumentStateProvider(_commandService));
     }
@@ -54,7 +53,7 @@ public class DocumentToolTests
             1,
             new List<OpenDocumentInfo>
             {
-                new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
+                new(activeResource, new DocumentAddress(0, 0, 0), EditorInstanceId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -82,8 +81,8 @@ public class DocumentToolTests
             2,
             new List<OpenDocumentInfo>
             {
-                new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty),
-                new(otherResource, new DocumentAddress(0, 1, 0), DocumentEditorId.Empty)
+                new(activeResource, new DocumentAddress(0, 0, 0), EditorInstanceId.Empty),
+                new(otherResource, new DocumentAddress(0, 1, 0), EditorInstanceId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -112,7 +111,7 @@ public class DocumentToolTests
             1,
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, 0, 0), new DocumentEditorId("celbridge.html-viewer"))
+                new(resource, new DocumentAddress(0, 0, 0), new EditorInstanceId("celbridge.html-viewer"))
             });
         StubGetStateSnapshot(snapshot);
 
@@ -132,7 +131,7 @@ public class DocumentToolTests
             1,
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
+                new(resource, new DocumentAddress(0, 0, 0), EditorInstanceId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 

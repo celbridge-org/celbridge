@@ -1,17 +1,12 @@
 using Celbridge.Commands;
 using Celbridge.Packages;
+using Celbridge.Projects;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Commands;
 
-// Agent-facing state reads split by the shape of the state. Many-source, UI-thread-bound structural state (open
-// tabs, the utility catalog) is read live through a query command like this one: routing through the command
-// queue marshals the read onto the UI thread and serializes it after prior commands, so callers observe state
-// consistent with every previously enqueued command. Few-source scalar state (see AppStateProvider) is cached
-// from broadcasts instead, because keeping such a cache coherent across the many paths that mutate structural
-// state would drift. A general "cache everything" scheme was rejected: it moves the UI-thread read from
-// per-query to per-change, which is more work for agent workloads.
 public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
@@ -47,11 +42,11 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         var utilityPanel = workspaceService.UtilityPanel;
         var packageService = workspaceService.PackageService;
         var documentsService = workspaceService.DocumentsService;
+        var utilityService = workspaceService.UtilityService;
 
         var activeUtilityId = utilityPanel.ActiveUtilityId;
 
-        // A utility is docked when its backing resource is open as a document. Capture the open-document
-        // resources and the active document so each utility's mode and shown state can be resolved below.
+        // A utility is docked when its backing resource is open as a document.
         var openResources = new HashSet<ResourceKey>();
         foreach (var openDocument in documentsService.GetOpenDocuments())
         {
@@ -77,24 +72,34 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             IsShown: activeUtilityId == BuiltInUtilityIds.Search));
 
         // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
-        // When it is a document it is shown if its tab is the active document; when it is in the panel it is
-        // shown if it is the active rail surface.
-        foreach (var contribution in packageService.GetAllDocumentEditors())
+        foreach (var instance in packageService.GetEditorInstances())
         {
-            if (contribution is not CustomDocumentEditorContribution { IsUtility: true } utility)
+            var utility = instance.Contribution;
+            if (!utility.IsUtility)
             {
                 continue;
             }
 
-            var utilityId = UtilityId.Create(utility.Package.Name, utility.Id);
-            var displayName = ResolveLocalizedString(utility.Package, utility.DisplayName);
+            var utilityId = instance.InstanceId;
+
+            // Only report utilities that were actually created. A utility whose seed/bind/init
+            // failed is skipped here, so this list matches what app_show_utility will accept.
+            if (!utilityService.HasUtility(utilityId))
+            {
+                continue;
+            }
+
+            var displayName = PackageDisplayText.Resolve(_packageLocalizationService, utility.Package, utility.DisplayName);
 
             var isDocumentDocked = false;
             var utilityResource = ResourceKey.Empty;
-            if (utility.UtilityDescriptor is not null
-                && ResourceKey.TryCreate(utility.UtilityDescriptor.Resource, out utilityResource))
+            if (utility.UtilityDescriptor is not null)
             {
-                isDocumentDocked = openResources.Contains(utilityResource);
+                var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{utility.UtilityDescriptor.ResourceExtension}";
+                if (ResourceKey.TryCreate(resourceValue, out utilityResource))
+                {
+                    isDocumentDocked = openResources.Contains(utilityResource);
+                }
             }
 
             var location = isDocumentDocked ? DockLocation.Document : DockLocation.UtilityPanel;
@@ -109,16 +114,5 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         ResultValue = new UtilitiesStateSnapshot(utilities);
 
         return Result.Ok();
-    }
-
-    private string ResolveLocalizedString(PackageInfo package, string key)
-    {
-        var localizationStrings = _packageLocalizationService.LoadStrings(package);
-        if (localizationStrings.TryGetValue(key, out var localized))
-        {
-            return localized;
-        }
-
-        return key;
     }
 }

@@ -208,8 +208,11 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         var report = _packageReport!;
         builder.AppendLine($"- Bundled packages loaded: {report.BundledPackageCount}");
         builder.AppendLine($"- Project packages loaded: {report.ProjectPackageCount}");
+        builder.AppendLine($"- Editor instances created: {report.EditorInstanceCount}");
 
-        if (report.Failures.Count == 0)
+        if (report.Failures.Count == 0
+            && report.EditorInstanceFailures.Count == 0
+            && report.EditorInstanceWarnings.Count == 0)
         {
             builder.AppendLine("- No load failures.");
             builder.AppendLine();
@@ -217,20 +220,46 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         }
 
         builder.AppendLine();
-        builder.AppendLine($"### Load failures ({report.Failures.Count})");
-        builder.AppendLine();
-        foreach (var failure in report.Failures)
+
+        if (report.Failures.Count > 0)
         {
-            var packageLabel = string.IsNullOrEmpty(failure.PackageName)
-                ? $"`{failure.Folder}`"
-                : $"`{failure.PackageName}` in `{failure.Folder}`";
-            builder.AppendLine($"- {packageLabel}: `{failure.Reason}`");
-            if (!string.IsNullOrEmpty(failure.Detail))
+            builder.AppendLine($"### Load failures ({report.Failures.Count})");
+            builder.AppendLine();
+            foreach (var failure in report.Failures)
             {
-                builder.AppendLine($"  - {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
+                var packageLabel = string.IsNullOrEmpty(failure.PackageName)
+                    ? $"`{failure.Folder}`"
+                    : $"`{failure.PackageName}` in `{failure.Folder}`";
+                builder.AppendLine($"- {packageLabel}: `{failure.Reason}`");
+                if (!string.IsNullOrEmpty(failure.Detail))
+                {
+                    builder.AppendLine($"  - {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
+                }
             }
+            builder.AppendLine();
         }
-        builder.AppendLine();
+
+        if (report.EditorInstanceFailures.Count > 0)
+        {
+            builder.AppendLine($"### Skipped instances ({report.EditorInstanceFailures.Count})");
+            builder.AppendLine();
+            foreach (var failure in report.EditorInstanceFailures)
+            {
+                builder.AppendLine($"- `{failure.InstanceId}`: {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
+            }
+            builder.AppendLine();
+        }
+
+        if (report.EditorInstanceWarnings.Count > 0)
+        {
+            builder.AppendLine($"### Degraded instances ({report.EditorInstanceWarnings.Count})");
+            builder.AppendLine();
+            foreach (var warning in report.EditorInstanceWarnings)
+            {
+                builder.AppendLine($"- `{warning.InstanceId}`: {NormaliseNewlines(warning.Detail).Replace("\n", " ")}");
+            }
+            builder.AppendLine();
+        }
     }
 
     private void AppendCheckSection(StringBuilder builder)
