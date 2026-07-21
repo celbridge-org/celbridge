@@ -76,6 +76,11 @@ public partial class PackageItemViewModel : ObservableObject
     public bool CanOpenManifest => _info.CanOpenManifest;
 
     /// <summary>
+    /// File name of the package manifest, shown as the text of the link that opens it.
+    /// </summary>
+    public string ManifestFileName => System.IO.Path.GetFileName(_info.ManifestPath);
+
+    /// <summary>
     /// Dims the header of a disabled package.
     /// </summary>
     public double HeaderOpacity => IsEnabled ? 1.0 : 0.5;
@@ -83,6 +88,8 @@ public partial class PackageItemViewModel : ObservableObject
     public string ToggleTooltip => ProjectSettingsLabels.PackageToggleTooltip;
 
     public string EnabledLabel => ProjectSettingsLabels.PackageEnabledLabel;
+
+    public string ManifestLabel => ProjectSettingsLabels.ManifestLabel;
 
     public string OpenManifestTooltip => ProjectSettingsLabels.OpenManifestTooltip;
 

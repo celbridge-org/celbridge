@@ -863,6 +863,9 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_FileExtensionsLabel" xml:space="preserve">
     <value>File Extensions</value>
   </data>
+  <data name="ProjectSettings_ManifestLabel" xml:space="preserve">
+    <value>Manifest</value>
+  </data>
   <data name="ProjectSettings_OpenManifestTooltip" xml:space="preserve">
     <value>Open the manifest file</value>
   </data>
