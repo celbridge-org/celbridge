@@ -47,9 +47,8 @@
                 Opacity="0"
                 IsHitTestVisible="False" />
 
-        <!-- Icon centered in the full rail width, above the button but passing clicks through to it. The
-             pip is positioned against this box rather than the cell, so it sits on the icon's corner
-             instead of the rail's. -->
+        <!-- Icon centered in the full rail width, above the button but passing clicks through to it. Sized
+             to the icon so the pip aligns to the glyph's corner. -->
         <Grid Width="22"
               Height="22"
               HorizontalAlignment="Center"
