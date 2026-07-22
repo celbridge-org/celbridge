@@ -89,6 +89,13 @@ public static class MacOSWebViewInterop
     // one retain each.
     private static readonly HashSet<IntPtr> _pinnedWebViews = new();
 
+    // WKPreferences SPI that keeps a hidden page's process schedulable.
+    private static readonly string[] BackgroundPageActivitySelectors =
+    [
+        "_setAppNapEnabled:",
+        "_setPageVisibilityBasedProcessSuppressionEnabled:"
+    ];
+
     /// <summary>
     /// Walks CoreWebView2._nativeWebView and its _webview field to recover the native WKWebView
     /// pointer. Returns false with the type name walked through in 'detail' when the shape does not
@@ -145,11 +152,11 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Retains the native WKWebView for the lifetime of the process. Uno's MacOSNativeElement calls
-    /// uno_native_dispose on every Unloaded event, which drops the native side's owning reference while
-    /// managed code keeps the raw handle; a later reattach or message then crashes on the freed view.
-    /// Pinning the view turns those touches into calls on a live object. The WebContent renderer is
-    /// still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
+    /// Retains the native WKWebView for the lifetime of the process and keeps it schedulable while hidden.
+    /// Uno's MacOSNativeElement calls uno_native_dispose on every Unloaded event, which drops the native
+    /// side's owning reference while managed code keeps the raw handle; a later reattach or message then
+    /// crashes on the freed view. Pinning the view turns those touches into calls on a live object. The
+    /// WebContent renderer is still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
     /// </summary>
     public static void RetainNativeWebView(IntPtr webView)
     {
@@ -167,6 +174,68 @@ public static class MacOSWebViewInterop
         }
 
         SendMessage(webView, GetSelector("retain"));
+
+        EnableBackgroundPageActivity(webView);
+    }
+
+    /// <summary>
+    /// The WKPreferences object backing a WKWebView, or zero when it cannot be resolved. The throttling
+    /// controls for hidden pages live here rather than on the view.
+    /// </summary>
+    public static IntPtr GetPreferences(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return IntPtr.Zero;
+        }
+
+        var configuration = SendMessage(webView, GetSelector("configuration"));
+        if (configuration == IntPtr.Zero)
+        {
+            return IntPtr.Zero;
+        }
+
+        return SendMessage(configuration, GetSelector("preferences"));
+    }
+
+    /// <summary>
+    /// The number of preferences EnableBackgroundPageActivity applies when WebKit exposes all of them. A
+    /// lower count means this OS version dropped one and background documents may stall again.
+    /// </summary>
+    public static int BackgroundPageActivityPreferenceCount => BackgroundPageActivitySelectors.Length;
+
+    /// <summary>
+    /// Keeps a hidden page's process schedulable so it still services host-to-editor RPC. WebKit treats a
+    /// background document tab as a hidden page and both throttles its timers and suppresses its process;
+    /// the suppression is what leaves RPC unanswered for tens of seconds. Only the process-level suppression
+    /// is turned off, so timers stay throttled and an idle background document stays cheap. Returns the
+    /// preferences that were applied, for diagnostics. Private SPI, each guarded by respondsToSelector: so an
+    /// OS that drops one degrades rather than crashing.
+    /// </summary>
+    public static IReadOnlyList<string> EnableBackgroundPageActivity(IntPtr webView)
+    {
+        var applied = new List<string>();
+
+        var preferences = GetPreferences(webView);
+        if (preferences == IntPtr.Zero)
+        {
+            return applied;
+        }
+
+        var respondsToSelector = GetSelector("respondsToSelector:");
+        foreach (var selectorName in BackgroundPageActivitySelectors)
+        {
+            var selector = GetSelector(selectorName);
+            if (SendMessage(preferences, respondsToSelector, selector) == IntPtr.Zero)
+            {
+                continue;
+            }
+
+            SendMessageVoidBool(preferences, selector, false);
+            applied.Add(selectorName);
+        }
+
+        return applied;
     }
 
     /// <summary>
