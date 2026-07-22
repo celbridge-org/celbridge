@@ -1566,6 +1566,74 @@ public class ManifestTests
             fileType.Category.Should().Be(FileTypeCategory.Text));
     }
 
+    [Test]
+    public void LoadPackage_FileTypeIcon_IsCarriedOnTheFileType()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon = "journal-text"
+            icon-color = "#FF8800"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        var fileType = result.Value.Editors[0].FileTypes.Should().ContainSingle().Subject;
+        fileType.Icon.Should().Be("journal-text");
+        fileType.IconColor.Should().Be("#FF8800");
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeIconOmitted_LeavesIconEmpty()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        var fileType = result.Value.Editors[0].FileTypes.Should().ContainSingle().Subject;
+        fileType.Icon.Should().BeEmpty();
+        fileType.IconColor.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeIconColorWithoutIcon_ReturnsFailure()
+    {
+        // A colour on its own would silently do nothing, so it is rejected at load.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon-color = "#FF8800"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("icon-color");
+    }
+
     private static IFileTypeCatalog CatalogWithLanguages(params string[] extensions)
     {
         var catalog = Substitute.For<IFileTypeCatalog>();

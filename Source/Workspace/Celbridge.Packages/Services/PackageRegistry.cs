@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
@@ -44,6 +45,7 @@ public class PackageRegistry
     private readonly IPackageReader _bundledReader;
 
     private readonly IFileTypeCatalog _fileTypeCatalog;
+    private readonly IIconService _iconService;
 
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
@@ -52,7 +54,8 @@ public class PackageRegistry
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         ILocalFileSystem fileSystem,
-        IFileTypeCatalog fileTypeCatalog)
+        IFileTypeCatalog fileTypeCatalog,
+        IIconService iconService)
     {
         _logger = logger;
         _moduleService = moduleService;
@@ -60,6 +63,7 @@ public class PackageRegistry
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _fileTypeCatalog = fileTypeCatalog;
+        _iconService = iconService;
         _bundledReader = new DirectPackageReader(fileSystem);
     }
 
@@ -82,6 +86,7 @@ public class PackageRegistry
         var resolvedEditorWarnings = new List<ResolvedEditorLoadFailure>();
         await ResolveResolvedEditorsAsync(persistNormalizedConfig && failures.Count == 0, resolvedEditorFailures, resolvedEditorWarnings);
         ResolveBuiltInEditors();
+        ApplyFileIconOverrides();
 
         var report = new PackageDiscoveryReport
         {
@@ -490,6 +495,65 @@ public class PackageRegistry
         }
 
         return _bundledReader;
+    }
+
+    // Publishes the per-extension icons declared by the catalog and by package manifests, so every
+    // surface that draws a file resource picks them up through the icon service. The catalog wins for an
+    // established type; a manifest icon covers the extensions a package introduces. An unusable glyph or
+    // colour is dropped with a warning, leaving the extension on the bundled icon theme.
+    private void ApplyFileIconOverrides()
+    {
+        var overrides = new Dictionary<string, FileIconDefinition>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var contribution in GetAvailableContributions())
+        {
+            foreach (var fileType in contribution.FileTypes)
+            {
+                if (string.IsNullOrEmpty(fileType.Icon))
+                {
+                    continue;
+                }
+
+                var createResult = _iconService.CreateGlyphFileIcon(fileType.Icon, fileType.IconColor);
+                if (createResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        createResult,
+                        $"Ignoring the icon declared for '{fileType.FileExtension}' in {contribution.ManifestPath}");
+                    continue;
+                }
+
+                overrides[fileType.FileExtension] = createResult.Value;
+            }
+        }
+
+        foreach (var extension in _fileTypeCatalog.IconExtensions)
+        {
+            var catalogIcon = _fileTypeCatalog.GetIcon(extension);
+            if (catalogIcon is null)
+            {
+                continue;
+            }
+
+            var createResult = _iconService.CreateGlyphFileIcon(catalogIcon.GlyphName, catalogIcon.Color);
+            if (createResult.IsFailure)
+            {
+                _logger.LogWarning(createResult, $"Ignoring the file type catalog icon for '{extension}'");
+                continue;
+            }
+
+            overrides[extension] = createResult.Value;
+        }
+
+        foreach (var publishedOverride in overrides)
+        {
+            var icon = publishedOverride.Value;
+            var codePoint = icon.FontCharacter.Length > 0 ? (int)icon.FontCharacter[0] : 0;
+            _logger.LogDebug(
+                $"File icon override: '{publishedOverride.Key}' glyph U+{codePoint:X4} colour {icon.FontColor} font {icon.FontFamily}");
+        }
+
+        _iconService.SetFileIconOverrides(overrides);
     }
 
     private List<PackageLoadFailure> DiscoverBundledPackages()

@@ -1,6 +1,12 @@
 namespace Celbridge.Packages;
 
 /// <summary>
+/// The glyph a file type is drawn with, and the hex colour it is drawn in. An empty colour leaves the
+/// icon in the theme's default colour.
+/// </summary>
+public sealed record FileTypeIcon(string GlyphName, string Color);
+
+/// <summary>
 /// The host's central catalog of established file types, loaded from the bundled file-types.json. Each
 /// entry maps a file extension to the categories it belongs to on the Project Settings File Types page,
 /// the language id an editor highlights it as, and the name the type is known by. An extension may
@@ -35,7 +41,17 @@ public interface IFileTypeCatalog
     string GetDisplayName(string extension);
 
     /// <summary>
-    /// Every extension the catalog assigns a language to, which is the set a general code editor claims.
+    /// Returns the icon the catalog assigns the extension, or null when it assigns none.
+    /// </summary>
+    FileTypeIcon? GetIcon(string extension);
+
+    /// <summary>
+    /// Every extension the catalog assigns a coding language to, which is the set a general code editor claims.
     /// </summary>
     IReadOnlyList<string> LanguageExtensions { get; }
+
+    /// <summary>
+    /// Every extension the catalog assigns an icon to.
+    /// </summary>
+    IReadOnlyList<string> IconExtensions { get; }
 }

@@ -12,7 +12,8 @@ namespace Celbridge.Packages;
 internal sealed record FileTypeEntry(
     string Language,
     IReadOnlyList<FileTypeCategory> Categories,
-    string DisplayName);
+    string DisplayName,
+    FileTypeIcon? Icon);
 
 public sealed class FileTypeCatalog : IFileTypeCatalog
 {
@@ -21,6 +22,8 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     private const string LanguageKey = "language";
     private const string CategoriesKey = "categories";
     private const string DisplayNameKey = "display-name";
+    private const string IconKey = "icon";
+    private const string IconColorKey = "icon-color";
 
     private static readonly IReadOnlyList<FileTypeCategory> NoCategories = Array.Empty<FileTypeCategory>();
 
@@ -30,6 +33,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 
     private readonly Dictionary<string, FileTypeEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _languageExtensions = new();
+    private List<string> _iconExtensions = new();
 
     private bool _loaded;
 
@@ -44,6 +48,8 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     }
 
     public IReadOnlyList<string> LanguageExtensions => _languageExtensions;
+
+    public IReadOnlyList<string> IconExtensions => _iconExtensions;
 
     // A catalog that fails to load leaves every extension uncatalogued rather than stopping the
     // application. The code editor then claims no file types and its package reports a load failure.
@@ -74,6 +80,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             _logger.LogError(exception, $"Failed to parse the file type catalog: {catalogPath}");
             _entries.Clear();
             _languageExtensions = new List<string>();
+            _iconExtensions = new List<string>();
         }
     }
 
@@ -107,6 +114,16 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         return string.Empty;
     }
 
+    public FileTypeIcon? GetIcon(string extension)
+    {
+        if (TryGetEntry(extension, out var entry))
+        {
+            return entry.Icon;
+        }
+
+        return null;
+    }
+
     private bool TryGetEntry(string extension, out FileTypeEntry entry)
     {
         if (string.IsNullOrEmpty(extension))
@@ -128,6 +145,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         }
 
         var languageExtensions = new List<string>();
+        var iconExtensions = new List<string>();
 
         foreach (var property in document.RootElement.EnumerateObject())
         {
@@ -145,9 +163,15 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             {
                 languageExtensions.Add(extension);
             }
+
+            if (entry.Icon is not null)
+            {
+                iconExtensions.Add(extension);
+            }
         }
 
         _languageExtensions = languageExtensions;
+        _iconExtensions = iconExtensions;
     }
 
     private FileTypeEntry ParseEntry(JsonElement element)
@@ -164,6 +188,21 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             displayNameElement.ValueKind == JsonValueKind.String)
         {
             displayName = displayNameElement.GetString() ?? string.Empty;
+        }
+
+        FileTypeIcon? icon = null;
+        if (element.TryGetProperty(IconKey, out var iconElement) &&
+            iconElement.ValueKind == JsonValueKind.String)
+        {
+            var glyphName = iconElement.GetString() ?? string.Empty;
+            var iconColor = string.Empty;
+            if (element.TryGetProperty(IconColorKey, out var iconColorElement) &&
+                iconColorElement.ValueKind == JsonValueKind.String)
+            {
+                iconColor = iconColorElement.GetString() ?? string.Empty;
+            }
+
+            icon = new FileTypeIcon(glyphName, iconColor);
         }
 
         var categories = NoCategories;
@@ -186,6 +225,6 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             categories = parsed;
         }
 
-        return new FileTypeEntry(language, categories, displayName);
+        return new FileTypeEntry(language, categories, displayName, icon);
     }
 }

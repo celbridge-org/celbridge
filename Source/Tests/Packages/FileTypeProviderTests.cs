@@ -1,5 +1,6 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
+using Celbridge.UserInterface;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Projects;
@@ -111,7 +112,7 @@ public class PackageServiceDocumentTypeTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>());
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), Substitute.For<IIconService>());
         var loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(messengerService, loadReporter, registry);
     }

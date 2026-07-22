@@ -12,7 +12,7 @@ public class FileTypeCatalogTests
         {
           ".cs": { "language": "csharp" },
           ".json": { "language": "json", "categories": ["Text", "Data"], "display-name": "JSON" },
-          ".png": { "categories": ["Image"], "display-name": "PNG Image" },
+          ".png": { "categories": ["Image"], "display-name": "PNG Image", "icon": "image", "icon-color": "#40A0FF" },
           ".bogus": { "categories": ["NotACategory"] }
         }
         """;
@@ -82,6 +82,16 @@ public class FileTypeCatalogTests
         catalog.GetDisplayName(".png").Should().Be("PNG Image");
         catalog.GetDisplayName(".cs").Should().BeEmpty();
         catalog.GetDisplayName(".unknown").Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetIcon_AndIconExtensions_CoverOnlyEntriesWithAnIcon()
+    {
+        var catalog = await LoadCatalogAsync(CatalogJson);
+
+        catalog.GetIcon(".png").Should().Be(new FileTypeIcon("image", "#40A0FF"));
+        catalog.GetIcon(".cs").Should().BeNull();
+        catalog.IconExtensions.Should().BeEquivalentTo([".png"]);
     }
 
     [Test]

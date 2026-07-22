@@ -42,6 +42,7 @@ internal static class EditorManifestLoader
     private const string ResourceExtensionKey = "resource-extension";
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
+    private const string IconColorKey = "icon-color";
     private const string LazyLoadKey = "lazy-load";
 
     private const string CatalogLanguagesValue = "languages";
@@ -205,6 +206,15 @@ internal static class EditorManifestLoader
                         category = categoryResult.Value;
                     }
 
+                    var icon = TomlTableReader.GetStringOrNull(fileTypeTable, IconKey) ?? string.Empty;
+                    var iconColor = TomlTableReader.GetStringOrNull(fileTypeTable, IconColorKey) ?? string.Empty;
+                    if (string.IsNullOrEmpty(icon) &&
+                        !string.IsNullOrEmpty(iconColor))
+                    {
+                        return Result.Fail(
+                            $"A [[{FileTypesSection}]] entry cannot specify '{IconColorKey}' without '{IconKey}': {editorTomlPath}");
+                    }
+
                     var extensionLiteral = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionKey);
                     var fromCatalogValue = TomlTableReader.GetStringOrNull(fileTypeTable, FromCatalogKey);
 
@@ -229,7 +239,9 @@ internal static class EditorManifestLoader
                             {
                                 FileExtension = catalogExtension,
                                 DisplayName = fileTypeDisplayName,
-                                Category = category
+                                Category = category,
+                                Icon = icon,
+                                IconColor = iconColor
                             });
                         }
                     }
@@ -246,7 +258,9 @@ internal static class EditorManifestLoader
                         {
                             FileExtension = extension.ToLowerInvariant(),
                             DisplayName = fileTypeDisplayName,
-                            Category = category
+                            Category = category,
+                            Icon = icon,
+                            IconColor = iconColor
                         });
                     }
                 }

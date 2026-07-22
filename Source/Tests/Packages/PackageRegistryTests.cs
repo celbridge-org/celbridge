@@ -3,6 +3,8 @@ using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.UserInterface;
+using Celbridge.UserInterface.Services;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Resources;
@@ -22,6 +24,7 @@ public class PackageServiceTests
     private IModuleService _moduleService = null!;
     private IMessengerService _messengerService = null!;
     private IProjectLoadReporter _loadReporter = null!;
+    private IconService _iconService = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IProjectService _projectService = null!;
 
@@ -108,7 +111,11 @@ public class PackageServiceTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>());
+        // The real icon service, so a declared icon is checked against the bundled glyph font rather
+        // than a stub that would accept anything.
+        _iconService = new IconService();
+
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), _iconService);
         _loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(_messengerService, _loadReporter, registry);
     }
@@ -120,6 +127,33 @@ public class PackageServiceTests
         {
             Directory.Delete(_tempProjectFolder, true);
         }
+    }
+
+    [Test]
+    public async Task RegisterPackages_FileTypeIcon_ReachesTheIconService()
+    {
+        CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "journal-text", "#FF8800");
+        SetProjectConfig();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        // The resource tree strips the leading dot before it asks, so the published override has to
+        // answer to the dot-free form.
+        var icon = _iconService.GetFileIconForExtension("iconed").Value;
+        icon.FontCharacter.Should().Be(_iconService.GetGlyph("journal-text"));
+        icon.FontColor.Should().Be("#FF8800");
+    }
+
+    [Test]
+    public async Task RegisterPackages_UnknownIconGlyph_LeavesTheExtensionOnTheThemeIcon()
+    {
+        CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "no-such-glyph-name", "#FF8800");
+        SetProjectConfig();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var icon = _iconService.GetFileIconForExtension("iconed").Value;
+        icon.Should().Be(_iconService.DefaultFileIcon);
     }
 
     [Test]
@@ -779,6 +813,37 @@ public class PackageServiceTests
             [[file-types]]
             extension = "{fileExt}"
             display-name = "TestFileType"
+            """);
+    }
+
+    /// <summary>
+    /// Creates a project package whose single file type declares an icon.
+    /// </summary>
+    private void CreateProjectPackageWithIcon(string dirName, string packageName, string fileExt, string icon, string iconColor)
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, "packages", dirName);
+        Directory.CreateDirectory(packageDir);
+
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
+            [package]
+            name = "{packageName}"
+            title = "Iconed"
+
+            [contributes]
+            editors = ["editor.editor.toml"]
+            """);
+
+        File.WriteAllText(Path.Combine(packageDir, "editor.editor.toml"), $"""
+            [editor]
+            id = "editor"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = "{fileExt}"
+            display-name = "TestFileType"
+            icon = "{icon}"
+            icon-color = "{iconColor}"
             """);
     }
 
