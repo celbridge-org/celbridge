@@ -13,7 +13,8 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
     public string InformationHeader => _stringLocalizer.GetString("ProjectSettings_InformationHeader");
     public string PackagesHeader => _stringLocalizer.GetString("ProjectSettings_PackagesHeader");
     public string FileEditorsHeader => _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
-    public string ApplyAndReloadText => _stringLocalizer.GetString("ProjectSettings_ApplyAndReload");
+    public string ReloadProjectText => _stringLocalizer.GetString("ProjectSettings_ReloadProject");
+    public string ReloadCaptionText => _stringLocalizer.GetString("ProjectSettings_ReloadCaption");
 
     public ProjectSettingsPanel()
     {
@@ -23,7 +24,29 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
 
         InitializeComponent();
 
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ApplyReloadButtonEmphasis();
+
         Loaded += (sender, e) => ViewModel.Refresh();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProjectSettingsPanelViewModel.HasPendingChanges))
+        {
+            ApplyReloadButtonEmphasis();
+        }
+    }
+
+    // A Style cannot be bound in XAML without a converter, so the swap happens here.
+    private void ApplyReloadButtonEmphasis()
+    {
+        var styleKey = ViewModel.HasPendingChanges ? "AccentButtonStyle" : "DefaultButtonStyle";
+        if (Application.Current.Resources.TryGetValue(styleKey, out var style)
+            && style is Style buttonStyle)
+        {
+            ReloadProjectButton.Style = buttonStyle;
+        }
     }
 
     public void FocusPanel()

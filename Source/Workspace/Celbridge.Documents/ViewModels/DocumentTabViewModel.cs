@@ -55,7 +55,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// ordinary document tabs.
     /// </summary>
     [ObservableProperty]
-    private string _utilityIconGlyphName = string.Empty;
+    private string _utilityIconName = string.Empty;
 
     /// <summary>
     /// The manifest description shown as a utility tab's tooltip. Empty for ordinary document tabs and

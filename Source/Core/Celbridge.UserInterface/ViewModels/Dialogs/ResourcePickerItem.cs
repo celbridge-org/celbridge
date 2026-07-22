@@ -7,7 +7,7 @@ public class ResourcePickerItem
 {
     public IResource Resource { get; }
     public ResourceKey ResourceKey { get; }
-    public FileIconDefinition IconDefinition { get; }
+    public IconDefinition IconDefinition { get; }
 
     /// <summary>
     /// The full resource key path displayed in the list (e.g. "docs/images/photo.png").
@@ -55,7 +55,7 @@ public class ResourcePickerItem
     public ResourcePickerItem(
         IResource resource,
         ResourceKey resourceKey,
-        FileIconDefinition iconDefinition,
+        IconDefinition iconDefinition,
         string? readOnlyMessage = null)
     {
         Resource = resource;

@@ -32,7 +32,7 @@ public static class BuiltInUtilityIds
 /// </summary>
 public sealed record CustomUtility(
     EditorId UtilityId,
-    string IconGlyphName,
+    string IconName,
     string Tooltip,
     string DisplayName,
     object Content,

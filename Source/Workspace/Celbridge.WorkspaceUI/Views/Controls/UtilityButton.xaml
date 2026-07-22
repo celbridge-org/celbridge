@@ -47,12 +47,29 @@
                 Opacity="0"
                 IsHitTestVisible="False" />
 
-        <!-- Icon centered in the full rail width, above the button but passing clicks through to it. -->
-        <controls:Icon x:Name="IconElement"
-                       FontSize="22"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       IsHitTestVisible="False" />
+        <!-- Icon centered in the full rail width, above the button but passing clicks through to it. The
+             pip is positioned against this box rather than the cell, so it sits on the icon's corner
+             instead of the rail's. -->
+        <Grid Width="22"
+              Height="22"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              IsHitTestVisible="False">
+            <controls:Icon x:Name="IconElement"
+                           FontSize="22"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+
+            <!-- Caution pip for a surface reporting a problem, offset clear of the glyph's corner. -->
+            <Ellipse x:Name="IssuePip"
+                     Width="6"
+                     Height="6"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Top"
+                     Margin="0,-3,-5,0"
+                     Fill="{ThemeResource SystemFillColorCautionBrush}"
+                     Visibility="Collapsed" />
+        </Grid>
 
         <!-- Tall capsule on the left edge, shown when this rail item is the selected surface. Grey by default
              (selected but unfocused); the SelectedFocused state swaps it to the accent color. Stretches to the

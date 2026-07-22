@@ -70,7 +70,7 @@ public interface IFileResource : IResource
     /// <summary>
     /// The icon to display for the file resource.
     /// </summary>
-    public FileIconDefinition Icon { get; }
+    public IconDefinition Icon { get; }
 
     /// <summary>
     /// The role this file plays in the project resource taxonomy.

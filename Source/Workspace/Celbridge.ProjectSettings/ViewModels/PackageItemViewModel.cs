@@ -103,6 +103,18 @@ public partial class PackageItemViewModel : ObservableObject
     /// </summary>
     public bool HasContributions => Contributions.Count > 0;
 
+    /// <summary>
+    /// Whether any contribution in this package had configuration dropped. Surfaced on the package
+    /// header because the contributions sit inside the expander, which is collapsed by default.
+    /// </summary>
+    public bool HasIssues => Contributions.Any(contribution => contribution.HasIssues);
+
+    /// <summary>
+    /// Names the contributions with dropped configuration, as the tooltip of the header warning icon.
+    /// </summary>
+    public string IssuesTooltip => ProjectSettingsLabels.PackageIssues(
+        Contributions.Where(contribution => contribution.HasIssues).Select(contribution => contribution.DisplayName).ToArray());
+
     [RelayCommand]
     private void OpenManifest()
     {

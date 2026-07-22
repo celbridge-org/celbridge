@@ -72,6 +72,39 @@ public sealed record ResolvedEditorLoadFailure
 }
 
 /// <summary>
+/// The kinds of contribution configuration that discovery can drop.
+/// </summary>
+public enum ContributionIssueKind
+{
+    /// <summary>
+    /// An icon name declared in the manifest did not resolve to a glyph in any bundled icon font.
+    /// </summary>
+    UnresolvedIcon,
+}
+
+/// <summary>
+/// One setting a contribution declared that could not be applied. The contribution still loaded, so this
+/// is advisory. Carried in structured form so each surface can phrase it in the user's language.
+/// </summary>
+public sealed record ContributionIssue
+{
+    /// <summary>
+    /// The editor id ("{package}.{contribution}") of the contribution that declared the setting.
+    /// </summary>
+    public string EditorId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Which setting was dropped, selecting the message a surface shows.
+    /// </summary>
+    public ContributionIssueKind Kind { get; init; }
+
+    /// <summary>
+    /// The value that could not be applied, named in the message when a contribution has one issue.
+    /// </summary>
+    public string Value { get; init; } = string.Empty;
+}
+
+/// <summary>
 /// Outcome of a single package discovery pass: how many bundled and project
 /// packages loaded successfully, which packages failed along with the reason
 /// for each failure, and how the project's declared contributions resolved.

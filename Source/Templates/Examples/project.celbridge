@@ -20,7 +20,7 @@ dependencies = ["pandas", "openpyxl", "requests", "faker"]
 # Group header for Run Examples flyout menu
 [[shortcut]]
 name = "Run Examples"
-icon = "Play"
+icon = "bs-play-fill"
 tooltip = "Run the examples"
 
 # Nested items reference parent via path

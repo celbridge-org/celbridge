@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Packages;
 using Celbridge.ProjectSettings;
 using Celbridge.Search;
 using Celbridge.Settings;
@@ -151,14 +152,36 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // instead, so feed panel focus changes into the view model to colour the indicator accordingly.
         _messengerService.Register<PanelFocusChangedMessage>(this, OnPanelFocusChanged);
         ViewModel.ReconcileFocus(_focusService.FocusedPanel);
+
+        // Package discovery is what produces contribution issues, so the rail pip refreshes whenever a
+        // discovery pass completes.
+        _messengerService.Register<PackagesInitializedMessage>(this, OnPackagesInitialized);
+        UpdateProjectSettingsIssuePip();
     }
 
     private void UtilityPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         _messengerService.Unregister<PanelFocusChangedMessage>(this);
+        _messengerService.Unregister<PackagesInitializedMessage>(this);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, null);
         _focusService.SetPanelFocusHandler(WorkspacePanel.Search, null);
         _focusService.SetPanelFocusHandler(WorkspacePanel.ProjectSettings, null);
+    }
+
+    private void OnPackagesInitialized(object recipient, PackagesInitializedMessage message)
+    {
+        UpdateProjectSettingsIssuePip();
+    }
+
+    // Flags the Project Settings rail button when any contribution has dropped configuration.
+    private void UpdateProjectSettingsIssuePip()
+    {
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        var packageService = workspaceWrapper.WorkspaceService?.PackageService;
+        var hasIssues = packageService is not null
+            && packageService.GetContributionIssues().Count > 0;
+
+        ProjectSettingsButton.SetIssuePipVisible(hasIssues);
     }
 
     private void ApplyTooltips()
@@ -313,7 +336,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             var item = ViewModel.AddItem(utility.UtilityId, WorkspacePanel.CustomUtility);
 
             var railButton = new UtilityButton();
-            railButton.SetIcon(utility.IconGlyphName);
+            railButton.SetIcon(utility.IconName);
             railButton.SetTooltip(utility.Tooltip);
 
             var landmarkId = CustomLandmarkId(utility.UtilityId);

@@ -82,9 +82,9 @@ public sealed partial class UtilityButton : UserControl
         IconElement.Symbol = symbol;
     }
 
-    public void SetIcon(string glyphName)
+    public void SetIcon(string iconName)
     {
-        IconElement.GlyphName = glyphName;
+        IconElement.IconName = iconName;
     }
 
     public void SetTooltip(string tooltip)
@@ -97,6 +97,14 @@ public sealed partial class UtilityButton : UserControl
     public void SetAutomationId(string automationId)
     {
         AutomationProperties.SetAutomationId(ButtonElement, automationId);
+    }
+
+    /// <summary>
+    /// Shows or hides the caution pip reporting that this surface has something the user should look at.
+    /// </summary>
+    public void SetIssuePipVisible(bool isVisible)
+    {
+        IssuePip.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>

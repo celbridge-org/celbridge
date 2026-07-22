@@ -194,7 +194,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         if (element.TryGetProperty(IconKey, out var iconElement) &&
             iconElement.ValueKind == JsonValueKind.String)
         {
-            var glyphName = iconElement.GetString() ?? string.Empty;
+            var iconName = iconElement.GetString() ?? string.Empty;
             var iconColor = string.Empty;
             if (element.TryGetProperty(IconColorKey, out var iconColorElement) &&
                 iconColorElement.ValueKind == JsonValueKind.String)
@@ -202,7 +202,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
                 iconColor = iconColorElement.GetString() ?? string.Empty;
             }
 
-            icon = new FileTypeIcon(glyphName, iconColor);
+            icon = new FileTypeIcon(iconName, iconColor);
         }
 
         var categories = NoCategories;

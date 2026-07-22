@@ -1,3 +1,4 @@
+using Celbridge.Packages;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.ProjectSettings.ViewModels;
@@ -25,7 +26,44 @@ internal static class ProjectSettingsLabels
     public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
     public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");
 
+    public static string ContributionIssuesTitle => Localizer.GetString("ProjectSettings_ContributionIssuesTitle");
+
+    public static string PackagesSectionIssue => Localizer.GetString("ProjectSettings_SectionIssue_Packages");
+
     public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
+
+    /// <summary>
+    /// Describes a contribution's dropped settings: the one issue named, or the count when there are
+    /// several, so a contribution never renders a list of near-identical sentences.
+    /// </summary>
+    public static string ContributionIssues(IReadOnlyList<ContributionIssue> issues)
+    {
+        if (issues.Count == 1)
+        {
+            var issue = issues[0];
+            return issue.Kind switch
+            {
+                ContributionIssueKind.UnresolvedIcon =>
+                    Localizer.GetString("ProjectSettings_ContributionIssue_UnresolvedIcon_Single", issue.Value),
+                _ => Localizer.GetString("ProjectSettings_ContributionIssue_Multiple", issues.Count)
+            };
+        }
+
+        return Localizer.GetString("ProjectSettings_ContributionIssue_Multiple", issues.Count);
+    }
+
+    /// <summary>
+    /// Describes which of a package's contributions have dropped settings: the one named, or the count.
+    /// </summary>
+    public static string PackageIssues(IReadOnlyList<string> contributionNames)
+    {
+        if (contributionNames.Count == 1)
+        {
+            return Localizer.GetString("ProjectSettings_PackageIssue_Single", contributionNames[0]);
+        }
+
+        return Localizer.GetString("ProjectSettings_PackageIssue_Multiple", contributionNames.Count);
+    }
 
     public static string BuiltInPackageName(string name) => Localizer.GetString("ProjectSettings_BuiltInPackageNameFormat", name);
 }

@@ -223,7 +223,7 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public FileIconDefinition GetIconForResource(ResourceKey resource)
+    public IconDefinition GetIconForResource(ResourceKey resource)
     {
         // If the resource is a folder, use the folder icon
         var getResourceResult = ResourceRegistry.GetResource(resource);

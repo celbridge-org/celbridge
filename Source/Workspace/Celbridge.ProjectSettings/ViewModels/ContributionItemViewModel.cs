@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Celbridge.Packages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -36,9 +37,9 @@ public sealed record ContributionItemInfo
     public bool IsUtility { get; init; }
 
     /// <summary>
-    /// The glyph name shown beside the contribution, or empty when it declares no icon.
+    /// The prefixed icon name shown beside the contribution, or empty when it declares no icon.
     /// </summary>
-    public string IconGlyph { get; init; } = string.Empty;
+    public string IconName { get; init; } = string.Empty;
 
     /// <summary>
     /// Absolute path of the editor manifest the contribution was parsed from.
@@ -72,6 +73,12 @@ public sealed record ContributionItemInfo
     /// The file types the contribution claims.
     /// </summary>
     public IReadOnlyList<FileTypeInfo> FileTypes { get; init; } = [];
+
+    /// <summary>
+    /// Configuration the contribution declared that could not be applied, one entry per dropped setting.
+    /// The contribution still loaded.
+    /// </summary>
+    public IReadOnlyList<ContributionIssue> Issues { get; init; } = [];
 }
 
 /// <summary>
@@ -103,7 +110,7 @@ public partial class ContributionItemViewModel : ObservableObject
     public string ContributionId => _info.ContributionId;
     public string DisplayName => _info.DisplayName;
     public bool IsUtility => _info.IsUtility;
-    public string IconGlyph => _info.IconGlyph;
+    public string IconName => _info.IconName;
     public bool IsOptional => _info.IsOptional;
     public bool CanToggle => _info.CanToggle;
     public string EditorId => _info.EditorId;
@@ -117,7 +124,19 @@ public partial class ContributionItemViewModel : ObservableObject
     /// <summary>
     /// Whether the contribution has a configured icon to show.
     /// </summary>
-    public bool HasIcon => !string.IsNullOrEmpty(IconGlyph);
+    public bool HasIcon => !string.IsNullOrEmpty(IconName);
+
+    /// <summary>
+    /// Whether any of the contribution's declared configuration was dropped.
+    /// </summary>
+    public bool HasIssues => _info.Issues.Count > 0;
+
+    /// <summary>
+    /// The dropped settings as a single sentence, shown in the contribution's warning bar.
+    /// </summary>
+    public string IssuesText => ProjectSettingsLabels.ContributionIssues(_info.Issues);
+
+    public string IssuesTitle => ProjectSettingsLabels.ContributionIssuesTitle;
 
     /// <summary>
     /// The extensions this contribution claims, as a comma separated list.

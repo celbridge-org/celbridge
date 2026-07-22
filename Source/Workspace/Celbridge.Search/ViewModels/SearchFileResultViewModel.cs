@@ -13,7 +13,7 @@ public partial class SearchFileResultViewModel : ObservableObject, ISelectableSe
     public ResourceKey Resource { get; }
     public string FileName { get; }
     public string RelativePath { get; }
-    public FileIconDefinition FileIcon { get; }
+    public IconDefinition FileIcon { get; }
 
     public bool IsReplaceModeEnabled => Parent.IsReplaceModeEnabled;
 

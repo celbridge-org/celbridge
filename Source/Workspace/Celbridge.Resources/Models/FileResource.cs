@@ -4,7 +4,7 @@ namespace Celbridge.Resources.Models;
 
 public class FileResource : Resource, IFileResource
 {
-    public FileIconDefinition Icon { get; }
+    public IconDefinition Icon { get; }
 
     public SidecarLink? Sidecar { get; set; }
 
@@ -13,7 +13,7 @@ public class FileResource : Resource, IFileResource
     // before any consumer reads this value.
     public FileKind FileKind { get; set; } = FileKind.PlainData;
 
-    public FileResource(string name, IFolderResource parentFolder, FileIconDefinition icon)
+    public FileResource(string name, IFolderResource parentFolder, IconDefinition icon)
         : base(name, parentFolder)
     {
         Icon = icon;

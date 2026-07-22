@@ -1,13 +1,21 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Information required to display a file-type icon using the FontIcon control.
+/// A glyph resolved from one of the bundled icon fonts. The font family is a resource dictionary key
+/// rather than a font itself, so the icon service stays free of framework types.
 /// </summary>
-public record FileIconDefinition(string FontCharacter, string FontColor, string FontFamily, string FontSize);
+public record IconGlyph(string FontCharacter, string FontFamily);
 
 /// <summary>
-/// Resolves the icons used across the Celbridge UI: file-type icons (by name or extension) and the
-/// shared chrome icon set (by IconSymbol, by glyph name, or by raw glyph code).
+/// Everything required to draw an icon with the FontIcon control: the glyph, the font it belongs to,
+/// and the colour and size it is drawn at.
+/// </summary>
+public record IconDefinition(string FontCharacter, string FontColor, string FontFamily, string FontSize);
+
+/// <summary>
+/// Resolves the icons used across the Celbridge UI. Icons are named, never addressed by codepoint, and
+/// every name carries a prefix identifying the font it comes from (for example "bs-gear"). File-type
+/// icons are additionally resolvable by file extension through the bundled icon theme.
 /// </summary>
 public interface IIconService
 {
@@ -19,53 +27,49 @@ public interface IIconService
     /// <summary>
     /// Returns the file-type icon definition for the specified icon name.
     /// </summary>
-    Result<FileIconDefinition> GetFileIcon(string iconName);
+    Result<IconDefinition> GetFileIcon(string iconName);
 
     /// <summary>
     /// Returns the file-type icon definition for the specified file extension. A registered override for
     /// the extension wins over the bundled icon theme.
     /// </summary>
-    Result<FileIconDefinition> GetFileIconForExtension(string fileExtension);
+    Result<IconDefinition> GetFileIconForExtension(string fileExtension);
 
     /// <summary>
-    /// Builds a file-type icon from a glyph name in the shared icon font and an optional hex colour,
-    /// failing when the glyph name is unknown or the colour is malformed.
+    /// Builds an icon definition from a prefixed icon name and an optional hex colour, failing when the
+    /// name is unknown or the colour is malformed.
     /// </summary>
-    Result<FileIconDefinition> CreateGlyphFileIcon(string glyphName, string colorHex);
+    Result<IconDefinition> CreateIcon(string iconName, string colorHex);
 
     /// <summary>
     /// Replaces the per-extension icon overrides consulted ahead of the bundled theme. Each discovery
     /// pass supplies the full set, so overrides from a previous workspace do not linger.
     /// </summary>
-    void SetFileIconOverrides(IReadOnlyDictionary<string, FileIconDefinition> overrides);
+    void SetFileIconOverrides(IReadOnlyDictionary<string, IconDefinition> overrides);
 
     /// <summary>
     /// The default icon definition for file resources.
     /// </summary>
-    FileIconDefinition DefaultFileIcon { get; }
+    IconDefinition DefaultFileIcon { get; }
 
     /// <summary>
     /// The default icon definition for folder resources.
     /// </summary>
-    FileIconDefinition DefaultFolderIcon { get; }
+    IconDefinition DefaultFolderIcon { get; }
 
     /// <summary>
-    /// The ms-appx URI of the bundled chrome icon font, including the family suffix, for building a FontFamily.
+    /// Returns the glyph for a known IconSymbol.
     /// </summary>
-    string IconFontFamilyUri { get; }
+    IconGlyph GetGlyph(IconSymbol icon);
 
     /// <summary>
-    /// Returns the glyph string for a known IconSymbol.
+    /// Returns the glyph for a prefixed icon name (for example "bs-folder-fill"), or a fallback glyph if
+    /// the name is unknown.
     /// </summary>
-    string GetGlyph(IconSymbol icon);
+    IconGlyph GetGlyph(string iconName);
 
     /// <summary>
-    /// Returns the glyph string for a glyph name (e.g. "folder-fill"), or a fallback glyph if the name is unknown.
+    /// Looks up the glyph for a prefixed icon name, returning false if the name is not defined.
     /// </summary>
-    string GetGlyph(string glyphName);
-
-    /// <summary>
-    /// Looks up the glyph string for a glyph name, returning false if the name is not defined.
-    /// </summary>
-    bool TryGetGlyph(string glyphName, out string glyph);
+    bool TryGetGlyph(string iconName, out IconGlyph glyph);
 }

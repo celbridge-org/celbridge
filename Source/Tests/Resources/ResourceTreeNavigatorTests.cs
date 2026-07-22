@@ -150,5 +150,5 @@ public class ResourceTreeNavigatorTests
         found.Value.Should().BeSameAs(leaf);
     }
 
-    private static readonly FileIconDefinition FakeIcon = new("x", "#000000", "fa-solid", "12");
+    private static readonly IconDefinition FakeIcon = new("x", "#000000", "fa-solid", "12");
 }

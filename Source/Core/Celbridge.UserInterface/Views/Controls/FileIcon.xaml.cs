@@ -31,7 +31,7 @@ public sealed partial class FileIcon : UserControl
     /// </summary>
     public static readonly DependencyProperty IconDefinitionProperty = DependencyProperty.Register(
         nameof(IconDefinition),
-        typeof(FileIconDefinition),
+        typeof(IconDefinition),
         typeof(FileIcon),
         new PropertyMetadata(null, OnIconDefinitionChanged));
 
@@ -69,9 +69,9 @@ public sealed partial class FileIcon : UserControl
     /// <summary>
     /// Gets or sets the icon definition. Can be set directly via binding or resolved from Source.
     /// </summary>
-    public FileIconDefinition IconDefinition
+    public IconDefinition IconDefinition
     {
-        get => (FileIconDefinition)GetValue(IconDefinitionProperty);
+        get => (IconDefinition)GetValue(IconDefinitionProperty);
         set => SetValue(IconDefinitionProperty, value);
     }
 

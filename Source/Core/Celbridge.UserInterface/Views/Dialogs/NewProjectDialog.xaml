@@ -40,7 +40,7 @@
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         Spacing="4">
-              <controls:Icon GlyphName="{x:Bind Icon}"
+              <controls:Icon IconName="{x:Bind Icon}"
                         FontSize="36"
                         HorizontalAlignment="Center"/>
               <TextBlock Text="{x:Bind Name}"

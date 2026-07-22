@@ -132,7 +132,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_FileTypeIcon_ReachesTheIconService()
     {
-        CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "journal-text", "#FF8800");
+        CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "bs-journal-text", "#FF8800");
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
@@ -140,12 +140,12 @@ public class PackageServiceTests
         // The resource tree strips the leading dot before it asks, so the published override has to
         // answer to the dot-free form.
         var icon = _iconService.GetFileIconForExtension("iconed").Value;
-        icon.FontCharacter.Should().Be(_iconService.GetGlyph("journal-text"));
+        icon.FontCharacter.Should().Be(_iconService.GetGlyph("bs-journal-text").FontCharacter);
         icon.FontColor.Should().Be("#FF8800");
     }
 
     [Test]
-    public async Task RegisterPackages_UnknownIconGlyph_LeavesTheExtensionOnTheThemeIcon()
+    public async Task RegisterPackages_UnknownIconName_LeavesTheExtensionOnTheThemeIcon()
     {
         CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "no-such-glyph-name", "#FF8800");
         SetProjectConfig();
@@ -154,6 +154,38 @@ public class PackageServiceTests
 
         var icon = _iconService.GetFileIconForExtension("iconed").Value;
         icon.Should().Be(_iconService.DefaultFileIcon);
+    }
+
+    /// <summary>
+    /// A dropped icon leaves the contribution loaded, so it is reported as a contribution warning rather
+    /// than a load failure. Project Settings keys these by editor id to flag the offending contribution.
+    /// </summary>
+    [Test]
+    public async Task RegisterPackages_UnknownIconName_IsReportedAgainstTheContribution()
+    {
+        CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "no-such-glyph-name", "#FF8800");
+        SetProjectConfig();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetLoadFailures().Should().BeEmpty();
+
+        var issues = _service.GetContributionIssues();
+        issues.Should().HaveCount(1);
+        issues[0].EditorId.Should().Be("iconed-tool.editor");
+        issues[0].Kind.Should().Be(ContributionIssueKind.UnresolvedIcon);
+        issues[0].Value.Should().Be("no-such-glyph-name");
+    }
+
+    [Test]
+    public async Task RegisterPackages_ResolvableIconName_ReportsNoContributionWarnings()
+    {
+        CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "bs-journal-text", "#FF8800");
+        SetProjectConfig();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetContributionIssues().Should().BeEmpty();
     }
 
     [Test]
