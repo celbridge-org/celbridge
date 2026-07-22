@@ -53,7 +53,8 @@
       </GridView.ItemTemplate>
       <GridView.ItemsPanel>
         <ItemsPanelTemplate>
-          <ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="4"/>
+          <!-- Non-virtualizing panel: a virtualizing items panel realizes no containers on the Uno Skia head. -->
+          <StackPanel Orientation="Horizontal"/>
         </ItemsPanelTemplate>
       </GridView.ItemsPanel>
     </GridView>
