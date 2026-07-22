@@ -147,9 +147,8 @@ public class PythonInstaller : IPythonInstaller
 
         await _fileSystem.CreateFolderAsync(pythonFolderPath);
 
-        // Bundled assets are read as real files from the install location: the package root on the
-        // packaged Windows head, the library-layout folder next to the app on the Skia heads. uv handles
-        // installing the required python & package versions for the loaded project.
+        // Bundled assets are read as real files from the Celbridge.Python module folder beside the app.
+        // uv handles installing the required python & package versions for the loaded project.
         var uvArchivePath = _appEnvironment.GetBundledAssetPath(
             PythonModuleFolder, $"Assets/UV/{GetUvArchiveFileName()}");
         await ExtractUvArchiveAsync(uvArchivePath, pythonFolderPath);

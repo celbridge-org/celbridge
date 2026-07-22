@@ -5,13 +5,14 @@ namespace Celbridge.Utilities.Platform;
 
 /// <summary>
 /// Resolves application-environment facts from the packaging model and the build head, keeping the
-/// packaged-versus-unpackaged branching in one place. On the packaged Windows head the version, folders, and
-/// bundled assets come from the app package. On the Skia heads they come from the entry assembly and the
-/// app's library-layout folders.
+/// packaged-versus-unpackaged branching in one place. On the packaged Windows head the version and data
+/// folders come from the app package. On the Skia heads they come from the entry assembly and the
+/// operating system's per-user folders. Bundled assets resolve the same way on every head.
 /// </summary>
 public sealed class AppEnvironment : IAppEnvironment
 {
     private const string ApplicationDataFolderName = "Celbridge";
+    private const string WebHostModuleFolderName = "Celbridge.WebHost";
 
     // The process working folder captured at startup, before any loaded project changes it.
     private static readonly string LaunchWorkingFolder;
@@ -71,27 +72,17 @@ public sealed class AppEnvironment : IAppEnvironment
 
     public string LaunchWorkingFolderPath => LaunchWorkingFolder;
 
-    // Every head lays the shared web assets out the same way, under the WebHost module folder, so this
-    // needs no packaging fork.
-    public string SharedWebAssetsFolderPath => Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
+    public string SharedWebAssetsFolderPath => GetBundledAssetPath(WebHostModuleFolderName, "Web");
 
     public string GetBundledAssetPath(string moduleFolderName, string relativePath)
     {
         // Callers pass forward-slashed relative paths. Normalize to this platform's separator.
         var normalizedRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
 
-#if WINDOWS
-        // The packaged head copies each library's Assets folder to the package root as well as to its
-        // module folder, so an Assets-rooted path resolves without the module folder. Content outside
-        // Assets is not duplicated that way and cannot be addressed here. InstalledLocation is a real
-        // on-disk folder.
-        var root = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
-        return Path.Combine(root, normalizedRelativePath);
-#else
-        // The Skia heads place each library's assets next to the app under the Uno library layout
-        // "<base>/<moduleFolderName>/...".
+        // Every head lays a library's bundled content out the same way, in the library's module folder
+        // beside the app. The packaged head also flattens each library's Assets folder to the package
+        // root, but that copy covers Assets alone, so no caller depends on it.
         return Path.Combine(AppContext.BaseDirectory, moduleFolderName, normalizedRelativePath);
-#endif
     }
 
     private static string ResolveAppVersion()
