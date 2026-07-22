@@ -1,17 +1,21 @@
 using Celbridge.Commands;
+using Celbridge.Platform;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// A minimal strip that appears at the top of the screen in Presentation mode (where the application
-/// toolbar is hidden) when the mouse moves near the top edge. Clicking it reveals the toolbar by
-/// switching to the Focus layout.
+/// A minimal strip shown at the top of the screen in Presentation mode, where the application toolbar is
+/// hidden. On platforms without a native menu bar it is revealed whenever the mouse moves near the top
+/// edge, and clicking it switches to the Focus layout. On platforms with a native menu bar the exit lives
+/// in the Window menu instead, so the strip is a non-interactive hint that points there and is shown only
+/// when Presentation mode is entered.
 /// </summary>
 public sealed partial class FullscreenToolbar : UserControl
 {
     private const double TriggerZoneHeight = 4; // pixels from top to trigger showing the toolbar
     private const double AutoHideDelay = 1.5; // seconds
+    private const double HintAutoHideDelay = 5; // seconds; the hint is read rather than clicked, so it lingers
     private const double AnimationDuration = 150; // ms
 
     private readonly IMessengerService _messengerService;
@@ -19,13 +23,27 @@ public sealed partial class FullscreenToolbar : UserControl
     private readonly IWindowModeService _windowModeService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly DispatcherTimer _hideTimer;
-    
+    private readonly TimeSpan _autoHideDelay;
+
+    // The strip only tells the user where the exit is, rather than acting as the exit itself.
+    private readonly bool _isHintOnly;
+
     private bool _isToolbarHidden;
     private bool _isToolbarVisible;
     private bool _isMouseOverToolbar;
     private Storyboard? _currentAnimation;
-    
-    public string ExitPresentationString => _stringLocalizer.GetString("FullScreenToolbar_ExitPresentation");
+
+    public string ExitPresentationString
+    {
+        get
+        {
+            var stringKey = _isHintOnly
+                ? "FullScreenToolbar_ExitPresentationHint"
+                : "FullScreenToolbar_ExitPresentation";
+
+            return _stringLocalizer.GetString(stringKey);
+        }
+    }
 
     public FullscreenToolbar()
     {
@@ -36,12 +54,26 @@ public sealed partial class FullscreenToolbar : UserControl
         _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _isHintOnly = platformInfo.UsesNativeMenuBar;
+
+        if (_isHintOnly)
+        {
+            // A display-only overlay never has to win pointer input from the native views it covers.
+            IsHitTestVisible = false;
+        }
+
         this.DataContext = this;
+
+        var autoHideSeconds = _isHintOnly
+            ? HintAutoHideDelay
+            : AutoHideDelay;
+        _autoHideDelay = TimeSpan.FromSeconds(autoHideSeconds);
 
         // Setup auto-hide timer
         _hideTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(AutoHideDelay)
+            Interval = _autoHideDelay
         };
         _hideTimer.Tick += HideTimer_Tick;
 
@@ -108,6 +140,13 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private void UpdateTriggerZoneVisibility()
     {
+        if (_isHintOnly)
+        {
+            // The hint is shown only when Presentation mode is entered, so there is nothing to trigger.
+            TriggerZone.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         // Show the trigger zone only when the application toolbar is hidden and the reveal strip is not
         // already showing.
         TriggerZone.Visibility = _isToolbarHidden && !_isToolbarVisible
@@ -128,7 +167,8 @@ public sealed partial class FullscreenToolbar : UserControl
     /// </summary>
     public void OnPointerMoved(double yPosition)
     {
-        if (!_isToolbarHidden)
+        if (_isHintOnly ||
+            !_isToolbarHidden)
         {
             return;
         }
@@ -164,7 +204,7 @@ public sealed partial class FullscreenToolbar : UserControl
     {
         _hideTimer.Stop();
         // Reset interval to normal
-        _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
+        _hideTimer.Interval = _autoHideDelay;
 
         // Only hide if not hovering over toolbar and still in fullscreen mode
         if (_isToolbarHidden && !_isMouseOverToolbar)
@@ -179,7 +219,7 @@ public sealed partial class FullscreenToolbar : UserControl
         {
             // Reset hide timer
             _hideTimer.Stop();
-            _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
+            _hideTimer.Interval = _autoHideDelay;
             _hideTimer.Start();
             return;
         }
@@ -224,7 +264,7 @@ public sealed partial class FullscreenToolbar : UserControl
         storyboard.Begin();
 
         // Start hide timer
-        _hideTimer.Interval = TimeSpan.FromSeconds(AutoHideDelay);
+        _hideTimer.Interval = _autoHideDelay;
         _hideTimer.Start();
     }
 
