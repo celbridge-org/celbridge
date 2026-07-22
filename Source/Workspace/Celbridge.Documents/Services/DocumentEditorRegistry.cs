@@ -9,7 +9,7 @@ namespace Celbridge.Documents.Services;
 public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
     // The resolution band a factory falls into, ordered highest priority first: placeholders
-    // reserve their names ahead of everything, then declared instances in registration order,
+    // reserve their names ahead of everything, then declared editors in registration order,
     // then built-ins in the pinned host order, then built-ins outside that list.
     private enum EditorRankBand
     {
@@ -40,9 +40,9 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<EditorInstanceId> _registeredEditorIds = new();
-    private readonly Dictionary<EditorInstanceId, IDocumentEditorFactory> _idToFactory = new();
-    private readonly Dictionary<EditorInstanceId, EditorRank> _factoryRanks = new();
+    private readonly HashSet<EditorId> _registeredEditorIds = new();
+    private readonly Dictionary<EditorId, IDocumentEditorFactory> _idToFactory = new();
+    private readonly Dictionary<EditorId, EditorRank> _factoryRanks = new();
     private IReadOnlyDictionary<string, string> _editorAssociations = new Dictionary<string, string>();
     private int _registrationCounter;
 
@@ -129,7 +129,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
                 continue;
             }
 
-            if (!EditorInstanceId.TryParse(editorIdValue, out var editorId))
+            if (!EditorId.TryParse(editorIdValue, out var editorId))
             {
                 return Result<IDocumentEditorFactory>.Fail($"Editor association '{editorIdValue}' is not a valid editor id.");
             }
@@ -170,7 +170,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         // both a filename and an extension does not appear twice in the
         // "Open with..." dialog.
         var fileName = fileResource.ResourceName;
-        var seenEditorIds = new HashSet<EditorInstanceId>();
+        var seenEditorIds = new HashSet<EditorId>();
         var candidates = new List<IDocumentEditorFactory>();
 
         if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
@@ -264,14 +264,14 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return [];
     }
 
-    public Result<IDocumentEditorFactory> GetFactoryById(EditorInstanceId editorId)
+    public Result<IDocumentEditorFactory> GetFactoryById(EditorId editorId)
     {
         if (_idToFactory.TryGetValue(editorId, out var factory))
         {
             return Result<IDocumentEditorFactory>.Ok(factory);
         }
 
-        return Result<IDocumentEditorFactory>.Fail($"No factory found with EditorInstanceId: '{editorId}'");
+        return Result<IDocumentEditorFactory>.Fail($"No factory found with EditorId: '{editorId}'");
     }
 
     public string? GetLanguageForExtension(string fileExtension)

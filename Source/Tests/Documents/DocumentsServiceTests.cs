@@ -104,7 +104,7 @@ public class DocumentsServiceTests
     {
         // The single registered editor is the project default, so choosing it must clear the sidecar
         // rather than write a redundant override that would shadow the default (the #746 fix).
-        var defaultEditorId = new EditorInstanceId("test.default-editor");
+        var defaultEditorId = new EditorId("test.default-editor");
         _registry.RegisterFactory(CreateFactory(defaultEditorId, ".md", "Default Editor"));
 
         var result = await _documentsService.SetPreferredEditorAsync(
@@ -120,8 +120,8 @@ public class DocumentsServiceTests
     [Test]
     public async Task SetPreferredEditorAsync_ChoiceDiffersFromDefault_WritesSidecarOverride()
     {
-        var defaultEditorId = new EditorInstanceId("test.default-editor");
-        var chosenEditorId = new EditorInstanceId("test.other-editor");
+        var defaultEditorId = new EditorId("test.default-editor");
+        var chosenEditorId = new EditorId("test.other-editor");
         _registry.RegisterFactory(CreateFactory(defaultEditorId, ".md", "Default Editor"));
 
         var result = await _documentsService.SetPreferredEditorAsync(
@@ -137,9 +137,9 @@ public class DocumentsServiceTests
     [Test]
     public void GetEditorPickList_ReturnsNullWhenFewerThanTwoEditors()
     {
-        _registry.RegisterFactory(CreateFactory(new EditorInstanceId("test.only"), ".md", "Only Editor"));
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.only"), ".md", "Only Editor"));
 
-        var pickList = _documentsService.GetEditorPickList(new ResourceKey("doc.md"), EditorInstanceId.Empty);
+        var pickList = _documentsService.GetEditorPickList(new ResourceKey("doc.md"), EditorId.Empty);
 
         pickList.Should().BeNull();
     }
@@ -148,8 +148,8 @@ public class DocumentsServiceTests
     public void GetEditorPickList_BadgesDefaultAndPreselectsCurrentEditor()
     {
         // The first-registered editor is the project default; the current editor is the second one.
-        var editorA = new EditorInstanceId("test.editor-a");
-        var editorB = new EditorInstanceId("test.editor-b");
+        var editorA = new EditorId("test.editor-a");
+        var editorB = new EditorId("test.editor-b");
         _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
         _registry.RegisterFactory(CreateFactory(editorB, ".md", "Editor B"));
 
@@ -167,20 +167,20 @@ public class DocumentsServiceTests
     {
         // The current id names an editor that is no longer a candidate (a stale sidecar), so the
         // preselection falls back to the project default at index 0.
-        var editorA = new EditorInstanceId("test.editor-a");
-        var editorB = new EditorInstanceId("test.editor-b");
+        var editorA = new EditorId("test.editor-a");
+        var editorB = new EditorId("test.editor-b");
         _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
         _registry.RegisterFactory(CreateFactory(editorB, ".md", "Editor B"));
 
         var pickList = _documentsService.GetEditorPickList(
-            new ResourceKey("doc.md"), new EditorInstanceId("test.uninstalled"));
+            new ResourceKey("doc.md"), new EditorId("test.uninstalled"));
 
         pickList.Should().NotBeNull();
         pickList!.SelectedIndex.Should().Be(0);
     }
 
     private static IDocumentEditorFactory CreateFactory(
-        EditorInstanceId editorId,
+        EditorId editorId,
         string extension,
         string displayName)
     {

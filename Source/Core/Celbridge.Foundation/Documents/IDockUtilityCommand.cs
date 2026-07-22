@@ -12,7 +12,7 @@ public interface IDockUtilityCommand : IExecutableCommand
     /// <summary>
     /// The id of the utility to dock.
     /// </summary>
-    EditorInstanceId UtilityId { get; set; }
+    EditorId UtilityId { get; set; }
 
     /// <summary>
     /// The dock location to move the utility to.

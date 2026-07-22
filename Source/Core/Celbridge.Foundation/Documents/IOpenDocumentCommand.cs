@@ -43,7 +43,7 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
     /// <summary>
     /// When set, opens the document with this specific editor instead of the default.
     /// </summary>
-    EditorInstanceId EditorId { get; set; }
+    EditorId EditorId { get; set; }
 
     /// <summary>
     /// When set, restores this editor state after the document opens.

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Utilities;
@@ -25,7 +24,7 @@ internal static class EditorManifestLoader
     private const string IdKey = "id";
     private const string TypeKey = "type";
     private const string ExtensionKey = "extension";
-    private const string ExtensionsFileKey = "extensions-file";
+    private const string FromCatalogKey = "from-catalog";
     private const string CategoryKey = "category";
     private const string DisplayNameKey = "display-name";
     private const string DescriptionKey = "description";
@@ -43,7 +42,10 @@ internal static class EditorManifestLoader
     private const string ResourceExtensionKey = "resource-extension";
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
+    private const string IconColorKey = "icon-color";
     private const string LazyLoadKey = "lazy-load";
+
+    private const string CatalogLanguagesValue = "languages";
 
     private const string DocumentTypeValue = "document";
     private const string UtilityTypeValue = "utility";
@@ -55,7 +57,8 @@ internal static class EditorManifestLoader
     internal static Result<EditorContribution> LoadEditor(
         string editorTomlPath,
         PackageInfo packageInfo,
-        IPackageReader reader)
+        IPackageReader reader,
+        IFileTypeCatalog fileTypeCatalog)
     {
         try
         {
@@ -97,7 +100,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Editor missing required '{IdKey}' field: {editorTomlPath}");
             }
 
-            if (!EditorInstanceId.IsValidName(editorId))
+            if (!EditorId.IsValidName(editorId))
             {
                 return Result.Fail(
                     $"Invalid editor id '{editorId}' in manifest: {editorTomlPath}. " +
@@ -203,25 +206,44 @@ internal static class EditorManifestLoader
                         category = categoryResult.Value;
                     }
 
-                    var extensionLiteral = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionKey);
-                    var extensionsFilePath = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionsFileKey);
+                    var icon = TomlTableReader.GetStringOrNull(fileTypeTable, IconKey) ?? string.Empty;
+                    var iconColor = TomlTableReader.GetStringOrNull(fileTypeTable, IconColorKey) ?? string.Empty;
+                    if (string.IsNullOrEmpty(icon) &&
+                        !string.IsNullOrEmpty(iconColor))
+                    {
+                        return Result.Fail(
+                            $"A [[{FileTypesSection}]] entry cannot specify '{IconColorKey}' without '{IconKey}': {editorTomlPath}");
+                    }
 
-                    if (!string.IsNullOrEmpty(extensionsFilePath))
+                    var extensionLiteral = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionKey);
+                    var fromCatalogValue = TomlTableReader.GetStringOrNull(fileTypeTable, FromCatalogKey);
+
+                    if (!string.IsNullOrEmpty(fromCatalogValue))
                     {
                         if (!string.IsNullOrEmpty(extensionLiteral))
                         {
                             return Result.Fail(
-                                $"A [[{FileTypesSection}]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {editorTomlPath}");
+                                $"A [[{FileTypesSection}]] entry cannot specify both '{ExtensionKey}' and '{FromCatalogKey}': {editorTomlPath}");
                         }
 
-                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName, category, reader);
-                        if (expandResult.IsFailure)
+                        if (fromCatalogValue != CatalogLanguagesValue)
                         {
-                            return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {editorTomlPath}")
-                                .WithErrors(expandResult);
+                            return Result.Fail(
+                                $"Unknown '{FromCatalogKey}' value '{fromCatalogValue}': {editorTomlPath}. " +
+                                $"The only supported value is \"{CatalogLanguagesValue}\".");
                         }
 
-                        fileTypes.AddRange(expandResult.Value);
+                        foreach (var catalogExtension in fileTypeCatalog.LanguageExtensions)
+                        {
+                            fileTypes.Add(new EditorFileType
+                            {
+                                FileExtension = catalogExtension,
+                                DisplayName = fileTypeDisplayName,
+                                Category = category,
+                                Icon = icon,
+                                IconColor = iconColor
+                            });
+                        }
                     }
                     else
                     {
@@ -236,7 +258,9 @@ internal static class EditorManifestLoader
                         {
                             FileExtension = extension.ToLowerInvariant(),
                             DisplayName = fileTypeDisplayName,
-                            Category = category
+                            Category = category,
+                            Icon = icon,
+                            IconColor = iconColor
                         });
                     }
                 }
@@ -446,7 +470,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Config descriptor missing required '{KeyKey}' field: {editorTomlPath}");
             }
 
-            if (!EditorInstanceId.IsValidName(key))
+            if (!EditorId.IsValidName(key))
             {
                 return Result.Fail(
                     $"Config descriptor key '{key}' must use only lowercase letters, digits, and hyphens: {editorTomlPath}");
@@ -581,58 +605,4 @@ internal static class EditorManifestLoader
         return result;
     }
 
-    private static Result<List<EditorFileType>> ExpandExtensionsFile(
-        string packageFolder,
-        string relativePath,
-        string displayName,
-        FileTypeCategory? category,
-        IPackageReader reader)
-    {
-        var fullPath = Path.Combine(packageFolder, relativePath);
-        if (!reader.Exists(fullPath))
-        {
-            return Result.Fail($"Extensions file not found: {fullPath}");
-        }
-
-        try
-        {
-            var readResult = reader.ReadAllText(fullPath);
-            if (readResult.IsFailure)
-            {
-                return Result.Fail($"Failed to read extensions file: {fullPath}")
-                    .WithErrors(readResult);
-            }
-            var json = readResult.Value;
-            using var document = JsonDocument.Parse(json);
-
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                return Result.Fail($"Extensions file must be a JSON object with extension keys: {fullPath}");
-            }
-
-            var result = new List<EditorFileType>();
-            foreach (var property in document.RootElement.EnumerateObject())
-            {
-                var extension = property.Name;
-                if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
-                {
-                    return Result.Fail(
-                        $"Extension key '{extension}' in the extensions file must be a well-formed file extension (e.g. \".txt\"): {fullPath}");
-                }
-
-                result.Add(new EditorFileType
-                {
-                    FileExtension = extension.ToLowerInvariant(),
-                    DisplayName = displayName,
-                    Category = category
-                });
-            }
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to parse extensions file: {fullPath}").WithException(ex);
-        }
-    }
 }

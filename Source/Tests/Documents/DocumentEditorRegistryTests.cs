@@ -24,7 +24,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId("test.empty"));
+        factory.EditorId.Returns(new EditorId("test.empty"));
         factory.DisplayName.Returns("Empty");
         factory.SupportedExtensions.Returns(new List<string>());
 
@@ -49,7 +49,7 @@ public class DocumentEditorRegistryTests
     }
 
     [Test]
-    public void RegisterFactory_SkipsDuplicateEditorInstanceId()
+    public void RegisterFactory_SkipsDuplicateEditorId()
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
@@ -70,18 +70,18 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        // The built-in registers first, but a project-declared instance (dot-free id)
+        // The built-in registers first, but a project-declared editor (dot-free id)
         // resolves ahead of the entire built-in band.
         var builtInFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");
-        var instanceFactory = CreateMockFactory("my-editor", ".md");
+        var declaredFactory = CreateMockFactory("my-editor", ".md");
 
         registry.RegisterFactory(builtInFactory);
-        registry.RegisterFactory(instanceFactory);
+        registry.RegisterFactory(declaredFactory);
 
         var result = registry.GetFactory(fileResource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(instanceFactory);
+        result.Value.Should().Be(declaredFactory);
     }
 
     [Test]
@@ -90,16 +90,16 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        var firstInstance = CreateMockFactory("first-editor", ".md");
-        var secondInstance = CreateMockFactory("second-editor", ".md");
+        var firstEditor = CreateMockFactory("first-editor", ".md");
+        var secondEditor = CreateMockFactory("second-editor", ".md");
 
-        registry.RegisterFactory(firstInstance);
-        registry.RegisterFactory(secondInstance);
+        registry.RegisterFactory(firstEditor);
+        registry.RegisterFactory(secondEditor);
 
         var result = registry.GetFactory(fileResource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(firstInstance);
+        result.Value.Should().Be(firstEditor);
     }
 
     [Test]
@@ -128,16 +128,16 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        var rejectingInstance = CreateMockFactory("first-editor", ".md", canHandle: false);
-        var acceptingInstance = CreateMockFactory("second-editor", ".md", canHandle: true);
+        var rejectingEditor = CreateMockFactory("first-editor", ".md", canHandle: false);
+        var acceptingEditor = CreateMockFactory("second-editor", ".md", canHandle: true);
 
-        registry.RegisterFactory(rejectingInstance);
-        registry.RegisterFactory(acceptingInstance);
+        registry.RegisterFactory(rejectingEditor);
+        registry.RegisterFactory(acceptingEditor);
 
         var result = registry.GetFactory(fileResource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(acceptingInstance);
+        result.Value.Should().Be(acceptingEditor);
     }
 
     [Test]
@@ -194,7 +194,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId("test.multi-ext"));
+        factory.EditorId.Returns(new EditorId("test.multi-ext"));
         factory.DisplayName.Returns("Multi Extension Editor");
         factory.SupportedExtensions.Returns(new List<string> { ".md", ".markdown", ".mdown" });
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
@@ -237,17 +237,17 @@ public class DocumentEditorRegistryTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        // The built-in registers first but the declared instance band ranks ahead of it.
+        // The built-in registers first but the declared editor band ranks ahead of it.
         var builtInFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");
-        var instanceFactory = CreateMockFactory("my-editor", ".md");
+        var declaredFactory = CreateMockFactory("my-editor", ".md");
 
         registry.RegisterFactory(builtInFactory);
-        registry.RegisterFactory(instanceFactory);
+        registry.RegisterFactory(declaredFactory);
 
         var factories = registry.GetFactoriesForExtension(".md");
 
         factories.Should().HaveCount(2);
-        factories[0].Should().Be(instanceFactory);
+        factories[0].Should().Be(declaredFactory);
         factories[1].Should().Be(builtInFactory);
     }
 
@@ -256,18 +256,18 @@ public class DocumentEditorRegistryTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var instanceFactory = CreateMockFactory("my-editor", ".widget");
+        var declaredFactory = CreateMockFactory("my-editor", ".widget");
         var placeholderFactory = CreateMockFactory("celbridge.widget-placeholder", ".widget");
         placeholderFactory.IsPlaceholder.Returns(true);
 
-        registry.RegisterFactory(instanceFactory);
+        registry.RegisterFactory(declaredFactory);
         registry.RegisterFactory(placeholderFactory);
 
         var factories = registry.GetFactoriesForExtension(".widget");
 
         factories.Should().HaveCount(2);
         factories[0].Should().Be(placeholderFactory);
-        factories[1].Should().Be(instanceFactory);
+        factories[1].Should().Be(declaredFactory);
     }
 
     [Test]
@@ -288,7 +288,7 @@ public class DocumentEditorRegistryTests
         var factory = CreateMockFactory("test.my-editor", ".md");
         registry.RegisterFactory(factory);
 
-        var result = registry.GetFactoryById(new EditorInstanceId("test.my-editor"));
+        var result = registry.GetFactoryById(new EditorId("test.my-editor"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(factory);
@@ -299,7 +299,7 @@ public class DocumentEditorRegistryTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var result = registry.GetFactoryById(new EditorInstanceId("nonexistent.editor"));
+        var result = registry.GetFactoryById(new EditorId("nonexistent.editor"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -455,7 +455,7 @@ public class DocumentEditorRegistryTests
         bool canHandle = true)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.EditorId.Returns(new EditorId(editorId));
         factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(new List<string> { extension });
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);

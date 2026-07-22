@@ -22,9 +22,22 @@ public interface IIconService
     Result<FileIconDefinition> GetFileIcon(string iconName);
 
     /// <summary>
-    /// Returns the file-type icon definition for the specified file extension.
+    /// Returns the file-type icon definition for the specified file extension. A registered override for
+    /// the extension wins over the bundled icon theme.
     /// </summary>
     Result<FileIconDefinition> GetFileIconForExtension(string fileExtension);
+
+    /// <summary>
+    /// Builds a file-type icon from a glyph name in the shared icon font and an optional hex colour,
+    /// failing when the glyph name is unknown or the colour is malformed.
+    /// </summary>
+    Result<FileIconDefinition> CreateGlyphFileIcon(string glyphName, string colorHex);
+
+    /// <summary>
+    /// Replaces the per-extension icon overrides consulted ahead of the bundled theme. Each discovery
+    /// pass supplies the full set, so overrides from a previous workspace do not linger.
+    /// </summary>
+    void SetFileIconOverrides(IReadOnlyDictionary<string, FileIconDefinition> overrides);
 
     /// <summary>
     /// The default icon definition for file resources.

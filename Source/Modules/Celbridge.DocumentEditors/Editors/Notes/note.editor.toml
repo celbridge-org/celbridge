@@ -7,6 +7,7 @@ display-name = "Note_Editor_Name"
 [[file-types]]
 extension = ".note"
 display-name = "Note_FileType_Note"
+icon = "sticky"
 
 [[templates]]
 id = "empty"

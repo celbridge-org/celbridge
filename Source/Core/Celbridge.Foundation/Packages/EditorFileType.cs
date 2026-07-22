@@ -42,4 +42,16 @@ public record EditorFileType
     /// declares no category.
     /// </summary>
     public FileTypeCategory? Category { get; init; }
+
+    /// <summary>
+    /// Glyph name shown for files of this type in place of the bundled icon theme's choice. Empty when
+    /// the manifest declares none.
+    /// </summary>
+    public string Icon { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Hex colour applied to the declared icon. Empty when the manifest declares none, in which case the
+    /// icon takes the theme's default colour.
+    /// </summary>
+    public string IconColor { get; init; } = string.Empty;
 }

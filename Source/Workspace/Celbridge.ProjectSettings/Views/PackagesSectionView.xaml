@@ -19,12 +19,13 @@
       <Setter Property="Margin" Value="0,0,0,4"/>
     </Style>
 
-    <!-- The icon-only button that opens a manifest file, chromeless until hovered. -->
-    <Style x:Key="OpenManifestButtonStyle" TargetType="Button">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Padding" Value="6,2"/>
+    <!-- The link that opens a manifest file, stripped of its padding so it sits on the same baseline as
+         the controls in the neighbouring form rows. -->
+    <Style x:Key="OpenManifestLinkStyle" TargetType="HyperlinkButton">
+      <Setter Property="Padding" Value="0"/>
       <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
       <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
@@ -76,8 +77,9 @@
     </DataTemplate>
 
     <!-- One discovered contribution card, nested under its package: the identifying header, then the
-         contribution's properties as label-and-control rows. The enable row shows only for a curatable
-         (recommended or optional) contribution; a required one is always active. -->
+         contribution's properties as label-and-control rows, closing with a link to its manifest. The
+         enable row shows only for a curatable (recommended or optional) contribution; a required one is
+         always active. -->
     <DataTemplate x:Key="ContributionCardTemplate" x:DataType="vm:ContributionItemViewModel">
       <Border Style="{StaticResource ContributionCardStyle}"
               ToolTipService.ToolTip="{x:Bind Tooltip}">
@@ -87,7 +89,6 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <icon:Icon Grid.Column="0"
@@ -101,14 +102,6 @@
               <TextBlock Text="{x:Bind DisplayName}"/>
               <TextBlock Text="{x:Bind TypeLabel}" FontSize="11" Opacity="0.6"/>
             </StackPanel>
-
-            <Button Grid.Column="2"
-                    Style="{StaticResource OpenManifestButtonStyle}"
-                    Command="{x:Bind OpenManifestCommand}"
-                    ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"
-                    Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}">
-              <icon:Icon GlyphName="file-earmark-code" FontSize="14"/>
-            </Button>
           </Grid>
 
           <StackPanel Margin="0,3,0,3"
@@ -139,36 +132,39 @@
           <ItemsControl Visibility="{x:Bind HasConfigFields, Converter={StaticResource BoolToVisibilityConverter}}"
                         ItemsSource="{x:Bind ConfigFields}"
                         ItemTemplate="{StaticResource ConfigFieldTemplate}"/>
+
+          <Grid Margin="0,3,0,3"
+                Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="110"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind ManifestLabel}"
+                       Style="{StaticResource PropertyLabelStyle}"/>
+
+            <HyperlinkButton Grid.Column="1"
+                             Style="{StaticResource OpenManifestLinkStyle}"
+                             Content="{x:Bind ManifestFileName}"
+                             Command="{x:Bind OpenManifestCommand}"
+                             ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"/>
+          </Grid>
         </StackPanel>
       </Border>
     </DataTemplate>
 
     <!-- One discovered package, collapsed by default. The header carries the package identity; expanding
-         reveals the enable toggle and the contributions the package ships. -->
+         reveals the enable toggle, a link to the manifest, and the contributions the package ships. -->
     <DataTemplate x:Key="PackageCardTemplate" x:DataType="vm:PackageItemViewModel">
       <Expander HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch"
                 Margin="0,0,0,8">
         <Expander.Header>
-          <Grid Opacity="{x:Bind HeaderOpacity, Mode=OneWay}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-              <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-              <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-
-            <Button Grid.Column="1"
-                    Style="{StaticResource OpenManifestButtonStyle}"
-                    Command="{x:Bind OpenManifestCommand}"
-                    ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"
-                    Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}">
-              <icon:Icon GlyphName="file-earmark-code" FontSize="14"/>
-            </Button>
-          </Grid>
+          <StackPanel VerticalAlignment="Center" Opacity="{x:Bind HeaderOpacity, Mode=OneWay}">
+            <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
         </Expander.Header>
 
         <StackPanel>
@@ -178,18 +174,35 @@
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-            <TextBlock Grid.Column="0"
+            <TextBlock Grid.Row="0" Grid.Column="0"
                        Text="{x:Bind EnabledLabel}"
                        Margin="0,0,12,0"
                        Style="{StaticResource PropertyLabelStyle}"/>
 
-            <ToggleSwitch Grid.Column="1"
+            <ToggleSwitch Grid.Row="0" Grid.Column="1"
                           MinWidth="0"
                           OnContent=""
                           OffContent=""
                           ToolTipService.ToolTip="{x:Bind ToggleTooltip}"
                           IsOn="{x:Bind IsEnabled, Mode=TwoWay}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="{x:Bind ManifestLabel}"
+                       Margin="0,0,12,0"
+                       Style="{StaticResource PropertyLabelStyle}"
+                       Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <HyperlinkButton Grid.Row="1" Grid.Column="1"
+                             Style="{StaticResource OpenManifestLinkStyle}"
+                             Content="{x:Bind ManifestFileName}"
+                             Command="{x:Bind OpenManifestCommand}"
+                             ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"
+                             Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}"/>
           </Grid>
 
           <!-- A disabled package contributes nothing on reload, so its contributions read as inactive. -->

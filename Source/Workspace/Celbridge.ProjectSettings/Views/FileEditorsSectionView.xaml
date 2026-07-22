@@ -29,10 +29,14 @@
                 <ColumnDefinition Width="96"/>
                 <ColumnDefinition Width="*"/>
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0"
-                         Text="{x:Bind Extension}"
-                         VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis"/>
+              <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind Extension}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{x:Bind TypeName}"
+                           FontSize="11"
+                           Opacity="0.6"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{x:Bind HasTypeName, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </StackPanel>
               <ComboBox Grid.Column="1"
                         HorizontalAlignment="Stretch"
                         ToolTipService.ToolTip="{x:Bind EditorPickerTooltip}"

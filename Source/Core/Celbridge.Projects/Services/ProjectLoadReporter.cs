@@ -208,11 +208,11 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         var report = _packageReport!;
         builder.AppendLine($"- Bundled packages loaded: {report.BundledPackageCount}");
         builder.AppendLine($"- Project packages loaded: {report.ProjectPackageCount}");
-        builder.AppendLine($"- Editor instances created: {report.EditorInstanceCount}");
+        builder.AppendLine($"- Editors loaded: {report.ResolvedEditorCount}");
 
         if (report.Failures.Count == 0
-            && report.EditorInstanceFailures.Count == 0
-            && report.EditorInstanceWarnings.Count == 0)
+            && report.ResolvedEditorFailures.Count == 0
+            && report.ResolvedEditorWarnings.Count == 0)
         {
             builder.AppendLine("- No load failures.");
             builder.AppendLine();
@@ -239,24 +239,24 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             builder.AppendLine();
         }
 
-        if (report.EditorInstanceFailures.Count > 0)
+        if (report.ResolvedEditorFailures.Count > 0)
         {
-            builder.AppendLine($"### Skipped instances ({report.EditorInstanceFailures.Count})");
+            builder.AppendLine($"### Skipped editors ({report.ResolvedEditorFailures.Count})");
             builder.AppendLine();
-            foreach (var failure in report.EditorInstanceFailures)
+            foreach (var failure in report.ResolvedEditorFailures)
             {
-                builder.AppendLine($"- `{failure.InstanceId}`: {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
+                builder.AppendLine($"- `{failure.EditorId}`: {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
             }
             builder.AppendLine();
         }
 
-        if (report.EditorInstanceWarnings.Count > 0)
+        if (report.ResolvedEditorWarnings.Count > 0)
         {
-            builder.AppendLine($"### Degraded instances ({report.EditorInstanceWarnings.Count})");
+            builder.AppendLine($"### Degraded editors ({report.ResolvedEditorWarnings.Count})");
             builder.AppendLine();
-            foreach (var warning in report.EditorInstanceWarnings)
+            foreach (var warning in report.ResolvedEditorWarnings)
             {
-                builder.AppendLine($"- `{warning.InstanceId}`: {NormaliseNewlines(warning.Detail).Replace("\n", " ")}");
+                builder.AppendLine($"- `{warning.EditorId}`: {NormaliseNewlines(warning.Detail).Replace("\n", " ")}");
             }
             builder.AppendLine();
         }

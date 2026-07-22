@@ -31,7 +31,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public bool Activate { get; set; } = true;
 
-    public EditorInstanceId EditorId { get; set; }
+    public EditorId EditorId { get; set; }
 
     public string? EditorStateJson { get; set; }
 

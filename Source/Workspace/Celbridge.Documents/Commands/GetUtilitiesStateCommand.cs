@@ -72,15 +72,15 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             IsShown: activeUtilityId == BuiltInUtilityIds.Search));
 
         // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
-        foreach (var instance in packageService.GetEditorInstances())
+        foreach (var resolvedEditor in packageService.GetResolvedEditors())
         {
-            var utility = instance.Contribution;
+            var utility = resolvedEditor.Contribution;
             if (!utility.IsUtility)
             {
                 continue;
             }
 
-            var utilityId = instance.InstanceId;
+            var utilityId = resolvedEditor.EditorId;
 
             // Only report utilities that were actually created. A utility whose seed/bind/init
             // failed is skipped here, so this list matches what app_show_utility will accept.

@@ -217,7 +217,7 @@ public class ProjectLoadReporterTests
         {
             BundledPackageCount = 5,
             ProjectPackageCount = 1,
-            EditorInstanceCount = 3,
+            ResolvedEditorCount = 3,
             Failures = new[]
             {
                 new PackageLoadFailure
@@ -245,7 +245,7 @@ public class ProjectLoadReporterTests
         content.Should().Contain("## Packages");
         content.Should().Contain("- Bundled packages loaded: 5");
         content.Should().Contain("- Project packages loaded: 1");
-        content.Should().Contain("- Editor instances created: 3");
+        content.Should().Contain("- Editors loaded: 3");
         content.Should().Contain("### Load failures (2)");
         content.Should().Contain(@"- `C:\projects\demo\packages\excel-art`: `InvalidManifest`");
         content.Should().Contain("Package has invalid 'name' value 'Excel Art'");
@@ -271,7 +271,7 @@ public class ProjectLoadReporterTests
         reportPath.Should().NotBeNull();
         var content = await File.ReadAllTextAsync(reportPath!);
         content.Should().Contain("## Packages");
-        content.Should().Contain("- Editor instances created: 0");
+        content.Should().Contain("- Editors loaded: 0");
         content.Should().Contain("No load failures");
         content.Should().NotContain("### Load failures");
     }
@@ -286,20 +286,20 @@ public class ProjectLoadReporterTests
         {
             BundledPackageCount = 5,
             ProjectPackageCount = 1,
-            EditorInstanceCount = 2,
-            EditorInstanceFailures = new[]
+            ResolvedEditorCount = 2,
+            ResolvedEditorFailures = new[]
             {
-                new EditorInstanceLoadFailure
+                new ResolvedEditorLoadFailure
                 {
-                    InstanceId = "notepad",
+                    EditorId = "notepad",
                     Detail = "Unknown package 'acme-notes'"
                 }
             },
-            EditorInstanceWarnings = new[]
+            ResolvedEditorWarnings = new[]
             {
-                new EditorInstanceLoadFailure
+                new ResolvedEditorLoadFailure
                 {
-                    InstanceId = "charts",
+                    EditorId = "charts",
                     Detail = "Config key 'theme' has an unsupported value shape"
                 }
             }
@@ -311,10 +311,10 @@ public class ProjectLoadReporterTests
         reportPath.Should().NotBeNull();
         var content = await File.ReadAllTextAsync(reportPath!);
 
-        content.Should().Contain("- Editor instances created: 2");
-        content.Should().Contain("### Skipped instances (1)");
+        content.Should().Contain("- Editors loaded: 2");
+        content.Should().Contain("### Skipped editors (1)");
         content.Should().Contain("- `notepad`: Unknown package 'acme-notes'");
-        content.Should().Contain("### Degraded instances (1)");
+        content.Should().Contain("### Degraded editors (1)");
         content.Should().Contain("- `charts`: Config key 'theme' has an unsupported value shape");
         content.Should().NotContain("No load failures");
     }

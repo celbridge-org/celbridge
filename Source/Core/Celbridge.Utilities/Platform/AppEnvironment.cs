@@ -71,14 +71,20 @@ public sealed class AppEnvironment : IAppEnvironment
 
     public string LaunchWorkingFolderPath => LaunchWorkingFolder;
 
+    // Every head lays the shared web assets out the same way, under the WebHost module folder, so this
+    // needs no packaging fork.
+    public string SharedWebAssetsFolderPath => Path.Combine(AppContext.BaseDirectory, "Celbridge.WebHost", "Web");
+
     public string GetBundledAssetPath(string moduleFolderName, string relativePath)
     {
         // Callers pass forward-slashed relative paths. Normalize to this platform's separator.
         var normalizedRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
 
 #if WINDOWS
-        // The packaged head flattens every library's Content assets to the package root, so the module
-        // folder is not part of the path. InstalledLocation is a real on-disk folder.
+        // The packaged head copies each library's Assets folder to the package root as well as to its
+        // module folder, so an Assets-rooted path resolves without the module folder. Content outside
+        // Assets is not duplicated that way and cannot be addressed here. InstalledLocation is a real
+        // on-disk folder.
         var root = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
         return Path.Combine(root, normalizedRelativePath);
 #else

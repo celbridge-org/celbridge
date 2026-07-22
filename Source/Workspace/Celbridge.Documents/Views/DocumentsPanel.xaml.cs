@@ -975,7 +975,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     }
 
     // Sets the tab's recorded editor id and display label.
-    private void UpdateEditorDisplayName(DocumentTab documentTab, EditorInstanceId editorId)
+    private void UpdateEditorDisplayName(DocumentTab documentTab, EditorId editorId)
     {
         var displayInfo = ViewModel.ResolveEditorDisplayInfo(documentTab.ViewModel.FileResource, editorId);
         if (displayInfo is not null)
@@ -985,7 +985,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
-    private void ApplyUtilityTabMetadata(DocumentTab documentTab, EditorInstanceId editorId)
+    private void ApplyUtilityTabMetadata(DocumentTab documentTab, EditorId editorId)
     {
         var utilityInfo = ViewModel.ResolveUtilityTabInfo(editorId);
         if (utilityInfo is null)
@@ -1313,7 +1313,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         await ReopenTabWithEditor(tab, selectedEditorId);
     }
 
-    private async Task ReopenTabWithEditor(DocumentTab tab, EditorInstanceId editorId)
+    private async Task ReopenTabWithEditor(DocumentTab tab, EditorId editorId)
     {
         var fileResource = tab.ViewModel.FileResource;
 

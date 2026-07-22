@@ -39,7 +39,7 @@ public class GetUtilitiesStateCommandTests
             DisplayName = "Code Editor"
         };
 
-        var instances = new List<EditorInstance>
+        var resolvedEditors = new List<ResolvedEditor>
         {
             CreateInstance("widget-panel", panelUtility),
             CreateInstance("notepad", documentUtility),
@@ -48,14 +48,14 @@ public class GetUtilitiesStateCommandTests
 
         // The widget-panel utility is the active rail surface, so it is the only utility shown.
         var utilityPanel = Substitute.For<IUtilityPanel>();
-        utilityPanel.ActiveUtilityId.Returns(new EditorInstanceId("widget-panel"));
+        utilityPanel.ActiveUtilityId.Returns(new EditorId("widget-panel"));
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetEditorInstances().Returns(instances);
+        packageService.GetResolvedEditors().Returns(resolvedEditors);
 
         // Both declared utilities were created, so both are live and listed.
         var utilityService = Substitute.For<IUtilityService>();
-        utilityService.HasUtility(Arg.Any<EditorInstanceId>()).Returns(true);
+        utilityService.HasUtility(Arg.Any<EditorId>()).Returns(true);
 
         // No utilities are docked: no documents are open.
         var documentsService = Substitute.For<IDocumentsService>();
@@ -96,12 +96,12 @@ public class GetUtilitiesStateCommandTests
         utilities[1].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[1].IsShown.Should().BeFalse();
 
-        utilities[2].UtilityId.Should().Be(new EditorInstanceId("widget-panel"));
+        utilities[2].UtilityId.Should().Be(new EditorId("widget-panel"));
         utilities[2].DisplayName.Should().Be("Widget Panel");
         utilities[2].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[2].IsShown.Should().BeTrue();
 
-        utilities[3].UtilityId.Should().Be(new EditorInstanceId("notepad"));
+        utilities[3].UtilityId.Should().Be(new EditorId("notepad"));
         utilities[3].DisplayName.Should().Be("Notepad");
         utilities[3].Location.Should().Be(DockLocation.UtilityPanel);
         utilities[3].IsShown.Should().BeFalse();
@@ -118,9 +118,9 @@ public class GetUtilitiesStateCommandTests
             UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._notepad" }
         };
 
-        var instances = new List<EditorInstance> { CreateInstance("notepad", dockedUtility) };
+        var resolvedEditors = new List<ResolvedEditor> { CreateInstance("notepad", dockedUtility) };
 
-        // The backing resource is derived from the instance id and the contribution's extension.
+        // The backing resource is derived from the editor id and the contribution's extension.
         var utilityResource = new ResourceKey("utils:notepad._notepad");
 
         // The rail is showing Explorer, so the utility is not the active rail surface. It is instead docked
@@ -129,15 +129,15 @@ public class GetUtilitiesStateCommandTests
         utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetEditorInstances().Returns(instances);
+        packageService.GetResolvedEditors().Returns(resolvedEditors);
 
         var utilityService = Substitute.For<IUtilityService>();
-        utilityService.HasUtility(Arg.Any<EditorInstanceId>()).Returns(true);
+        utilityService.HasUtility(Arg.Any<EditorId>()).Returns(true);
 
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
-            new(utilityResource, new DocumentAddress(0, 0, 0), new EditorInstanceId("notepad"))
+            new(utilityResource, new DocumentAddress(0, 0, 0), new EditorId("notepad"))
         });
         documentsService.ActiveDocument.Returns(utilityResource);
 
@@ -163,7 +163,7 @@ public class GetUtilitiesStateCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == new EditorInstanceId("notepad"));
+        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == new EditorId("notepad"));
         notepad.Location.Should().Be(DockLocation.Document);
         notepad.IsShown.Should().BeTrue();
     }
@@ -189,7 +189,7 @@ public class GetUtilitiesStateCommandTests
             UtilityDescriptor = new UtilityDescriptor { ResourceExtension = "._broken" }
         };
 
-        var instances = new List<EditorInstance>
+        var resolvedEditors = new List<ResolvedEditor>
         {
             CreateInstance("notepad", liveUtility),
             CreateInstance("broken", deadUtility)
@@ -199,11 +199,11 @@ public class GetUtilitiesStateCommandTests
         utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
 
         var packageService = Substitute.For<IPackageService>();
-        packageService.GetEditorInstances().Returns(instances);
+        packageService.GetResolvedEditors().Returns(resolvedEditors);
 
         var utilityService = Substitute.For<IUtilityService>();
-        utilityService.HasUtility(new EditorInstanceId("notepad")).Returns(true);
-        utilityService.HasUtility(new EditorInstanceId("broken")).Returns(false);
+        utilityService.HasUtility(new EditorId("notepad")).Returns(true);
+        utilityService.HasUtility(new EditorId("broken")).Returns(false);
 
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
@@ -232,15 +232,15 @@ public class GetUtilitiesStateCommandTests
 
         result.IsSuccess.Should().BeTrue();
         var utilities = command.ResultValue.Utilities;
-        utilities.Should().Contain(utility => utility.UtilityId == new EditorInstanceId("notepad"));
-        utilities.Should().NotContain(utility => utility.UtilityId == new EditorInstanceId("broken"));
+        utilities.Should().Contain(utility => utility.UtilityId == new EditorId("notepad"));
+        utilities.Should().NotContain(utility => utility.UtilityId == new EditorId("broken"));
     }
 
-    private static EditorInstance CreateInstance(string instanceId, EditorContribution contribution)
+    private static ResolvedEditor CreateInstance(string editorId, EditorContribution contribution)
     {
-        return new EditorInstance
+        return new ResolvedEditor
         {
-            InstanceId = new EditorInstanceId(instanceId),
+            EditorId = new EditorId(editorId),
             Contribution = contribution
         };
     }

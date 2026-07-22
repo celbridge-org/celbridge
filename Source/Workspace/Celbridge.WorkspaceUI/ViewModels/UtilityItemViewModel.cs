@@ -13,7 +13,7 @@ public partial class UtilityItemViewModel : ObservableObject
     /// <summary>
     /// The utility id this rail item represents.
     /// </summary>
-    public EditorInstanceId Id { get; }
+    public EditorId Id { get; }
 
     /// <summary>
     /// The workspace panel identity used to decide whether this surface currently holds focus. Built-in
@@ -30,7 +30,7 @@ public partial class UtilityItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDocked;
 
-    public UtilityItemViewModel(EditorInstanceId id, WorkspacePanel focusIdentity)
+    public UtilityItemViewModel(EditorId id, WorkspacePanel focusIdentity)
     {
         Id = id;
         FocusIdentity = focusIdentity;

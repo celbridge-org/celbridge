@@ -5,24 +5,24 @@ namespace Celbridge.Documents;
 /// "{package}.{contribution}" contribution reference for a discovered contribution (e.g.
 /// "acme.notes.note") and a dotted host-assigned id for a built-in editor (e.g. "celbridge.markdown").
 /// </summary>
-public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
+public readonly struct EditorId : IEquatable<EditorId>
 {
     private readonly string? _id;
 
-    public EditorInstanceId(string id)
+    public EditorId(string id)
     {
         if (!IsValid(id))
         {
-            throw new ArgumentException($"Invalid editor instance ID: '{id}'. Expected lowercase letters, digits, dots, and hyphens.", nameof(id));
+            throw new ArgumentException($"Invalid editor id: '{id}'. Expected lowercase letters, digits, dots, and hyphens.", nameof(id));
         }
 
         _id = id;
     }
 
     /// <summary>
-    /// The "no instance" value.
+    /// The "no editor" value.
     /// </summary>
-    public static EditorInstanceId Empty => new();
+    public static EditorId Empty => new();
 
     /// <summary>
     /// True when this is the Empty value.
@@ -30,9 +30,9 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
     public bool IsEmpty => string.IsNullOrEmpty(_id);
 
     /// <summary>
-    /// Builds an instance id from a package name and contribution id, as "{packageName}.{contributionId}".
+    /// Builds an editor id from a package name and contribution id, as "{packageName}.{contributionId}".
     /// </summary>
-    public static EditorInstanceId Create(string packageName, string contributionId)
+    public static EditorId Create(string packageName, string contributionId)
     {
         if (string.IsNullOrEmpty(packageName))
         {
@@ -43,7 +43,7 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
             throw new ArgumentException("Contribution id must not be empty.", nameof(contributionId));
         }
 
-        return new EditorInstanceId($"{packageName}.{contributionId}");
+        return new EditorId($"{packageName}.{contributionId}");
     }
 
     /// <summary>
@@ -96,10 +96,10 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
     }
 
     /// <summary>
-    /// Tries to parse a string into an EditorInstanceId without throwing on invalid input.
-    /// Returns false and EditorInstanceId.Empty when the string is not a valid id.
+    /// Tries to parse a string into an EditorId without throwing on invalid input.
+    /// Returns false and EditorId.Empty when the string is not a valid id.
     /// </summary>
-    public static bool TryParse(string? id, out EditorInstanceId result)
+    public static bool TryParse(string? id, out EditorId result)
     {
         if (string.IsNullOrEmpty(id) ||
             !IsValid(id))
@@ -108,7 +108,7 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
             return false;
         }
 
-        result = new EditorInstanceId(id);
+        result = new EditorId(id);
         return true;
     }
 
@@ -119,10 +119,10 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
 
     public override bool Equals(object? obj)
     {
-        return obj is EditorInstanceId other && Equals(other);
+        return obj is EditorId other && Equals(other);
     }
 
-    public bool Equals(EditorInstanceId other)
+    public bool Equals(EditorId other)
     {
         return ToString() == other.ToString();
     }
@@ -132,15 +132,15 @@ public readonly struct EditorInstanceId : IEquatable<EditorInstanceId>
         return ToString().GetHashCode();
     }
 
-    public static bool operator ==(EditorInstanceId left, EditorInstanceId right)
+    public static bool operator ==(EditorId left, EditorId right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(EditorInstanceId left, EditorInstanceId right)
+    public static bool operator !=(EditorId left, EditorId right)
     {
         return !left.Equals(right);
     }
 
-    public static implicit operator string(EditorInstanceId id) => id.ToString();
+    public static implicit operator string(EditorId id) => id.ToString();
 }

@@ -1,3 +1,5 @@
+using Celbridge.Logging;
+
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace Celbridge.UserInterface.Services;
 /// </summary>
 public class FontFamilyConverter : IValueConverter
 {
+    private readonly ILogger<FontFamilyConverter> _logger = ServiceLocator.AcquireService<ILogger<FontFamilyConverter>>();
+
     public object? Convert(object value, Type targetType, object parameter, string language)
     {
         if (value is string fontFamilyKey && Application.Current.Resources.ContainsKey(fontFamilyKey))
@@ -13,6 +17,11 @@ public class FontFamilyConverter : IValueConverter
 
             return fontFamily;
         }
+
+        // An unresolved key leaves the element on its inherited font, where an icon glyph renders as
+        // some unrelated character rather than failing outright.
+        _logger.LogWarning($"Font family key not found in application resources: '{value}'");
+
         return null;
     }
 

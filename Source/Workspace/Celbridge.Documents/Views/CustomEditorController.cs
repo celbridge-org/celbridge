@@ -57,7 +57,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private CustomEditorFocusContext _focusContext;
 
     // Set by InitializeAsync before the WebView is configured.
-    private EditorInstance? _instance;
+    private ResolvedEditor? _resolvedEditor;
     private EditorContribution? _contribution;
 
     // Writable state mirrored to the WebView over the viewState channel. Seeded at init and updated by the
@@ -151,15 +151,15 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Initializes the editor for the given instance: acquires and configures the WebView and host, then
+    /// Initializes the given resolved editor: acquires and configures the WebView and host, then
     /// completes when the WebView and host are ready for RPCs. The init runs once, and later calls await the
     /// same result. The editor's own notifyContentLoaded signal is not awaited here.
     /// </summary>
-    public async Task<Result> InitializeAsync(EditorInstance instance)
+    public async Task<Result> InitializeAsync(ResolvedEditor resolvedEditor)
     {
-        _instance = instance;
-        _contribution = instance.Contribution;
-        _viewModel.Contribution = instance.Contribution;
+        _resolvedEditor = resolvedEditor;
+        _contribution = resolvedEditor.Contribution;
+        _viewModel.Contribution = resolvedEditor.Contribution;
 
         if (_initTcs is null)
         {
@@ -1194,14 +1194,14 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private CelbridgeContext BuildCelbridgeContext()
     {
-        Guard.IsNotNull(_instance);
+        Guard.IsNotNull(_resolvedEditor);
         Guard.IsNotNull(_contribution);
 
-        // The instance's effective config (manifest options overlaid with descriptor defaults
-        // and the instance's project-config keys) rides the Options channel.
+        // The editor's effective config (manifest options overlaid with descriptor defaults
+        // and its project-config keys) rides the Options channel.
         return new CelbridgeContext(
             _contribution.Package.PermittedTools,
             _contribution.Package.Secrets,
-            _instance.Config);
+            _resolvedEditor.Config);
     }
 }

@@ -41,6 +41,10 @@ default = true
 
 `type` is `"document"` (edits matching files, shown in document tabs) or `"utility"` (a workspace fixture; see `utility_documents`). A document editor requires at least one `[[file-types]]` entry and must not declare a `[utility]` section. `display-name` names the editor for what it is (e.g. `Markdown Editor`) while the package `title` names the product — keep them distinct so the two do not read identically in Project Settings. The optional `description` is a short sentence shown as the editor's tooltip. `display-name` and `description` values are localization keys. Templates are optional. All Celbridge-owned manifest keys are kebab-case.
 
+Each `[[file-types]]` entry names its extension with `extension`, or claims a set from the host's file type catalog with `from-catalog = "languages"` — every extension the catalog assigns a language to. The two keys are mutually exclusive, and `"languages"` is the only supported set; it exists for a general code editor that follows the catalog rather than listing two hundred extensions. The catalog (`file-types.json`, served to editors at `/assets/celbridge-client/file-types.json`) is the host's single source for established file types: the categories an extension is grouped under, the language a code editor highlights it as, and the name the type is known by. A package declares those properties in its manifest only for its own novel extensions.
+
+A `[[file-types]]` entry may also set `icon` (a glyph name from the shared icon font) and `icon-color` (a hex colour such as `#FF8800`), which replace the bundled icon theme's choice wherever a file of that type is drawn — the resource tree, search results, and the resource picker. `icon-color` requires `icon`; on its own it is a load error, because it would silently do nothing. An icon naming an unknown glyph, or carrying a malformed colour, is dropped with a warning and the file type falls back to the theme icon; it never fails package load. The host catalog accepts the same two keys, and its entry wins for an established type, so a package's icon covers the extensions it introduces rather than repainting standard formats project-wide.
+
 ## Activation and configuration
 
 A discovered package is active by default — bundling it, or dropping it into the project's `packages/` folder, is enough for its editors to open matching files. There is no activation list to opt in to. A project only touches the `.celbridge` file to *deviate* from an editor's defaults: a `[[contribution]]` entry sets the editor's config keys, or flips its activation when the manifest marks the contribution `recommended` (add `disabled = true`) or `optional` (add `enabled = true`):
@@ -52,7 +56,7 @@ contribution = "my-editor"
 grid-size    = 16              # a config key declared by the editor's [[config]] descriptors
 ```
 
-To turn a whole package off, list it in `[celbridge].disabled-packages`. Each contribution has exactly one instance, referenced as `package.contribution`; a project cannot declare several instances or override an editor's display name, icon, or description.
+To turn a whole package off, list it in `[celbridge].disabled-packages`. A contribution is referenced as `package.contribution`; a project cannot declare several copies of one contribution, nor override an editor's display name, icon, or description.
 
 Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in host order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. See `project_structure` for the full `.celbridge` schema.
 
@@ -68,7 +72,7 @@ default      = 16
 display-name = "MyEditor_Config_GridSize"
 ```
 
-Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Instance tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the instance's keys). Descriptor keys must not collide with the reserved deviation-entry keys (`package`, `contribution`, `disabled`, `enabled`).
+Types are `bool`, `string`, `number`, `enum` (with `values`), and `string-list`. Contribution tables set these keys; the host type-checks them against the descriptors and delivers the merged config to the editor on the `celbridge.options` channel (manifest `[options]`, overlaid with descriptor defaults, overlaid with the contribution's keys). Descriptor keys must not collide with the reserved deviation-entry keys (`package`, `contribution`, `disabled`, `enabled`).
 
 ## JS handlers
 

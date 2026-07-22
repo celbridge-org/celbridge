@@ -33,13 +33,13 @@ public enum ConfigValueType
 
 /// <summary>
 /// A typed configuration key declared by an editor contribution in its manifest [[config]] entries.
-/// Descriptors drive the Project Settings form, host-side type checking of instance config, and
+/// Descriptors drive the Project Settings form, host-side type checking of contribution config, and
 /// validation in agent-facing configuration tools.
 /// </summary>
 public partial record ConfigDescriptor
 {
     /// <summary>
-    /// The kebab-case key the user sets in an instance table.
+    /// The kebab-case key the user sets in a contribution table.
     /// </summary>
     public string Key { get; init; } = string.Empty;
 

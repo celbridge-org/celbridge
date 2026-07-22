@@ -67,7 +67,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// <summary>
     /// The editor that created this tab's document view.
     /// </summary>
-    public EditorInstanceId EditorId { get; set; }
+    public EditorId EditorId { get; set; }
 
     /// <summary>
     /// Returns the file extension for the current resource.

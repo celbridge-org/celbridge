@@ -90,7 +90,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
         // Preselect the editor currently opening this document (if open), else the file's sidecar
         // override; GetEditorPickList falls back to the project default when that is not a candidate.
-        var currentEditorId = EditorInstanceId.Empty;
+        var currentEditorId = EditorId.Empty;
         var openDocument = documentsService
             .GetOpenDocuments()
             .FirstOrDefault(document => document.FileResource == resourceKey);

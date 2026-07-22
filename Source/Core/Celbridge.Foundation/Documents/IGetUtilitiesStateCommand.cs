@@ -9,7 +9,7 @@ namespace Celbridge.Documents;
 /// the active rail surface or as the active document.
 /// </summary>
 public record class UtilityInfo(
-    EditorInstanceId UtilityId,
+    EditorId UtilityId,
     string DisplayName,
     DockLocation Location,
     bool IsShown);

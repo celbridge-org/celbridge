@@ -6,7 +6,7 @@ namespace Celbridge.Documents;
 /// </summary>
 public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 {
-    public abstract EditorInstanceId EditorId { get; }
+    public abstract EditorId EditorId { get; }
 
     public abstract string DisplayName { get; }
 

@@ -1,5 +1,6 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
+using Celbridge.UserInterface;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Projects;
@@ -111,7 +112,7 @@ public class PackageServiceDocumentTypeTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem);
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), Substitute.For<IIconService>());
         var loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(messengerService, loadReporter, registry);
     }
@@ -188,7 +189,7 @@ public class PackageServiceDocumentTypeTests
     public async Task GetDocumentTypes_UninstantiatedOptionalContribution_Excluded()
     {
         // The package is discovered, but its editor is optional and the project has not enabled it,
-        // so no instance materializes and it offers no creatable document type.
+        // so no editor materializes and it offers no creatable document type.
         await CreateBundledPackage(
             "undeclared-editor",
             "UndeclaredEditor",
@@ -258,7 +259,7 @@ public class PackageServiceDocumentTypeTests
         var editors = _service.GetAllEditors();
         editors.Should().ContainSingle();
         editors[0].IsUtility.Should().BeTrue();
-        _service.GetEditorInstances().Should().ContainSingle();
+        _service.GetResolvedEditors().Should().ContainSingle();
 
         _service.GetDocumentTypes().Should().BeEmpty();
     }

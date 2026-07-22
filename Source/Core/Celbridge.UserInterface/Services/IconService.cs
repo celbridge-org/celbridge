@@ -10,6 +10,9 @@ public class IconService : IIconService
     private const string DefaultColor = "#9dc0ce";
     public const string DefaultFolderColor = "#FFCC40";
 
+    private const string GlyphIconFontFamily = "BootstrapIconsFontFamily";
+    private const string GlyphIconFontSize = "100%";
+
     private const string FileIconsThemeResource = "Assets.Fonts.FileIcons.file-icons-icon-theme.json";
     private const string IconGlyphsResource = "Assets.Fonts.BootstrapIcons.icon-glyphs.json";
     private const string FallbackGlyphName = "question-circle";
@@ -17,6 +20,8 @@ public class IconService : IIconService
     private Dictionary<string, string> _fileExtensionDefinitions = new();
     private Dictionary<string, FileIconDefinition> _iconDefinitions = new();
     private Dictionary<string, string> _glyphsByName = new();
+    private IReadOnlyDictionary<string, FileIconDefinition> _fileIconOverrides =
+        new Dictionary<string, FileIconDefinition>(StringComparer.OrdinalIgnoreCase);
 
     // Maps each IconSymbol to its glyph name in the bundled icon font (Bootstrap Icons). The name is
     // resolved to a glyph code via the bundled icon-glyphs.json map. Add new common icons here.
@@ -151,6 +156,11 @@ public class IconService : IIconService
             fileExtension = fileExtension.Substring(1);
         }
 
+        if (_fileIconOverrides.TryGetValue(fileExtension, out var overrideIcon))
+        {
+            return Result<FileIconDefinition>.Ok(overrideIcon);
+        }
+
         if (!_fileExtensionDefinitions.TryGetValue(fileExtension, out string? iconName))
         {
             if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
@@ -163,6 +173,66 @@ public class IconService : IIconService
         }
 
         return GetFileIcon(iconName);
+    }
+
+    public Result<FileIconDefinition> CreateGlyphFileIcon(string glyphName, string colorHex)
+    {
+        if (!TryGetGlyph(glyphName, out var glyph))
+        {
+            return Result<FileIconDefinition>.Fail($"Unknown icon glyph name: '{glyphName}'.");
+        }
+
+        var color = DefaultColor;
+        if (!string.IsNullOrEmpty(colorHex))
+        {
+            if (!IsHexColor(colorHex))
+            {
+                return Result<FileIconDefinition>.Fail(
+                    $"Malformed icon colour: '{colorHex}'. Expected a hex colour such as \"#RRGGBB\" or \"#AARRGGBB\".");
+            }
+            color = colorHex;
+        }
+
+        var iconDefinition = new FileIconDefinition(glyph, color, GlyphIconFontFamily, GlyphIconFontSize);
+
+        return Result<FileIconDefinition>.Ok(iconDefinition);
+    }
+
+    public void SetFileIconOverrides(IReadOnlyDictionary<string, FileIconDefinition> overrides)
+    {
+        // Callers supply extensions in either form; the lookup keys on the dot-free form.
+        var normalized = new Dictionary<string, FileIconDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var iconOverride in overrides)
+        {
+            var extension = iconOverride.Key.TrimStart('.');
+            normalized[extension] = iconOverride.Value;
+        }
+
+        _fileIconOverrides = normalized;
+    }
+
+    private static bool IsHexColor(string value)
+    {
+        if (!value.StartsWith('#'))
+        {
+            return false;
+        }
+
+        if (value.Length != 7 &&
+            value.Length != 9)
+        {
+            return false;
+        }
+
+        for (var index = 1; index < value.Length; index++)
+        {
+            if (!Uri.IsHexDigit(value[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public FileIconDefinition GetDefaultFileIcon()

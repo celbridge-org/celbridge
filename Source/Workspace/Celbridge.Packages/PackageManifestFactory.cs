@@ -14,7 +14,7 @@ public class PackageManifestFactory : DocumentEditorFactoryBase
 
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override EditorInstanceId EditorId { get; } = new("celbridge.package-manifest");
+    public override EditorId EditorId { get; } = new("celbridge.package-manifest");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_PackageManifest");
 

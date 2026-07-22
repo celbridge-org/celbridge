@@ -14,7 +14,7 @@ A resource key has the optional `root:path` form. When no root prefix is given, 
 | `project:` (or `""`) | The project root itself |
 | `temp:staging/pkg/v1/file.txt` | A file under the `temp:` scratch root |
 | `logs:session.log` | A file under the `logs:` diagnostic root |
-| `utils:scratchpad._notepad` | A file under the `utils:` utility-document root |
+| `utils:scratchpad.scratchpad._scratchpad` | A file under the `utils:` utility-document root |
 
 ## Roots
 

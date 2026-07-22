@@ -31,7 +31,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.UnregisterAll(this);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorInstanceId editorId = default)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default)
     {
         var createResult = await _documentsService.CreateDocumentView(fileResource, editorId);
         if (createResult.IsFailure)
@@ -140,12 +140,12 @@ public partial class DocumentsPanelViewModel : ObservableObject
         });
     }
 
-    public record class EditorDisplayInfo(EditorInstanceId EditorId, string EditorDisplayName);
+    public record class EditorDisplayInfo(EditorId EditorId, string EditorDisplayName);
 
     // Looks up the display name for the supplied editor id. Returns an empty label when only one
     // factory claims the extension (no disambiguation needed), and null when the editor id is empty
     // or unregistered.
-    public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, EditorInstanceId editorId)
+    public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, EditorId editorId)
     {
         if (editorId.IsEmpty)
         {
@@ -165,12 +165,12 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
     }
 
-    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorInstanceId currentEditorId)
+    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId)
     {
         return _documentsService.GetEditorPickList(fileResource, currentEditorId);
     }
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorInstanceId editorId)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
     {
         return await _documentsService.SetPreferredEditorAsync(fileResource, editorId);
     }
@@ -178,7 +178,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public record class UtilityTabInfo(string IconGlyphName, string Title, string Tooltip);
 
     // Resolves how a utility document presents as a tab, or null when the editor is not a utility.
-    public UtilityTabInfo? ResolveUtilityTabInfo(EditorInstanceId editorId)
+    public UtilityTabInfo? ResolveUtilityTabInfo(EditorId editorId)
     {
         if (editorId.IsEmpty)
         {

@@ -13,7 +13,7 @@ public class HtmlViewerEditorFactory : DocumentEditorFactoryBase
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
 
-    public override EditorInstanceId EditorId { get; } = new("celbridge.html-viewer");
+    public override EditorId EditorId { get; } = new("celbridge.html-viewer");
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_HtmlViewer");
 

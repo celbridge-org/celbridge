@@ -42,7 +42,7 @@ public class DocumentEditorPreferenceStoreTests
         var result = await _store.GetSidecarPreferenceAsync(new ResourceKey("doc.md"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(new EditorInstanceId("test.specific-editor"));
+        result.Value.Should().Be(new EditorId("test.specific-editor"));
     }
 
     [Test]
@@ -117,7 +117,7 @@ public class DocumentEditorPreferenceStoreTests
 
         var editorId = await _store.GetPreferredEditorAsync(new ResourceKey("doc.md"));
 
-        editorId.Should().Be(new EditorInstanceId("test.sidecar-editor"));
+        editorId.Should().Be(new EditorId("test.sidecar-editor"));
     }
 
     [Test]

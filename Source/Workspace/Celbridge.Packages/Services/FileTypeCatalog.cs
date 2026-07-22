@@ -1,73 +1,230 @@
+using System.Text.Json;
+using Celbridge.FileSystem;
+using Celbridge.Logging;
+using Celbridge.Platform;
+
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Host catalog of established file-type categories. This is the single central place that classifies
-/// standard extensions; the code editor's ~190 text extensions are not listed and default to Text,
-/// so only the non-text and multi-category types need an entry. Packages classify their own novel
-/// extensions in their manifests. When the per-file-type language map is folded in later, this map
-/// becomes the data source for an external catalog file.
+/// One catalogued file type: the language a code editor highlights it as, the categories it is grouped
+/// under, and the name it is known by. Every field is optional.
 /// </summary>
+internal sealed record FileTypeEntry(
+    string Language,
+    IReadOnlyList<FileTypeCategory> Categories,
+    string DisplayName,
+    FileTypeIcon? Icon);
+
 public sealed class FileTypeCatalog : IFileTypeCatalog
 {
-    private static readonly IReadOnlyList<FileTypeCategory> Empty = Array.Empty<FileTypeCategory>();
+    private const string CatalogRelativePath = "celbridge-client/file-types.json";
 
-    private static readonly IReadOnlyDictionary<string, IReadOnlyList<FileTypeCategory>> Categories =
-        new Dictionary<string, IReadOnlyList<FileTypeCategory>>(StringComparer.OrdinalIgnoreCase)
+    private const string LanguageKey = "language";
+    private const string CategoriesKey = "categories";
+    private const string DisplayNameKey = "display-name";
+    private const string IconKey = "icon";
+    private const string IconColorKey = "icon-color";
+
+    private static readonly IReadOnlyList<FileTypeCategory> NoCategories = Array.Empty<FileTypeCategory>();
+
+    private readonly ILogger<FileTypeCatalog> _logger;
+    private readonly ILocalFileSystem _fileSystem;
+    private readonly IAppEnvironment _appEnvironment;
+
+    private readonly Dictionary<string, FileTypeEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _languageExtensions = new();
+    private List<string> _iconExtensions = new();
+
+    private bool _loaded;
+
+    public FileTypeCatalog(
+        ILogger<FileTypeCatalog> logger,
+        ILocalFileSystem fileSystem,
+        IAppEnvironment appEnvironment)
+    {
+        _logger = logger;
+        _fileSystem = fileSystem;
+        _appEnvironment = appEnvironment;
+    }
+
+    public IReadOnlyList<string> LanguageExtensions => _languageExtensions;
+
+    public IReadOnlyList<string> IconExtensions => _iconExtensions;
+
+    // A catalog that fails to load leaves every extension uncatalogued rather than stopping the
+    // application. The code editor then claims no file types and its package reports a load failure.
+    public async Task LoadAsync()
+    {
+        if (_loaded)
         {
-            // Text formats that also read as another category.
-            [".md"] = new[] { FileTypeCategory.Text, FileTypeCategory.Document },
-            [".markdown"] = new[] { FileTypeCategory.Text, FileTypeCategory.Document },
-            [".json"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
-            [".xml"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
-            [".yaml"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
-            [".yml"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
-            [".toml"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
-            [".csv"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
-            [".tsv"] = new[] { FileTypeCategory.Text, FileTypeCategory.Data },
+            return;
+        }
+        _loaded = true;
 
-            // Images.
-            [".jpg"] = new[] { FileTypeCategory.Image },
-            [".jpeg"] = new[] { FileTypeCategory.Image },
-            [".png"] = new[] { FileTypeCategory.Image },
-            [".gif"] = new[] { FileTypeCategory.Image },
-            [".webp"] = new[] { FileTypeCategory.Image },
-            [".bmp"] = new[] { FileTypeCategory.Image },
-            [".ico"] = new[] { FileTypeCategory.Image },
-            [".svg"] = new[] { FileTypeCategory.Image, FileTypeCategory.Text },
+        var catalogPath = Path.Combine(_appEnvironment.SharedWebAssetsFolderPath, CatalogRelativePath);
 
-            // Audio.
-            [".mp3"] = new[] { FileTypeCategory.Audio },
-            [".wav"] = new[] { FileTypeCategory.Audio },
-            [".ogg"] = new[] { FileTypeCategory.Audio },
-            [".flac"] = new[] { FileTypeCategory.Audio },
-            [".m4a"] = new[] { FileTypeCategory.Audio },
+        var readResult = await _fileSystem.ReadAllTextAsync(catalogPath);
+        if (readResult.IsFailure)
+        {
+            _logger.LogError(readResult, $"Failed to read the file type catalog: {catalogPath}");
+            return;
+        }
+        var json = readResult.Value;
 
-            // Video.
-            [".mp4"] = new[] { FileTypeCategory.Video },
-            [".webm"] = new[] { FileTypeCategory.Video },
-            [".avi"] = new[] { FileTypeCategory.Video },
-            [".mov"] = new[] { FileTypeCategory.Video },
-            [".mkv"] = new[] { FileTypeCategory.Video },
-
-            // Documents.
-            [".pdf"] = new[] { FileTypeCategory.Document },
-
-            // Data.
-            [".xlsx"] = new[] { FileTypeCategory.Data },
-        };
+        try
+        {
+            ParseCatalog(json);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, $"Failed to parse the file type catalog: {catalogPath}");
+            _entries.Clear();
+            _languageExtensions = new List<string>();
+            _iconExtensions = new List<string>();
+        }
+    }
 
     public IReadOnlyList<FileTypeCategory> GetCategories(string extension)
     {
+        if (TryGetEntry(extension, out var entry))
+        {
+            return entry.Categories;
+        }
+
+        return NoCategories;
+    }
+
+    public string GetLanguage(string extension)
+    {
+        if (TryGetEntry(extension, out var entry))
+        {
+            return entry.Language;
+        }
+
+        return string.Empty;
+    }
+
+    public string GetDisplayName(string extension)
+    {
+        if (TryGetEntry(extension, out var entry))
+        {
+            return entry.DisplayName;
+        }
+
+        return string.Empty;
+    }
+
+    public FileTypeIcon? GetIcon(string extension)
+    {
+        if (TryGetEntry(extension, out var entry))
+        {
+            return entry.Icon;
+        }
+
+        return null;
+    }
+
+    private bool TryGetEntry(string extension, out FileTypeEntry entry)
+    {
         if (string.IsNullOrEmpty(extension))
         {
-            return Empty;
+            entry = null!;
+            return false;
         }
 
-        if (Categories.TryGetValue(extension, out var categories))
+        return _entries.TryGetValue(extension, out entry!);
+    }
+
+    private void ParseCatalog(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
         {
-            return categories;
+            throw new InvalidOperationException("The file type catalog must be a JSON object with extension keys.");
         }
 
-        return Empty;
+        var languageExtensions = new List<string>();
+        var iconExtensions = new List<string>();
+
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var extension = property.Name.ToLowerInvariant();
+            if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
+            {
+                _logger.LogWarning($"Skipping malformed extension key in the file type catalog: {property.Name}");
+                continue;
+            }
+
+            var entry = ParseEntry(property.Value);
+            _entries[extension] = entry;
+
+            if (!string.IsNullOrEmpty(entry.Language))
+            {
+                languageExtensions.Add(extension);
+            }
+
+            if (entry.Icon is not null)
+            {
+                iconExtensions.Add(extension);
+            }
+        }
+
+        _languageExtensions = languageExtensions;
+        _iconExtensions = iconExtensions;
+    }
+
+    private FileTypeEntry ParseEntry(JsonElement element)
+    {
+        var language = string.Empty;
+        if (element.TryGetProperty(LanguageKey, out var languageElement) &&
+            languageElement.ValueKind == JsonValueKind.String)
+        {
+            language = languageElement.GetString() ?? string.Empty;
+        }
+
+        var displayName = string.Empty;
+        if (element.TryGetProperty(DisplayNameKey, out var displayNameElement) &&
+            displayNameElement.ValueKind == JsonValueKind.String)
+        {
+            displayName = displayNameElement.GetString() ?? string.Empty;
+        }
+
+        FileTypeIcon? icon = null;
+        if (element.TryGetProperty(IconKey, out var iconElement) &&
+            iconElement.ValueKind == JsonValueKind.String)
+        {
+            var glyphName = iconElement.GetString() ?? string.Empty;
+            var iconColor = string.Empty;
+            if (element.TryGetProperty(IconColorKey, out var iconColorElement) &&
+                iconColorElement.ValueKind == JsonValueKind.String)
+            {
+                iconColor = iconColorElement.GetString() ?? string.Empty;
+            }
+
+            icon = new FileTypeIcon(glyphName, iconColor);
+        }
+
+        var categories = NoCategories;
+        if (element.TryGetProperty(CategoriesKey, out var categoriesElement) &&
+            categoriesElement.ValueKind == JsonValueKind.Array)
+        {
+            var parsed = new List<FileTypeCategory>();
+            foreach (var categoryElement in categoriesElement.EnumerateArray())
+            {
+                var categoryName = categoryElement.GetString();
+                if (Enum.TryParse<FileTypeCategory>(categoryName, ignoreCase: true, out var category))
+                {
+                    parsed.Add(category);
+                }
+                else
+                {
+                    _logger.LogWarning($"Skipping unknown category '{categoryName}' in the file type catalog.");
+                }
+            }
+            categories = parsed;
+        }
+
+        return new FileTypeEntry(language, categories, displayName, icon);
     }
 }

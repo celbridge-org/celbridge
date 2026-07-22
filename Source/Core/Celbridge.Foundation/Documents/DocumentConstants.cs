@@ -8,11 +8,11 @@ public static class DocumentConstants
     /// <summary>
     /// Built-in id of the code editor.
     /// </summary>
-    public static readonly EditorInstanceId CodeEditorId = Packages.BuiltInEditors.CodeEditorId;
+    public static readonly EditorId CodeEditorId = Packages.BuiltInEditors.CodeEditorId;
 
     /// <summary>
     /// Id of the last-resort text fallback view, used when no other editor claims the file.
     /// Has no registered factory.
     /// </summary>
-    public static readonly EditorInstanceId TextBoxFallbackEditorId = new("celbridge.text-box-fallback");
+    public static readonly EditorId TextBoxFallbackEditorId = new("celbridge.text-box-fallback");
 }

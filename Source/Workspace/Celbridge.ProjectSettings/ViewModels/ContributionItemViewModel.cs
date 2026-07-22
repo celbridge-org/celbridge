@@ -138,7 +138,14 @@ public partial class ContributionItemViewModel : ObservableObject
 
     public bool CanOpenManifest => _info.CanOpenManifest;
 
+    /// <summary>
+    /// File name of the editor manifest, shown as the text of the link that opens it.
+    /// </summary>
+    public string ManifestFileName => System.IO.Path.GetFileName(_info.ManifestPath);
+
     public string EnabledLabel => ProjectSettingsLabels.ContributionEnabledLabel;
+
+    public string ManifestLabel => ProjectSettingsLabels.ManifestLabel;
 
     public string ToggleTooltip => ProjectSettingsLabels.ContributionToggleTooltip;
 

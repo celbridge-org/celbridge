@@ -106,7 +106,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         var fileTypes = contribution.FileTypes
             .Select(fileType => new FileTypeInfo(fileType.FileExtension.ToLowerInvariant(), fileType.Category))
             .ToArray();
-        var editorId = EditorInstanceId.Create(packageName, contribution.Id).ToString();
+        var editorId = EditorId.Create(packageName, contribution.Id).ToString();
         var iconGlyph = contribution.UtilityDescriptor?.Icon ?? string.Empty;
 
         var description = string.Empty;

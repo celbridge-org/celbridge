@@ -149,9 +149,9 @@ public class ProjectConfigParserTests
     [Test]
     public void ParseFromFile_ArbitraryTopLevelTable_IsRejectedWithEntryError()
     {
-        // v1 declared editor instances as arbitrary [instance-id] tables. Those are no longer part
+        // v1 declared editors as arbitrary [editor-id] tables. Those are no longer part
         // of the schema: any top-level table other than the known sections is rejected with an
-        // entry error rather than parsed as an instance.
+        // entry error rather than parsed as an editor.
         var content = """
             [my-notes]
             package = "acme-notes"

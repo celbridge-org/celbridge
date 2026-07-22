@@ -44,8 +44,8 @@ public static class PackageDisplayText
     }
 
     /// <summary>
-    /// Humanizes the last dot-separated segment of an identifier (e.g. "celbridge.notepad" becomes
-    /// "Notepad").
+    /// Humanizes the last dot-separated segment of an identifier (e.g. "celbridge.notes" becomes
+    /// "Notes").
     /// </summary>
     public static string HumanizeLastSegment(string identifier)
     {

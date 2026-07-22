@@ -14,7 +14,7 @@ public interface IDocumentView
     /// <summary>
     /// Id of the factory that produced this view. Immutable for the view's lifetime.
     /// </summary>
-    EditorInstanceId EditorId { get; }
+    EditorId EditorId { get; }
 
     /// <summary>
     /// Sets the file resource for the document view.

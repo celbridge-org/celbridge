@@ -88,7 +88,7 @@ public class OpenWithMenuOptionTests
     private static IDocumentEditorFactory CreateFactory(string editorId)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
-        factory.EditorId.Returns(new EditorInstanceId(editorId));
+        factory.EditorId.Returns(new EditorId(editorId));
         return factory;
     }
 

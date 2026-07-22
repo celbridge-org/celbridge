@@ -8,7 +8,7 @@ A loaded project arranges the UI around a central editor area. You can highlight
 - **Search** — full-text search, reached from the Utility Panel rail alongside Explorer. From the agent, use `file_grep` for the same purpose.
 - **Console** (bottom) — a Python REPL where the user converses with you; it can be maximised to fill the editor area.
 
-The left sidebar is the **Utility Panel**: an icon rail switches its content between Explorer, Search, and any utility instances the project declares. The sidebars and console are shown or hidden from the title-bar toggle buttons. `app_get_state` reports which panels are currently visible and focused, and `activeUtility` names the rail surface currently shown.
+The left sidebar is the **Utility Panel**: an icon rail switches its content between Explorer, Search, and any utilities the project's packages contribute. The sidebars and console are shown or hidden from the title-bar toggle buttons. `app_get_state` reports which panels are currently visible and focused, and `activeUtility` names the rail surface currently shown.
 
 ## Utilities
 

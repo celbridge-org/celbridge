@@ -532,7 +532,7 @@ public class ManifestTests
     [Test]
     public void LoadPackage_UtilityWithFileTypes_ReturnsFailure()
     {
-        // A utility owns per-instance state files and must not claim file extensions.
+        // A utility owns its own state file and must not claim file extensions.
         WriteSingleEditorPackage("""
             [editor]
             id = "widget-renderer"
@@ -909,7 +909,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_ExtensionsFile_ExpandsToEachJsonKey()
+    public void LoadPackage_FromCatalogLanguages_ClaimsEveryCatalogExtension()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -919,14 +919,11 @@ public class ManifestTests
             display-name = "TestEditor"
 
             [[file-types]]
-            extensions-file = "types.json"
+            from-catalog = "languages"
             display-name = "Code_FileType_Code"
             """);
 
-        File.WriteAllText(Path.Combine(_tempFolder, "types.json"),
-            """{ ".js": "javascript", ".py": "python", ".cs": "csharp" }""");
-
-        var result = LoadPackage();
+        var result = LoadPackage(CatalogWithLanguages(".js", ".py", ".cs"));
 
         result.IsSuccess.Should().BeTrue();
         var contribution = result.Value.Editors[0];
@@ -937,26 +934,49 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_ExtensionsFile_MissingFile_ReturnsFailure()
+    public void LoadPackage_FromCatalogWithEmptyCatalog_ReturnsFailure()
     {
+        // The catalog is the editor's only source of extensions, so an unloaded or empty catalog
+        // leaves a document editor claiming nothing, which is a load failure.
         WriteSingleEditorPackage("""
             [editor]
-            id = "missing-ext"
+            id = "code-editor"
             type = "document"
             display-name = "TestEditor"
 
             [[file-types]]
-            extensions-file = "nonexistent.json"
-            display-name = "X"
+            from-catalog = "languages"
+            display-name = "Code_FileType_Code"
             """);
 
-        var result = LoadPackage();
+        var result = LoadPackage(CatalogWithLanguages());
 
         result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("at least one file type");
     }
 
     [Test]
-    public void LoadPackage_ExtensionsFile_CombinedWithExtension_ReturnsFailure()
+    public void LoadPackage_FromCatalogUnknownValue_ReturnsFailure()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "code-editor"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            from-catalog = "images"
+            display-name = "X"
+            """);
+
+        var result = LoadPackage(CatalogWithLanguages(".js"));
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("from-catalog");
+    }
+
+    [Test]
+    public void LoadPackage_FromCatalogCombinedWithExtension_ReturnsFailure()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -966,13 +986,11 @@ public class ManifestTests
 
             [[file-types]]
             extension = ".x"
-            extensions-file = "types.json"
+            from-catalog = "languages"
             display-name = "X"
             """);
 
-        File.WriteAllText(Path.Combine(_tempFolder, "types.json"), """{ ".y": "yaml" }""");
-
-        var result = LoadPackage();
+        var result = LoadPackage(CatalogWithLanguages(".y"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -1527,7 +1545,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_ExtensionsFileCategory_AppliesToEveryExpandedType()
+    public void LoadPackage_FromCatalogCategory_AppliesToEveryClaimedType()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -1536,24 +1554,98 @@ public class ManifestTests
             display-name = "TestEditor"
 
             [[file-types]]
-            extensions-file = "types.json"
+            from-catalog = "languages"
             display-name = "Code_FileType_Code"
             category = "text"
             """);
 
-        File.WriteAllText(Path.Combine(_tempFolder, "types.json"),
-            """{ ".js": "javascript", ".py": "python" }""");
-
-        var result = LoadPackage();
+        var result = LoadPackage(CatalogWithLanguages(".js", ".py"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Editors[0].FileTypes.Should().AllSatisfy(fileType =>
             fileType.Category.Should().Be(FileTypeCategory.Text));
     }
 
-    private Result<Package> LoadPackage()
+    [Test]
+    public void LoadPackage_FileTypeIcon_IsCarriedOnTheFileType()
     {
-        return PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon = "journal-text"
+            icon-color = "#FF8800"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        var fileType = result.Value.Editors[0].FileTypes.Should().ContainSingle().Subject;
+        fileType.Icon.Should().Be("journal-text");
+        fileType.IconColor.Should().Be("#FF8800");
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeIconOmitted_LeavesIconEmpty()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        var fileType = result.Value.Editors[0].FileTypes.Should().ContainSingle().Subject;
+        fileType.Icon.Should().BeEmpty();
+        fileType.IconColor.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeIconColorWithoutIcon_ReturnsFailure()
+    {
+        // A colour on its own would silently do nothing, so it is rejected at load.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon-color = "#FF8800"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("icon-color");
+    }
+
+    private static IFileTypeCatalog CatalogWithLanguages(params string[] extensions)
+    {
+        var catalog = Substitute.For<IFileTypeCatalog>();
+        catalog.LanguageExtensions.Returns(extensions);
+        return catalog;
+    }
+
+    private Result<Package> LoadPackage(IFileTypeCatalog? fileTypeCatalog = null)
+    {
+        return PackageManifestLoader.LoadPackage(
+            Path.Combine(_tempFolder, "package.toml"),
+            fileTypeCatalog: fileTypeCatalog);
     }
 
     private void WritePackageToml(string content)
