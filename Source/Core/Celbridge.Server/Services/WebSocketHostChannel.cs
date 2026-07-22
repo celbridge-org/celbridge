@@ -73,6 +73,10 @@ public sealed class WebSocketHostChannel : IHostChannel, IDisposable
             {
                 if (_webSocket.State != WebSocketState.Open)
                 {
+                    // Dropping it silently would leave the caller waiting out its timeout with no trace of
+                    // why the page never answered.
+                    _logger.LogWarning(
+                        "Dropped a host to page message because the WebSocket is {State}", _webSocket.State);
                     continue;
                 }
 

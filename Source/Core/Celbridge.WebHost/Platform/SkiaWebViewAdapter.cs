@@ -18,6 +18,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // completes for a control that has not been parented to a window.
     private Panel? _initHost;
 
+    private bool _checkedBackgroundActivity;
+
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
 
@@ -60,15 +62,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
             await webView.EnsureCoreWebView2Async();
 
-            // Pin the native WKWebView for the process lifetime. Uno's native element disposes the
-            // view on every Unloaded and later touches the stale handle, which is a use-after-free
-            // (see RetainNativeWebView). The handle may not be resolvable yet at this point, so the
-            // other adapter entry points that resolve it also pin (RetainNativeWebView is idempotent).
+            // Pin the native WKWebView for the process lifetime and keep it schedulable while hidden. Uno's
+            // native element disposes the view on every Unloaded and later touches the stale handle, which is
+            // a use-after-free (see RetainNativeWebView). The handle may not be resolvable yet at this point,
+            // so the other adapter entry points that resolve it also pin (RetainNativeWebView is idempotent).
             if (OperatingSystem.IsMacOS() && webView.CoreWebView2 is not null)
             {
                 if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
                 {
                     MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
+                    CheckBackgroundPageActivityOnce(nativeWebViewHandle);
                 }
                 else
                 {
@@ -80,6 +83,30 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             host.Children.Remove(webView);
         }
+    }
+
+    // WebKit suspends a hidden page's process, which stalls host-to-editor RPC for a background document
+    // tab until the tab is shown again. RetainNativeWebView turns that suppression off through private SPI,
+    // so this reports once per session whether the SPI still exists: losing it silently brings the stall back.
+    private void CheckBackgroundPageActivityOnce(IntPtr nativeWebViewHandle)
+    {
+        if (_checkedBackgroundActivity)
+        {
+            return;
+        }
+
+        _checkedBackgroundActivity = true;
+
+        var applied = MacOSWebViewInterop.EnableBackgroundPageActivity(nativeWebViewHandle);
+        if (applied.Count == MacOSWebViewInterop.BackgroundPageActivityPreferenceCount)
+        {
+            _logger.LogDebug("Background page activity preferences applied: {Applied}", string.Join(", ", applied));
+            return;
+        }
+
+        _logger.LogWarning(
+            "WebKit no longer exposes every background page activity preference, so background documents may stop servicing host RPC. Applied: {Applied}",
+            applied.Count == 0 ? "none" : string.Join(", ", applied));
     }
 
     public void CloseWebView(WebView2 webView, Panel container)
