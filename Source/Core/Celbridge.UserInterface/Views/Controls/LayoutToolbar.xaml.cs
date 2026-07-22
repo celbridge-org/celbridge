@@ -293,6 +293,7 @@ public sealed partial class LayoutToolbar : UserControl
         {
             command.Transition = transition;
         });
+        PanelLayoutFlyout.Hide();
     }
 
     private void FullScreenToggle_Click(object sender, RoutedEventArgs e)

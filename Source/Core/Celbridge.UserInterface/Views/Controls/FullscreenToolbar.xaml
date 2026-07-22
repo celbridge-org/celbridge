@@ -9,6 +9,7 @@
   <!--
   Minimal strip that appears at the top of the screen in Presentation mode (application toolbar hidden) when the mouse moves near the top edge.
   Clicking anywhere on it reveals the application toolbar. The TriggerZone is an invisible area at the top that detects mouse hover.
+  Where the platform supplies a native menu bar, the strip is instead a non-interactive hint pointing at the menu item that exits Presentation mode.
   -->
   <Grid x:Name="RootContainer">
     <!-- Invisible trigger zone that sits above all other UI elements -->

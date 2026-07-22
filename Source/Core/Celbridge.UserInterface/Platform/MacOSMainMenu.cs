@@ -27,6 +27,7 @@ internal static class MacOSMainMenu
     private const long TagNewFolder = 12;
     private const long TagShowLogs = 13;
     private const long TagFind = 14;
+    private const long TagExitPresentation = 15;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -115,6 +116,10 @@ internal static class MacOSMainMenu
             {
                 MacMenuItem.Selector(Text("Menu_Minimize"), "performMiniaturize:", "m"),
                 MacMenuItem.Selector(Text("Menu_Zoom"), "performZoom:"),
+                MacMenuItem.Separator(),
+                // The only way out of Presentation mode on macOS. The in-window reveal strip cannot be
+                // used there because the menu bar and title bar auto-reveal over it in native fullscreen.
+                MacMenuItem.Command(Text("Menu_ExitPresentation"), TagExitPresentation),
                 MacMenuItem.Separator(),
                 MacMenuItem.Selector(Text("Menu_BringAllToFront"), "arrangeInFront:")
             }
@@ -208,6 +213,9 @@ internal static class MacOSMainMenu
             case TagFind:
                 return GetActiveFindableDocument()?.CanFind ?? false;
 
+            case TagExitPresentation:
+                return ServiceLocator.AcquireService<IWindowModeService>().LayoutMode == LayoutMode.Presentation;
+
             case TagNoRecentProjects:
                 return false;
 
@@ -286,6 +294,15 @@ internal static class MacOSMainMenu
 
             case TagFind:
                 GetActiveFindableDocument()?.TryBeginFind();
+                break;
+
+            case TagExitPresentation:
+                // Focus keeps the side panels hidden while restoring the application toolbar, so the user
+                // can pick their next layout from there.
+                ServiceLocator.AcquireService<ICommandService>().Execute<ISetLayoutCommand>(command =>
+                {
+                    command.Transition = LayoutTransition.Focus;
+                });
                 break;
 
             case TagClearRecentProjects:
