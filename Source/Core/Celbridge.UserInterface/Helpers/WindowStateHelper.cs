@@ -11,11 +11,17 @@ namespace Celbridge.UserInterface.Helpers;
 /// </summary>
 public sealed class WindowStateHelper
 {
+    // The smallest window that keeps the application toolbar and a usable editor pane on screen, chosen to
+    // sit well inside the work area of a 1280x800 display.
+    private const int MinimumWindowWidth = 800;
+    private const int MinimumWindowHeight = 600;
+
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IFullScreenController _fullScreenController;
     private readonly IWindowBoundsValidator _windowBoundsValidator;
+    private readonly IWindowSizeConstraints _windowSizeConstraints;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -27,13 +33,15 @@ public sealed class WindowStateHelper
         IMessengerService messengerService,
         ISettingsService settingsService,
         IFullScreenController fullScreenController,
-        IWindowBoundsValidator windowBoundsValidator)
+        IWindowBoundsValidator windowBoundsValidator,
+        IWindowSizeConstraints windowSizeConstraints)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
         _fullScreenController = fullScreenController;
         _windowBoundsValidator = windowBoundsValidator;
+        _windowSizeConstraints = windowSizeConstraints;
     }
 
     /// <summary>
@@ -64,6 +72,8 @@ public sealed class WindowStateHelper
 
             // Bind the platform-specific fullscreen controller to this window.
             _fullScreenController.Initialize(_appWindow);
+
+            ApplyMinimumWindowSize();
 
             // This is a "best-effort" restore. If it doesn't work, the default window state will be applied automatically.
             TryRestoreWindowState();
@@ -169,6 +179,9 @@ public sealed class WindowStateHelper
             // refresh the cached reference and the tracked kind for window-state tracking.
             _overlappedPresenter = _appWindow.Presenter as OverlappedPresenter;
             _previousPresenterKind = _appWindow.Presenter.Kind;
+
+            // A replacement presenter does not carry over the size constraint.
+            ApplyMinimumWindowSize();
         }
         catch (Exception ex)
         {
@@ -178,6 +191,22 @@ public sealed class WindowStateHelper
         {
             _isApplyingWindowMode = false;
         }
+    }
+
+    private void ApplyMinimumWindowSize()
+    {
+        if (_appWindow == null)
+        {
+            return;
+        }
+
+        var minimumSize = new SizeInt32
+        {
+            Width = MinimumWindowWidth,
+            Height = MinimumWindowHeight
+        };
+
+        _windowSizeConstraints.ApplyMinimumSize(_appWindow, minimumSize);
     }
 
     private void TryRestoreWindowState()
@@ -196,8 +225,13 @@ public sealed class WindowStateHelper
 
         int x = _settingsService.Get(SettingCatalog.Window.PreferredX);
         int y = _settingsService.Get(SettingCatalog.Window.PreferredY);
-        int width = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
-        int height = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
+        int savedWidth = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
+        int savedHeight = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
+
+        // The platform constraint only applies to user resizing, and geometry saved before the minimum was
+        // introduced may be smaller than it, so clamp the restored size here too.
+        int width = Math.Max(savedWidth, MinimumWindowWidth);
+        int height = Math.Max(savedHeight, MinimumWindowHeight);
 
         // Object-initializer syntax is used for the Windows.Graphics structs because the Skia desktop
         // head's projection does not expose their positional constructors.
