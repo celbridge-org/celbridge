@@ -101,6 +101,8 @@ public class IconService : IIconService
     private Dictionary<string, IconFontGlyphs> _glyphsByPrefix = new();
     private IReadOnlyDictionary<string, IconDefinition> _fileIconOverrides =
         new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, IconDefinition> _fileNameIconOverrides =
+        new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
 
     public IconDefinition DefaultFileIcon { get; private set; }
     public IconDefinition DefaultFolderIcon { get; private set; }
@@ -202,6 +204,18 @@ public class IconService : IIconService
         return GetFileIcon(iconName);
     }
 
+    public Result<IconDefinition> GetFileIconForFileName(string fileName)
+    {
+        if (!string.IsNullOrEmpty(fileName) &&
+            _fileNameIconOverrides.TryGetValue(fileName, out var fileNameOverride))
+        {
+            return Result<IconDefinition>.Ok(fileNameOverride);
+        }
+
+        // A name with no extension falls through to the default file icon.
+        return GetFileIconForExtension(Path.GetExtension(fileName));
+    }
+
     public Result<IconDefinition> CreateIcon(string iconName, string colorHex)
     {
         if (!TryGetGlyph(iconName, out var glyph))
@@ -225,17 +239,20 @@ public class IconService : IIconService
         return Result<IconDefinition>.Ok(iconDefinition);
     }
 
-    public void SetFileIconOverrides(IReadOnlyDictionary<string, IconDefinition> overrides)
+    public void SetFileIconOverrides(
+        IReadOnlyDictionary<string, IconDefinition> extensionOverrides,
+        IReadOnlyDictionary<string, IconDefinition> fileNameOverrides)
     {
         // Callers supply extensions in either form; the lookup keys on the dot-free form.
         var normalized = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
-        foreach (var iconOverride in overrides)
+        foreach (var iconOverride in extensionOverrides)
         {
             var extension = iconOverride.Key.TrimStart('.');
             normalized[extension] = iconOverride.Value;
         }
 
         _fileIconOverrides = normalized;
+        _fileNameIconOverrides = new Dictionary<string, IconDefinition>(fileNameOverrides, StringComparer.OrdinalIgnoreCase);
     }
 
     public IconGlyph GetGlyph(IconSymbol icon)

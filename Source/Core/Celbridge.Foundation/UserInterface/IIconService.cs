@@ -36,16 +36,26 @@ public interface IIconService
     Result<IconDefinition> GetFileIconForExtension(string fileExtension);
 
     /// <summary>
+    /// Returns the file-type icon definition for a whole file name. An override registered for the name
+    /// wins over one registered for the extension, so a file with no usable extension can still be
+    /// recognised.
+    /// </summary>
+    Result<IconDefinition> GetFileIconForFileName(string fileName);
+
+    /// <summary>
     /// Builds an icon definition from a prefixed icon name and an optional hex colour, failing when the
     /// name is unknown or the colour is malformed.
     /// </summary>
     Result<IconDefinition> CreateIcon(string iconName, string colorHex);
 
     /// <summary>
-    /// Replaces the per-extension icon overrides consulted ahead of the bundled theme. Each discovery
-    /// pass supplies the full set, so overrides from a previous workspace do not linger.
+    /// Replaces the icon overrides consulted ahead of the bundled theme, keyed by extension and by whole
+    /// file name. Each discovery pass supplies the full set, so overrides from a previous workspace do
+    /// not linger.
     /// </summary>
-    void SetFileIconOverrides(IReadOnlyDictionary<string, IconDefinition> overrides);
+    void SetFileIconOverrides(
+        IReadOnlyDictionary<string, IconDefinition> extensionOverrides,
+        IReadOnlyDictionary<string, IconDefinition> fileNameOverrides);
 
     /// <summary>
     /// The default icon definition for file resources.

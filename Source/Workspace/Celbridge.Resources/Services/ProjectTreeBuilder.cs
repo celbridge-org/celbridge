@@ -79,9 +79,7 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
             }
             else
             {
-                var fileExtension = GetFileExtension(childName);
-
-                var getIconResult = _iconService.GetFileIconForExtension(fileExtension);
+                var getIconResult = _iconService.GetFileIconForFileName(childName);
                 var iconDefinition = getIconResult.IsSuccess
                     ? getIconResult.Value
                     : _iconService.DefaultFileIcon;

@@ -17,8 +17,10 @@ internal sealed class EmptyFileTypeCatalog : IFileTypeCatalog
     public string GetLanguage(string extension) => string.Empty;
     public string GetDisplayName(string extension) => string.Empty;
     public FileTypeIcon? GetIcon(string extension) => null;
+    public FileTypeIcon? GetIconForFileName(string fileName) => null;
     public IReadOnlyList<string> LanguageExtensions => Array.Empty<string>();
     public IReadOnlyList<string> IconExtensions => Array.Empty<string>();
+    public IReadOnlyList<string> IconFileNames => Array.Empty<string>();
 }
 
 /// <summary>

@@ -46,6 +46,13 @@ public interface IFileTypeCatalog
     FileTypeIcon? GetIcon(string extension);
 
     /// <summary>
+    /// Returns the icon the catalog assigns to a whole file name, or null when it assigns none. Covers
+    /// the files that carry no usable extension, such as Makefile and LICENSE. Matched
+    /// case-insensitively.
+    /// </summary>
+    FileTypeIcon? GetIconForFileName(string fileName);
+
+    /// <summary>
     /// Every extension the catalog assigns a coding language to, which is the set a general code editor claims.
     /// </summary>
     IReadOnlyList<string> LanguageExtensions { get; }
@@ -54,4 +61,9 @@ public interface IFileTypeCatalog
     /// Every extension the catalog assigns an icon to.
     /// </summary>
     IReadOnlyList<string> IconExtensions { get; }
+
+    /// <summary>
+    /// Every whole file name the catalog assigns an icon to.
+    /// </summary>
+    IReadOnlyList<string> IconFileNames { get; }
 }

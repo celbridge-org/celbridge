@@ -515,6 +515,7 @@ public class PackageRegistry
     private void ApplyFileIconOverrides(List<ContributionIssue> contributionIssues)
     {
         var overrides = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
+        var fileNameOverrides = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var contribution in GetAvailableContributions())
         {
@@ -582,15 +583,33 @@ public class PackageRegistry
             overrides[extension] = createResult.Value;
         }
 
-        foreach (var publishedOverride in overrides)
+        foreach (var fileName in _fileTypeCatalog.IconFileNames)
+        {
+            var catalogIcon = _fileTypeCatalog.GetIconForFileName(fileName);
+            if (catalogIcon is null)
+            {
+                continue;
+            }
+
+            var createResult = _iconService.CreateIcon(catalogIcon.IconName, catalogIcon.Color);
+            if (createResult.IsFailure)
+            {
+                _logger.LogWarning(createResult, $"Ignoring the file type catalog icon for '{fileName}'");
+                continue;
+            }
+
+            fileNameOverrides[fileName] = createResult.Value;
+        }
+
+        foreach (var publishedOverride in overrides.Concat(fileNameOverrides))
         {
             var icon = publishedOverride.Value;
-            var codePoint = icon.FontCharacter.Length > 0 ? (int)icon.FontCharacter[0] : 0;
+            var codePoint = char.ConvertToUtf32(icon.FontCharacter, 0);
             _logger.LogDebug(
                 $"File icon override: '{publishedOverride.Key}' glyph U+{codePoint:X4} colour {icon.FontColor} font {icon.FontFamily}");
         }
 
-        _iconService.SetFileIconOverrides(overrides);
+        _iconService.SetFileIconOverrides(overrides, fileNameOverrides);
     }
 
     // The project load report is a developer-facing artifact written in English, so a contribution issue

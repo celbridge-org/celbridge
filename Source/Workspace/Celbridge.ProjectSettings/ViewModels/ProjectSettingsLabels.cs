@@ -4,6 +4,13 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
+/// Which localized message describes a set of issues: the resource key to look up and the value
+/// formatted into it. Choosing the message is separated from looking it up so the choice can be tested
+/// without a localizer.
+/// </summary>
+internal sealed record IssueMessage(string ResourceKey, string Argument);
+
+/// <summary>
 /// Shared localized labels used by the Project Settings item view models. The labels are bound from
 /// data templates, which resolve against the item view model, so exposing them here lets each small
 /// view model surface them without taking a localizer dependency of its own.
@@ -38,18 +45,9 @@ internal static class ProjectSettingsLabels
     /// </summary>
     public static string ContributionIssues(IReadOnlyList<ContributionIssue> issues)
     {
-        if (issues.Count == 1)
-        {
-            var issue = issues[0];
-            return issue.Kind switch
-            {
-                ContributionIssueKind.UnresolvedIcon =>
-                    Localizer.GetString("ProjectSettings_ContributionIssue_UnresolvedIcon_Single", issue.Value),
-                _ => Localizer.GetString("ProjectSettings_ContributionIssue_Multiple", issues.Count)
-            };
-        }
+        var message = ContributionIssueMessage(issues);
 
-        return Localizer.GetString("ProjectSettings_ContributionIssue_Multiple", issues.Count);
+        return Localizer.GetString(message.ResourceKey, message.Argument);
     }
 
     /// <summary>
@@ -57,12 +55,40 @@ internal static class ProjectSettingsLabels
     /// </summary>
     public static string PackageIssues(IReadOnlyList<string> contributionNames)
     {
-        if (contributionNames.Count == 1)
+        var message = PackageIssueMessage(contributionNames);
+
+        return Localizer.GetString(message.ResourceKey, message.Argument);
+    }
+
+    /// <summary>
+    /// Chooses the message for a contribution's dropped settings. A single issue is named by the value
+    /// that could not be applied; several are reported as a count, which also covers a mix of kinds.
+    /// </summary>
+    internal static IssueMessage ContributionIssueMessage(IReadOnlyList<ContributionIssue> issues)
+    {
+        if (issues.Count == 1)
         {
-            return Localizer.GetString("ProjectSettings_PackageIssue_Single", contributionNames[0]);
+            var issue = issues[0];
+            if (issue.Kind == ContributionIssueKind.UnresolvedIcon)
+            {
+                return new IssueMessage("ProjectSettings_ContributionIssue_UnresolvedIcon_Single", issue.Value);
+            }
         }
 
-        return Localizer.GetString("ProjectSettings_PackageIssue_Multiple", contributionNames.Count);
+        return new IssueMessage("ProjectSettings_ContributionIssue_Multiple", issues.Count.ToString());
+    }
+
+    /// <summary>
+    /// Chooses the message naming which of a package's contributions have dropped settings.
+    /// </summary>
+    internal static IssueMessage PackageIssueMessage(IReadOnlyList<string> contributionNames)
+    {
+        if (contributionNames.Count == 1)
+        {
+            return new IssueMessage("ProjectSettings_PackageIssue_Single", contributionNames[0]);
+        }
+
+        return new IssueMessage("ProjectSettings_PackageIssue_Multiple", contributionNames.Count.ToString());
     }
 
     public static string BuiltInPackageName(string name) => Localizer.GetString("ProjectSettings_BuiltInPackageNameFormat", name);

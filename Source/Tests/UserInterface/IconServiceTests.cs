@@ -130,6 +130,33 @@ public class IconServiceTests
         iconService.CreateIcon(iconName, colorHex).IsFailure.Should().BeTrue();
     }
 
+    /// <summary>
+    /// A file with no usable extension is recognised by its whole name, and a name override outranks the
+    /// override registered for the same file's extension.
+    /// </summary>
+    [Test]
+    public void GetFileIconForFileName_NameOverrideWins_OverExtensionAndTheme()
+    {
+        var iconService = new IconService();
+        var nameIcon = iconService.CreateIcon("bs-journal-text", "#FF8800").Value;
+        var extensionIcon = iconService.CreateIcon("bs-gear", "#00FF00").Value;
+
+        iconService.SetFileIconOverrides(
+            new Dictionary<string, IconDefinition> { [".json"] = extensionIcon },
+            new Dictionary<string, IconDefinition> { ["Makefile"] = nameIcon, ["package.json"] = nameIcon });
+
+        // No extension to fall back on, so only the name lookup can match.
+        iconService.GetFileIconForFileName("Makefile").Value.Should().Be(nameIcon);
+        iconService.GetFileIconForFileName("makefile").Value.Should().Be(nameIcon);
+
+        // The name wins even though the extension also has an override.
+        iconService.GetFileIconForFileName("package.json").Value.Should().Be(nameIcon);
+        iconService.GetFileIconForFileName("other.json").Value.Should().Be(extensionIcon);
+
+        // An unknown extensionless name falls through to the default file icon.
+        iconService.GetFileIconForFileName("LICENSE").Value.Should().Be(iconService.DefaultFileIcon);
+    }
+
     [Test]
     public void GetFileIconForExtension_OverrideWins_AndEachSetReplacesTheLast()
     {
@@ -137,14 +164,14 @@ public class IconServiceTests
         var themeIcon = iconService.GetFileIconForExtension(".cs").Value;
         var glyphIcon = iconService.CreateIcon("bs-journal-text", "#FF8800").Value;
 
-        iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition> { [".cs"] = glyphIcon });
+        iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition> { [".cs"] = glyphIcon }, new Dictionary<string, IconDefinition>());
 
         // The resource tree looks up the dot-free form; the resource picker uses the dotted form.
         iconService.GetFileIconForExtension(".cs").Value.Should().Be(glyphIcon);
         iconService.GetFileIconForExtension("cs").Value.Should().Be(glyphIcon);
 
         // A later discovery pass supplies the whole set, so an override it omits is gone.
-        iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition>());
+        iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition>(), new Dictionary<string, IconDefinition>());
         iconService.GetFileIconForExtension(".cs").Value.Should().Be(themeIcon);
     }
 }

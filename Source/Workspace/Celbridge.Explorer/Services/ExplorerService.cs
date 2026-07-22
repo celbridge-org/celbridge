@@ -240,9 +240,8 @@ public class ExplorerService : IExplorerService, IDisposable
             }
         }
 
-        // If the resource is a file, use the icon matching the file extension
-        var fileExtension = Path.GetExtension(resource);
-        var getIconResult = _iconService.GetFileIconForExtension(fileExtension);
+        // If the resource is a file, match on the whole name so a file with no extension is recognised.
+        var getIconResult = _iconService.GetFileIconForFileName(resource.ResourceName);
         if (getIconResult.IsSuccess)
         {
             return getIconResult.Value;
