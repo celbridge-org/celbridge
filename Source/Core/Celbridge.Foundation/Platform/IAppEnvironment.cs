@@ -39,8 +39,7 @@ public interface IAppEnvironment
 
     /// <summary>
     /// Returns the on-disk path to a bundled asset (file or folder) shipped by the given library module,
-    /// at the forward-slashed relative path within that module's bundled files. The relative path must
-    /// start with the module's Assets folder; other content roots are not addressable this way.
+    /// at the forward-slashed relative path within that module's bundled files.
     /// </summary>
     string GetBundledAssetPath(string moduleFolderName, string relativePath);
 }

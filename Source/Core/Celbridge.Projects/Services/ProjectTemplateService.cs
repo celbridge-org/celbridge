@@ -90,8 +90,7 @@ public class ProjectTemplateService : IProjectTemplateService
             var appVersion = _appEnvironment.GetEnvironmentInfo().AppVersion;
 
             // Extract the bundled template zip to the staging location. The zip is read as a real file
-            // from the install location: the package root on the packaged Windows head, the
-            // Celbridge.Projects content folder beside the app on the Skia heads.
+            // from the Celbridge.Projects module folder beside the app.
             var sourceZipPath = _appEnvironment.GetBundledAssetPath(
                 ProjectsModuleFolder, $"Assets/Templates/{template.Id}.zip");
 
