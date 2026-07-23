@@ -28,6 +28,7 @@ public sealed partial class ResourceTree : UserControl
     private readonly IPlatformInfo _platformInfo;
     private readonly IStringLocalizer _stringLocalizer;
     private double _savedScrollOffset;
+    private bool _treeHadFocusBeforeRebuild;
 
     public ResourceTreeViewModel ViewModel { get; }
 
@@ -77,12 +78,48 @@ public sealed partial class ResourceTree : UserControl
     private void OnPreBuildResourceTree()
     {
         _savedScrollOffset = GetScrollOffset();
+
+        // Snapshot before TreeItems is replaced, while focus is still on the row the rebuild will destroy.
+        _treeHadFocusBeforeRebuild = IsResourceListFocused();
     }
 
     private void OnPostBuildResourceTree()
     {
         ResourceListView.UpdateLayout();
         SetScrollOffset(_savedScrollOffset);
+
+        // A rebuild destroys the focused row, and the built-in-drag heads (Windows) rescue focus to chrome
+        // outside the Explorer panel, dropping the panel's focused state and unlighting the utility rail
+        // button. Re-focus the tree so the central focus tracker re-reports the Explorer panel. This covers
+        // any rebuild while the tree was focused (undo/redo, rename, delete) plus a move whose OS drag loop
+        // dropped tree focus before the snapshot above ran.
+        if (_treeHadFocusBeforeRebuild || _restoreTreeFocusAfterMove)
+        {
+            _restoreTreeFocusAfterMove = false;
+            FocusTree();
+        }
+    }
+
+    // Whether keyboard focus currently rests on the resource list or one of its rows.
+    private bool IsResourceListFocused()
+    {
+        if (XamlRoot is null)
+        {
+            return false;
+        }
+
+        var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        while (focusedElement is not null)
+        {
+            if (ReferenceEquals(focusedElement, ResourceListView))
+            {
+                return true;
+            }
+
+            focusedElement = VisualTreeHelper.GetParent(focusedElement);
+        }
+
+        return false;
     }
 
     private void OnSelectionRequested(List<ResourceKey> resourceKeys)

@@ -20,6 +20,11 @@ public sealed partial class ResourceTree
     // cross-control consumer (DocumentSection) can recognise the drag on Windows, where it round-trips.
     private List<IResource>? _internalDragResources;
 
+    // Forces the post-rebuild focus restore after a built-in-drag move, in case the OS drag loop dropped
+    // tree focus before the pre-rebuild focus snapshot ran (which would otherwise miss it). The pointer-driven
+    // drag (macOS) keeps focus on the tree, so its move path does not set this.
+    private bool _restoreTreeFocusAfterMove;
+
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
         // Store the dragged items for later use, excluding the project folder
@@ -244,6 +249,10 @@ public sealed partial class ResourceTree
                 command.DestResource = destResource;
                 command.TransferMode = DataTransferMode.Move;
             });
+
+            // The move triggers a tree rebuild that destroys the dragged row; restore focus to the tree once
+            // the rebuild completes so the Explorer panel keeps focus and the utility rail button stays lit.
+            _restoreTreeFocusAfterMove = true;
         }
     }
 
