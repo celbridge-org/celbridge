@@ -24,6 +24,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     private const string DisplayNameKey = "display-name";
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
+    private const string IconScaleKey = "icon-scale";
 
     private static readonly IReadOnlyList<FileTypeCategory> NoCategories = Array.Empty<FileTypeCategory>();
 
@@ -236,7 +237,14 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
                 iconColor = iconColorElement.GetString() ?? string.Empty;
             }
 
-            icon = new FileTypeIcon(iconName, iconColor);
+            var iconScale = 1.0;
+            if (element.TryGetProperty(IconScaleKey, out var iconScaleElement) &&
+                iconScaleElement.ValueKind == JsonValueKind.Number)
+            {
+                iconScale = iconScaleElement.GetDouble();
+            }
+
+            icon = new FileTypeIcon(iconName, iconColor, iconScale);
         }
 
         var categories = NoCategories;

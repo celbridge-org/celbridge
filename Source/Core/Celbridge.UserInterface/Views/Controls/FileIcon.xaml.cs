@@ -1,7 +1,9 @@
+using Celbridge.UserInterface.Helpers;
+
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
-/// A user control that displays a file icon based on an icon name, file extension, or a direct IconDefinition binding.
+/// A user control that displays a file icon resolved from a file extension, or from a directly bound IconDefinition.
 /// </summary>
 public sealed partial class FileIcon : UserControl
 {
@@ -9,7 +11,7 @@ public sealed partial class FileIcon : UserControl
     private bool _isIconDefinitionSetExternally;
 
     /// <summary>
-    /// The icon source, which can be an icon name (e.g., "_file") or a file extension (e.g., ".cs" or "cs").
+    /// The file extension the icon is resolved from, with or without its leading dot.
     /// </summary>
     public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
         nameof(Source),
@@ -24,7 +26,7 @@ public sealed partial class FileIcon : UserControl
         nameof(Size),
         typeof(double),
         typeof(FileIcon),
-        new PropertyMetadata(16.0));
+        new PropertyMetadata(16.0, OnSizeChanged));
 
     /// <summary>
     /// The resolved icon definition based on the Source property, or set directly via binding.
@@ -41,15 +43,21 @@ public sealed partial class FileIcon : UserControl
 
         this.InitializeComponent();
 
+        // The legibility adjustment depends on the theme, so recompute the foreground when it changes.
+        ActualThemeChanged += (sender, args) => ApplyForeground();
+
         // Set default icon after InitializeComponent so bindings can override
         if (IconDefinition is null)
         {
             IconDefinition = _iconService.DefaultFileIcon;
         }
+
+        ApplyForeground();
+        ApplySize();
     }
 
     /// <summary>
-    /// Gets or sets the icon source. Can be an icon name or file extension.
+    /// Gets or sets the file extension the icon is resolved from.
     /// </summary>
     public string Source
     {
@@ -89,7 +97,76 @@ public sealed partial class FileIcon : UserControl
         {
             // Track that IconDefinition was set externally (not from Source)
             fileIcon._isIconDefinitionSetExternally = true;
+            fileIcon.ApplyForeground();
+            fileIcon.ApplySize();
         }
+    }
+
+    private static void OnSizeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is FileIcon fileIcon)
+        {
+            fileIcon.ApplySize();
+        }
+    }
+
+    // Draws the glyph at the host's size, folded with the icon's per-glyph scale so a glyph its font draws
+    // small can be enlarged to match its neighbours.
+    private void ApplySize()
+    {
+        var scale = ParseScale(IconDefinition?.FontSize);
+        IconElement.FontSize = Size * scale;
+    }
+
+    private static double ParseScale(string? percent)
+    {
+        if (string.IsNullOrEmpty(percent))
+        {
+            return 1.0;
+        }
+
+        var digits = percent.TrimEnd('%');
+        if (double.TryParse(digits, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value))
+        {
+            return value / 100.0;
+        }
+
+        return 1.0;
+    }
+
+    // Draws the glyph in the icon's colour, lifted or lowered as needed to stay legible on the active
+    // theme's background.
+    private void ApplyForeground()
+    {
+        var iconDefinition = IconDefinition;
+        if (iconDefinition is null)
+        {
+            return;
+        }
+
+        var darkBackground = ActualTheme == ElementTheme.Dark;
+        var legibleHex = IconColorLegibility.Normalize(iconDefinition.FontColor, darkBackground);
+
+        IconElement.Foreground = new SolidColorBrush(HexToColor(legibleHex));
+    }
+
+    private static Windows.UI.Color HexToColor(string colorHex)
+    {
+        var digits = colorHex.TrimStart('#');
+
+        byte alpha = 255;
+        var offset = 0;
+        if (digits.Length == 8)
+        {
+            alpha = byte.Parse(digits.AsSpan(0, 2), System.Globalization.NumberStyles.HexNumber);
+            offset = 2;
+        }
+
+        var red = byte.Parse(digits.AsSpan(offset, 2), System.Globalization.NumberStyles.HexNumber);
+        var green = byte.Parse(digits.AsSpan(offset + 2, 2), System.Globalization.NumberStyles.HexNumber);
+        var blue = byte.Parse(digits.AsSpan(offset + 4, 2), System.Globalization.NumberStyles.HexNumber);
+
+        return Windows.UI.Color.FromArgb(alpha, red, green, blue);
     }
 
     private void UpdateIconDefinitionFromSource()
@@ -99,21 +176,8 @@ public sealed partial class FileIcon : UserControl
         {
             _isIconDefinitionSetExternally = false;
 
-            // Determine if Source is a file extension (starts with '.' or looks like an extension)
-            if (Source.StartsWith('.') || 
-                (Source.Length <= 10 && 
-                !Source.StartsWith('_') && 
-                Source.All(c => char.IsLetterOrDigit(c))))
-            {
-                var result = _iconService.GetFileIconForExtension(Source);
-                IconDefinition = result.IsSuccess ? result.Value : _iconService.DefaultFileIcon;
-            }
-            else
-            {
-                // Treat as icon name
-                var result = _iconService.GetFileIcon(Source);
-                IconDefinition = result.IsSuccess ? result.Value : _iconService.DefaultFileIcon;
-            }
+            var result = _iconService.GetFileIconForExtension(Source);
+            IconDefinition = result.IsSuccess ? result.Value : _iconService.DefaultFileIcon;
         }
         else if (!_isIconDefinitionSetExternally)
         {

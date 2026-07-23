@@ -145,7 +145,7 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task RegisterPackages_UnknownIconName_LeavesTheExtensionOnTheThemeIcon()
+    public async Task RegisterPackages_UnknownIconName_LeavesTheExtensionOnTheDefaultIcon()
     {
         CreateProjectPackageWithIcon("iconed", "iconed-tool", ".iconed", "no-such-glyph-name", "#FF8800");
         SetProjectConfig();

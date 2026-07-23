@@ -511,7 +511,7 @@ public class PackageRegistry
     // Publishes the per-extension icons declared by the catalog and by package manifests, so every
     // surface that draws a file resource picks them up through the icon service. The catalog wins for an
     // established type; a manifest icon covers the extensions a package introduces. An unusable glyph or
-    // colour is dropped with a warning, leaving the extension on the bundled icon theme.
+    // colour is dropped with a warning, leaving the extension on the default file icon.
     private void ApplyFileIconOverrides(List<ContributionIssue> contributionIssues)
     {
         var overrides = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -580,7 +580,7 @@ public class PackageRegistry
                 continue;
             }
 
-            overrides[extension] = createResult.Value;
+            overrides[extension] = ApplyScale(createResult.Value, catalogIcon.Scale);
         }
 
         foreach (var fileName in _fileTypeCatalog.IconFileNames)
@@ -598,7 +598,7 @@ public class PackageRegistry
                 continue;
             }
 
-            fileNameOverrides[fileName] = createResult.Value;
+            fileNameOverrides[fileName] = ApplyScale(createResult.Value, catalogIcon.Scale);
         }
 
         foreach (var publishedOverride in overrides.Concat(fileNameOverrides))
@@ -610,6 +610,20 @@ public class PackageRegistry
         }
 
         _iconService.SetFileIconOverrides(overrides, fileNameOverrides);
+    }
+
+    // The catalog scale is drawn relative to the host's icon size, so it is carried on the definition as a
+    // percentage the FileIcon control multiplies its size by.
+    private static IconDefinition ApplyScale(IconDefinition icon, double scale)
+    {
+        if (scale == 1.0)
+        {
+            return icon;
+        }
+
+        var percent = (int)Math.Round(scale * 100.0);
+
+        return icon with { FontSize = $"{percent}%" };
     }
 
     // The project load report is a developer-facing artifact written in English, so a contribution issue

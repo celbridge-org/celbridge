@@ -14,8 +14,8 @@ public record IconDefinition(string FontCharacter, string FontColor, string Font
 
 /// <summary>
 /// Resolves the icons used across the Celbridge UI. Icons are named, never addressed by codepoint, and
-/// every name carries a prefix identifying the font it comes from (for example "bs-gear"). File-type
-/// icons are additionally resolvable by file extension through the bundled icon theme.
+/// every name carries a prefix identifying the font it comes from (for example "bs-gear"). File icons
+/// are additionally resolvable by file name and by extension through the registered overrides.
 /// </summary>
 public interface IIconService
 {
@@ -25,13 +25,8 @@ public interface IIconService
     Result LoadDefinitions();
 
     /// <summary>
-    /// Returns the file-type icon definition for the specified icon name.
-    /// </summary>
-    Result<IconDefinition> GetFileIcon(string iconName);
-
-    /// <summary>
     /// Returns the file-type icon definition for the specified file extension. A registered override for
-    /// the extension wins over the bundled icon theme.
+    /// the extension wins over the default file icon.
     /// </summary>
     Result<IconDefinition> GetFileIconForExtension(string fileExtension);
 

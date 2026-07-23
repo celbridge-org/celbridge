@@ -161,7 +161,7 @@ public class IconServiceTests
     public void GetFileIconForExtension_OverrideWins_AndEachSetReplacesTheLast()
     {
         var iconService = new IconService();
-        var themeIcon = iconService.GetFileIconForExtension(".cs").Value;
+        var defaultIcon = iconService.GetFileIconForExtension(".cs").Value;
         var glyphIcon = iconService.CreateIcon("bs-journal-text", "#FF8800").Value;
 
         iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition> { [".cs"] = glyphIcon }, new Dictionary<string, IconDefinition>());
@@ -172,6 +172,6 @@ public class IconServiceTests
 
         // A later discovery pass supplies the whole set, so an override it omits is gone.
         iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition>(), new Dictionary<string, IconDefinition>());
-        iconService.GetFileIconForExtension(".cs").Value.Should().Be(themeIcon);
+        iconService.GetFileIconForExtension(".cs").Value.Should().Be(defaultIcon);
     }
 }

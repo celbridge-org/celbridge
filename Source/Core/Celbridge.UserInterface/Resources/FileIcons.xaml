@@ -3,10 +3,5 @@
 
   <FontFamily x:Key="BootstrapIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/BootstrapIcons/bootstrap-icons.ttf#bootstrap-icons</FontFamily>
   <FontFamily x:Key="NerdFontsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/NerdFonts/SymbolsNerdFont-Regular.ttf#Symbols Nerd Font</FontFamily>
-  <FontFamily x:Key="DevOpIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/devopicons.ttf#devopicons</FontFamily>
-  <FontFamily x:Key="FileIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/file-icons.ttf#file-icons</FontFamily>
-  <FontFamily x:Key="FontAwesomeFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/fontawesome.ttf#fontawesome</FontFamily>
-  <FontFamily x:Key="MFixxFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/mfixx.ttf#mfixx</FontFamily>
-  <FontFamily x:Key="OctIconsFontFamily">ms-appx:///Celbridge.UserInterface/Assets/Fonts/FileIcons/octicons.ttf#octicons</FontFamily>
 
 </ResourceDictionary>

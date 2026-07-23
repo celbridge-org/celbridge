@@ -8,16 +8,16 @@
         <!-- Folder icon (FontIcon) - shown when resource is a folder -->
         <controls:Icon x:Name="FolderIcon"
                   Symbol="FolderFilled"
-                  FontSize="16"
+                  FontSize="18"
                   Margin="0"
                   VerticalAlignment="Center"
                   Foreground="#FFCC40"
                   Visibility="Collapsed" />
-        
+
         <!-- File icon (FileIcon control) - shown when resource is a file -->
         <controls:FileIcon x:Name="FileIconControl"
-                           Size="16"
-                           MinWidth="20"
+                           Size="18"
+                           MinWidth="22"
                            Margin="0"
                            VerticalAlignment="Center"
                            Visibility="Collapsed" />

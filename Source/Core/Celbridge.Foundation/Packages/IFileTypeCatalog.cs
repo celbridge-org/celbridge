@@ -1,10 +1,12 @@
 namespace Celbridge.Packages;
 
 /// <summary>
-/// The prefixed name of the icon a file type is drawn with, and the hex colour it is drawn in. An empty
-/// colour leaves the icon in the theme's default colour.
+/// The prefixed name of the icon a file type is drawn with, the hex colour it is drawn in, and an
+/// optional scale relative to the host's icon size. An empty colour leaves the icon in the theme's
+/// default colour; a scale of 1.0 draws it at the host's size, and a larger value enlarges a glyph its
+/// font draws small within its em box.
 /// </summary>
-public sealed record FileTypeIcon(string IconName, string Color);
+public sealed record FileTypeIcon(string IconName, string Color, double Scale = 1.0);
 
 /// <summary>
 /// The host's central catalog of established file types, loaded from the bundled file-types.json. Each

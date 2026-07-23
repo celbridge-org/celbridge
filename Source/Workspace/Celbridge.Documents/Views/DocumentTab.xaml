@@ -56,8 +56,8 @@
                      to the accent color, a subtle cue marking the tab as a docked utility rather than a file. -->
                 <controls:FileIcon x:Name="ResourceIcon"
                                    Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
-                                   Size="16"
-                                   MinWidth="20"
+                                   Size="18"
+                                   MinWidth="22"
                                    Margin="0"
                                    Visibility="{x:Bind ViewModel.IsUtility, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}" />
 

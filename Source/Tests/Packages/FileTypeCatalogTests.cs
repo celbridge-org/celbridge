@@ -95,6 +95,22 @@ public class FileTypeCatalogTests
     }
 
     [Test]
+    public async Task GetIcon_ReadsAnOptionalScale_DefaultingToOne()
+    {
+        var json = """
+            {
+              ".big": { "icon": "nf-seti-npm", "icon-color": "#CB3837", "icon-scale": 1.35 },
+              ".plain": { "icon": "nf-seti-json", "icon-color": "#CBCB41" }
+            }
+            """;
+
+        var catalog = await LoadCatalogAsync(json);
+
+        catalog.GetIcon(".big")!.Scale.Should().Be(1.35);
+        catalog.GetIcon(".plain")!.Scale.Should().Be(1.0);
+    }
+
+    [Test]
     public async Task Load_UnknownCategoryName_IsSkippedWithoutFailingTheEntry()
     {
         var catalog = await LoadCatalogAsync(CatalogJson);

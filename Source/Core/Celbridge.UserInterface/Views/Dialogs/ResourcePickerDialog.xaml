@@ -123,7 +123,7 @@
 
             <!-- Icon dims with the name when the resource is read-only. -->
             <controls:FileIcon Grid.Column="0"
-                               Size="16"
+                               Size="18"
                                IconDefinition="{x:Bind IconDefinition}"
                                Opacity="{x:Bind NameOpacity}"
                                VerticalAlignment="Center"/>
