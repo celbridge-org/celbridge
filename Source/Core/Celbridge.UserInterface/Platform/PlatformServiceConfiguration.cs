@@ -36,6 +36,14 @@ public static class PlatformServiceConfiguration
         services.AddSingleton<IWindowBoundsValidator, SkiaWindowBoundsValidator>();
 #endif
 
+        // The minimum window size is applied to the overlapped presenter on the packaged WinAppSDK head and
+        // to the native window on the macOS Skia head. The remaining Skia heads leave it unconstrained.
+#if WINDOWS
+        services.AddSingleton<IWindowSizeConstraints, WinAppSdkWindowSizeConstraints>();
+#else
+        services.AddSingleton<IWindowSizeConstraints, SkiaWindowSizeConstraints>();
+#endif
+
         // Window activation tinting is only meaningful on the head that draws the custom title bar. The
         // Skia heads draw a native title bar that the OS tints, so they use the no-op monitor.
 #if WINDOWS

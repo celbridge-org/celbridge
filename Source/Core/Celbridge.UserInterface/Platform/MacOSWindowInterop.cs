@@ -17,8 +17,8 @@ internal readonly record struct MacScreen(
 /// <summary>
 /// Objective-C interop for the native AppKit window and screens behind Uno's macOS Skia head, which
 /// surfaces neither the NSWindow nor (on the Skia head) the DisplayArea APIs. Reads display geometry and
-/// native-fullscreen state, and updates the window's first responder. macOS-only. Call on the main (UI)
-/// thread, where AppKit is safe.
+/// native-fullscreen state, constrains the window's minimum size, and updates the window's first responder.
+/// macOS-only. Call on the main (UI) thread, where AppKit is safe.
 /// </summary>
 internal static class MacOSWindowInterop
 {
@@ -53,6 +53,11 @@ internal static class MacOSWindowInterop
     // declaration local rather than in the shared runtime.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern CGRect SendMessageReturnCGRect(IntPtr receiver, IntPtr selector);
+
+    // NSSize is a pair of doubles, so the ARM64 ABI passes it in the floating point registers and the
+    // CGSize struct marshals directly.
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern void SendMessageVoidCGSize(IntPtr receiver, IntPtr selector, CGSize argument);
 
     /// <summary>
     /// Reads the geometry of every attached display from NSScreen. Returns false off macOS or when the
@@ -117,6 +122,33 @@ internal static class MacOSWindowInterop
 
         screens = result;
         return true;
+    }
+
+    /// <summary>
+    /// Sets the smallest content size the window can be resized to, in macOS points. AppKit enforces this
+    /// for every user-driven resize, including the title-bar zoom button. No-op off macOS or when the
+    /// window cannot be resolved.
+    /// </summary>
+    public static void SetMinimumContentSize(double width, double height)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var minimumSize = new CGSize
+        {
+            Width = width,
+            Height = height
+        };
+
+        SendMessageVoidCGSize(window, GetSelector("setContentMinSize:"), minimumSize);
     }
 
     /// <summary>

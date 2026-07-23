@@ -1031,6 +1031,9 @@ Do you wish to continue?</value>
   <data name="FullScreenToolbar_ExitPresentation" xml:space="preserve">
     <value>Exit Presentation</value>
   </data>
+  <data name="FullScreenToolbar_ExitPresentationHint" xml:space="preserve">
+    <value>To exit Presentation mode, choose Window &gt; Exit Presentation</value>
+  </data>
   <data name="TitleBar_SettingsTooltip" xml:space="preserve">
     <value>Open Application Settings</value>
   </data>
@@ -1120,6 +1123,9 @@ Do you wish to continue?</value>
   </data>
   <data name="Menu_BringAllToFront" xml:space="preserve">
     <value>Bring All to Front</value>
+  </data>
+  <data name="Menu_ExitPresentation" xml:space="preserve">
+    <value>Exit Presentation</value>
   </data>
   <data name="Menu_Help" xml:space="preserve">
     <value>Help</value>
