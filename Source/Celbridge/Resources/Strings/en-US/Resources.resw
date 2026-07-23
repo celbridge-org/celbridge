@@ -833,6 +833,12 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_ProjectVersionLabel" xml:space="preserve">
     <value>Project version</value>
   </data>
+  <data name="ProjectSettings_DescriptionLabel" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="ProjectSettings_DescriptionTooltip" xml:space="preserve">
+    <value>A description of what this project is for, shown to anyone who opens it.</value>
+  </data>
   <data name="ProjectSettings_IgnoreFileLabel" xml:space="preserve">
     <value>Ignore file</value>
   </data>

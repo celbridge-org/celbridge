@@ -80,6 +80,11 @@ public sealed record RemoveContributionValueEdit(
 public sealed record SetProjectVersionEdit(string ProjectVersion) : ProjectConfigEdit;
 
 /// <summary>
+/// Sets the project's human-readable description ([celbridge].description).
+/// </summary>
+public sealed record SetDescriptionEdit(string Description) : ProjectConfigEdit;
+
+/// <summary>
 /// Sets the resource ignore-file path ([celbridge.resources].ignore-file).
 /// </summary>
 public sealed record SetIgnoreFileEdit(string IgnoreFile) : ProjectConfigEdit;

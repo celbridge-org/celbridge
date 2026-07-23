@@ -24,15 +24,21 @@ public static class ProjectConfigModifier
         var disabledPackages = config.Celbridge.DisabledPackages.ToList();
         var editorAssociations = new Dictionary<string, string>(config.Celbridge.EditorAssociations, StringComparer.Ordinal);
         var projectVersion = config.Celbridge.ProjectVersion;
+        var description = config.Celbridge.Description;
         var ignoreFile = config.Resources.IgnoreFile;
 
         foreach (var edit in edits)
         {
-            // The two host-level scalar edits are applied here; every other edit mutates the
+            // The host-level scalar edits are applied here; every other edit mutates the
             // collections passed to ApplyEdit.
             if (edit is SetProjectVersionEdit setProjectVersion)
             {
                 projectVersion = setProjectVersion.ProjectVersion;
+                continue;
+            }
+            if (edit is SetDescriptionEdit setDescription)
+            {
+                description = setDescription.Description;
                 continue;
             }
             if (edit is SetIgnoreFileEdit setIgnoreFile)
@@ -60,6 +66,7 @@ public static class ProjectConfigModifier
                 DisabledPackages = disabledPackages,
                 EditorAssociations = editorAssociations,
                 ProjectVersion = projectVersion,
+                Description = description,
             },
             Resources = config.Resources with { IgnoreFile = ignoreFile },
             ContributionOverrides = overrides,

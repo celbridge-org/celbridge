@@ -25,6 +25,7 @@ public static class ProjectConfigParser
 
     private const string CelbridgeVersionKey = "celbridge-version";
     private const string ProjectVersionKey = "project-version";
+    private const string DescriptionKey = "description";
     private const string DisabledPackagesKey = "disabled-packages";
     private const string EditorAssociationsKey = "editor-associations";
     private const string FeaturesKey = "features";
@@ -34,6 +35,7 @@ public static class ProjectConfigParser
     [
         CelbridgeVersionKey,
         ProjectVersionKey,
+        DescriptionKey,
         DisabledPackagesKey,
         EditorAssociationsKey,
         FeaturesKey,
@@ -344,6 +346,7 @@ public static class ProjectConfigParser
         {
             CelbridgeVersion = ReadString(celbridgeTable, CelbridgeVersionKey),
             ProjectVersion = ReadString(celbridgeTable, ProjectVersionKey),
+            Description = ReadString(celbridgeTable, DescriptionKey),
             DisabledPackages = disabledPackages,
             EditorAssociations = editorAssociations
         };

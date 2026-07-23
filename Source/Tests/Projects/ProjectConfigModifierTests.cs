@@ -144,6 +144,13 @@ public class ProjectConfigModifierTests
     }
 
     [Test]
+    public void ApplyEdits_SetDescription_UpdatesDescription()
+    {
+        var config = ApplyAndParse(BaseConfig, new SetDescriptionEdit("An example project."));
+        config.Celbridge.Description.Should().Be("An example project.");
+    }
+
+    [Test]
     public void ApplyEdits_SetIgnoreFile_UpdatesIgnoreFile()
     {
         var config = ApplyAndParse(BaseConfig, new SetIgnoreFileEdit(".customignore"));
