@@ -1613,6 +1613,73 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_FileTypeIconScale_IsCarriedOnTheFileType()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon = "nf-seti-npm"
+            icon-scale = 1.3
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        var fileType = result.Value.Editors[0].FileTypes.Should().ContainSingle().Subject;
+        fileType.IconScale.Should().Be(1.3);
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeIconScaleOmitted_DefaultsToOne()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon = "nf-seti-npm"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        var fileType = result.Value.Editors[0].FileTypes.Should().ContainSingle().Subject;
+        fileType.IconScale.Should().Be(1.0);
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeIconScaleWithoutIcon_ReturnsFailure()
+    {
+        // A scale on its own would silently do nothing, so it is rejected at load.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-editor"
+            type = "document"
+            display-name = "Widget"
+
+            [[file-types]]
+            extension = ".widget"
+            display-name = "WidgetFileType"
+            icon-scale = 1.3
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("icon-scale");
+    }
+
+    [Test]
     public void LoadPackage_FileTypeIconColorWithoutIcon_ReturnsFailure()
     {
         // A colour on its own would silently do nothing, so it is rejected at load.

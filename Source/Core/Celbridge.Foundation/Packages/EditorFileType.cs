@@ -54,4 +54,10 @@ public record EditorFileType
     /// icon takes the theme's default colour.
     /// </summary>
     public string IconColor { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Scale applied to the declared icon relative to the host's size. 1.0 draws it at the host's size; a
+    /// larger value enlarges a glyph a font draws small within its em box.
+    /// </summary>
+    public double IconScale { get; init; } = 1.0;
 }

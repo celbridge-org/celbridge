@@ -43,6 +43,7 @@ internal static class EditorManifestLoader
     private const string TemplateKey = "template";
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
+    private const string IconScaleKey = "icon-scale";
     private const string LazyLoadKey = "lazy-load";
 
     private const string CatalogLanguagesValue = "languages";
@@ -215,6 +216,14 @@ internal static class EditorManifestLoader
                             $"A [[{FileTypesSection}]] entry cannot specify '{IconColorKey}' without '{IconKey}': {editorTomlPath}");
                     }
 
+                    var iconScale = TomlTableReader.GetDoubleOrNull(fileTypeTable, IconScaleKey);
+                    if (string.IsNullOrEmpty(icon) &&
+                        iconScale is not null)
+                    {
+                        return Result.Fail(
+                            $"A [[{FileTypesSection}]] entry cannot specify '{IconScaleKey}' without '{IconKey}': {editorTomlPath}");
+                    }
+
                     var extensionLiteral = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionKey);
                     var fromCatalogValue = TomlTableReader.GetStringOrNull(fileTypeTable, FromCatalogKey);
 
@@ -241,7 +250,8 @@ internal static class EditorManifestLoader
                                 DisplayName = fileTypeDisplayName,
                                 Category = category,
                                 Icon = icon,
-                                IconColor = iconColor
+                                IconColor = iconColor,
+                                IconScale = iconScale ?? 1.0
                             });
                         }
                     }
@@ -260,7 +270,8 @@ internal static class EditorManifestLoader
                             DisplayName = fileTypeDisplayName,
                             Category = category,
                             Icon = icon,
-                            IconColor = iconColor
+                            IconColor = iconColor,
+                            IconScale = iconScale ?? 1.0
                         });
                     }
                 }
