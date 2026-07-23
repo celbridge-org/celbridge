@@ -38,6 +38,7 @@ public class PackageRegistry
     // Failures from the most recent discovery pass, retained so package_status
     // can report them after load (the error banner only fires once).
     private IReadOnlyList<PackageLoadFailure> _lastFailures = Array.Empty<PackageLoadFailure>();
+    private IReadOnlyList<ContributionIssue> _lastContributionIssues = Array.Empty<ContributionIssue>();
 
     // Bundled packages live outside any IResourceRegistry root so their reads
     // stay on direct File.* IO via the gateway. One reader is reused across
@@ -86,7 +87,12 @@ public class PackageRegistry
         var resolvedEditorWarnings = new List<ResolvedEditorLoadFailure>();
         await ResolveResolvedEditorsAsync(persistNormalizedConfig && failures.Count == 0, resolvedEditorFailures, resolvedEditorWarnings);
         ResolveBuiltInEditors();
-        ApplyFileIconOverrides();
+
+        var contributionIssues = new List<ContributionIssue>();
+        ApplyFileIconOverrides(contributionIssues);
+        _lastContributionIssues = contributionIssues.AsReadOnly();
+
+        resolvedEditorWarnings.AddRange(contributionIssues.Select(ToReportWarning));
 
         var report = new PackageDiscoveryReport
         {
@@ -119,6 +125,11 @@ public class PackageRegistry
     public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
     {
         return _lastFailures;
+    }
+
+    public IReadOnlyList<ContributionIssue> GetContributionIssues()
+    {
+        return _lastContributionIssues;
     }
 
     public IReadOnlyList<EditorContribution> GetAllEditors()
@@ -500,13 +511,16 @@ public class PackageRegistry
     // Publishes the per-extension icons declared by the catalog and by package manifests, so every
     // surface that draws a file resource picks them up through the icon service. The catalog wins for an
     // established type; a manifest icon covers the extensions a package introduces. An unusable glyph or
-    // colour is dropped with a warning, leaving the extension on the bundled icon theme.
-    private void ApplyFileIconOverrides()
+    // colour is dropped with a warning, leaving the extension on the default file icon.
+    private void ApplyFileIconOverrides(List<ContributionIssue> contributionIssues)
     {
-        var overrides = new Dictionary<string, FileIconDefinition>(StringComparer.OrdinalIgnoreCase);
+        var overrides = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
+        var fileNameOverrides = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var contribution in GetAvailableContributions())
         {
+            var editorId = EditorId.Create(contribution.Package.Name, contribution.Id).ToString();
+
             foreach (var fileType in contribution.FileTypes)
             {
                 if (string.IsNullOrEmpty(fileType.Icon))
@@ -514,16 +528,40 @@ public class PackageRegistry
                     continue;
                 }
 
-                var createResult = _iconService.CreateGlyphFileIcon(fileType.Icon, fileType.IconColor);
+                var createResult = _iconService.CreateIcon(fileType.Icon, fileType.IconColor);
                 if (createResult.IsFailure)
                 {
                     _logger.LogWarning(
                         createResult,
                         $"Ignoring the icon declared for '{fileType.FileExtension}' in {contribution.ManifestPath}");
+
+                    contributionIssues.Add(new ContributionIssue
+                    {
+                        EditorId = editorId,
+                        Kind = ContributionIssueKind.UnresolvedIcon,
+                        Value = fileType.Icon
+                    });
                     continue;
                 }
 
                 overrides[fileType.FileExtension] = createResult.Value;
+            }
+
+            // A utility's icon is drawn straight from its name by the rail and its docked tab, so it never
+            // reaches the override map. Resolve it here purely to report an unusable name.
+            var utilityIcon = contribution.UtilityDescriptor?.Icon ?? string.Empty;
+            if (!string.IsNullOrEmpty(utilityIcon) &&
+                _iconService.CreateIcon(utilityIcon, string.Empty).IsFailure)
+            {
+                _logger.LogWarning(
+                    $"Ignoring the utility icon declared in {contribution.ManifestPath}: unknown icon name '{utilityIcon}'");
+
+                contributionIssues.Add(new ContributionIssue
+                {
+                    EditorId = editorId,
+                    Kind = ContributionIssueKind.UnresolvedIcon,
+                    Value = utilityIcon
+                });
             }
         }
 
@@ -535,25 +573,74 @@ public class PackageRegistry
                 continue;
             }
 
-            var createResult = _iconService.CreateGlyphFileIcon(catalogIcon.GlyphName, catalogIcon.Color);
+            var createResult = _iconService.CreateIcon(catalogIcon.IconName, catalogIcon.Color);
             if (createResult.IsFailure)
             {
                 _logger.LogWarning(createResult, $"Ignoring the file type catalog icon for '{extension}'");
                 continue;
             }
 
-            overrides[extension] = createResult.Value;
+            overrides[extension] = ApplyScale(createResult.Value, catalogIcon.Scale);
         }
 
-        foreach (var publishedOverride in overrides)
+        foreach (var fileName in _fileTypeCatalog.IconFileNames)
+        {
+            var catalogIcon = _fileTypeCatalog.GetIconForFileName(fileName);
+            if (catalogIcon is null)
+            {
+                continue;
+            }
+
+            var createResult = _iconService.CreateIcon(catalogIcon.IconName, catalogIcon.Color);
+            if (createResult.IsFailure)
+            {
+                _logger.LogWarning(createResult, $"Ignoring the file type catalog icon for '{fileName}'");
+                continue;
+            }
+
+            fileNameOverrides[fileName] = ApplyScale(createResult.Value, catalogIcon.Scale);
+        }
+
+        foreach (var publishedOverride in overrides.Concat(fileNameOverrides))
         {
             var icon = publishedOverride.Value;
-            var codePoint = icon.FontCharacter.Length > 0 ? (int)icon.FontCharacter[0] : 0;
+            var codePoint = char.ConvertToUtf32(icon.FontCharacter, 0);
             _logger.LogDebug(
                 $"File icon override: '{publishedOverride.Key}' glyph U+{codePoint:X4} colour {icon.FontColor} font {icon.FontFamily}");
         }
 
-        _iconService.SetFileIconOverrides(overrides);
+        _iconService.SetFileIconOverrides(overrides, fileNameOverrides);
+    }
+
+    // The catalog scale is drawn relative to the host's icon size, so it is carried on the definition as a
+    // percentage the FileIcon control multiplies its size by.
+    private static IconDefinition ApplyScale(IconDefinition icon, double scale)
+    {
+        if (scale == 1.0)
+        {
+            return icon;
+        }
+
+        var percent = (int)Math.Round(scale * 100.0);
+
+        return icon with { FontSize = $"{percent}%" };
+    }
+
+    // The project load report is a developer-facing artifact written in English, so a contribution issue
+    // renders to plain text there rather than through the localized strings the UI uses.
+    private static ResolvedEditorLoadFailure ToReportWarning(ContributionIssue issue)
+    {
+        var detail = issue.Kind switch
+        {
+            ContributionIssueKind.UnresolvedIcon => $"The icon '{issue.Value}' could not be resolved.",
+            _ => $"The setting '{issue.Value}' could not be applied."
+        };
+
+        return new ResolvedEditorLoadFailure
+        {
+            EditorId = issue.EditorId,
+            Detail = detail
+        };
     }
 
     private List<PackageLoadFailure> DiscoverBundledPackages()

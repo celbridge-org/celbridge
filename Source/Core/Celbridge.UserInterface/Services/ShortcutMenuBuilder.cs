@@ -202,7 +202,7 @@ public class ShortcutMenuBuilder
             
             if (!string.IsNullOrEmpty(def?.Icon))
             {
-                subMenu.Icon = new Icon { GlyphName = def.Icon };
+                subMenu.Icon = new Icon { IconName = def.Icon };
             }
             
             AddMenuItemsFromTree(childNode, subMenu.Items);
@@ -230,7 +230,7 @@ public class ShortcutMenuBuilder
 
             if (!string.IsNullOrEmpty(def.Icon))
             {
-                menuItem.Icon = new Icon { GlyphName = def.Icon };
+                menuItem.Icon = new Icon { IconName = def.Icon };
             }
 
             menuItem.Click += OnMenuItemClick;

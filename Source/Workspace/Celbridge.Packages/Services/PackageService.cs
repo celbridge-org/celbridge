@@ -69,6 +69,11 @@ public class PackageService : IPackageService
         return _registry.GetAllPackages();
     }
 
+    public IReadOnlyList<ContributionIssue> GetContributionIssues()
+    {
+        return _registry.GetContributionIssues();
+    }
+
     public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
     {
         return _registry.GetLoadFailures();

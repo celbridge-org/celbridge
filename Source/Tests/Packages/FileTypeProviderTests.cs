@@ -112,7 +112,14 @@ public class PackageServiceDocumentTypeTests
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), Substitute.For<IIconService>());
+        // The fixtures here declare icons but assert nothing about them, so the substitute answers every
+        // name as unresolvable. A bare substitute would return a null Result, which is not something the
+        // real service can produce.
+        var iconService = Substitute.For<IIconService>();
+        iconService.CreateIcon(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Result<IconDefinition>.Fail("Substitute icon service resolves no names."));
+
+        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), iconService);
         var loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(messengerService, loadReporter, registry);
     }

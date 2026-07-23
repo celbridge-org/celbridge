@@ -11,9 +11,8 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Coordinates the Project Settings panel: the section navigation, the pending-changes state shared by
-/// every section, and the apply-and-reload gesture. Each section has its own view model, all of which
-/// write their edits through the shared command pipeline; the running workspace only reflects the edits
-/// after apply-and-reload.
+/// every section, and the reload gesture. Each section has its own view model, all of which write their
+/// edits straight through to the project file; the running workspace only reflects them after a reload.
 /// </summary>
 public partial class ProjectSettingsPanelViewModel : ObservableObject
 {
@@ -93,7 +92,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     public PackagesSectionViewModel PackagesSection { get; }
     public FileEditorsSectionViewModel FileEditorsSection { get; }
 
-    public IRelayCommand ApplyAndReloadCommand { get; }
+    public IRelayCommand ReloadProjectCommand { get; }
 
     public ProjectSettingsPanelViewModel(
         IProjectService projectService,
@@ -107,7 +106,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         var fileTypeCatalog = ServiceLocator.AcquireService<IFileTypeCatalog>();
 
         TitleText = _stringLocalizer.GetString("ProjectSettingsPanel_Title");
-        ApplyAndReloadCommand = new RelayCommand(ApplyAndReload, () => HasPendingChanges);
+        ReloadProjectCommand = new RelayCommand(ReloadProject);
 
         var context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(context);
@@ -135,7 +134,17 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
 
         HasPendingChanges = false;
         _loaded = true;
+
+        OnPropertyChanged(nameof(HasPackagesSectionIssues));
     }
+
+    /// <summary>
+    /// Whether any package has a configuration issue. Flagged on the Packages tab because the panel opens
+    /// on the Information section, so the issue is otherwise a section away from being seen.
+    /// </summary>
+    public bool HasPackagesSectionIssues => PackagesSection.Packages.Any(package => package.HasIssues);
+
+    public string PackagesSectionIssuesTooltip => ProjectSettingsLabels.PackagesSectionIssue;
 
     partial void OnSelectedSectionIndexChanged(int value)
     {
@@ -189,14 +198,13 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         _settings.Set(SettingCatalog.Layout.ProjectSettingsSelectedSection, SectionKeys[index]);
     }
 
-    // Any section edit marks the panel pending, which enables apply-and-reload.
+    // Any section edit marks the panel pending, so the panel can show that a reload is needed.
     private void MarkPending()
     {
         HasPendingChanges = true;
-        ApplyAndReloadCommand.NotifyCanExecuteChanged();
     }
 
-    private void ApplyAndReload()
+    private void ReloadProject()
     {
         _commandService.Execute<IReloadProjectCommand>();
     }

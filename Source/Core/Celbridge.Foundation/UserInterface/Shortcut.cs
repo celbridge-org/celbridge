@@ -17,7 +17,7 @@ public record Shortcut
     public required string Name { get; init; }
 
     /// <summary>
-    /// Icon name from symbol registry.
+    /// Prefixed icon name identifying both the icon font and the icon, for example "bs-play-fill".
     /// </summary>
     public string? Icon { get; init; }
 

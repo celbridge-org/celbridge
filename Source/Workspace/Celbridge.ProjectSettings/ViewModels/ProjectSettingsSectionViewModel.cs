@@ -19,7 +19,7 @@ public sealed record ProjectSettingsContext(
 /// <summary>
 /// Base for the three Project Settings section view models (Information, Packages, File Editors). Each
 /// section reads the reconciled config on Load and writes its edits through the shared command pipeline;
-/// the running workspace only reflects the edits after the panel's apply-and-reload gesture.
+/// the running workspace only reflects the edits after the panel's reload gesture.
 /// </summary>
 public abstract class ProjectSettingsSectionViewModel : ObservableObject
 {

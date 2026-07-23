@@ -44,7 +44,7 @@ public record EditorFileType
     public FileTypeCategory? Category { get; init; }
 
     /// <summary>
-    /// Glyph name shown for files of this type in place of the bundled icon theme's choice. Empty when
+    /// Prefixed icon name shown for files of this type, in place of the default file icon. Empty when
     /// the manifest declares none.
     /// </summary>
     public string Icon { get; init; } = string.Empty;

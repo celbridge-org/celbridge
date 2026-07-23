@@ -92,7 +92,7 @@
             </Grid.ColumnDefinitions>
 
             <icon:Icon Grid.Column="0"
-                       GlyphName="{x:Bind IconGlyph}"
+                       IconName="{x:Bind IconName}"
                        FontSize="16"
                        VerticalAlignment="Center"
                        Margin="0,0,8,0"
@@ -103,6 +103,15 @@
               <TextBlock Text="{x:Bind TypeLabel}" FontSize="11" Opacity="0.6"/>
             </StackPanel>
           </Grid>
+
+          <!-- Settings the contribution declared that could not be applied. The contribution still loaded,
+               so this is advisory rather than an error, and it is absent when nothing was dropped. -->
+          <InfoBar IsOpen="True"
+                   IsClosable="False"
+                   Severity="Warning"
+                   Title="{x:Bind IssuesTitle}"
+                   Message="{x:Bind IssuesText}"
+                   Visibility="{x:Bind HasIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
           <StackPanel Margin="0,3,0,3"
                       Visibility="{x:Bind HasFileExtensions, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -161,10 +170,27 @@
                 HorizontalContentAlignment="Stretch"
                 Margin="0,0,0,8">
         <Expander.Header>
-          <StackPanel VerticalAlignment="Center" Opacity="{x:Bind HeaderOpacity, Mode=OneWay}">
-            <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-            <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
+          <Grid Opacity="{x:Bind HeaderOpacity, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <!-- Shown when a contribution inside the expander has dropped configuration. -->
+            <icon:Icon Grid.Column="1"
+                       Symbol="Warning"
+                       FontSize="16"
+                       Margin="8,0,8,0"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                       ToolTipService.ToolTip="{x:Bind IssuesTooltip}"
+                       Visibility="{x:Bind HasIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
+          </Grid>
         </Expander.Header>
 
         <StackPanel>

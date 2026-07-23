@@ -62,14 +62,14 @@ description = "Scratchpad_Description"      # localization key; the rail-button 
 [utility]
 resource-extension = "._scratchpad"        # file format of the utility state file (required)
 template = "templates/default._scratchpad" # seeds the file when absent (optional)
-icon     = "sticky"                        # Bootstrap Icons glyph name (required)
+icon     = "bs-sticky"                     # prefixed icon name (required)
 lazy-load = false                          # optional; true defers the WebView to first show
 ```
 
 | Field | Required | Default | Meaning |
 |---|---|---|---|
 | `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
-| `icon` | yes | — | Bootstrap Icons glyph name for the rail button and the docked tab icon (resolved by name, not limited to the curated symbol set). |
+| `icon` | yes | — | Prefixed icon name (`<font>-<name>`, e.g. `bs-sticky`) for the rail button and the docked tab icon. Resolved by name, not limited to the curated symbol set. |
 | `template` | no | empty file | Package-relative path to a file that seeds a utility's backing resource when it is absent. |
 | `lazy-load` | no | `false` | When true, the utility's WebView is created on its first show rather than at project load. Declared by the editor, not by the project. A lazy utility restored into the tab layout as a docked document initializes at restore. |
 

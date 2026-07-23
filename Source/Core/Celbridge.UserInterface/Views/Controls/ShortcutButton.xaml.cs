@@ -9,9 +9,9 @@ public sealed partial class ShortcutButton : UserControl
         this.InitializeComponent();
     }
 
-    public void SetIcon(string glyphName)
+    public void SetIcon(string iconName)
     {
-        IconElement.GlyphName = glyphName;
+        IconElement.IconName = iconName;
     }
 
     public void SetTooltip(string tooltip)

@@ -40,14 +40,24 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         }
 
         var allPackages = packageService.GetAllPackages();
-        BuildPackages(config, allPackages);
+
+        var issuesByEditorId = packageService.GetContributionIssues()
+            .GroupBy(issue => issue.EditorId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<ContributionIssue>)group.ToArray());
+
+        BuildPackages(config, allPackages, issuesByEditorId);
     }
 
     // Each non-disabled, user-curatable package becomes a row with its contributions nested beneath it.
     // A recommended contribution shows enabled and toggles off, an optional one shows disabled and
     // toggles on, a required one shows no toggle. Overrides from the normalized config supply the toggle
     // state and any non-default config values.
-    private void BuildPackages(ProjectConfig config, IReadOnlyList<Package> allPackages)
+    private void BuildPackages(
+        ProjectConfig config,
+        IReadOnlyList<Package> allPackages,
+        IReadOnlyDictionary<string, IReadOnlyList<ContributionIssue>> issuesByEditorId)
     {
         var disabledPackages = new HashSet<string>(config.Celbridge.DisabledPackages, StringComparer.Ordinal);
 
@@ -88,7 +98,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
                     ? contributionOverride?.Enabled ?? false
                     : !(contributionOverride?.Disabled ?? false);
 
-                var row = BuildContributionRow(contribution, contributionOverride, contributionEnabled);
+                var row = BuildContributionRow(contribution, contributionOverride, contributionEnabled, issuesByEditorId);
                 packageItem.Contributions.Add(row);
             }
 
@@ -99,7 +109,8 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
     private ContributionItemViewModel BuildContributionRow(
         EditorContribution contribution,
         ContributionOverride? contributionOverride,
-        bool isEnabled)
+        bool isEnabled,
+        IReadOnlyDictionary<string, IReadOnlyList<ContributionIssue>> issuesByEditorId)
     {
         var packageName = contribution.Package.Name;
         var displayName = ContributionDisplayName(contribution);
@@ -107,7 +118,9 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             .Select(fileType => new FileTypeInfo(fileType.FileExtension.ToLowerInvariant(), fileType.Category))
             .ToArray();
         var editorId = EditorId.Create(packageName, contribution.Id).ToString();
-        var iconGlyph = contribution.UtilityDescriptor?.Icon ?? string.Empty;
+        var iconName = contribution.UtilityDescriptor?.Icon ?? string.Empty;
+
+        issuesByEditorId.TryGetValue(editorId, out var issues);
 
         var description = string.Empty;
         if (!string.IsNullOrWhiteSpace(contribution.Description))
@@ -122,13 +135,14 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             DisplayName = displayName,
             Description = description,
             IsUtility = contribution.IsUtility,
-            IconGlyph = iconGlyph,
+            IconName = iconName,
             ManifestPath = contribution.ManifestPath,
             CanOpenManifest = contribution.Package.Origin == PackageOrigin.Project,
             IsOptional = contribution.Activation == ActivationPolicy.Optional,
             CanToggle = contribution.Activation != ActivationPolicy.Required,
             EditorId = editorId,
-            FileTypes = fileTypes
+            FileTypes = fileTypes,
+            Issues = issues ?? []
         };
 
         var row = new ContributionItemViewModel(info, SetContributionEnabled, OpenManifest);

@@ -854,6 +854,24 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_PackageNameFormat" xml:space="preserve">
     <value>{0} Package</value>
   </data>
+  <data name="ProjectSettings_ContributionIssuesTitle" xml:space="preserve">
+    <value>Configuration issue</value>
+  </data>
+  <data name="ProjectSettings_ContributionIssue_UnresolvedIcon_Single" xml:space="preserve">
+    <value>The icon '{0}' could not be resolved, so a default icon is shown.</value>
+  </data>
+  <data name="ProjectSettings_ContributionIssue_Multiple" xml:space="preserve">
+    <value>{0} settings could not be applied.</value>
+  </data>
+  <data name="ProjectSettings_PackageIssue_Single" xml:space="preserve">
+    <value>Configuration issue in '{0}'.</value>
+  </data>
+  <data name="ProjectSettings_PackageIssue_Multiple" xml:space="preserve">
+    <value>Configuration issues in {0} contributions.</value>
+  </data>
+  <data name="ProjectSettings_SectionIssue_Packages" xml:space="preserve">
+    <value>Some packages have configuration issues.</value>
+  </data>
   <data name="ProjectSettings_ContributionEnabledLabel" xml:space="preserve">
     <value>Enabled</value>
   </data>
@@ -914,8 +932,11 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_StringListPlaceholder" xml:space="preserve">
     <value>One value per line</value>
   </data>
-  <data name="ProjectSettings_ApplyAndReload" xml:space="preserve">
-    <value>Apply and reload</value>
+  <data name="ProjectSettings_ReloadProject" xml:space="preserve">
+    <value>Reload Project</value>
+  </data>
+  <data name="ProjectSettings_ReloadCaption" xml:space="preserve">
+    <value>Configuration changes take effect when the project is reloaded.</value>
   </data>
   <data name="NewFileDialog_FileType" xml:space="preserve">
     <value>Type</value>

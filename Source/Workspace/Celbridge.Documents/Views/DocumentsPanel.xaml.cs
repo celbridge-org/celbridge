@@ -994,7 +994,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         documentTab.ViewModel.IsUtility = true;
-        documentTab.ViewModel.UtilityIconGlyphName = utilityInfo.IconGlyphName;
+        documentTab.ViewModel.UtilityIconName = utilityInfo.IconName;
         documentTab.ViewModel.DocumentName = utilityInfo.Title;
         documentTab.ViewModel.UtilityTooltip = utilityInfo.Tooltip;
     }

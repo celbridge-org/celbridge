@@ -11,7 +11,7 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class ResourcePickerItemTests
 {
-    private static readonly FileIconDefinition Icon =
+    private static readonly IconDefinition Icon =
         new("a", "#FFFFFF", "Segoe Fluent Icons", "16");
 
     [Test]

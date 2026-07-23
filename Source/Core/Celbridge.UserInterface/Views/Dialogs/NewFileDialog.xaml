@@ -34,7 +34,7 @@
         <DataTemplate x:DataType="local:FileTypeDisplayItem">
           <StackPanel Orientation="Horizontal">
             <controls:FileIcon Source="{x:Bind Extension}"
-                               Size="16"
+                               Size="18"
                                Margin="0,0,8,0"
                                VerticalAlignment="Center"/>
             <TextBlock Text="{x:Bind DisplayName}"

@@ -1,10 +1,12 @@
 namespace Celbridge.Packages;
 
 /// <summary>
-/// The glyph a file type is drawn with, and the hex colour it is drawn in. An empty colour leaves the
-/// icon in the theme's default colour.
+/// The prefixed name of the icon a file type is drawn with, the hex colour it is drawn in, and an
+/// optional scale relative to the host's icon size. An empty colour leaves the icon in the theme's
+/// default colour; a scale of 1.0 draws it at the host's size, and a larger value enlarges a glyph its
+/// font draws small within its em box.
 /// </summary>
-public sealed record FileTypeIcon(string GlyphName, string Color);
+public sealed record FileTypeIcon(string IconName, string Color, double Scale = 1.0);
 
 /// <summary>
 /// The host's central catalog of established file types, loaded from the bundled file-types.json. Each
@@ -46,6 +48,13 @@ public interface IFileTypeCatalog
     FileTypeIcon? GetIcon(string extension);
 
     /// <summary>
+    /// Returns the icon the catalog assigns to a whole file name, or null when it assigns none. Covers
+    /// the files that carry no usable extension, such as Makefile and LICENSE. Matched
+    /// case-insensitively.
+    /// </summary>
+    FileTypeIcon? GetIconForFileName(string fileName);
+
+    /// <summary>
     /// Every extension the catalog assigns a coding language to, which is the set a general code editor claims.
     /// </summary>
     IReadOnlyList<string> LanguageExtensions { get; }
@@ -54,4 +63,9 @@ public interface IFileTypeCatalog
     /// Every extension the catalog assigns an icon to.
     /// </summary>
     IReadOnlyList<string> IconExtensions { get; }
+
+    /// <summary>
+    /// Every whole file name the catalog assigns an icon to.
+    /// </summary>
+    IReadOnlyList<string> IconFileNames { get; }
 }

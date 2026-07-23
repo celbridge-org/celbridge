@@ -11,4 +11,4 @@ description = "UtilityDemo_Description"
 [utility]
 resource-extension = "._utildemo"
 template = "templates/default._utildemo"
-icon = "cpu"
+icon = "bs-cpu"

@@ -175,7 +175,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return await _documentsService.SetPreferredEditorAsync(fileResource, editorId);
     }
 
-    public record class UtilityTabInfo(string IconGlyphName, string Title, string Tooltip);
+    public record class UtilityTabInfo(string IconName, string Title, string Tooltip);
 
     // Resolves how a utility document presents as a tab, or null when the editor is not a utility.
     public UtilityTabInfo? ResolveUtilityTabInfo(EditorId editorId)
@@ -200,8 +200,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         var descriptor = utilityFactory.Contribution.UtilityDescriptor;
         Guard.IsNotNull(descriptor);
 
-        var iconGlyphName = descriptor.Icon;
+        var iconIconName = descriptor.Icon;
 
-        return new UtilityTabInfo(iconGlyphName, utilityFactory.DisplayName, utilityFactory.Description);
+        return new UtilityTabInfo(iconIconName, utilityFactory.DisplayName, utilityFactory.Description);
     }
 }

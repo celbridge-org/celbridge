@@ -49,6 +49,13 @@ public interface IPackageService
     IReadOnlyList<PackageLoadFailure> GetLoadFailures();
 
     /// <summary>
+    /// Returns the contribution configuration issues from the most recent discovery pass: settings that
+    /// were unusable and dropped, leaving the contribution active but degraded. Empty before the first
+    /// discovery.
+    /// </summary>
+    IReadOnlyList<ContributionIssue> GetContributionIssues();
+
+    /// <summary>
     /// Returns all editor contributions from all discovered packages.
     /// </summary>
     IReadOnlyList<EditorContribution> GetAllEditors();

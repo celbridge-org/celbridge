@@ -1,154 +1,134 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json.Nodes;
 
 namespace Celbridge.UserInterface.Services;
 
+/// <summary>
+/// An icon font addressable by prefixed name, and the bundled asset holding its name to codepoint map.
+/// </summary>
+internal sealed record IconFontSet(string Prefix, string FontFamilyKey, string GlyphMapResource);
+
+/// <summary>
+/// The glyphs loaded from one icon font, keyed by their unprefixed name.
+/// </summary>
+internal sealed record IconFontGlyphs(string FontFamilyKey, IReadOnlyDictionary<string, string> GlyphsByName);
+
 public class IconService : IIconService
 {
-    private const string DefaultFileIconName = "_file";
-    private const string DefaultFolderIconName = "_folder";
+    private const string DefaultFileIconName = "nf-seti-default";
+    private const string DefaultFolderIconName = "bs-folder-fill";
     private const string DefaultColor = "#9dc0ce";
     public const string DefaultFolderColor = "#FFCC40";
 
-    private const string GlyphIconFontFamily = "BootstrapIconsFontFamily";
-    private const string GlyphIconFontSize = "100%";
+    private const string DefaultFontSize = "100%";
+    private const string FallbackIconName = "bs-question-circle";
 
-    private const string FileIconsThemeResource = "Assets.Fonts.FileIcons.file-icons-icon-theme.json";
-    private const string IconGlyphsResource = "Assets.Fonts.BootstrapIcons.icon-glyphs.json";
-    private const string FallbackGlyphName = "question-circle";
-
-    private Dictionary<string, string> _fileExtensionDefinitions = new();
-    private Dictionary<string, FileIconDefinition> _iconDefinitions = new();
-    private Dictionary<string, string> _glyphsByName = new();
-    private IReadOnlyDictionary<string, FileIconDefinition> _fileIconOverrides =
-        new Dictionary<string, FileIconDefinition>(StringComparer.OrdinalIgnoreCase);
-
-    // Maps each IconSymbol to its glyph name in the bundled icon font (Bootstrap Icons). The name is
-    // resolved to a glyph code via the bundled icon-glyphs.json map. Add new common icons here.
-    // Anything not listed is still resolvable by glyph name.
-    private static readonly Dictionary<IconSymbol, string> _kindToGlyphName = new()
+    // The icon fonts addressable by a prefixed name. The prefix selects the font; the rest of the name
+    // is looked up in that font's glyph map.
+    private static readonly IReadOnlyList<IconFontSet> _iconFontSets = new List<IconFontSet>
     {
-        { IconSymbol.Close, "x-lg" },
-        { IconSymbol.Search, "search" },
-        { IconSymbol.Folder, "folder" },
-        { IconSymbol.FolderOpen, "folder2-open" },
-        { IconSymbol.FolderFilled, "folder-fill" },
-        { IconSymbol.FolderAdd, "folder-plus" },
-        { IconSymbol.FileAdd, "file-earmark-plus" },
-        { IconSymbol.File, "file-earmark" },
-        { IconSymbol.Bug, "bug" },
-        { IconSymbol.Back, "arrow-left" },
-        { IconSymbol.Forward, "arrow-right" },
-        { IconSymbol.Home, "house" },
-        { IconSymbol.Refresh, "arrow-clockwise" },
-        { IconSymbol.Reveal, "box-arrow-up-right" },
-        { IconSymbol.Delete, "trash" },
-        { IconSymbol.Error, "exclamation-circle-fill" },
-        { IconSymbol.Warning, "exclamation-triangle-fill" },
-        { IconSymbol.More, "three-dots" },
-        { IconSymbol.Collapse, "arrows-collapse" },
-        { IconSymbol.Settings, "gear" },
-        { IconSymbol.Sliders, "sliders" },
-        { IconSymbol.Windowed, "window" },
-        { IconSymbol.FullScreen, "arrows-fullscreen" },
-        { IconSymbol.FocusMode, "fullscreen" },
-        { IconSymbol.Presentation, "easel" },
-        { IconSymbol.Save, "floppy" },
-        { IconSymbol.ExitFullScreen, "fullscreen-exit" },
-        { IconSymbol.People, "people" },
-        { IconSymbol.Upload, "upload" },
-        { IconSymbol.ChevronDown, "chevron-down" },
-        { IconSymbol.ChevronRight, "chevron-right" },
-        { IconSymbol.ChevronUp, "chevron-up" },
-        { IconSymbol.MatchCase, "type" },
-        { IconSymbol.Replace, "arrow-left-right" },
-        { IconSymbol.Add, "plus-lg" },
-        { IconSymbol.Copy, "copy" },
-        { IconSymbol.Cut, "scissors" },
-        { IconSymbol.Paste, "clipboard" },
-        { IconSymbol.Rename, "pencil" },
-        { IconSymbol.Archive, "archive" },
-        { IconSymbol.Unarchive, "box-arrow-up" },
-        { IconSymbol.Recent, "clock-history" },
-        { IconSymbol.Menu, "list" },
-        { IconSymbol.Play, "play-fill" },
-        { IconSymbol.Examples, "collection" },
-        { IconSymbol.Exit, "box-arrow-right" }
+        new IconFontSet("bs", "BootstrapIconsFontFamily", "Assets.Fonts.BootstrapIcons.icon-glyphs.json"),
+        new IconFontSet("nf", "NerdFontsFontFamily", "Assets.Fonts.NerdFonts.glyphnames.json")
     };
 
-    public FileIconDefinition DefaultFileIcon { get; private set; }
-    public FileIconDefinition DefaultFolderIcon { get; private set; }
+    // Maps each IconSymbol to a prefixed icon name. Add new common icons here. Anything not listed is
+    // still resolvable by name.
+    private static readonly Dictionary<IconSymbol, string> _symbolToIconName = new()
+    {
+        { IconSymbol.Close, "bs-x-lg" },
+        { IconSymbol.Search, "bs-search" },
+        { IconSymbol.Folder, "bs-folder" },
+        { IconSymbol.FolderOpen, "bs-folder2-open" },
+        { IconSymbol.FolderFilled, "bs-folder-fill" },
+        { IconSymbol.FolderAdd, "bs-folder-plus" },
+        { IconSymbol.FileAdd, "bs-file-earmark-plus" },
+        { IconSymbol.File, "bs-file-earmark" },
+        { IconSymbol.Bug, "bs-bug" },
+        { IconSymbol.Back, "bs-arrow-left" },
+        { IconSymbol.Forward, "bs-arrow-right" },
+        { IconSymbol.Home, "bs-house" },
+        { IconSymbol.Refresh, "bs-arrow-clockwise" },
+        { IconSymbol.Reveal, "bs-box-arrow-up-right" },
+        { IconSymbol.Delete, "bs-trash" },
+        { IconSymbol.Error, "bs-exclamation-circle-fill" },
+        { IconSymbol.Warning, "bs-exclamation-triangle-fill" },
+        { IconSymbol.More, "bs-three-dots" },
+        { IconSymbol.Collapse, "bs-arrows-collapse" },
+        { IconSymbol.Settings, "bs-gear" },
+        { IconSymbol.Sliders, "bs-sliders" },
+        { IconSymbol.Windowed, "bs-window" },
+        { IconSymbol.FullScreen, "bs-arrows-fullscreen" },
+        { IconSymbol.FocusMode, "bs-fullscreen" },
+        { IconSymbol.Presentation, "bs-easel" },
+        { IconSymbol.Save, "bs-floppy" },
+        { IconSymbol.ExitFullScreen, "bs-fullscreen-exit" },
+        { IconSymbol.People, "bs-people" },
+        { IconSymbol.Upload, "bs-upload" },
+        { IconSymbol.ChevronDown, "bs-chevron-down" },
+        { IconSymbol.ChevronRight, "bs-chevron-right" },
+        { IconSymbol.ChevronUp, "bs-chevron-up" },
+        { IconSymbol.MatchCase, "bs-type" },
+        { IconSymbol.Replace, "bs-arrow-left-right" },
+        { IconSymbol.Add, "bs-plus-lg" },
+        { IconSymbol.Copy, "bs-copy" },
+        { IconSymbol.Cut, "bs-scissors" },
+        { IconSymbol.Paste, "bs-clipboard" },
+        { IconSymbol.Rename, "bs-pencil" },
+        { IconSymbol.Archive, "bs-archive" },
+        { IconSymbol.Unarchive, "bs-box-arrow-up" },
+        { IconSymbol.Recent, "bs-clock-history" },
+        { IconSymbol.Menu, "bs-list" },
+        { IconSymbol.Play, "bs-play-fill" },
+        { IconSymbol.Examples, "bs-collection" },
+        { IconSymbol.Exit, "bs-box-arrow-right" }
+    };
+
+    private Dictionary<string, IconFontGlyphs> _glyphsByPrefix = new();
+    private IReadOnlyDictionary<string, IconDefinition> _fileIconOverrides =
+        new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, IconDefinition> _fileNameIconOverrides =
+        new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
+
+    public IconDefinition DefaultFileIcon { get; private set; }
+    public IconDefinition DefaultFolderIcon { get; private set; }
 
     public IconService()
     {
         var loadResult = LoadDefinitions();
         if (loadResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to load file icon definitions. {loadResult.DiagnosticReport}");
+            throw new InvalidOperationException($"Failed to load icon definitions. {loadResult.DiagnosticReport}");
         }
 
-        var getFileResult = GetFileIcon(DefaultFileIconName);
+        var getFileResult = CreateIcon(DefaultFileIconName, DefaultColor);
         if (getFileResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to get default file icon definitions. {getFileResult.DiagnosticReport}");
+            throw new InvalidOperationException($"Failed to build the default file icon. {getFileResult.DiagnosticReport}");
         }
         DefaultFileIcon = getFileResult.Value;
 
-        var getFolderResult = GetFileIcon(DefaultFolderIconName);
+        var getFolderResult = CreateIcon(DefaultFolderIconName, DefaultFolderColor);
         if (getFolderResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to get default folder icon definitions. {getFolderResult.DiagnosticReport}");
+            throw new InvalidOperationException($"Failed to build the default folder icon. {getFolderResult.DiagnosticReport}");
         }
         DefaultFolderIcon = getFolderResult.Value;
-
-        var loadGlyphsResult = LoadGlyphMap();
-        if (loadGlyphsResult.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to load icon glyph map. {loadGlyphsResult.DiagnosticReport}");
-        }
     }
 
     public Result LoadDefinitions()
     {
-        var loadResult = LoadIconData();
-        if (loadResult.IsFailure)
+        var loadGlyphsResult = LoadGlyphMaps();
+        if (loadGlyphsResult.IsFailure)
         {
-            return Result.Fail("Failed to load file icon definition")
-                .WithErrors(loadResult);
-        }
-        var iconData = loadResult.Value;
-
-        try
-        {
-            PopulateIconDefinitions(iconData);
-            PopulateFileExtensionDefinitions(iconData);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when loading the file icon definitions.")
-                .WithException(ex);
+            return Result.Fail("Failed to load the icon font glyph maps")
+                .WithErrors(loadGlyphsResult);
         }
 
         return Result.Ok();
     }
 
-    public Result<FileIconDefinition> GetFileIcon(string iconName)
-    {
-        if (!_iconDefinitions.TryGetValue(iconName, out FileIconDefinition? iconDefinition))
-        {
-            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
-            {
-                // Icon definition not found, return default icon
-                return Result<FileIconDefinition>.Ok(defaultIcon);
-            }
-
-            return Result<FileIconDefinition>.Fail($"No default icon found.");
-        }
-
-        return Result<FileIconDefinition>.Ok(iconDefinition);
-    }
-
-    public Result<FileIconDefinition> GetFileIconForExtension(string fileExtension)
+    public Result<IconDefinition> GetFileIconForExtension(string fileExtension)
     {
         if (fileExtension.StartsWith('.'))
         {
@@ -158,28 +138,30 @@ public class IconService : IIconService
 
         if (_fileIconOverrides.TryGetValue(fileExtension, out var overrideIcon))
         {
-            return Result<FileIconDefinition>.Ok(overrideIcon);
+            return Result<IconDefinition>.Ok(overrideIcon);
         }
 
-        if (!_fileExtensionDefinitions.TryGetValue(fileExtension, out string? iconName))
-        {
-            if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
-            {
-                // File extension not recognized, return default icon
-                return Result<FileIconDefinition>.Ok(defaultIcon);
-            }
-
-            return Result<FileIconDefinition>.Fail($"No default icon found.");
-        }
-
-        return GetFileIcon(iconName);
+        // An extension with no override is drawn with the default file icon.
+        return Result<IconDefinition>.Ok(DefaultFileIcon);
     }
 
-    public Result<FileIconDefinition> CreateGlyphFileIcon(string glyphName, string colorHex)
+    public Result<IconDefinition> GetFileIconForFileName(string fileName)
     {
-        if (!TryGetGlyph(glyphName, out var glyph))
+        if (!string.IsNullOrEmpty(fileName) &&
+            _fileNameIconOverrides.TryGetValue(fileName, out var fileNameOverride))
         {
-            return Result<FileIconDefinition>.Fail($"Unknown icon glyph name: '{glyphName}'.");
+            return Result<IconDefinition>.Ok(fileNameOverride);
+        }
+
+        // A name with no extension falls through to the default file icon.
+        return GetFileIconForExtension(Path.GetExtension(fileName));
+    }
+
+    public Result<IconDefinition> CreateIcon(string iconName, string colorHex)
+    {
+        if (!TryGetGlyph(iconName, out var glyph))
+        {
+            return Result<IconDefinition>.Fail($"Unknown icon name: '{iconName}'.");
         }
 
         var color = DefaultColor;
@@ -187,28 +169,95 @@ public class IconService : IIconService
         {
             if (!IsHexColor(colorHex))
             {
-                return Result<FileIconDefinition>.Fail(
+                return Result<IconDefinition>.Fail(
                     $"Malformed icon colour: '{colorHex}'. Expected a hex colour such as \"#RRGGBB\" or \"#AARRGGBB\".");
             }
             color = colorHex;
         }
 
-        var iconDefinition = new FileIconDefinition(glyph, color, GlyphIconFontFamily, GlyphIconFontSize);
+        var iconDefinition = new IconDefinition(glyph.FontCharacter, color, glyph.FontFamily, DefaultFontSize);
 
-        return Result<FileIconDefinition>.Ok(iconDefinition);
+        return Result<IconDefinition>.Ok(iconDefinition);
     }
 
-    public void SetFileIconOverrides(IReadOnlyDictionary<string, FileIconDefinition> overrides)
+    public void SetFileIconOverrides(
+        IReadOnlyDictionary<string, IconDefinition> extensionOverrides,
+        IReadOnlyDictionary<string, IconDefinition> fileNameOverrides)
     {
         // Callers supply extensions in either form; the lookup keys on the dot-free form.
-        var normalized = new Dictionary<string, FileIconDefinition>(StringComparer.OrdinalIgnoreCase);
-        foreach (var iconOverride in overrides)
+        var normalized = new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var iconOverride in extensionOverrides)
         {
             var extension = iconOverride.Key.TrimStart('.');
             normalized[extension] = iconOverride.Value;
         }
 
         _fileIconOverrides = normalized;
+        _fileNameIconOverrides = new Dictionary<string, IconDefinition>(fileNameOverrides, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public IconGlyph GetGlyph(IconSymbol icon)
+    {
+        if (_symbolToIconName.TryGetValue(icon, out string? iconName))
+        {
+            return GetGlyph(iconName);
+        }
+
+        return FallbackGlyph();
+    }
+
+    public IconGlyph GetGlyph(string iconName)
+    {
+        if (TryGetGlyph(iconName, out IconGlyph glyph))
+        {
+            return glyph;
+        }
+
+        return FallbackGlyph();
+    }
+
+    public bool TryGetGlyph(string iconName, out IconGlyph glyph)
+    {
+        glyph = new IconGlyph(string.Empty, string.Empty);
+
+        if (string.IsNullOrEmpty(iconName))
+        {
+            return false;
+        }
+
+        var separatorIndex = iconName.IndexOf('-');
+        if (separatorIndex <= 0)
+        {
+            // Every icon name carries a font prefix, so an unprefixed name is not resolvable.
+            return false;
+        }
+
+        var prefix = iconName.Substring(0, separatorIndex);
+        var unprefixedName = iconName.Substring(separatorIndex + 1);
+
+        if (!_glyphsByPrefix.TryGetValue(prefix, out IconFontGlyphs? fontGlyphs))
+        {
+            return false;
+        }
+
+        if (!fontGlyphs.GlyphsByName.TryGetValue(unprefixedName, out string? fontCharacter))
+        {
+            return false;
+        }
+
+        glyph = new IconGlyph(fontCharacter, fontGlyphs.FontFamilyKey);
+
+        return true;
+    }
+
+    private IconGlyph FallbackGlyph()
+    {
+        if (TryGetGlyph(FallbackIconName, out IconGlyph fallback))
+        {
+            return fallback;
+        }
+
+        return new IconGlyph(string.Empty, string.Empty);
     }
 
     private static bool IsHexColor(string value)
@@ -235,255 +284,80 @@ public class IconService : IIconService
         return true;
     }
 
-    public FileIconDefinition GetDefaultFileIcon()
+    private Result LoadGlyphMaps()
     {
-        if (_iconDefinitions.TryGetValue(DefaultFileIconName, out FileIconDefinition? defaultIcon))
+        var glyphsByPrefix = new Dictionary<string, IconFontGlyphs>();
+
+        foreach (var iconFontSet in _iconFontSets)
         {
-            return defaultIcon;
-        }
-
-        throw new InvalidOperationException();
-    }
-
-    public string IconFontFamilyUri => "ms-appx:///Celbridge.UserInterface/Assets/Fonts/BootstrapIcons/bootstrap-icons.ttf#bootstrap-icons";
-
-    public string GetGlyph(IconSymbol icon)
-    {
-        if (_kindToGlyphName.TryGetValue(icon, out string? glyphName))
-        {
-            return GetGlyph(glyphName);
-        }
-
-        return FallbackGlyph();
-    }
-
-    public string GetGlyph(string glyphName)
-    {
-        if (TryGetGlyph(glyphName, out string glyph))
-        {
-            return glyph;
-        }
-
-        return FallbackGlyph();
-    }
-
-    public bool TryGetGlyph(string glyphName, out string glyph)
-    {
-        if (!string.IsNullOrEmpty(glyphName) &&
-            _glyphsByName.TryGetValue(glyphName, out string? found))
-        {
-            glyph = found;
-            return true;
-        }
-
-        glyph = string.Empty;
-        return false;
-    }
-
-    private string FallbackGlyph()
-    {
-        if (_glyphsByName.TryGetValue(FallbackGlyphName, out string? fallback))
-        {
-            return fallback;
-        }
-
-        return string.Empty;
-    }
-
-    private Result LoadGlyphMap()
-    {
-        var loadResult = LoadIconDataResource(IconGlyphsResource);
-        if (loadResult.IsFailure)
-        {
-            return Result.Fail($"Failed to load icon glyph map from resource '{IconGlyphsResource}'.")
-                .WithErrors(loadResult);
-        }
-        var stream = loadResult.Value;
-
-        try
-        {
-            using (var reader = new StreamReader(stream))
+            var loadResult = LoadIconDataResource(iconFontSet.GlyphMapResource);
+            if (loadResult.IsFailure)
             {
-                var json = reader.ReadToEnd();
-                var glyphData = JsonNode.Parse(json) as JsonObject;
-                if (glyphData is null)
+                return Result.Fail($"Failed to load the glyph map for icon font '{iconFontSet.Prefix}'.")
+                    .WithErrors(loadResult);
+            }
+            var stream = loadResult.Value;
+
+            var glyphsByName = new Dictionary<string, string>();
+
+            try
+            {
+                using (var reader = new StreamReader(stream))
                 {
-                    return Result.Fail("Failed to parse the icon glyph map as a JSON object.");
-                }
+                    var json = reader.ReadToEnd();
+                    var glyphData = JsonNode.Parse(json) as JsonObject;
+                    if (glyphData is null)
+                    {
+                        return Result.Fail($"Failed to parse the glyph map for icon font '{iconFontSet.Prefix}' as a JSON object.");
+                    }
 
-                foreach (var kv in glyphData)
-                {
-                    Guard.IsNotNull(kv.Value);
+                    foreach (var kv in glyphData)
+                    {
+                        var code = ReadCodePoint(kv.Value);
+                        if (string.IsNullOrEmpty(code))
+                        {
+                            // A non-glyph entry, such as the metadata block the Nerd Fonts map carries.
+                            continue;
+                        }
 
-                    string code = kv.Value.ToString();
-                    int codePoint = int.Parse(code, System.Globalization.NumberStyles.HexNumber);
-                    string glyph = ((char)codePoint).ToString();
+                        int codePoint = int.Parse(code, NumberStyles.HexNumber);
 
-                    _glyphsByName[kv.Key] = glyph;
+                        glyphsByName[kv.Key] = char.ConvertFromUtf32(codePoint);
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                return Result.Fail($"An exception occurred when loading the glyph map for icon font '{iconFontSet.Prefix}'.")
+                    .WithException(ex);
+            }
+
+            glyphsByPrefix[iconFontSet.Prefix] = new IconFontGlyphs(iconFontSet.FontFamilyKey, glyphsByName);
         }
-        catch (Exception ex)
-        {
-            return Result.Fail("An exception occurred when loading the icon glyph map.")
-                .WithException(ex);
-        }
+
+        _glyphsByPrefix = glyphsByPrefix;
 
         return Result.Ok();
     }
 
-    private void PopulateIconDefinitions(JsonObject iconData)
+    // Glyph maps are vendored byte-identical to their upstream projects, and the projects disagree on
+    // shape: Bootstrap maps a name straight to a codepoint string, Nerd Fonts maps it to an object with a
+    // "code" property. Returns empty for anything that is neither.
+    private static string ReadCodePoint(JsonNode? value)
     {
-        var iconDefinitions = iconData["iconDefinitions"] as JsonObject;
-        Guard.IsNotNull(iconDefinitions);
-
-        foreach (var kv in iconDefinitions)
+        if (value is JsonValue codeValue)
         {
-            Guard.IsNotNull(kv.Value);
-
-            string iconName = kv.Key;
-            var iconProperties = kv.Value as JsonObject;
-            Guard.IsNotNull(iconProperties);
-
-            string fontId;
-            if (iconProperties.ContainsKey("fontId"))
-            {
-                fontId = iconProperties["fontId"]!.ToString();
-            }
-            else
-            {
-                // Not a valid icon definition
-                continue;
-            }
-
-            // Map fontId to a FontFamily key
-            string fontFamily;
-            switch (fontId)
-            {
-                case "fi":
-                    fontFamily = "FileIconsFontFamily";
-                    break;
-                case "fa":
-                    fontFamily = "FontAwesomeFontFamily";
-                    break;
-                case "mf":
-                    fontFamily = "MFixxFontFamily";
-                    break;
-                case "devicons":
-                    fontFamily = "DevOpIconsFontFamily";
-                    break;
-                case "octicons":
-                    fontFamily = "OctIconsFontFamily";
-                    break;
-                default:
-                    // Not a valid icon definition
-                    continue;
-            }
-
-            string character = iconProperties["fontCharacter"]!.ToString();
-            if (string.IsNullOrEmpty(character))
-            {
-                continue;
-            }
-
-            string fontCharacter;
-            if (character.Length == 1)
-            {
-                fontCharacter = character;
-            }
-            else
-            {
-                fontCharacter = ConvertUnicodeString(character);
-            }
-
-            string color;
-            if (iconProperties.ContainsKey("fontColor"))
-            {
-                color = iconProperties["fontColor"]!.ToString();
-            }
-            else
-            {
-                color = DefaultColor;
-            }
-
-            string fontSize;
-            if (iconProperties.ContainsKey("fontSize"))
-            {
-                fontSize = iconProperties["fontSize"]!.ToString();
-            }
-            else
-            {
-                fontSize = "100%";
-            }
-
-            var iconDefinition = new FileIconDefinition(fontCharacter, color, fontFamily, fontSize);
-
-            _iconDefinitions.Add(iconName, iconDefinition);
-        }
-    }
-
-    private static string ConvertUnicodeString(string unicodeInput)
-    {
-        if (unicodeInput.StartsWith("\\"))
-        {
-            unicodeInput = unicodeInput.Substring(1);
+            return codeValue.ToString();
         }
 
-        int codePoint = int.Parse(unicodeInput, System.Globalization.NumberStyles.HexNumber);
-        char character = (char)codePoint;
-
-        return character.ToString();
-    }
-
-    private void PopulateFileExtensionDefinitions(JsonObject iconData)
-    {
-        // Edit 'file-icons-icon-theme.json' to change the icon definition.
-        // Note that there are multiple "fileExtensions" sections in the JSON document, the section
-        // you want to edit starts around line 11855.
-        // Original json file available here: https://github.com/file-icons/vscode/tree/master/icons
-
-        var fileExtensions = iconData["fileExtensions"] as JsonObject;
-        Guard.IsNotNull(fileExtensions);
-
-        foreach (var kv in fileExtensions)
+        if (value is JsonObject glyphObject &&
+            glyphObject.TryGetPropertyValue("code", out var codeProperty) &&
+            codeProperty is not null)
         {
-            Guard.IsNotNull(kv.Value);
-
-            string extension = kv.Key;
-            string iconName = kv.Value.ToString();
-
-            _fileExtensionDefinitions.Add(extension, iconName);
+            return codeProperty.ToString();
         }
-    }
 
-    private Result<JsonObject> LoadIconData()
-    {
-        var loadResult = LoadIconDataResource(FileIconsThemeResource);
-        if (loadResult.IsFailure)
-        {
-            return Result<JsonObject>.Fail($"Failed to load icon data from resource '{FileIconsThemeResource}'. Error: {loadResult.DiagnosticReport}");
-        }
-        var stream = loadResult.Value;
-
-        try
-        {
-            using (var reader = new StreamReader(stream))
-            {
-                var json = reader.ReadToEnd();
-                var jo = JsonNode.Parse(json) as JsonObject;
-                if (jo is null)
-                {
-                    return Result<JsonObject>.Fail("Failed to parse icon data as JSON object.");
-                }
-
-                return Result<JsonObject>.Ok(jo);
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result<JsonObject>.Fail($"An exception occurred when loading the icon data.")
-                .WithException(ex);
-        }
+        return string.Empty;
     }
 
     private Result<Stream> LoadIconDataResource(string searchResourceName)

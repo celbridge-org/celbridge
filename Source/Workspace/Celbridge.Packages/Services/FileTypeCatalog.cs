@@ -24,6 +24,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     private const string DisplayNameKey = "display-name";
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
+    private const string IconScaleKey = "icon-scale";
 
     private static readonly IReadOnlyList<FileTypeCategory> NoCategories = Array.Empty<FileTypeCategory>();
 
@@ -32,8 +33,10 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     private readonly IAppEnvironment _appEnvironment;
 
     private readonly Dictionary<string, FileTypeEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, FileTypeEntry> _fileNameEntries = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _languageExtensions = new();
     private List<string> _iconExtensions = new();
+    private List<string> _iconFileNames = new();
 
     private bool _loaded;
 
@@ -50,6 +53,8 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     public IReadOnlyList<string> LanguageExtensions => _languageExtensions;
 
     public IReadOnlyList<string> IconExtensions => _iconExtensions;
+
+    public IReadOnlyList<string> IconFileNames => _iconFileNames;
 
     // A catalog that fails to load leaves every extension uncatalogued rather than stopping the
     // application. The code editor then claims no file types and its package reports a load failure.
@@ -79,8 +84,10 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         {
             _logger.LogError(exception, $"Failed to parse the file type catalog: {catalogPath}");
             _entries.Clear();
+            _fileNameEntries.Clear();
             _languageExtensions = new List<string>();
             _iconExtensions = new List<string>();
+            _iconFileNames = new List<string>();
         }
     }
 
@@ -124,6 +131,17 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         return null;
     }
 
+    public FileTypeIcon? GetIconForFileName(string fileName)
+    {
+        if (!string.IsNullOrEmpty(fileName) &&
+            _fileNameEntries.TryGetValue(fileName, out var entry))
+        {
+            return entry.Icon;
+        }
+
+        return null;
+    }
+
     private bool TryGetEntry(string extension, out FileTypeEntry entry)
     {
         if (string.IsNullOrEmpty(extension))
@@ -146,9 +164,25 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 
         var languageExtensions = new List<string>();
         var iconExtensions = new List<string>();
+        var iconFileNames = new List<string>();
 
         foreach (var property in document.RootElement.EnumerateObject())
         {
+            // A key beginning with a dot is an extension; anything else is a whole file name, for the
+            // files that carry no usable extension.
+            if (!property.Name.StartsWith('.'))
+            {
+                var fileNameEntry = ParseEntry(property.Value);
+                _fileNameEntries[property.Name] = fileNameEntry;
+
+                if (fileNameEntry.Icon is not null)
+                {
+                    iconFileNames.Add(property.Name);
+                }
+
+                continue;
+            }
+
             var extension = property.Name.ToLowerInvariant();
             if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
             {
@@ -172,6 +206,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 
         _languageExtensions = languageExtensions;
         _iconExtensions = iconExtensions;
+        _iconFileNames = iconFileNames;
     }
 
     private FileTypeEntry ParseEntry(JsonElement element)
@@ -194,7 +229,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         if (element.TryGetProperty(IconKey, out var iconElement) &&
             iconElement.ValueKind == JsonValueKind.String)
         {
-            var glyphName = iconElement.GetString() ?? string.Empty;
+            var iconName = iconElement.GetString() ?? string.Empty;
             var iconColor = string.Empty;
             if (element.TryGetProperty(IconColorKey, out var iconColorElement) &&
                 iconColorElement.ValueKind == JsonValueKind.String)
@@ -202,7 +237,14 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
                 iconColor = iconColorElement.GetString() ?? string.Empty;
             }
 
-            icon = new FileTypeIcon(glyphName, iconColor);
+            var iconScale = 1.0;
+            if (element.TryGetProperty(IconScaleKey, out var iconScaleElement) &&
+                iconScaleElement.ValueKind == JsonValueKind.Number)
+            {
+                iconScale = iconScaleElement.GetDouble();
+            }
+
+            icon = new FileTypeIcon(iconName, iconColor, iconScale);
         }
 
         var categories = NoCategories;

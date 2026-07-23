@@ -1,9 +1,11 @@
+using Celbridge.UserInterface.Services;
+
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
-/// A FontIcon that renders a glyph from the shared icon font, selected by IconSymbol (Symbol), by glyph
-/// name (GlyphName), or by raw glyph code (the inherited Glyph property). The icon font is applied
-/// automatically, so call sites never reference a font or a codepoint.
+/// A FontIcon that renders a glyph from any of the bundled icon fonts, selected by IconSymbol (Symbol),
+/// by prefixed icon name (IconName), or by raw glyph code (the inherited Glyph property). The font is
+/// applied from whichever set the name resolves into, so call sites never reference a font or a codepoint.
 /// </summary>
 public sealed class Icon : FontIcon
 {
@@ -15,16 +17,15 @@ public sealed class Icon : FontIcon
         typeof(Icon),
         new PropertyMetadata(null, OnSymbolChanged));
 
-    public static readonly DependencyProperty GlyphNameProperty = DependencyProperty.Register(
-        nameof(GlyphName),
+    public static readonly DependencyProperty IconNameProperty = DependencyProperty.Register(
+        nameof(IconName),
         typeof(string),
         typeof(Icon),
-        new PropertyMetadata(string.Empty, OnGlyphNameChanged));
+        new PropertyMetadata(string.Empty, OnIconNameChanged));
 
     public Icon()
     {
         _iconService = ServiceLocator.AcquireService<IIconService>();
-        FontFamily = new FontFamily(_iconService.IconFontFamilyUri);
     }
 
     /// <summary>
@@ -37,27 +38,38 @@ public sealed class Icon : FontIcon
     }
 
     /// <summary>
-    /// The glyph name to display, for icons not covered by IconSymbol.
+    /// The prefixed icon name to display, for icons not covered by IconSymbol.
     /// </summary>
-    public string GlyphName
+    public string IconName
     {
-        get => (string)GetValue(GlyphNameProperty);
-        set => SetValue(GlyphNameProperty, value);
+        get => (string)GetValue(IconNameProperty);
+        set => SetValue(IconNameProperty, value);
     }
 
     private static void OnSymbolChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is Icon icon && e.NewValue is IconSymbol iconSymbol)
         {
-            icon.Glyph = icon._iconService.GetGlyph(iconSymbol);
+            icon.ApplyGlyph(icon._iconService.GetGlyph(iconSymbol));
         }
     }
 
-    private static void OnGlyphNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnIconNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is Icon icon && e.NewValue is string glyphName && !string.IsNullOrEmpty(glyphName))
+        if (d is Icon icon && e.NewValue is string iconName && !string.IsNullOrEmpty(iconName))
         {
-            icon.Glyph = icon._iconService.GetGlyph(glyphName);
+            icon.ApplyGlyph(icon._iconService.GetGlyph(iconName));
+        }
+    }
+
+    private void ApplyGlyph(IconGlyph glyph)
+    {
+        Glyph = glyph.FontCharacter;
+
+        var fontFamily = FontFamilyConverter.Resolve(glyph.FontFamily);
+        if (fontFamily is not null)
+        {
+            FontFamily = fontFamily;
         }
     }
 }

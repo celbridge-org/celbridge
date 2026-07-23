@@ -8,11 +8,12 @@
         <ui_services:FontFamilyConverter x:Key="FontFamilyConverter" />
     </UserControl.Resources>
 
+    <!-- Foreground and FontSize are set in code-behind, not bound: the colour is passed through the
+         theme's legibility adjustment (which a binding could not react to on a theme change), and the size
+         folds in the icon's per-glyph scale. -->
     <FontIcon
         x:Name="IconElement"
         FontFamily="{x:Bind IconDefinition.FontFamily, Mode=OneWay, Converter={StaticResource FontFamilyConverter}}"
-        Glyph="{x:Bind IconDefinition.FontCharacter, Mode=OneWay}"
-        Foreground="{x:Bind IconDefinition.FontColor, Mode=OneWay}"
-        FontSize="{x:Bind Size, Mode=OneWay}" />
+        Glyph="{x:Bind IconDefinition.FontCharacter, Mode=OneWay}" />
 
 </UserControl>

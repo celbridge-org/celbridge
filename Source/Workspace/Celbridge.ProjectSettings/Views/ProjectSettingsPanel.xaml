@@ -52,7 +52,7 @@
                 ToolTipService.ToolTip="{x:Bind InformationHeader}"
                 ToolTipService.Placement="Bottom">
             <StackPanel>
-              <icon:Icon GlyphName="info-circle" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <icon:Icon IconName="bs-info-circle" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
               <Grid Height="2" Margin="0,5,0,0">
                 <Border CornerRadius="1"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
@@ -65,7 +65,20 @@
                 ToolTipService.ToolTip="{x:Bind PackagesHeader}"
                 ToolTipService.Placement="Bottom">
             <StackPanel>
-              <icon:Icon GlyphName="box-seam" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <Grid Margin="10,2,10,0">
+                <icon:Icon IconName="bs-box-seam" FontSize="18" HorizontalAlignment="Center"/>
+
+                <!-- Reports that the section has something to look at; the detail is on the package. -->
+                <Ellipse Width="6"
+                         Height="6"
+                         Margin="0,-1,-7,0"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Top"
+                         Fill="{ThemeResource SystemFillColorCautionBrush}"
+                         ToolTipService.ToolTip="{x:Bind ViewModel.PackagesSectionIssuesTooltip}"
+                         ToolTipService.Placement="Bottom"
+                         Visibility="{x:Bind ViewModel.HasPackagesSectionIssues, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
               <Grid Height="2" Margin="0,5,0,0">
                 <Border CornerRadius="1"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
@@ -78,7 +91,7 @@
                 ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
                 ToolTipService.Placement="Bottom">
             <StackPanel>
-              <icon:Icon GlyphName="file-earmark" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <icon:Icon IconName="bs-file-earmark" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
               <Grid Height="2" Margin="0,5,0,0">
                 <Border CornerRadius="1"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
@@ -116,16 +129,22 @@
           Visibility="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
     </Grid>
 
-    <!-- Apply and reload -->
+    <!-- The button takes the accent style while an edit is waiting on a reload, applied in code-behind. -->
     <Border Grid.Row="3"
             Background="{ThemeResource PanelBackgroundABrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0"
             Padding="12,8">
-      <Button HorizontalAlignment="Stretch"
-              Style="{StaticResource AccentButtonStyle}"
-              Content="{x:Bind ApplyAndReloadText}"
-              Command="{x:Bind ViewModel.ApplyAndReloadCommand}"/>
+      <StackPanel Spacing="6">
+        <TextBlock Text="{x:Bind ReloadCaptionText}"
+                   Opacity="0.7"
+                   FontSize="12"
+                   TextWrapping="Wrap"/>
+        <Button x:Name="ReloadProjectButton"
+                HorizontalAlignment="Stretch"
+                Content="{x:Bind ReloadProjectText}"
+                Command="{x:Bind ViewModel.ReloadProjectCommand}"/>
+      </StackPanel>
     </Border>
 
   </Grid>

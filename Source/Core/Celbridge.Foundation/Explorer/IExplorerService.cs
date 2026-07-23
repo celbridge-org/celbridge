@@ -56,5 +56,5 @@ public interface IExplorerService
     /// <summary>
     /// Get an icon definition for the specified resource.
     /// </summary>
-    FileIconDefinition GetIconForResource(ResourceKey resource);
+    IconDefinition GetIconForResource(ResourceKey resource);
 }
