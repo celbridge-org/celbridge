@@ -19,6 +19,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ISettingsService _settings;
+    private readonly ProjectSettingsContext _context;
 
     // Stable keys for the three sections, indexed by SelectedSectionIndex. Persisting the key rather than the
     // raw index keeps the restored section correct if the sections are ever reordered.
@@ -30,6 +31,9 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     };
 
     private bool _loaded;
+
+    // The config instance the sections were last built from, used to skip a rebuild when nothing changed.
+    private ProjectConfig? _loadedConfig;
 
     // Section persistence is enabled only after the constructor's restore runs, so restoring the saved
     // section does not immediately rewrite it.
@@ -108,10 +112,10 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         TitleText = _stringLocalizer.GetString("ProjectSettingsPanel_Title");
         ReloadProjectCommand = new RelayCommand(ReloadProject);
 
-        var context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
-        InformationSection = new InformationSectionViewModel(context);
-        PackagesSection = new PackagesSectionViewModel(context, packageLocalization);
-        FileEditorsSection = new FileEditorsSectionViewModel(context, fileTypeCatalog, _stringLocalizer);
+        _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
+        InformationSection = new InformationSectionViewModel(_context);
+        PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
+        FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
 
         RestoreSelectedSection();
     }
@@ -127,6 +131,17 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         {
             return;
         }
+
+        // The config instance changes only when a discovery pass runs (initial load or reload), so an
+        // unchanged instance means a rebuild would produce identical sections and only reset the panel's
+        // view state (expander and scroll positions). Skip it so navigating away and back is lossless.
+        var config = _context.GetConfig();
+        if (_loaded
+            && ReferenceEquals(config, _loadedConfig))
+        {
+            return;
+        }
+        _loadedConfig = config;
 
         InformationSection.Load();
         PackagesSection.Load();

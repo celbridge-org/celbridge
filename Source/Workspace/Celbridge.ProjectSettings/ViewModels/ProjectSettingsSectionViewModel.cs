@@ -14,7 +14,16 @@ public sealed record ProjectSettingsContext(
     IWorkspaceWrapper WorkspaceWrapper,
     IProjectService ProjectService,
     ICommandService CommandService,
-    Action NotifyEdited);
+    Action NotifyEdited)
+{
+    // The reconciled config (overrides only), falling back to the parsed config before reconcile. The
+    // instance changes only when a discovery pass runs, so its identity signals whether a reload is needed.
+    public ProjectConfig? GetConfig()
+    {
+        var packageService = WorkspaceWrapper.WorkspaceService?.PackageService;
+        return packageService?.GetNormalizedConfig() ?? ProjectService.CurrentProject?.Config;
+    }
+}
 
 /// <summary>
 /// Base for the three Project Settings section view models (Information, Packages, File Editors). Each
@@ -36,12 +45,7 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
 
     protected ICommandService CommandService => _context.CommandService;
 
-    // The reconciled config (overrides only), falling back to the parsed config before reconcile.
-    protected ProjectConfig? GetConfig()
-    {
-        var packageService = WorkspaceService?.PackageService;
-        return packageService?.GetNormalizedConfig() ?? ProjectService.CurrentProject?.Config;
-    }
+    protected ProjectConfig? GetConfig() => _context.GetConfig();
 
     protected void WriteEdits(params ProjectConfigEdit[] edits)
     {
