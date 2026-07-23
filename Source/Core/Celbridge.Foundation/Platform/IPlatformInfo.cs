@@ -93,6 +93,12 @@ public interface IPlatformInfo
     bool RequiresMacOSTabScrollIntoView { get; }
 
     /// <summary>
+    /// Whether the mouse wheel must be translated into horizontal tab-strip scrolling manually because the
+    /// platform does not scroll the overflowing strip in response to the wheel. True on macOS.
+    /// </summary>
+    bool RequiresMacOSTabWheelScroll { get; }
+
+    /// <summary>
     /// Whether document tabs are dragged by the pointer-driven drag controller because the platform's
     /// built-in tab drag-and-drop is unreliable. True on the Skia desktop head (all operating systems).
     /// </summary>

@@ -19,6 +19,7 @@ public sealed partial class DocumentSection : UserControl
     private readonly IDocumentSectionLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
+    private readonly PointerEventHandler _tabStripWheelHandler;
     private bool _isShuttingDown = false;
 
     /// <summary>
@@ -79,6 +80,7 @@ public sealed partial class DocumentSection : UserControl
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _tabPointerPressedHandler = OnTabPointerPressed;
+        _tabStripWheelHandler = OnTabStripPointerWheelChanged;
         DisableBuiltInTabDrag();
 
         // Disable tab add/remove animations so tabs snap into place immediately
@@ -90,6 +92,14 @@ public sealed partial class DocumentSection : UserControl
         if (_platformInfo.RequiresMacOSTabScrollIntoView)
         {
             TabView.SizeChanged += OnTabViewSizeChanged;
+        }
+
+        // On macOS the overflowing strip does not scroll in response to the mouse wheel, so translate the
+        // wheel into horizontal scrolling ourselves. Subscribe for handled events too because the strip's
+        // internal ScrollViewer can mark the wheel handled without scrolling.
+        if (_platformInfo.RequiresMacOSTabWheelScroll)
+        {
+            TabView.AddHandler(PointerWheelChangedEvent, _tabStripWheelHandler, handledEventsToo: true);
         }
     }
 
@@ -572,6 +582,49 @@ public sealed partial class DocumentSection : UserControl
         var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
 
         return tabListView is null ? null : VisualTree.FindDescendant<ScrollViewer>(tabListView);
+    }
+
+    /// <summary>
+    /// Scrolls the overflowing tab strip horizontally in response to the mouse wheel. macOS only: the Uno
+    /// TabView does not translate vertical wheel input into horizontal strip scrolling the way the packaged
+    /// Windows TabView does, so the strip's scroll offset is driven directly.
+    /// </summary>
+    private void OnTabStripPointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        var scrollViewer = GetTabStripScrollViewer();
+        if (scrollViewer is null ||
+            scrollViewer.ScrollableWidth <= 0)
+        {
+            return;
+        }
+
+        // Only the tab strip should react. A wheel over the document content below it falls outside the
+        // strip's ScrollViewer, so leave it unhandled to scroll that content.
+        var pointerPoint = e.GetCurrentPoint(scrollViewer);
+        var position = pointerPoint.Position;
+        bool isOverTabStrip = position.X >= 0 &&
+            position.X <= scrollViewer.ViewportWidth &&
+            position.Y >= 0 &&
+            position.Y <= scrollViewer.ActualHeight;
+        if (!isOverTabStrip)
+        {
+            return;
+        }
+
+        int wheelDelta = pointerPoint.Properties.MouseWheelDelta;
+        if (wheelDelta == 0)
+        {
+            return;
+        }
+
+        // A forward wheel notch (positive delta) reveals earlier tabs, matching the packaged Windows TabView.
+        ScrollTabStripBy(-wheelDelta);
+        e.Handled = true;
     }
 
     private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
