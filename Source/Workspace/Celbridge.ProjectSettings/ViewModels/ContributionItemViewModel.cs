@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Celbridge.Core;
 using Celbridge.Packages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -42,15 +43,11 @@ public sealed record ContributionItemInfo
     public string IconName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Absolute path of the editor manifest the contribution was parsed from.
+    /// Resource key of the editor manifest the contribution was parsed from, or null when the manifest
+    /// cannot be opened in the workspace (a bundled package's manifest lives in the application folder,
+    /// outside every registered root).
     /// </summary>
-    public string ManifestPath { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Whether the manifest can be opened in the workspace. False for a bundled package, whose manifest
-    /// lives in the application folder.
-    /// </summary>
-    public bool CanOpenManifest { get; init; }
+    public ResourceKey? ManifestResource { get; init; }
 
     /// <summary>
     /// Whether the contribution is opt-in. Governs whether the enable toggle writes an enabled marker
@@ -89,7 +86,8 @@ public partial class ContributionItemViewModel : ObservableObject
 {
     private readonly ContributionItemInfo _info;
     private readonly Action<ContributionItemViewModel, bool> _setEnabled;
-    private readonly Action<string> _openManifest;
+    private readonly Action<ResourceKey> _openManifest;
+    private readonly Action<ResourceKey> _revealManifest;
 
     private bool _initialized;
 
@@ -99,11 +97,13 @@ public partial class ContributionItemViewModel : ObservableObject
     public ContributionItemViewModel(
         ContributionItemInfo info,
         Action<ContributionItemViewModel, bool> setEnabled,
-        Action<string> openManifest)
+        Action<ResourceKey> openManifest,
+        Action<ResourceKey> revealManifest)
     {
         _info = info;
         _setEnabled = setEnabled;
         _openManifest = openManifest;
+        _revealManifest = revealManifest;
     }
 
     public string PackageName => _info.PackageName;
@@ -155,12 +155,12 @@ public partial class ContributionItemViewModel : ObservableObject
     /// </summary>
     public string TypeLabel => IsUtility ? ProjectSettingsLabels.UtilityTypeLabel : ProjectSettingsLabels.DocumentTypeLabel;
 
-    public bool CanOpenManifest => _info.CanOpenManifest;
+    public bool CanOpenManifest => _info.ManifestResource is not null;
 
     /// <summary>
     /// File name of the editor manifest, shown as the text of the link that opens it.
     /// </summary>
-    public string ManifestFileName => System.IO.Path.GetFileName(_info.ManifestPath);
+    public string ManifestFileName => _info.ManifestResource?.ResourceName ?? string.Empty;
 
     public string EnabledLabel => ProjectSettingsLabels.ContributionEnabledLabel;
 
@@ -169,6 +169,8 @@ public partial class ContributionItemViewModel : ObservableObject
     public string ToggleTooltip => ProjectSettingsLabels.ContributionToggleTooltip;
 
     public string OpenManifestTooltip => ProjectSettingsLabels.OpenManifestTooltip;
+
+    public string RevealManifestTooltip => ProjectSettingsLabels.RevealManifestTooltip;
 
     public ObservableCollection<ConfigFieldViewModel> ConfigFields { get; } = new();
 
@@ -189,7 +191,19 @@ public partial class ContributionItemViewModel : ObservableObject
     [RelayCommand]
     private void OpenManifest()
     {
-        _openManifest(_info.ManifestPath);
+        if (_info.ManifestResource is { } manifestResource)
+        {
+            _openManifest(manifestResource);
+        }
+    }
+
+    [RelayCommand]
+    private void RevealManifest()
+    {
+        if (_info.ManifestResource is { } manifestResource)
+        {
+            _revealManifest(manifestResource);
+        }
     }
 
     partial void OnIsEnabledChanged(bool value)

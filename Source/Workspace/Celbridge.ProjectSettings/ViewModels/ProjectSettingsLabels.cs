@@ -29,6 +29,7 @@ internal static class ProjectSettingsLabels
     public static string ContributionEnabledLabel => Localizer.GetString("ProjectSettings_ContributionEnabledLabel");
     public static string ManifestLabel => Localizer.GetString("ProjectSettings_ManifestLabel");
     public static string OpenManifestTooltip => Localizer.GetString("ProjectSettings_OpenManifestTooltip");
+    public static string RevealManifestTooltip => Localizer.GetString("ProjectSettings_RevealManifestTooltip");
     public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
     public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
     public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");

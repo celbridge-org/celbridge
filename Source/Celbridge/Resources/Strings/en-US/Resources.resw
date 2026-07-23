@@ -893,6 +893,9 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_OpenManifestTooltip" xml:space="preserve">
     <value>Open the manifest file</value>
   </data>
+  <data name="ProjectSettings_RevealManifestTooltip" xml:space="preserve">
+    <value>Show the manifest file in the Explorer</value>
+  </data>
   <data name="ProjectSettings_ContributionType_Document" xml:space="preserve">
     <value>Document Editor</value>
   </data>

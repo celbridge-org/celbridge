@@ -29,6 +29,17 @@
       <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
+    <!-- The secondary icon button beside a manifest link that reveals the file in the Explorer. Borderless
+         and compact so it reads as an affordance on the link rather than a form control. -->
+    <Style x:Key="RevealManifestButtonStyle" TargetType="Button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
     <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
       <Setter Property="VerticalAlignment" Value="Center"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -153,11 +164,17 @@
                        Text="{x:Bind ManifestLabel}"
                        Style="{StaticResource PropertyLabelStyle}"/>
 
-            <HyperlinkButton Grid.Column="1"
-                             Style="{StaticResource OpenManifestLinkStyle}"
-                             Content="{x:Bind ManifestFileName}"
-                             Command="{x:Bind OpenManifestCommand}"
-                             ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <HyperlinkButton Style="{StaticResource OpenManifestLinkStyle}"
+                               Content="{x:Bind ManifestFileName}"
+                               Command="{x:Bind OpenManifestCommand}"
+                               ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"/>
+              <Button Style="{StaticResource RevealManifestButtonStyle}"
+                      Command="{x:Bind RevealManifestCommand}"
+                      ToolTipService.ToolTip="{x:Bind RevealManifestTooltip}">
+                <icon:Icon Symbol="Reveal" FontSize="14"/>
+              </Button>
+            </StackPanel>
           </Grid>
         </StackPanel>
       </Border>
@@ -223,12 +240,20 @@
                        Style="{StaticResource PropertyLabelStyle}"
                        Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-            <HyperlinkButton Grid.Row="1" Grid.Column="1"
-                             Style="{StaticResource OpenManifestLinkStyle}"
-                             Content="{x:Bind ManifestFileName}"
-                             Command="{x:Bind OpenManifestCommand}"
-                             ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"
-                             Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <StackPanel Grid.Row="1" Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="4"
+                        Visibility="{x:Bind CanOpenManifest, Converter={StaticResource BoolToVisibilityConverter}}">
+              <HyperlinkButton Style="{StaticResource OpenManifestLinkStyle}"
+                               Content="{x:Bind ManifestFileName}"
+                               Command="{x:Bind OpenManifestCommand}"
+                               ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"/>
+              <Button Style="{StaticResource RevealManifestButtonStyle}"
+                      Command="{x:Bind RevealManifestCommand}"
+                      ToolTipService.ToolTip="{x:Bind RevealManifestTooltip}">
+                <icon:Icon Symbol="Reveal" FontSize="14"/>
+              </Button>
+            </StackPanel>
           </Grid>
 
           <!-- A disabled package contributes nothing on reload, so its contributions read as inactive. -->
