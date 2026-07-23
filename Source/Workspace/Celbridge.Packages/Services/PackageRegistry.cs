@@ -544,7 +544,7 @@ public class PackageRegistry
                     continue;
                 }
 
-                overrides[fileType.FileExtension] = createResult.Value;
+                overrides[fileType.FileExtension] = ApplyScale(createResult.Value, fileType.IconScale);
             }
 
             // A utility's icon is drawn straight from its name by the rail and its docked tab, so it never

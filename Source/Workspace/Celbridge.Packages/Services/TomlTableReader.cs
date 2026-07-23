@@ -49,6 +49,22 @@ internal static class TomlTableReader
         return null;
     }
 
+    public static double? GetDoubleOrNull(TomlTable table, string key)
+    {
+        if (!table.TryGetValue(key, out var value))
+        {
+            return null;
+        }
+
+        // TOML numbers parse as long when written without a decimal point, so accept both.
+        return value switch
+        {
+            double d => d,
+            long l => l,
+            _ => null
+        };
+    }
+
     public static IReadOnlyList<string> GetStringArray(TomlTable table, string key)
     {
         if (!table.TryGetValue(key, out var value) || value is not TomlArray array)

@@ -27,8 +27,8 @@ public class ProjectTemplateService : IProjectTemplateService
 
         _templates =
         [
-            CreateTemplate(stringLocalizer, "Empty", "file-earmark"),
-            CreateTemplate(stringLocalizer, "Examples", "collection")
+            CreateTemplate(stringLocalizer, "Empty", "bs-file-earmark"),
+            CreateTemplate(stringLocalizer, "Examples", "bs-collection")
         ];
     }
 

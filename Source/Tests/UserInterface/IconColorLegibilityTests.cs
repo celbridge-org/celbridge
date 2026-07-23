@@ -47,6 +47,15 @@ public class IconColorLegibilityTests
     }
 
     [Test]
+    public void AdjustingAChromaticColour_KeepsItSaturated()
+    {
+        // Lifting a muted green must not wash it toward grey.
+        var result = IconColorLegibility.Normalize("#217346", darkBackground: true);
+
+        Saturation(result).Should().BeGreaterThanOrEqualTo(0.6);
+    }
+
+    [Test]
     public void Normalisation_PreservesHue()
     {
         // The lifted colour must still read as blue, not drift to another hue.
@@ -133,6 +142,25 @@ public class IconColorLegibilityTests
         }
 
         return hue < 0.0 ? hue + 360.0 : hue;
+    }
+
+    private static double Saturation(string colorHex)
+    {
+        var (redByte, greenByte, blueByte) = Rgb(colorHex);
+        var r = redByte / 255.0;
+        var g = greenByte / 255.0;
+        var b = blueByte / 255.0;
+
+        var max = Math.Max(r, Math.Max(g, b));
+        var min = Math.Min(r, Math.Min(g, b));
+        var lightness = (max + min) / 2.0;
+        var delta = max - min;
+        if (delta == 0.0)
+        {
+            return 0.0;
+        }
+
+        return delta / (1.0 - Math.Abs(2.0 * lightness - 1.0));
     }
 
     private static (byte Red, byte Green, byte Blue) Rgb(string colorHex)

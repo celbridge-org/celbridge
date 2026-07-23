@@ -23,6 +23,12 @@ public static class IconColorLegibility
     // would make a second pass nudge it again. This slack keeps the adjustment idempotent.
     private const double BandTolerance = 0.006;
 
+    // Moving a colour's lightness toward the band washes it out, so an adjusted chromatic colour has its
+    // saturation lifted to this floor to stay vivid. A near-grey colour (below the threshold) is left
+    // neutral rather than tinted.
+    private const double MinChromaticSaturation = 0.70;
+    private const double GrayscaleThreshold = 0.10;
+
     /// <summary>
     /// Returns a hex colour whose luminance sits within the themed band, adjusting only lightness. A
     /// colour already in band, or a string that is not a hex colour, is returned unchanged. The input
@@ -56,10 +62,21 @@ public static class IconColorLegibility
 
         RgbToHsl(red, green, blue, out var hue, out var saturation, out var lightness);
 
-        var adjustedLightness = LightnessForLuminance(hue, saturation, target);
-        HslToRgb(hue, saturation, adjustedLightness, out var adjustedRed, out var adjustedGreen, out var adjustedBlue);
+        var adjustedSaturation = BoostSaturation(saturation);
+        var adjustedLightness = LightnessForLuminance(hue, adjustedSaturation, target);
+        HslToRgb(hue, adjustedSaturation, adjustedLightness, out var adjustedRed, out var adjustedGreen, out var adjustedBlue);
 
         return Format(alpha, adjustedRed, adjustedGreen, adjustedBlue);
+    }
+
+    private static double BoostSaturation(double saturation)
+    {
+        if (saturation < GrayscaleThreshold)
+        {
+            return saturation;
+        }
+
+        return Math.Min(1.0, Math.Max(saturation, MinChromaticSaturation));
     }
 
     // Luminance rises monotonically with HSL lightness for a fixed hue and saturation, so a binary search
