@@ -1,0 +1,42 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.FeatureFlagsSectionView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
+  xmlns:services="using:Celbridge.UserInterface.Services">
+
+  <UserControl.Resources>
+
+    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
+
+    <!-- One feature flag, collapsed by default. The header title is dimmed when the flag is not effectively
+         enabled so its state reads at a glance; expanding reveals the description and the tri-state control. -->
+    <DataTemplate x:Key="FeatureFlagCardTemplate" x:DataType="vm:FeatureFlagItemViewModel">
+      <Expander HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Margin="0,0,0,8">
+        <Expander.Header>
+          <TextBlock Text="{x:Bind Title}"
+                     FontWeight="SemiBold"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
+                     Opacity="{x:Bind IsEffectivelyEnabled, Mode=OneWay, Converter={StaticResource BoolToDimmedOpacityConverter}}"/>
+        </Expander.Header>
+
+        <StackPanel Spacing="8">
+          <TextBlock Text="{x:Bind Description}" Opacity="0.7" TextWrapping="Wrap"/>
+          <ComboBox HorizontalAlignment="Left"
+                    MinWidth="128"
+                    ItemsSource="{x:Bind StateOptions}"
+                    SelectedIndex="{x:Bind SelectedIndex, Mode=TwoWay}"/>
+        </StackPanel>
+      </Expander>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <ScrollViewer Padding="12">
+    <ItemsControl ItemsSource="{x:Bind ViewModel.FeatureFlags}"
+                  ItemTemplate="{StaticResource FeatureFlagCardTemplate}"/>
+  </ScrollViewer>
+</UserControl>

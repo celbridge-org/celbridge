@@ -14,6 +14,7 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
     public string PackagesHeader => _stringLocalizer.GetString("ProjectSettings_PackagesHeader");
     public string FileEditorsHeader => _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
     public string PagesHeader => _stringLocalizer.GetString("ProjectSettings_PagesHeader");
+    public string FeatureFlagsHeader => _stringLocalizer.GetString("ProjectSettings_FeatureFlagsHeader");
     public string ReloadProjectText => _stringLocalizer.GetString("ProjectSettings_ReloadProject");
     public string ReloadCaptionText => _stringLocalizer.GetString("ProjectSettings_ReloadCaption");
 

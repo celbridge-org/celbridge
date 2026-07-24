@@ -13,6 +13,12 @@ public interface IFeatureFlags
     bool IsEnabled(string featureName);
 
     /// <summary>
+    /// Returns the application-level value for a feature (appsettings.json, or the enabled default when
+    /// unset), ignoring any project override. Used to show what a project inheriting the default resolves to.
+    /// </summary>
+    bool GetApplicationValue(string featureName);
+
+    /// <summary>
     /// Applies project-level feature flag overrides.
     /// These take precedence over application-level settings.
     /// </summary>

@@ -9,6 +9,7 @@
   <UserControl.Resources>
 
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
 
     <Style x:Key="ContributionCardStyle" TargetType="Border">
       <Setter Property="Background" Value="{ThemeResource PanelBackgroundABrush}"/>
@@ -187,7 +188,7 @@
                 HorizontalContentAlignment="Stretch"
                 Margin="0,0,0,8">
         <Expander.Header>
-          <Grid Opacity="{x:Bind HeaderOpacity, Mode=OneWay}">
+          <Grid Opacity="{x:Bind IsEnabled, Mode=OneWay, Converter={StaticResource BoolToDimmedOpacityConverter}}">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*"/>
               <ColumnDefinition Width="Auto"/>

@@ -54,7 +54,6 @@ public partial class PackageItemViewModel : ObservableObject
     private bool _initialized;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HeaderOpacity))]
     private bool _isEnabled;
 
     public PackageItemViewModel(
@@ -104,11 +103,6 @@ public partial class PackageItemViewModel : ObservableObject
     /// File name of the package manifest, shown as the text of the link that opens it.
     /// </summary>
     public string ManifestFileName => _info.ManifestResource?.ResourceName ?? string.Empty;
-
-    /// <summary>
-    /// Dims the header of a disabled package.
-    /// </summary>
-    public double HeaderOpacity => IsEnabled ? 1.0 : 0.5;
 
     public string ToggleTooltip => ProjectSettingsLabels.PackageToggleTooltip;
 

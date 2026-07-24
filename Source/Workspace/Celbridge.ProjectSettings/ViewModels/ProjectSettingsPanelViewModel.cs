@@ -29,6 +29,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         "Packages",
         "Pages",
         "FileEditors",
+        "FeatureFlags",
     };
 
     private bool _loaded;
@@ -53,6 +54,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     public bool IsPackagesSection => SelectedSectionIndex == 1;
     public bool IsPagesSection => SelectedSectionIndex == 2;
     public bool IsFileEditorsSection => SelectedSectionIndex == 3;
+    public bool IsFeatureFlagsSection => SelectedSectionIndex == 4;
 
     /// <summary>
     /// The localized name of the selected section, shown as a large label under the icon strip.
@@ -73,8 +75,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             {
                 return _stringLocalizer.GetString("ProjectSettings_PagesHeader");
             }
+            if (IsFileEditorsSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
+            }
 
-            return _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
+            return _stringLocalizer.GetString("ProjectSettings_FeatureFlagsHeader");
         }
     }
 
@@ -97,8 +103,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             {
                 return _stringLocalizer.GetString("ProjectSettings_PagesDescription");
             }
+            if (IsFileEditorsSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_FileEditorsDescription");
+            }
 
-            return _stringLocalizer.GetString("ProjectSettings_FileEditorsDescription");
+            return _stringLocalizer.GetString("ProjectSettings_FeatureFlagsDescription");
         }
     }
 
@@ -106,6 +116,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     public PackagesSectionViewModel PackagesSection { get; }
     public FileEditorsSectionViewModel FileEditorsSection { get; }
     public PagesSectionViewModel PagesSection { get; }
+    public FeatureFlagsSectionViewModel FeatureFlagsSection { get; }
 
     public IRelayCommand ReloadProjectCommand { get; }
 
@@ -128,6 +139,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
         PagesSection = new PagesSectionViewModel(_context);
+        FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
 
         RestoreSelectedSection();
     }
@@ -159,6 +171,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         PackagesSection.Load();
         FileEditorsSection.Load();
         PagesSection.Load();
+        FeatureFlagsSection.Load();
 
         HasPendingChanges = false;
         _loaded = true;
@@ -180,6 +193,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPackagesSection));
         OnPropertyChanged(nameof(IsFileEditorsSection));
         OnPropertyChanged(nameof(IsPagesSection));
+        OnPropertyChanged(nameof(IsFeatureFlagsSection));
         OnPropertyChanged(nameof(ActiveSectionName));
         OnPropertyChanged(nameof(ActiveSectionDescription));
 
