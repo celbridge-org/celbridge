@@ -3,6 +3,7 @@ namespace Celbridge.Settings;
 /// <summary>
 /// Feature flag names used throughout the application.
 /// These names must match the keys in appsettings.json and .celbridge files.
+/// The user-facing titles and descriptions shown on the Project Settings panel live in FeatureFlagCatalog.
 /// </summary>
 public static class FeatureFlagConstants
 {

@@ -14,7 +14,7 @@ public class PackageItemViewModelTests
             DisplayName = "Test Package"
         };
 
-        return new PackageItemViewModel(info, isEnabled: true, (name, disabled) => { }, path => { });
+        return new PackageItemViewModel(info, isEnabled: true, (name, disabled) => { }, resource => { }, resource => { });
     }
 
     private static ContributionItemViewModel CreateContribution(params ContributionIssue[] issues)
@@ -27,7 +27,7 @@ public class PackageItemViewModelTests
             Issues = issues
         };
 
-        return new ContributionItemViewModel(info, (contribution, enabled) => { }, path => { });
+        return new ContributionItemViewModel(info, (contribution, enabled) => { }, resource => { }, resource => { });
     }
 
     /// <summary>

@@ -827,11 +827,86 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_FileEditorsDescription" xml:space="preserve">
     <value>Choose which editor opens each type of file.</value>
   </data>
+  <data name="ProjectSettings_PagesHeader" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="ProjectSettings_PagesDescription" xml:space="preserve">
+    <value>Web pages defined in this project and published to your workshop.</value>
+  </data>
+  <data name="ProjectSettings_PagesEmpty" xml:space="preserve">
+    <value>No pages found. Add a folder with a pages.toml manifest to define one.</value>
+  </data>
+  <data name="ProjectSettings_PageLocationLabel" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="ProjectSettings_PageManifestIssueTitle" xml:space="preserve">
+    <value>Manifest issue</value>
+  </data>
+  <data name="ProjectSettings_PageManifestIssue" xml:space="preserve">
+    <value>The manifest is invalid or does not declare a published path. Open it to fix.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagsHeader" xml:space="preserve">
+    <value>Feature Flags</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagsDescription" xml:space="preserve">
+    <value>Turn advanced features on or off for this project, or inherit the application default.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagState_On" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagState_Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagState_DefaultFormat" xml:space="preserve">
+    <value>Default ({0})</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_ConsolePanel_Title" xml:space="preserve">
+    <value>Console Panel</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_ConsolePanel_Description" xml:space="preserve">
+    <value>Console panel with an interactive Python REPL terminal.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
+    <value>MCP Tools</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_McpTools_Description" xml:space="preserve">
+    <value>MCP tool system and the cel Python API. When off, the MCP server does not start.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebAccessTools_Title" xml:space="preserve">
+    <value>Web Access Tools</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebAccessTools_Description" xml:space="preserve">
+    <value>Built-in web fetch and web search tools for agents.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Title" xml:space="preserve">
+    <value>WebView Developer Tools</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Description" xml:space="preserve">
+    <value>Browser developer tools in WebView-based document editors.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebViewDevToolsEval_Title" xml:space="preserve">
+    <value>WebView Eval Tool</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebViewDevToolsEval_Description" xml:space="preserve">
+    <value>The webview eval tool — arbitrary code execution in a WebView.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_AnswerDialog_Title" xml:space="preserve">
+    <value>Answer Dialog Tool</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_AnswerDialog_Description" xml:space="preserve">
+    <value>Answers modal dialogs unattended, for test automation.</value>
+  </data>
   <data name="ProjectSettings_SchemaVersionLabel" xml:space="preserve">
     <value>Celbridge version</value>
   </data>
   <data name="ProjectSettings_ProjectVersionLabel" xml:space="preserve">
     <value>Project version</value>
+  </data>
+  <data name="ProjectSettings_DescriptionLabel" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="ProjectSettings_DescriptionTooltip" xml:space="preserve">
+    <value>A description of what this project is for, shown to anyone who opens it.</value>
   </data>
   <data name="ProjectSettings_IgnoreFileLabel" xml:space="preserve">
     <value>Ignore file</value>
@@ -853,6 +928,9 @@ Do you wish to continue?</value>
   </data>
   <data name="ProjectSettings_PackageNameFormat" xml:space="preserve">
     <value>{0} Package</value>
+  </data>
+  <data name="ProjectSettings_PackageVersionFormat" xml:space="preserve">
+    <value>v{0}</value>
   </data>
   <data name="ProjectSettings_ContributionIssuesTitle" xml:space="preserve">
     <value>Configuration issue</value>
@@ -886,6 +964,9 @@ Do you wish to continue?</value>
   </data>
   <data name="ProjectSettings_OpenManifestTooltip" xml:space="preserve">
     <value>Open the manifest file</value>
+  </data>
+  <data name="ProjectSettings_RevealManifestTooltip" xml:space="preserve">
+    <value>Show the manifest file in the Explorer</value>
   </data>
   <data name="ProjectSettings_ContributionType_Document" xml:space="preserve">
     <value>Document Editor</value>

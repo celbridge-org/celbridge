@@ -80,9 +80,25 @@ public sealed record RemoveContributionValueEdit(
 public sealed record SetProjectVersionEdit(string ProjectVersion) : ProjectConfigEdit;
 
 /// <summary>
+/// Sets the project's human-readable description ([celbridge].description).
+/// </summary>
+public sealed record SetDescriptionEdit(string Description) : ProjectConfigEdit;
+
+/// <summary>
 /// Sets the resource ignore-file path ([celbridge.resources].ignore-file).
 /// </summary>
 public sealed record SetIgnoreFileEdit(string IgnoreFile) : ProjectConfigEdit;
+
+/// <summary>
+/// Sets a feature flag on ([celbridge].features) to a fixed value, overriding the application default.
+/// </summary>
+public sealed record SetFeatureFlagEdit(string FlagName, bool Enabled) : ProjectConfigEdit;
+
+/// <summary>
+/// Removes a feature flag from ([celbridge].features) so it inherits the application default. A no-op when
+/// the flag has no entry.
+/// </summary>
+public sealed record RemoveFeatureFlagEdit(string FlagName) : ProjectConfigEdit;
 
 /// <summary>
 /// Associates a file extension with an editor id in [celbridge].editor-associations, replacing any

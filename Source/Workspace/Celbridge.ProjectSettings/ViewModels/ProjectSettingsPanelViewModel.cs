@@ -19,6 +19,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ISettingsService _settings;
+    private readonly ProjectSettingsContext _context;
 
     // Stable keys for the three sections, indexed by SelectedSectionIndex. Persisting the key rather than the
     // raw index keeps the restored section correct if the sections are ever reordered.
@@ -26,10 +27,15 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     {
         "Information",
         "Packages",
+        "Pages",
         "FileEditors",
+        "FeatureFlags",
     };
 
     private bool _loaded;
+
+    // The config instance the sections were last built from, used to skip a rebuild when nothing changed.
+    private ProjectConfig? _loadedConfig;
 
     // Section persistence is enabled only after the constructor's restore runs, so restoring the saved
     // section does not immediately rewrite it.
@@ -46,7 +52,9 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
 
     public bool IsInformationSection => SelectedSectionIndex == 0;
     public bool IsPackagesSection => SelectedSectionIndex == 1;
-    public bool IsFileEditorsSection => SelectedSectionIndex == 2;
+    public bool IsPagesSection => SelectedSectionIndex == 2;
+    public bool IsFileEditorsSection => SelectedSectionIndex == 3;
+    public bool IsFeatureFlagsSection => SelectedSectionIndex == 4;
 
     /// <summary>
     /// The localized name of the selected section, shown as a large label under the icon strip.
@@ -63,8 +71,16 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             {
                 return _stringLocalizer.GetString("ProjectSettings_PackagesHeader");
             }
+            if (IsPagesSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_PagesHeader");
+            }
+            if (IsFileEditorsSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
+            }
 
-            return _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
+            return _stringLocalizer.GetString("ProjectSettings_FeatureFlagsHeader");
         }
     }
 
@@ -83,14 +99,24 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             {
                 return _stringLocalizer.GetString("ProjectSettings_PackagesDescription");
             }
+            if (IsPagesSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_PagesDescription");
+            }
+            if (IsFileEditorsSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_FileEditorsDescription");
+            }
 
-            return _stringLocalizer.GetString("ProjectSettings_FileEditorsDescription");
+            return _stringLocalizer.GetString("ProjectSettings_FeatureFlagsDescription");
         }
     }
 
     public InformationSectionViewModel InformationSection { get; }
     public PackagesSectionViewModel PackagesSection { get; }
     public FileEditorsSectionViewModel FileEditorsSection { get; }
+    public PagesSectionViewModel PagesSection { get; }
+    public FeatureFlagsSectionViewModel FeatureFlagsSection { get; }
 
     public IRelayCommand ReloadProjectCommand { get; }
 
@@ -108,10 +134,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         TitleText = _stringLocalizer.GetString("ProjectSettingsPanel_Title");
         ReloadProjectCommand = new RelayCommand(ReloadProject);
 
-        var context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
-        InformationSection = new InformationSectionViewModel(context);
-        PackagesSection = new PackagesSectionViewModel(context, packageLocalization);
-        FileEditorsSection = new FileEditorsSectionViewModel(context, fileTypeCatalog, _stringLocalizer);
+        _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
+        InformationSection = new InformationSectionViewModel(_context);
+        PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
+        FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
+        PagesSection = new PagesSectionViewModel(_context);
+        FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
 
         RestoreSelectedSection();
     }
@@ -128,9 +156,22 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             return;
         }
 
+        // The config instance changes only when a discovery pass runs (initial load or reload), so an
+        // unchanged instance means a rebuild would produce identical sections and only reset the panel's
+        // view state (expander and scroll positions). Skip it so navigating away and back is lossless.
+        var config = _context.GetConfig();
+        if (_loaded
+            && ReferenceEquals(config, _loadedConfig))
+        {
+            return;
+        }
+        _loadedConfig = config;
+
         InformationSection.Load();
         PackagesSection.Load();
         FileEditorsSection.Load();
+        PagesSection.Load();
+        FeatureFlagsSection.Load();
 
         HasPendingChanges = false;
         _loaded = true;
@@ -151,6 +192,8 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         OnPropertyChanged(nameof(IsInformationSection));
         OnPropertyChanged(nameof(IsPackagesSection));
         OnPropertyChanged(nameof(IsFileEditorsSection));
+        OnPropertyChanged(nameof(IsPagesSection));
+        OnPropertyChanged(nameof(IsFeatureFlagsSection));
         OnPropertyChanged(nameof(ActiveSectionName));
         OnPropertyChanged(nameof(ActiveSectionDescription));
 

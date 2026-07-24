@@ -31,6 +31,11 @@ public class FeatureFlags : IFeatureFlags
             return overrideValue;
         }
 
+        return GetApplicationValue(featureName);
+    }
+
+    public bool GetApplicationValue(string featureName)
+    {
         var section = _configuration.GetSection(FeatureFlagKey);
         var value = section[featureName];
 

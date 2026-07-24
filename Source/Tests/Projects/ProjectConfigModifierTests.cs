@@ -144,6 +144,31 @@ public class ProjectConfigModifierTests
     }
 
     [Test]
+    public void ApplyEdits_SetDescription_UpdatesDescription()
+    {
+        var config = ApplyAndParse(BaseConfig, new SetDescriptionEdit("An example project."));
+        config.Celbridge.Description.Should().Be("An example project.");
+    }
+
+    [Test]
+    public void ApplyEdits_SetFeatureFlag_PinsFeature()
+    {
+        var config = ApplyAndParse(BaseConfig, new SetFeatureFlagEdit("mcp-tools", false));
+        config.Features.Should().ContainKey("mcp-tools");
+        config.Features["mcp-tools"].Should().BeFalse();
+    }
+
+    [Test]
+    public void ApplyEdits_RemoveFeatureFlag_ClearsFeature()
+    {
+        var pinned = ApplyAndParse(BaseConfig, new SetFeatureFlagEdit("mcp-tools", false));
+        var text = ProjectConfigSerializer.Serialize(pinned);
+
+        var config = ApplyAndParse(text, new RemoveFeatureFlagEdit("mcp-tools"));
+        config.Features.Should().NotContainKey("mcp-tools");
+    }
+
+    [Test]
     public void ApplyEdits_SetIgnoreFile_UpdatesIgnoreFile()
     {
         var config = ApplyAndParse(BaseConfig, new SetIgnoreFileEdit(".customignore"));

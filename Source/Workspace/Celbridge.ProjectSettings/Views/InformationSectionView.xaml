@@ -5,6 +5,14 @@
 
   <ScrollViewer Padding="12">
     <StackPanel Spacing="12">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{x:Bind DescriptionLabel}" Opacity="0.7" FontSize="12"/>
+        <TextBox ToolTipService.ToolTip="{x:Bind DescriptionTooltip}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="54"
+                 Text="{x:Bind ViewModel.DescriptionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+      </StackPanel>
       <StackPanel Spacing="2" ToolTipService.ToolTip="{x:Bind SchemaVersionTooltip}">
         <TextBlock Text="{x:Bind SchemaVersionLabel}" Opacity="0.7" FontSize="12"/>
         <TextBlock Text="{x:Bind ViewModel.SchemaVersionText, Mode=OneWay}"/>

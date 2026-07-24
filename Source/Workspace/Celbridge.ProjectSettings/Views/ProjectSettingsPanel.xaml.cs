@@ -13,6 +13,8 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
     public string InformationHeader => _stringLocalizer.GetString("ProjectSettings_InformationHeader");
     public string PackagesHeader => _stringLocalizer.GetString("ProjectSettings_PackagesHeader");
     public string FileEditorsHeader => _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
+    public string PagesHeader => _stringLocalizer.GetString("ProjectSettings_PagesHeader");
+    public string FeatureFlagsHeader => _stringLocalizer.GetString("ProjectSettings_FeatureFlagsHeader");
     public string ReloadProjectText => _stringLocalizer.GetString("ProjectSettings_ReloadProject");
     public string ReloadCaptionText => _stringLocalizer.GetString("ProjectSettings_ReloadCaption");
 
@@ -54,6 +56,15 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
         Focus(FocusState.Programmatic);
     }
 
+    // Focuses the panel in response to a click on its chrome (the header or a section tab) so the workspace
+    // reports Project Settings as the focused panel and lights its rail button. Uses Pointer focus rather
+    // than the Programmatic focus of FocusPanel, which the focus tracker ignores because it is reserved for
+    // restoration.
+    private void FocusPanelFromClick()
+    {
+        Focus(FocusState.Pointer);
+    }
+
     public void Refresh()
     {
         ViewModel.Refresh();
@@ -61,11 +72,13 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
 
     private void PanelHeader_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        FocusPanel();
+        FocusPanelFromClick();
     }
 
     private void NavTab_Tapped(object sender, TappedRoutedEventArgs e)
     {
+        FocusPanelFromClick();
+
         if (sender is FrameworkElement element
             && element.Tag is string tag
             && int.TryParse(tag, out var index))

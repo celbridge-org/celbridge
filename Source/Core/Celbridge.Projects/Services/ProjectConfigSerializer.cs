@@ -37,6 +37,10 @@ public static class ProjectConfigSerializer
         {
             WriteKeyValue(builder, "project-version", RenderString(celbridge.ProjectVersion));
         }
+        if (!string.IsNullOrEmpty(celbridge.Description))
+        {
+            WriteKeyValue(builder, "description", RenderString(celbridge.Description));
+        }
         if (celbridge.EditorAssociations.Count > 0)
         {
             WriteKeyValue(builder, "editor-associations", RenderInlineTable(celbridge.EditorAssociations));

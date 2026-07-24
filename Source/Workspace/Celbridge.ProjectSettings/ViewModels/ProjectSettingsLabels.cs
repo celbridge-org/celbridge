@@ -29,6 +29,11 @@ internal static class ProjectSettingsLabels
     public static string ContributionEnabledLabel => Localizer.GetString("ProjectSettings_ContributionEnabledLabel");
     public static string ManifestLabel => Localizer.GetString("ProjectSettings_ManifestLabel");
     public static string OpenManifestTooltip => Localizer.GetString("ProjectSettings_OpenManifestTooltip");
+    public static string RevealManifestTooltip => Localizer.GetString("ProjectSettings_RevealManifestTooltip");
+    public static string PageLocationLabel => Localizer.GetString("ProjectSettings_PageLocationLabel");
+    public static string PageManifestIssueTitle => Localizer.GetString("ProjectSettings_PageManifestIssueTitle");
+    public static string PageManifestIssue => Localizer.GetString("ProjectSettings_PageManifestIssue");
+    public static string PagesEmpty => Localizer.GetString("ProjectSettings_PagesEmpty");
     public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
     public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
     public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");
@@ -38,6 +43,31 @@ internal static class ProjectSettingsLabels
     public static string PackagesSectionIssue => Localizer.GetString("ProjectSettings_SectionIssue_Packages");
 
     public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
+
+    public static string PackageVersion(int version) => Localizer.GetString("ProjectSettings_PackageVersionFormat", version);
+
+    public static string FeatureFlagOn => Localizer.GetString("ProjectSettings_FeatureFlagState_On");
+
+    public static string FeatureFlagOff => Localizer.GetString("ProjectSettings_FeatureFlagState_Off");
+
+    /// <summary>
+    /// The "Default (On)" / "Default (Off)" label for the inherit option, naming the value the flag
+    /// currently resolves to.
+    /// </summary>
+    public static string FeatureFlagDefault(bool applicationValue)
+    {
+        string stateLabel;
+        if (applicationValue)
+        {
+            stateLabel = FeatureFlagOn;
+        }
+        else
+        {
+            stateLabel = FeatureFlagOff;
+        }
+
+        return Localizer.GetString("ProjectSettings_FeatureFlagState_DefaultFormat", stateLabel);
+    }
 
     /// <summary>
     /// Describes a contribution's dropped settings: the one issue named, or the count when there are

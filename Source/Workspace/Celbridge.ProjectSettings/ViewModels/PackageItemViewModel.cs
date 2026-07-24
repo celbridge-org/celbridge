@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Celbridge.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -27,15 +28,15 @@ public sealed record PackageItemInfo
     public string DisplayName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Absolute path of the package manifest.
+    /// Resource key of the package manifest, or null when the manifest cannot be opened in the workspace
+    /// (a bundled package's manifest lives in the application folder, outside every registered root).
     /// </summary>
-    public string ManifestPath { get; init; } = string.Empty;
+    public ResourceKey? ManifestResource { get; init; }
 
     /// <summary>
-    /// Whether the manifest can be opened in the workspace. False for a bundled package, whose manifest
-    /// lives in the application folder.
+    /// Installed package version, or null when the package records no parseable version.
     /// </summary>
-    public bool CanOpenManifest { get; init; }
+    public int? Version { get; init; }
 }
 
 /// <summary>
@@ -47,23 +48,25 @@ public partial class PackageItemViewModel : ObservableObject
 {
     private readonly PackageItemInfo _info;
     private readonly Action<string, bool> _setDisabled;
-    private readonly Action<string> _openManifest;
+    private readonly Action<ResourceKey> _openManifest;
+    private readonly Action<ResourceKey> _revealManifest;
 
     private bool _initialized;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HeaderOpacity))]
     private bool _isEnabled;
 
     public PackageItemViewModel(
         PackageItemInfo info,
         bool isEnabled,
         Action<string, bool> setDisabled,
-        Action<string> openManifest)
+        Action<ResourceKey> openManifest,
+        Action<ResourceKey> revealManifest)
     {
         _info = info;
         _setDisabled = setDisabled;
         _openManifest = openManifest;
+        _revealManifest = revealManifest;
 
         IsEnabled = isEnabled;
         _initialized = true;
@@ -73,17 +76,33 @@ public partial class PackageItemViewModel : ObservableObject
     public string NameLabel => _info.NameLabel;
     public string DisplayName => _info.DisplayName;
 
-    public bool CanOpenManifest => _info.CanOpenManifest;
+    /// <summary>
+    /// Whether the package records a version to show beside its name.
+    /// </summary>
+    public bool HasVersion => _info.Version is not null;
+
+    /// <summary>
+    /// The version shown beside the package name (e.g. "v3"), or empty when none is recorded.
+    /// </summary>
+    public string VersionText
+    {
+        get
+        {
+            if (_info.Version is int version)
+            {
+                return ProjectSettingsLabels.PackageVersion(version);
+            }
+
+            return string.Empty;
+        }
+    }
+
+    public bool CanOpenManifest => _info.ManifestResource is not null;
 
     /// <summary>
     /// File name of the package manifest, shown as the text of the link that opens it.
     /// </summary>
-    public string ManifestFileName => System.IO.Path.GetFileName(_info.ManifestPath);
-
-    /// <summary>
-    /// Dims the header of a disabled package.
-    /// </summary>
-    public double HeaderOpacity => IsEnabled ? 1.0 : 0.5;
+    public string ManifestFileName => _info.ManifestResource?.ResourceName ?? string.Empty;
 
     public string ToggleTooltip => ProjectSettingsLabels.PackageToggleTooltip;
 
@@ -92,6 +111,8 @@ public partial class PackageItemViewModel : ObservableObject
     public string ManifestLabel => ProjectSettingsLabels.ManifestLabel;
 
     public string OpenManifestTooltip => ProjectSettingsLabels.OpenManifestTooltip;
+
+    public string RevealManifestTooltip => ProjectSettingsLabels.RevealManifestTooltip;
 
     /// <summary>
     /// The contributions this package ships, shown nested under the package row.
@@ -118,7 +139,19 @@ public partial class PackageItemViewModel : ObservableObject
     [RelayCommand]
     private void OpenManifest()
     {
-        _openManifest(_info.ManifestPath);
+        if (_info.ManifestResource is { } manifestResource)
+        {
+            _openManifest(manifestResource);
+        }
+    }
+
+    [RelayCommand]
+    private void RevealManifest()
+    {
+        if (_info.ManifestResource is { } manifestResource)
+        {
+            _revealManifest(manifestResource);
+        }
     }
 
     partial void OnIsEnabledChanged(bool value)

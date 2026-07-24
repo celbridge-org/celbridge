@@ -88,6 +88,19 @@
           </Grid>
 
           <Grid Tag="2" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
+                ToolTipService.ToolTip="{x:Bind PagesHeader}"
+                ToolTipService.Placement="Bottom">
+            <StackPanel>
+              <icon:Icon IconName="bs-globe" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <Grid Height="2" Margin="0,5,0,0">
+                <Border CornerRadius="1"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsPagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+
+          <Grid Tag="3" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
                 ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
                 ToolTipService.Placement="Bottom">
             <StackPanel>
@@ -96,6 +109,19 @@
                 <Border CornerRadius="1"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
+            </StackPanel>
+          </Grid>
+
+          <Grid Tag="4" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
+                ToolTipService.ToolTip="{x:Bind FeatureFlagsHeader}"
+                ToolTipService.Placement="Bottom">
+            <StackPanel>
+              <icon:Icon IconName="bs-flag" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
+              <Grid Height="2" Margin="0,5,0,0">
+                <Border CornerRadius="1"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{x:Bind ViewModel.IsFeatureFlagsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
               </Grid>
             </StackPanel>
           </Grid>
@@ -124,9 +150,15 @@
       <local:PackagesSectionView
           ViewModel="{x:Bind ViewModel.PackagesSection}"
           Visibility="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+      <local:PagesSectionView
+          ViewModel="{x:Bind ViewModel.PagesSection}"
+          Visibility="{x:Bind ViewModel.IsPagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
       <local:FileEditorsSectionView
           ViewModel="{x:Bind ViewModel.FileEditorsSection}"
           Visibility="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+      <local:FeatureFlagsSectionView
+          ViewModel="{x:Bind ViewModel.FeatureFlagsSection}"
+          Visibility="{x:Bind ViewModel.IsFeatureFlagsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
     </Grid>
 
     <!-- The button takes the accent style while an edit is waiting on a reload, applied in code-behind. -->

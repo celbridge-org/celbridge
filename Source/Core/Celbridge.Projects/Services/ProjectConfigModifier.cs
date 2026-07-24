@@ -23,16 +23,23 @@ public static class ProjectConfigModifier
         var overrides = config.ContributionOverrides.ToList();
         var disabledPackages = config.Celbridge.DisabledPackages.ToList();
         var editorAssociations = new Dictionary<string, string>(config.Celbridge.EditorAssociations, StringComparer.Ordinal);
+        var features = new Dictionary<string, bool>(config.Features, StringComparer.Ordinal);
         var projectVersion = config.Celbridge.ProjectVersion;
+        var description = config.Celbridge.Description;
         var ignoreFile = config.Resources.IgnoreFile;
 
         foreach (var edit in edits)
         {
-            // The two host-level scalar edits are applied here; every other edit mutates the
+            // The host-level scalar edits are applied here; every other edit mutates the
             // collections passed to ApplyEdit.
             if (edit is SetProjectVersionEdit setProjectVersion)
             {
                 projectVersion = setProjectVersion.ProjectVersion;
+                continue;
+            }
+            if (edit is SetDescriptionEdit setDescription)
+            {
+                description = setDescription.Description;
                 continue;
             }
             if (edit is SetIgnoreFileEdit setIgnoreFile)
@@ -41,7 +48,7 @@ public static class ProjectConfigModifier
                 continue;
             }
 
-            var applyResult = ApplyEdit(edit, overrides, disabledPackages, editorAssociations);
+            var applyResult = ApplyEdit(edit, overrides, disabledPackages, editorAssociations, features);
             if (applyResult.IsFailure)
             {
                 return Result<string>.Fail("Failed to apply a project config edit")
@@ -60,8 +67,10 @@ public static class ProjectConfigModifier
                 DisabledPackages = disabledPackages,
                 EditorAssociations = editorAssociations,
                 ProjectVersion = projectVersion,
+                Description = description,
             },
             Resources = config.Resources with { IgnoreFile = ignoreFile },
+            Features = features,
             ContributionOverrides = overrides,
         };
 
@@ -72,10 +81,19 @@ public static class ProjectConfigModifier
         ProjectConfigEdit edit,
         List<ContributionOverride> overrides,
         List<string> disabledPackages,
-        Dictionary<string, string> editorAssociations)
+        Dictionary<string, string> editorAssociations,
+        Dictionary<string, bool> features)
     {
         switch (edit)
         {
+            case SetFeatureFlagEdit setFeatureFlag:
+                features[setFeatureFlag.FlagName] = setFeatureFlag.Enabled;
+                return Result.Ok();
+
+            case RemoveFeatureFlagEdit removeFeatureFlag:
+                features.Remove(removeFeatureFlag.FlagName);
+                return Result.Ok();
+
             case SetPackageDisabledEdit setPackageDisabled:
                 if (setPackageDisabled.Disabled)
                 {

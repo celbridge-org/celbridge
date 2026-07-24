@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Celbridge.Commands;
+using Celbridge.Core;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Packages;
@@ -79,16 +80,23 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
 
             var isEnabled = !disabledPackages.Contains(name);
 
+            ResourceKey? manifestResource = null;
+            if (package.Info.Origin == PackageOrigin.Project)
+            {
+                var manifestPath = System.IO.Path.Combine(package.Info.PackageFolder, PackageConstants.ManifestFileName);
+                manifestResource = ResolveManifestResource(manifestPath);
+            }
+
             var packageInfo = new PackageItemInfo
             {
                 Name = name,
                 NameLabel = PackageNameLabel(package),
                 DisplayName = PackageDisplayName(package),
-                ManifestPath = System.IO.Path.Combine(package.Info.PackageFolder, PackageConstants.ManifestFileName),
-                CanOpenManifest = package.Info.Origin == PackageOrigin.Project
+                ManifestResource = manifestResource,
+                Version = package.Info.Version,
             };
 
-            var packageItem = new PackageItemViewModel(packageInfo, isEnabled, SetPackageDisabled, OpenManifest);
+            var packageItem = new PackageItemViewModel(packageInfo, isEnabled, SetPackageDisabled, OpenManifest, RevealManifest);
 
             foreach (var contribution in package.Editors)
             {
@@ -128,6 +136,12 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             description = PackageDisplayText.Resolve(_packageLocalization, contribution.Package, contribution.Description);
         }
 
+        ResourceKey? manifestResource = null;
+        if (contribution.Package.Origin == PackageOrigin.Project)
+        {
+            manifestResource = ResolveManifestResource(contribution.ManifestPath);
+        }
+
         var info = new ContributionItemInfo
         {
             PackageName = packageName,
@@ -136,8 +150,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             Description = description,
             IsUtility = contribution.IsUtility,
             IconName = iconName,
-            ManifestPath = contribution.ManifestPath,
-            CanOpenManifest = contribution.Package.Origin == PackageOrigin.Project,
+            ManifestResource = manifestResource,
             IsOptional = contribution.Activation == ActivationPolicy.Optional,
             CanToggle = contribution.Activation != ActivationPolicy.Required,
             EditorId = editorId,
@@ -145,7 +158,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             Issues = issues ?? []
         };
 
-        var row = new ContributionItemViewModel(info, SetContributionEnabled, OpenManifest);
+        var row = new ContributionItemViewModel(info, SetContributionEnabled, OpenManifest, RevealManifest);
 
         foreach (var descriptor in contribution.ConfigDescriptors)
         {
@@ -160,25 +173,25 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         return row;
     }
 
-    // Opens a package or editor manifest as a document. Only project manifests reach here, so a path that
-    // resolves to no resource key means the package moved out from under the registry since discovery.
-    private void OpenManifest(string manifestPath)
+    // Resolves a project manifest's absolute path to its resource key, or null when the path is not under
+    // any registered root. Only project manifests are resolved; a bundled package's manifest lives in the
+    // application folder and has no resource key, so it is never openable.
+    private ResourceKey? ResolveManifestResource(string manifestPath)
     {
         var resourceRegistry = WorkspaceService?.ResourceService.Registry;
         if (resourceRegistry is null)
         {
-            return;
+            return null;
         }
 
         var getKeyResult = resourceRegistry.GetResourceKey(manifestPath);
         if (getKeyResult.IsFailure)
         {
-            _logger.LogWarning(getKeyResult, $"Failed to open manifest: {manifestPath}");
-            return;
+            _logger.LogWarning(getKeyResult, $"Failed to resolve manifest resource: {manifestPath}");
+            return null;
         }
-        var manifestResource = getKeyResult.Value;
 
-        CommandService.Execute<IOpenDocumentCommand>(command => command.FileResource = manifestResource);
+        return getKeyResult.Value;
     }
 
     private void SetPackageDisabled(string packageName, bool disabled)

@@ -63,6 +63,12 @@ public sealed record class CelbridgeSection
     public string? ProjectVersion { get; init; }
 
     /// <summary>
+    /// A human-readable description of what the project is for, shown on the Project Settings page
+    /// and readable from the .celbridge file. Null when the project sets no description.
+    /// </summary>
+    public string? Description { get; init; }
+
+    /// <summary>
     /// Package names the project has turned off. A discovered package not listed here contributes its
     /// default-active contributions; a listed package contributes nothing. Activation is otherwise
     /// discovery-driven, so this records opt-outs rather than opt-ins.

@@ -51,6 +51,7 @@ public class ProjectConfigParserTests
             [celbridge]
             celbridge-version = "1.0.0"
             project-version = "0.2.0"
+            description = "A project for testing."
             disabled-packages = ["acme-notes", "acme-charts"]
             editor-associations = { ".md" = "acme-notes.markdown", ".TXT" = "acme-notes.text" }
             features = { generative-ai = true, experimental = false }
@@ -88,6 +89,7 @@ public class ProjectConfigParserTests
 
         config.Celbridge.CelbridgeVersion.Should().Be("1.0.0");
         config.Celbridge.ProjectVersion.Should().Be("0.2.0");
+        config.Celbridge.Description.Should().Be("A project for testing.");
         config.Celbridge.DisabledPackages.Should().Equal("acme-notes", "acme-charts");
 
         // Editor-defaults extensions are lowercased on parse.
