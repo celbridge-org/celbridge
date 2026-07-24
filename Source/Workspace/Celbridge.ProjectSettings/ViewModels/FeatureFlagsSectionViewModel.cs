@@ -6,29 +6,6 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// A known feature flag surfaced on the Feature Flags section: its flag name and the resource keys for its
-/// localized title and description.
-/// </summary>
-internal sealed record FeatureFlagDescriptor(string FlagName, string TitleKey, string DescriptionKey);
-
-/// <summary>
-/// The known feature flags shown on the Feature Flags section, in display order. Mirrors FeatureFlagConstants;
-/// each entry adds the localized title and description shown to the user.
-/// </summary>
-internal static class FeatureFlagCatalog
-{
-    public static readonly IReadOnlyList<FeatureFlagDescriptor> Descriptors = new List<FeatureFlagDescriptor>
-    {
-        new(FeatureFlagConstants.ConsolePanel, "ProjectSettings_FeatureFlag_ConsolePanel_Title", "ProjectSettings_FeatureFlag_ConsolePanel_Description"),
-        new(FeatureFlagConstants.McpTools, "ProjectSettings_FeatureFlag_McpTools_Title", "ProjectSettings_FeatureFlag_McpTools_Description"),
-        new(FeatureFlagConstants.WebAccessTools, "ProjectSettings_FeatureFlag_WebAccessTools_Title", "ProjectSettings_FeatureFlag_WebAccessTools_Description"),
-        new(FeatureFlagConstants.WebViewDevTools, "ProjectSettings_FeatureFlag_WebViewDevTools_Title", "ProjectSettings_FeatureFlag_WebViewDevTools_Description"),
-        new(FeatureFlagConstants.WebViewDevToolsEval, "ProjectSettings_FeatureFlag_WebViewDevToolsEval_Title", "ProjectSettings_FeatureFlag_WebViewDevToolsEval_Description"),
-        new(FeatureFlagConstants.AnswerDialog, "ProjectSettings_FeatureFlag_AnswerDialog_Title", "ProjectSettings_FeatureFlag_AnswerDialog_Description"),
-    };
-}
-
-/// <summary>
 /// Drives the Feature Flags section: every known feature flag with a tri-state control that pins it on or
 /// off for the project, or clears the override to inherit the application default. Edits write straight
 /// through to the .celbridge file.
