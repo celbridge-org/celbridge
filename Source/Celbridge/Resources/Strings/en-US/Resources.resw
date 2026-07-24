@@ -827,6 +827,27 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_FileEditorsDescription" xml:space="preserve">
     <value>Choose which editor opens each type of file.</value>
   </data>
+  <data name="ProjectSettings_PagesHeader" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="ProjectSettings_PagesDescription" xml:space="preserve">
+    <value>Web pages defined in this project and published to your workshop.</value>
+  </data>
+  <data name="ProjectSettings_PagesEmpty" xml:space="preserve">
+    <value>No pages found. Add a folder with a pages.toml manifest to define one.</value>
+  </data>
+  <data name="ProjectSettings_PublishPathLabel" xml:space="preserve">
+    <value>Published path</value>
+  </data>
+  <data name="ProjectSettings_PageLocationLabel" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="ProjectSettings_PageManifestIssueTitle" xml:space="preserve">
+    <value>Manifest issue</value>
+  </data>
+  <data name="ProjectSettings_PageManifestIssue" xml:space="preserve">
+    <value>The manifest is invalid or does not declare a published path. Open it to fix.</value>
+  </data>
   <data name="ProjectSettings_SchemaVersionLabel" xml:space="preserve">
     <value>Celbridge version</value>
   </data>

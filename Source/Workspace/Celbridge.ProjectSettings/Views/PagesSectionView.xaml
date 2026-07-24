@@ -1,0 +1,141 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.PagesSectionView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
+  xmlns:services="using:Celbridge.UserInterface.Services"
+  xmlns:icon="using:Celbridge.UserInterface.Views.Controls">
+
+  <UserControl.Resources>
+
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+    <Style x:Key="PageCardStyle" TargetType="Border">
+      <Setter Property="Background" Value="{ThemeResource PanelBackgroundABrush}"/>
+      <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Padding" Value="8"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+
+    <!-- The link that opens a manifest file, stripped of its padding so it sits on the same baseline as the
+         reveal button beside it. -->
+    <Style x:Key="OpenManifestLinkStyle" TargetType="HyperlinkButton">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- The secondary icon button beside a manifest link that reveals the file in the Explorer. -->
+    <Style x:Key="RevealManifestButtonStyle" TargetType="Button">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- One discovered page: the published path as the header, the location and manifest link beneath, and
+         a warning bar when the manifest declares no valid published path. -->
+    <DataTemplate x:Key="PageCardTemplate" x:DataType="vm:PageItemViewModel">
+      <Border Style="{StaticResource PageCardStyle}">
+        <StackPanel Spacing="4">
+
+          <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+
+          <InfoBar IsOpen="True"
+                   IsClosable="False"
+                   Severity="Warning"
+                   Title="{x:Bind ManifestIssueTitle}"
+                   Message="{x:Bind IssueText}"
+                   Visibility="{x:Bind HasIssue, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+          <Grid Margin="0,3,0,3"
+                Visibility="{x:Bind HasPublishPath, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="110"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind PublishPathLabel}"
+                       Style="{StaticResource PropertyLabelStyle}"/>
+
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind PublishPath}"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"/>
+          </Grid>
+
+          <Grid Margin="0,3,0,3">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="110"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind LocationLabel}"
+                       Style="{StaticResource PropertyLabelStyle}"/>
+
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind LocationText}"
+                       VerticalAlignment="Center"
+                       Opacity="0.7"
+                       TextWrapping="Wrap"/>
+          </Grid>
+
+          <Grid Margin="0,3,0,3">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="110"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind ManifestLabel}"
+                       Style="{StaticResource PropertyLabelStyle}"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <HyperlinkButton Style="{StaticResource OpenManifestLinkStyle}"
+                               Content="{x:Bind ManifestFileName}"
+                               Command="{x:Bind OpenManifestCommand}"
+                               ToolTipService.ToolTip="{x:Bind OpenManifestTooltip}"/>
+              <Button Style="{StaticResource RevealManifestButtonStyle}"
+                      Command="{x:Bind RevealManifestCommand}"
+                      ToolTipService.ToolTip="{x:Bind RevealManifestTooltip}">
+                <icon:Icon Symbol="Reveal" FontSize="14"/>
+              </Button>
+            </StackPanel>
+          </Grid>
+
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <Grid>
+    <ScrollViewer Padding="12"
+                  Visibility="{x:Bind ViewModel.HasPages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+      <ItemsControl ItemsSource="{x:Bind ViewModel.Pages}"
+                    ItemTemplate="{StaticResource PageCardTemplate}"/>
+    </ScrollViewer>
+
+    <TextBlock Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"
+               Margin="24"
+               Opacity="0.7"
+               TextWrapping="Wrap"
+               TextAlignment="Center"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               Visibility="{x:Bind ViewModel.HasNoPages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+  </Grid>
+</UserControl>

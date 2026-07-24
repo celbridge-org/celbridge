@@ -1,4 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.Core;
+using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -51,6 +54,22 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
     {
         _context.CommandService.Execute<IWriteProjectConfigCommand>(command => command.Edits = edits);
         _context.NotifyEdited();
+    }
+
+    // Opens a manifest as a document for editing.
+    protected void OpenManifest(ResourceKey manifestResource)
+    {
+        CommandService.Execute<IOpenDocumentCommand>(command => command.FileResource = manifestResource);
+    }
+
+    // Reveals a manifest in the Explorer without opening it.
+    protected void RevealManifest(ResourceKey manifestResource)
+    {
+        CommandService.Execute<ISelectResourceCommand>(command =>
+        {
+            command.Resource = manifestResource;
+            command.ShowExplorerPanel = true;
+        });
     }
 
     /// <summary>

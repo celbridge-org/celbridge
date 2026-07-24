@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using Celbridge.Commands;
 using Celbridge.Core;
 using Celbridge.Documents;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
@@ -171,22 +170,6 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         row.InitializeState(isEnabled);
 
         return row;
-    }
-
-    // Opens a package or editor manifest as a document.
-    private void OpenManifest(ResourceKey manifestResource)
-    {
-        CommandService.Execute<IOpenDocumentCommand>(command => command.FileResource = manifestResource);
-    }
-
-    // Reveals a package or editor manifest in the Explorer without opening it.
-    private void RevealManifest(ResourceKey manifestResource)
-    {
-        CommandService.Execute<ISelectResourceCommand>(command =>
-        {
-            command.Resource = manifestResource;
-            command.ShowExplorerPanel = true;
-        });
     }
 
     // Resolves a project manifest's absolute path to its resource key, or null when the path is not under

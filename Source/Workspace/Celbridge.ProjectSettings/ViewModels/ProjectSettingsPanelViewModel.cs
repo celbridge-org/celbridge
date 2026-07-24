@@ -27,6 +27,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     {
         "Information",
         "Packages",
+        "Pages",
         "FileEditors",
     };
 
@@ -50,7 +51,8 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
 
     public bool IsInformationSection => SelectedSectionIndex == 0;
     public bool IsPackagesSection => SelectedSectionIndex == 1;
-    public bool IsFileEditorsSection => SelectedSectionIndex == 2;
+    public bool IsPagesSection => SelectedSectionIndex == 2;
+    public bool IsFileEditorsSection => SelectedSectionIndex == 3;
 
     /// <summary>
     /// The localized name of the selected section, shown as a large label under the icon strip.
@@ -66,6 +68,10 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             if (IsPackagesSection)
             {
                 return _stringLocalizer.GetString("ProjectSettings_PackagesHeader");
+            }
+            if (IsPagesSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_PagesHeader");
             }
 
             return _stringLocalizer.GetString("ProjectSettings_FileEditorsHeader");
@@ -87,6 +93,10 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             {
                 return _stringLocalizer.GetString("ProjectSettings_PackagesDescription");
             }
+            if (IsPagesSection)
+            {
+                return _stringLocalizer.GetString("ProjectSettings_PagesDescription");
+            }
 
             return _stringLocalizer.GetString("ProjectSettings_FileEditorsDescription");
         }
@@ -95,6 +105,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     public InformationSectionViewModel InformationSection { get; }
     public PackagesSectionViewModel PackagesSection { get; }
     public FileEditorsSectionViewModel FileEditorsSection { get; }
+    public PagesSectionViewModel PagesSection { get; }
 
     public IRelayCommand ReloadProjectCommand { get; }
 
@@ -116,6 +127,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         InformationSection = new InformationSectionViewModel(_context);
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
+        PagesSection = new PagesSectionViewModel(_context);
 
         RestoreSelectedSection();
     }
@@ -146,6 +158,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         InformationSection.Load();
         PackagesSection.Load();
         FileEditorsSection.Load();
+        PagesSection.Load();
 
         HasPendingChanges = false;
         _loaded = true;
@@ -166,6 +179,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         OnPropertyChanged(nameof(IsInformationSection));
         OnPropertyChanged(nameof(IsPackagesSection));
         OnPropertyChanged(nameof(IsFileEditorsSection));
+        OnPropertyChanged(nameof(IsPagesSection));
         OnPropertyChanged(nameof(ActiveSectionName));
         OnPropertyChanged(nameof(ActiveSectionDescription));
 
