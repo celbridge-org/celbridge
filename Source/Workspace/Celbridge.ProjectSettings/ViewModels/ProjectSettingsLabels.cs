@@ -30,7 +30,6 @@ internal static class ProjectSettingsLabels
     public static string ManifestLabel => Localizer.GetString("ProjectSettings_ManifestLabel");
     public static string OpenManifestTooltip => Localizer.GetString("ProjectSettings_OpenManifestTooltip");
     public static string RevealManifestTooltip => Localizer.GetString("ProjectSettings_RevealManifestTooltip");
-    public static string PublishPathLabel => Localizer.GetString("ProjectSettings_PublishPathLabel");
     public static string PageLocationLabel => Localizer.GetString("ProjectSettings_PageLocationLabel");
     public static string PageManifestIssueTitle => Localizer.GetString("ProjectSettings_PageManifestIssueTitle");
     public static string PageManifestIssue => Localizer.GetString("ProjectSettings_PageManifestIssue");

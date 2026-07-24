@@ -59,9 +59,8 @@ public partial class PageItemViewModel : ObservableObject
     /// </summary>
     public string Title => HasPublishPath ? _info.PublishPath : _folderResource.Path;
 
-    public bool HasPublishPath => !string.IsNullOrEmpty(_info.PublishPath);
-
-    public string PublishPath => _info.PublishPath;
+    // Backs the title fallback: with no published path the folder path stands in as the header.
+    private bool HasPublishPath => !string.IsNullOrEmpty(_info.PublishPath);
 
     public string LocationText => _folderResource.Path;
 
@@ -74,7 +73,6 @@ public partial class PageItemViewModel : ObservableObject
     /// </summary>
     public string ManifestFileName => _info.ManifestResource.ResourceName;
 
-    public string PublishPathLabel => ProjectSettingsLabels.PublishPathLabel;
     public string LocationLabel => ProjectSettingsLabels.PageLocationLabel;
     public string ManifestLabel => ProjectSettingsLabels.ManifestLabel;
     public string ManifestIssueTitle => ProjectSettingsLabels.PageManifestIssueTitle;

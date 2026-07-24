@@ -836,9 +836,6 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_PagesEmpty" xml:space="preserve">
     <value>No pages found. Add a folder with a pages.toml manifest to define one.</value>
   </data>
-  <data name="ProjectSettings_PublishPathLabel" xml:space="preserve">
-    <value>Published path</value>
-  </data>
   <data name="ProjectSettings_PageLocationLabel" xml:space="preserve">
     <value>Location</value>
   </data>

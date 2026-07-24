@@ -10,15 +10,6 @@
 
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 
-    <Style x:Key="PageCardStyle" TargetType="Border">
-      <Setter Property="Background" Value="{ThemeResource PanelBackgroundABrush}"/>
-      <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="4"/>
-      <Setter Property="Padding" Value="8"/>
-      <Setter Property="Margin" Value="0,0,0,8"/>
-    </Style>
-
     <!-- The link that opens a manifest file, stripped of its padding so it sits on the same baseline as the
          reveal button beside it. -->
     <Style x:Key="OpenManifestLinkStyle" TargetType="HyperlinkButton">
@@ -44,13 +35,38 @@
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
 
-    <!-- One discovered page: the published path as the header, the location and manifest link beneath, and
-         a warning bar when the manifest declares no valid published path. -->
+    <!-- One discovered page, collapsed by default. The header carries the published path (or the folder
+         path when the manifest declares none) plus a warning glyph for a manifest issue; expanding reveals
+         the location and the manifest link. -->
     <DataTemplate x:Key="PageCardTemplate" x:DataType="vm:PageItemViewModel">
-      <Border Style="{StaticResource PageCardStyle}">
-        <StackPanel Spacing="4">
+      <Expander HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Margin="0,0,0,8">
+        <Expander.Header>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-          <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind Title}"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
+
+            <icon:Icon Grid.Column="1"
+                       Symbol="Warning"
+                       FontSize="16"
+                       Margin="8,0,8,0"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                       ToolTipService.ToolTip="{x:Bind IssueText}"
+                       Visibility="{x:Bind HasIssue, Converter={StaticResource BoolToVisibilityConverter}}"/>
+          </Grid>
+        </Expander.Header>
+
+        <StackPanel Spacing="4">
 
           <InfoBar IsOpen="True"
                    IsClosable="False"
@@ -58,23 +74,6 @@
                    Title="{x:Bind ManifestIssueTitle}"
                    Message="{x:Bind IssueText}"
                    Visibility="{x:Bind HasIssue, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-          <Grid Margin="0,3,0,3"
-                Visibility="{x:Bind HasPublishPath, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="110"/>
-              <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <TextBlock Grid.Column="0"
-                       Text="{x:Bind PublishPathLabel}"
-                       Style="{StaticResource PropertyLabelStyle}"/>
-
-            <TextBlock Grid.Column="1"
-                       Text="{x:Bind PublishPath}"
-                       VerticalAlignment="Center"
-                       TextWrapping="Wrap"/>
-          </Grid>
 
           <Grid Margin="0,3,0,3">
             <Grid.ColumnDefinitions>
@@ -117,7 +116,7 @@
           </Grid>
 
         </StackPanel>
-      </Border>
+      </Expander>
     </DataTemplate>
 
   </UserControl.Resources>
