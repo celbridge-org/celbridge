@@ -1,5 +1,6 @@
 using Celbridge.Packages;
 using Celbridge.Tools;
+using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Tools;
 

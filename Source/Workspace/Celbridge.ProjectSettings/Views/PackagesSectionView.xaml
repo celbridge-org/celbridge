@@ -195,7 +195,15 @@
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
               <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-              <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
+              <!-- The package id, with the installed version appended when the package records one. -->
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{x:Bind VersionText}"
+                           FontSize="11"
+                           Opacity="0.6"
+                           Margin="6,0,0,0"
+                           Visibility="{x:Bind HasVersion, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </StackPanel>
             </StackPanel>
 
             <!-- Shown when a contribution inside the expander has dropped configuration. -->

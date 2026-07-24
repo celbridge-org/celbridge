@@ -62,4 +62,10 @@ public partial record PackageInfo
     /// The folder containing the package.
     /// </summary>
     public string PackageFolder { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Installed version read from the package's HISTORY.md changelog, or null when no parseable version is
+    /// recorded (bundled packages and hand-authored project packages).
+    /// </summary>
+    public int? Version { get; init; }
 }

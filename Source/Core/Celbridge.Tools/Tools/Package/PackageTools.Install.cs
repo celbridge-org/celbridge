@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Projects;
+using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Path = System.IO.Path;

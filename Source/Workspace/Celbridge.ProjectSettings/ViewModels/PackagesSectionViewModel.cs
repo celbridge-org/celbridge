@@ -93,6 +93,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
                 NameLabel = PackageNameLabel(package),
                 DisplayName = PackageDisplayName(package),
                 ManifestResource = manifestResource,
+                Version = package.Info.Version,
             };
 
             var packageItem = new PackageItemViewModel(packageInfo, isEnabled, SetPackageDisabled, OpenManifest, RevealManifest);

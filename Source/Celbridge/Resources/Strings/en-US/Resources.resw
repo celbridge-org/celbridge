@@ -878,6 +878,9 @@ Do you wish to continue?</value>
   <data name="ProjectSettings_PackageNameFormat" xml:space="preserve">
     <value>{0} Package</value>
   </data>
+  <data name="ProjectSettings_PackageVersionFormat" xml:space="preserve">
+    <value>v{0}</value>
+  </data>
   <data name="ProjectSettings_ContributionIssuesTitle" xml:space="preserve">
     <value>Configuration issue</value>
   </data>

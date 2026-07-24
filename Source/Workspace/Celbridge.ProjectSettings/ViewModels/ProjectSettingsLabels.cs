@@ -44,6 +44,8 @@ internal static class ProjectSettingsLabels
 
     public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
 
+    public static string PackageVersion(int version) => Localizer.GetString("ProjectSettings_PackageVersionFormat", version);
+
     /// <summary>
     /// Describes a contribution's dropped settings: the one issue named, or the count when there are
     /// several, so a contribution never renders a list of near-identical sentences.

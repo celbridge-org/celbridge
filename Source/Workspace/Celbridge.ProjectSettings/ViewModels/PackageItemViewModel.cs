@@ -32,6 +32,11 @@ public sealed record PackageItemInfo
     /// (a bundled package's manifest lives in the application folder, outside every registered root).
     /// </summary>
     public ResourceKey? ManifestResource { get; init; }
+
+    /// <summary>
+    /// Installed package version, or null when the package records no parseable version.
+    /// </summary>
+    public int? Version { get; init; }
 }
 
 /// <summary>
@@ -71,6 +76,27 @@ public partial class PackageItemViewModel : ObservableObject
     public string Name => _info.Name;
     public string NameLabel => _info.NameLabel;
     public string DisplayName => _info.DisplayName;
+
+    /// <summary>
+    /// Whether the package records a version to show beside its name.
+    /// </summary>
+    public bool HasVersion => _info.Version is not null;
+
+    /// <summary>
+    /// The version shown beside the package name (e.g. "v3"), or empty when none is recorded.
+    /// </summary>
+    public string VersionText
+    {
+        get
+        {
+            if (_info.Version is int version)
+            {
+                return ProjectSettingsLabels.PackageVersion(version);
+            }
+
+            return string.Empty;
+        }
+    }
 
     public bool CanOpenManifest => _info.ManifestResource is not null;
 

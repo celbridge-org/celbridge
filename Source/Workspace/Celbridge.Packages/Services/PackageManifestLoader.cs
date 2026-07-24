@@ -1,3 +1,4 @@
+using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -119,6 +120,19 @@ public static class PackageManifestLoader
 
             var packageSecrets = secrets ?? EmptySecrets;
 
+            // The installed version is recorded in the generated HISTORY.md changelog beside the manifest.
+            // Only project packages carry one; a hand-authored or absent file leaves the version unknown.
+            int? packageVersion = null;
+            if (origin == PackageOrigin.Project)
+            {
+                var historyPath = Path.Combine(packageFolder, PackageConstants.HistoryFileName);
+                var historyResult = reader.ReadAllText(historyPath);
+                if (historyResult.IsSuccess)
+                {
+                    packageVersion = PackageHistoryReader.TryReadInstalledVersion(historyResult.Value);
+                }
+            }
+
             var packageInfo = new PackageInfo
             {
                 Name = packageName,
@@ -127,7 +141,8 @@ public static class PackageManifestLoader
                 PermittedTools = permittedTools,
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,
-                Origin = origin
+                Origin = origin,
+                Version = packageVersion
             };
 
             var editorManifestPaths = new List<string>();
