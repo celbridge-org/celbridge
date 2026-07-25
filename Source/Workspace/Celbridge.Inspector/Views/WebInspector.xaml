@@ -67,11 +67,11 @@
         <StackPanel Orientation="Vertical" Spacing="4">
             <TextBlock Text="{x:Bind CurrentURLString}"
                        Style="{StaticResource CaptionTextBlockStyle}"
-                       Opacity="0.7" />
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             <TextBlock Text="{x:Bind ViewModel.CurrentUrl, Mode=OneWay}"
                        TextWrapping="Wrap"
                        IsTextSelectionEnabled="True"
-                       Opacity="0.7" />
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

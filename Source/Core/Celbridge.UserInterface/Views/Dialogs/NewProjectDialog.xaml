@@ -62,7 +62,7 @@
     <!-- Template Description -->
     <TextBlock Text="{x:Bind ViewModel.SelectedTemplate.Description, Mode=OneWay}"
                TextWrapping="Wrap"
-               Opacity="0.8"
+               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                FontSize="12"
                Margin="0,0,0,8"/>
 
