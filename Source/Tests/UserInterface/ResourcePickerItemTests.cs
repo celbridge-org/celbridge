@@ -15,7 +15,7 @@ public class ResourcePickerItemTests
         new("a", "#FFFFFF", "Segoe Fluent Icons", "16");
 
     [Test]
-    public void Writable_ResourceProducesFullOpacityNoTooltipNoHelpText()
+    public void Writable_ResourceProducesWritableStateNoTooltipNoHelpText()
     {
         var resource = Substitute.For<IResource>();
         resource.WritableState.Returns(WritableState.Writable);
@@ -23,7 +23,7 @@ public class ResourcePickerItemTests
         var item = new ResourcePickerItem(resource, new ResourceKey("docs/photo.png"), Icon);
 
         item.IsReadOnly.Should().BeFalse();
-        item.NameOpacity.Should().Be(1.0);
+        item.IsWritable.Should().BeTrue();
         item.TooltipText.Should().BeNull();
         item.ReadOnlyMessage.Should().BeEmpty();
     }
@@ -41,7 +41,7 @@ public class ResourcePickerItemTests
             readOnlyMessage: "Locked by project configuration.");
 
         item.IsReadOnly.Should().BeTrue();
-        item.NameOpacity.Should().Be(0.5);
+        item.IsWritable.Should().BeFalse();
         item.TooltipText.Should().Be("Locked by project configuration.");
         item.ReadOnlyMessage.Should().Be("Locked by project configuration.");
     }
@@ -59,7 +59,7 @@ public class ResourcePickerItemTests
             readOnlyMessage: "File is read-only on disk.");
 
         item.IsReadOnly.Should().BeTrue();
-        item.NameOpacity.Should().Be(0.5);
+        item.IsWritable.Should().BeFalse();
         item.TooltipText.Should().Be("File is read-only on disk.");
     }
 
@@ -76,7 +76,7 @@ public class ResourcePickerItemTests
             readOnlyMessage: "Bundled package — read-only by design.");
 
         item.IsReadOnly.Should().BeTrue();
-        item.NameOpacity.Should().Be(0.5);
+        item.IsWritable.Should().BeFalse();
         item.TooltipText.Should().Be("Bundled package — read-only by design.");
     }
 }

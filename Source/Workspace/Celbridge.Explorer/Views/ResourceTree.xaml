@@ -6,10 +6,13 @@
   xmlns:models="using:Celbridge.Explorer.Models"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
+  xmlns:services="using:Celbridge.UserInterface.Services"
   DataContext="{x:Bind ViewModel}"
   Background="{ThemeResource ApplicationBackgroundBrush}">
 
   <UserControl.Resources>
+    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
+
     <!-- MenuFlyout for context menu -->
     <MenuFlyout x:Name="ResourceContextMenu"/>
 
@@ -41,7 +44,7 @@
         <!-- Resource icon. Dims with the name when the resource is read-only. -->
         <local:ResourceIcon Grid.Column="1"
                             Resource="{x:Bind Resource}"
-                            Opacity="{x:Bind NameOpacity}"
+                            Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
                             Margin="0,0,8,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Left" />
@@ -49,7 +52,7 @@
         <!-- Resource name (semi-bold for project folder, dimmed when read-only) -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
-                   Opacity="{x:Bind NameOpacity}"
+                   Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"
                    FontWeight="{x:Bind IsProjectFolder, Converter={StaticResource ProjectFolderFontWeightConverter}}" />

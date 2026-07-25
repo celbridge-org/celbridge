@@ -74,9 +74,10 @@ public partial class ResourceViewItem : ObservableObject
     public bool IsReadOnly => WritableState != WritableState.Writable;
 
     /// <summary>
-    /// Opacity for the resource name. Dimmed when read-only.
+    /// Whether the resource accepts edits. Drives the dimmed-opacity binding for
+    /// the icon and name, which dim when the resource is read-only.
     /// </summary>
-    public double NameOpacity => IsReadOnly ? 0.5 : 1.0;
+    public bool IsWritable => !IsReadOnly;
 
     /// <summary>
     /// Localised explanation of why the resource is read-only. Empty when
