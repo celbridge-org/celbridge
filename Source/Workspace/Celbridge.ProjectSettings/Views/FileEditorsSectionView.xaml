@@ -33,7 +33,7 @@
                 <TextBlock Text="{x:Bind Extension}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{x:Bind TypeName}"
                            FontSize="11"
-                           Opacity="0.6"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextTrimming="CharacterEllipsis"
                            Visibility="{x:Bind HasTypeName, Converter={StaticResource BoolToVisibilityConverter}}"/>
               </StackPanel>
@@ -45,7 +45,7 @@
                         SelectedItem="{x:Bind SelectedCandidate, Mode=TwoWay}"/>
               <TextBlock Grid.Column="1"
                          Text="{x:Bind EditorName}"
-                         Opacity="0.75"
+                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                          VerticalAlignment="Center"
                          Visibility="{x:Bind IsSingleEditor, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </Grid>

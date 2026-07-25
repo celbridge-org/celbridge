@@ -24,7 +24,7 @@
         </Expander.Header>
 
         <StackPanel Spacing="8">
-          <TextBlock Text="{x:Bind Description}" Opacity="0.7" TextWrapping="Wrap"/>
+          <TextBlock Text="{x:Bind Description}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
           <ComboBox HorizontalAlignment="Left"
                     MinWidth="128"
                     ItemsSource="{x:Bind StateOptions}"
