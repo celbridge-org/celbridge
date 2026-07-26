@@ -41,61 +41,13 @@ public class MainMenu
     {
         _menuFlyout.Items.Clear();
 
-        var isWorkspaceLoaded = ViewModel.IsWorkspaceLoaded;
+        // The File and Edit groups mirror the macOS menu bar (see MacOSMainMenu), folded into submenus so the
+        // hamburger reads the same way on Windows and Linux. Single app-level commands stay flat below them.
+        _menuFlyout.Items.Add(CreateFileSubItem());
 
-        var newProjectItem = CreateMenuItem(
-            iconSymbol: IconSymbol.FolderAdd,
-            label: _stringLocalizer.GetString("MainMenu_NewProject"),
-            isEnabled: true,
-            onClick: (sender, e) => ViewModel.NewProject());
-        _menuFlyout.Items.Add(newProjectItem);
-
-        // New File, surfaced for parity with the macOS File menu. Creates a file in the Explorer's selected
-        // folder (or the project root). Enabled only while a workspace is loaded.
-        var newFileItem = CreateMenuItem(
-            iconSymbol: IconSymbol.FileAdd,
-            label: _stringLocalizer.GetString("MainMenu_NewFile"),
-            isEnabled: isWorkspaceLoaded,
-            onClick: (sender, e) => ExecuteCreateResource(ResourceType.File));
-        _menuFlyout.Items.Add(newFileItem);
-
-        var newFolderItem = CreateMenuItem(
-            iconSymbol: IconSymbol.FolderAdd,
-            label: _stringLocalizer.GetString("MainMenu_NewFolder"),
-            isEnabled: isWorkspaceLoaded,
-            onClick: (sender, e) => ExecuteCreateResource(ResourceType.Folder));
-        _menuFlyout.Items.Add(newFolderItem);
-
-        var openProjectItem = CreateMenuItem(
-            iconSymbol: IconSymbol.FolderOpen,
-            label: _stringLocalizer.GetString("MainMenu_OpenProject"),
-            isEnabled: true,
-            onClick: (sender, e) => ViewModel.OpenProject());
-        _menuFlyout.Items.Add(openProjectItem);
-
-        var openRecentSubItem = CreateOpenRecentSubItem();
-        _menuFlyout.Items.Add(openRecentSubItem);
-
-        var reloadProjectItem = CreateMenuItem(
-            iconSymbol: IconSymbol.Refresh,
-            label: _stringLocalizer.GetString("MainMenu_ReloadProject"),
-            isEnabled: isWorkspaceLoaded,
-            onClick: (sender, e) => ViewModel.ReloadProject());
-        _menuFlyout.Items.Add(reloadProjectItem);
-
-        var closeProjectItem = CreateMenuItem(
-            iconSymbol: IconSymbol.Close,
-            label: _stringLocalizer.GetString("MainMenu_CloseProject"),
-            isEnabled: isWorkspaceLoaded,
-            onClick: (sender, e) => _ = ViewModel.CloseProjectAsync());
-        _menuFlyout.Items.Add(closeProjectItem);
-
-        _menuFlyout.Items.Add(new MenuFlyoutSeparator());
-
-        // Edit verbs, surfaced for parity with the macOS Edit menu. Each routes to the focused surface through
-        // the edit-intent command. Enable state reflects what that surface can currently do.
-        var editSubItem = CreateEditSubItem();
-        _menuFlyout.Items.Add(editSubItem);
+        // Edit verbs route to the focused surface through the edit-intent command; enable state reflects what
+        // that surface can currently do.
+        _menuFlyout.Items.Add(CreateEditSubItem());
 
         _menuFlyout.Items.Add(new MenuFlyoutSeparator());
 
@@ -123,6 +75,62 @@ public class MainMenu
             isEnabled: true,
             onClick: (sender, e) => ViewModel.ExitApplication());
         _menuFlyout.Items.Add(exitItem);
+    }
+
+    private MenuFlyoutSubItem CreateFileSubItem()
+    {
+        var isWorkspaceLoaded = ViewModel.IsWorkspaceLoaded;
+
+        var fileSubItem = new MenuFlyoutSubItem
+        {
+            Text = _stringLocalizer.GetString("Menu_File")
+        };
+
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.FolderAdd,
+            label: _stringLocalizer.GetString("MainMenu_NewProject"),
+            isEnabled: true,
+            onClick: (sender, e) => ViewModel.NewProject()));
+
+        // New File creates a file in the Explorer's selected folder (or the project root). Enabled only while a
+        // workspace is loaded.
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.FileAdd,
+            label: _stringLocalizer.GetString("MainMenu_NewFile"),
+            isEnabled: isWorkspaceLoaded,
+            onClick: (sender, e) => ExecuteCreateResource(ResourceType.File)));
+
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.FolderAdd,
+            label: _stringLocalizer.GetString("MainMenu_NewFolder"),
+            isEnabled: isWorkspaceLoaded,
+            onClick: (sender, e) => ExecuteCreateResource(ResourceType.Folder)));
+
+        fileSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.FolderOpen,
+            label: _stringLocalizer.GetString("MainMenu_OpenProject"),
+            isEnabled: true,
+            onClick: (sender, e) => ViewModel.OpenProject()));
+
+        fileSubItem.Items.Add(CreateOpenRecentSubItem());
+
+        fileSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Refresh,
+            label: _stringLocalizer.GetString("MainMenu_ReloadProject"),
+            isEnabled: isWorkspaceLoaded,
+            onClick: (sender, e) => ViewModel.ReloadProject()));
+
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Close,
+            label: _stringLocalizer.GetString("MainMenu_CloseProject"),
+            isEnabled: isWorkspaceLoaded,
+            onClick: (sender, e) => _ = ViewModel.CloseProjectAsync()));
+
+        return fileSubItem;
     }
 
     private MenuFlyoutItem CreateMenuItem(
