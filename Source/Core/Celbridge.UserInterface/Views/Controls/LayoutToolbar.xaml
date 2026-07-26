@@ -34,7 +34,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <controls:Icon
                                           Symbol="Windowed"
-                                          FontSize="20"/>
+                                          FontSize="{StaticResource IconSizeMedium}"/>
                                 <TextBlock x:Name="DefaultModeLabel"/>
                             </StackPanel>
                         </RadioButton>
@@ -45,7 +45,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <controls:Icon
                                           Symbol="FocusMode"
-                                          FontSize="20"/>
+                                          FontSize="{StaticResource IconSizeMedium}"/>
                                 <TextBlock x:Name="FocusModeLabel"/>
                             </StackPanel>
                         </RadioButton>
@@ -56,7 +56,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <controls:Icon
                                           Symbol="Presentation"
-                                          FontSize="20"/>
+                                          FontSize="{StaticResource IconSizeMedium}"/>
                                 <TextBlock x:Name="PresentationModeLabel"/>
                             </StackPanel>
                         </RadioButton>
@@ -73,7 +73,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <controls:Icon
                                           Symbol="FullScreen"
-                                          FontSize="20"/>
+                                          FontSize="{StaticResource IconSizeMedium}"/>
                                 <TextBlock x:Name="FullScreenLabel"/>
                             </StackPanel>
                         </ToggleButton>

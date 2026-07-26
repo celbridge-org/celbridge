@@ -1,7 +1,13 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- 
+  <!-- Shared icon sizes. Reference these instead of literal FontSize values to keep icon sizing consistent.
+       Medium is the default for command icons; Small and Large are the denser and more prominent steps. -->
+  <x:Double x:Key="IconSizeSmall">16</x:Double>
+  <x:Double x:Key="IconSizeMedium">18</x:Double>
+  <x:Double x:Key="IconSizeLarge">22</x:Double>
+
+  <!--
     Transparent icon button style. Icon content should use FontSize="14" for consistent sizing.
   -->
   <Style x:Key="TransparentIconButtonStyle" TargetType="Button">

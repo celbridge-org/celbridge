@@ -23,29 +23,29 @@
     <Button x:Name="NewFileButton"
             AutomationProperties.AutomationId="new-file-button"
             ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
-            Padding="4"
+            Padding="6"
             Click="NewFileButton_Click">
       <controls:Icon
                 Symbol="FileAdd"
-                FontSize="16" />
+                FontSize="{StaticResource IconSizeMedium}" />
     </Button>
     <Button x:Name="NewFolderButton"
             AutomationProperties.AutomationId="new-folder-button"
             ToolTipService.ToolTip="{x:Bind NewFolderTooltipString}"
-            Padding="4"
+            Padding="6"
             Click="NewFolderButton_Click">
       <controls:Icon
                 Symbol="FolderAdd"
-                FontSize="16" />
+                FontSize="{StaticResource IconSizeMedium}" />
     </Button>
     <Button x:Name="CollapseFoldersButton"
             AutomationProperties.AutomationId="collapse-folders-button"
             ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
-            Padding="4"
+            Padding="6"
             Click="CollapseFoldersButton_Click">
       <controls:Icon
                 Symbol="Collapse"
-                FontSize="16" />
+                FontSize="{StaticResource IconSizeMedium}" />
     </Button>
   </StackPanel>
 </UserControl>

@@ -85,7 +85,8 @@
                 BorderThickness="0"
                 Padding="12,8"
                 VerticalAlignment="Center">
-            <ic:Icon Symbol="Settings"/>
+            <ic:Icon Symbol="Settings"
+                     FontSize="{StaticResource IconSizeMedium}"/>
         </Button>
   </Grid>
 </UserControl>
