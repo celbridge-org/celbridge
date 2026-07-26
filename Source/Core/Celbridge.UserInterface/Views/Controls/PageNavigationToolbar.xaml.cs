@@ -135,7 +135,7 @@ public sealed partial class PageNavigationToolbar : UserControl
             MainMenuButton.Visibility = Visibility.Visible;
         }
 
-        // The Current Project switcher reuses the main menu view model for the recent-projects list and open
+        // The Workspace button's switcher reuses the main menu view model for the recent-projects list and open
         // logic. It is available on every platform, not only those without a native menu bar.
         _recentProjectsViewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
         RecentProjectsFlyout.Opening += OnRecentProjectsFlyoutOpening;
@@ -179,6 +179,16 @@ public sealed partial class PageNavigationToolbar : UserControl
             return;
         }
 
+        // The switcher is opened from a bare chevron, so a disabled header names the list for anyone who opens
+        // it without reading the tooltip. The main menu's Open Recent submenu is already labelled, so it has none.
+        var headerItem = new MenuFlyoutItem
+        {
+            Text = _stringLocalizer.GetString("TitleBar_RecentProjectsHeader"),
+            IsEnabled = false
+        };
+        RecentProjectsFlyout.Items.Add(headerItem);
+        RecentProjectsFlyout.Items.Add(new MenuFlyoutSeparator());
+
         RecentProjectsMenu.Populate(
             RecentProjectsFlyout.Items,
             recentProjects,
@@ -189,9 +199,9 @@ public sealed partial class PageNavigationToolbar : UserControl
 
     private void RecentProjectsButton_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        // Open the switcher and mark the tap handled so it does not reach the workspace nav item; opening the
-        // switcher must never also trigger navigation to the workspace.
-        FlyoutBase.ShowAttachedFlyout(RecentProjectsButton);
+        // Open the switcher (anchored to the whole button so it aligns to the button's left edge) and mark the
+        // tap handled so it does not reach the button's own click; opening it must never also navigate.
+        FlyoutBase.ShowAttachedFlyout(WorkspaceButton);
         e.Handled = true;
     }
 
@@ -248,8 +258,8 @@ public sealed partial class PageNavigationToolbar : UserControl
             ? ViewModel.ProjectFilePath
             : _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
 
-        ToolTipService.SetToolTip(WorkspaceNavItem, tooltip);
-        ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
+        ToolTipService.SetToolTip(WorkspaceButton, tooltip);
+        ToolTipService.SetPlacement(WorkspaceButton, PlacementMode.Bottom);
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
@@ -270,6 +280,11 @@ public sealed partial class PageNavigationToolbar : UserControl
     {
         PageNavigation.SelectionChanged -= PageNavigation_SelectionChanged;
 
+        // The Workspace button is custom, so drive its active underline directly from the active page.
+        WorkspaceActiveIndicator.Visibility = activePage == ApplicationPage.Workspace
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         try
         {
             switch (activePage)
@@ -281,7 +296,8 @@ public sealed partial class PageNavigationToolbar : UserControl
                     PageNavigation.SelectedItem = CommunityNavItem;
                     break;
                 case ApplicationPage.Workspace:
-                    PageNavigation.SelectedItem = WorkspaceNavItem;
+                    // The Workspace button is custom, not a nav item, so no menu item is selected here.
+                    PageNavigation.SelectedItem = null;
                     break;
                 case ApplicationPage.Settings:
                     PageNavigation.SelectedItem = null;
@@ -309,5 +325,10 @@ public sealed partial class PageNavigationToolbar : UserControl
 
             ViewModel.NavigateToPage(tag);
         }
+    }
+
+    private void WorkspaceButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.NavigateToPage("Workspace");
     }
 }

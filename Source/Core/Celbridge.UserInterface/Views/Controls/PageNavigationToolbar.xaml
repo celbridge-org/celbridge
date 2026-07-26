@@ -69,21 +69,36 @@
                                FontSize="{StaticResource IconSizeMedium}"/>
             </NavigationViewItem>
 
-            <!-- Separator before Workspace -->
-            <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
-                                         Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        </NavigationView.MenuItems>
 
-            <!-- Workspace - the Current Project control: the folder glyph, project name and recent-projects
-                 chevron sit in one nav item so they highlight together as a unit. The chevron is a nested button
-                 whose Tapped is handled in code-behind, so opening the switcher never triggers the item's
-                 navigation. -->
-            <NavigationViewItem x:Name="WorkspaceNavItem"
-                                AutomationProperties.AutomationId="workspace-button"
-                                Tag="Workspace"
-                                Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel Orientation="Horizontal"
-                            Spacing="6"
-                            VerticalAlignment="Center">
+        <!-- Content after Home and Community: the Workspace button, then the shortcut buttons. -->
+        <NavigationView.PaneCustomContent>
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Stretch">
+
+              <!-- Workspace button: a custom button styled as a prominent, distinct control rather than a nav tab.
+                   Clicking it navigates to the workspace; the nested chevron button opens the recent-projects
+                   switcher, its Tapped handled so it never triggers the navigation click. -->
+              <Button x:Name="WorkspaceButton"
+                      AutomationProperties.AutomationId="workspace-button"
+                      Click="WorkspaceButton_Click"
+                      Background="{ThemeResource NavigationViewItemBackgroundPointerOver}"
+                      BorderThickness="0"
+                      CornerRadius="4"
+                      Padding="8,0"
+                      VerticalAlignment="Stretch"
+                      VerticalContentAlignment="Stretch"
+                      Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+
+                <!-- Attached to the whole button (not the chevron) so it drops down aligned to the button's left edge. -->
+                <FlyoutBase.AttachedFlyout>
+                  <MenuFlyout x:Name="RecentProjectsFlyout"
+                              Placement="BottomEdgeAlignedLeft"/>
+                </FlyoutBase.AttachedFlyout>
+                <Grid>
+                  <StackPanel Orientation="Horizontal"
+                              Spacing="6"
+                              VerticalAlignment="Center">
                     <controls:Icon Symbol="Folder"
                                    FontSize="{StaticResource IconSizeMedium}"/>
                     <TextBlock Text="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
@@ -95,32 +110,38 @@
                             Padding="2"
                             VerticalAlignment="Center"
                             Tapped="RecentProjectsButton_Tapped">
-                        <controls:Icon Symbol="ChevronDown"
-                                       FontSize="12"/>
-                        <FlyoutBase.AttachedFlyout>
-                            <MenuFlyout x:Name="RecentProjectsFlyout"
-                                        Placement="BottomEdgeAlignedLeft"/>
-                        </FlyoutBase.AttachedFlyout>
+                      <controls:Icon Symbol="ChevronDown"
+                                     FontSize="12"/>
                     </Button>
-                </StackPanel>
-            </NavigationViewItem>
-        </NavigationView.MenuItems>
+                  </StackPanel>
 
-        <!-- Shortcut buttons to the right of the project button -->
-        <NavigationView.PaneCustomContent>
-            <StackPanel x:Name="PaneButtonsContainer"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Visibility="Collapsed">
+                  <!-- Accent underline shown while the workspace is the current page, echoing the nav tabs'
+                       selection indicator. The bottom margin lifts it to match the inset the NavigationView gives
+                       its own top-mode indicator. Toggled from code-behind. -->
+                  <Border x:Name="WorkspaceActiveIndicator"
+                          Height="3"
+                          VerticalAlignment="Bottom"
+                          Margin="0,0,0,5"
+                          CornerRadius="1.5"
+                          Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                          Visibility="Collapsed"/>
+                </Grid>
+              </Button>
 
               <!-- Shortcut buttons (added programmatically) -->
-              <Border x:Name="ShortcutLeadingSeparator"
-                      Style="{StaticResource TitleBarSeparatorStyle}"
-                      Visibility="Collapsed"/>
+              <StackPanel x:Name="PaneButtonsContainer"
+                          Orientation="Horizontal"
+                          VerticalAlignment="Center"
+                          Visibility="Collapsed">
 
-              <StackPanel x:Name="ShortcutButtonsPanel"
-                          Orientation="Horizontal"/>
+                <Border x:Name="ShortcutLeadingSeparator"
+                        Style="{StaticResource TitleBarSeparatorStyle}"
+                        Visibility="Collapsed"/>
 
+                <StackPanel x:Name="ShortcutButtonsPanel"
+                            Orientation="Horizontal"/>
+
+              </StackPanel>
             </StackPanel>
         </NavigationView.PaneCustomContent>
     </NavigationView>
