@@ -11,7 +11,7 @@
                        HorizontalAlignment="Left"
                        VerticalAlignment="Center"
                        Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
-                       StrokeThickness="1.2"
+                       StrokeThickness="1.0"
                        RadiusX="2" RadiusY="2"/>
             
             <!-- Top right rectangle (documents panel) -->
@@ -19,7 +19,7 @@
                        HorizontalAlignment="Right"
                        VerticalAlignment="Top"
                        Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
-                       StrokeThickness="1.2"
+                       StrokeThickness="1.0"
                        RadiusX="2" RadiusY="2"/>
 
             <!-- Bottom right rectangle (console/secondary panel) -->
@@ -27,7 +27,7 @@
                        HorizontalAlignment="Right"
                        VerticalAlignment="Bottom"
                        Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
-                       StrokeThickness="1.2"
+                       StrokeThickness="1.0"
                        RadiusX="2" RadiusY="2"/>
 
         </Grid>

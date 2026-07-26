@@ -7,7 +7,7 @@
              Height="{StaticResource IconSizeMedium}">
         <Grid Width="16" Height="16">
             <Rectangle Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
-                       StrokeThickness="1.2" 
+                       StrokeThickness="1.0" 
                        RadiusX="2" RadiusY="2"/>
             <Rectangle x:Name="PanelFill"
                        Width="14" Height="5" 
@@ -18,7 +18,7 @@
             <Line x:Name="PanelDivider"
                   X1="1" Y1="10" X2="15" Y2="10"
                   Stroke="{ThemeResource SystemControlForegroundBaseHighBrush}"
-                  StrokeThickness="1.2"
+                  StrokeThickness="1.0"
                   Visibility="Collapsed"/>
         </Grid>
     </Viewbox>

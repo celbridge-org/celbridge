@@ -18,7 +18,7 @@
     </UserControl.Resources>
 
   <StackPanel Orientation="Horizontal"
-              VerticalAlignment="Center">
+              VerticalAlignment="Stretch">
 
     <!-- Main menu launcher. Its flyout is populated by MainMenu on platforms without a native menu bar, and the
          button is shown from code-behind on those platforms; macOS surfaces these commands through the system
@@ -28,7 +28,7 @@
             Background="Transparent"
             BorderThickness="0"
             Padding="10,8"
-            VerticalAlignment="Center"
+            VerticalAlignment="Stretch"
             Visibility="Collapsed">
       <controls:Icon Symbol="Menu"
                      FontSize="{StaticResource IconSizeMedium}"/>
