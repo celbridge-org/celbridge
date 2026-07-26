@@ -73,18 +73,35 @@
             <NavigationViewItemSeparator x:Name="WorkspaceSeparator"
                                          Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-            <!-- Workspace - shows project name when loaded -->
+            <!-- Workspace - the Current Project control: the folder glyph, project name and recent-projects
+                 chevron sit in one nav item so they highlight together as a unit. The chevron is a nested button
+                 whose Tapped is handled in code-behind, so opening the switcher never triggers the item's
+                 navigation. -->
             <NavigationViewItem x:Name="WorkspaceNavItem"
                                 AutomationProperties.AutomationId="workspace-button"
                                 Tag="Workspace"
                                 Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel Orientation="Horizontal"
-                            Spacing="8"
+                            Spacing="6"
                             VerticalAlignment="Center">
                     <controls:Icon Symbol="Folder"
                                    FontSize="{StaticResource IconSizeMedium}"/>
                     <TextBlock Text="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
                                VerticalAlignment="Center"/>
+                    <Button x:Name="RecentProjectsButton"
+                            AutomationProperties.AutomationId="recent-projects-button"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="2"
+                            VerticalAlignment="Center"
+                            Tapped="RecentProjectsButton_Tapped">
+                        <controls:Icon Symbol="ChevronDown"
+                                       FontSize="12"/>
+                        <FlyoutBase.AttachedFlyout>
+                            <MenuFlyout x:Name="RecentProjectsFlyout"
+                                        Placement="BottomEdgeAlignedLeft"/>
+                        </FlyoutBase.AttachedFlyout>
+                    </Button>
                 </StackPanel>
             </NavigationViewItem>
         </NavigationView.MenuItems>

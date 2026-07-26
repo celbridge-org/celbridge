@@ -13,6 +13,7 @@ public sealed partial class PageNavigationToolbar : UserControl
     private MainMenu? _mainMenu;
     private bool _hasShortcuts;
     private ShortcutMenuBuilder? _shortcutMenuBuilder;
+    private MainMenuViewModel? _recentProjectsViewModel;
 
     public PageNavigationToolbarViewModel ViewModel { get; }
 
@@ -134,6 +135,11 @@ public sealed partial class PageNavigationToolbar : UserControl
             MainMenuButton.Visibility = Visibility.Visible;
         }
 
+        // The Current Project switcher reuses the main menu view model for the recent-projects list and open
+        // logic. It is available on every platform, not only those without a native menu bar.
+        _recentProjectsViewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+        RecentProjectsFlyout.Opening += OnRecentProjectsFlyoutOpening;
+
         ApplyTooltips();
 
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
@@ -146,10 +152,67 @@ public sealed partial class PageNavigationToolbar : UserControl
 
         _mainMenu?.OnUnloaded();
 
+        RecentProjectsFlyout.Opening -= OnRecentProjectsFlyoutOpening;
+
         Loaded -= OnPageNavigationToolbar_Loaded;
         Unloaded -= OnPageNavigationToolbar_Unloaded;
 
         _messengerService.UnregisterAll(this);
+    }
+
+    private void OnRecentProjectsFlyoutOpening(object? sender, object e)
+    {
+        RecentProjectsFlyout.Items.Clear();
+
+        var viewModel = _recentProjectsViewModel;
+        var recentProjects = viewModel?.GetRecentProjects();
+        if (viewModel is null ||
+            recentProjects is null ||
+            recentProjects.Count == 0)
+        {
+            var emptyItem = new MenuFlyoutItem
+            {
+                Text = _stringLocalizer.GetString("Menu_NoRecentProjects"),
+                IsEnabled = false
+            };
+            RecentProjectsFlyout.Items.Add(emptyItem);
+            return;
+        }
+
+        RecentProjectsMenu.Populate(
+            RecentProjectsFlyout.Items,
+            recentProjects,
+            OpenRecentProjectFromSwitcher,
+            _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
+            viewModel.ClearRecentProjects);
+    }
+
+    private void RecentProjectsButton_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        // Open the switcher and mark the tap handled so it does not reach the workspace nav item; opening the
+        // switcher must never also trigger navigation to the workspace.
+        FlyoutBase.ShowAttachedFlyout(RecentProjectsButton);
+        e.Handled = true;
+    }
+
+    private async void OpenRecentProjectFromSwitcher(string projectFilePath)
+    {
+        if (_recentProjectsViewModel is null)
+        {
+            return;
+        }
+
+        // async void: observe exceptions so a failed open (e.g. the project moved or was deleted) cannot crash
+        // on the UI thread.
+        try
+        {
+            await _recentProjectsViewModel.OpenRecentProjectAsync(projectFilePath);
+        }
+        catch (Exception ex)
+        {
+            var logger = ServiceLocator.AcquireService<Logging.ILogger<PageNavigationToolbar>>();
+            logger.LogError(ex, "Failed to open recent project from the switcher");
+        }
     }
 
     private void ApplyTooltips()
@@ -158,6 +221,12 @@ public sealed partial class PageNavigationToolbar : UserControl
         ToolTipService.SetToolTip(MainMenuButton, mainMenuTooltip);
         ToolTipService.SetPlacement(MainMenuButton, PlacementMode.Bottom);
         AutomationProperties.SetName(MainMenuButton, mainMenuTooltip);
+
+        // The switcher chevron carries only an icon, so give it a tooltip and an accessible name.
+        var recentProjectsTooltip = _stringLocalizer.GetString("MainMenu_OpenRecent");
+        ToolTipService.SetToolTip(RecentProjectsButton, recentProjectsTooltip);
+        ToolTipService.SetPlacement(RecentProjectsButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(RecentProjectsButton, recentProjectsTooltip);
 
         // Home and Community carry only an icon in their Content, so give assistive technology an explicit name.
         var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
