@@ -165,30 +165,12 @@ public class MainMenu
             return openRecentSubItem;
         }
 
-        foreach (var recentProject in recentProjects)
-        {
-            var projectFilePath = recentProject.ProjectFilePath;
-
-            var projectItem = new MenuFlyoutItem
-            {
-                Text = recentProject.ProjectName
-            };
-            ToolTipService.SetToolTip(projectItem, projectFilePath);
-            projectItem.Click += (sender, e) => OpenRecentProject(projectFilePath);
-
-            openRecentSubItem.Items.Add(projectItem);
-        }
-
-        openRecentSubItem.Items.Add(new MenuFlyoutSeparator());
-
-        var clearRecentItem = new MenuFlyoutItem
-        {
-            Text = _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
-            Icon = new Icon { Symbol = IconSymbol.Delete }
-        };
-        clearRecentItem.Click += (sender, e) => ViewModel.ClearRecentProjects();
-
-        openRecentSubItem.Items.Add(clearRecentItem);
+        RecentProjectsMenu.Populate(
+            openRecentSubItem.Items,
+            recentProjects,
+            OpenRecentProject,
+            _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
+            ViewModel.ClearRecentProjects);
 
         return openRecentSubItem;
     }
