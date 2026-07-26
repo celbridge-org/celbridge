@@ -88,7 +88,7 @@
             <TextBlock Grid.Column="1"
                        Text="{x:Bind LocationText}"
                        VerticalAlignment="Center"
-                       Opacity="0.7"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        TextWrapping="Wrap"/>
           </Grid>
 
@@ -130,7 +130,7 @@
 
     <TextBlock Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"
                Margin="24"
-               Opacity="0.7"
+               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                TextWrapping="Wrap"
                TextAlignment="Center"
                HorizontalAlignment="Center"

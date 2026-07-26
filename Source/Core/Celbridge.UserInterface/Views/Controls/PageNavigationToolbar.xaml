@@ -17,34 +17,56 @@
         </Style>
     </UserControl.Resources>
 
+  <StackPanel Orientation="Horizontal"
+              VerticalAlignment="Stretch">
+
+    <!-- Main menu launcher. Its flyout is populated by MainMenu on platforms without a native menu bar, and the
+         button is shown from code-behind on those platforms; macOS surfaces these commands through the system
+         menu bar, so the button stays collapsed there. -->
+    <Button x:Name="MainMenuButton"
+            AutomationProperties.AutomationId="main-menu-button"
+            Background="Transparent"
+            BorderThickness="0"
+            Padding="10,8"
+            VerticalAlignment="Stretch"
+            Visibility="Collapsed">
+      <controls:Icon Symbol="Menu"
+                     FontSize="{StaticResource IconSizeMedium}"/>
+      <Button.Flyout>
+        <MenuFlyout x:Name="MainMenuFlyout"
+                    Placement="BottomEdgeAlignedLeft"/>
+      </Button.Flyout>
+    </Button>
+
     <NavigationView x:Name="PageNavigation"
                     IsPaneToggleButtonVisible="False"
                     IsBackButtonVisible="Collapsed"
                     IsSettingsVisible="False"
                     PaneDisplayMode="Top"
                     Background="Transparent"
-                    SelectionChanged="PageNavigation_SelectionChanged"
-                    ItemInvoked="PageNavigation_ItemInvoked">
+                    SelectionChanged="PageNavigation_SelectionChanged">
+
         <NavigationView.MenuItems>
             <!-- Main Menu is added programmatically -->
+
+            <!-- The page glyphs sit in the item Content rather than the Icon slot: the Icon slot renders inside
+                 the presenter's IconBox Viewbox, which scales to a fixed box and ignores FontSize, so Content is
+                 the only place the shared command icon size takes effect in top mode. -->
 
             <!-- Home -->
             <NavigationViewItem x:Name="HomeNavItem"
                                 AutomationProperties.AutomationId="home-button"
                                 Tag="Home">
-                <NavigationViewItem.Icon>
-                    <controls:Icon Symbol="Home"/>
-                </NavigationViewItem.Icon>
+                <controls:Icon Symbol="Home"
+                               FontSize="{StaticResource IconSizeMedium}"/>
             </NavigationViewItem>
 
             <!-- Community -->
             <NavigationViewItem x:Name="CommunityNavItem"
                                 AutomationProperties.AutomationId="community-button"
                                 Tag="Community">
-                <NavigationViewItem.Icon>
-                    <controls:Icon
-                              Symbol="People"/>
-                </NavigationViewItem.Icon>
+                <controls:Icon Symbol="People"
+                               FontSize="{StaticResource IconSizeMedium}"/>
             </NavigationViewItem>
 
             <!-- Separator before Workspace -->
@@ -55,12 +77,15 @@
             <NavigationViewItem x:Name="WorkspaceNavItem"
                                 AutomationProperties.AutomationId="workspace-button"
                                 Tag="Workspace"
-                                Content="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
                                 Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <NavigationViewItem.Icon>
-                    <controls:Icon
-                              Symbol="Folder"/>
-                </NavigationViewItem.Icon>
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <controls:Icon Symbol="Folder"
+                                   FontSize="{StaticResource IconSizeMedium}"/>
+                    <TextBlock Text="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </NavigationViewItem>
         </NavigationView.MenuItems>
 
@@ -82,4 +107,6 @@
             </StackPanel>
         </NavigationView.PaneCustomContent>
     </NavigationView>
+
+  </StackPanel>
 </UserControl>

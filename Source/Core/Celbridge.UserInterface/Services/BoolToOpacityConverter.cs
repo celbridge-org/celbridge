@@ -1,28 +1,19 @@
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Converts a boolean value to an opacity value.
-/// By default, true returns 1 (fully opaque) and false returns 0 (fully transparent).
-/// When the "Inverted" parameter is provided, the logic is reversed.
+/// Maps a boolean state to an opacity: true renders fully opaque, false fades fully transparent. Suits a
+/// glyph that shows and hides via opacity, such as a transient saving indicator. Distinct from
+/// BoolToDimmedOpacityConverter, which keeps a false value visible but dimmed.
 /// </summary>
 public class BoolToOpacityConverter : IValueConverter
 {
-    enum Parameters
-    {
-        Normal, Inverted
-    }
+    private const double VisibleOpacity = 1.0;
+    private const double HiddenOpacity = 0.0;
 
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         var boolValue = (bool)value;
-        Parameters direction = parameter == null ? Parameters.Normal : (Parameters)Enum.Parse(typeof(Parameters), (string)parameter);
-
-        if (direction == Parameters.Inverted)
-        {
-            return !boolValue ? 1.0 : 0.0;
-        }
-
-        return boolValue ? 1.0 : 0.0;
+        return boolValue ? VisibleOpacity : HiddenOpacity;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

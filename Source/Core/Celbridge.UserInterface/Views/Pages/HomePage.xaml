@@ -31,7 +31,7 @@
                  FontWeight="Bold"/>
       <TextBlock Text="{x:Bind SubtitleString}"
                  FontSize="22"
-                 Opacity="0.75"/>
+                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
     </StackPanel>
 
     <!-- Start section -->
@@ -90,7 +90,7 @@
               </Grid>
 
               <TextBlock VerticalAlignment="Center"
-                         Opacity="0.75"
+                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                          Text="{Binding ProjectFolderPath}"/>              
             </StackPanel>
             

@@ -73,7 +73,7 @@
         <controls:LayoutToolbar x:Name="LayoutToolbar"
                                 Grid.Column="4"
                                 HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
+                                VerticalAlignment="Stretch"
                                 Margin="0,0,8,0"/>
 
         <!-- Settings Button - positioned at the right edge of the toolbar -->
@@ -84,8 +84,9 @@
                 Background="Transparent"
                 BorderThickness="0"
                 Padding="12,8"
-                VerticalAlignment="Center">
-            <ic:Icon Symbol="Settings"/>
+                VerticalAlignment="Stretch">
+            <ic:Icon Symbol="Settings"
+                     FontSize="{StaticResource IconSizeMedium}"/>
         </Button>
   </Grid>
 </UserControl>

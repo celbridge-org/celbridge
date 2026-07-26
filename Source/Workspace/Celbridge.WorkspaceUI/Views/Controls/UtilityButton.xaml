@@ -49,15 +49,22 @@
 
         <!-- Icon centered in the full rail width, above the button but passing clicks through to it. Sized
              to the icon so the pip aligns to the glyph's corner. -->
-        <Grid Width="22"
-              Height="22"
+        <Grid Width="{StaticResource IconSizeLarge}"
+              Height="{StaticResource IconSizeLarge}"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
               IsHitTestVisible="False">
-            <controls:Icon x:Name="IconElement"
-                           FontSize="22"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center" />
+            <!-- The Viewbox measures the glyph unconstrained then scales it to fit the box. A bare FontIcon
+                 sized to its own box clips glyphs whose ink reaches the top of the em (e.g. the Search
+                 magnifying glass); the Viewbox gives every glyph the same fitted headroom. -->
+            <Viewbox Stretch="Uniform"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <controls:Icon x:Name="IconElement"
+                               FontSize="{StaticResource IconSizeLarge}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+            </Viewbox>
 
             <!-- Caution pip for a surface reporting a problem, offset clear of the glyph's corner. -->
             <Ellipse x:Name="IssuePip"

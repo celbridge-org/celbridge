@@ -125,14 +125,13 @@ public sealed partial class PageNavigationToolbar : UserControl
         ViewModel.OnLoaded();
 
         // macOS surfaces these commands through the native menubar (see MacOSMainMenu), so the in-window
-        // hamburger menu is mounted only on platforms without one (Windows, Linux).
+        // hamburger menu is shown only on platforms without one (Windows, Linux).
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (!platformInfo.UsesNativeMenuBar)
         {
-            _mainMenu = new MainMenu();
+            _mainMenu = new MainMenu(MainMenuFlyout);
             _mainMenu.OnLoaded();
-            _mainMenu.MenuItemInvoked += OnMainMenu_ItemInvoked;
-            PageNavigation.MenuItems.Insert(0, _mainMenu.GetMenuNavItem());
+            MainMenuButton.Visibility = Visibility.Visible;
         }
 
         ApplyTooltips();
@@ -145,11 +144,7 @@ public sealed partial class PageNavigationToolbar : UserControl
     {
         ViewModel.OnUnloaded();
 
-        if (_mainMenu != null)
-        {
-            _mainMenu.MenuItemInvoked -= OnMainMenu_ItemInvoked;
-            _mainMenu.OnUnloaded();
-        }
+        _mainMenu?.OnUnloaded();
 
         Loaded -= OnPageNavigationToolbar_Loaded;
         Unloaded -= OnPageNavigationToolbar_Unloaded;
@@ -159,13 +154,21 @@ public sealed partial class PageNavigationToolbar : UserControl
 
     private void ApplyTooltips()
     {
+        var mainMenuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
+        ToolTipService.SetToolTip(MainMenuButton, mainMenuTooltip);
+        ToolTipService.SetPlacement(MainMenuButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(MainMenuButton, mainMenuTooltip);
+
+        // Home and Community carry only an icon in their Content, so give assistive technology an explicit name.
         var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
         ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
         ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
+        AutomationProperties.SetName(HomeNavItem, homeTooltip);
 
         var communityTooltip = _stringLocalizer.GetString("TitleBar_CommunityTooltip");
         ToolTipService.SetToolTip(CommunityNavItem, communityTooltip);
         ToolTipService.SetPlacement(CommunityNavItem, PlacementMode.Bottom);
+        AutomationProperties.SetName(CommunityNavItem, communityTooltip);
 
         UpdateWorkspaceTooltip();
     }
@@ -236,39 +239,6 @@ public sealed partial class PageNavigationToolbar : UserControl
             }
 
             ViewModel.NavigateToPage(tag);
-        }
-    }
-
-    private void PageNavigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
-    {
-        if (args.InvokedItemContainer is NavigationViewItem invokedItem)
-        {
-            _mainMenu?.HandleItemInvoked(invokedItem);
-        }
-    }
-
-    private void OnMainMenu_ItemInvoked(object? sender, EventArgs e)
-    {
-        CloseFlyoutMenus();
-    }
-
-    private void CloseFlyoutMenus()
-    {
-        CloseFlyoutMenusRecursive(PageNavigation.MenuItems);
-    }
-
-    private void CloseFlyoutMenusRecursive(IList<object> menuItems)
-    {
-        foreach (var item in menuItems)
-        {
-            if (item is NavigationViewItem navItem)
-            {
-                if (navItem.MenuItems.Count > 0)
-                {
-                    navItem.IsExpanded = false;
-                    CloseFlyoutMenusRecursive(navItem.MenuItems);
-                }
-            }
         }
     }
 }

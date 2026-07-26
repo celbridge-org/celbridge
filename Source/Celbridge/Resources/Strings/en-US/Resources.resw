@@ -644,24 +644,6 @@ Do you wish to continue?</value>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
   </data>
-  <data name="MainMenu_NewProjectTooltip" xml:space="preserve">
-    <value>Create a New Project</value>
-  </data>
-  <data name="MainMenu_NewFileTooltip" xml:space="preserve">
-    <value>Create a new file in the selected folder</value>
-  </data>
-  <data name="MainMenu_NewFolderTooltip" xml:space="preserve">
-    <value>Create a new folder in the selected folder</value>
-  </data>
-  <data name="MainMenu_OpenProjectTooltip" xml:space="preserve">
-    <value>Open an Existing project</value>
-  </data>
-  <data name="MainMenu_ReloadProjectTooltip" xml:space="preserve">
-    <value>Reload the Current Project</value>
-  </data>
-  <data name="MainMenu_ShowLogsTooltip" xml:space="preserve">
-    <value>Reveal the Application Log File in the File Manager</value>
-  </data>
   <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
     <value>Python Initialization Error</value>
   </data>
@@ -1127,23 +1109,14 @@ Do you wish to continue?</value>
   <data name="MainMenu_CloseProject" xml:space="preserve">
     <value>Close Project</value>
   </data>
-  <data name="MainMenu_CloseProjectTooltip" xml:space="preserve">
-    <value>Close the Current Project</value>
-  </data>
   <data name="MainMenu_Exit" xml:space="preserve">
     <value>Exit</value>
-  </data>
-  <data name="MainMenu_ExitTooltip" xml:space="preserve">
-    <value>Exit the Application</value>
   </data>
   <data name="FullScreenToolbar_ExitFullscreen" xml:space="preserve">
     <value>Exit Fullscreen</value>
   </data>
   <data name="MainMenu_Settings" xml:space="preserve">
     <value>Settings</value>
-  </data>
-  <data name="MainMenu_SettingsTooltip" xml:space="preserve">
-    <value>Open Application Settings</value>
   </data>
   <data name="Menu_About" xml:space="preserve">
     <value>About Celbridge</value>
@@ -1220,13 +1193,7 @@ Do you wish to continue?</value>
   <data name="MainMenu_OpenRecent" xml:space="preserve">
     <value>Open Recent</value>
   </data>
-  <data name="MainMenu_OpenRecentTooltip" xml:space="preserve">
-    <value>Open a Recent project</value>
-  </data>
   <data name="MainMenu_ClearRecentProjects" xml:space="preserve">
-    <value>Clear Recent Projects</value>
-  </data>
-  <data name="MainMenu_ClearRecentProjectsTooltip" xml:space="preserve">
     <value>Clear Recent Projects</value>
   </data>
   <data name="ConsolePanel_ShortcutConfigErrorTitle" xml:space="preserve">

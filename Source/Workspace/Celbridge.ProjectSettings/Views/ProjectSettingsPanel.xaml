@@ -133,7 +133,7 @@
                      FontSize="20"
                      FontWeight="SemiBold"/>
           <TextBlock Text="{x:Bind ViewModel.ActiveSectionDescription, Mode=OneWay}"
-                     Opacity="0.7"
+                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                      FontSize="12"
                      TextWrapping="Wrap"/>
         </StackPanel>
@@ -169,7 +169,7 @@
             Padding="12,8">
       <StackPanel Spacing="6">
         <TextBlock Text="{x:Bind ReloadCaptionText}"
-                   Opacity="0.7"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    FontSize="12"
                    TextWrapping="Wrap"/>
         <Button x:Name="ReloadProjectButton"

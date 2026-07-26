@@ -112,7 +112,7 @@
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Text="{x:Bind DisplayName}"/>
-              <TextBlock Text="{x:Bind TypeLabel}" FontSize="11" Opacity="0.6"/>
+              <TextBlock Text="{x:Bind TypeLabel}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </StackPanel>
           </Grid>
 
@@ -128,7 +128,7 @@
           <StackPanel Margin="0,3,0,3"
                       Visibility="{x:Bind HasFileExtensions, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Text="{x:Bind FileExtensionsLabel}"/>
-            <TextBlock Text="{x:Bind FileExtensionsText}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+            <TextBlock Text="{x:Bind FileExtensionsText}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
           </StackPanel>
 
           <Grid Margin="0,3,0,3"
@@ -198,10 +198,10 @@
               <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
               <!-- The package id, with the installed version appended when the package records one. -->
               <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{x:Bind VersionText}"
                            FontSize="11"
-                           Opacity="0.6"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Margin="6,0,0,0"
                            Visibility="{x:Bind HasVersion, Converter={StaticResource BoolToVisibilityConverter}}"/>
               </StackPanel>

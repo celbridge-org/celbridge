@@ -5,12 +5,17 @@
   xmlns:local="using:Celbridge.UserInterface.Views"
   xmlns:vm="using:Celbridge.UserInterface.ViewModels"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  xmlns:services="using:Celbridge.UserInterface.Services"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   Title="{x:Bind TitleString}"
   PrimaryButtonText="{x:Bind OkString}"
   SecondaryButtonText="{x:Bind CancelString}"
   IsPrimaryButtonEnabled="{x:Bind ViewModel.IsSubmitEnabled, Mode=OneWay}"
   Opened="Dialog_Opened">
+
+  <ContentDialog.Resources>
+    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
+  </ContentDialog.Resources>
 
   <Grid Width="480">
     <Grid.RowDefinitions>
@@ -125,12 +130,12 @@
             <controls:FileIcon Grid.Column="0"
                                Size="18"
                                IconDefinition="{x:Bind IconDefinition}"
-                               Opacity="{x:Bind NameOpacity}"
+                               Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
                                VerticalAlignment="Center"/>
 
             <TextBlock Grid.Column="1"
                        Text="{x:Bind DisplayText}"
-                       Opacity="{x:Bind NameOpacity}"
+                       Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
                        VerticalAlignment="Center"
                        Margin="8,0,0,0"
                        TextTrimming="CharacterEllipsis"/>
