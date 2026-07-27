@@ -1,3 +1,5 @@
+using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
@@ -330,5 +332,17 @@ public sealed partial class PageNavigationToolbar : UserControl
     private void WorkspaceButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.NavigateToPage("Workspace");
+
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        // Focus the active utility so the focus indicator returns to it rather than being dropped on the button.
+        // The command runs after this click, so the button does not take focus back.
+        var activeUtilityId = workspaceWrapper.WorkspaceService.UtilityPanel.ActiveUtilityId;
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        commandService.Execute<IShowUtilityCommand>(command => command.UtilityId = activeUtilityId);
     }
 }
