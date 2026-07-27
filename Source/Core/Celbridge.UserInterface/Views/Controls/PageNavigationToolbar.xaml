@@ -4,7 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:services="using:Celbridge.UserInterface.Services">
+    xmlns:services="using:Celbridge.UserInterface.Services"
+    xmlns:ui="using:Celbridge.UserInterface">
 
     <UserControl.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
@@ -82,10 +83,11 @@
               <Button x:Name="WorkspaceButton"
                       AutomationProperties.AutomationId="workspace-button"
                       Click="WorkspaceButton_Click"
+                      ui:FocusTracking.PreservePanelFocus="True"
                       Background="{ThemeResource NavigationViewItemBackgroundPointerOver}"
                       BorderThickness="0"
                       CornerRadius="4"
-                      Padding="8,0"
+                      Padding="8,0,0,0"
                       VerticalAlignment="Stretch"
                       VerticalContentAlignment="Stretch"
                       Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -96,29 +98,43 @@
                               Placement="BottomEdgeAlignedLeft"/>
                 </FlyoutBase.AttachedFlyout>
                 <Grid>
-                  <StackPanel Orientation="Horizontal"
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+
+                  <!-- Folder glyph and project name. Clicking this area navigates to the workspace. -->
+                  <StackPanel Grid.Column="0"
+                              Orientation="Horizontal"
                               Spacing="6"
                               VerticalAlignment="Center">
                     <controls:Icon Symbol="Folder"
                                    FontSize="{StaticResource IconSizeMedium}"/>
                     <TextBlock Text="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
                                VerticalAlignment="Center"/>
-                    <Button x:Name="RecentProjectsButton"
-                            AutomationProperties.AutomationId="recent-projects-button"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="2"
-                            VerticalAlignment="Center"
-                            Tapped="RecentProjectsButton_Tapped">
-                      <controls:Icon Symbol="ChevronDown"
-                                     FontSize="12"/>
-                    </Button>
                   </StackPanel>
+
+                  <!-- Recent-projects chevron. Fills the right of the button (full height, out to the right edge)
+                       so the whole right side is an easy target for opening the switcher. Its Tapped is handled so
+                       it never triggers the button's navigation. -->
+                  <Button x:Name="RecentProjectsButton"
+                          Grid.Column="1"
+                          AutomationProperties.AutomationId="recent-projects-button"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="6,0,8,0"
+                          VerticalAlignment="Stretch"
+                          Tapped="RecentProjectsButton_Tapped">
+                    <controls:Icon Symbol="ChevronDown"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"/>
+                  </Button>
 
                   <!-- Accent underline shown while the workspace is the current page, echoing the nav tabs'
                        selection indicator. The bottom margin lifts it to match the inset the NavigationView gives
                        its own top-mode indicator. Toggled from code-behind. -->
                   <Border x:Name="WorkspaceActiveIndicator"
+                          Grid.ColumnSpan="2"
                           Height="3"
                           VerticalAlignment="Bottom"
                           Margin="0,0,0,5"
