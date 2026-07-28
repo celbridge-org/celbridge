@@ -1,7 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
-using Celbridge.Packages;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Celbridge.WebView.Views;
@@ -52,10 +51,5 @@ public class Module : IModule
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
-    }
-
-    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
-    {
-        return Array.Empty<BundledPackageDescriptor>();
     }
 }

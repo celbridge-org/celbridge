@@ -33,10 +33,4 @@ public interface IModule
     /// Creates document editor factories provided by this module.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider);
-
-    /// <summary>
-    /// Returns descriptors for all packages bundled with this module.
-    /// Returns an empty list if the module bundles no packages.
-    /// </summary>
-    IReadOnlyList<BundledPackageDescriptor> GetBundledPackages();
 }

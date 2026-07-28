@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Console</title>
+
+    <link rel="icon" href="data:,">
+
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+    <link rel="stylesheet" href="lib/xterm.css">
+    <link rel="stylesheet" href="console.css">
+
+    <script src="lib/xterm.js"></script>
+    <script src="lib/addon-fit.js"></script>
+    <script src="lib/addon-clipboard.js"></script>
+    <script src="lib/addon-unicode11.js"></script>
+    <script src="lib/addon-web-links.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div id="toolbar">
+            <button id="settings-toggle" class="cel-icon-button" type="button" title="Settings" aria-label="Settings">
+                <i class="bi bi-gear"></i>
+                <span id="pip" class="pip hidden"></span>
+            </button>
+        </div>
+
+        <div id="terminal-view">
+            <div id="terminal"></div>
+            <div id="session-failed" class="overlay hidden">
+                <div class="overlay-card">
+                    <div id="session-failed-message" class="overlay-message"></div>
+                    <button id="reopen-terminal" type="button" class="cel-accent">Reopen</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-view" class="hidden">
+            <h1>Console settings</h1>
+            <div id="config-error" class="config-error hidden"></div>
+
+            <label class="field">
+                <span class="field-label">Executable</span>
+                <input id="executable" type="text" spellcheck="false" placeholder="(platform default shell)">
+            </label>
+
+            <label class="field">
+                <span class="field-label">Arguments</span>
+                <textarea id="arguments" rows="3" spellcheck="false" placeholder="one per line"></textarea>
+            </label>
+
+            <label class="field">
+                <span class="field-label">Working directory</span>
+                <input id="working-directory" type="text" spellcheck="false" placeholder="(project root)">
+            </label>
+
+            <label class="field">
+                <span class="field-label">Environment</span>
+                <textarea id="environment" rows="4" spellcheck="false" placeholder="KEY=value, one per line"></textarea>
+            </label>
+
+            <div class="actions">
+                <button id="reopen-settings" type="button" class="cel-accent" disabled>Reopen session</button>
+                <span class="hint">Changes apply on reopen.</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="terminal-themes.js"></script>
+    <script type="module" src="console.js"></script>
+</body>
+</html>

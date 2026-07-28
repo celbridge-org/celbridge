@@ -1,5 +1,4 @@
 using Celbridge.Activities;
-using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Screenplay.Components;
@@ -15,11 +14,6 @@ namespace Celbridge.Spreadsheet;
 /// </summary>
 public class Module : IModule
 {
-    private const string PackageFolderName = "Package";
-    private const string LibraryFolderName = "lib";
-    private const string SpreadJSLicenseKeyName = "spreadjs_license_key";
-    private const string SpreadJSDesignerLicenseKeyName = "spreadjs_designer_license_key";
-
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
     {
         nameof(SpreadsheetActivity)
@@ -34,6 +28,8 @@ public class Module : IModule
         // Hosts the SpreadJS editor under its synthetic origin. Registered after the core loopback default,
         // so the custom view resolves it ahead of the default for the spreadsheet package.
         services.AddSingleton<ICustomEditorLoader, SyntheticOriginEditorLoader>();
+
+        services.AddSingleton<IBundledPackageProvider, SpreadsheetBundledPackageProvider>();
 
         services.AddTransient<IWriteCellsCommand, WriteCellsCommand>();
         services.AddTransient<IAppendRowsCommand, AppendRowsCommand>();
@@ -73,54 +69,5 @@ public class Module : IModule
         }
 
         return Result.Fail();
-    }
-
-    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
-    {
-        var packageFolder = Path.Combine(AppContext.BaseDirectory, "Celbridge.Spreadsheet", PackageFolderName);
-
-        // The public GitHub repo does not include the SpreadJS library files because we don't
-        // have a license to distribute them. If the library is not present, we skip
-        // registering the package.
-        var libraryFolder = Path.Combine(packageFolder, LibraryFolderName);
-        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
-
-        var libraryInfoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(libraryFolder));
-        bool libraryFolderExists = libraryInfoResult.IsSuccess
-            && libraryInfoResult.Value.Kind == StorageItemKind.Folder;
-
-        bool isLibraryPresent = false;
-        if (libraryFolderExists)
-        {
-            var enumerateResult = SyncRunner.Run(() => fileSystem.EnumerateAsync(libraryFolder, "*.js", recursive: true));
-            isLibraryPresent = enumerateResult.IsSuccess
-                && enumerateResult.Value.Any(entry => !entry.IsFolder);
-        }
-
-        if (!isLibraryPresent)
-        {
-            var logger = ServiceLocator.AcquireService<ILogger<Module>>();
-            logger.LogInformation("SpreadJS library not found under '{LibraryFolder}'; skipping celbridge.spreadsheet package registration", libraryFolder);
-
-            return Array.Empty<BundledPackageDescriptor>();
-        }
-
-        var secrets = new Dictionary<string, string>
-        {
-            [SpreadJSLicenseKeyName] = SpreadsheetLicenseKeys.LicenseKey,
-            [SpreadJSDesignerLicenseKeyName] = SpreadsheetLicenseKeys.DesignerLicenseKey,
-        };
-
-        return new[]
-        {
-            // SpreadJS's licence is domain-locked, so its page loads under a synthetic origin owned by
-            // SyntheticOriginEditorLoader. The descriptor supplies the licence secrets and blocks DevTools.
-            new BundledPackageDescriptor
-            {
-                Folder = packageFolder,
-                Secrets = secrets,
-                DevToolsBlocked = true,
-            }
-        };
     }
 }

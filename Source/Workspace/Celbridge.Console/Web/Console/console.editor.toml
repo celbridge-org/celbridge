@@ -1,0 +1,16 @@
+[editor]
+id = "console"
+type = "document"
+entry-point = "index.html"
+display-name = "Console_Editor_Name"
+
+[[file-types]]
+extension = ".console"
+display-name = "Console_FileType_Console"
+icon = "bs-terminal"
+
+[[templates]]
+id = "shell"
+display-name = "Console_Template_Shell"
+template-file = "templates/shell.console"
+default = true

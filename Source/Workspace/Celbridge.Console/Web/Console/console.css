@@ -1,0 +1,179 @@
+/* The console page has two surfaces. The settings form is app chrome, styled by the shared celbridge.css
+   (linked in index.html) so its controls, colors, and fonts match the rest of the application. The terminal
+   is its own themed surface, styled here. Only genuinely console-specific rules live in this file. */
+
+/* The terminal surface and its indicators stay console-specific: the terminal is its own themed surface
+   (like a code editor's canvas), not app chrome. The celbridge client mirrors the theme onto
+   html[data-theme]; until it lands, fall back to prefers-color-scheme so the terminal never flashes on load. */
+:root {
+    --console-terminal-bg: #ffffff;
+    --console-overlay: rgba(255, 255, 255, 0.85);
+    --console-pip: #d9822b;
+    --console-pip-bg: rgba(217, 130, 43, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --console-terminal-bg: #1e1e1e;
+        --console-overlay: rgba(20, 20, 20, 0.85);
+        --console-pip: #e0a458;
+        --console-pip-bg: rgba(224, 164, 88, 0.18);
+    }
+}
+
+:root[data-theme="light"] {
+    --console-terminal-bg: #ffffff;
+    --console-overlay: rgba(255, 255, 255, 0.85);
+    --console-pip: #d9822b;
+    --console-pip-bg: rgba(217, 130, 43, 0.15);
+}
+
+:root[data-theme="dark"] {
+    --console-terminal-bg: #1e1e1e;
+    --console-overlay: rgba(20, 20, 20, 0.85);
+    --console-pip: #e0a458;
+    --console-pip-bg: rgba(224, 164, 88, 0.18);
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+#toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    height: 40px;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--cel-divider);
+    background: var(--cel-panel-bg);
+}
+
+#settings-toggle {
+    position: relative;
+}
+
+#settings-toggle.active {
+    background: var(--cel-control-hover-bg);
+}
+
+.pip {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--console-pip);
+}
+
+.hidden {
+    display: none !important;
+}
+
+#terminal-view {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: var(--console-terminal-bg);
+}
+
+#terminal {
+    position: absolute;
+    inset: 0;
+    margin: 8px 0 8px 8px;
+}
+
+/* Clip the DOM renderer's subpixel sliver past the last column (WebKit rounding). */
+#terminal .xterm-screen {
+    overflow: hidden;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--console-overlay);
+}
+
+.overlay-card {
+    text-align: center;
+    padding: 20px;
+    max-width: 520px;
+}
+
+.overlay-message {
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+#settings-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 16px 20px;
+}
+
+#settings-view h1 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px;
+}
+
+.config-error {
+    border: 1px solid var(--console-pip);
+    background: var(--console-pip-bg);
+    padding: 8px 10px;
+    border-radius: var(--cel-radius-control);
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+}
+
+.field {
+    display: block;
+    margin-bottom: 12px;
+    max-width: 640px;
+}
+
+.field-label {
+    display: block;
+    font-size: 12px;
+    color: var(--cel-text-secondary);
+    margin-bottom: 4px;
+}
+
+/* Command-line-ish fields read better in the monospace font; everything else inherits celbridge.css. */
+.field input,
+.field textarea {
+    width: 100%;
+    font-family: var(--cel-font-mono);
+}
+
+.field textarea {
+    resize: vertical;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.hint {
+    color: var(--cel-text-secondary);
+    font-size: 12px;
+}

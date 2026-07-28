@@ -1,6 +1,5 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
-using Celbridge.Modules;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.UserInterface;
@@ -20,7 +19,7 @@ public class PackageRegistry
     private const int MaxInlineExtensionsInLog = 20;
 
     private readonly ILogger<PackageRegistry> _logger;
-    private readonly IModuleService _moduleService;
+    private readonly IReadOnlyList<IBundledPackageProvider> _bundledPackageProviders;
     private readonly IPackageLocalizationService _localizationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
@@ -50,7 +49,7 @@ public class PackageRegistry
 
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
-        IModuleService moduleService,
+        IEnumerable<IBundledPackageProvider> bundledPackageProviders,
         IPackageLocalizationService localizationService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
@@ -59,7 +58,7 @@ public class PackageRegistry
         IIconService iconService)
     {
         _logger = logger;
-        _moduleService = moduleService;
+        _bundledPackageProviders = bundledPackageProviders.ToList();
         _localizationService = localizationService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
@@ -646,7 +645,22 @@ public class PackageRegistry
     private List<PackageLoadFailure> DiscoverBundledPackages()
     {
         var failures = new List<PackageLoadFailure>();
-        var descriptors = _moduleService.GetBundledPackages();
+
+        // Every bundled package is contributed by an IBundledPackageProvider, whether from a module or a
+        // core project like the console. Discovered on every workspace load; descriptors without a folder
+        // are ignored.
+        var descriptors = new List<BundledPackageDescriptor>();
+        foreach (var provider in _bundledPackageProviders)
+        {
+            foreach (var descriptor in provider.GetBundledPackages())
+            {
+                if (!string.IsNullOrEmpty(descriptor.Folder))
+                {
+                    descriptors.Add(descriptor);
+                }
+            }
+        }
+
         var candidates = new List<Package>();
 
         foreach (var descriptor in descriptors)

@@ -42,9 +42,4 @@ public class Module : IModule
     {
         return Result<IActivity>.Fail();
     }
-
-    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
-    {
-        return Array.Empty<BundledPackageDescriptor>();
-    }
 }

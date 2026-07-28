@@ -22,6 +22,13 @@
     --cel-radius-control: 4px;
     --cel-radius-card: 8px;
 
+    /* Icon and control sizing, mirroring the standardized values in
+       Celbridge.UserInterface/Resources/Styles.xaml; keep the two in sync when either changes. */
+    --cel-icon-size-small: 16px;
+    --cel-icon-size-medium: 18px;
+    --cel-icon-size-large: 22px;
+    --cel-icon-button-size: 32px;
+
     color-scheme: light;
 
     --cel-app-bg: #F3F3F3;

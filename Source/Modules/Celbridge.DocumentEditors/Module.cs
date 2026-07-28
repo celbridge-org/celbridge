@@ -6,12 +6,11 @@ namespace Celbridge.DocumentEditors;
 
 public class Module : IModule
 {
-    private const string EditorsFolderName = "Editors";
-
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>();
 
     public void ConfigureServices(IModuleServiceCollection services)
     {
+        services.AddSingleton<IBundledPackageProvider, DocumentEditorsBundledPackageProvider>();
     }
 
     public Result Initialize()
@@ -27,21 +26,5 @@ public class Module : IModule
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
-    }
-
-    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
-    {
-        var editorsRoot = Path.Combine(AppContext.BaseDirectory, "Celbridge.DocumentEditors", EditorsFolderName);
-
-        return new[]
-        {
-            // Served over the loopback file server and driven over the WebSocket host channel, so they run on
-            // every head.
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer") },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor") },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "UtilityDemo") },
-        };
     }
 }

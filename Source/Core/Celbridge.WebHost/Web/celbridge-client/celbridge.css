@@ -88,6 +88,26 @@ button.cel-accent:hover {
     filter: brightness(1.08);
 }
 
+/* Transparent icon button, mirroring TransparentIconButtonStyle in Styles.xaml: a square hit target that
+   shows a subtle fill on hover. The square size and icon scale come from the sizing tokens. */
+.cel-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cel-icon-button-size);
+    height: var(--cel-icon-button-size);
+    padding: 0;
+    font-size: var(--cel-icon-size-medium);
+    background: transparent;
+    border: none;
+    color: var(--cel-text-primary);
+    cursor: pointer;
+}
+
+.cel-icon-button:hover {
+    background: var(--cel-control-hover-bg);
+}
+
 /* Text-level defaults. Links, code, placeholders, and selection pick up the theme so real content reads as
    part of the host rather than falling back to the browser's blue links and UA monospace. */
 

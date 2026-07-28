@@ -26,9 +26,4 @@ public interface IModuleService
     /// Creates an instance of a supported activity.
     /// </summary>
     Result<IActivity> CreateActivity(string activityName);
-
-    /// <summary>
-    /// Returns bundled-package descriptors contributed by all loaded modules.
-    /// </summary>
-    IReadOnlyList<BundledPackageDescriptor> GetBundledPackages();
 }

@@ -2,7 +2,6 @@ using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
 using Celbridge.UserInterface;
 using Celbridge.Messaging;
-using Celbridge.Modules;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Resources;
@@ -19,7 +18,7 @@ public class PackageServiceDocumentTypeTests
 {
     private string _tempProjectFolder = null!;
     private PackageService _service = null!;
-    private IModuleService _moduleService = null!;
+    private IBundledPackageProvider _bundledPackageProvider = null!;
     private IProjectService _projectService = null!;
     private List<string> _bundledPackagePaths = null!;
     private List<ContributionOverride> _contributionOverrides = null!;
@@ -31,8 +30,8 @@ public class PackageServiceDocumentTypeTests
         Directory.CreateDirectory(_tempProjectFolder);
 
         _bundledPackagePaths = [];
-        _moduleService = Substitute.For<IModuleService>();
-        _moduleService.GetBundledPackages().Returns(_ => _bundledPackagePaths
+        _bundledPackageProvider = Substitute.For<IBundledPackageProvider>();
+        _bundledPackageProvider.GetBundledPackages().Returns(_ => _bundledPackagePaths
             .Select(folder => new BundledPackageDescriptor { Folder = folder })
             .ToList());
 
@@ -119,7 +118,7 @@ public class PackageServiceDocumentTypeTests
         iconService.CreateIcon(Arg.Any<string>(), Arg.Any<string>())
             .Returns(Result<IconDefinition>.Fail("Substitute icon service resolves no names."));
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), iconService);
+        var registry = new PackageRegistry(logger, new[] { _bundledPackageProvider }, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), iconService);
         var loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(messengerService, loadReporter, registry);
     }

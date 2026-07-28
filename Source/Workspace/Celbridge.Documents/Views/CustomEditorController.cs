@@ -69,6 +69,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private CustomDocumentHandler? _documentHandler;
     private PackageToolsHandler? _toolsHandler;
+
+    // A package-declared channel (e.g. the console terminal I/O bridge) registered as an additional RPC
+    // target set, plus the host adapter it talks through. Null for editors whose package declares no
+    // channel.
+    private ICustomEditorChannel? _channel;
+    private CustomEditorChannelHost? _channelHost;
+
     private IDisposable? _appStateConnection;
 
     // This editor's own state store (writability), mirrored to its WebView over the viewState channel.
@@ -392,6 +399,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             Host.AddLocalRpcTarget<PackageToolsHandler>(_toolsHandler);
         }
 
+        // Attach a package-declared channel as an additional RPC target set. Must run before StartListening
+        // because AddLocalRpcTarget throws once the host is listening. No-op for editors whose package
+        // declares no channel provider.
+        AttachChannel();
+
         Host.StartListening();
 
         // Registering pushes the current snapshot, so it must run after StartListening. Seed writability
@@ -448,6 +460,37 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         };
 
         await editorLoader.LoadAsync(loadRequest);
+    }
+
+    // Resolves the first channel provider that handles this editor's contribution and attaches its channel
+    // as an additional RPC target set. Providers are resolved from DI like the custom editor loaders.
+    private void AttachChannel()
+    {
+        Guard.IsNotNull(_contribution);
+        Guard.IsNotNull(_resolvedEditor);
+        Guard.IsNotNull(Host);
+
+        ICustomEditorChannelProvider? provider = null;
+        foreach (var candidate in _serviceProvider.GetServices<ICustomEditorChannelProvider>())
+        {
+            if (candidate.CanCreate(_contribution))
+            {
+                provider = candidate;
+                break;
+            }
+        }
+
+        if (provider is null)
+        {
+            return;
+        }
+
+        var context = new CustomEditorChannelContext(_resolvedEditor, _viewModel.FileResource);
+        var channel = provider.Create(context);
+
+        _channelHost = new CustomEditorChannelHost(Host);
+        channel.RegisterTargets(_channelHost);
+        _channel = channel;
     }
 
     // Registers this editor's web surface with the focus registry using the consumer-supplied panel identity
@@ -517,6 +560,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // partially initialized states.
     private void TeardownWebViewState()
     {
+        // Dispose the channel before the host: its pty raises output and exit on background threads, so
+        // unsubscribing and disposing it must complete before the host it notifies through is gone. Marking
+        // the adapter disposed first turns any in-flight outbound notification into a no-op.
+        if (_channel is not null)
+        {
+            _channelHost?.MarkDisposed();
+            _channel.Dispose();
+            _channel = null;
+            _channelHost = null;
+        }
+
         if (_toolBridge is not null)
         {
             _toolBridge.Unregister(_toolBridgeRegisteredResource);
