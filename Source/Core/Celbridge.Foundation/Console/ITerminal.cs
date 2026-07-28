@@ -16,6 +16,11 @@ public interface ITerminal : IDisposable
     event EventHandler? ProcessExited;
 
     /// <summary>
+    /// The operating-system id of the running child process, or null before it starts or after it exits.
+    /// </summary>
+    int? ProcessId { get; }
+
+    /// <summary>
     /// Starts the terminal session by executing a command line program.
     /// When environmentVariables is provided, those variables are added to the child
     /// process environment (merged with the current process environment).

@@ -8,6 +8,10 @@ public class ConsoleService : IConsoleService, IDisposable
 
     public ITerminal Terminal { get; private set; }
 
+    public IConsoleSessionRegistry SessionRegistry { get; }
+
+    public IConsoleProcessOwner ProcessOwner { get; }
+
     public ConsoleService(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
@@ -17,6 +21,8 @@ public class ConsoleService : IConsoleService, IDisposable
 
         _workspaceWrapper = workspaceWrapper;
         Terminal = serviceProvider.AcquireService<ITerminal>();
+        SessionRegistry = serviceProvider.AcquireService<IConsoleSessionRegistry>();
+        ProcessOwner = serviceProvider.AcquireService<IConsoleProcessOwner>();
     }
 
     public async Task<Result> InitializeTerminalWindow()
@@ -57,6 +63,8 @@ public class ConsoleService : IConsoleService, IDisposable
             {
                 // Dispose managed objects here
                 Terminal?.Dispose();
+                (SessionRegistry as IDisposable)?.Dispose();
+                (ProcessOwner as IDisposable)?.Dispose();
             }
 
             _disposed = true;

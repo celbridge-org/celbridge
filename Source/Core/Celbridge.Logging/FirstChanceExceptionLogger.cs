@@ -60,6 +60,14 @@ public static class FirstChanceExceptionLogger
             }
 
             var exception = args.Exception;
+
+            // Cancellation is expected control flow during teardown and shutdown, not a bug worth logging.
+            // OperationCanceledException also covers its subclass TaskCanceledException.
+            if (exception is OperationCanceledException)
+            {
+                return;
+            }
+
             if (SuppressedExceptionTypeFullNames.Contains(exception.GetType().FullName ?? string.Empty))
             {
                 return;

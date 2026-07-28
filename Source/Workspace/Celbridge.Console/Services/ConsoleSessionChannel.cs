@@ -6,10 +6,11 @@ namespace Celbridge.Console.Services;
 
 /// <summary>
 /// The console document's channel: it owns a per-view pty, bridges terminal I/O to the WebView over
-/// console/* RPC, and (re)launches the session on a console/start request. The launch is JS-triggered so
-/// the web app has registered its console/write handler before any output arrives.
+/// console/* RPC, registers the console with the session registry, and (re)launches the session on a
+/// console/start request. The launch is JS-triggered so the web app has registered its console/write
+/// handler before any output arrives.
 /// </summary>
-internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSessionRpc
+internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSessionRpc, IConsoleCommandInjector
 {
     private readonly ILogger<ConsoleSessionChannel> _logger;
     private readonly IServiceProvider _serviceProvider;
@@ -18,6 +19,8 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
     private ICustomEditorChannelHost? _host;
     private ITerminal? _terminal;
+    private int? _trackedProcessId;
+    private bool _registered;
     private bool _disposed;
 
     public ConsoleSessionChannel(
@@ -54,19 +57,35 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
         var typeId = string.IsNullOrWhiteSpace(config.Type) ? "shell" : config.Type;
 
-        IConsoleSessionProvider? provider = null;
-        foreach (var candidate in _serviceProvider.GetServices<IConsoleSessionProvider>())
-        {
-            if (candidate.TypeId == typeId)
-            {
-                provider = candidate;
-                break;
-            }
-        }
-
+        var provider = ResolveProvider(typeId);
         if (provider is null)
         {
             return new ConsoleStartResult(false, $"Unknown console session type '{typeId}'.");
+        }
+
+        var registry = _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry;
+
+        // Register (or on reopen re-register) the console with its effective runners, so the Run menu can
+        // target it, and to obtain the session token a host-bound client echoes back via session/handshake.
+        var runners = ResolveRunners(config, provider);
+        var registration = new ConsoleRegistration(
+            _fileResource,
+            typeId,
+            config.Title ?? string.Empty,
+            provider.HostBinding,
+            runners,
+            this);
+        var session = registry.Register(registration);
+        _registered = true;
+
+        // Seed the host-binding variables for a cel-proxy or MCP console: the shared listener port every
+        // peer dials, and this console's session token. A plain shell needs neither.
+        var environment = new Dictionary<string, string>(config.Environment ?? new Dictionary<string, string>());
+        if (provider.HostBinding != ConsoleHostBinding.None)
+        {
+            var rpcPort = await registry.EnsureRpcListenerAsync();
+            environment["CELBRIDGE_RPC_PORT"] = rpcPort.ToString();
+            environment["CELBRIDGE_SESSION_TOKEN"] = session.SessionId.ToString();
         }
 
         var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
@@ -77,12 +96,16 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             config.Executable ?? string.Empty,
             config.Arguments ?? Array.Empty<string>(),
             config.WorkingDirectory ?? string.Empty,
-            config.Environment ?? new Dictionary<string, string>(),
-            projectFolderPath);
+            environment,
+            projectFolderPath,
+            config.Dependencies,
+            config.PythonVersion);
 
         var specResult = await provider.BuildLaunchSpecAsync(sessionContext);
         if (specResult.IsFailure)
         {
+            registry.Unregister(_fileResource);
+            _registered = false;
             return new ConsoleStartResult(false, specResult.FirstErrorMessage);
         }
 
@@ -97,8 +120,8 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
         try
         {
-            var environment = new Dictionary<string, string>(launchSpec.Environment);
-            terminal.Start(launchSpec.CommandLine, launchSpec.WorkingDirectory, environment);
+            var environmentCopy = new Dictionary<string, string>(launchSpec.Environment);
+            terminal.Start(launchSpec.CommandLine, launchSpec.WorkingDirectory, environmentCopy);
         }
         catch (Exception exception)
         {
@@ -106,11 +129,65 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             terminal.OutputReceived -= OnTerminalOutput;
             terminal.ProcessExited -= OnTerminalProcessExited;
             terminal.Dispose();
+            registry.Unregister(_fileResource);
+            _registered = false;
             return new ConsoleStartResult(false, exception.Message);
         }
 
         _terminal = terminal;
+
+        // Track the child so the workspace-scoped owner tears it down on project close or app crash.
+        if (terminal.ProcessId is int processId)
+        {
+            _trackedProcessId = processId;
+            _workspaceWrapper.WorkspaceService.ConsoleService.ProcessOwner.Track(processId);
+        }
+
         return new ConsoleStartResult(true, null);
+    }
+
+    private IConsoleSessionProvider? ResolveProvider(string typeId)
+    {
+        foreach (var candidate in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        {
+            if (candidate.TypeId == typeId)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public void InjectCommand(string text)
+    {
+        // Clear any partial input (Ctrl+U, U+0015) before submitting, so a run command or shortcut is not
+        // concatenated with whatever the user had half-typed at the prompt.
+        _terminal?.Write("\u0015" + text + "\r");
+    }
+
+    private static IReadOnlyList<ConsoleRunner> ResolveRunners(ConsoleConfigDto config, IConsoleSessionProvider provider)
+    {
+        // Any runners in the config replace the type defaults outright; an empty list falls back to them.
+        var configuredRunners = config.Runners;
+        if (configuredRunners is null || configuredRunners.Count == 0)
+        {
+            return provider.DefaultRunners;
+        }
+
+        var runners = new List<ConsoleRunner>();
+        foreach (var runnerDto in configuredRunners)
+        {
+            var extensions = runnerDto.Extensions ?? Array.Empty<string>();
+            var command = runnerDto.Command ?? string.Empty;
+            if (extensions.Count == 0 || string.IsNullOrWhiteSpace(command))
+            {
+                continue;
+            }
+            runners.Add(new ConsoleRunner(extensions, command));
+        }
+
+        return runners;
     }
 
     private void OnTerminalOutput(object? sender, string output)
@@ -132,6 +209,11 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             return;
         }
 
+        if (_workspaceWrapper.HasWorkspaceService)
+        {
+            _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry.SetState(_fileResource, ConsoleSessionState.Disconnected);
+        }
+
         _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.SessionState, new { state = "ended" });
     }
 
@@ -147,6 +229,16 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         terminal.OutputReceived -= OnTerminalOutput;
         terminal.ProcessExited -= OnTerminalProcessExited;
         terminal.Dispose();
+
+        // The pty has killed its child, so stop tracking it (the id could be reused).
+        if (_trackedProcessId is int processId)
+        {
+            _trackedProcessId = null;
+            if (_workspaceWrapper.HasWorkspaceService)
+            {
+                _workspaceWrapper.WorkspaceService.ConsoleService.ProcessOwner.Untrack(processId);
+            }
+        }
     }
 
     public void Dispose()
@@ -158,6 +250,13 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
         _disposed = true;
         DisposeTerminal();
+
+        if (_registered
+            && _workspaceWrapper.HasWorkspaceService)
+        {
+            _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry.Unregister(_fileResource);
+        }
+
         _host = null;
     }
 }

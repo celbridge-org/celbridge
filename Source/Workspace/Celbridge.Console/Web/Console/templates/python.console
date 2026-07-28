@@ -1,0 +1,5 @@
+# A Python console with cel.* access (IPython + the celbridge connector). It dials back to the workspace,
+# so the Explorer Run menu can run .py files in it. Configure packages and shortcuts from the settings view.
+[session]
+type = "python"
+title = "Python"

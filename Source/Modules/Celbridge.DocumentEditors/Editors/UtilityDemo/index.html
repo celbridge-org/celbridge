@@ -38,6 +38,36 @@
             <button id="process-stop" type="button" disabled>Stop</button>
         </div>
         <textarea id="process-input" spellcheck="false"></textarea>
+        <details class="cel-expander">
+            <summary>Expander card</summary>
+            <div class="cel-expander-body">
+                <p>
+                    A collapsible <code>.cel-expander</code> from the shared stylesheet, matching the native
+                    WinUI Expander in the settings panels. Wrap content in <code>.cel-expander-body</code>,
+                    and add the <code>open</code> attribute to start expanded.
+                </p>
+            </div>
+        </details>
+        <div class="demo-split">
+            <div class="demo-pane demo-pane-left">Drag the divider</div>
+            <div class="cel-splitter" id="demo-splitter"></div>
+            <div class="demo-pane demo-pane-right">Resizable panes</div>
+        </div>
+        <div class="demo-panel">
+            <div class="demo-panel-body">
+                <p>A scrolling body paired with a pinned action footer, the pattern the console settings
+                    panel uses.</p>
+                <p>The shared <code>.cel-panel-footer</code> supplies the divider, the caption, and the
+                    capped, centred action button.</p>
+                <p>Scroll this area &mdash; the footer below stays put.</p>
+                <p>Keep reading and it still never moves.</p>
+                <p>One more line so the body overflows and scrolls.</p>
+            </div>
+            <div class="cel-panel-footer">
+                <p>Some settings take effect after an action.</p>
+                <button type="button">Action</button>
+            </div>
+        </div>
         <hr>
         <p id="process-footer">
             Every control here is styled by <code>celbridge.css</code>.

@@ -307,6 +307,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, userAgent);
     }
 
+    public void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled)
+    {
+        // The Skia heads' managed WebView2 surface does not implement zoom control, and user zoom is not
+        // wired there, so there is nothing to toggle.
+    }
+
     private string ResolveSafariVersion()
     {
         var version = MacOSWebViewInterop.GetSafariVersion();

@@ -12,6 +12,69 @@ html, body {
     padding: 12px;
 }
 
+/* Illustrates the shared .cel-expander component. The container is a gapless flex column, so give it room. */
+#process-container .cel-expander {
+    margin: 12px 0;
+}
+
+/* Illustrates the shared .cel-splitter component + attachSplitter() helper: two flex panes with a draggable
+   divider between them. */
+.demo-split {
+    display: flex;
+    height: 96px;
+    margin: 12px 0 4px;
+    border: 1px solid var(--cel-card-border);
+    border-radius: var(--cel-radius-control);
+    overflow: hidden;
+}
+
+.demo-pane {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--cel-text-secondary);
+}
+
+.demo-pane-left {
+    flex: 0 0 auto;
+    width: 45%;
+    min-width: 80px;
+    background: var(--cel-panel-bg-alt);
+}
+
+.demo-pane-right {
+    flex: 1 1 auto;
+    min-width: 80px;
+}
+
+/* Illustrates the shared .cel-panel-footer component: a scrolling body with an action footer pinned below
+   it, the pattern the console settings panel uses. */
+.demo-panel {
+    display: flex;
+    flex-direction: column;
+    height: 140px;
+    margin: 12px 0;
+    border: 1px solid var(--cel-card-border);
+    border-radius: var(--cel-radius-control);
+    overflow: hidden;
+}
+
+.demo-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+}
+
+.demo-panel-body p {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: var(--cel-text-secondary);
+}
+
 #process-title {
     margin: 0 0 4px 0;
     font-size: 16px;
@@ -45,14 +108,12 @@ html, body {
     color: var(--cel-text-secondary);
 }
 
+/* Border, radius, fill, and colour come from the shared textarea styling (celbridge.css); only the notes
+   surface's own bits are overridden here. */
 #process-input {
     flex: 1;
     resize: none;
-    border: 1px solid var(--cel-divider);
-    border-radius: var(--cel-radius-control);
     padding: 8px;
     font-family: var(--cel-font-mono);
     font-size: 13px;
-    background: var(--cel-panel-bg-alt);
-    color: var(--cel-text-primary);
 }

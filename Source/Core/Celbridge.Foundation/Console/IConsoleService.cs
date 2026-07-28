@@ -6,9 +6,21 @@ namespace Celbridge.Console;
 public interface IConsoleService
 {
     /// <summary>
-    /// Returns the terminal instance created by the console service during initialization. 
+    /// Returns the terminal instance created by the console service during initialization.
     /// </summary>
     ITerminal Terminal { get; }
+
+    /// <summary>
+    /// Returns the registry of open consoles, which owns the shared cel-proxy JSON-RPC listener and
+    /// resolves the Explorer Run menu's targets.
+    /// </summary>
+    IConsoleSessionRegistry SessionRegistry { get; }
+
+    /// <summary>
+    /// Returns the owner of the open consoles' child processes, which tears them down on project close or
+    /// app crash.
+    /// </summary>
+    IConsoleProcessOwner ProcessOwner { get; }
 
     /// <summary>
     /// Initialize the terminal by spawning a new process.

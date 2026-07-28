@@ -48,10 +48,17 @@ html, body {
     width: 100vw;
 }
 
+/* The terminal and the settings sidebar sit side by side below the toolbar, split by a draggable divider,
+   so opening settings narrows the terminal rather than hiding it. */
+#content {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 #toolbar {
     flex: 0 0 auto;
     display: flex;
-    justify-content: flex-end;
     align-items: center;
     height: 40px;
     padding: 0 6px;
@@ -59,8 +66,28 @@ html, body {
     background: var(--cel-panel-bg);
 }
 
+/* The shortcut toolbar fills the left of the bar; the settings button is pushed to the right edge. */
+#shortcut-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.shortcut-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
 #settings-toggle {
     position: relative;
+    margin-left: auto;
+    flex: 0 0 auto;
 }
 
 #settings-toggle.active {
@@ -84,9 +111,13 @@ html, body {
 #terminal-view {
     position: relative;
     flex: 1 1 auto;
+    min-width: 360px;
     min-height: 0;
     background: var(--console-terminal-bg);
 }
+
+/* The drag handle between the terminal and the settings sidebar is the shared .cel-splitter (celbridge.css),
+   shown only while settings are open. */
 
 #terminal {
     position: absolute;
@@ -120,17 +151,45 @@ html, body {
     word-break: break-word;
 }
 
+/* A comfortably wide default for long paths and argument strings. flex-shrink lets the sidebar give way
+   before the terminal on a narrow window; it never drops below its own minimum, and the terminal's
+   min-width keeps it usable too. */
 #settings-view {
+    flex: 0 1 auto;
+    width: 460px;
+    min-width: 240px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The title, description, and cards scroll; the footer below stays pinned to the bottom, mirroring the
+   native settings panel (fixed header, scrolling content, fixed action footer). */
+.settings-scroll {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
-    padding: 16px 20px;
+    /* Content inset matches the native settings panels (ScrollViewer Padding="12" in
+       PackagesSectionView.xaml): 12px on every side, except the left is pulled in 4px to 8px because the
+       .cel-splitter's line is centered in its 8px grab area and so sits 4px inside this pane (8px + that 4px
+       = a 12px divider-to-content gap, lining up with the XAML panels beside it). */
+    padding: 12px 12px 12px 8px;
 }
 
+/* Match the native settings panels' section header (ProjectSettingsPanel.xaml: 20px SemiBold) so the
+   console settings surface reads as a peer of the XAML settings panels shown beside it. */
 #settings-view h1 {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 600;
-    margin: 0 0 12px;
+    /* 2px title->subtitle gap matches the native section title StackPanel (Spacing="2"). */
+    margin: 0 0 2px;
+}
+
+/* Mirrors the native settings panels' description line under the title (12px secondary). */
+.settings-subtitle {
+    font-size: 12px;
+    color: var(--cel-text-secondary);
+    margin: 0 0 16px;
 }
 
 .config-error {
@@ -142,17 +201,37 @@ html, body {
     white-space: pre-wrap;
 }
 
+/* The settings cards use the shared .cel-expander component (celbridge.css); only the settings-panel layout
+   here is console-specific. The Session group is open by default; the rest collapse so the advanced fields
+   stay out of the way. */
+#settings-view .cel-expander {
+    max-width: 640px;
+    margin-bottom: 8px;
+}
+
 .field {
     display: block;
     margin-bottom: 12px;
     max-width: 640px;
 }
 
+.cel-expander-body .field:last-child {
+    margin-bottom: 0;
+}
+
 .field-label {
     display: block;
     font-size: 12px;
-    color: var(--cel-text-secondary);
+    color: var(--cel-text-primary);
     margin-bottom: 4px;
+}
+
+/* Explains a field's expected syntax below its control, for the fields that need one. */
+.field-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--cel-text-secondary);
+    margin-top: 4px;
 }
 
 /* Command-line-ish fields read better in the monospace font; everything else inherits celbridge.css. */
@@ -162,18 +241,21 @@ html, body {
     font-family: var(--cel-font-mono);
 }
 
+/* The browser default placeholder is dim enough that an empty field reads as disabled. Lift it to the
+   secondary text colour (matching the labels and hints) and cancel the UA opacity so it stays legible. */
+.field input::placeholder,
+.field textarea::placeholder {
+    color: var(--cel-text-secondary);
+    opacity: 1;
+}
+
 .field textarea {
     resize: vertical;
 }
 
-.actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 8px;
-}
-
-.hint {
-    color: var(--cel-text-secondary);
-    font-size: 12px;
+/* The footer uses the shared .cel-panel-footer; only the left inset is console-specific: the content is
+   pulled in 4px to 8px to compensate for the splitter (see .settings-scroll), so keep the footer aligned
+   with it. */
+#settings-view .cel-panel-footer {
+    padding-left: 8px;
 }

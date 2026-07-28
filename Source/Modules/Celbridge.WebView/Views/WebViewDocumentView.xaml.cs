@@ -233,7 +233,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
-            // Present a browser-recognised User-Agent that still identifies Celbridge, set before navigation.
+            // The .webview browser and HTML viewer render page content, so keep user zoom (Ctrl+/-,
+            // Ctrl+scroll, and Ctrl+0 to reset) enabled, unlike the zoom-free custom-editor chrome.
+            _webViewAdapter.SetZoomControlEnabled(_webView.CoreWebView2, true);
             // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
             var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
             _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");

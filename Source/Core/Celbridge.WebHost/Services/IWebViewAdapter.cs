@@ -114,6 +114,14 @@ public interface IWebViewAdapter
     void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken);
 
     /// <summary>
+    /// Enables or disables the WebView's user zoom (Ctrl+scroll and Ctrl+/-). Editor surfaces disable it so
+    /// they read as application chrome and rely on OS display scaling; the .webview browser and HTML viewer
+    /// leave it on. Effective on the packaged Windows head's real WebView2; a no-op on the Skia heads, where
+    /// zoom control is not implemented.
+    /// </summary>
+    void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled);
+
+    /// <summary>
     /// Begins (or restarts) a whole-page find for the given term, selecting and scrolling to the first match.
     /// Drives the native WKWebView findString on macOS. Inert where ProvidesBuiltInFind is true (the Windows
     /// heads), whose backend supplies its own find bar. Match progress is reported through

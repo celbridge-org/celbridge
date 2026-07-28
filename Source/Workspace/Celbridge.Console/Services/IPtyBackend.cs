@@ -11,6 +11,8 @@ internal interface IPtyBackend : IDisposable
 
     event EventHandler? ProcessExited;
 
+    int? ProcessId { get; }
+
     void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null);
 
     void Write(string input);

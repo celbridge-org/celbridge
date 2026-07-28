@@ -319,12 +319,11 @@ export class Celbridge {
         if (handlers.onExternalChange) {
             this.document.onExternalChange(handlers.onExternalChange);
         }
-        if (handlers.onRequestState) {
-            this.document.onRequestState(handlers.onRequestState);
-        }
-        if (handlers.onRestoreState) {
-            this.document.onRestoreState(handlers.onRestoreState);
-        }
+        // Always register the state handlers, defaulting to "no state" / no-op. The host requests state on
+        // close (to save workspace state); an editor that leaves these unset would otherwise have no
+        // document/requestState method registered, so the request would fail with RemoteMethodNotFound.
+        this.document.onRequestState(handlers.onRequestState || (() => null));
+        this.document.onRestoreState(handlers.onRestoreState || (() => { }));
 
         this.document.notifyContentLoaded();
         return result;

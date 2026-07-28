@@ -321,6 +321,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         WebView.CoreWebView2.Settings.AreDevToolsEnabled =
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
+        // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
+        // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels;
+        // the .webview browser and HTML viewer keep zoom.
+        _webViewAdapter.SetZoomControlEnabled(WebView.CoreWebView2, false);
+
         // Register this editor's web surface. It hosts an edit target (this) for the Edit commands.
         RegisterWebSurfaceFocus();
 

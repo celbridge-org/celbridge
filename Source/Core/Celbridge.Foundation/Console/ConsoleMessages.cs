@@ -69,3 +69,8 @@ public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ConfigFileN
 /// Message sent to request the console terminal to receive focus.
 /// </summary>
 public record RequestConsoleFocusMessage();
+
+/// <summary>
+/// Broadcast whenever an open console changes state. Consumers filter by session id or resource.
+/// </summary>
+public record ConsoleSessionStateChangedMessage(Guid SessionId, ConsoleSessionState State);

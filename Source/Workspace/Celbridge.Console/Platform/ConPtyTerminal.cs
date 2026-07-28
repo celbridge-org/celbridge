@@ -27,6 +27,8 @@ public sealed class ConPtyTerminal : IPtyBackend
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
 
+    public int? ProcessId => _childProcess is { HasExited: false } process ? process.Id : null;
+
     public void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null)
     {
         // Use the stored values that were reported earlier when xterm.js initialized, via SetSize().
@@ -238,20 +240,19 @@ public sealed class ConPtyTerminal : IPtyBackend
             _hInputWrite = IntPtr.Zero;
         }
 
-        // Try to terminate the child process gracefully
+        // Kill the shell immediately; an interactive shell never exits on stdin close, so a graceful wait
+        // only stalls the close. Not Kill(entireProcessTree: true): it scans every system process
+        // (Access-denied spam) and is redundant, as descendants die with the pseudoconsole (closed below)
+        // and the console job object.
         if (_childProcess != null && !_childProcess.HasExited)
         {
             try
             {
-                // Give the process a chance to exit gracefully
-                if (!_childProcess.WaitForExit(1000))
-                {
-                    _childProcess.Kill();
-                }
+                _childProcess.Kill();
             }
             catch
             {
-                // Process may have already exited
+                // Process may have already exited.
             }
             finally
             {

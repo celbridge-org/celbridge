@@ -5,7 +5,19 @@
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
+import { t } from '/assets/celbridge-client/localization.js';
+import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
+import {
+    splitLines,
+    parseEnvironmentLines,
+    parseRunnerLines,
+    formatRunnerLines,
+    parseShortcutLines,
+    formatShortcutLines,
+    configsEqual,
+    buildStartConfig,
+} from './console-config.js';
 
 const client = celbridge;
 
@@ -61,16 +73,26 @@ fitAddon.fit();
 // DOM references.
 const settingsToggle = document.getElementById('settings-toggle');
 const pip = document.getElementById('pip');
+const shortcutToolbar = document.getElementById('shortcut-toolbar');
 const terminalView = document.getElementById('terminal-view');
+const splitter = document.getElementById('splitter');
 const settingsView = document.getElementById('settings-view');
 const sessionFailed = document.getElementById('session-failed');
 const sessionFailedMessage = document.getElementById('session-failed-message');
 const reopenTerminalButton = document.getElementById('reopen-terminal');
 const configErrorElement = document.getElementById('config-error');
+const sessionTypeSelect = document.getElementById('session-type');
+const executableField = document.getElementById('executable-field');
 const executableInput = document.getElementById('executable');
+const pythonVersionField = document.getElementById('python-version-field');
+const pythonVersionInput = document.getElementById('python-version');
 const argumentsInput = document.getElementById('arguments');
+const dependenciesField = document.getElementById('dependencies-field');
+const dependenciesInput = document.getElementById('dependencies');
 const workingDirectoryInput = document.getElementById('working-directory');
 const environmentInput = document.getElementById('environment');
+const runnersInput = document.getElementById('runners');
+const shortcutsInput = document.getElementById('shortcuts');
 const reopenSettingsButton = document.getElementById('reopen-settings');
 
 // State. currentConfig mirrors the settings form / .console file; launchedConfig is the config the live
@@ -105,7 +127,7 @@ client.onNotification('console/write', (params) => {
 
 client.onNotification('console/sessionState', (params) => {
     if (params && params.state === 'ended') {
-        showSessionFailed('The console session ended.');
+        showSessionFailed(t('Console_SessionEnded'));
     }
 });
 
@@ -145,76 +167,151 @@ term.attachCustomKeyEventHandler((event) => {
     return true;
 });
 
-window.addEventListener('resize', () => {
-    if (!terminalView.classList.contains('hidden')) {
-        fitAddon.fit();
+window.addEventListener('resize', refitTerminal);
+
+// The terminal is always visible; the settings form is a sidebar beside it. Refit the terminal whenever the
+// space it occupies changes (sidebar toggled or resized, window resized), coalesced to one fit per frame.
+let refitPending = false;
+function refitTerminal() {
+    if (refitPending) {
+        return;
     }
-});
-
-// Mode toggle.
-settingsToggle.addEventListener('click', () => {
-    if (settingsView.classList.contains('hidden')) {
-        showSettings();
-    } else {
-        showTerminal();
-    }
-});
-
-function showSettings() {
-    terminalView.classList.add('hidden');
-    settingsView.classList.remove('hidden');
-    settingsToggle.classList.add('active');
-}
-
-function showTerminal() {
-    settingsView.classList.add('hidden');
-    terminalView.classList.remove('hidden');
-    settingsToggle.classList.remove('active');
-    // The terminal had zero size while hidden, so refit once it is laid out again.
+    refitPending = true;
     requestAnimationFrame(() => {
-        fitAddon.fit();
-        term.focus();
+        refitPending = false;
+        try {
+            fitAddon.fit();
+        } catch {
+            // The terminal may not be laid out yet; a later refit will apply.
+        }
     });
 }
 
-// Settings form.
+// Settings sidebar toggle.
+settingsToggle.addEventListener('click', () => {
+    setSettingsVisible(settingsView.classList.contains('hidden'));
+});
+
+function setSettingsVisible(visible) {
+    settingsView.classList.toggle('hidden', !visible);
+    splitter.classList.toggle('hidden', !visible);
+    settingsToggle.classList.toggle('active', visible);
+    refitTerminal();
+    if (!visible) {
+        term.focus();
+    }
+}
+
+// The sidebar and the terminal each keep a reasonable minimum width, so dragging the splitter can never
+// shrink either below these (a narrow window is handled by flex-shrink in console.css). SPLITTER_WIDTH
+// mirrors .cel-splitter in celbridge.css.
+const SIDEBAR_MIN_WIDTH = 240;
+const TERMINAL_MIN_WIDTH = 360;
+const SPLITTER_WIDTH = 8;
+// Mirrors #settings-view width in console.css. Tracked in sidebarWidth so the width persists as view state
+// even while the sidebar is hidden (a hidden element reports no layout width to read back).
+const DEFAULT_SIDEBAR_WIDTH = 460;
+let sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+
+function clampSidebarWidth(width) {
+    const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, window.innerWidth - TERMINAL_MIN_WIDTH - SPLITTER_WIDTH);
+    return Math.max(SIDEBAR_MIN_WIDTH, Math.min(width, maxWidth));
+}
+
+// Applies a sidebar width (clamped) and records it so it can be persisted as view state.
+function applySidebarWidth(width) {
+    sidebarWidth = clampSidebarWidth(width);
+    settingsView.style.width = sidebarWidth + 'px';
+}
+
+// The settings sidebar sits to the right of the terminal, so dragging the splitter left widens it.
+let sidebarDragStartWidth = 0;
+attachSplitter(splitter, {
+    onDragStart() {
+        sidebarDragStartWidth = settingsView.getBoundingClientRect().width;
+    },
+    onDrag(deltaX) {
+        applySidebarWidth(sidebarDragStartWidth - deltaX);
+        refitTerminal();
+    },
+});
+
+// Settings form. The executable field is shown only for the shell type; the dependency field only for the
+// Python types. The other fields apply to every type.
+function applyTypeVisibility(type) {
+    const isShell = type === 'shell';
+    executableField.classList.toggle('hidden', !isShell);
+    pythonVersionField.classList.toggle('hidden', isShell);
+    dependenciesField.classList.toggle('hidden', isShell);
+}
+
 function populateForm(config) {
+    sessionTypeSelect.value = config.type || 'shell';
+    applyTypeVisibility(config.type || 'shell');
     executableInput.value = config.executable || '';
+    pythonVersionInput.value = config.pythonVersion || '';
     argumentsInput.value = (config.arguments || []).join('\n');
+    dependenciesInput.value = (config.dependencies || []).join('\n');
     workingDirectoryInput.value = config.workingDirectory || '';
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
+    runnersInput.value = formatRunnerLines(config.runners);
+    shortcutsInput.value = formatShortcutLines(config.shortcuts);
+    renderShortcutToolbar();
 }
 
 function readForm() {
     return {
-        type: currentConfig.type || 'shell',
+        type: sessionTypeSelect.value || 'shell',
+        // Title is not a form field; carry through whatever the .console file set.
+        title: currentConfig.title || '',
         executable: executableInput.value.trim(),
-        arguments: argumentsInput.value.split('\n').map((line) => line.trim()).filter((line) => line !== ''),
+        pythonVersion: pythonVersionInput.value.trim(),
+        arguments: splitLines(argumentsInput.value),
+        dependencies: splitLines(dependenciesInput.value),
         workingDirectory: workingDirectoryInput.value.trim(),
         environment: parseEnvironmentLines(environmentInput.value),
+        runners: parseRunnerLines(runnersInput.value),
+        shortcuts: parseShortcutLines(shortcutsInput.value),
     };
 }
 
-function parseEnvironmentLines(text) {
-    const environment = {};
-    for (const rawLine of text.split('\n')) {
-        const line = rawLine.trim();
-        if (line === '') {
-            continue;
+// The per-console shortcut toolbar: flat buttons that inject their text into the pty on click.
+function renderShortcutToolbar() {
+    shortcutToolbar.replaceChildren();
+    const shortcuts = currentConfig.shortcuts || [];
+    shortcutToolbar.classList.toggle('hidden', shortcuts.length === 0);
+
+    for (const shortcut of shortcuts) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'shortcut-button';
+        button.title = shortcut.text || shortcut.label || '';
+
+        if (shortcut.icon && shortcut.icon.startsWith('bs-')) {
+            const iconElement = document.createElement('i');
+            iconElement.className = 'bi bi-' + shortcut.icon.slice('bs-'.length);
+            button.appendChild(iconElement);
         }
-        const equalsIndex = line.indexOf('=');
-        if (equalsIndex < 0) {
-            continue;
+        if (shortcut.label) {
+            const labelElement = document.createElement('span');
+            labelElement.textContent = shortcut.label;
+            button.appendChild(labelElement);
         }
-        const name = line.slice(0, equalsIndex).trim();
-        const value = line.slice(equalsIndex + 1).trim();
-        if (name !== '') {
-            environment[name] = value;
-        }
+
+        button.addEventListener('click', () => injectShortcut(shortcut.text));
+        shortcutToolbar.appendChild(button);
     }
-    return environment;
+}
+
+// Injects a shortcut's text into the pty: clear any partial input (Ctrl+U) then submit with a return.
+function injectShortcut(text) {
+    if (!text) {
+        return;
+    }
+    client._notify('console/input', { data: '\x15' + text + '\r' });
+    term.focus();
 }
 
 function onFormInput() {
@@ -223,10 +320,18 @@ function onFormInput() {
     configError = null;
     // Mark the document dirty so the host's save timer flushes the serialised TOML through onRequestSave.
     client.document.notifyChanged();
+    // The shortcut toolbar is pure client-side UI, so it previews live as the user edits. Every other
+    // setting applies on the next reopen, flagged by updateAttention.
+    renderShortcutToolbar();
     updateAttention();
 }
 
-for (const field of [executableInput, argumentsInput, workingDirectoryInput, environmentInput]) {
+sessionTypeSelect.addEventListener('change', () => {
+    applyTypeVisibility(sessionTypeSelect.value);
+    onFormInput();
+});
+
+for (const field of [executableInput, pythonVersionInput, argumentsInput, dependenciesInput, workingDirectoryInput, environmentInput, runnersInput, shortcutsInput]) {
     field.addEventListener('input', onFormInput);
 }
 
@@ -238,7 +343,10 @@ function updateAttention() {
     const diverged = launchedConfig !== null && !configsEqual(currentConfig, launchedConfig);
     const needsAttention = diverged || configError !== null;
     pip.classList.toggle('hidden', !needsAttention);
-    reopenSettingsButton.disabled = !diverged;
+
+    // The Reopen button stays enabled so the session can be restarted at any time. The accent colour appears
+    // only when a reopen is needed to apply changed launch settings; the footer caption explains it.
+    reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
     if (configError) {
         configErrorElement.textContent = configError;
@@ -246,25 +354,6 @@ function updateAttention() {
     } else {
         configErrorElement.classList.add('hidden');
     }
-}
-
-function configsEqual(a, b) {
-    return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
-}
-
-// A comparable/launch-ready view of a config: the launch-affecting fields only, with a stable env order.
-function normalizeConfig(config) {
-    const environment = {};
-    for (const name of Object.keys(config.environment || {}).sort()) {
-        environment[name] = config.environment[name];
-    }
-    return {
-        type: config.type || 'shell',
-        executable: config.executable || '',
-        arguments: config.arguments || [],
-        workingDirectory: config.workingDirectory || '',
-        environment,
-    };
 }
 
 // Session lifecycle.
@@ -278,13 +367,14 @@ function hideSessionFailed() {
 }
 
 async function startSession() {
-    // Launch (and relaunch) always run against the visible, sized terminal.
-    showTerminal();
+    // The terminal is always visible beside the settings sidebar; launch and relaunch against it in place.
     hideSessionFailed();
     fitAddon.fit();
     term.reset();
 
-    const config = normalizeConfig(currentConfig);
+    // Send the full config, not the launch-only view: the host needs the runners to register the console
+    // with the Run menu and the title for its display name, alongside the launch-affecting fields.
+    const config = buildStartConfig(currentConfig);
     const cols = term.cols;
     const rows = term.rows;
 
@@ -295,7 +385,7 @@ async function startSession() {
             updateAttention();
             term.focus();
         } else {
-            showSessionFailed((result && result.error) || 'Failed to start the console session.');
+            showSessionFailed((result && result.error) || t('Console_StartFailed'));
         }
     } catch (error) {
         showSessionFailed((error && error.message) || String(error));
@@ -328,6 +418,25 @@ async function main() {
             }
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
+        },
+        // Persist the settings sidebar's open state and width so they survive a reopen. Registering this
+        // handler also means closing the document no longer hits RemoteMethodNotFound for document/requestState.
+        onRequestState: () => JSON.stringify({
+            settingsOpen: !settingsView.classList.contains('hidden'),
+            sidebarWidth,
+        }),
+        onRestoreState: (stateJson) => {
+            try {
+                const state = JSON.parse(stateJson);
+                if (typeof state.sidebarWidth === 'number' && state.sidebarWidth > 0) {
+                    applySidebarWidth(state.sidebarWidth);
+                }
+                if (state.settingsOpen) {
+                    setSettingsVisible(true);
+                }
+            } catch (error) {
+                // Ignore malformed state; fall back to the defaults.
+            }
         },
     });
 

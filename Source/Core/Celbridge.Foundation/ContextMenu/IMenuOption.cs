@@ -18,6 +18,12 @@ public record MenuItemState(bool IsVisible, bool IsEnabled);
 public partial record MenuOptionGroup(string Id);
 
 /// <summary>
+/// A dynamically generated child of a menu option: its label, optional icon, and the action to run when
+/// chosen. Used to expand an option into a submenu when it has several targets.
+/// </summary>
+public record SubMenuItem(string LocalizedText, IconSymbol? Icon, Action Execute);
+
+/// <summary>
 /// Represents a single context menu option.
 /// </summary>
 public interface IMenuOption<TContext> where TContext : IMenuContext
@@ -46,4 +52,17 @@ public interface IMenuOption<TContext> where TContext : IMenuContext
     /// Executes the menu option's action.
     /// </summary>
     void Execute(TContext context);
+}
+
+/// <summary>
+/// An option that can expand into a submenu. When it returns more than one child the builder renders a
+/// submenu of those children; with one or none it renders a flat item wired to the option's own Execute.
+/// </summary>
+public interface ISubMenuOption<TContext> where TContext : IMenuContext
+{
+    /// <summary>
+    /// Returns the dynamic children for this option in the current context, or an empty list to render as
+    /// a single flat item.
+    /// </summary>
+    IReadOnlyList<SubMenuItem> GetSubMenuItems(TContext context);
 }

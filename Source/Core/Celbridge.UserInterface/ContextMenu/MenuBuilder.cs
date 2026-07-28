@@ -54,6 +54,44 @@ public class MenuBuilder<TContext> : IMenuBuilder<TContext> where TContext : IMe
                 items.Add(new MenuFlyoutSeparator());
             }
 
+            // An option that yields more than one dynamic child renders as a submenu; otherwise it is a
+            // flat item wired to the option's own Execute (which handles the single-child case).
+            var subMenuItems = (item.Option as ISubMenuOption<TContext>)?.GetSubMenuItems(context);
+            if (subMenuItems is not null && subMenuItems.Count > 1)
+            {
+                var subItem = new MenuFlyoutSubItem
+                {
+                    Text = item.DisplayInfo.LocalizedText,
+                    IsEnabled = item.State.IsEnabled
+                };
+
+                if (item.DisplayInfo.Icon is IconSymbol subItemIcon)
+                {
+                    subItem.Icon = new Icon { Symbol = subItemIcon };
+                }
+
+                foreach (var child in subMenuItems)
+                {
+                    var childItem = new MenuFlyoutItem { Text = child.LocalizedText };
+                    if (child.Icon is IconSymbol childIcon)
+                    {
+                        childItem.Icon = new Icon { Symbol = childIcon };
+                    }
+
+                    var childExecute = child.Execute; // Capture for closure
+                    childItem.Click += (_, _) =>
+                    {
+                        _logger.LogDebug("Context menu submenu item selected: {OptionType}", item.Option.GetType().Name);
+                        childExecute();
+                    };
+                    subItem.Items.Add(childItem);
+                }
+
+                items.Add(subItem);
+                lastGroupId = item.Option.GroupId;
+                continue;
+            }
+
             // Create menu item
             var menuItem = new MenuFlyoutItem
             {

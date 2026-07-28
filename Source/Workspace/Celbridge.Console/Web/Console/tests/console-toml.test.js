@@ -9,10 +9,15 @@ describe('defaultConsoleConfig', () => {
     it('returns a blank shell config', () => {
         expect(defaultConsoleConfig()).toEqual({
             type: 'shell',
+            title: '',
             executable: '',
+            pythonVersion: '',
             arguments: [],
+            dependencies: [],
             workingDirectory: '',
             environment: {},
+            runners: [],
+            shortcuts: [],
         });
     });
 });
@@ -22,6 +27,7 @@ describe('parseConsoleToml', () => {
         const toml = [
             '[session]',
             'type = "shell"',
+            'title = "Build"',
             'working_directory = "tools"',
             '',
             '[session.options]',
@@ -34,11 +40,54 @@ describe('parseConsoleToml', () => {
 
         expect(parseConsoleToml(toml)).toEqual({
             type: 'shell',
+            title: 'Build',
             executable: 'pwsh',
+            pythonVersion: '',
             arguments: ['-NoLogo', '-NoProfile'],
+            dependencies: [],
             workingDirectory: 'tools',
             environment: { BUILD_CONFIG: 'Debug' },
+            runners: [],
+            shortcuts: [],
         });
+    });
+
+    it('parses dependencies and python version for a python console', () => {
+        const config = parseConsoleToml('[session.options]\npython_version = "3.13"\ndependencies = ["numpy", "pandas>=2"]');
+        expect(config.pythonVersion).toBe('3.13');
+        expect(config.dependencies).toEqual(['numpy', 'pandas>=2']);
+    });
+
+    it('parses repeated [[session.runner]] tables', () => {
+        const toml = [
+            '[[session.runner]]',
+            'extensions = [".py", ".ipy"]',
+            'command = \'%run "{script_path}"\'',
+            '',
+            '[[session.runner]]',
+            'extensions = [".sh"]',
+            'command = "bash {script_path}"',
+        ].join('\n');
+
+        const config = parseConsoleToml(toml);
+        expect(config.runners).toEqual([
+            { extensions: ['.py', '.ipy'], command: '%run "{script_path}"' },
+            { extensions: ['.sh'], command: 'bash {script_path}' },
+        ]);
+    });
+
+    it('parses repeated [[session.shortcut]] tables', () => {
+        const toml = [
+            '[[session.shortcut]]',
+            'label = "Run tests"',
+            'icon = "bs-play-fill"',
+            'text = "pytest -q"',
+        ].join('\n');
+
+        const config = parseConsoleToml(toml);
+        expect(config.shortcuts).toEqual([
+            { label: 'Run tests', icon: 'bs-play-fill', text: 'pytest -q' },
+        ]);
     });
 
     it('ignores blank lines, full-line comments, and inline comments', () => {
@@ -71,12 +120,6 @@ describe('parseConsoleToml', () => {
         expect(config.type).toBe('shell');
     });
 
-    it('ignores unmodelled [session] keys such as title', () => {
-        const config = parseConsoleToml('[session]\ntype = "shell"\ntitle = "Build"');
-        expect(config.type).toBe('shell');
-        expect(config).not.toHaveProperty('title');
-    });
-
     it('throws on a non-section line with no equals sign', () => {
         expect(() => parseConsoleToml('[session]\ngarbage line')).toThrow();
     });
@@ -93,6 +136,9 @@ describe('serializeConsoleToml', () => {
         expect(toml).not.toContain('executable');
         expect(toml).not.toContain('arguments');
         expect(toml).not.toContain('working_directory');
+        expect(toml).not.toContain('dependencies');
+        expect(toml).not.toContain('session.runner');
+        expect(toml).not.toContain('session.shortcut');
     });
 
     it('quotes and comma-joins arguments', () => {
@@ -104,16 +150,35 @@ describe('serializeConsoleToml', () => {
         const toml = serializeConsoleToml(config);
         expect(toml).toContain('arguments = ["-NoLogo", "-c", "echo hi"]');
     });
+
+    it('emits runner and shortcut tables', () => {
+        const config = {
+            ...defaultConsoleConfig(),
+            runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
+            shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest' }],
+        };
+        const toml = serializeConsoleToml(config);
+        expect(toml).toContain('[[session.runner]]');
+        expect(toml).toContain('extensions = [".py"]');
+        expect(toml).toContain('[[session.shortcut]]');
+        expect(toml).toContain('label = "Test"');
+        expect(toml).toContain('icon = "bs-play-fill"');
+    });
 });
 
 describe('round-trip', () => {
     it('parse -> serialize -> parse is stable', () => {
         const original = {
-            type: 'shell',
-            executable: 'pwsh',
-            arguments: ['-NoLogo'],
+            type: 'python',
+            title: 'Python',
+            executable: '',
+            pythonVersion: '3.13',
+            arguments: [],
+            dependencies: ['numpy'],
             workingDirectory: 'tools',
             environment: { A: '1', B: 'two words' },
+            runners: [{ extensions: ['.py', '.ipy'], command: '%run "{script_path}"' }],
+            shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],
         };
 
         const once = parseConsoleToml(serializeConsoleToml(original));

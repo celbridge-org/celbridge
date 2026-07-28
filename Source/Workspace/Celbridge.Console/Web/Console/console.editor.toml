@@ -14,3 +14,8 @@ id = "shell"
 display-name = "Console_Template_Shell"
 template-file = "templates/shell.console"
 default = true
+
+[[templates]]
+id = "python"
+display-name = "Console_Template_Python"
+template-file = "templates/python.console"

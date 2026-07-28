@@ -35,6 +35,8 @@
     --cel-panel-bg: #F3F3F3;
     --cel-panel-bg-alt: #F7F8FA;
     --cel-divider: #D0D0D0;
+    /* The subtle translucent divider (WinUI DividerBrush), used for splitter base lines and hairline rules. */
+    --cel-divider-subtle: rgba(0, 0, 0, 0.08);
     --cel-accent: #0078D4;
     --cel-accent-text: #FFFFFF;
     --cel-text-primary: #1F1F1F;
@@ -44,10 +46,17 @@
     --cel-search-highlight: #C66300;
     --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
 
-    /* Button fill and hover. The native app uses WinUI's system control brushes here rather than a token in
-       Colors.xaml; these approximate that Fluent look. */
+    /* Control fill, hover, and border, approximating WinUI's ControlFillColorDefault / ControlStrokeColorDefault
+       system brushes (no token for these in Colors.xaml). Shared by buttons and form inputs. */
     --cel-control-bg: #FBFBFB;
     --cel-control-hover-bg: #F0F0F0;
+    --cel-control-border: #E5E5E5;
+
+    /* Expander header fill and card border, matching WinUI's Expander header and card-stroke brushes used by
+       the native settings panels. Both themes are sampled exactly from the running app (header #FBFBFB /
+       #36383B, border #E5E5E5 / #27292B). */
+    --cel-expander-header-bg: #FBFBFB;
+    --cel-card-border: #E5E5E5;
 }
 
 :root[data-theme="dark"] {
@@ -57,6 +66,7 @@
     --cel-panel-bg: #2B2D30;
     --cel-panel-bg-alt: #1E1F22;
     --cel-divider: #1E1F22;
+    --cel-divider-subtle: rgba(255, 255, 255, 0.08);
     --cel-accent: #60CDFF;
     --cel-accent-text: #000000;
     --cel-text-primary: #FFFFFF;
@@ -68,4 +78,8 @@
 
     --cel-control-bg: #383A3E;
     --cel-control-hover-bg: #43464A;
+    --cel-control-border: #3F4143;
+
+    --cel-expander-header-bg: #36383B;
+    --cel-card-border: #27292B;
 }

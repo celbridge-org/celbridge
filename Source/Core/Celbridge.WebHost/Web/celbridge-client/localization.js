@@ -33,7 +33,11 @@ export function t(key, ...args) {
 /**
  * Walk the DOM and apply localized strings to elements marked with data-loc-key.
  * - data-loc-key: the resource key to look up
- * - data-loc-attr: the attribute to set (e.g. "title", "placeholder"). Defaults to textContent.
+ * - data-loc-attr: the attribute(s) to set, defaulting to textContent. Accepts a comma-separated list to
+ *   apply the one string to several attributes at once (e.g. "title,aria-label" for an icon button's
+ *   tooltip and accessible name).
+ * - data-loc-title: a separate key applied to the title attribute, so an element can
+ *   carry both localized visible text (via data-loc-key) and a localized tooltip.
  *
  * When a key is missing from the dictionary, the raw key name is displayed
  * instead and a console warning is logged so missing entries are obvious.
@@ -41,20 +45,34 @@ export function t(key, ...args) {
 export function applyLocalization(root = document) {
     const missing = [];
 
-    root.querySelectorAll('[data-loc-key]').forEach(el => {
-        const key = el.getAttribute('data-loc-key');
+    function resolve(key) {
         const value = strings[key];
         if (value === undefined) {
             missing.push(key);
         }
 
-        const text = value ?? key;
+        return value ?? key;
+    }
+
+    root.querySelectorAll('[data-loc-key]').forEach(el => {
+        const key = el.getAttribute('data-loc-key');
+        const text = resolve(key);
         const attr = el.getAttribute('data-loc-attr');
         if (attr) {
-            el.setAttribute(attr, text);
+            for (const name of attr.split(',')) {
+                const trimmed = name.trim();
+                if (trimmed) {
+                    el.setAttribute(trimmed, text);
+                }
+            }
         } else {
             el.textContent = text;
         }
+    });
+
+    root.querySelectorAll('[data-loc-title]').forEach(el => {
+        const titleKey = el.getAttribute('data-loc-title');
+        el.setAttribute('title', resolve(titleKey));
     });
 
     if (missing.length > 0) {

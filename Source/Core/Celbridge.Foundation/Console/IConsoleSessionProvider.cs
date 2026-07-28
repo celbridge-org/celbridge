@@ -31,8 +31,10 @@ public sealed record ConsoleRunner(
 
 /// <summary>
 /// The resolved configuration a provider builds a launch spec from: the console resource, its session
-/// type, the executable and arguments (for the shell type), the working folder as written in the config,
-/// the environment variables to inject, and the project root the working folder resolves against.
+/// type, the executable and arguments, the working folder as written in the config, the environment
+/// variables to inject (already carrying the host-binding variables for a host-bound type), the project
+/// root the working folder resolves against, the extra package dependencies to install, and the runtime
+/// version to select. Fields a given type does not use are left at their defaults.
 /// </summary>
 public sealed record ConsoleSessionContext(
     ResourceKey ResourceKey,
@@ -41,7 +43,9 @@ public sealed record ConsoleSessionContext(
     IReadOnlyList<string> Arguments,
     string WorkingDirectory,
     IReadOnlyDictionary<string, string> Environment,
-    string ProjectFolderPath);
+    string ProjectFolderPath,
+    IReadOnlyList<string>? Dependencies = null,
+    string? RuntimeVersion = null);
 
 /// <summary>
 /// Builds the launch spec for one console session type, keyed by TypeId (e.g. "shell"). A new pty-only

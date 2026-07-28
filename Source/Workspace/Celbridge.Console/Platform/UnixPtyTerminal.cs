@@ -45,6 +45,17 @@ internal sealed class UnixPtyTerminal : IPtyBackend
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
 
+    public int? ProcessId
+    {
+        get
+        {
+            lock (_processLock)
+            {
+                return _childPid > 0 && !_childExited ? _childPid : null;
+            }
+        }
+    }
+
     public void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null)
     {
         // Use the size xterm.js reported earlier via SetSize(), or reasonable defaults if it has not yet.

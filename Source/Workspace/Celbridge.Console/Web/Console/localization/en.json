@@ -2,5 +2,53 @@
     "Console_Package_Name": "Console",
     "Console_Editor_Name": "Console",
     "Console_FileType_Console": "Console (.console)",
-    "Console_Template_Shell": "Shell Console"
+    "Console_Template_Shell": "Shell Console",
+    "Console_Template_Python": "Python Console",
+
+    "Console_Settings_Title": "Settings",
+    "Console_Settings_Heading": "Console Settings",
+    "Console_Settings_Subtitle": "Configure how this console launches and what it runs.",
+    "Console_Reopen": "Reopen Console",
+    "Console_ReopenSession": "Reopen Console",
+    "Console_Reopen_Tooltip": "Close and reopen the console session.",
+    "Console_ReopenCaption": "Changes take effect when the console is reopened.",
+
+    "Console_SessionEnded": "The console session ended.",
+    "Console_StartFailed": "Failed to start the console session.",
+
+    "Console_Group_Session": "Session",
+    "Console_Group_Environment": "Environment",
+    "Console_Group_Runners": "Script Runners",
+    "Console_Group_Shortcuts": "Shortcuts",
+
+    "Console_Field_Type": "Type",
+    "Console_Field_Executable": "Executable",
+    "Console_Field_PythonVersion": "Python Version",
+    "Console_Field_Arguments": "Arguments",
+    "Console_Field_Dependencies": "Dependencies",
+    "Console_Field_WorkingDirectory": "Working Directory",
+    "Console_Field_Environment": "Environment Variables",
+    "Console_Field_Runners": "Script Runners",
+    "Console_Field_Shortcuts": "Shortcuts",
+
+    "Console_Type_Shell": "Shell",
+    "Console_Type_Python": "Python",
+
+    "Console_Placeholder_Executable": "Executable name or path",
+    "Console_Placeholder_PythonVersion": "Version specifier",
+    "Console_Placeholder_Arguments": "One argument per line",
+    "Console_Placeholder_Dependencies": "One package per line",
+    "Console_Placeholder_WorkingDirectory": "Folder path",
+    "Console_Placeholder_Environment": "KEY=value, one per line",
+    "Console_Placeholder_Runners": "extensions = command, one per line",
+    "Console_Placeholder_Shortcuts": "label | icon | text, one per line",
+
+    "Console_Hint_Executable": "Blank uses the platform default shell. Example: pwsh",
+    "Console_Hint_PythonVersion": "Blank uses the default. Examples: 3.13, >=3.12",
+    "Console_Hint_Arguments": "Passed to the interpreter, one per line. Example: -q",
+    "Console_Hint_Dependencies": "Installed with uv, one per line. Examples: numpy, pandas>=2",
+    "Console_Hint_WorkingDirectory": "Relative to the project root; blank uses it. Example: tools",
+    "Console_Hint_Environment": "Injected before launch, one per line. Example: PYTHONWARNINGS=default",
+    "Console_Hint_Runners": "Run a file in this console; {script_path} is the file path. Example: .py, .ipy = %run \"{script_path}\"",
+    "Console_Hint_Shortcuts": "Toolbar button that types text; icon is a Bootstrap name. Example: Run tests | bs-play-fill | pytest -q"
 }
