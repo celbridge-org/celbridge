@@ -360,12 +360,6 @@
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
-  <data name="ConsolePanel_MaximizeConsole" xml:space="preserve">
-    <value>Maximize Console</value>
-  </data>
-  <data name="ConsolePanel_RestoreConsole" xml:space="preserve">
-    <value>Restore Console</value>
-  </data>
   <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
   </data>
@@ -643,18 +637,6 @@ Do you wish to continue?</value>
   </data>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
-  </data>
-  <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
-    <value>Python Initialization Error</value>
-  </data>
-  <data name="ConsolePanel_PythonProcessErrorTitle" xml:space="preserve">
-    <value>Python Process Error</value>
-  </data>
-  <data name="ConsolePanel_PythonProcessErrorMessage" xml:space="preserve">
-    <value>The python process has exited unexpectedly. Please check '{0}' for configuration errors and reload the project.</value>
-  </data>
-  <data name="ConsolePanel_PythonInitializationErrorMessage" xml:space="preserve">
-    <value>Please check '{0}' for configuration errors and reload the project</value>
   </data>
   <data name="ConsolePanel_ProjectChangeBannerTitle" xml:space="preserve">
     <value>Project Configuration Changed</value>
@@ -1198,12 +1180,6 @@ Do you wish to continue?</value>
   </data>
   <data name="MainMenu_ClearRecentProjects" xml:space="preserve">
     <value>Clear Recent Projects</value>
-  </data>
-  <data name="ConsolePanel_ShortcutConfigErrorTitle" xml:space="preserve">
-    <value>Shortcut Configuration Error</value>
-  </data>
-  <data name="ConsolePanel_ShortcutConfigErrorMessage" xml:space="preserve">
-    <value>The shortcut configuration in '{0}' contains errors. Python scripting has been disabled.</value>
   </data>
   <data name="ProjectUpgradeConfirmation_Title" xml:space="preserve">
     <value>Project Upgrade Required</value>

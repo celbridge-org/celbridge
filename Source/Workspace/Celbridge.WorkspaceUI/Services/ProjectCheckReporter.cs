@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
-using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Projects;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -31,8 +31,8 @@ public sealed class ProjectCheckReporter
 
     /// <summary>
     /// Logs one warning per non-empty finding category and, when the total
-    /// finding count is non-zero, sends a ConsoleErrorMessage carrying the
-    /// total so the console panel can surface a dismissable warning banner.
+    /// finding count is non-zero, sends a ProjectErrorMessage carrying the
+    /// total so the banner surface can show a dismissable warning banner.
     /// </summary>
     public void Report(ProjectCheckReport report)
     {
@@ -69,8 +69,8 @@ public sealed class ProjectCheckReporter
             + report.BrokenCelFiles.Count;
         if (totalFindings > 0)
         {
-            var message = new ConsoleErrorMessage(
-                ConsoleErrorType.ProjectCheckError,
+            var message = new ProjectErrorMessage(
+                ProjectErrorType.ProjectCheckError,
                 totalFindings.ToString(CultureInfo.InvariantCulture));
             _messengerService.Send(message);
         }

@@ -8,7 +8,6 @@ using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Python;
 using Celbridge.Search;
 
 namespace Celbridge.WorkspaceUI.Services;
@@ -28,7 +27,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IInspectorService InspectorService { get; }
     public IConsoleService ConsoleService { get; }
     public ISearchService SearchService { get; }
-    public IPythonService PythonService { get; }
     public IEntityService EntityService { get; }
     public IActivityService ActivityService { get; }
     public IDataTransferService DataTransferService { get; }
@@ -38,7 +36,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IUtilityPanel UtilityPanel { get; private set; } = null!;
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
     public IInspectorPanel InspectorPanel { get; private set; } = null!;
-    public IConsolePanel? ConsolePanel { get; private set; }
 
     private bool _workspaceStateIsDirty;
 
@@ -63,7 +60,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
-        PythonService = serviceProvider.GetRequiredService<IPythonService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
@@ -92,14 +88,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public void SetPanels(
         IUtilityPanel utilityPanel,
         IDocumentsPanel documentsPanel,
-        IInspectorPanel inspectorPanel,
-        IConsolePanel? consolePanel)
+        IInspectorPanel inspectorPanel)
     {
         // Store panel references
         UtilityPanel = utilityPanel;
         DocumentsPanel = documentsPanel;
         InspectorPanel = inspectorPanel;
-        ConsolePanel = consolePanel;
     }
 
     private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
@@ -221,7 +215,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();
                 (WorkspaceSettings as IDisposable)!.Dispose();
-                (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (UtilityService as IDisposable)!.Dispose();

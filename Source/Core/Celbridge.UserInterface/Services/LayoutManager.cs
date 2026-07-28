@@ -132,14 +132,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
             return;
         }
 
-        // If hiding console while maximized, restore first
-        if (!isVisible &&
-            region.HasFlag(LayoutRegion.Console) &&
-            IsConsoleMaximized)
-        {
-            SetConsoleMaximized(false);
-        }
-
         // This is a user-initiated change, so it should persist
         UpdateRegionVisibility(newVisibility, shouldPersist: true);
 
@@ -155,36 +147,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
     {
         var isCurrentlyVisible = RegionVisibility.HasFlag(region);
         SetRegionVisibility(region, !isCurrentlyVisible);
-    }
-
-    public bool IsConsoleMaximized => WorkspaceSettings?.IsConsoleMaximized ?? false;
-
-    public void SetConsoleMaximized(bool isMaximized)
-    {
-        if (IsConsoleMaximized == isMaximized)
-        {
-            return;
-        }
-
-        // Cannot maximize console if it's not visible
-        if (isMaximized && !IsConsolePanelVisible)
-        {
-            return;
-        }
-
-        var workspaceSettings = WorkspaceSettings;
-        if (workspaceSettings is null)
-        {
-            return;
-        }
-
-        workspaceSettings.IsConsoleMaximized = isMaximized;
-
-        // Broadcast the change
-        var message = new ConsoleMaximizedChangedMessage(isMaximized);
-        _messengerService.Send(message);
-
-        _logger.LogDebug($"Console maximized state changed: {isMaximized}");
     }
 
     private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
@@ -216,9 +178,9 @@ public class LayoutManager : IWindowModeService, ILayoutService
             return Result.Ok();
         }
 
-        // Default restores the user's preferred panels. Focus and Presentation both hide the side
-        // panels (keeping a maximized console so the user can keep working in it). They differ only in
-        // the toolbar and document tabs, which the views hide based on the layout mode.
+        // Default restores the user's preferred panels. Focus and Presentation both hide every side
+        // panel. They differ only in the toolbar and document tabs, which the views hide based on the
+        // layout mode.
         LayoutRegion targetVisibility;
         if (mode == LayoutMode.Default)
         {
@@ -226,9 +188,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
         else
         {
-            targetVisibility = IsConsoleMaximized
-                ? LayoutRegion.Console
-                : LayoutRegion.None;
+            targetVisibility = LayoutRegion.None;
         }
 
         // Mode-driven visibility is transient, so it is not persisted as the preferred configuration.
@@ -255,12 +215,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private Result HandleResetLayout()
     {
-        // Reset console maximized state
-        if (IsConsoleMaximized)
-        {
-            SetConsoleMaximized(false);
-        }
-
         // Reset panel sizes
         var workspaceSettings = WorkspaceSettings;
         if (workspaceSettings is not null)

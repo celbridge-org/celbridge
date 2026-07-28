@@ -34,6 +34,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IUtilityPanel, UtilityPanel>();
+        services.AddTransient<ConsolePanel>();
 
         //
         // Register view models
@@ -41,6 +42,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<WorkspacePageViewModel>();
         services.AddTransient<UtilityPanelViewModel>();
+        services.AddTransient<ConsolePanelViewModel>();
 
         //
         // Register commands
@@ -50,7 +52,6 @@ public static class ServiceConfiguration
         services.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         services.AddTransient<ISetRegionVisibilityCommand, SetRegionVisibilityCommand>();
-        services.AddTransient<ISetConsoleMaximizedCommand, SetConsoleMaximizedCommand>();
         services.AddTransient<IResetPanelCommand, ResetPanelCommand>();
         services.AddTransient<IPerformEditCommand, PerformEditCommand>();
     }

@@ -8,13 +8,12 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// Workspace layout snapshot reported as part of app_get_state. Reflects which
-/// regions are currently visible and whether the console is maximised.
+/// regions are currently visible.
 /// </summary>
 public record class LayoutModeInfo(
     bool ContextPanelVisible,
     bool InspectorPanelVisible,
-    bool ConsolePanelVisible,
-    bool ConsoleMaximized);
+    bool ConsolePanelVisible);
 
 /// <summary>
 /// Result returned by app_get_state, reporting the running version, project load
@@ -105,8 +104,7 @@ internal sealed class AppStateProvider : IAppStateProvider
         var layoutMode = new LayoutModeInfo(
             ContextPanelVisible: _layoutService.IsContextPanelVisible,
             InspectorPanelVisible: _layoutService.IsInspectorPanelVisible,
-            ConsolePanelVisible: _layoutService.IsConsolePanelVisible,
-            ConsoleMaximized: _layoutService.IsConsoleMaximized);
+            ConsolePanelVisible: _layoutService.IsConsolePanelVisible);
 
         var spotlightLandmarks = _spotlightRegistry.GetLandmarks()
             .Select(landmark => landmark.Id)

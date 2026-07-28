@@ -68,9 +68,7 @@ public partial class MainPage : Page
         // grid. Each platform hosts it differently: inside the custom title bar on the packaged Windows
         // head, or directly beneath the native title bar on the Skia desktop heads.
         var applicationToolbarHost = ServiceLocator.AcquireService<IApplicationToolbarHost>();
-        var titleBar = applicationToolbarHost.Install(mainWindow, _layoutRoot);
-        _titleBar = (FrameworkElement)titleBar;
-        _userInterfaceService.RegisterTitleBar(titleBar);
+        _titleBar = applicationToolbarHost.Install(mainWindow, _layoutRoot);
 
         // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
         // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.

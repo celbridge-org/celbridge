@@ -94,8 +94,7 @@ public class AppToolTests
             focusedPanel: WorkspacePanel.Documents,
             contextVisible: true,
             inspectorVisible: false,
-            consoleVisible: true,
-            consoleMaximized: false);
+            consoleVisible: true);
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
         _services.GetRequiredService<IProjectService>().Returns(projectService);
@@ -109,7 +108,6 @@ public class AppToolTests
         layoutMode.GetProperty("contextPanelVisible").GetBoolean().Should().BeTrue();
         layoutMode.GetProperty("inspectorPanelVisible").GetBoolean().Should().BeFalse();
         layoutMode.GetProperty("consolePanelVisible").GetBoolean().Should().BeTrue();
-        layoutMode.GetProperty("consoleMaximized").GetBoolean().Should().BeFalse();
     }
 
     [Test]
@@ -146,7 +144,6 @@ public class AppToolTests
         bool contextVisible = false,
         bool inspectorVisible = false,
         bool consoleVisible = false,
-        bool consoleMaximized = false,
         string appVersion = "0.0.0")
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
@@ -163,7 +160,6 @@ public class AppToolTests
         layoutService.IsContextPanelVisible.Returns(contextVisible);
         layoutService.IsInspectorPanelVisible.Returns(inspectorVisible);
         layoutService.IsConsolePanelVisible.Returns(consoleVisible);
-        layoutService.IsConsoleMaximized.Returns(consoleMaximized);
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
         _services.GetRequiredService<IAppEnvironment>().Returns(environmentService);

@@ -51,8 +51,6 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public bool IsConsolePanelVisible => _layoutService.IsConsolePanelVisible;
 
-    public bool IsConsoleMaximized => _layoutService.IsConsoleMaximized;
-
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
@@ -77,7 +75,6 @@ public partial class WorkspacePageViewModel : ObservableObject
 
         // Listen for layout manager state changes via messages
         _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
-        _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
         // Create the workspace service and notify the user interface service
         _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
@@ -104,12 +101,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         OnPropertyChanged(nameof(IsConsolePanelVisible));
     }
 
-    private void OnConsoleMaximizedChanged(object recipient, ConsoleMaximizedChangedMessage message)
-    {
-        // Notify that console maximized state has changed
-        OnPropertyChanged(nameof(IsConsoleMaximized));
-    }
-
     public async Task OnWorkspacePageUnloadedAsync()
     {
         // Best-effort: persist editor state while the editors are still alive, then close the panels. A
@@ -122,8 +113,6 @@ public partial class WorkspacePageViewModel : ObservableObject
 
             // Close all open documents and clean up their WebView2 resources.
             _workspaceService.DocumentsPanel.Shutdown();
-
-            _workspaceService.ConsolePanel?.Shutdown();
 
             // Tear down the utilities, then clear the rail.
             await _workspaceService.UtilityService.TeardownUtilitiesAsync();
@@ -141,14 +130,9 @@ public partial class WorkspacePageViewModel : ObservableObject
 
             // Unregister message handlers
             _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
-            _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
 
             // Clear project-level feature flag overrides before disposing the workspace
             _featureFlags.ClearProjectOverrides();
-
-            // Clear shortcut buttons from the title bar before disposing the workspace. Utility launchers live
-            // in the Explorer toolbar, which is torn down with the workspace page, so they need no explicit clear.
-            _workspaceLoader.ClearTitleBarShortcuts();
 
             // Revert the process working folder set on load, so it stays valid while no project is loaded
             _workspaceLoader.ResetProcessWorkingFolder();

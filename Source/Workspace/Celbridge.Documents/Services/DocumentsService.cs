@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Console;
 using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -247,7 +246,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                 $"Ignored invalid editor-associations entries: {string.Join("; ", invalidEntries)}");
 
             var projectName = Path.GetFileName(projectService.CurrentProject!.ProjectFilePath);
-            _messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName));
+            _messengerService.Send(new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectName));
         }
 
         _documentEditorRegistry.SetEditorAssociations(validatedAssociations);

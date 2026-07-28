@@ -9,7 +9,7 @@ namespace Celbridge.UserInterface.Platform;
 /// </summary>
 internal sealed class SkiaApplicationToolbarHost : IApplicationToolbarHost
 {
-    public ITitleBar Install(Window window, Panel layoutRoot)
+    public UserControl Install(Window window, Panel layoutRoot)
     {
         var applicationToolbar = new ApplicationToolbar();
         layoutRoot.Children.Add(applicationToolbar);

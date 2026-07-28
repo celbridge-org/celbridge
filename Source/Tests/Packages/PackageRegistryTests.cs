@@ -1,4 +1,3 @@
-using Celbridge.Console;
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Packages;
@@ -663,7 +662,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _messengerService.Received(1).Send(Arg.Is<ConsoleErrorMessage>(m => m.ErrorType == ConsoleErrorType.PackageLoadError));
+        _messengerService.Received(1).Send(Arg.Is<ProjectErrorMessage>(m => m.ErrorType == ProjectErrorType.PackageLoadError));
     }
 
     [Test]
@@ -691,7 +690,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _messengerService.DidNotReceive().Send(Arg.Is<ConsoleErrorMessage>(m => m.ErrorType == ConsoleErrorType.PackageLoadError));
+        _messengerService.DidNotReceive().Send(Arg.Is<ProjectErrorMessage>(m => m.ErrorType == ProjectErrorType.PackageLoadError));
     }
 
     [Test]

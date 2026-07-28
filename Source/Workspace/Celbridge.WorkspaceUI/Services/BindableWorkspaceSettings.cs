@@ -53,12 +53,6 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         set => Set(SettingCatalog.Layout.DetailPanelHeight, value);
     }
 
-    public bool IsConsoleMaximized
-    {
-        get => Get(SettingCatalog.Layout.IsConsoleMaximized);
-        set => Set(SettingCatalog.Layout.IsConsoleMaximized, value);
-    }
-
     public bool SearchMatchCase
     {
         get => Get(SettingCatalog.Search.MatchCase);

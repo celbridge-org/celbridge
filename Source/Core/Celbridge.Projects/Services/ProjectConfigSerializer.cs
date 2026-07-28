@@ -18,7 +18,6 @@ public static class ProjectConfigSerializer
         WriteCelbridgeTable(builder, config);
         WriteResourcesTable(builder, config.Resources);
         WriteProjectTable(builder, config.Project);
-        WriteShortcuts(builder, config.Shortcuts);
         WriteContributions(builder, config.ContributionOverrides);
 
         return builder.ToString();
@@ -84,28 +83,6 @@ public static class ProjectConfigSerializer
         if (project.Dependencies is not null)
         {
             WriteKeyValue(builder, "dependencies", RenderStringArray(project.Dependencies));
-        }
-    }
-
-    private static void WriteShortcuts(StringBuilder builder, ShortcutsSection shortcuts)
-    {
-        foreach (var shortcut in shortcuts.Definitions)
-        {
-            builder.Append('\n');
-            builder.Append("[[shortcut]]\n");
-            WriteKeyValue(builder, "name", RenderString(shortcut.Name));
-            if (!string.IsNullOrEmpty(shortcut.Icon))
-            {
-                WriteKeyValue(builder, "icon", RenderString(shortcut.Icon));
-            }
-            if (!string.IsNullOrEmpty(shortcut.Tooltip))
-            {
-                WriteKeyValue(builder, "tooltip", RenderString(shortcut.Tooltip));
-            }
-            if (!string.IsNullOrEmpty(shortcut.Script))
-            {
-                WriteKeyValue(builder, "script", RenderString(shortcut.Script));
-            }
         }
     }
 

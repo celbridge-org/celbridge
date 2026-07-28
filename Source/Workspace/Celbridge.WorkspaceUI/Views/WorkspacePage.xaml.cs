@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Platform;
@@ -24,9 +23,6 @@ public sealed partial class WorkspacePage : Page
     // Minimum height for the console panel
     private const double MinConsolePanelHeight = 150;
 
-    // Maximum fraction of available vertical space for restored console height
-    private const double MaxRestoredConsoleHeightFraction = 0.7;
-
     private readonly ICommandService _commandService;
     private readonly Logging.ILogger<WorkspacePage> _logger;
     private readonly IPlatformInfo _platformInfo;
@@ -40,6 +36,10 @@ public sealed partial class WorkspacePage : Page
     private SplitterHelper? _primaryPanelSplitterHelper;
     private SplitterHelper? _secondaryPanelSplitterHelper;
     private SplitterHelper? _consolePanelSplitterHelper;
+
+    // The banners-only project-notification host, kept so its messenger subscriptions can be torn down
+    // on page unload. Null when the console-panel feature is disabled.
+    private ConsolePanel? _consolePanel;
 
     public WorkspacePage()
     {
@@ -114,13 +114,9 @@ public sealed partial class WorkspacePage : Page
         PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
         SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
 
-        // Only update console height setting when not maximized (to preserve restore height)
-        ConsolePanel.SizeChanged += (s, e) =>
+        ConsolePanelHost.SizeChanged += (s, e) =>
         {
-            if (!ViewModel.IsConsoleMaximized)
-            {
-                ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
-            }
+            ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
         };
 
         // Initialize splitter helpers
@@ -161,25 +157,22 @@ public sealed partial class WorkspacePage : Page
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
         var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
 
-        IConsolePanel? consolePanel;
         if (isConsolePanelEnabled)
         {
-            consolePanel = ServiceLocator.AcquireService<IConsolePanel>();
-            ConsolePanel.Children.Add(consolePanel as UIElement);
+            _consolePanel = ServiceLocator.AcquireService<ConsolePanel>();
+            ConsolePanelHost.Children.Add(_consolePanel);
         }
         else
         {
-            consolePanel = null;
-
             // Hide console panel row and splitter completely when feature is disabled
             ConsolePanelRow.Height = new GridLength(0);
             ConsolePanelRow.MinHeight = 0;
             ConsolePanelSplitter.Visibility = Visibility.Collapsed;
-            ConsolePanel.Visibility = Visibility.Collapsed;
+            ConsolePanelHost.Visibility = Visibility.Collapsed;
         }
 
         // Register panels with the workspace service
-        workspaceService.SetPanels(utilityPanel, documentsPanel, inspectorPanel, consolePanel);
+        workspaceService.SetPanels(utilityPanel, documentsPanel, inspectorPanel);
 
         // Add panels to the UI
         PrimaryPanel.Children.Add(utilityPanel as UIElement);
@@ -223,6 +216,10 @@ public sealed partial class WorkspacePage : Page
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
 
+        // Tear down the banners-only project-notification host's messenger subscriptions.
+        _consolePanel?.Cleanup();
+        _consolePanel = null;
+
         await ViewModel.OnWorkspacePageUnloadedAsync();
 
         _initialized = false;
@@ -249,10 +246,6 @@ public sealed partial class WorkspacePage : Page
                 UpdatePanels();
                 break;
 
-            case nameof(ViewModel.IsConsoleMaximized):
-                UpdateConsoleMaximized();
-                break;
-
             case nameof(ViewModel.PrimaryPanelWidth):
                 if (ViewModel.IsPrimaryPanelVisible && 
                     ViewModel.PrimaryPanelWidth > 0)
@@ -270,10 +263,8 @@ public sealed partial class WorkspacePage : Page
                 break;
 
             case nameof(ViewModel.ConsolePanelHeight):
-                // Don't update row height when console is maximized (it uses Star sizing)
-                if (ViewModel.IsConsolePanelVisible && 
-                    ViewModel.ConsolePanelHeight > 0 && 
-                    !ViewModel.IsConsoleMaximized)
+                if (ViewModel.IsConsolePanelVisible &&
+                    ViewModel.ConsolePanelHeight > 0)
                 {
                     ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
                 }
@@ -322,86 +313,17 @@ public sealed partial class WorkspacePage : Page
         if (isConsolePanelEnabled && ViewModel.IsConsolePanelVisible)
         {
             ConsolePanelSplitter.Visibility = Visibility.Visible;
-            ConsolePanel.Visibility = Visibility.Visible;
+            ConsolePanelHost.Visibility = Visibility.Visible;
             ConsolePanelRow.MinHeight = MinConsolePanelHeight;
             ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
         }
         else
         {
             ConsolePanelSplitter.Visibility = Visibility.Collapsed;
-            ConsolePanel.Visibility = Visibility.Collapsed;
+            ConsolePanelHost.Visibility = Visibility.Collapsed;
             ConsolePanelRow.MinHeight = 0;
             ConsolePanelRow.Height = new GridLength(0);
         }
-
-        // Apply console maximized state after panel visibility
-        UpdateConsoleMaximized();
-    }
-
-    private void UpdateConsoleMaximized()
-    {
-        // Skip if console panel feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        if (!isConsolePanelEnabled)
-        {
-            return;
-        }
-
-        if (!ViewModel.IsConsolePanelVisible)
-        {
-            // Console is hidden, nothing to maximize
-            return;
-        }
-
-        if (ViewModel.IsConsoleMaximized)
-        {
-            // Hide the splitter while maximized
-            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
-
-            // Hide Documents panel and row
-            DocumentsPanel.Visibility = Visibility.Collapsed;
-            DocumentsPanelRow.MinHeight = 0;
-            DocumentsPanelRow.Height = new GridLength(0);
-
-            // Maximize Console row using Star sizing so it fills available space
-            ConsolePanelRow.MinHeight = 0;
-            ConsolePanelRow.Height = new GridLength(1, GridUnitType.Star);
-        }
-        else
-        {
-            // Show the splitter when restored
-            ConsolePanelSplitter.Visibility = Visibility.Visible;
-
-            // Restore Documents panel and row
-            DocumentsPanel.Visibility = Visibility.Visible;
-            DocumentsPanelRow.MinHeight = 0;
-            DocumentsPanelRow.Height = new GridLength(1, GridUnitType.Star);
-
-            // Restore console MinHeight
-            ConsolePanelRow.MinHeight = MinConsolePanelHeight;
-
-            // Restore console to the height it was before maximizing
-            var consoleHeight = ViewModel.ConsolePanelHeight;
-            if (consoleHeight <= 0)
-            {
-                consoleHeight = WorkspaceConstants.ConsolePanelHeight;
-            }
-
-            // Clamp to max fraction of available height to ensure documents area is visible.
-            // This handles the case where the window was resized smaller while console was maximized.
-            var maxConsoleHeight = (float)(LayoutRoot.ActualHeight * MaxRestoredConsoleHeightFraction);
-            if (consoleHeight > maxConsoleHeight && maxConsoleHeight > 100)
-            {
-                consoleHeight = maxConsoleHeight;
-            }
-
-            // Set Console row to fixed height
-            ConsolePanelRow.Height = new GridLength(consoleHeight);
-        }
-
-        // Force layout recalculation
-        LayoutRoot.InvalidateMeasure();
-        LayoutRoot.InvalidateArrange();
     }
 
     //

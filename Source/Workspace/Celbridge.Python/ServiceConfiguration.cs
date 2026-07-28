@@ -10,7 +10,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IPythonConfigService, PythonConfigService>();
         services.AddSingleton<IPythonInstaller, PythonInstaller>();
         services.AddSingleton<IPythonLaunchService, PythonLaunchService>();
-        services.AddTransient<IPythonService, PythonService>();
 
         services.AddSingleton<IConsoleSessionProvider, PythonSessionProvider>();
     }

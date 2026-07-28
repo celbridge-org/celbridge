@@ -15,7 +15,6 @@ class TestApp:
         assert isinstance(layout_mode["contextPanelVisible"], bool)
         assert isinstance(layout_mode["inspectorPanelVisible"], bool)
         assert isinstance(layout_mode["consolePanelVisible"], bool)
-        assert isinstance(layout_mode["consoleMaximized"], bool)
 
     def test_get_state_returns_version(self, app):
         result = app.get_state()

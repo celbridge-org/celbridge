@@ -1,4 +1,3 @@
-using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Messaging;
 using Celbridge.Projects;
@@ -41,8 +40,8 @@ public class PackageService : IPackageService
 
         if (report.Failures.Count > 0)
         {
-            // Surface the failures via the console panel error banner.
-            var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
+            // Surface the failures via the project-notification error banner.
+            var message = new ProjectErrorMessage(ProjectErrorType.PackageLoadError, projectName);
             _messengerService.Send(message);
         }
 
@@ -51,7 +50,7 @@ public class PackageService : IPackageService
         {
             // Skipped or degraded contribution declarations are project config errors, surfaced on
             // the advisory banner because the rest of the file still applied.
-            var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName);
+            var message = new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectName);
             _messengerService.Send(message);
         }
 

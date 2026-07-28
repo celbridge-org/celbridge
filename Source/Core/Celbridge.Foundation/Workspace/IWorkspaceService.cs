@@ -5,7 +5,6 @@ using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Inspector;
-using Celbridge.Python;
 using Celbridge.Search;
 
 namespace Celbridge.Workspace;
@@ -22,8 +21,7 @@ public interface IWorkspaceService
     void SetPanels(
         IUtilityPanel utilityPanel,
         IDocumentsPanel documentsPanel,
-        IInspectorPanel inspectorPanel,
-        IConsolePanel? consolePanel);
+        IInspectorPanel inspectorPanel);
 
     /// <summary>
     /// Returns the workspace settings service for the current project, which owns
@@ -77,11 +75,6 @@ public interface IWorkspaceService
     ISearchService SearchService { get; }
 
     /// <summary>
-    /// Returns the Python Service associated with the workspace.
-    /// </summary>
-    IPythonService PythonService { get; }
-
-    /// <summary>
     /// Returns the Entity Service associated with the workspace.
     /// </summary>
     IEntityService EntityService { get; }
@@ -115,12 +108,6 @@ public interface IWorkspaceService
     /// Returns the Inspector Panel view.
     /// </summary>
     IInspectorPanel InspectorPanel { get; }
-
-    /// <summary>
-    /// Returns the Console Panel view.
-    /// Null if the console-panel feature is disabled.
-    /// </summary>
-    IConsolePanel? ConsolePanel { get; }
 
     /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.

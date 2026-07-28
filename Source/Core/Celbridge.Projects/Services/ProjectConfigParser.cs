@@ -20,7 +20,6 @@ public static class ProjectConfigParser
 
     private const string CelbridgeSectionName = "celbridge";
     private const string ProjectSectionName = "project";
-    private const string ShortcutSectionName = "shortcut";
     private const string ContributionSectionName = "contribution";
 
     private const string CelbridgeVersionKey = "celbridge-version";
@@ -146,13 +145,6 @@ public static class ProjectConfigParser
             projectSection = ParseProjectTable(projectTable, entryErrors);
         }
 
-        var shortcutsSection = new ShortcutsSection();
-        if (root.TryGetValue(ShortcutSectionName, out var shortcutsObject) &&
-            shortcutsObject is TomlTableArray shortcutsArray)
-        {
-            shortcutsSection = ParseShortcutsArray(shortcutsArray);
-        }
-
         // Editor overrides of the discovered defaults are declared as [[contribution]] entries.
         var contributions = new List<ContributionOverride>();
         if (root.TryGetValue(ContributionSectionName, out var contributionObject))
@@ -181,7 +173,6 @@ public static class ProjectConfigParser
         {
             if (key == CelbridgeSectionName ||
                 key == ProjectSectionName ||
-                key == ShortcutSectionName ||
                 key == ContributionSectionName)
             {
                 continue;
@@ -204,7 +195,6 @@ public static class ProjectConfigParser
         {
             Celbridge = celbridgeSection,
             Project = projectSection,
-            Shortcuts = shortcutsSection,
             Resources = resourcesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
@@ -516,145 +506,4 @@ public static class ProjectConfigParser
         return items;
     }
 
-    private static ShortcutsSection ParseShortcutsArray(TomlTableArray shortcutsArray)
-    {
-        var definitions = new List<ShortcutDefinition>();
-        var validationErrors = new List<ShortcutValidationError>();
-
-        for (int i = 0; i < shortcutsArray.Count; i++)
-        {
-            var shortcutTable = shortcutsArray[i];
-            var shortcutIndex = i + 1;
-
-            string? name = null;
-            if (shortcutTable.TryGetValue("name", out var nameObj) && nameObj is string nameStr)
-            {
-                name = nameStr;
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", "The 'name' property is required and cannot be empty."));
-                continue;
-            }
-
-            if (name.StartsWith(PathSeparator) || name.EndsWith(PathSeparator))
-            {
-                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", $"The 'name' property cannot start or end with '{PathSeparator}'."));
-                continue;
-            }
-
-            if (name.Contains($"{PathSeparator}{PathSeparator}"))
-            {
-                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", $"The 'name' property cannot contain empty segments (consecutive '{PathSeparator}' characters)."));
-                continue;
-            }
-
-            string? icon = null;
-            if (shortcutTable.TryGetValue("icon", out var iconObj) && iconObj is string iconStr)
-            {
-                icon = iconStr;
-            }
-
-            string? tooltip = null;
-            if (shortcutTable.TryGetValue("tooltip", out var tooltipObj) && tooltipObj is string tooltipStr)
-            {
-                tooltip = tooltipStr;
-            }
-
-            string? script = null;
-            if (shortcutTable.TryGetValue("script", out var scriptObj) && scriptObj is string scriptStr)
-            {
-                script = scriptStr;
-            }
-
-            var definition = new ShortcutDefinition
-            {
-                Name = name,
-                Icon = icon,
-                Tooltip = tooltip,
-                Script = script
-            };
-
-            definitions.Add(definition);
-        }
-
-        // Second pass validation: check that all parent paths exist as groups
-        var groupPaths = new HashSet<string>();
-        foreach (var def in definitions)
-        {
-            if (def.IsGroup)
-            {
-                groupPaths.Add(def.Name);
-            }
-        }
-
-        for (int i = 0; i < definitions.Count; i++)
-        {
-            var def = definitions[i];
-            var parentPath = def.ParentPath;
-
-            if (parentPath != null)
-            {
-                if (!groupPaths.Contains(parentPath))
-                {
-                    var pathSegments = parentPath.Split(PathSeparator);
-                    var currentPath = "";
-                    bool foundValidParent = false;
-
-                    foreach (var segment in pathSegments)
-                    {
-                        currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}{PathSeparator}{segment}";
-                        if (groupPaths.Contains(currentPath))
-                        {
-                            foundValidParent = true;
-                        }
-                    }
-
-                    if (!foundValidParent)
-                    {
-                        validationErrors.Add(new ShortcutValidationError(
-                            i + 1,
-                            "name",
-                            $"The parent path '{parentPath}' does not exist. Define a group with name='{parentPath}' first."));
-                    }
-                }
-            }
-        }
-
-        // Validate that groups have at least one child
-        var usedParentPaths = new HashSet<string>();
-        foreach (var def in definitions)
-        {
-            var parentPath = def.ParentPath;
-            if (parentPath != null)
-            {
-                var pathSegments = parentPath.Split(PathSeparator);
-                var currentPath = "";
-                foreach (var segment in pathSegments)
-                {
-                    currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}{PathSeparator}{segment}";
-                    usedParentPaths.Add(currentPath);
-                }
-            }
-        }
-
-        for (int i = 0; i < definitions.Count; i++)
-        {
-            var def = definitions[i];
-            if (def.IsGroup && !usedParentPaths.Contains(def.Name))
-            {
-                validationErrors.Add(new ShortcutValidationError(
-                    i + 1,
-                    "script",
-                    $"Group '{def.DisplayName}' has no children. Either add child items with names starting with '{def.Name}/' or add a script to make it a command."));
-            }
-        }
-
-        return new ShortcutsSection
-        {
-            Definitions = definitions,
-            ValidationErrors = validationErrors
-        };
-    }
 }

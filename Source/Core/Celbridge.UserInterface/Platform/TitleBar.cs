@@ -11,7 +11,7 @@ namespace Celbridge.UserInterface.Platform;
 /// the window-drag chrome. Used only on Windows. The Skia desktop heads host the ApplicationToolbar
 /// directly beneath the native title bar.
 /// </summary>
-public sealed class TitleBar : UserControl, ITitleBar
+public sealed class TitleBar : UserControl
 {
     private readonly ApplicationToolbar _applicationToolbar;
     private Window? _mainWindow;
@@ -26,21 +26,6 @@ public sealed class TitleBar : UserControl, ITitleBar
 
         Loaded += OnTitleBar_Loaded;
         Unloaded += OnTitleBar_Unloaded;
-    }
-
-    public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, Action<string> onScriptExecute)
-    {
-        return _applicationToolbar.BuildShortcutButtons(shortcuts, onScriptExecute);
-    }
-
-    public void SetShortcutButtonsVisible(bool isVisible)
-    {
-        _applicationToolbar.SetShortcutButtonsVisible(isVisible);
-    }
-
-    public void ClearShortcutButtons()
-    {
-        _applicationToolbar.ClearShortcutButtons();
     }
 
     private void OnTitleBar_Loaded(object sender, RoutedEventArgs e)

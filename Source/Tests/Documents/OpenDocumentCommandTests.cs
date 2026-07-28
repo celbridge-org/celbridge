@@ -20,7 +20,6 @@ public class OpenDocumentCommandTests
     private IStringLocalizer _stringLocalizer = null!;
     private IDialogService _dialogService = null!;
     private ICommandService _commandService = null!;
-    private ILayoutService _layoutService = null!;
     private IMessengerService _messengerService = null!;
 
     [SetUp]
@@ -42,9 +41,6 @@ public class OpenDocumentCommandTests
         _dialogService = Substitute.For<IDialogService>();
         _commandService = Substitute.For<ICommandService>();
 
-        _layoutService = Substitute.For<ILayoutService>();
-        _layoutService.IsConsoleMaximized.Returns(false);
-
         _messengerService = Substitute.For<IMessengerService>();
     }
 
@@ -55,7 +51,6 @@ public class OpenDocumentCommandTests
             _dialogService,
             _commandService,
             _workspaceWrapper,
-            _layoutService,
             _messengerService);
     }
 

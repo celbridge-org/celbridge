@@ -55,27 +55,3 @@ You can see the list of support IPython magic commands by entering this command.
 The [IPython Book](https://ipythonbook.com/magic-commands.html) by Eric Hamiter has an excellent description of the available IPython commands.
 
 The `%` character is optional, so you can enter `run` instead of `%run`for example, just be careful not to create variables with the same name as an IPyton magic command.
-
-# Run via Shortcut Button
-
-Celbridge supports custom script shortcut buttons in the left-hand **Navigation Bar**. To see this in action:
-
-1. Click on the **Play** button in the **Navigation Bar**. The available shortcut options are displayed in a flyout menu.
-2. Select **03 Hello World** to run the **hello_world.py** script. The text "Hello Universe!" is output to the console.
-
-Shortcut buttons can be easily added via the **.celbridge** project file.
-
-1. Open the **examples.celbridge** project file.
-2. Locate this section in the config:
-
-```
-[navigation_bar.run_examples.03_python]
-tooltip="Run example 03_hello_world"
-script='''
-run "03_hello_world/hello_world.py" "Universe"
-'''
-```
-
-3. Change "Universe" to "Galaxy"
-4. Select **Main Menu > Reload Project** to reload the project configuration.
-5. Select **Play > 03 Hello World** again. The text "Hello Galaxy!" is output in the console.

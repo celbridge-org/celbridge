@@ -1,13 +1,15 @@
 using Celbridge.Commands;
-using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Console.ViewModels;
+namespace Celbridge.WorkspaceUI.ViewModels;
 
+/// <summary>
+/// Drives the bottom-panel project-notification banners: a non-dismissable project error banner, a
+/// dismissable project-change banner, a migration banner, and a project-check warning banner. The banners
+/// are project or workspace-scoped; console-scoped errors surface in the console document instead.
+/// </summary>
 public partial class ConsolePanelViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
@@ -16,10 +18,6 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
-    private readonly ILayoutService _layoutService;
-
-    private record LogEntry(string Level, string Message, LogEntryException? Exception);
-    private record LogEntryException(string Type, string Message, string StackTrace);
 
     [ObservableProperty]
     private bool _isErrorBannerVisible;
@@ -57,40 +55,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private string _projectCheckBannerMessage = string.Empty;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MaximizeRestoreIcon))]
-    [NotifyPropertyChangedFor(nameof(MaximizeRestoreTooltip))]
-    [NotifyPropertyChangedFor(nameof(IsMaximizeButtonHighlighted))]
-    private bool _isConsoleMaximized;
-
-    /// <summary>
-    /// Icon for the maximize/restore button. Chevron down when maximized, chevron up when restored.
-    /// </summary>
-    public IconSymbol MaximizeRestoreIcon => IsConsoleMaximized ? IconSymbol.ChevronDown : IconSymbol.ChevronUp;
-
-    /// <summary>
-    /// Tooltip for the maximize/restore button.
-    /// </summary>
-    public string MaximizeRestoreTooltip => IsConsoleMaximized
-        ? _stringLocalizer.GetString("ConsolePanel_RestoreConsole")
-        : _stringLocalizer.GetString("ConsolePanel_MaximizeConsole");
-
-    /// <summary>
-    /// Whether the maximize/restore button should be highlighted (when console is maximized).
-    /// </summary>
-    public bool IsMaximizeButtonHighlighted => IsConsoleMaximized;
-
     private string? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
-        IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IDispatcher dispatcher,
         IStringLocalizer stringLocalizer,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService,
-        ILayoutService layoutService)
+        ICommandService commandService)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
@@ -98,19 +71,12 @@ public partial class ConsolePanelViewModel : ObservableObject
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
-        _layoutService = layoutService;
 
-        // Initialize console maximized state from layout service
-        _isConsoleMaximized = _layoutService.IsConsoleMaximized;
-
-        // Register for console initialization error messages
-        _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
+        // Register for project error messages
+        _messengerService.Register<ProjectErrorMessage>(this, OnProjectError);
 
         // Register for resource change messages to monitor project file changes
         _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
-
-        // Register for console maximized state changes
-        _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
         // Snapshot the project file contents so subsequent changes can be
         // detected. The hash read goes through the file storage gateway,
@@ -122,88 +88,49 @@ public partial class ConsolePanelViewModel : ObservableObject
         CheckMigrationStatus();
     }
 
-    private void OnConsoleMaximizedChanged(object recipient, ConsoleMaximizedChangedMessage message)
-    {
-        // Update the local state when the maximized state changes externally
-        _dispatcher.TryEnqueue(() =>
-        {
-            IsConsoleMaximized = message.IsMaximized;
-        });
-    }
-
-    public void ToggleConsoleMaximized()
-    {
-        _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
-        {
-            command.IsMaximized = !IsConsoleMaximized;
-        });
-    }
-
-    public void OnTerminalProcessExited()
-    {
-        // Process exit is expected when the user types exit() in the REPL.
-        // Startup failures are detected separately by PythonService when no
-        // RPC connection is ever established.
-    }
-
-    private void OnConsoleError(object recipient, ConsoleErrorMessage message)
+    private void OnProjectError(object recipient, ProjectErrorMessage message)
     {
         // This handler may be called from a background thread so ensure that the message
         // is handled on the main UI thread.
         _dispatcher.TryEnqueue(() =>
         {
-            HandleConsoleError(message);
+            HandleProjectError(message);
         });
     }
 
-    private void HandleConsoleError(ConsoleErrorMessage message)
+    private void HandleProjectError(ProjectErrorMessage message)
     {
         var configFile = message.ConfigFileName ?? "project configuration file";
 
         // Set the error banner properties based on error type
         switch (message.ErrorType)
         {
-            case ConsoleErrorType.InvalidProjectConfig:
+            case ProjectErrorType.InvalidProjectConfig:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorMessage", configFile);
                 break;
 
-            case ConsoleErrorType.PythonHostPreInitError:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PythonInitializationErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonInitializationErrorMessage", configFile);
-                break;
-
-            case ConsoleErrorType.PythonHostProcessError:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PythonProcessErrorMessage", configFile);
-                break;
-
-            case ConsoleErrorType.IncompatibleVersion:
+            case ProjectErrorType.IncompatibleVersion:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionMessage", configFile);
                 break;
 
-            case ConsoleErrorType.InvalidVersion:
+            case ProjectErrorType.InvalidVersion:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_InvalidVersionTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidVersionMessage", configFile);
                 break;
 
-            case ConsoleErrorType.MigrationError:
+            case ProjectErrorType.MigrationError:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationErrorTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationErrorMessage", configFile);
                 break;
 
-            case ConsoleErrorType.ShortcutConfigError:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_ShortcutConfigErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ShortcutConfigErrorMessage", configFile);
-                break;
-
-            case ConsoleErrorType.PackageLoadError:
+            case ProjectErrorType.PackageLoadError:
                 ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorTitle");
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorMessage");
                 break;
 
-            case ConsoleErrorType.ProjectCheckError:
+            case ProjectErrorType.ProjectCheckError:
                 // Project check findings are advisory, not blocking — the
                 // project loaded fine. Route to the dismissable warning
                 // banner rather than the non-dismissable error banner, and
@@ -215,7 +142,7 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ShowConsolePanel();
                 return;
 
-            case ConsoleErrorType.ProjectConfigEntryError:
+            case ProjectErrorType.ProjectConfigEntryError:
                 // Per-entry config errors are advisory: the rest of the file
                 // applied and the project loaded. Route to the dismissable
                 // warning banner like project check findings.

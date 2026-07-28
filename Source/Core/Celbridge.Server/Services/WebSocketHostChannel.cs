@@ -161,9 +161,18 @@ public sealed class WebSocketHostChannel : IHostChannel, IDisposable
                 await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
             }
         }
+        catch (Exception ex) when (ex is WebSocketException
+            or ObjectDisposedException
+            or OperationCanceledException)
+        {
+            // Expected during teardown: the view can drop its socket without completing the close
+            // handshake, and Dispose can dispose it while this close is in flight. Logged without the
+            // exception so a benign race does not dump a stack trace.
+            _logger.LogDebug("WebSocket host channel closed without a clean handshake (expected during teardown)");
+        }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to close the WebSocket host channel cleanly");
+            _logger.LogWarning(ex, "Unexpected error closing the WebSocket host channel");
         }
     }
 

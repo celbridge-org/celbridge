@@ -1,6 +1,4 @@
 using Celbridge.Console.Services;
-using Celbridge.Console.ViewModels;
-using Celbridge.Console.Views;
 using Celbridge.Packages;
 using Celbridge.WebHost;
 
@@ -28,20 +26,8 @@ public static class ServiceConfiguration
         services.AddTransient<IConsoleProcessOwner, ConsoleProcessOwner>();
 
         //
-        // Register views
-        //
-
-        services.AddTransient<IConsolePanel, ConsolePanel>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<ConsolePanelViewModel>();
-
-        //
         // Register commands
-        // 
+        //
 
         services.AddTransient<IRunCommand, RunCommand>();
     }
