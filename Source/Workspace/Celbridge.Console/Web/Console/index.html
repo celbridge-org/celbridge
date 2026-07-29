@@ -41,12 +41,14 @@
             <div id="splitter" class="cel-splitter hidden"></div>
 
             <div id="settings-view" class="hidden">
-                <div class="settings-scroll">
-                <h1 data-loc-key="Console_Settings_Heading">Console Settings</h1>
-                <p class="settings-subtitle" data-loc-key="Console_Settings_Subtitle">Configure how this console launches and what it runs.</p>
+                <div class="settings-header">
+                    <h1 data-loc-key="Console_Settings_Heading">Console Settings</h1>
+                    <p class="settings-subtitle" data-loc-key="Console_Settings_Subtitle">Configure how this console launches and what it runs.</p>
+                </div>
+                <div id="settings-scroll" class="settings-scroll">
                 <div id="config-error" class="config-error hidden"></div>
 
-                <details class="cel-expander" open>
+                <details class="cel-expander">
                     <summary data-loc-key="Console_Group_Session">Session</summary>
                     <div class="cel-expander-body">
                         <label class="field">

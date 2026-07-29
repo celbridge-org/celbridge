@@ -11,7 +11,7 @@
     "Console_Reopen": "Reopen Console",
     "Console_ReopenSession": "Reopen Console",
     "Console_Reopen_Tooltip": "Close and reopen the console session.",
-    "Console_ReopenCaption": "Changes take effect when the console is reopened.",
+    "Console_ReopenCaption": "Configuration changes take effect when the console is reopened.",
 
     "Console_SessionEnded": "The console session ended.",
     "Console_StartFailed": "Failed to start the console session.",

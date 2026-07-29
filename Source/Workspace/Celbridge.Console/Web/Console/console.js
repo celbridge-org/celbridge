@@ -77,6 +77,7 @@ const shortcutToolbar = document.getElementById('shortcut-toolbar');
 const terminalView = document.getElementById('terminal-view');
 const splitter = document.getElementById('splitter');
 const settingsView = document.getElementById('settings-view');
+const settingsScroll = document.getElementById('settings-scroll');
 const sessionFailed = document.getElementById('session-failed');
 const sessionFailedMessage = document.getElementById('session-failed-message');
 const reopenTerminalButton = document.getElementById('reopen-terminal');
@@ -94,6 +95,11 @@ const environmentInput = document.getElementById('environment');
 const runnersInput = document.getElementById('runners');
 const shortcutsInput = document.getElementById('shortcuts');
 const reopenSettingsButton = document.getElementById('reopen-settings');
+
+// The collapsible settings cards, in document order (Session, Environment, Script Runners, Shortcuts).
+function settingsCards() {
+    return settingsScroll.querySelectorAll('details.cel-expander');
+}
 
 // State. currentConfig mirrors the settings form / .console file. launchedConfig is the config the live
 // session was started from, so the pip can flag "changed, needs a reopen".
@@ -419,10 +425,13 @@ async function main() {
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
         },
-        // Persist the settings sidebar's open state and width so they survive a reopen.
+        // Persist the settings sidebar's open state and width, each card's expanded state, and the scroll
+        // position so they survive a reopen. openCards is by card order; the cards are a fixed set.
         onRequestState: () => JSON.stringify({
             settingsOpen: !settingsView.classList.contains('hidden'),
             sidebarWidth,
+            openCards: Array.from(settingsCards()).map((card) => card.open),
+            scrollTop: settingsScroll.scrollTop,
         }),
         onRestoreState: (stateJson) => {
             try {
@@ -430,8 +439,19 @@ async function main() {
                 if (typeof state.sidebarWidth === 'number' && state.sidebarWidth > 0) {
                     applySidebarWidth(state.sidebarWidth);
                 }
+                // Restore each card's expanded state before showing the sidebar, so the scroll height is
+                // correct when the scroll position is applied below.
+                if (Array.isArray(state.openCards)) {
+                    settingsCards().forEach((card, index) => {
+                        card.open = state.openCards[index] === true;
+                    });
+                }
                 if (state.settingsOpen) {
                     setSettingsVisible(true);
+                    // scrollTop only takes on a laid-out element, so apply it after the sidebar is shown.
+                    if (typeof state.scrollTop === 'number' && state.scrollTop > 0) {
+                        requestAnimationFrame(() => { settingsScroll.scrollTop = state.scrollTop; });
+                    }
                 }
             } catch (error) {
                 // Ignore malformed state. Fall back to the defaults.

@@ -163,8 +163,16 @@ html, body {
     flex-direction: column;
 }
 
-/* The title, description, and cards scroll; the footer below stays pinned to the bottom, mirroring the
-   native settings panel (fixed header, scrolling content, fixed action footer). */
+/* The heading stays fixed above the scrolling cards, separated by a divider so the title can't be scrolled
+   out of view, mirroring the native settings panels (fixed header, scrolling content, fixed action footer).
+   The left inset is pulled in 4px to 8px like .settings-scroll so the title lines up with the cards. */
+.settings-header {
+    flex: 0 0 auto;
+    padding: 12px 12px 10px 8px;
+    border-bottom: 1px solid var(--cel-divider);
+}
+
+/* Only the cards scroll; the header above and the footer below stay pinned. */
 .settings-scroll {
     flex: 1 1 auto;
     min-height: 0;
@@ -185,11 +193,12 @@ html, body {
     margin: 0 0 2px;
 }
 
-/* Mirrors the native settings panels' description line under the title (12px secondary). */
+/* Mirrors the native settings panels' description line under the title (12px secondary). The header's
+   padding provides the gap to the divider below, so the subtitle needs no bottom margin. */
 .settings-subtitle {
     font-size: 12px;
     color: var(--cel-text-secondary);
-    margin: 0 0 16px;
+    margin: 0;
 }
 
 .config-error {
@@ -201,9 +210,8 @@ html, body {
     white-space: pre-wrap;
 }
 
-/* The settings cards use the shared .cel-expander component (celbridge.css); only the settings-panel layout
-   here is console-specific. The Session group is open by default; the rest collapse so the advanced fields
-   stay out of the way. */
+/* The settings cards use the shared .cel-expander component (celbridge.css). Only the settings-panel layout
+   here is console-specific. All cards start collapsed. Their open state is persisted as document view state. */
 #settings-view .cel-expander {
     max-width: 640px;
     margin-bottom: 8px;
