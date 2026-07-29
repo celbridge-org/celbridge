@@ -26,6 +26,7 @@
  * @property {string[]} arguments
  * @property {string[]} dependencies
  * @property {string} workingDirectory
+ * @property {string} startupScript
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
  * @property {ConsoleShortcut[]} shortcuts
@@ -41,6 +42,7 @@ export function defaultConsoleConfig() {
         arguments: [],
         dependencies: [],
         workingDirectory: '',
+        startupScript: '',
         environment: {},
         runners: [],
         shortcuts: [],
@@ -59,8 +61,42 @@ export function parseConsoleToml(text) {
     let currentTable = null;
     const lines = (text || '').split(/\r?\n/);
 
-    for (const rawLine of lines) {
-        const line = stripComment(rawLine).trim();
+    for (let index = 0; index < lines.length; index++) {
+        // A multi-line block is read before comment stripping, so a '#' inside a script survives.
+        const blockMatch = lines[index].match(/^\s*([^=\[]+?)\s*=\s*('''|\"\"\")(.*)$/);
+        if (blockMatch && !blockMatch[3].includes(blockMatch[2])) {
+            const blockKey = parseKey(blockMatch[1].trim());
+            const delimiter = blockMatch[2];
+            const collected = [];
+
+            // TOML drops a newline immediately after the opening delimiter, so only same-line content counts.
+            if (blockMatch[3] !== '') {
+                collected.push(blockMatch[3]);
+            }
+
+            let closed = false;
+            while (++index < lines.length) {
+                const closeIndex = lines[index].indexOf(delimiter);
+                if (closeIndex >= 0) {
+                    if (closeIndex > 0) {
+                        collected.push(lines[index].slice(0, closeIndex));
+                    }
+                    closed = true;
+                    break;
+                }
+                collected.push(lines[index]);
+            }
+
+            if (!closed) {
+                throw new Error(`Unterminated ${delimiter} block in .console config`);
+            }
+
+            // The block's content is taken verbatim (no escape processing), so requote it for assignValue.
+            assignValue(config, section, currentTable, blockKey, quote(collected.join('\n')));
+            continue;
+        }
+
+        const line = stripComment(lines[index]).trim();
         if (line === '') {
             continue;
         }
@@ -108,6 +144,9 @@ export function serializeConsoleToml(config) {
     }
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
+    }
+    if (config.startupScript) {
+        lines.push(`startup_script = ${quoteScript(config.startupScript)}`);
     }
 
     lines.push('');
@@ -177,6 +216,8 @@ function assignValue(config, section, currentTable, key, rawValue) {
             config.title = parseScalar(rawValue);
         } else if (key === 'working_directory') {
             config.workingDirectory = parseScalar(rawValue);
+        } else if (key === 'startup_script') {
+            config.startupScript = parseScalar(rawValue);
         }
         return;
     }
@@ -332,6 +373,16 @@ function splitTopLevel(inner) {
     }
 
     return items;
+}
+
+// A multi-line script is emitted as a TOML literal block, which needs no escaping and stays readable in
+// the file. A script containing the delimiter itself falls back to a single-line escaped string.
+function quoteScript(value) {
+    const text = String(value);
+    if (text.includes('\n') && !text.includes("'''")) {
+        return `'''\n${text}\n'''`;
+    }
+    return quote(text);
 }
 
 function quote(value) {

@@ -1,17 +1,26 @@
+using Celbridge.Console.Helpers;
 using Celbridge.Logging;
+using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// The console document's channel: it owns a per-view pty, bridges terminal I/O to the WebView over
-/// console/* RPC, registers the console with the session registry, and (re)launches the session on a
-/// console/start request. The launch is JS-triggered so the web app has registered its console/write
-/// handler before any output arrives.
+/// The console document's channel: it owns a per-view pty running the platform shell, bridges terminal
+/// I/O to the WebView over console/* RPC, registers the console with the session registry, and
+/// (re)launches the session on a console/start request, injecting the session type's startup command once
+/// the shell is up. The launch is JS-triggered so the web app has registered its console/write handler
+/// before any output arrives.
 /// </summary>
 internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSessionRpc, IConsoleCommandInjector
 {
+    // Prefixes the ready marker the injected command echoes once it has cleared the screen. The random
+    // per-launch suffix guards only against a stale marker from a previous launch arriving late on the
+    // old pty's stream and revealing the new session early. What stops the shell's own echo of the
+    // injected line matching is the literal split in ShellCommandComposer, not this suffix.
+    private const string ReadyMarkerPrefix = "CELBRIDGE-CONSOLE-READY-";
+
     private readonly ILogger<ConsoleSessionChannel> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -19,9 +28,16 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
     private ICustomEditorChannelHost? _host;
     private ITerminal? _terminal;
+    private StartupInjector? _startupInjector;
     private int? _trackedProcessId;
     private bool _registered;
     private bool _disposed;
+
+    // While the startup command is pending injection, raw user input is dropped (it would corrupt the
+    // command line at the shell prompt) and programmatic injections are buffered to flush afterwards.
+    private readonly object _injectionGateLock = new();
+    private readonly List<string> _bufferedInjections = new();
+    private volatile bool _startupInjectionPending;
 
     public ConsoleSessionChannel(
         IServiceProvider serviceProvider,
@@ -41,6 +57,11 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
     public void OnInput(string data)
     {
+        if (_startupInjectionPending)
+        {
+            return;
+        }
+
         _terminal?.Write(data);
     }
 
@@ -97,29 +118,61 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             environment,
             projectFolderPath,
             config.Dependencies,
-            config.PythonVersion);
+            config.PythonVersion,
+            config.StartupScript);
 
         // A provider throw (e.g. file IO while resolving a Python launch) must surface as a session-failed
         // result in the document, not as a protocol-level RPC error.
-        Result<ConsoleLaunchSpec> specResult;
+        Result<ConsoleStartupInvocation> commandResult;
         try
         {
-            specResult = await provider.BuildLaunchSpecAsync(sessionContext);
+            commandResult = await provider.BuildStartupInvocationAsync(sessionContext);
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to build the console launch spec");
-            specResult = Result<ConsoleLaunchSpec>.Fail(exception.Message);
+            _logger.LogError(exception, "Failed to build the console startup command");
+            commandResult = Result<ConsoleStartupInvocation>.Fail(exception.Message);
         }
 
-        if (specResult.IsFailure)
+        if (commandResult.IsFailure)
         {
             registry.Unregister(_fileResource);
             _registered = false;
-            return new ConsoleStartResult(false, specResult.FirstErrorMessage);
+            return new ConsoleStartResult(false, commandResult.FirstErrorMessage);
         }
 
-        var launchSpec = specResult.Value;
+        var startupInvocation = commandResult.Value;
+
+        // Every session runs the platform shell; the session type only decides what is injected into it.
+        // The injected line clears the shell-startup noise and echoes a ready marker, so the document
+        // reveals the terminal exactly when the screen is clear rather than while the shell is still
+        // echoing the command.
+        var shell = ConsoleShell.Resolve();
+        var shellCommandLine = new CommandLineBuilder(shell.Executable).ToString();
+
+        string? readyMarker = null;
+        if (ShellCommandComposer.SupportsReadyMarker(shell.Family))
+        {
+            readyMarker = ReadyMarkerPrefix + Guid.NewGuid().ToString("N").Substring(0, 8);
+        }
+
+        var injectedCommandLine = ShellCommandComposer.Compose(shell.Family, startupInvocation, readyMarker);
+        var hasStartupCommand = !string.IsNullOrEmpty(injectedCommandLine);
+
+        // The type's command runs first, then the user's startup script rides the same type-ahead buffer,
+        // so the script reaches whatever the command left owning the prompt: a REPL for a python console,
+        // the shell itself for a plain one.
+        var injectedLines = new List<string>();
+        if (hasStartupCommand)
+        {
+            injectedLines.Add(injectedCommandLine);
+        }
+        if (!startupInvocation.HandlesStartupScript)
+        {
+            injectedLines.AddRange(ConsoleStartupScript.SplitLines(config.StartupScript));
+        }
+
+        var workingDirectory = ConsoleWorkingFolder.Resolve(sessionContext.WorkingDirectory, projectFolderPath);
 
         var terminal = _serviceProvider.GetRequiredService<ITerminal>();
         terminal.OutputReceived += OnTerminalOutput;
@@ -128,9 +181,23 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         // Size the pty before it starts so the shell paints at the WebView's geometry rather than 80x25.
         terminal.SetSize(cols, rows);
 
+        var environmentCopy = new Dictionary<string, string>(environment);
+
+        // The startup command's own environment (e.g. the python launch defaults a retyped celbridge-py
+        // reads) merges add-if-absent, so the console's [session.environment] still wins.
+        if (startupInvocation.Environment is not null)
+        {
+            foreach (var pair in startupInvocation.Environment)
+            {
+                if (!environmentCopy.ContainsKey(pair.Key))
+                {
+                    environmentCopy[pair.Key] = pair.Value;
+                }
+            }
+        }
+
         // Contributors amend the final environment for every console type, e.g. Python putting the uv tool
         // bin folder on PATH so celbridge-py resolves in a shell console.
-        var environmentCopy = new Dictionary<string, string>(launchSpec.Environment);
         foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
         {
             try
@@ -143,13 +210,18 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             }
         }
 
+        // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
+        // injected lines, or interleave between them.
+        _startupInjectionPending = injectedLines.Count > 0;
+
         try
         {
-            terminal.Start(launchSpec.CommandLine, launchSpec.WorkingDirectory, environmentCopy);
+            terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
         }
         catch (Exception exception)
         {
             _logger.LogError(exception, "Failed to start the console session");
+            _startupInjectionPending = false;
             terminal.OutputReceived -= OnTerminalOutput;
             terminal.ProcessExited -= OnTerminalProcessExited;
             terminal.Dispose();
@@ -160,6 +232,11 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
         _terminal = terminal;
 
+        if (injectedLines.Count > 0)
+        {
+            _startupInjector = StartupInjector.Begin(terminal, injectedLines, CompleteStartup);
+        }
+
         // Track the child so the workspace-scoped owner tears it down on project close or app crash.
         if (terminal.ProcessId is int processId)
         {
@@ -167,7 +244,32 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             _workspaceWrapper.WorkspaceService.ConsoleService.ProcessOwner.Track(processId);
         }
 
-        return new ConsoleStartResult(true, null);
+        return new ConsoleStartResult(
+            true,
+            null,
+            hasStartupCommand,
+            hasStartupCommand ? readyMarker : null);
+    }
+
+    // Ends the startup phase, on the injector's worker once the startup command has been written: the
+    // input gate reopens, buffered programmatic injections flush behind the command, and the document is
+    // told no further host milestones are coming.
+    private void CompleteStartup()
+    {
+        List<string> bufferedInjections;
+        lock (_injectionGateLock)
+        {
+            _startupInjectionPending = false;
+            bufferedInjections = new List<string>(_bufferedInjections);
+            _bufferedInjections.Clear();
+        }
+
+        foreach (var text in bufferedInjections)
+        {
+            _terminal?.Write(text);
+        }
+
+        _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.StartupComplete, new { });
     }
 
     private IConsoleSessionProvider? ResolveProvider(string typeId)
@@ -187,7 +289,20 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
     {
         // Clear any partial input (Ctrl+U, U+0015) before submitting, so a run command or shortcut is not
         // concatenated with whatever the user had half-typed at the prompt.
-        _terminal?.Write("\u0015" + text + "\r");
+        var submission = "\u0015" + text + "\r";
+
+        // A programmatic injection during startup queues behind the startup command rather than racing
+        // it, so a Run issued at console open still lands as type-ahead for the starting REPL.
+        lock (_injectionGateLock)
+        {
+            if (_startupInjectionPending)
+            {
+                _bufferedInjections.Add(submission);
+                return;
+            }
+        }
+
+        _terminal?.Write(submission);
     }
 
     private static IReadOnlyList<ConsoleRunner> ResolveRunners(ConsoleConfigDto config, IConsoleSessionProvider provider)
@@ -243,6 +358,15 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
     private void DisposeTerminal()
     {
+        _startupInjector?.Dispose();
+        _startupInjector = null;
+
+        lock (_injectionGateLock)
+        {
+            _startupInjectionPending = false;
+            _bufferedInjections.Clear();
+        }
+
         var terminal = _terminal;
         if (terminal is null)
         {

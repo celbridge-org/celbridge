@@ -7,6 +7,11 @@ namespace Celbridge.Python;
 public interface IPythonInstaller
 {
     /// <summary>
+    /// The absolute path of the Python support folder, whether or not it is installed yet.
+    /// </summary>
+    string PythonFolderPath { get; }
+
+    /// <summary>
     /// Ensures the Python support files are installed for the given app version,
     /// performing a full reinstall if the on-disk version marker is missing or
     /// differs from the bundled assets. Returns the absolute path to the Python

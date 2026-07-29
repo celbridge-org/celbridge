@@ -29,11 +29,13 @@ public class PythonInstaller : IPythonInstaller
         _appEnvironment = appEnvironment;
     }
 
+    public string PythonFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
+
     public async Task<Result<string>> InstallPythonAsync(string appVersion)
     {
         try
         {
-            var pythonFolderPath = Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
+            var pythonFolderPath = PythonFolderPath;
 
             bool needsReinstall = await IsInstallRequiredAsync(pythonFolderPath, appVersion);
 

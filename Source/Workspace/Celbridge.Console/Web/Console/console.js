@@ -17,6 +17,7 @@ import {
     formatShortcutLines,
     configsEqual,
     buildStartConfig,
+    createMarkerScanner,
 } from './console-config.js';
 
 const client = celbridge;
@@ -80,6 +81,7 @@ const terminalView = document.getElementById('terminal-view');
 const splitter = document.getElementById('splitter');
 const settingsView = document.getElementById('settings-view');
 const settingsScroll = document.getElementById('settings-scroll');
+const sessionStarting = document.getElementById('session-starting');
 const sessionFailed = document.getElementById('session-failed');
 const sessionFailedMessage = document.getElementById('session-failed-message');
 const reopenTerminalButton = document.getElementById('reopen-terminal');
@@ -93,6 +95,7 @@ const argumentsInput = document.getElementById('arguments');
 const dependenciesField = document.getElementById('dependencies-field');
 const dependenciesInput = document.getElementById('dependencies');
 const workingDirectoryInput = document.getElementById('working-directory');
+const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
 const runnersInput = document.getElementById('runners');
 const shortcutsInput = document.getElementById('shortcuts');
@@ -108,6 +111,10 @@ function settingsCards() {
 let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
+
+// Scans terminal output for the host's ready marker while the starting veil is up, or null once the
+// terminal is revealed. Held here because the console/write handler runs before startSession assigns it.
+let markerScanner = null;
 
 // Theme.
 function applyTheme(theme) {
@@ -126,17 +133,43 @@ client.appState.onChanged((appState) => {
     }
 });
 
-// Terminal I/O over the console/* live-session channel.
+// Terminal I/O over the console/* live-session channel. While the starting veil is up the output runs
+// through the marker scanner, which strips the host's ready marker and reveals on it.
 client.onNotification('console/write', (params) => {
-    if (params && typeof params.text === 'string') {
-        term.write(params.text);
+    if (!params || typeof params.text !== 'string') {
+        return;
     }
+
+    if (markerScanner !== null) {
+        const scanned = markerScanner.push(params.text);
+        if (scanned.text) {
+            term.write(scanned.text);
+        }
+        if (scanned.found) {
+            markerScanner = null;
+
+            // The shell cleared its screen immediately before the marker, so the startup noise is only
+            // reachable by scrolling back. Erase saved lines (ED 3) to drop it, keeping the viewport.
+            term.write('\x1b[3J');
+            hideStartingVeil();
+        }
+        return;
+    }
+
+    term.write(params.text);
 });
 
 client.onNotification('console/sessionState', (params) => {
     if (params && params.state === 'ended') {
         showSessionFailed(t('Console_SessionEnded'));
     }
+});
+
+// The host's startup phase is over, so the ready marker is imminent and no further host milestone is
+// coming. This only arms a short fallback reveal: a shell that cannot echo a marker (or one that failed
+// to) must not stay veiled.
+client.onNotification('console/startupComplete', () => {
+    armVeilTimeout(1200);
 });
 
 term.onData((data) => client.sendNotification('console/input', { data }));
@@ -296,6 +329,7 @@ function populateForm(config) {
     argumentsInput.value = (config.arguments || []).join('\n');
     dependenciesInput.value = (config.dependencies || []).join('\n');
     workingDirectoryInput.value = config.workingDirectory || '';
+    startupScriptInput.value = config.startupScript || '';
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
@@ -314,6 +348,7 @@ function readForm() {
         arguments: splitLines(argumentsInput.value),
         dependencies: splitLines(dependenciesInput.value),
         workingDirectory: workingDirectoryInput.value.trim(),
+        startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: parseRunnerLines(runnersInput.value),
         shortcuts: parseShortcutLines(shortcutsInput.value),
@@ -381,6 +416,7 @@ const formFields = [
     argumentsInput,
     dependenciesInput,
     workingDirectoryInput,
+    startupScriptInput,
     environmentInput,
     runnersInput,
     shortcutsInput,
@@ -426,12 +462,106 @@ function updateAttention() {
 
 // Session lifecycle.
 function showSessionFailed(message) {
+    hideStartingVeil();
     sessionFailedMessage.textContent = message;
     sessionFailed.classList.remove('hidden');
 }
 
 function hideSessionFailed() {
     sessionFailed.classList.add('hidden');
+}
+
+// The starting veil covers the terminal from launch until the shell reports its screen clear, hiding the
+// shell-startup phase. The timers are the safety reveal for a shell that never echoes the ready marker.
+const VEIL_FADE_MS = 240;
+
+let veilTimeout = null;
+let veilFadeTimer = null;
+
+function showStartingVeil() {
+    clearVeilTimers();
+    sessionStarting.classList.remove('fading-out');
+    sessionStarting.classList.remove('hidden');
+}
+
+function hideStartingVeil() {
+    clearVeilTimers();
+
+    if (sessionStarting.classList.contains('hidden')) {
+        return;
+    }
+
+    // Fade rather than cut: the terminal materializes instead of appearing mid-repaint.
+    sessionStarting.classList.add('fading-out');
+    veilFadeTimer = setTimeout(() => {
+        veilFadeTimer = null;
+        sessionStarting.classList.add('hidden');
+        sessionStarting.classList.remove('fading-out');
+    }, VEIL_FADE_MS);
+}
+
+// Arms (or shortens) the safety reveal. Whatever the scanner has held back is written first, so no
+// output is lost when the marker never arrives.
+function armVeilTimeout(delayMs) {
+    if (sessionStarting.classList.contains('hidden')) {
+        return;
+    }
+
+    if (veilTimeout !== null) {
+        clearTimeout(veilTimeout);
+    }
+
+    veilTimeout = setTimeout(() => {
+        veilTimeout = null;
+        if (markerScanner !== null) {
+            const held = markerScanner.flush();
+            markerScanner = null;
+            if (held) {
+                term.write(held);
+            }
+        }
+        hideStartingVeil();
+    }, delayMs);
+}
+
+function clearVeilTimers() {
+    if (veilTimeout !== null) {
+        clearTimeout(veilTimeout);
+        veilTimeout = null;
+    }
+    if (veilFadeTimer !== null) {
+        clearTimeout(veilFadeTimer);
+        veilFadeTimer = null;
+    }
+}
+
+// The pty is created at the terminal's measured size, so measure only once the layout has settled. On
+// application startup the WebView is still being laid out when this script runs, and a resize that lands
+// after the shell has painted makes ConPTY reflow its buffer, which shows up as a block of blank lines.
+async function waitForStableSize() {
+    const settled = (async () => {
+        let previousWidth = -1;
+        let previousHeight = -1;
+
+        for (let frame = 0; frame < 30; frame++) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+
+            const width = terminalView.clientWidth;
+            const height = terminalView.clientHeight;
+            if (width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
+                return;
+            }
+
+            previousWidth = width;
+            previousHeight = height;
+        }
+    })();
+
+    // Animation frames stop entirely while the document is hidden, so the measurement can never be what
+    // gates the launch: a timer keeps the session starting even when the frames never arrive.
+    const deadline = new Promise((resolve) => setTimeout(resolve, 500));
+
+    await Promise.race([settled, deadline]);
 }
 
 let startInFlight = false;
@@ -445,6 +575,9 @@ async function startSession() {
 
     // The terminal is always visible beside the settings sidebar. Launch and relaunch against it in place.
     hideSessionFailed();
+    markerScanner = null;
+    showStartingVeil();
+    await waitForStableSize();
     fitAddon.fit();
     term.reset();
 
@@ -464,6 +597,17 @@ async function startSession() {
             launchedConfig = sentConfig;
             updateAttention();
             term.focus();
+
+            // A plain shell has nothing to inject, so reveal at once. Otherwise hold the veil until the
+            // injected command reports its screen clear, with a safety reveal past the injector's cap.
+            if (!result.hasStartupCommand) {
+                hideStartingVeil();
+            } else {
+                if (result.readyMarker) {
+                    markerScanner = createMarkerScanner(result.readyMarker);
+                }
+                armVeilTimeout(4000);
+            }
         } else {
             showSessionFailed((result && result.error) || t('Console_StartFailed'));
         }

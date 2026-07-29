@@ -10,7 +10,8 @@ namespace Celbridge.Console.Services;
 /// <summary>
 /// The live state of one open console: its registration (identity, runners, injector) plus its current
 /// session id, state, and bound connection. RegistrationOrder is the console's first-open sequence,
-/// preserved across a reopen so Run targets keep a stable order.
+/// preserved across a reopen so Run targets keep a stable order. HasConnected records that a client bound
+/// at some point this session, so a lost binding can be told apart from a type that never binds.
 /// </summary>
 internal sealed class OpenConsole
 {
@@ -18,7 +19,12 @@ internal sealed class OpenConsole
     public Guid SessionId { get; set; }
     public ConsoleSessionState State { get; set; }
     public int? ConnectionId { get; set; }
+    public bool HasConnected { get; set; }
     public long RegistrationOrder { get; set; }
+
+    // A console that bound a client connection and then lost it is a live shell whose REPL exited; its
+    // runners target the REPL, so they are stale until a client reconnects (or the console reopens).
+    public bool HasStaleRunners => HasConnected && ConnectionId is null;
 
     public ConsoleSession ToSession()
     {
@@ -182,6 +188,7 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
             }
 
             openConsole.ConnectionId = connectionId;
+            openConsole.HasConnected = true;
             _connectionToSession[connectionId] = sessionToken;
 
             _messengerService.Send(new ConsoleSessionConnectedMessage(openConsole.SessionId));
@@ -236,6 +243,11 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
                 continue;
             }
 
+            if (openConsole.HasStaleRunners)
+            {
+                continue;
+            }
+
             var runner = FindRunner(openConsole.Registration.Runners, fileExtension);
             if (runner is null)
             {
@@ -275,6 +287,12 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
             if (openConsole.SessionId != sessionId)
             {
                 continue;
+            }
+
+            if (openConsole.HasStaleRunners)
+            {
+                _logger.LogWarning("Console '{Resource}' lost its client connection; not injecting a run command", openConsole.Registration.ResourceKey);
+                return;
             }
 
             var extension = Path.GetExtension(scriptPath);

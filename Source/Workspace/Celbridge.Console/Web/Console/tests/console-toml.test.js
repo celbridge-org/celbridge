@@ -15,6 +15,7 @@ describe('defaultConsoleConfig', () => {
             arguments: [],
             dependencies: [],
             workingDirectory: '',
+            startupScript: '',
             environment: {},
             runners: [],
             shortcuts: [],
@@ -46,10 +47,31 @@ describe('parseConsoleToml', () => {
             arguments: ['-NoLogo', '-NoProfile'],
             dependencies: [],
             workingDirectory: 'tools',
+            startupScript: '',
             environment: { BUILD_CONFIG: 'Debug' },
             runners: [],
             shortcuts: [],
         });
+    });
+
+    it('parses a startup script written as a multi-line block', () => {
+        const toml = [
+            '[session]',
+            "startup_script = '''",
+            'import numpy as np',
+            '# not a comment inside the block',
+            "'''",
+        ].join('\n');
+        expect(parseConsoleToml(toml).startupScript)
+            .toBe('import numpy as np\n# not a comment inside the block');
+    });
+
+    it('parses a single-line startup script', () => {
+        expect(parseConsoleToml('[session]\nstartup_script = "x = 1"').startupScript).toBe('x = 1');
+    });
+
+    it('throws on an unterminated block', () => {
+        expect(() => parseConsoleToml("[session]\nstartup_script = '''\noops")).toThrow(/Unterminated/);
     });
 
     it('parses dependencies and python version for a python console', () => {
@@ -183,6 +205,18 @@ describe('serializeConsoleToml', () => {
         expect(toml).toContain('arguments = ["-NoLogo", "-c", "echo hi"]');
     });
 
+    it('emits a multi-line startup script as a literal block', () => {
+        const config = { ...defaultConsoleConfig(), startupScript: 'import numpy as np\nx = 1' };
+        const toml = serializeConsoleToml(config);
+        expect(toml).toContain("startup_script = '''");
+        expect(parseConsoleToml(toml).startupScript).toBe('import numpy as np\nx = 1');
+    });
+
+    it('emits a single-line startup script as a plain string', () => {
+        const config = { ...defaultConsoleConfig(), startupScript: 'x = 1' };
+        expect(serializeConsoleToml(config)).toContain('startup_script = "x = 1"');
+    });
+
     it('emits runner and shortcut tables', () => {
         const config = {
             ...defaultConsoleConfig(),
@@ -208,6 +242,7 @@ describe('round-trip', () => {
             arguments: [],
             dependencies: ['numpy'],
             workingDirectory: 'tools',
+            startupScript: 'import numpy as np\n%load_ext autoreload',
             environment: { A: '1', B: 'two words' },
             runners: [{ extensions: ['.py', '.ipy'], command: '%run "{script_path}"' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],

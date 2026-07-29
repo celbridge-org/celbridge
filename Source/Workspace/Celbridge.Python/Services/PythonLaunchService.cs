@@ -11,38 +11,41 @@ using Celbridge.Utilities;
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// The inputs to build a Python launch: the project root, the interpreter version, the extra package
-/// dependencies, the interpreter arguments, and the environment variables the caller wants merged on top
-/// (the user's [session.environment] plus CELBRIDGE_RPC_PORT and CELBRIDGE_SESSION_TOKEN).
+/// The inputs to build a Python session's startup command: the project root, the interpreter version, the
+/// extra package dependencies, and the interpreter arguments forwarded to IPython.
 /// </summary>
 public sealed record PythonLaunchRequest(
     string ProjectFolderPath,
     string PythonVersion,
     IReadOnlyList<string> Dependencies,
-    IReadOnlyList<string> InterpreterArguments,
-    IReadOnlyDictionary<string, string> ExtraEnvironment);
+    IReadOnlyList<string> InterpreterArguments);
 
 /// <summary>
-/// The resolved launch: the command line to run, the environment to inject, and the config fingerprint plus
-/// the project Python folder so the caller can persist the fingerprint once the session proves it launches.
+/// The resolved startup: the installed celbridge-py tool to inject, the per-console environment carrying
+/// its launch defaults, and the config fingerprint plus the project Python folder so the caller can
+/// persist the fingerprint once the session proves it launches.
 /// </summary>
-public sealed record PythonLaunchResult(
-    string CommandLine,
+public sealed record PythonStartupResult(
+    string Executable,
     IReadOnlyDictionary<string, string> Environment,
     string Fingerprint,
     string ProjectPythonFolder);
 
 /// <summary>
-/// Builds the uv command line and environment for a Python session, owning all the Python-specific launch
-/// machinery.
+/// Builds the startup command and shared environment for Python sessions, owning all the Python-specific
+/// launch machinery. The injected command is a bare celbridge-py; the console's interpreter version,
+/// dependencies, interpreter arguments, and offline mode ride per-console environment variables that the
+/// tool reads as launch defaults, so retyping celbridge-py after exiting the REPL reproduces the same
+/// environment. The uv and wheel locations ride the shared console environment.
 /// </summary>
 public interface IPythonLaunchService
 {
     /// <summary>
-    /// Resolves the command line and environment for a Python session, installing support files and
-    /// computing the offline fingerprint. Fails if uv or the celbridge wheel is missing.
+    /// Resolves the startup command and its per-console environment for a Python session, installing
+    /// support files, installing the celbridge-py tool when needed, and computing the offline
+    /// fingerprint. Fails if uv or the celbridge wheel is missing.
     /// </summary>
-    Task<Result<PythonLaunchResult>> BuildLaunchAsync(PythonLaunchRequest request);
+    Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
 
     /// <summary>
     /// Persists the config fingerprint once a session has proven it launches, enabling offline mode next
@@ -71,6 +74,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private const int PythonLogMaxFiles = 10;
     private const int LoginShellPathTimeoutMs = 5000;
 
+    private const string CelbridgeToolCommand = "celbridge-py";
     private const string UVCacheFolderName = "uv_cache";
     private const string UVExecutableName = "uv";
     private const string UVExecutableNameWindows = "uv.exe";
@@ -107,7 +111,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _logger = logger;
     }
 
-    public async Task<Result<PythonLaunchResult>> BuildLaunchAsync(PythonLaunchRequest request)
+    public async Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request)
     {
         var environmentInfo = _environmentService.GetEnvironmentInfo();
         var appVersion = environmentInfo.AppVersion;
@@ -120,7 +124,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var installResult = await _pythonInstaller.InstallPythonAsync(appVersion);
         if (installResult.IsFailure)
         {
-            return Result<PythonLaunchResult>.Fail("Failed to ensure Python support files are installed")
+            return Result<PythonStartupResult>.Fail("Failed to ensure Python support files are installed")
                 .WithErrors(installResult);
         }
         var pythonFolder = installResult.Value;
@@ -132,17 +136,13 @@ public sealed class PythonLaunchService : IPythonLaunchService
             && uvExeInfoResult.Value.Kind == StorageItemKind.File;
         if (!uvExeExists)
         {
-            return Result<PythonLaunchResult>.Fail($"uv not found at '{uvExePath}'");
+            return Result<PythonStartupResult>.Fail($"uv not found at '{uvExePath}'");
         }
 
         var uvCacheDir = Path.Combine(projectPythonFolder, UVCacheFolderName);
         var uvPythonInstallDir = Path.Combine(projectPythonFolder, UVPythonInstallsFolderName);
         var uvToolsFolder = Path.Combine(projectPythonFolder, UVToolsFolderName);
         var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
-
-        // The session environment is the shared host-integration set, so a python console and a
-        // celbridge-py launched from any other console see the same variables.
-        var environment = new Dictionary<string, string>(await BuildConsoleEnvironmentAsync(request.ProjectFolderPath));
 
         // Filter blank entries once, so the command and the fingerprint see the same effective config and
         // a stray blank line cannot flip a launch to online mode.
@@ -153,18 +153,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
             .Where(argument => !string.IsNullOrWhiteSpace(argument))
             .ToList();
 
-        // Extra dependencies become --with pairs, deduped by uv against the per-project wheel cache.
-        var packageArgs = new List<string>();
-        foreach (var dependency in dependencies)
-        {
-            packageArgs.Add("--with");
-            packageArgs.Add(dependency);
-        }
-
         var findWheelResult = await FindWheelFileAsync(pythonFolder, "celbridge");
         if (findWheelResult.IsFailure)
         {
-            return Result<PythonLaunchResult>.Fail("Failed to find celbridge wheel file")
+            return Result<PythonStartupResult>.Fail("Failed to find celbridge wheel file")
                 .WithErrors(findWheelResult);
         }
         var celbridgeWheelPath = findWheelResult.Value;
@@ -218,45 +210,35 @@ public sealed class PythonLaunchService : IPythonLaunchService
                 uvPythonInstallDir, request.PythonVersion, celbridgeWheelPath);
         }
 
-        var uvBuilder = new CommandLineBuilder(uvExePath)
-            .Add("run")
-            .Add("--cache-dir", uvCacheDir);
+        // The injected command is a bare celbridge-py; these per-console variables are the launch
+        // defaults it reads, making the tool re-exec through uv (located via the shared console
+        // environment) with this console's interpreter, packages, and arguments. Lists are
+        // newline-separated because PEP 508 specifiers can contain commas and semicolons.
+        var startupEnvironment = new Dictionary<string, string>
+        {
+            ["CELBRIDGE_PYTHON_VERSION"] = request.PythonVersion,
+        };
+
+        if (dependencies.Count > 0)
+        {
+            startupEnvironment["CELBRIDGE_PYTHON_WITH"] = string.Join('\n', dependencies);
+        }
+
+        if (interpreterArguments.Count > 0)
+        {
+            startupEnvironment["CELBRIDGE_PYTHON_ARGS"] = string.Join('\n', interpreterArguments);
+        }
 
         if (useOfflineMode)
         {
-            uvBuilder.Add("--offline");
+            startupEnvironment["CELBRIDGE_PYTHON_OFFLINE"] = "1";
         }
 
-        uvBuilder
-            .Add("--no-project")
-            .Add("--python", request.PythonVersion)
-            .Add("--managed-python")
-            .Add("--with", celbridgeWheelPath);
+        _logger.LogDebug("Built Python startup: {Command} with launch defaults {Environment}",
+            CelbridgeToolCommand,
+            string.Join(' ', startupEnvironment.Select(pair => $"{pair.Key}={pair.Value.Replace('\n', ';')}")));
 
-        uvBuilder.Add(packageArgs.ToArray());
-
-        uvBuilder
-            .Add("python")
-            .Add("-m", "celbridge");
-
-        // Interpreter arguments follow the interpreter invocation, reaching IPython via celbridge's
-        // __main__ (which forwards sys.argv).
-        foreach (var interpreterArgument in interpreterArguments)
-        {
-            uvBuilder.Add(interpreterArgument);
-        }
-
-        var commandLine = uvBuilder.ToString();
-
-        // The caller's environment (user config plus the host-binding variables) wins over the base env.
-        foreach (var pair in request.ExtraEnvironment)
-        {
-            environment[pair.Key] = pair.Value;
-        }
-
-        _logger.LogDebug("Built Python launch command: {Command}", commandLine);
-
-        var result = new PythonLaunchResult(commandLine, environment, currentFingerprint, projectPythonFolder);
+        var result = new PythonStartupResult(CelbridgeToolCommand, startupEnvironment, currentFingerprint, projectPythonFolder);
         return result;
     }
 
@@ -301,7 +283,29 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["CELBRIDGE_PYTHON_LOG_LEVEL"] = "DEBUG",
             ["CELBRIDGE_PYTHON_LOG_DIR"] = pythonLogFolder,
             ["CELBRIDGE_PYTHON_LOG_MAX_FILES"] = PythonLogMaxFiles.ToString(),
+            ["CELBRIDGE_UV_CACHE_DIR"] = Path.Combine(projectPythonFolder, UVCacheFolderName),
         };
+
+        // The bootstrapper variables: where a typed celbridge-py finds uv and the celbridge wheel when its
+        // launch options make it re-exec through uv. Only set once the support files are installed; before
+        // that no celbridge-py tool exists to consume them.
+        var pythonFolder = _pythonInstaller.PythonFolderPath;
+
+        var uvFileName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
+        var uvExePath = Path.Combine(pythonFolder, uvFileName);
+        var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
+        var uvExeExists = uvExeInfoResult.IsSuccess
+            && uvExeInfoResult.Value.Kind == StorageItemKind.File;
+        if (uvExeExists)
+        {
+            environment["CELBRIDGE_UV"] = uvExePath;
+        }
+
+        var findWheelResult = await FindWheelFileAsync(pythonFolder, "celbridge");
+        if (findWheelResult.IsSuccess)
+        {
+            environment["CELBRIDGE_WHEEL"] = findWheelResult.Value;
+        }
 
         return environment;
     }

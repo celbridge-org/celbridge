@@ -139,6 +139,23 @@ html, body {
     background: var(--console-overlay);
 }
 
+/* The starting veil must fully hide the shell-startup phase behind it, so it is opaque terminal
+   background rather than the translucent overlay tint. It fades out so the terminal materializes. */
+#session-starting {
+    background: var(--console-terminal-bg);
+    transition: opacity 240ms ease-out;
+}
+
+#session-starting.fading-out {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #session-starting {
+        transition: none;
+    }
+}
+
 .overlay-card {
     text-align: center;
     padding: 20px;

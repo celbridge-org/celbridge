@@ -23,8 +23,7 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
 
         foreach (var pair in hostEnvironment)
         {
-            // PATH merges rather than replaces, so a console-configured PATH still gains uv_bin. A python
-            // session's provider-set PATH already carries it and passes through unchanged.
+            // PATH merges rather than replaces, so a console-configured PATH still gains uv_bin.
             if (pair.Key == "PATH")
             {
                 environment.TryGetValue("PATH", out var basePath);

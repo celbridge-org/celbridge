@@ -2,16 +2,18 @@ using System.Collections.Concurrent;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// The python session type: an IPython REPL that dials the shared cel-proxy JSON-RPC server and exposes
-/// cel.* against the workspace.
+/// The python session type: injects a celbridge-py command into the session's shell, starting an IPython
+/// REPL that dials the shared cel-proxy JSON-RPC server and exposes cel.* against the workspace.
 /// </summary>
 public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
 {
+    // Carries the console's startup script to celbridge-py, which runs it as IPython exec_lines.
+    private const string StartupScriptVariable = "CELBRIDGE_PYTHON_STARTUP";
+
     private readonly IPythonConfigService _pythonConfigService;
     private readonly IPythonLaunchService _launchService;
     private readonly IMessengerService _messengerService;
@@ -45,7 +47,7 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
         new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{script_path}\""),
     };
 
-    public async Task<Result<ConsoleLaunchSpec>> BuildLaunchSpecAsync(ConsoleSessionContext context)
+    public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
     {
         var pythonVersion = ResolvePythonVersion(context);
         var dependencies = context.Dependencies ?? Array.Empty<string>();
@@ -54,28 +56,40 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
             context.ProjectFolderPath,
             pythonVersion,
             dependencies,
-            context.Arguments,
-            context.Environment);
+            context.Arguments);
 
-        var launchResult = await _launchService.BuildLaunchAsync(request);
-        if (launchResult.IsFailure)
+        var startupResult = await _launchService.BuildStartupAsync(request);
+        if (startupResult.IsFailure)
         {
-            return Result<ConsoleLaunchSpec>.Fail("Failed to build the Python launch")
-                .WithErrors(launchResult);
+            return Result<ConsoleStartupInvocation>.Fail("Failed to build the Python startup invocation")
+                .WithErrors(startupResult);
         }
-        var launch = launchResult.Value;
+        var startup = startupResult.Value;
 
         // Remember the fingerprint so it can be persisted once the session connects back. The token was
         // seeded into the environment by the console channel.
         if (context.Environment.TryGetValue(ConsoleEnvironmentVariables.SessionToken, out var tokenText)
             && Guid.TryParse(tokenText, out var sessionToken))
         {
-            _pendingFingerprints[sessionToken] = new PendingFingerprint(launch.Fingerprint, launch.ProjectPythonFolder);
+            _pendingFingerprints[sessionToken] = new PendingFingerprint(startup.Fingerprint, startup.ProjectPythonFolder);
         }
 
-        var workingDirectory = ConsoleWorkingFolder.Resolve(context.WorkingDirectory, context.ProjectFolderPath);
-        var launchSpec = new ConsoleLaunchSpec(launch.CommandLine, workingDirectory, launch.Environment);
-        return launchSpec;
+        // The startup script goes to IPython as exec_lines rather than being typed at the prompt: the REPL
+        // discards pending terminal input as it starts, so injected type-ahead is lost.
+        var environment = new Dictionary<string, string>(startup.Environment);
+        var handlesStartupScript = !string.IsNullOrWhiteSpace(context.StartupScript);
+        if (handlesStartupScript)
+        {
+            environment[StartupScriptVariable] = context.StartupScript!;
+        }
+
+        var startupInvocation = new ConsoleStartupInvocation(
+            startup.Executable,
+            Array.Empty<string>(),
+            environment,
+            handlesStartupScript);
+
+        return startupInvocation;
     }
 
     // The version comes from the .console config, or the bundled default when the console field is blank.

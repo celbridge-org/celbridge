@@ -98,7 +98,8 @@ public interface IConsoleSessionRegistry
 
     /// <summary>
     /// Returns the Ready consoles whose effective runners cover a file extension, as Run menu targets in
-    /// open order.
+    /// open order. A console whose client connection was bound and then lost (its REPL exited back to the
+    /// shell prompt) is excluded until a client reconnects or the console reopens.
     /// </summary>
     IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension);
 

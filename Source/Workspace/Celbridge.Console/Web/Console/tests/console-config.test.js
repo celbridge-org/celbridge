@@ -9,7 +9,55 @@ import {
     normalizeConfig,
     configsEqual,
     buildStartConfig,
+    createMarkerScanner,
 } from '../console-config.js';
+
+describe('createMarkerScanner', () => {
+    const marker = 'CELBRIDGE-CONSOLE-READY-a1b2c3d4';
+
+    it('passes through output that does not contain the marker', () => {
+        const scanner = createMarkerScanner(marker);
+        expect(scanner.push('PS C:\\> ')).toEqual({ text: 'PS C:\\> ', found: false });
+    });
+
+    it('strips the marker and reports it found', () => {
+        const scanner = createMarkerScanner(marker);
+        const scanned = scanner.push(`\x1b[2J${marker}banner`);
+        expect(scanned.found).toBe(true);
+        expect(scanned.text).toBe('\x1b[2Jbanner');
+    });
+
+    it('detects a marker split across chunks without painting a partial match', () => {
+        const scanner = createMarkerScanner(marker);
+        const head = marker.slice(0, 10);
+        const tail = marker.slice(10);
+
+        const first = scanner.push(`cleared${head}`);
+        expect(first).toEqual({ text: 'cleared', found: false });
+
+        const second = scanner.push(`${tail}>>> `);
+        expect(second).toEqual({ text: '>>> ', found: true });
+    });
+
+    it('does not match the echoed command line, which splits the marker', () => {
+        const scanner = createMarkerScanner(marker);
+        const echoed = "Clear-Host; Write-Host -NoNewline ('CELBRIDGE-CONSOLE' + '-READY-a1b2c3d4'); celbridge-py";
+
+        const scanned = scanner.push(echoed);
+
+        expect(scanned.found).toBe(false);
+        expect(scanned.text).toBe(echoed);
+    });
+
+    it('releases held-back text on flush', () => {
+        const scanner = createMarkerScanner(marker);
+        const head = marker.slice(0, 10);
+
+        expect(scanner.push(`noise${head}`).text).toBe('noise');
+        expect(scanner.flush()).toBe(head);
+        expect(scanner.flush()).toBe('');
+    });
+});
 
 describe('splitLines', () => {
     it('trims each line and drops blank ones', () => {
@@ -169,9 +217,15 @@ describe('buildStartConfig', () => {
             arguments: [],
             dependencies: [],
             workingDirectory: '',
+            startupScript: '',
             environment: {},
             runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
         });
+    });
+
+    it('carries the startup script through to the payload', () => {
+        const built = buildStartConfig({ startupScript: 'import numpy as np\nx = 1' });
+        expect(built.startupScript).toBe('import numpy as np\nx = 1');
     });
 
     it('defaults an empty config to a blank shell payload', () => {
@@ -183,6 +237,7 @@ describe('buildStartConfig', () => {
             arguments: [],
             dependencies: [],
             workingDirectory: '',
+            startupScript: '',
             environment: {},
             runners: [],
         });
