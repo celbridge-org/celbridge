@@ -217,7 +217,7 @@ public sealed class ConPtyTerminal : IPtyBackend
 
         if (_pseudoConsoleHandle == IntPtr.Zero)
         {
-            // The psuedo console has not initialized yet.
+            // The pseudo console has not initialized yet.
             // Record the cols & rows so we can apply them when Start() is called.
             return;
         }

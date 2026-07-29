@@ -80,7 +80,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
-        _workspaceLoader = workspaceLoader;
 
         // Forward panel-size change notifications from the workspace settings so the
         // bound panel columns update when the layout is reset or restored.
