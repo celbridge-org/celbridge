@@ -47,24 +47,4 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-    public static void SelectResource(ResourceKey resource, bool showExplorerPanel)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<ISelectResourceCommand>(command =>
-        {
-            command.Resource = resource;
-            command.ShowExplorerPanel = showExplorerPanel;
-        });
-    }
-
-    public static void SelectResource(ResourceKey resource)
-    {
-        SelectResource(resource, true);
-    }
-
 }

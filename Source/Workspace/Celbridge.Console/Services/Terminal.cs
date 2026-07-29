@@ -10,6 +10,8 @@ public class Terminal : ITerminal, IDisposable
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
 
+    public int? ProcessId => _backend?.ProcessId;
+
     public Terminal()
     {
         _backend = PtyBackendFactory.Create();

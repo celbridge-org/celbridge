@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.UserInterface;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WorkspaceUI.Views;
 
@@ -9,6 +10,9 @@ namespace Celbridge.WorkspaceUI.Views;
 public sealed partial class PanelHeader : UserControl
 {
     private readonly ICommandService _commandService;
+    private readonly IStringLocalizer _stringLocalizer;
+
+    private string CloseButtonTooltip => _stringLocalizer.GetString("PanelHeader_CloseTooltip");
 
     /// <summary>
     /// The title text displayed in the header.
@@ -97,6 +101,7 @@ public sealed partial class PanelHeader : UserControl
     public PanelHeader()
     {
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         this.InitializeComponent();
 

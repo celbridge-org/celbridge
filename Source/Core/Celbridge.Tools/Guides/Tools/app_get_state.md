@@ -13,8 +13,8 @@ A JSON object with these fields:
 - `isLoaded` (bool) — whether a project is currently loaded.
 - `projectName` (string) — the project name, empty when no project is loaded.
 - `featureFlags` (object) — maps each public flag name to its enabled state. Consult before calling a feature-gated tool. Currently includes `webview-dev-tools` and `webview-dev-tools-eval`.
-- `agentDocs` (object) — `{entry, via}`. The entry is the orientation guide name (`agent_instructions`); `via` names the tool to read it through (`guides_read`).
+- `agentDocs` (object) — `{entry, via}`. The entry is the orientation guide name (`agent_instructions`). `via` names the tool to read it through (`guides_read`).
 - `focusedPanel` (string) — the currently focused workspace panel (`Documents`, `Explorer`, `Inspector`, `Console`, etc., or `None`).
-- `layoutMode` (object) — `{contextPanelVisible, inspectorPanelVisible, consolePanelVisible, consoleMaximized}`. Panel layout is stored per project, so a project that has not customised its layout reports the workspace defaults rather than any global preference.
+- `layoutMode` (object) — `{contextPanelVisible, inspectorPanelVisible, consolePanelVisible}`. Panel layout is stored per project, so a project that has not customised its layout reports the workspace defaults rather than any global preference.
 
-To inspect the project's declared Python dependencies, read the `.celbridge` project file directly with `file_read` — the `[project].dependencies` array carries the list.
+Python dependencies are declared per console: read a `.console` file directly with `file_read` — the `[session.options].dependencies` array carries that console's list.

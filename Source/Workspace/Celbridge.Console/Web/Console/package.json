@@ -1,0 +1,15 @@
+{
+  "name": "celbridge-console-editor",
+  "version": "0.1.0",
+  "description": "Web app for the .console document editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.2",
+    "vitest": "^4.0.0"
+  }
+}

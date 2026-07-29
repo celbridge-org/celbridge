@@ -9,13 +9,6 @@
 
     <UserControl.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-
-        <Style x:Key="TitleBarSeparatorStyle" TargetType="Border">
-            <Setter Property="Width" Value="1"/>
-            <Setter Property="Height" Value="20"/>
-            <Setter Property="Margin" Value="4,0,4,0"/>
-            <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-        </Style>
     </UserControl.Resources>
 
   <StackPanel Orientation="Horizontal"
@@ -72,7 +65,7 @@
 
         </NavigationView.MenuItems>
 
-        <!-- Content after Home and Community: the Workspace button, then the shortcut buttons. -->
+        <!-- Content after Home and Community: the Workspace button. -->
         <NavigationView.PaneCustomContent>
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Stretch">
@@ -143,21 +136,6 @@
                           Visibility="Collapsed"/>
                 </Grid>
               </Button>
-
-              <!-- Shortcut buttons (added programmatically) -->
-              <StackPanel x:Name="PaneButtonsContainer"
-                          Orientation="Horizontal"
-                          VerticalAlignment="Center"
-                          Visibility="Collapsed">
-
-                <Border x:Name="ShortcutLeadingSeparator"
-                        Style="{StaticResource TitleBarSeparatorStyle}"
-                        Visibility="Collapsed"/>
-
-                <StackPanel x:Name="ShortcutButtonsPanel"
-                            Orientation="Horizontal"/>
-
-              </StackPanel>
             </StackPanel>
         </NavigationView.PaneCustomContent>
     </NavigationView>

@@ -1,3 +1,4 @@
+using Celbridge.Console;
 using Celbridge.Python.Services;
 
 namespace Celbridge.Python;
@@ -8,6 +9,9 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IPythonConfigService, PythonConfigService>();
         services.AddSingleton<IPythonInstaller, PythonInstaller>();
-        services.AddTransient<IPythonService, PythonService>();
+        services.AddSingleton<IPythonLaunchService, PythonLaunchService>();
+
+        services.AddSingleton<IConsoleSessionProvider, PythonSessionProvider>();
+        services.AddSingleton<IConsoleEnvironmentContributor, PythonEnvironmentContributor>();
     }
 }

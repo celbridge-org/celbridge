@@ -1,7 +1,7 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages workspace layout region visibility and console maximized state.
+/// Manages workspace layout region visibility.
 /// </summary>
 public interface ILayoutService
 {
@@ -34,15 +34,4 @@ public interface ILayoutService
     /// Toggles the visibility of a specific region.
     /// </summary>
     void ToggleRegionVisibility(LayoutRegion region);
-
-    /// <summary>
-    /// Whether the Console panel is currently maximized to fill the Documents area.
-    /// </summary>
-    bool IsConsoleMaximized { get; }
-
-    /// <summary>
-    /// Sets the maximized state of the Console panel.
-    /// When maximized, the Console panel fills the Documents area.
-    /// </summary>
-    void SetConsoleMaximized(bool isMaximized);
 }

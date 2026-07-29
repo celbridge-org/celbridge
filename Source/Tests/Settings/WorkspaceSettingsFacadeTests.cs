@@ -88,7 +88,6 @@ public class WorkspaceSettingsFacadeTests
         settings.SecondaryPanelWidth.Should().Be(WorkspaceConstants.SecondaryPanelWidth);
         settings.ConsolePanelHeight.Should().Be(WorkspaceConstants.ConsolePanelHeight);
         settings.DetailPanelHeight.Should().Be(WorkspaceConstants.DetailPanelHeight);
-        settings.IsConsoleMaximized.Should().BeFalse();
         settings.SearchMatchCase.Should().BeFalse();
         settings.SearchWholeWord.Should().BeFalse();
         settings.ReplaceMode.Should().BeFalse();

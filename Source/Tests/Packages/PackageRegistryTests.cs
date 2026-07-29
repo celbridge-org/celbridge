@@ -1,7 +1,5 @@
-using Celbridge.Console;
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
-using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
@@ -21,7 +19,7 @@ public class PackageServiceTests
 {
     private string _tempProjectFolder = null!;
     private PackageService _service = null!;
-    private IModuleService _moduleService = null!;
+    private IBundledPackageProvider _bundledPackageProvider = null!;
     private IMessengerService _messengerService = null!;
     private IProjectLoadReporter _loadReporter = null!;
     private IconService _iconService = null!;
@@ -36,15 +34,15 @@ public class PackageServiceTests
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         _messengerService = Substitute.For<IMessengerService>();
-        _moduleService = Substitute.For<IModuleService>();
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor>());
+        _bundledPackageProvider = Substitute.For<IBundledPackageProvider>();
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor>());
 
         // Discovery is independent of the project config. Tests that exercise declared
         // editors call SetProjectConfig to supply an activation list and declarations.
         _projectService = Substitute.For<IProjectService>();
         _projectService.CurrentProject.Returns((IProject?)null);
 
-        // The registry reconciles and persists through IProjectService; mirror the real delegation to
+        // The registry reconciles and persists through IProjectService. Mirror the real delegation to
         // the static reconciler so the mocked service produces the same active set.
         _projectService.ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), Arg.Any<bool>())
             .Returns(callInfo =>
@@ -115,7 +113,7 @@ public class PackageServiceTests
         // than a stub that would accept anything.
         _iconService = new IconService();
 
-        var registry = new PackageRegistry(logger, _moduleService, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), _iconService);
+        var registry = new PackageRegistry(logger, new[] { _bundledPackageProvider }, localizationService, workspaceWrapper, _projectService, fileSystem, Substitute.For<IFileTypeCatalog>(), _iconService);
         _loadReporter = Substitute.For<IProjectLoadReporter>();
         _service = new PackageService(_messengerService, _loadReporter, registry);
     }
@@ -158,7 +156,7 @@ public class PackageServiceTests
 
     /// <summary>
     /// A dropped icon leaves the contribution loaded, so it is reported as a contribution warning rather
-    /// than a load failure. Project Settings keys these by editor id to flag the offending contribution.
+    /// than a load failure, keyed by editor id.
     /// </summary>
     [Test]
     public async Task RegisterPackages_UnknownIconName_IsReportedAgainstTheContribution()
@@ -313,7 +311,7 @@ public class PackageServiceTests
     public async Task GetBuiltInEditors_AlwaysActivePackage_IsPresentWithoutActivationEntry()
     {
         var bundledDir = CreateBuiltInCodeEditorPackage();
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
@@ -328,7 +326,7 @@ public class PackageServiceTests
         // The spreadsheet package ships in the installer, so its editor is a built-in that the
         // project never activates or declares.
         var bundledDir = CreateBuiltInSpreadsheetPackage();
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
@@ -342,7 +340,7 @@ public class PackageServiceTests
         // A source build without the SpreadJS library never discovers the spreadsheet package.
         // Its editor degrades to being unavailable, and the required built-ins are unaffected.
         var bundledDir = CreateBuiltInCodeEditorPackage();
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
@@ -434,7 +432,7 @@ public class PackageServiceTests
     {
         var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", ".bnd");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -449,7 +447,7 @@ public class PackageServiceTests
         CreateProjectPackage("proj-editor", "proj", "Project", ".proj");
         var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", ".bnd");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -523,7 +521,7 @@ public class PackageServiceTests
     public async Task RegisterPackages_PackageWithCelInMiddleSegment_Accepted()
     {
         // Only the trailing extension is reserved. .cel.bar ends in .bar and
-        // does not conflict with sidecar pairing — the editor binds normally
+        // does not conflict with sidecar pairing, so the editor binds normally
         // and the sidecar lives next to the parent at <name>.cel.bar.cel.
         CreateProjectPackage("midcel", "mid-cel", "MidCel", ".cel.bar");
 
@@ -540,7 +538,7 @@ public class PackageServiceTests
         // The reservation applies to bundled and project packages alike.
         var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge.reserved", "Bundled Reserved", ".cel");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = reservedDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = reservedDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -553,7 +551,7 @@ public class PackageServiceTests
         // Bundled packages are the intended owners of the "celbridge." namespace.
         var bundledDir = CreateBundledPackage("bundled-official", "celbridge.notes", "Official Notes", ".note");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -570,7 +568,7 @@ public class PackageServiceTests
         var dirA = CreateBundledPackage("bundled-a", "celbridge.conflict", "Conflict A", ".a");
         var dirB = CreateBundledPackage("bundled-b", "celbridge.conflict", "Conflict B", ".b");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor>
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor>
         {
             new() { Folder = dirA },
             new() { Folder = dirB }
@@ -590,7 +588,7 @@ public class PackageServiceTests
         var bundledDir = CreateBundledPackage("bundled", "shared-id", "Bundled", ".bnd");
         CreateProjectPackage("project", "shared-id", "Project", ".prj");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -664,7 +662,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _messengerService.Received(1).Send(Arg.Is<ConsoleErrorMessage>(m => m.ErrorType == ConsoleErrorType.PackageLoadError));
+        _messengerService.Received(1).Send(Arg.Is<ProjectErrorMessage>(m => m.ErrorType == ProjectErrorType.PackageLoadError));
     }
 
     [Test]
@@ -692,7 +690,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        _messengerService.DidNotReceive().Send(Arg.Is<ConsoleErrorMessage>(m => m.ErrorType == ConsoleErrorType.PackageLoadError));
+        _messengerService.DidNotReceive().Send(Arg.Is<ProjectErrorMessage>(m => m.ErrorType == ProjectErrorType.PackageLoadError));
     }
 
     [Test]
@@ -702,7 +700,7 @@ public class PackageServiceTests
         Directory.CreateDirectory(bundledDir);
         File.WriteAllText(Path.Combine(bundledDir, "package.toml"), "{ invalid toml }");
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -715,7 +713,7 @@ public class PackageServiceTests
         var bundledDir = Path.Combine(_tempProjectFolder, "no-manifest-bundled");
         Directory.CreateDirectory(bundledDir);
 
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -760,7 +758,7 @@ public class PackageServiceTests
     public async Task GetContributingPackage_ActiveContributionId_ReturnsThePackage()
     {
         var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
@@ -789,7 +787,7 @@ public class PackageServiceTests
         // Editors are addressed by the "{package}.{contribution}" reference, not the bare package
         // name, so a lookup by package name alone resolves to nothing.
         var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
-        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);

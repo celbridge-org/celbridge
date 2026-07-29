@@ -34,11 +34,6 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     float DetailPanelHeight { get; set; }
 
     /// <summary>
-    /// Whether the Console panel is maximized to fill the Documents area.
-    /// </summary>
-    bool IsConsoleMaximized { get; set; }
-
-    /// <summary>
     /// Match case option for the search panel.
     /// </summary>
     bool SearchMatchCase { get; set; }

@@ -6,10 +6,29 @@
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
+import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
 
 const client = celbridge;
 
 const inputEl = document.getElementById('process-input');
+
+// Demonstrate the shared splitter: drag the divider to resize the left pane. Double-click to reset.
+const demoSplit = document.querySelector('.demo-split');
+const demoLeftPane = document.querySelector('.demo-pane-left');
+const demoSplitter = document.getElementById('demo-splitter');
+let demoDragStartWidth = 0;
+attachSplitter(demoSplitter, {
+    onDragStart() {
+        demoDragStartWidth = demoLeftPane.getBoundingClientRect().width;
+    },
+    onDrag(deltaX) {
+        const maxWidth = demoSplit.getBoundingClientRect().width - 80 - 8;
+        demoLeftPane.style.width = Math.max(80, Math.min(demoDragStartWidth + deltaX, maxWidth)) + 'px';
+    },
+    onReset() {
+        demoLeftPane.style.width = '45%';
+    },
+});
 
 // Gates change notifications while the document is read-only or being loaded by the framework, so a
 // non-user write does not schedule an auto-save.

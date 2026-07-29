@@ -69,6 +69,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private CustomDocumentHandler? _documentHandler;
     private PackageToolsHandler? _toolsHandler;
+
+    // A package-declared channel (e.g. the console terminal I/O bridge) registered as an additional RPC
+    // target set, plus the host adapter it talks through. Null for editors whose package declares no
+    // channel.
+    private ICustomEditorChannel? _channel;
+    private CustomEditorChannelHost? _channelHost;
+
     private IDisposable? _appStateConnection;
 
     // This editor's own state store (writability), mirrored to its WebView over the viewState channel.
@@ -117,14 +124,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // flow returns only when the WebView and host are ready for RPCs.
     private TaskCompletionSource<Result>? _initTcs;
 
-    /// <summary>
-    /// The WebView2 control acquired from the factory.
-    /// </summary>
+    // The WebView2 control, acquired from the factory.
     private WebView2? WebView { get; set; }
 
-    /// <summary>
-    /// The Celbridge host for JSON-RPC communication with the WebView.
-    /// </summary>
+    // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
 
     public CustomEditorController(
@@ -314,6 +317,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         WebView.CoreWebView2.Settings.AreDevToolsEnabled =
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
+        // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
+        // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels.
+        // The .webview browser and HTML viewer keep zoom.
+        _webViewAdapter.SetZoomControlEnabled(WebView.CoreWebView2, false);
+
         // Register this editor's web surface. It hosts an edit target (this) for the Edit commands.
         RegisterWebSurfaceFocus();
 
@@ -392,6 +400,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             Host.AddLocalRpcTarget<PackageToolsHandler>(_toolsHandler);
         }
 
+        // Attach a package-declared channel as an additional RPC target set. Must run before StartListening
+        // because AddLocalRpcTarget throws once the host is listening. No-op for editors whose package
+        // declares no channel provider.
+        AttachChannel();
+
         Host.StartListening();
 
         // Registering pushes the current snapshot, so it must run after StartListening. Seed writability
@@ -448,6 +461,37 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         };
 
         await editorLoader.LoadAsync(loadRequest);
+    }
+
+    // Resolves the first channel provider that handles this editor's contribution and attaches its channel
+    // as an additional RPC target set. Providers are resolved from DI like the custom editor loaders.
+    private void AttachChannel()
+    {
+        Guard.IsNotNull(_contribution);
+        Guard.IsNotNull(_resolvedEditor);
+        Guard.IsNotNull(Host);
+
+        ICustomEditorChannelProvider? provider = null;
+        foreach (var candidate in _serviceProvider.GetServices<ICustomEditorChannelProvider>())
+        {
+            if (candidate.CanCreate(_contribution))
+            {
+                provider = candidate;
+                break;
+            }
+        }
+
+        if (provider is null)
+        {
+            return;
+        }
+
+        var context = new CustomEditorChannelContext(_resolvedEditor, _viewModel.FileResource);
+        var channel = provider.Create(context);
+
+        _channelHost = new CustomEditorChannelHost(Host);
+        channel.RegisterTargets(_channelHost);
+        _channel = channel;
     }
 
     // Registers this editor's web surface with the focus registry using the consumer-supplied panel identity
@@ -517,6 +561,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // partially initialized states.
     private void TeardownWebViewState()
     {
+        // Dispose the channel before the host: its pty raises output and exit on background threads, so
+        // unsubscribing and disposing it must complete before the host it notifies through is gone. Marking
+        // the adapter disposed first turns any in-flight outbound notification into a no-op.
+        if (_channel is not null)
+        {
+            _channelHost?.MarkDisposed();
+            _channel.Dispose();
+            _channel = null;
+            _channelHost = null;
+        }
+
         if (_toolBridge is not null)
         {
             _toolBridge.Unregister(_toolBridgeRegisteredResource);
@@ -643,8 +698,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// The writable state last applied to the editor. Used by the save tick to suppress expected read-only
-    /// save failures.
+    /// The writable state last applied to the editor.
     /// </summary>
     public WritableState WritableState => _writableState;
 

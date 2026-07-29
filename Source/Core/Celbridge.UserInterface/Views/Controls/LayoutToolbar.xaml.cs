@@ -216,21 +216,13 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
     {
-        // Toggle panel visibility
-        // Using an immediate command to ensure console is shown before focusing
+        // Toggle the banners-only console region's visibility.
         var isVisible = !_layoutService.IsConsolePanelVisible;
-        _commandService.ExecuteImmediate<ISetRegionVisibilityCommand>(command =>
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
             command.Regions = LayoutRegion.Console;
             command.IsVisible = isVisible;
         });
-
-        // Request focus when showing the console
-        if (isVisible)
-        {
-            var message = new RequestConsoleFocusMessage();
-            _messengerService.Send(message);
-        }
     }
 
     private void ToggleSecondaryPanelButton_Click(object sender, RoutedEventArgs e)

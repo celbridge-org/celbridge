@@ -1,5 +1,5 @@
-// Compiling the whole adapter under WINDOWS aligns compilation with the DI selection in
-// PlatformServiceConfiguration, so the Skia build never links against the WinAppSDK WebView2 surface.
+// Compiling the whole adapter under WINDOWS aligns compilation with the DI selection, so the Skia
+// build never links against the WinAppSDK WebView2 surface.
 #if WINDOWS
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
@@ -125,6 +125,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         // for identification rather than replacing the UA. Not idempotent: call once per WebView, since a
         // second call would append the token again.
         coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
+    }
+
+    public void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled)
+    {
+        coreWebView2.Settings.IsZoomControlEnabled = enabled;
     }
 
     // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find

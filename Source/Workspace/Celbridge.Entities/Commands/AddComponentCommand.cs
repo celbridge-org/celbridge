@@ -30,21 +30,4 @@ public class AddComponentCommand : CommandBase, IAddComponentCommand
 
         return addResult;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static async Task<Result> AddComponent(ResourceKey resource, int insertAtIndex, string componentType)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        var result = await commandService.ExecuteAsync<IAddComponentCommand>(command =>
-        {
-            command.ComponentKey = new ComponentKey(resource, insertAtIndex);
-            command.ComponentType = componentType;
-        });
-
-        return result;
-    }
 }

@@ -30,17 +30,4 @@ public class ActivateDocumentCommand : CommandBase, IActivateDocumentCommand
         await Task.CompletedTask;
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-    public static void ActivateDocument(ResourceKey fileResource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IActivateDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-        });
-    }
 }

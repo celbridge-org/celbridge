@@ -1,0 +1,6 @@
+[package]
+name = "celbridge.console"
+title = "Console_Package_Name"
+
+[contributes]
+editors = ["console.editor.toml"]

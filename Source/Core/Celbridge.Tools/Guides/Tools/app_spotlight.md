@@ -14,7 +14,7 @@ Shell panels:
 
 - `explorer-panel` — the Explorer panel (left).
 - `documents-panel` — the Documents area (centre).
-- `console-panel` — the Console panel (bottom), where the user talks to you.
+- `console-panel` — the Console panel (bottom), which shows project error and notification banners.
 - `inspector-panel` — the Inspector panel (right).
 
 Utility Panel rail (the icon strip on the far left that switches the primary panel):
@@ -46,10 +46,8 @@ Search panel (all switch to the Search tab first; the replace ones also enable r
 - `search-replace-history-button` — the recent-replacements dropdown.
 - `search-replace-all-button` — the replace-all button.
 
-Console and documents:
+Documents:
 
-- `console-input` — the console area where the user types to you.
-- `console-maximize-button` — the console maximise/restore button.
 - `document-tab-strip` — the open-document tab strip (only resolves with a document open).
 - `split-editor-button` — the split-editor button on the document toolbar.
 

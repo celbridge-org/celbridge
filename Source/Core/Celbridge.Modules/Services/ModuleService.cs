@@ -34,7 +34,6 @@ public class ModuleService : IModuleService
 
     public static Result LoadModules(List<string> modules, IServiceCollection services)
     {
-        // Load Modules
         foreach (var module in modules)
         {
             var loadResult = _moduleLoader.LoadModules(module);
@@ -77,14 +76,6 @@ public class ModuleService : IModuleService
     }
 
     public IReadOnlyList<IModule> LoadedModules => _moduleLoader.LoadedModules.Values.ToList();
-
-    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
-    {
-        return _moduleLoader.LoadedModules.Values
-            .SelectMany(m => m.GetBundledPackages())
-            .Where(d => !string.IsNullOrEmpty(d.Folder))
-            .ToList();
-    }
 
     public Result<IActivity> CreateActivity(string activityName)
     {

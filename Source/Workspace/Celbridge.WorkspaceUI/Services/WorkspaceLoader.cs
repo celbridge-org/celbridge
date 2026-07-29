@@ -1,12 +1,10 @@
 using System.Text;
-using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Server;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -14,7 +12,6 @@ public class WorkspaceLoader
 {
     private readonly ILogger<WorkspaceLoader> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IUserInterfaceService _userInterfaceService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
@@ -25,7 +22,6 @@ public class WorkspaceLoader
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
         IWorkspaceWrapper workspaceWrapper,
-        IUserInterfaceService userInterfaceService,
         IFeatureFlags featureFlags,
         IProjectService projectService,
         IServerService serverService,
@@ -35,7 +31,6 @@ public class WorkspaceLoader
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _userInterfaceService = userInterfaceService;
         _featureFlags = featureFlags;
         _projectService = projectService;
         _serverService = serverService;
@@ -61,6 +56,13 @@ public class WorkspaceLoader
 
             // Surface entries the config parser skipped or degraded. The rest of the file applied.
             HandleConfigEntryErrors(currentProject.Config.EntryErrors, currentProject.ProjectFilePath);
+
+            // Surface a failed migration or an invalid/incompatible project version as a banner. These are
+            // project-scoped and fire on load regardless of whether any console is open.
+            if (currentProject.MigrationResult.Status != MigrationStatus.Complete)
+            {
+                HandleMigrationFailure(currentProject.MigrationResult, currentProject.ProjectFilePath);
+            }
         }
 
         // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
@@ -190,37 +192,12 @@ public class WorkspaceLoader
         await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
 
-        // Populate title bar shortcut buttons from project config.
-        PopulateTitleBarShortcuts();
-
         // Notify that the workspace has loaded.
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
 
-        // Initialize terminal window and Python scripting. These run after the workspace is considered
-        // "loaded" because they don't block the workspace UI from being functional.
-
-        // Only initialize console and Python if the console-panel feature is enabled.
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        if (isConsolePanelEnabled)
-        {
-            var consoleService = workspaceService.ConsoleService;
-            var initTerminal = await consoleService.InitializeTerminalWindow();
-            if (initTerminal.IsFailure)
-            {
-                // Workspace loading continues even if terminal initialization fails
-                _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.DiagnosticReport);
-            }
-
-            // Initialize Python scripting
-            // If Python fails to initialize, the error is reported and the project continues to load.
-            await TryInitializePythonAsync(workspaceService);
-        }
-        else
-        {
-            _logger.LogInformation("Console panel is disabled by feature flag");
-        }
+        // A console session starts only when the user opens a .console document, not on load.
 
         // Awaited so the consistency check completes before any project script that runs on load can
         // modify the structure the scan reads.
@@ -281,93 +258,6 @@ public class WorkspaceLoader
         }
     }
 
-    private async Task TryInitializePythonAsync(IWorkspaceService workspaceService)
-    {
-        var projectService = ServiceLocator.AcquireService<IProjectService>();
-        var currentProject = projectService.CurrentProject;
-
-        if (currentProject is null)
-        {
-            return;
-        }
-
-        var migrationResult = currentProject.MigrationResult;
-
-        if (migrationResult.Status != MigrationStatus.Complete)
-        {
-            HandleMigrationFailure(migrationResult, currentProject.ProjectFilePath);
-            return;
-        }
-
-        var shortcutsSection = currentProject.Config.Shortcuts;
-        if (shortcutsSection.HasErrors)
-        {
-            // Log the detailed errors but don't prevent workspace loading
-            // The Python REPL will not be available until errors are fixed
-            HandleShortcutConfigErrors(shortcutsSection.ValidationErrors, currentProject.ProjectFilePath);
-            return;
-        }
-
-        // Project has loaded and migration completed with no config errors.
-        // We can now safely initialize Python.
-        var pythonService = workspaceService.PythonService;
-        var pythonResult = await pythonService.InitializePython();
-        if (pythonResult.IsFailure)
-        {
-            _logger.LogError(pythonResult, "Failed to initialize Python scripting");
-        }
-    }
-
-    private void PopulateTitleBarShortcuts()
-    {
-        // Only populate shortcuts if console panel is enabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        if (!isConsolePanelEnabled)
-        {
-            return;
-        }
-
-        var projectService = ServiceLocator.AcquireService<IProjectService>();
-        var currentProject = projectService.CurrentProject;
-        if (currentProject is null)
-        {
-            return;
-        }
-
-        var shortcutsSection = currentProject.Config.Shortcuts;
-        if (shortcutsSection.HasErrors)
-        {
-            // Error notification is handled by TryInitializePythonAsync
-            return;
-        }
-
-        var titleBar = _userInterfaceService.TitleBar;
-        if (titleBar is null)
-        {
-            return;
-        }
-
-        var shortcuts = shortcutsSection.Definitions
-            .Select(d => new Shortcut
-            {
-                Name = d.Name,
-                Icon = d.Icon,
-                Tooltip = d.Tooltip,
-                Script = d.Script
-            })
-            .ToList();
-
-        titleBar.BuildShortcutButtons(shortcuts, (script) =>
-        {
-            _workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
-        });
-    }
-
-    public void ClearTitleBarShortcuts()
-    {
-        _userInterfaceService.TitleBar?.ClearShortcutButtons();
-    }
-
     // Creates the persistent surface for every utility instance and builds the rail. The utilities are owned by
     // the utility service for the workspace lifetime.
     private async Task BuildUtilities()
@@ -426,25 +316,7 @@ public class WorkspaceLoader
         _logger.LogError(sb.ToString());
 
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        var message = new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectFileName);
-        messengerService.Send(message);
-    }
-
-    private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)
-    {
-        var projectFileName = Path.GetFileName(projectFilePath);
-        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-
-        // Log detailed error information
-        var sb = new StringBuilder();
-        sb.AppendLine($"Shortcut configuration errors in '{projectFileName}' - Python initialization disabled:");
-        foreach (var error in errors)
-        {
-            sb.AppendLine($"  Shortcut #{error.ShortcutIndex} ({error.PropertyName}): {error.Message}");
-        }
-        _logger.LogError(sb.ToString());
-
-        var message = new ConsoleErrorMessage(ConsoleErrorType.ShortcutConfigError, projectFileName);
+        var message = new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectFileName);
         messengerService.Send(message);
     }
 
@@ -453,31 +325,31 @@ public class WorkspaceLoader
         var projectFileName = Path.GetFileName(projectFilePath);
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
-        ConsoleErrorMessage message;
+        ProjectErrorMessage message;
 
         switch (migrationResult.Status)
         {
             case MigrationStatus.InvalidConfig:
-                _logger.LogError("Project config is invalid - Python initialization disabled");
-                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);
+                _logger.LogError("Project config is invalid");
+                message = new ProjectErrorMessage(ProjectErrorType.InvalidProjectConfig, projectFileName);
                 messengerService.Send(message);
                 break;
 
             case MigrationStatus.IncompatibleVersion:
-                _logger.LogError("Project version is not compatible with application version - Python initialization disabled");
-                message = new ConsoleErrorMessage(ConsoleErrorType.IncompatibleVersion, projectFileName);
+                _logger.LogError("Project version is not compatible with application version");
+                message = new ProjectErrorMessage(ProjectErrorType.IncompatibleVersion, projectFileName);
                 messengerService.Send(message);
                 break;
 
             case MigrationStatus.InvalidVersion:
-                _logger.LogError("Project version is invalid - Python initialization disabled");
-                message = new ConsoleErrorMessage(ConsoleErrorType.InvalidVersion, projectFileName);
+                _logger.LogError("Project version is invalid");
+                message = new ProjectErrorMessage(ProjectErrorType.InvalidVersion, projectFileName);
                 messengerService.Send(message);
                 break;
 
             case MigrationStatus.Failed:
-                _logger.LogError("Project migration failed - Python initialization disabled");
-                message = new ConsoleErrorMessage(ConsoleErrorType.MigrationError, projectFileName);
+                _logger.LogError("Project migration failed");
+                message = new ProjectErrorMessage(ProjectErrorType.MigrationError, projectFileName);
                 messengerService.Send(message);
                 break;
         }

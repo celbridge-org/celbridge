@@ -16,6 +16,7 @@ public class TcpTransport : ITcpTransport
     private readonly ILogger<TcpTransport> _logger;
     private readonly IMcpToolBridge _mcpToolBridge;
     private readonly List<object> _additionalTargets = new();
+    private readonly List<Func<int, object>> _connectionTargetFactories = new();
 
     private TcpListener? _listener;
     private int _nextConnectionId;
@@ -43,13 +44,16 @@ public class TcpTransport : ITcpTransport
 
     /// <summary>
     /// Registers an additional RPC target whose public methods will be exposed
-    /// to all connections. Must be called before StartListeningAsync. Used by
-    /// callers that own a non-DI handler instance and want it surfaced
-    /// alongside the broker's built-in targets.
+    /// to all connections. Must be called before StartListeningAsync.
     /// </summary>
     public void AddRpcTarget(object target)
     {
         _additionalTargets.Add(target);
+    }
+
+    public void AddRpcTargetFactory(Func<int, object> targetFactory)
+    {
+        _connectionTargetFactories.Add(targetFactory);
     }
 
     public async Task StartListeningAsync(int port, CancellationToken cancellationToken)
@@ -122,6 +126,14 @@ public class TcpTransport : ITcpTransport
         foreach (var target in _additionalTargets)
         {
             jsonRpc.AddLocalRpcTarget(target, targetOptions);
+        }
+
+        // Per-connection targets: each factory yields a target bound to this connection alone, so it can
+        // attribute inbound calls (e.g. session/handshake) to this connection id.
+        foreach (var targetFactory in _connectionTargetFactories)
+        {
+            var connectionTarget = targetFactory(connectionId);
+            jsonRpc.AddLocalRpcTarget(connectionTarget, targetOptions);
         }
 
         var disconnectionSource = new TaskCompletionSource();

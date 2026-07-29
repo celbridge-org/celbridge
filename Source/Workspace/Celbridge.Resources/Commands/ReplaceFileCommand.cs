@@ -273,34 +273,4 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
 
         return output;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void Replace(ResourceKey fileResource, string searchText, string replaceText)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IReplaceFileCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.SearchText = searchText;
-            command.ReplaceText = replaceText;
-        });
-    }
-
-    public static void Replace(ResourceKey fileResource, string searchText, string replaceText, bool matchCase, bool useRegex)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IReplaceFileCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.SearchText = searchText;
-            command.ReplaceText = replaceText;
-            command.MatchCase = matchCase;
-            command.UseRegex = useRegex;
-        });
-    }
 }

@@ -92,18 +92,4 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void UnarchiveResourceDialog(ResourceKey archiveResource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IUnarchiveResourceDialogCommand>(command =>
-        {
-            command.ArchiveResource = archiveResource;
-        });
-    }
 }

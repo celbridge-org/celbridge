@@ -6,41 +6,22 @@ namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// Windows title-bar chrome wrapper. Hosts the platform-neutral ApplicationToolbar inside the custom
-/// title bar (MainPage extends content into the title bar and assigns this control as the drag region)
-/// and carves out interactive passthrough regions so the toolbar's buttons receive clicks instead of
-/// the window-drag chrome. Used only on Windows. The Skia desktop heads host the ApplicationToolbar
-/// directly beneath the native title bar.
+/// title bar and carves out interactive passthrough regions so the toolbar's buttons receive clicks
+/// instead of the window-drag chrome.
 /// </summary>
-public sealed class TitleBar : UserControl, ITitleBar
+public sealed class TitleBar : UserControl
 {
     private readonly ApplicationToolbar _applicationToolbar;
     private Window? _mainWindow;
 
     public TitleBar()
     {
-        // The toolbar reserves its own trailing column for the caption buttons so its background paints
-        // behind them. No outer margin is needed here.
         _applicationToolbar = new ApplicationToolbar();
 
         Content = _applicationToolbar;
 
         Loaded += OnTitleBar_Loaded;
         Unloaded += OnTitleBar_Unloaded;
-    }
-
-    public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, Action<string> onScriptExecute)
-    {
-        return _applicationToolbar.BuildShortcutButtons(shortcuts, onScriptExecute);
-    }
-
-    public void SetShortcutButtonsVisible(bool isVisible)
-    {
-        _applicationToolbar.SetShortcutButtonsVisible(isVisible);
-    }
-
-    public void ClearShortcutButtons()
-    {
-        _applicationToolbar.ClearShortcutButtons();
     }
 
     private void OnTitleBar_Loaded(object sender, RoutedEventArgs e)

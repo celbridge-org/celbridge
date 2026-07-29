@@ -1,71 +1,11 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// Error states that the python console can get into.
+/// Broadcast whenever an open console changes state.
 /// </summary>
-public enum ConsoleErrorType
-{
-    /// <summary>
-    /// The .celbridge project config file doesn't exist or failed to parse.
-    /// </summary>
-    InvalidProjectConfig,
-
-    /// <summary>
-    /// Initialization failed prior to starting the python host process.
-    /// </summary>
-    PythonHostPreInitError,
-
-    /// <summary>
-    /// The python host process exited unexpectedly.
-    /// </summary>
-    PythonHostProcessError,
-
-    /// <summary>
-    /// The current version of Celbridge is incompatible with the project version.
-    /// This typically indicates that the project was created with a newer version of Celbridge.
-    /// </summary>
-    IncompatibleVersion,
-
-    /// <summary>
-    /// The project version is invalid or not specified.
-    /// </summary>
-    InvalidVersion,
-
-    /// <summary>
-    /// Project migration failed.
-    /// </summary>
-    MigrationError,
-
-    /// <summary>
-    /// The shortcut configuration in the project file contains errors.
-    /// </summary>
-    ShortcutConfigError,
-
-    /// <summary>
-    /// One or more packages failed to load during project discovery.
-    /// </summary>
-    PackageLoadError,
-
-    /// <summary>
-    /// The workspace-load project consistency check returned non-empty
-    /// findings (broken references, orphan .cel files, or broken .cel files).
-    /// The ConsoleErrorMessage.ConfigFileName field carries the summary text.
-    /// </summary>
-    ProjectCheckError,
-
-    /// <summary>
-    /// One or more entries in the .celbridge project config were skipped or degraded.
-    /// The project loads with the remaining entries applied.
-    /// </summary>
-    ProjectConfigEntryError,
-}
+public record ConsoleSessionStateChangedMessage(Guid SessionId, ConsoleSessionState State);
 
 /// <summary>
-/// Message sent when the console fails to initialize or terminates unexpectedly.
+/// Broadcast when a client connection is bound to its console via session/handshake.
 /// </summary>
-public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ConfigFileName);
-
-/// <summary>
-/// Message sent to request the console terminal to receive focus.
-/// </summary>
-public record RequestConsoleFocusMessage();
+public record ConsoleSessionConnectedMessage(Guid SessionId);

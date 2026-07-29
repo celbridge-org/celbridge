@@ -6,11 +6,12 @@ namespace Celbridge.Console;
 
 public class RunCommand : CommandBase, IRunCommand
 {
-    private ILogger<RunCommand> _logger;
-
+    private readonly ILogger<RunCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey ScriptResource { get; set; }
+
+    public Guid SessionId { get; set; }
 
     public string Arguments { get; set; } = string.Empty;
 
@@ -24,40 +25,35 @@ public class RunCommand : CommandBase, IRunCommand
 
     public override async Task<Result> ExecuteAsync()
     {
+        await Task.CompletedTask;
+
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {
             return Result.Fail("Workspace not loaded");
         }
 
-        var consoleService = _workspaceWrapper.WorkspaceService.ConsoleService;
+        // The runner registry substitutes {script_path} into the target console's runner template and
+        // injects it. Passing the resource path (not ToString) keeps the run relative to the project root.
+        var registry = _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry;
 
-        // .Path here, not ToString — the REPL's working folder is the project root.
-        var command = $"%run \"{ScriptResource.Path}\"";
-        if (!string.IsNullOrEmpty(Arguments))
+        var sessionId = SessionId;
+        if (sessionId == Guid.Empty)
         {
-            command += " " + Arguments;
+            // A programmatic caller that did not target a console runs in the first open console that can
+            // run the file type.
+            var extension = Path.GetExtension(ScriptResource.Path);
+            var targets = registry.GetRunTargets(extension);
+            if (targets.Count == 0)
+            {
+                return Result.Fail($"No open console can run '{ScriptResource.Path}'");
+            }
+            sessionId = targets[0].SessionId;
         }
 
-        consoleService.RunCommand(command);
+        registry.RunScript(sessionId, ScriptResource.Path, Arguments);
 
-        _logger.LogDebug($"Run script: {command}");
-
-        await Task.CompletedTask;
+        _logger.LogDebug("Run script '{Script}' in console session {SessionId}", ScriptResource.Path, sessionId);
 
         return Result.Ok();
-    }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void Run(ResourceKey scriptResource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IRunCommand>(command =>
-        {
-            command.ScriptResource = scriptResource;
-        });
     }
 }

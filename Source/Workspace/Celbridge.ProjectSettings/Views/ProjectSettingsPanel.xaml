@@ -174,6 +174,7 @@
                    TextWrapping="Wrap"/>
         <Button x:Name="ReloadProjectButton"
                 HorizontalAlignment="Stretch"
+                MaxWidth="240"
                 Content="{x:Bind ReloadProjectText}"
                 Command="{x:Bind ViewModel.ReloadProjectCommand}"/>
       </StackPanel>

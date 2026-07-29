@@ -36,7 +36,7 @@ def test_configure_logging_cleans_old_files(tmp_path):
 
 def test_configure_logging_env_override(tmp_path, monkeypatch):
     """Test that environment variables override defaults."""
-    monkeypatch.setenv("PYTHON_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("CELBRIDGE_PYTHON_LOG_LEVEL", "DEBUG")
     configure_logging(log_dir=str(tmp_path))
 
     root_logger = logging.getLogger()

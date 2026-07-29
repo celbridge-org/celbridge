@@ -37,19 +37,4 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void PrintProperty(ResourceKey resource, int componentIndex, string propertyPath)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IPrintPropertyCommand>(command =>
-        {
-            command.ComponentKey = new ComponentKey(resource, componentIndex);
-            command.PropertyPath = propertyPath;
-        });
-    }
 }

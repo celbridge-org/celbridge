@@ -29,6 +29,13 @@ public interface ITcpTransport : IDisposable
     void AddRpcTarget(object target);
 
     /// <summary>
+    /// Registers a factory invoked once per accepted connection to build an RPC target bound to that
+    /// connection alone. The connection id is passed so the target can attribute inbound calls to the
+    /// connection. Must be called before StartListeningAsync.
+    /// </summary>
+    void AddRpcTargetFactory(Func<int, object> targetFactory);
+
+    /// <summary>
     /// Starts listening for client connections on the specified TCP port.
     /// Accepts connections concurrently. Runs until the cancellation token
     /// is triggered or the transport is disposed.

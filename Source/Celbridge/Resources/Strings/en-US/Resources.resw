@@ -360,11 +360,11 @@
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
-  <data name="ConsolePanel_MaximizeConsole" xml:space="preserve">
-    <value>Maximize Console</value>
+  <data name="ConsolePanel_ReloadProjectButton" xml:space="preserve">
+    <value>Reload Project</value>
   </data>
-  <data name="ConsolePanel_RestoreConsole" xml:space="preserve">
-    <value>Restore Console</value>
+  <data name="PanelHeader_CloseTooltip" xml:space="preserve">
+    <value>Close panel</value>
   </data>
   <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
@@ -644,18 +644,6 @@ Do you wish to continue?</value>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
   </data>
-  <data name="ConsolePanel_PythonInitializationErrorTitle" xml:space="preserve">
-    <value>Python Initialization Error</value>
-  </data>
-  <data name="ConsolePanel_PythonProcessErrorTitle" xml:space="preserve">
-    <value>Python Process Error</value>
-  </data>
-  <data name="ConsolePanel_PythonProcessErrorMessage" xml:space="preserve">
-    <value>The python process has exited unexpectedly. Please check '{0}' for configuration errors and reload the project.</value>
-  </data>
-  <data name="ConsolePanel_PythonInitializationErrorMessage" xml:space="preserve">
-    <value>Please check '{0}' for configuration errors and reload the project</value>
-  </data>
   <data name="ConsolePanel_ProjectChangeBannerTitle" xml:space="preserve">
     <value>Project Configuration Changed</value>
   </data>
@@ -666,13 +654,13 @@ Do you wish to continue?</value>
     <value>Incompatible Project Version</value>
   </data>
   <data name="ConsolePanel_IncompatibleVersionMessage" xml:space="preserve">
-    <value>This project was created with a newer version of Celbridge. Python scripting has been disabled. Please upgrade Celbridge and reload the project.</value>
+    <value>This project was created with a newer version of Celbridge. Please upgrade Celbridge and reload the project.</value>
   </data>
   <data name="ConsolePanel_InvalidVersionTitle" xml:space="preserve">
     <value>Invalid Project Version</value>
   </data>
   <data name="ConsolePanel_InvalidVersionMessage" xml:space="preserve">
-    <value>Unable to determine project version compatibility. Python scripting has been disabled. Please correct the 'celbridge-version' property in '{0}' and reload the project.</value>
+    <value>Unable to determine project version compatibility. Please correct the 'celbridge-version' property in '{0}' and reload the project.</value>
   </data>
   <data name="ConsolePanel_MigrationBannerTitle" xml:space="preserve">
     <value>Project Upgraded</value>
@@ -846,7 +834,7 @@ Do you wish to continue?</value>
     <value>Console Panel</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_ConsolePanel_Description" xml:space="preserve">
-    <value>Console panel with an interactive Python REPL terminal.</value>
+    <value>Console panel that shows project error and notification banners.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
     <value>MCP Tools</value>
@@ -1198,12 +1186,6 @@ Do you wish to continue?</value>
   </data>
   <data name="MainMenu_ClearRecentProjects" xml:space="preserve">
     <value>Clear Recent Projects</value>
-  </data>
-  <data name="ConsolePanel_ShortcutConfigErrorTitle" xml:space="preserve">
-    <value>Shortcut Configuration Error</value>
-  </data>
-  <data name="ConsolePanel_ShortcutConfigErrorMessage" xml:space="preserve">
-    <value>The shortcut configuration in '{0}' contains errors. Python scripting has been disabled.</value>
   </data>
   <data name="ProjectUpgradeConfirmation_Title" xml:space="preserve">
     <value>Project Upgrade Required</value>

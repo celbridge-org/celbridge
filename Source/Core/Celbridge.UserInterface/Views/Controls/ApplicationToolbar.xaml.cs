@@ -9,7 +9,7 @@ namespace Celbridge.UserInterface.Views;
 /// The application toolbar. Platform-neutral content that each head hosts in its own title-bar
 /// arrangement.
 /// </summary>
-public sealed partial class ApplicationToolbar : UserControl, ITitleBar
+public sealed partial class ApplicationToolbar : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -23,21 +23,6 @@ public sealed partial class ApplicationToolbar : UserControl, ITitleBar
     public event EventHandler? InteractiveLayoutChanged;
 
     public TitleBarViewModel ViewModel { get; }
-
-    public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, Action<string> onScriptExecute)
-    {
-        return PageNavigationToolbar.BuildShortcutButtons(shortcuts, onScriptExecute);
-    }
-
-    public void SetShortcutButtonsVisible(bool isVisible)
-    {
-        PageNavigationToolbar.SetShortcutButtonsVisible(isVisible);
-    }
-
-    public void ClearShortcutButtons()
-    {
-        PageNavigationToolbar.ClearShortcutButtons();
-    }
 
     public ApplicationToolbar()
     {

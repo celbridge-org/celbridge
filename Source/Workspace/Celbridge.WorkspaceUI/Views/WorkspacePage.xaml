@@ -25,8 +25,7 @@
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
-      <RowDefinition x:Name="DocumentsPanelRow"
-                     Height="*"/>
+      <RowDefinition Height="*"/>
       <RowDefinition x:Name="ConsolePanelRow"
                      Height="200"
                      MinHeight="150"/>
@@ -59,8 +58,8 @@
           Background="{ThemeResource PanelBackgroundABrush}">
     </Grid>
 
-    <!-- Console Panel -->
-    <Grid x:Name="ConsolePanel"
+    <!-- Console Panel (banners-only project-notification host) -->
+    <Grid x:Name="ConsolePanelHost"
           Grid.Column="1"
           Grid.Row="1"
           layout:WorkspaceLayout.Region="Console"

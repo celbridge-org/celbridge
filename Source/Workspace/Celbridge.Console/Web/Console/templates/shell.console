@@ -1,0 +1,4 @@
+# A shell console. A blank executable launches the platform default shell.
+# Configure it from the console window's settings view.
+[session]
+type = "shell"

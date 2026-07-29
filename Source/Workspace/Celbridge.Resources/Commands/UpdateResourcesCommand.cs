@@ -21,14 +21,4 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-    public static void UpdateResourceRegistry()
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IUpdateResourcesCommand>();
-    }
 }

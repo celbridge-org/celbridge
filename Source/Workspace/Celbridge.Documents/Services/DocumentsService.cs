@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Console;
 using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -31,25 +30,16 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
-    /// <summary>
-    /// The currently active document. Returns Empty before the workspace page is loaded, because
-    /// the documents panel does not exist yet.
-    /// </summary>
+    // Returns Empty before the workspace page is loaded, when the documents panel does not exist yet.
     public ResourceKey ActiveDocument =>
         _workspaceWrapper.IsWorkspacePageLoaded
             ? DocumentsPanel.ActiveDocument
             : ResourceKey.Empty;
 
-    /// <summary>
-    /// Returns the currently open documents. Reads TabView-backed state, so callers must be on the
-    /// UI thread.
-    /// </summary>
+    // Reads TabView-backed state, so callers must be on the UI thread.
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
-    /// <summary>
-    /// Returns the number of visible document sections. Reads an int, which is atomic in .NET,
-    /// so this property is safe to call from any thread.
-    /// </summary>
+    // Reads an int, which is atomic in .NET, so SectionCount is safe to call from any thread.
     public int SectionCount => DocumentsPanel.SectionCount;
 
     public IDocumentEditorRegistry DocumentEditorRegistry => _documentEditorRegistry;
@@ -247,7 +237,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                 $"Ignored invalid editor-associations entries: {string.Join("; ", invalidEntries)}");
 
             var projectName = Path.GetFileName(projectService.CurrentProject!.ProjectFilePath);
-            _messengerService.Send(new ConsoleErrorMessage(ConsoleErrorType.ProjectConfigEntryError, projectName));
+            _messengerService.Send(new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectName));
         }
 
         _documentEditorRegistry.SetEditorAssociations(validatedAssociations);
@@ -383,7 +373,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var defaultEditorId = GetDefaultEditorId(fileResource);
 
-        // Preselect the current editor; if it is no longer a candidate (a stale override), preselect the
+        // Preselect the current editor. If it is no longer a candidate (a stale override), preselect the
         // project default instead.
         var currentIsCandidate = factories.Any(factory => factory.EditorId == currentEditorId);
         var preselectId = currentIsCandidate ? currentEditorId : defaultEditorId;

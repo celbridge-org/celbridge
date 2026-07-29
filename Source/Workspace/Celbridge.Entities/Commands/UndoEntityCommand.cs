@@ -24,18 +24,4 @@ public class UndoEntityCommand : CommandBase, IUndoEntityCommand
 
         return undoResult;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static async Task<Result> UndoEntity(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        return await commandService.ExecuteAsync<IUndoEntityCommand>(command =>
-        {
-            command.Resource = resource;
-        });
-    }
 }

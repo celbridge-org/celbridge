@@ -1,22 +1,18 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// The console service provides functionality to support the console panel in the workspace UI.
+/// The console service owns the workspace's open-console registry and the process owner that tears down
+/// their child processes.
 /// </summary>
 public interface IConsoleService
 {
     /// <summary>
-    /// Returns the terminal instance created by the console service during initialization. 
+    /// Returns the registry of open consoles.
     /// </summary>
-    ITerminal Terminal { get; }
+    IConsoleSessionRegistry SessionRegistry { get; }
 
     /// <summary>
-    /// Initialize the terminal by spawning a new process.
+    /// Returns the owner of the open consoles' child processes.
     /// </summary>
-    Task<Result> InitializeTerminalWindow();
-
-    /// <summary>
-    /// Runs a command by injecting terminal input.
-    /// </summary>
-    void RunCommand(string command);
+    IConsoleProcessOwner ProcessOwner { get; }
 }

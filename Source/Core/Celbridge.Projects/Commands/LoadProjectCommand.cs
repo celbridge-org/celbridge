@@ -40,18 +40,4 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         // Delegate to ProjectLoader for the complete loading workflow
         return await _projectLoader.LoadProjectAsync(ProjectFilePath);
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void LoadProject(string projectFilePath)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<ILoadProjectCommand>(command =>
-        {
-            command.ProjectFilePath = projectFilePath;
-        });
-    }
 }

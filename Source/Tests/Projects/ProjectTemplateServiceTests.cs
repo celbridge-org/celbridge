@@ -22,9 +22,6 @@ public class ProjectTemplateServiceTests
         // The localizer is only used to label the templates, not by the creation flow.
         var stringLocalizer = Substitute.For<IStringLocalizer>();
 
-        var pythonConfigService = Substitute.For<IPythonConfigService>();
-        pythonConfigService.DefaultPythonVersion.Returns("3.13");
-
         // A real app environment so the test exercises actual bundled-asset path resolution (the
         // AppContext.BaseDirectory layout the Skia heads use) and supplies the temp folder. Its reported
         // version is what should flow into the generated project file.
@@ -33,7 +30,6 @@ public class ProjectTemplateServiceTests
 
         _projectTemplateService = new ProjectTemplateService(
             stringLocalizer,
-            pythonConfigService,
             _fileSystem,
             appEnvironment);
 
@@ -73,12 +69,9 @@ public class ProjectTemplateServiceTests
         File.Exists(projectFilePath).Should().BeTrue();
         File.Exists(Path.Combine(projectFolderPath, "readme.md")).Should().BeTrue();
 
-        // The version placeholders in the template's project file are substituted from the
-        // environment and Python config services.
+        // The version placeholder in the template's project file is substituted from the environment.
         var projectContents = await File.ReadAllTextAsync(projectFilePath);
         projectContents.Should().NotContain("<application-version>");
-        projectContents.Should().NotContain("<python-version>");
         projectContents.Should().Contain(_expectedAppVersion);
-        projectContents.Should().Contain("3.13");
     }
 }

@@ -23,29 +23,4 @@ public class ReplaceCommand : CommandBase, IReplaceCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void All(bool showConfirmation = true)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IReplaceCommand>(command =>
-        {
-            command.Scope = ReplaceScope.All;
-            command.ShowConfirmation = showConfirmation;
-        });
-    }
-
-    public static void Selected()
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IReplaceCommand>(command =>
-        {
-            command.Scope = ReplaceScope.Selected;
-        });
-    }
 }

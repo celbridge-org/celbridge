@@ -9,7 +9,7 @@ namespace Celbridge.UserInterface.Platform;
 /// </summary>
 internal sealed class WindowsApplicationToolbarHost : IApplicationToolbarHost
 {
-    public ITitleBar Install(Window window, Panel layoutRoot)
+    public UserControl Install(Window window, Panel layoutRoot)
     {
         var titleBar = new TitleBar();
         layoutRoot.Children.Add(titleBar);

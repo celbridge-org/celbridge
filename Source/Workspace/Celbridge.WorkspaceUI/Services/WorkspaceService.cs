@@ -8,7 +8,6 @@ using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Python;
 using Celbridge.Search;
 
 namespace Celbridge.WorkspaceUI.Services;
@@ -28,7 +27,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IInspectorService InspectorService { get; }
     public IConsoleService ConsoleService { get; }
     public ISearchService SearchService { get; }
-    public IPythonService PythonService { get; }
     public IEntityService EntityService { get; }
     public IActivityService ActivityService { get; }
     public IDataTransferService DataTransferService { get; }
@@ -38,7 +36,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IUtilityPanel UtilityPanel { get; private set; } = null!;
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
     public IInspectorPanel InspectorPanel { get; private set; } = null!;
-    public IConsolePanel? ConsolePanel { get; private set; }
 
     private bool _workspaceStateIsDirty;
 
@@ -63,15 +60,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
-        PythonService = serviceProvider.GetRequiredService<IPythonService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
-        //
-        // Let the workspace settings service know where to find the workspace settings database
-        //
-
+        // Let the workspace settings service know where to find the workspace settings database.
         var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
         var workspaceSettingsFolder = Path.Combine(
@@ -92,14 +85,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public void SetPanels(
         IUtilityPanel utilityPanel,
         IDocumentsPanel documentsPanel,
-        IInspectorPanel inspectorPanel,
-        IConsolePanel? consolePanel)
+        IInspectorPanel inspectorPanel)
     {
         // Store panel references
         UtilityPanel = utilityPanel;
         DocumentsPanel = documentsPanel;
         InspectorPanel = inspectorPanel;
-        ConsolePanel = consolePanel;
     }
 
     private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
@@ -109,7 +100,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
     {
-        // Focus on chrome (toolbars, dialogs) reports None; keep the active panel on the last real panel so
+        // Focus on chrome (toolbars, dialogs) reports None. Keep the active panel on the last real panel so
         // panel-scoped undo still targets it after such an interaction.
         if (message.FocusedPanel != WorkspacePanel.None)
         {
@@ -212,8 +203,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         {
             if (disposing)
             {
-                // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
-                // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
+                // Release the sub-services' resources on project close so editing multiple projects in a session does not leak.
 
                 // Unregister message handlers
                 _messengerService.UnregisterAll(this);
@@ -221,7 +211,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();
                 (WorkspaceSettings as IDisposable)!.Dispose();
-                (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (UtilityService as IDisposable)!.Dispose();

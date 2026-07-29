@@ -11,7 +11,7 @@ The `package` namespace installs, inspects, publishes, archives, and curates Cel
 - **The package name comes from the manifest.** `package_publish` reads the name from `[package].name`; there is no folder-name rule and no separate name argument.
 - **Aliases are non-destructive.** `package_set_alias` and `package_remove_alias` only repoint or detach a label; they never touch version content.
 - **The irreversible workshop-admin tools always prompt.** `package_delete` (one version) and `package_unpublish` (every version of a package) remove content irreversibly and prompt every time — there is no `confirmWithUser` opt-out, unlike `package_install` and `package_publish`, which are also destructive but opt-outable for agent workflows. Celbridge does not model the server's hidden tombstone state; deleted bytes are gone, though the version's history entry and content hash are kept. Durability rests on consumers vendoring, not on the workshop promising eternal availability.
-- **Packages are not Python packages.** Despite some tooling overlap, this namespace is for Celbridge's own package format. To see the project's Python dependencies, read the `.celbridge` project file (`[project].dependencies`).
+- **Packages are not Python packages.** Despite some tooling overlap, this namespace is for Celbridge's own package format. Python dependencies are declared per console, in a `.console` file's `[session.options].dependencies` array.
 - **There is no create tool.** A package is a folder with a `package.toml` manifest; scaffold one by writing the manifest with the file tools. See `packages_overview` for the manifest schema.
 
 ## Tools

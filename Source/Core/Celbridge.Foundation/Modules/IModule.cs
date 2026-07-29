@@ -5,7 +5,6 @@ namespace Celbridge.Modules;
 
 /// <summary>
 /// The module system discovers classes that implement this interface at startup.
-/// All Celbridge modules must contain a class that implements this interface.
 /// </summary>
 public interface IModule
 {
@@ -33,10 +32,4 @@ public interface IModule
     /// Creates document editor factories provided by this module.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider);
-
-    /// <summary>
-    /// Returns descriptors for all packages bundled with this module.
-    /// Returns an empty list if the module bundles no packages.
-    /// </summary>
-    IReadOnlyList<BundledPackageDescriptor> GetBundledPackages();
 }

@@ -27,42 +27,4 @@ public class SetPropertyCommand : CommandBase, ISetPropertyCommand
 
         return setResult;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    /// <summary>
-    /// Replaces an existing component property value at the specified path.
-    /// If the property value does not exist, the operation fails.
-    /// </summary>
-    public static async Task<Result> SetProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
-        {
-            command.ComponentKey = new ComponentKey(resource, componentIndex);
-            command.PropertyPath = propertyPath;
-            command.JsonValue = jsonValue;
-            command.Insert = false;
-        });
-    }
-
-    /// <summary>
-    /// Inserts a new component property value at the specified path.
-    /// If the property value already exists, it is replaced.
-    /// </summary>
-    public static async Task<Result> InsertProperty(ResourceKey resource, int componentIndex, string propertyPath, string jsonValue)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        return await commandService.ExecuteAsync<ISetPropertyCommand>(command =>
-        {
-            command.ComponentKey = new ComponentKey(resource, componentIndex);
-            command.PropertyPath = propertyPath;
-            command.JsonValue = jsonValue;
-            command.Insert = true;
-        });
-    }
 }

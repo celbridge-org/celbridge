@@ -62,10 +62,6 @@ public class ProjectConfigParserTests
             remove = [".gitignore"]
             lock = ["assets/**"]
 
-            [project]
-            requires-python = ">=3.12"
-            dependencies = ["numpy", "pandas"]
-
             [[contribution]]
             package = "acme-notes"
             contribution = "notepad"
@@ -106,9 +102,6 @@ public class ProjectConfigParserTests
         config.Resources.Remove.Should().Equal(".gitignore");
         config.Resources.Lock.Should().Equal("assets/**");
 
-        config.Project.RequiresPython.Should().Be(">=3.12");
-        config.Project.Dependencies.Should().Equal("numpy", "pandas");
-
         // Declaration order in the file is preserved.
         config.ContributionOverrides.Should().HaveCount(2);
 
@@ -133,11 +126,14 @@ public class ProjectConfigParserTests
     }
 
     [Test]
-    public void ParseFromFile_PythonVersionSentinel_MapsToDefaultVersion()
+    public void ParseFromFile_LegacyProjectTable_IsRejectedWithEntryError()
     {
+        // The [project] Python keys moved into per-console .console config, so the section is now an
+        // unrecognized top-level table surfaced as a config-entry advisory.
         var content = """
             [project]
-            requires-python = "<python-version>"
+            requires-python = ">=3.12"
+            dependencies = ["numpy"]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -145,7 +141,26 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Project.RequiresPython.Should().Be("3.13");
+        config.EntryErrors.Should().ContainSingle(error => error.EntryName == "project");
+    }
+
+    [Test]
+    public void ParseFromFile_LegacyShortcutArray_IsRejectedWithEntryError()
+    {
+        // Shortcuts moved into per-console .console config, so a legacy [[shortcut]] entry is now an
+        // unrecognized top-level key surfaced as a config-entry advisory.
+        var content = """
+            [[shortcut]]
+            name = "Run Examples"
+            icon = "bs-play-fill"
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.EntryErrors.Should().ContainSingle(error => error.EntryName == "shortcut");
     }
 
     [Test]

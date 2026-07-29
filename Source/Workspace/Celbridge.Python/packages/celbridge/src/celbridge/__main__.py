@@ -7,7 +7,9 @@ The RPC port is read from the CELBRIDGE_RPC_PORT environment variable,
 which is set by the Celbridge application when launching the terminal.
 """
 
+import logging
 import os
+import sys
 
 from celbridge.logging_config import configure_logging
 from celbridge.rpc_client import RpcClient
@@ -40,9 +42,21 @@ def main():
     mcp_tools_enabled = os.environ.get('CELBRIDGE_MCP_TOOLS') == '1'
 
     # Always connect to the Celbridge application RPC server. The connection
-    # signals to the host that the Python terminal is ready, which enables
-    # features like the Run context menu command for .py files.
+    # signals to the host that the Python terminal is ready.
     client = RpcClient('127.0.0.1', port)
+
+    # Bind this connection to the console that launched it, so the host can attribute peer consoles to
+    # their sessions. Every in-app console seeds the token, and a spawned terminal inherits it. A REPL
+    # started outside any console has no token and skips the handshake.
+    session_token = os.environ.get('CELBRIDGE_SESSION_TOKEN')
+    if session_token:
+        try:
+            bound = client.call("session/handshake", sessionToken=session_token)
+            if not bound:
+                logging.getLogger(__name__).debug(
+                    "session/handshake did not bind: token does not match an open console")
+        except Exception:
+            logging.getLogger(__name__).debug("Host did not handle session/handshake", exc_info=True)
 
     cel = CelProxy(client)
 
@@ -70,6 +84,9 @@ def main():
     ipython_args = ['--no-banner']
     if ipython_folder:
         ipython_args.extend(['--ipython-dir', ipython_folder])
+
+    # Forward any interpreter arguments the console config passed after '-m celbridge' to IPython.
+    ipython_args.extend(sys.argv[1:])
 
     # Launch IPython with the cel proxy injected into the user namespace.
     # exec_lines runs after IPython is fully initialized, so customizations

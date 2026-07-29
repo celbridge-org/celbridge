@@ -16,7 +16,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     private readonly IDialogService _dialogService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ILayoutService _layoutService;
     private readonly IMessengerService _messengerService;
 
     public ResourceKey FileResource { get; set; }
@@ -42,27 +41,17 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         IDialogService dialogService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        ILayoutService layoutService,
         IMessengerService messengerService)
     {
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _layoutService = layoutService;
         _messengerService = messengerService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (_layoutService.IsConsoleMaximized)
-        {
-            _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
-            {
-                command.IsMaximized = false;
-            });
-        }
-
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
         var viewType = documentsService.GetDocumentViewType(FileResource);

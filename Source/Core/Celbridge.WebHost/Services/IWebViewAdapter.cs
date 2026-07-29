@@ -3,10 +3,8 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Options for a whole-page find session. Grouped as a Parameter Object so whole-word (and other toggles) can
-/// be added later without changing the adapter call sites. Find always wraps, matching browser behaviour.
-/// OnMatchStateChanged is the match-progress reporting hook: the adapter invokes it (on the UI thread) as the
-/// find advances, so the host bar can reflect state.
+/// Options for a whole-page find session. Find always wraps, matching browser behaviour.
+/// OnMatchStateChanged is invoked on the UI thread as the find advances, so the host bar can reflect state.
 /// </summary>
 public sealed record FindOptions(
     bool CaseSensitive = false,
@@ -14,8 +12,8 @@ public sealed record FindOptions(
 
 /// <summary>
 /// A snapshot of find progress. MatchFound drives next/previous enable state. MatchCount and ActiveMatchIndex
-/// (1-based) are reserved for a backend that supplies a free match total; the only backend currently wired to
-/// the host find bar, macOS findString, reports presence only and leaves them null.
+/// (1-based) are null unless a backend supplies a free match total. The macOS findString backend reports
+/// presence only and leaves them null.
 /// </summary>
 public sealed record FindMatchState(bool MatchFound, int? MatchCount = null, int? ActiveMatchIndex = null);
 
@@ -29,7 +27,7 @@ public interface IWebViewAdapter
 {
     /// <summary>
     /// True when the platform can map a virtual host name to a local folder and serve it under a faked origin.
-    /// True on the packaged Windows head and the Windows Skia head (both back a real WebView2); false on the
+    /// True on the packaged Windows head and the Windows Skia head (both back a real WebView2). False on the
     /// macOS and Linux Skia heads, which fake the origin via LoadHtmlString instead.
     /// </summary>
     bool SupportsVirtualHostMapping { get; }
@@ -37,7 +35,7 @@ public interface IWebViewAdapter
     /// <summary>
     /// True when the hosted WebView backend supplies its own find bar, so the host does not add one and the
     /// StartFindAsync/FindNext/FindPrevious/StopFind methods are inert. True on the Windows heads (Chromium's
-    /// WebView2 has a built-in bar reached directly by Ctrl+F); false on the macOS and Linux Skia heads, whose
+    /// WebView2 has a built-in bar reached directly by Ctrl+F). False on the macOS and Linux Skia heads, whose
     /// WKWebView and WebKitGTK backends have none, so the host find bar drives find through this adapter.
     /// </summary>
     bool ProvidesBuiltInFind { get; }
@@ -109,9 +107,15 @@ public interface IWebViewAdapter
     /// Sets the WebView's User-Agent to a browser-recognised string that also identifies the application by the
     /// given token (e.g. "Celbridge/0.3.0"). The Skia macOS head's default WKWebView UA omits the Safari token
     /// some sites sniff for and flag as unsupported, so it is replaced with a Safari-compatible UA carrying the
-    /// token; the Windows head appends the token to its already-recognised UA. Must be set before navigation.
+    /// token. The Windows head appends the token to its already-recognised UA. Must be set before navigation.
     /// </summary>
     void SetApplicationUserAgent(CoreWebView2 coreWebView2, string applicationToken);
+
+    /// <summary>
+    /// Enables or disables the WebView's user zoom (Ctrl+scroll and Ctrl+/-). Effective on the packaged
+    /// Windows head's real WebView2. A no-op on the Skia heads, where zoom control is not implemented.
+    /// </summary>
+    void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled);
 
     /// <summary>
     /// Begins (or restarts) a whole-page find for the given term, selecting and scrolling to the first match.

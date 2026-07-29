@@ -4,9 +4,9 @@ namespace Celbridge.Console.Services;
 
 public class ConsoleService : IConsoleService, IDisposable
 {
-    private readonly IWorkspaceWrapper _workspaceWrapper;
+    public IConsoleSessionRegistry SessionRegistry { get; }
 
-    public ITerminal Terminal { get; private set; }
+    public IConsoleProcessOwner ProcessOwner { get; }
 
     public ConsoleService(
         IServiceProvider serviceProvider,
@@ -15,30 +15,8 @@ public class ConsoleService : IConsoleService, IDisposable
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
-        _workspaceWrapper = workspaceWrapper;
-        Terminal = serviceProvider.AcquireService<ITerminal>();
-    }
-
-    public async Task<Result> InitializeTerminalWindow()
-    {
-        var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel;
-        if (consolePanel is null)
-        {
-            return Result.Fail("Console panel is not available");
-        }
-
-        return await consolePanel.InitializeTerminalWindow(Terminal);
-    }
-
-    public void RunCommand(string command)
-    {
-        var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel;
-        if (consolePanel is null)
-        {
-            return;
-        }
-
-        consolePanel.RunCommand(command);
+        SessionRegistry = serviceProvider.AcquireService<IConsoleSessionRegistry>();
+        ProcessOwner = serviceProvider.AcquireService<IConsoleProcessOwner>();
     }
 
     private bool _disposed;
@@ -55,8 +33,8 @@ public class ConsoleService : IConsoleService, IDisposable
         {
             if (disposing)
             {
-                // Dispose managed objects here
-                Terminal?.Dispose();
+                (SessionRegistry as IDisposable)?.Dispose();
+                (ProcessOwner as IDisposable)?.Dispose();
             }
 
             _disposed = true;

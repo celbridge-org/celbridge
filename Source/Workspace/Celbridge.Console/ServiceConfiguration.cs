@@ -1,6 +1,6 @@
 using Celbridge.Console.Services;
-using Celbridge.Console.ViewModels;
-using Celbridge.Console.Views;
+using Celbridge.Packages;
+using Celbridge.WebHost;
 
 namespace Celbridge.Console;
 
@@ -16,20 +16,18 @@ public static class ServiceConfiguration
         services.AddTransient<ITerminal, Terminal>();
 
         //
-        // Register views
+        // Register console document editor
         //
 
-        services.AddTransient<IConsolePanel, ConsolePanel>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<ConsolePanelViewModel>();
+        services.AddSingleton<IBundledPackageProvider, ConsoleBundledPackageProvider>();
+        services.AddSingleton<IConsoleSessionProvider, ShellSessionProvider>();
+        services.AddSingleton<ICustomEditorChannelProvider, ConsoleSessionChannelProvider>();
+        services.AddTransient<IConsoleSessionRegistry, ConsoleSessionRegistry>();
+        services.AddTransient<IConsoleProcessOwner, ConsoleProcessOwner>();
 
         //
         // Register commands
-        // 
+        //
 
         services.AddTransient<IRunCommand, RunCommand>();
     }

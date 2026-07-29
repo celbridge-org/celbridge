@@ -8,7 +8,7 @@ namespace Celbridge.Settings;
 public static class FeatureFlagConstants
 {
     /// <summary>
-    /// Console panel with IPython REPL terminal.
+    /// Console panel that shows project error and notification banners.
     /// </summary>
     public const string ConsolePanel = "console-panel";
 

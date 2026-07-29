@@ -40,7 +40,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
     font-family: var(--cel-font-ui);
     font-size: var(--cel-font-size-base);
     color: var(--cel-text-primary);
-    border: 1px solid var(--cel-divider);
+    border: 1px solid var(--cel-control-border);
     border-radius: var(--cel-radius-control);
 }
 
@@ -48,7 +48,25 @@ select,
 textarea,
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]) {
     padding: 5px 8px;
-    background: var(--cel-panel-bg-alt);
+    /* The raised control fill (approximating WinUI ControlFillColorDefault, the same token the buttons use)
+       so inputs read like the native TextBox/ComboBox at rest rather than a darker sunken field. */
+    background: var(--cel-control-bg);
+}
+
+/* Drop the platform select arrow and draw a Fluent-style chevron so a <select> reads as a peer of the
+   ComboBoxes in the native settings panels. The chevron colour is baked into the SVG (a background image
+   cannot inherit the theme text colour), so the dark theme swaps in a lighter stroke below. */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%235F5F5F' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+}
+
+:root[data-theme="dark"] select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23B0B0B0' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 button:focus-visible,
@@ -88,6 +106,26 @@ button.cel-accent:hover {
     filter: brightness(1.08);
 }
 
+/* Transparent icon button, mirroring TransparentIconButtonStyle in Styles.xaml: a square hit target that
+   shows a subtle fill on hover. The square size and icon scale come from the sizing tokens. */
+.cel-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cel-icon-button-size);
+    height: var(--cel-icon-button-size);
+    padding: 0;
+    font-size: var(--cel-icon-size-medium);
+    background: transparent;
+    border: none;
+    color: var(--cel-text-primary);
+    cursor: pointer;
+}
+
+.cel-icon-button:hover {
+    background: var(--cel-control-hover-bg);
+}
+
 /* Text-level defaults. Links, code, placeholders, and selection pick up the theme so real content reads as
    part of the host rather than falling back to the browser's blue links and UA monospace. */
 
@@ -118,4 +156,142 @@ samp {
 hr {
     border: none;
     border-top: 1px solid var(--cel-divider);
+}
+
+/* Expander card, matching the native WinUI Expander in the settings panels: a bordered, rounded card with a
+   filled, clickable header row, a chevron on the right that rotates, a hover highlight, and a padded body.
+   Use as:
+     <details class="cel-expander"><summary>Header</summary>
+       <div class="cel-expander-body">...</div>
+     </details>
+   Add the `open` attribute to start expanded. */
+.cel-expander {
+    border: 1px solid var(--cel-card-border);
+    border-radius: var(--cel-radius-control);
+    overflow: hidden;
+}
+
+.cel-expander > summary {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    padding: 10px 12px;
+    background: var(--cel-expander-header-bg);
+    list-style: none;
+}
+
+.cel-expander > summary::-webkit-details-marker {
+    display: none;
+}
+
+.cel-expander > summary:hover {
+    background: var(--cel-control-hover-bg);
+}
+
+/* A CSS chevron (a rotated square corner): points down when collapsed, up when the card is open. */
+.cel-expander > summary::after {
+    content: "";
+    margin-left: auto;
+    width: 0.4em;
+    height: 0.4em;
+    border: solid var(--cel-text-primary);
+    border-width: 0 1px 1px 0;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+.cel-expander[open] > summary::after {
+    transform: translateY(1px) rotate(-135deg);
+}
+
+.cel-expander[open] > summary {
+    border-bottom: 1px solid var(--cel-card-border);
+}
+
+.cel-expander-body {
+    padding: 12px;
+}
+
+/* Splitter: a draggable divider between two flex panes, matching the native WinUI Splitter — a thin base
+   line at rest that fades in a 4px accent on hover and thickens to a solid accent line while dragging. Place
+   a `.cel-splitter` between two flex children and drive the resize with attachSplitter() from
+   ui/splitter.js (which toggles the `dragging` class used below). */
+.cel-splitter {
+    flex: 0 0 8px;
+    position: relative;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
+    background: transparent;
+}
+
+/* Persistent thin base line, centered in the 8px grab area. */
+.cel-splitter::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--cel-divider-subtle);
+    pointer-events: none;
+}
+
+/* Accent overlay: fades in on hover (matching the Splitter's 200ms fade), held solid while dragging. */
+.cel-splitter::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    transform: translateX(-50%);
+    background: var(--cel-accent);
+    opacity: 0;
+    transition: opacity 200ms ease-out 200ms;
+    pointer-events: none;
+}
+
+.cel-splitter:hover::after,
+.cel-splitter.dragging::after {
+    opacity: 1;
+}
+
+.cel-splitter.dragging::after {
+    transition: opacity 0ms;
+}
+
+/* While dragging, thicken the base line into a 4px accent line, matching the Splitter's drag thickness. */
+.cel-splitter.dragging::before {
+    width: 4px;
+    background: var(--cel-accent);
+}
+
+/* Pinned action footer for a settings-style panel: a top divider (over the panel background, which the
+   native panels' footer also relies on) above a secondary-text caption and an action button that is capped
+   and centred rather than full-width. Pair it with a scrolling body -- a flex-column parent whose body is
+   `flex:1; overflow:auto` -- so the footer stays visible while the content scrolls, mirroring the native
+   settings panels' Reload row. */
+.cel-panel-footer {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-panel-footer p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--cel-text-secondary);
+}
+
+.cel-panel-footer button {
+    width: 100%;
+    max-width: 240px;
+    align-self: center;
 }

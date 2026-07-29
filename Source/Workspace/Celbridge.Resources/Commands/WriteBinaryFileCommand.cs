@@ -48,19 +48,4 @@ public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void WriteBinaryFile(ResourceKey fileResource, string base64Content)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IWriteBinaryFileCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.Base64Content = base64Content;
-        });
-    }
 }

@@ -2,12 +2,12 @@ namespace Celbridge.UserInterface.Services;
 
 /// <summary>
 /// Hosts the application toolbar in the main page layout the way each platform expects, and returns the
-/// hosted title bar.
+/// hosted title bar control.
 /// </summary>
 internal interface IApplicationToolbarHost
 {
     /// <summary>
-    /// Installs the toolbar host into the layout and returns the title bar to register.
+    /// Installs the toolbar host into the layout and returns the hosted title bar control.
     /// </summary>
-    ITitleBar Install(Window window, Panel layoutRoot);
+    UserControl Install(Window window, Panel layoutRoot);
 }

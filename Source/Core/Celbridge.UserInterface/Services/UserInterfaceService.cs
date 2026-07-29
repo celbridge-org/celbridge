@@ -16,14 +16,12 @@ public class UserInterfaceService : IUserInterfaceService
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
-    private ITitleBar? _titleBar;
     private ApplicationPage _activePage = ApplicationPage.None;
     private ThemeHelper? _themeHelper;
     private Helpers.WindowStateHelper? _windowStateHelper;
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
-    public ITitleBar? TitleBar => _titleBar;
     public ApplicationPage ActivePage => _activePage;
 
     public UserInterfaceService(
@@ -148,11 +146,6 @@ public class UserInterfaceService : IUserInterfaceService
 
         _logger.LogInformation("System theme changed to {Theme}", newTheme);
         ApplyCurrentTheme();
-    }
-
-    public void RegisterTitleBar(ITitleBar titleBar)
-    {
-        _titleBar = titleBar;
     }
 
     public void ApplyCurrentTheme()

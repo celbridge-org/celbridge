@@ -11,15 +11,9 @@ public interface IUserInterfaceService
     object MainWindow { get; }
 
     /// <summary>
-    /// Returns the XamlRoot of the the application.
-    /// This is initialized with the XamlRoot property of the application's RootFrame during startup.
+    /// Returns the XamlRoot of the application.
     /// </summary>
     object XamlRoot { get; }
-
-    /// <summary>
-    /// Returns the TitleBar of the application.
-    /// </summary>
-    ITitleBar? TitleBar { get; }
 
     /// <summary>
     /// Color theme of the user interface
@@ -30,11 +24,6 @@ public interface IUserInterfaceService
     /// The currently active application page.
     /// </summary>
     ApplicationPage ActivePage { get; }
-
-    /// <summary>
-    /// Call to register the Titlebar of the application with the UserInterface service.
-    /// </summary>
-    void RegisterTitleBar(ITitleBar titleBar);
 
     /// <summary>
     /// Sets the active application page and broadcasts an ActivePageChangedMessage.

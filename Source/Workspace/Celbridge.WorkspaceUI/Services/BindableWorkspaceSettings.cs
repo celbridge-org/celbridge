@@ -5,12 +5,8 @@ using Celbridge.Settings;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Presentation facade over ISettingsService for the Workspace-scope setting
-/// descriptors: each property reads and writes its descriptor through the Get and
-/// Set helpers, which raise PropertyChanged for the calling property. The
-/// descriptors remain the source of truth; this type exists so views can bind to
-/// named per-project panel, search, and editor state. Programmatic access goes
-/// through ISettingsService; this facade is only for the views that bind.
+/// Presentation facade over ISettingsService for the Workspace-scope setting descriptors,
+/// letting views bind to named per-project panel, search, and editor state.
 /// </summary>
 public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
 {
@@ -53,12 +49,6 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         set => Set(SettingCatalog.Layout.DetailPanelHeight, value);
     }
 
-    public bool IsConsoleMaximized
-    {
-        get => Get(SettingCatalog.Layout.IsConsoleMaximized);
-        set => Set(SettingCatalog.Layout.IsConsoleMaximized, value);
-    }
-
     public bool SearchMatchCase
     {
         get => Get(SettingCatalog.Search.MatchCase);
@@ -92,11 +82,9 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
     // change notification targets that property without a name lookup table.
     private void Set<T>(SettingDescriptor<T> descriptor, T value, [CallerMemberName] string? propertyName = null) where T : notnull
     {
-        // The store is brought online before the panels bind (see
-        // WorkspacePage.WorkspacePage_Loaded), so during an active project a write
-        // always has a store. This guard is the boundary backstop: panel
-        // SizeChanged can still fire on teardown after the store is unloaded, where
-        // dropping the transient layout value is correct rather than throwing.
+        // During an active project a write always has a store. This guard is the boundary
+        // backstop: panel SizeChanged can still fire on teardown after the store is unloaded,
+        // where dropping the transient layout value is correct rather than throwing.
         if (!_settings.IsScopeAvailable(SettingScope.Workspace))
         {
             return;

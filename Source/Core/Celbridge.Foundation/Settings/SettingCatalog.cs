@@ -4,7 +4,7 @@ namespace Celbridge.Settings;
 
 /// <summary>
 /// The catalog of every setting in the application, declared once and grouped by
-/// domain. The source of truth for what settings exist; each descriptor carries
+/// domain. The source of truth for what settings exist. Each descriptor carries
 /// the setting's key, scope, and default.
 /// </summary>
 public static class SettingCatalog
@@ -62,9 +62,6 @@ public static class SettingCatalog
 
         public static readonly SettingDescriptor<float> DetailPanelHeight =
             new("Layout.DetailPanelHeight", SettingScope.Workspace, WorkspaceConstants.DetailPanelHeight);
-
-        public static readonly SettingDescriptor<bool> IsConsoleMaximized =
-            new("Layout.IsConsoleMaximized", SettingScope.Workspace, false);
 
         // The utility id of the active rail surface (e.g. "celbridge.explorer" or a custom id). Restored on
         // load, falling back to Explorer when the persisted id no longer resolves to a rail item.
@@ -125,11 +122,8 @@ public static class SettingCatalog
 
     /// <summary>
     /// Workshop connection. The URL, Author, and key hint are non-secret and
-    /// stored in the clear; the key itself is Protected. Get and Set on the key
-    /// transparently encrypt and decrypt at the service, sourcing DPAPI entropy
-    /// from the descriptor key. Rotating the entropy is a key rename
-    /// (Workshop.Key to Workshop.Key.v2): old ciphertext becomes unreadable and
-    /// the user re-enters the key.
+    /// stored in the clear. The key itself is Protected, transparently encrypted
+    /// and decrypted at the service.
     /// </summary>
     public static class Workshop
     {

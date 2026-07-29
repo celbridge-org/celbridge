@@ -6,8 +6,7 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// Serializes a project config to canonical, deterministic TOML. The same resolved model always
 /// produces the same bytes: a fixed section and key order, uniform inline arrays and tables, and
-/// config keys sorted per contribution. This is the counterpart of ProjectConfigParser and the write half
-/// of the normalize-on-load contract, so it round-trips every section the parser reads.
+/// config keys sorted per contribution.
 /// </summary>
 public static class ProjectConfigSerializer
 {
@@ -17,8 +16,6 @@ public static class ProjectConfigSerializer
 
         WriteCelbridgeTable(builder, config);
         WriteResourcesTable(builder, config.Resources);
-        WriteProjectTable(builder, config.Project);
-        WriteShortcuts(builder, config.Shortcuts);
         WriteContributions(builder, config.ContributionOverrides);
 
         return builder.ToString();
@@ -65,48 +62,6 @@ public static class ProjectConfigSerializer
         WriteKeyValue(builder, "add", RenderStringArray(resources.Add));
         WriteKeyValue(builder, "remove", RenderStringArray(resources.Remove));
         WriteKeyValue(builder, "lock", RenderStringArray(resources.Lock));
-    }
-
-    private static void WriteProjectTable(StringBuilder builder, ProjectSection project)
-    {
-        if (string.IsNullOrEmpty(project.RequiresPython)
-            && (project.Dependencies is null || project.Dependencies.Count == 0))
-        {
-            return;
-        }
-
-        builder.Append('\n');
-        builder.Append("[project]\n");
-        if (!string.IsNullOrEmpty(project.RequiresPython))
-        {
-            WriteKeyValue(builder, "requires-python", RenderString(project.RequiresPython));
-        }
-        if (project.Dependencies is not null)
-        {
-            WriteKeyValue(builder, "dependencies", RenderStringArray(project.Dependencies));
-        }
-    }
-
-    private static void WriteShortcuts(StringBuilder builder, ShortcutsSection shortcuts)
-    {
-        foreach (var shortcut in shortcuts.Definitions)
-        {
-            builder.Append('\n');
-            builder.Append("[[shortcut]]\n");
-            WriteKeyValue(builder, "name", RenderString(shortcut.Name));
-            if (!string.IsNullOrEmpty(shortcut.Icon))
-            {
-                WriteKeyValue(builder, "icon", RenderString(shortcut.Icon));
-            }
-            if (!string.IsNullOrEmpty(shortcut.Tooltip))
-            {
-                WriteKeyValue(builder, "tooltip", RenderString(shortcut.Tooltip));
-            }
-            if (!string.IsNullOrEmpty(shortcut.Script))
-            {
-                WriteKeyValue(builder, "script", RenderString(shortcut.Script));
-            }
-        }
     }
 
     // Emits the [[contribution]] override entries, sorted by package then contribution so the same
@@ -230,7 +185,7 @@ public static class ProjectConfigSerializer
                     break;
                 default:
                     // TOML basic strings forbid unescaped control characters. The common ones are
-                    // handled above; escape the rest (and DEL) as \uXXXX so the file re-parses.
+                    // handled above. Escape the rest (and DEL) as \uXXXX so the file re-parses.
                     if (character < ' '
                         || character == '\u007f')
                     {

@@ -13,7 +13,7 @@ public interface IModuleService
     IReadOnlyList<IModule> LoadedModules { get; }
 
     /// <summary>
-    /// Initializes all loaded modules
+    /// Initializes all loaded modules.
     /// </summary>
     Result InitializeModules();
 
@@ -26,9 +26,4 @@ public interface IModuleService
     /// Creates an instance of a supported activity.
     /// </summary>
     Result<IActivity> CreateActivity(string activityName);
-
-    /// <summary>
-    /// Returns bundled-package descriptors contributed by all loaded modules.
-    /// </summary>
-    IReadOnlyList<BundledPackageDescriptor> GetBundledPackages();
 }

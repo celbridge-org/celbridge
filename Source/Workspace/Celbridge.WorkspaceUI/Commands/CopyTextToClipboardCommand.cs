@@ -36,18 +36,4 @@ public class CopyTextToClipboardCommand : CommandBase, ICopyTextToClipboardComma
         await Task.CompletedTask;
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void CopyTextToClipboard(string text)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = text;
-        });
-    }
 }

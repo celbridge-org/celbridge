@@ -7,20 +7,13 @@ namespace Celbridge.Projects.Services;
 
 /// <summary>
 /// Static utility class for parsing Celbridge project configuration files (v2 schema).
-/// Host-level declarations live on the [celbridge] table; every other top-level table declares
-/// an editor contribution. Malformed entries are skipped with a recorded entry error; a TOML syntax
+/// Host-level declarations live on the [celbridge] table. Every other top-level table declares
+/// an editor contribution. Malformed entries are skipped with a recorded entry error. A TOML syntax
 /// error fails the whole parse.
 /// </summary>
 public static class ProjectConfigParser
 {
-    private const string PathSeparator = "/";
-
-    // Mirrors Assets/Python/python_version.txt; kept in sync manually because this static parser can't read the asset.
-    private const string DefaultPythonVersion = "3.13";
-
     private const string CelbridgeSectionName = "celbridge";
-    private const string ProjectSectionName = "project";
-    private const string ShortcutSectionName = "shortcut";
     private const string ContributionSectionName = "contribution";
 
     private const string CelbridgeVersionKey = "celbridge-version";
@@ -48,12 +41,6 @@ public static class ProjectConfigParser
         "add",
         "remove",
         "lock",
-    ];
-
-    private static readonly string[] KnownProjectKeys =
-    [
-        "requires-python",
-        "dependencies",
     ];
 
     /// <summary>
@@ -139,20 +126,6 @@ public static class ProjectConfigParser
             celbridgeSection = ParseCelbridgeTable(celbridgeTable, entryErrors, out resourcesSection, out featuresDict);
         }
 
-        var projectSection = new ProjectSection();
-        if (root.TryGetValue(ProjectSectionName, out var projectObject) &&
-            projectObject is TomlTable projectTable)
-        {
-            projectSection = ParseProjectTable(projectTable, entryErrors);
-        }
-
-        var shortcutsSection = new ShortcutsSection();
-        if (root.TryGetValue(ShortcutSectionName, out var shortcutsObject) &&
-            shortcutsObject is TomlTableArray shortcutsArray)
-        {
-            shortcutsSection = ParseShortcutsArray(shortcutsArray);
-        }
-
         // Editor overrides of the discovered defaults are declared as [[contribution]] entries.
         var contributions = new List<ContributionOverride>();
         if (root.TryGetValue(ContributionSectionName, out var contributionObject))
@@ -180,8 +153,6 @@ public static class ProjectConfigParser
         foreach (var (key, _) in root)
         {
             if (key == CelbridgeSectionName ||
-                key == ProjectSectionName ||
-                key == ShortcutSectionName ||
                 key == ContributionSectionName)
             {
                 continue;
@@ -203,8 +174,6 @@ public static class ProjectConfigParser
         return new ProjectConfig
         {
             Celbridge = celbridgeSection,
-            Project = projectSection,
-            Shortcuts = shortcutsSection,
             Resources = resourcesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
@@ -352,43 +321,6 @@ public static class ProjectConfigParser
         };
     }
 
-    private static ProjectSection ParseProjectTable(
-        TomlTable projectTable,
-        List<ProjectConfigEntryError> entryErrors)
-    {
-        foreach (var key in projectTable.Keys)
-        {
-            if (!KnownProjectKeys.Contains(key, StringComparer.Ordinal))
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    ProjectSectionName, $"Unknown key '{key}' on [{ProjectSectionName}]. The key was ignored."));
-            }
-        }
-
-        List<string>? dependencies = null;
-        if (projectTable.TryGetValue("dependencies", out var dependenciesObject) &&
-            dependenciesObject is TomlArray dependenciesArray)
-        {
-            dependencies = dependenciesArray.Select(x => x?.ToString() ?? string.Empty).ToList();
-        }
-
-        string? requiresPythonValue = null;
-        if (projectTable.TryGetValue("requires-python", out var requiresPython))
-        {
-            requiresPythonValue = requiresPython?.ToString();
-            if (requiresPythonValue == "<python-version>")
-            {
-                requiresPythonValue = DefaultPythonVersion;
-            }
-        }
-
-        return new ProjectSection
-        {
-            RequiresPython = requiresPythonValue,
-            Dependencies = dependencies
-        };
-    }
-
     private static ContributionOverride? ParseContributionEntry(
         TomlTable entryTable,
         int entryIndex,
@@ -516,145 +448,4 @@ public static class ProjectConfigParser
         return items;
     }
 
-    private static ShortcutsSection ParseShortcutsArray(TomlTableArray shortcutsArray)
-    {
-        var definitions = new List<ShortcutDefinition>();
-        var validationErrors = new List<ShortcutValidationError>();
-
-        for (int i = 0; i < shortcutsArray.Count; i++)
-        {
-            var shortcutTable = shortcutsArray[i];
-            var shortcutIndex = i + 1;
-
-            string? name = null;
-            if (shortcutTable.TryGetValue("name", out var nameObj) && nameObj is string nameStr)
-            {
-                name = nameStr;
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", "The 'name' property is required and cannot be empty."));
-                continue;
-            }
-
-            if (name.StartsWith(PathSeparator) || name.EndsWith(PathSeparator))
-            {
-                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", $"The 'name' property cannot start or end with '{PathSeparator}'."));
-                continue;
-            }
-
-            if (name.Contains($"{PathSeparator}{PathSeparator}"))
-            {
-                validationErrors.Add(new ShortcutValidationError(shortcutIndex, "name", $"The 'name' property cannot contain empty segments (consecutive '{PathSeparator}' characters)."));
-                continue;
-            }
-
-            string? icon = null;
-            if (shortcutTable.TryGetValue("icon", out var iconObj) && iconObj is string iconStr)
-            {
-                icon = iconStr;
-            }
-
-            string? tooltip = null;
-            if (shortcutTable.TryGetValue("tooltip", out var tooltipObj) && tooltipObj is string tooltipStr)
-            {
-                tooltip = tooltipStr;
-            }
-
-            string? script = null;
-            if (shortcutTable.TryGetValue("script", out var scriptObj) && scriptObj is string scriptStr)
-            {
-                script = scriptStr;
-            }
-
-            var definition = new ShortcutDefinition
-            {
-                Name = name,
-                Icon = icon,
-                Tooltip = tooltip,
-                Script = script
-            };
-
-            definitions.Add(definition);
-        }
-
-        // Second pass validation: check that all parent paths exist as groups
-        var groupPaths = new HashSet<string>();
-        foreach (var def in definitions)
-        {
-            if (def.IsGroup)
-            {
-                groupPaths.Add(def.Name);
-            }
-        }
-
-        for (int i = 0; i < definitions.Count; i++)
-        {
-            var def = definitions[i];
-            var parentPath = def.ParentPath;
-
-            if (parentPath != null)
-            {
-                if (!groupPaths.Contains(parentPath))
-                {
-                    var pathSegments = parentPath.Split(PathSeparator);
-                    var currentPath = "";
-                    bool foundValidParent = false;
-
-                    foreach (var segment in pathSegments)
-                    {
-                        currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}{PathSeparator}{segment}";
-                        if (groupPaths.Contains(currentPath))
-                        {
-                            foundValidParent = true;
-                        }
-                    }
-
-                    if (!foundValidParent)
-                    {
-                        validationErrors.Add(new ShortcutValidationError(
-                            i + 1,
-                            "name",
-                            $"The parent path '{parentPath}' does not exist. Define a group with name='{parentPath}' first."));
-                    }
-                }
-            }
-        }
-
-        // Validate that groups have at least one child
-        var usedParentPaths = new HashSet<string>();
-        foreach (var def in definitions)
-        {
-            var parentPath = def.ParentPath;
-            if (parentPath != null)
-            {
-                var pathSegments = parentPath.Split(PathSeparator);
-                var currentPath = "";
-                foreach (var segment in pathSegments)
-                {
-                    currentPath = string.IsNullOrEmpty(currentPath) ? segment : $"{currentPath}{PathSeparator}{segment}";
-                    usedParentPaths.Add(currentPath);
-                }
-            }
-        }
-
-        for (int i = 0; i < definitions.Count; i++)
-        {
-            var def = definitions[i];
-            if (def.IsGroup && !usedParentPaths.Contains(def.Name))
-            {
-                validationErrors.Add(new ShortcutValidationError(
-                    i + 1,
-                    "script",
-                    $"Group '{def.DisplayName}' has no children. Either add child items with names starting with '{def.Name}/' or add a script to make it a command."));
-            }
-        }
-
-        return new ShortcutsSection
-        {
-            Definitions = definitions,
-            ValidationErrors = validationErrors
-        };
-    }
 }

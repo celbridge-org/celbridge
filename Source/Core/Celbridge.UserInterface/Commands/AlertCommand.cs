@@ -15,27 +15,4 @@ public class AlertCommand : CommandBase, IAlertCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void Alert(string title, string message)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IAlertCommand>(command =>
-        {
-            command.Title = title;
-            command.Message = message;
-        });
-    }
-
-    public static void Alert(string message)
-    {
-        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        var titleString = stringLocalizer.GetString("AlertDialog_TitleDefault");
-
-        Alert(titleString, message);
-    }
 }
