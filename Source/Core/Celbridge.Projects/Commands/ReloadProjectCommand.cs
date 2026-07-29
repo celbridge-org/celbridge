@@ -36,15 +36,4 @@ public class ReloadProjectCommand : CommandBase, IReloadProjectCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void ReloadProject()
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IReloadProjectCommand>();
-    }
 }

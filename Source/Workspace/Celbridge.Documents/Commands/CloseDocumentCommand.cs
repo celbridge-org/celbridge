@@ -41,25 +41,4 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void CloseDocument(ResourceKey fileResource)
-    {
-        CloseDocument(fileResource, false);
-    }
-
-    public static void CloseDocument(ResourceKey fileResource, bool forceClose)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<ICloseDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.ForceClose = forceClose;
-        });
-    }
-
 }

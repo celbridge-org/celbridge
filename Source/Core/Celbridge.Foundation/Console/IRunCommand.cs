@@ -13,8 +13,8 @@ public interface IRunCommand : IExecutableCommand
     public ResourceKey ScriptResource { get; set; }
 
     /// <summary>
-    /// The session id of the console to run the script in. Empty resolves the first open console that can
-    /// run the script's file type.
+    /// The session id of the console to run the script in. Empty resolves to the earliest-opened console
+    /// that can run the script's file type.
     /// </summary>
     Guid SessionId { get; set; }
 

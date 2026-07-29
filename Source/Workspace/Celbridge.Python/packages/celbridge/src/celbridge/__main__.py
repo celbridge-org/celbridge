@@ -46,12 +46,15 @@ def main():
     client = RpcClient('127.0.0.1', port)
 
     # Bind this connection to the console that launched it, so the host can attribute peer consoles to
-    # their sessions. Only the per-document console path sets a session token. The legacy load-time REPL
-    # leaves it unset and simply skips the handshake.
+    # their sessions. Every in-app console seeds the token, and a spawned terminal inherits it. A REPL
+    # started outside any console has no token and skips the handshake.
     session_token = os.environ.get('CELBRIDGE_SESSION_TOKEN')
     if session_token:
         try:
-            client.call("session/handshake", sessionToken=session_token)
+            bound = client.call("session/handshake", sessionToken=session_token)
+            if not bound:
+                logging.getLogger(__name__).debug(
+                    "session/handshake did not bind: token does not match an open console")
         except Exception:
             logging.getLogger(__name__).debug("Host did not handle session/handshake", exc_info=True)
 

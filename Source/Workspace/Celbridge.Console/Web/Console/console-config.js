@@ -55,6 +55,8 @@ export function formatRunnerLines(runners) {
 }
 
 // A shortcut is edited as one line per shortcut: label, then icon, then injected text, separated by '|'.
+// Only the first two pipes delimit, so the injected text may itself be a shell pipeline with its interior
+// spacing preserved.
 export function parseShortcutLines(text) {
     const shortcuts = [];
     for (const rawLine of text.split('\n')) {
@@ -62,15 +64,20 @@ export function parseShortcutLines(text) {
         if (line === '') {
             continue;
         }
-        const parts = line.split('|').map((part) => part.trim());
-        const label = parts[0] || '';
+        const firstPipe = line.indexOf('|');
+        const secondPipe = firstPipe >= 0 ? line.indexOf('|', firstPipe + 1) : -1;
+        let label = '';
         let icon = '';
         let injected = '';
-        if (parts.length >= 3) {
-            icon = parts[1];
-            injected = parts.slice(2).join('|').trim();
-        } else if (parts.length === 2) {
-            injected = parts[1];
+        if (secondPipe >= 0) {
+            label = line.slice(0, firstPipe).trim();
+            icon = line.slice(firstPipe + 1, secondPipe).trim();
+            injected = line.slice(secondPipe + 1).trim();
+        } else if (firstPipe >= 0) {
+            label = line.slice(0, firstPipe).trim();
+            injected = line.slice(firstPipe + 1).trim();
+        } else {
+            label = line;
         }
         if (label === '' && injected === '') {
             continue;
@@ -86,35 +93,24 @@ export function formatShortcutLines(shortcuts) {
         .join('\n');
 }
 
-// A comparable view of the config for the "needs a reopen" check, with a stable env order. Shortcuts are
-// excluded because they are a live client-side toolbar, not a launch input. Every other field applies on
-// reopen.
+// A comparable view of the config for the "needs a reopen" check: the start payload with a stable env
+// order. Shortcuts are excluded because they are a live client-side toolbar, not a launch input. Every
+// other field applies on reopen.
 export function normalizeConfig(config) {
+    const normalized = buildStartConfig(config);
     const environment = {};
-    for (const name of Object.keys(config.environment || {}).sort()) {
-        environment[name] = config.environment[name];
+    for (const name of Object.keys(normalized.environment).sort()) {
+        environment[name] = normalized.environment[name];
     }
-    return {
-        type: config.type || 'shell',
-        title: config.title || '',
-        executable: config.executable || '',
-        pythonVersion: config.pythonVersion || '',
-        arguments: config.arguments || [],
-        dependencies: config.dependencies || [],
-        workingDirectory: config.workingDirectory || '',
-        environment,
-        runners: (config.runners || []).map((runner) => ({
-            extensions: runner.extensions || [],
-            command: runner.command || '',
-        })),
-    };
+    normalized.environment = environment;
+    return normalized;
 }
 
 export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
-// The full config payload the host receives on start and on a live update.
+// The full config payload the host receives on console/start.
 export function buildStartConfig(config) {
     return {
         type: config.type || 'shell',

@@ -337,28 +337,4 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         builder.Append("Deleting them will leave the existing references broken. Continue?");
         return builder.ToString();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void DeleteResource(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IDeleteResourceCommand>(command =>
-        {
-            command.Resources = new List<ResourceKey> { resource };
-        });
-    }
-
-    public static void DeleteResources(List<ResourceKey> resources)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IDeleteResourceCommand>(command =>
-        {
-            command.Resources = resources;
-        });
-    }
 }

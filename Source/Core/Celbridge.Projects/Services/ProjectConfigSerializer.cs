@@ -16,7 +16,6 @@ public static class ProjectConfigSerializer
 
         WriteCelbridgeTable(builder, config);
         WriteResourcesTable(builder, config.Resources);
-        WriteProjectTable(builder, config.Project);
         WriteContributions(builder, config.ContributionOverrides);
 
         return builder.ToString();
@@ -63,26 +62,6 @@ public static class ProjectConfigSerializer
         WriteKeyValue(builder, "add", RenderStringArray(resources.Add));
         WriteKeyValue(builder, "remove", RenderStringArray(resources.Remove));
         WriteKeyValue(builder, "lock", RenderStringArray(resources.Lock));
-    }
-
-    private static void WriteProjectTable(StringBuilder builder, ProjectSection project)
-    {
-        if (string.IsNullOrEmpty(project.RequiresPython)
-            && (project.Dependencies is null || project.Dependencies.Count == 0))
-        {
-            return;
-        }
-
-        builder.Append('\n');
-        builder.Append("[project]\n");
-        if (!string.IsNullOrEmpty(project.RequiresPython))
-        {
-            WriteKeyValue(builder, "requires-python", RenderString(project.RequiresPython));
-        }
-        if (project.Dependencies is not null)
-        {
-            WriteKeyValue(builder, "dependencies", RenderStringArray(project.Dependencies));
-        }
     }
 
     // Emits the [[contribution]] override entries, sorted by package then contribution so the same

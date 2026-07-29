@@ -64,26 +64,4 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         });
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void CreateProject(string projectFilePath, string templateId)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-        var templateService = ServiceLocator.AcquireService<IProjectTemplateService>();
-
-        var template = templateService.GetTemplates().FirstOrDefault(t => t.Id == templateId);
-        if (template is null)
-        {
-            template = templateService.GetDefaultTemplate();
-        }
-
-        commandService.Execute<ICreateProjectCommand>(command =>
-        {
-            command.Config = new NewProjectConfig(projectFilePath, template);
-        });
-    }
 }
-

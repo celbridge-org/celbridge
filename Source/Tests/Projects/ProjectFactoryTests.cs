@@ -183,10 +183,6 @@ public class ProjectFactoryTests
             [celbridge]
             celbridge-version = "1.0.0"
             project-version = "0.1.0"
-
-            [project]
-            requires-python = "3.12"
-            dependencies = []
             """;
         File.WriteAllText(projectPath, content);
         return projectPath;

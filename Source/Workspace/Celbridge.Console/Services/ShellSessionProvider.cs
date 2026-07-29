@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Console.Services;
 
 /// <summary>
@@ -8,8 +10,6 @@ namespace Celbridge.Console.Services;
 public sealed class ShellSessionProvider : IConsoleSessionProvider
 {
     public string TypeId => "shell";
-
-    public ConsoleHostBinding HostBinding => ConsoleHostBinding.None;
 
     public IReadOnlyList<ConsoleRunner> DefaultRunners => Array.Empty<ConsoleRunner>();
 
@@ -27,8 +27,14 @@ public sealed class ShellSessionProvider : IConsoleSessionProvider
             executable = context.Executable;
         }
 
-        var commandLine = ConsoleCommandLine.Build(executable, context.Arguments);
-        var workingDirectory = ResolveWorkingDirectory(context.WorkingDirectory, context.ProjectFolderPath);
+        var commandLineBuilder = new CommandLineBuilder(executable);
+        foreach (var argument in context.Arguments)
+        {
+            commandLineBuilder.Add(argument);
+        }
+        var commandLine = commandLineBuilder.ToString();
+
+        var workingDirectory = ConsoleWorkingFolder.Resolve(context.WorkingDirectory, context.ProjectFolderPath);
 
         var launchSpec = new ConsoleLaunchSpec(commandLine, workingDirectory, context.Environment);
         return launchSpec;
@@ -55,23 +61,5 @@ public sealed class ShellSessionProvider : IConsoleSessionProvider
         }
 
         return "/bin/bash";
-    }
-
-    // A relative working folder resolves against the project root, an absolute path is used as given, and
-    // a blank value defaults to the project root.
-    private static string ResolveWorkingDirectory(string workingDirectory, string projectFolderPath)
-    {
-        if (string.IsNullOrWhiteSpace(workingDirectory))
-        {
-            return projectFolderPath;
-        }
-
-        if (Path.IsPathRooted(workingDirectory))
-        {
-            return workingDirectory;
-        }
-
-        var combined = Path.Combine(projectFolderPath, workingDirectory);
-        return Path.GetFullPath(combined);
     }
 }

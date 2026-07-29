@@ -124,19 +124,4 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void RenameResourceDialog(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IRenameResourceDialogCommand>(command =>
-        {
-            command.Resource = resource;
-        });
-    }
-
 }

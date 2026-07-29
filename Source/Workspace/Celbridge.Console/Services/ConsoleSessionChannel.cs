@@ -66,27 +66,25 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         var registry = _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry;
 
         // Register (or on reopen re-register) the console with its effective runners, so the Run menu can
-        // target it, and to obtain the session token a host-bound client echoes back via session/handshake.
+        // target it, and to obtain the session token a connecting client echoes back via session/handshake.
         var runners = ResolveRunners(config, provider);
         var registration = new ConsoleRegistration(
             _fileResource,
             typeId,
             config.Title ?? string.Empty,
-            provider.HostBinding,
             runners,
             this);
         var session = registry.Register(registration);
         _registered = true;
 
-        // Seed the host-binding variables for a cel-proxy or MCP console: the shared listener port every
-        // peer dials, and this console's session token. A plain shell needs neither.
+        // Seed the host-connection variables for every console: the shared listener port every peer dials,
+        // and this console's session token. A shell console passes them on to anything it launches (a
+        // typed celbridge-py, a spawned terminal), so any child can dial back and attribute itself to
+        // this console.
         var environment = new Dictionary<string, string>(config.Environment ?? new Dictionary<string, string>());
-        if (provider.HostBinding != ConsoleHostBinding.None)
-        {
-            var rpcPort = await registry.EnsureRpcListenerAsync();
-            environment["CELBRIDGE_RPC_PORT"] = rpcPort.ToString();
-            environment["CELBRIDGE_SESSION_TOKEN"] = session.SessionId.ToString();
-        }
+        var rpcPort = await registry.EnsureRpcListenerAsync();
+        environment[ConsoleEnvironmentVariables.RpcPort] = rpcPort.ToString();
+        environment[ConsoleEnvironmentVariables.SessionToken] = session.SessionId.ToString();
 
         var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
 
@@ -101,7 +99,19 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             config.Dependencies,
             config.PythonVersion);
 
-        var specResult = await provider.BuildLaunchSpecAsync(sessionContext);
+        // A provider throw (e.g. file IO while resolving a Python launch) must surface as a session-failed
+        // result in the document, not as a protocol-level RPC error.
+        Result<ConsoleLaunchSpec> specResult;
+        try
+        {
+            specResult = await provider.BuildLaunchSpecAsync(sessionContext);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to build the console launch spec");
+            specResult = Result<ConsoleLaunchSpec>.Fail(exception.Message);
+        }
+
         if (specResult.IsFailure)
         {
             registry.Unregister(_fileResource);
@@ -118,9 +128,23 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         // Size the pty before it starts so the shell paints at the WebView's geometry rather than 80x25.
         terminal.SetSize(cols, rows);
 
+        // Contributors amend the final environment for every console type, e.g. Python putting the uv tool
+        // bin folder on PATH so celbridge-py resolves in a shell console.
+        var environmentCopy = new Dictionary<string, string>(launchSpec.Environment);
+        foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
+        {
+            try
+            {
+                await contributor.ContributeAsync(sessionContext, environmentCopy);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "A console environment contributor failed; launching without its variables");
+            }
+        }
+
         try
         {
-            var environmentCopy = new Dictionary<string, string>(launchSpec.Environment);
             terminal.Start(launchSpec.CommandLine, launchSpec.WorkingDirectory, environmentCopy);
         }
         catch (Exception exception)
@@ -211,7 +235,7 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
         if (_workspaceWrapper.HasWorkspaceService)
         {
-            _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry.SetState(_fileResource, ConsoleSessionState.Disconnected);
+            _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry.SetState(_fileResource, ConsoleSessionState.Ended);
         }
 
         _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.SessionState, new { state = "ended" });

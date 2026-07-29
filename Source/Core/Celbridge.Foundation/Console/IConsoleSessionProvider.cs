@@ -1,17 +1,6 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// How a console session reaches the Celbridge host. None is a plain pty with no host RPC. CelProxy dials
-/// the shared JSON-RPC server for a cel.* proxy. Mcp is handed an MCP port for an MCP-speaking client.
-/// </summary>
-public enum ConsoleHostBinding
-{
-    None,
-    CelProxy,
-    Mcp,
-}
-
-/// <summary>
 /// The resolved inputs to start a console session's process. The environment variables carry only the
 /// deltas the pty backend merges into the process environment.
 /// </summary>
@@ -30,8 +19,8 @@ public sealed record ConsoleRunner(
 
 /// <summary>
 /// The resolved configuration a provider builds a launch spec from. WorkingDirectory is as written in the
-/// config and resolves against ProjectFolderPath, and the environment variables already carry the
-/// host-binding variables for a host-bound type. Fields a given type does not use are left at their defaults.
+/// config and resolves against ProjectFolderPath, and the environment variables already carry the RPC port
+/// and session token. Fields a given type does not use are left at their defaults.
 /// </summary>
 public sealed record ConsoleSessionContext(
     ResourceKey ResourceKey,
@@ -53,11 +42,6 @@ public interface IConsoleSessionProvider
     /// The session-type key this provider handles, matched against a .console file's [session] type.
     /// </summary>
     string TypeId { get; }
-
-    /// <summary>
-    /// How this type's session reaches the host.
-    /// </summary>
-    ConsoleHostBinding HostBinding { get; }
 
     /// <summary>
     /// The default runners this type contributes (file extensions plus a run-command template), or an

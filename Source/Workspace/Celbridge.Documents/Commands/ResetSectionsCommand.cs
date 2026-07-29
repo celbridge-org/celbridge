@@ -22,14 +22,4 @@ public class ResetSectionsCommand : CommandBase, IResetSectionsCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void ResetSections()
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-        commandService.Execute<IResetSectionsCommand>();
-    }
 }

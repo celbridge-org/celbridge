@@ -654,13 +654,13 @@ Do you wish to continue?</value>
     <value>Incompatible Project Version</value>
   </data>
   <data name="ConsolePanel_IncompatibleVersionMessage" xml:space="preserve">
-    <value>This project was created with a newer version of Celbridge. Python scripting has been disabled. Please upgrade Celbridge and reload the project.</value>
+    <value>This project was created with a newer version of Celbridge. Please upgrade Celbridge and reload the project.</value>
   </data>
   <data name="ConsolePanel_InvalidVersionTitle" xml:space="preserve">
     <value>Invalid Project Version</value>
   </data>
   <data name="ConsolePanel_InvalidVersionMessage" xml:space="preserve">
-    <value>Unable to determine project version compatibility. Python scripting has been disabled. Please correct the 'celbridge-version' property in '{0}' and reload the project.</value>
+    <value>Unable to determine project version compatibility. Please correct the 'celbridge-version' property in '{0}' and reload the project.</value>
   </data>
   <data name="ConsolePanel_MigrationBannerTitle" xml:space="preserve">
     <value>Project Upgraded</value>
@@ -834,7 +834,7 @@ Do you wish to continue?</value>
     <value>Console Panel</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_ConsolePanel_Description" xml:space="preserve">
-    <value>Console panel with an interactive Python REPL terminal.</value>
+    <value>Console panel that shows project error and notification banners.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
     <value>MCP Tools</value>

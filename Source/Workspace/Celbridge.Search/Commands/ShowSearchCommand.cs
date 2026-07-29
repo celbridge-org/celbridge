@@ -53,30 +53,4 @@ public class ShowSearchCommand : CommandBase, IShowSearchCommand
         await Task.CompletedTask;
         return Result.Ok();
     }
-
-    public static void Search(string searchText, bool matchCase = false, bool wholeWord = false)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IShowSearchCommand>(command =>
-        {
-            command.SearchText = searchText;
-            command.MatchCase = matchCase;
-            command.WholeWord = wholeWord;
-        });
-    }
-
-    public static void SearchAndReplace(string searchText, string replaceText, bool matchCase = false, bool wholeWord = false)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IShowSearchCommand>(command =>
-        {
-            command.SearchText = searchText;
-            command.MatchCase = matchCase;
-            command.WholeWord = wholeWord;
-            command.ReplaceMode = true;
-            command.ReplaceText = replaceText;
-        });
-    }
 }

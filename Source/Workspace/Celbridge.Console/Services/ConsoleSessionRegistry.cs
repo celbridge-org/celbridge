@@ -9,7 +9,8 @@ namespace Celbridge.Console.Services;
 
 /// <summary>
 /// The live state of one open console: its registration (identity, runners, injector) plus its current
-/// session id, state, and bound connection.
+/// session id, state, and bound connection. RegistrationOrder is the console's first-open sequence,
+/// preserved across a reopen so Run targets keep a stable order.
 /// </summary>
 internal sealed class OpenConsole
 {
@@ -17,6 +18,7 @@ internal sealed class OpenConsole
     public Guid SessionId { get; set; }
     public ConsoleSessionState State { get; set; }
     public int? ConnectionId { get; set; }
+    public long RegistrationOrder { get; set; }
 
     public ConsoleSession ToSession()
     {
@@ -50,6 +52,7 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
     private CancellationTokenSource? _listenerCancellation;
     private int _rpcPort;
     private bool _listenerStarted;
+    private long _nextRegistrationOrder;
 
     public ConsoleSessionRegistry(
         ITcpTransport tcpTransport,
@@ -81,7 +84,23 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
 
             _listenerCancellation = new CancellationTokenSource();
             var cancellationToken = _listenerCancellation.Token;
-            _ = Task.Run(() => _tcpTransport.StartListeningAsync(_rpcPort, cancellationToken));
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _tcpTransport.StartListeningAsync(_rpcPort, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Workspace teardown.
+                }
+                catch (Exception exception)
+                {
+                    // The port could have been taken between probing and binding. Host-bound consoles
+                    // cannot connect until the workspace reloads, so fail loud in the log.
+                    _logger.LogError(exception, "The console cel-proxy listener failed to start on port {Port}", _rpcPort);
+                }
+            });
 
             _listenerStarted = true;
             _logger.LogInformation("Console cel-proxy listener started on port {Port}", _rpcPort);
@@ -94,18 +113,26 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
     {
         var sessionId = Guid.NewGuid();
 
-        // A plain shell is a runnable target as soon as its pty is up. A host-bound console must wait for
-        // its client to say hello before it counts as Ready.
-        var initialState = registration.HostBinding == ConsoleHostBinding.None
-            ? ConsoleSessionState.Ready
-            : ConsoleSessionState.Connecting;
+        // A reopen keeps the console's first-open order. The replaced session is terminally gone, so
+        // broadcast its end for per-session bookkeeping (e.g. pending fingerprints).
+        var registrationOrder = Interlocked.Increment(ref _nextRegistrationOrder);
+        if (_consoles.TryGetValue(registration.ResourceKey, out var existingConsole))
+        {
+            registrationOrder = existingConsole.RegistrationOrder;
+            if (existingConsole.State != ConsoleSessionState.Ended)
+            {
+                existingConsole.State = ConsoleSessionState.Ended;
+                BroadcastState(existingConsole);
+            }
+        }
 
         var openConsole = new OpenConsole
         {
             Registration = registration,
             SessionId = sessionId,
-            State = initialState,
+            State = ConsoleSessionState.Ready,
             ConnectionId = null,
+            RegistrationOrder = registrationOrder,
         };
 
         _consoles[registration.ResourceKey] = openConsole;
@@ -136,6 +163,13 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
         {
             _connectionToSession.TryRemove(connectionId, out _);
         }
+
+        // The removed session is terminally gone; broadcast its end for per-session bookkeeping.
+        if (openConsole.State != ConsoleSessionState.Ended)
+        {
+            openConsole.State = ConsoleSessionState.Ended;
+            BroadcastState(openConsole);
+        }
     }
 
     public bool TryBindConnection(Guid sessionToken, int connectionId, out ConsoleSession? session)
@@ -148,10 +182,9 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
             }
 
             openConsole.ConnectionId = connectionId;
-            openConsole.State = ConsoleSessionState.Ready;
             _connectionToSession[connectionId] = sessionToken;
 
-            BroadcastState(openConsole);
+            _messengerService.Send(new ConsoleSessionConnectedMessage(openConsole.SessionId));
             session = openConsole.ToSession();
             return true;
         }
@@ -167,6 +200,8 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
             return;
         }
 
+        // Attribution only: the console's state follows its pty, so losing a client connection (e.g.
+        // exiting a nested celbridge-py back to a shell prompt) changes nothing else.
         foreach (var openConsole in _consoles.Values)
         {
             if (openConsole.SessionId != sessionId)
@@ -175,8 +210,6 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
             }
 
             openConsole.ConnectionId = null;
-            openConsole.State = ConsoleSessionState.Disconnected;
-            BroadcastState(openConsole);
             return;
         }
     }
@@ -195,8 +228,7 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)
     {
-        var targets = new List<ConsoleRunTarget>();
-
+        var candidates = new List<OpenConsole>();
         foreach (var openConsole in _consoles.Values)
         {
             if (openConsole.State != ConsoleSessionState.Ready)
@@ -210,6 +242,17 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
                 continue;
             }
 
+            candidates.Add(openConsole);
+        }
+
+        // First-open order, so the menu and the no-session programmatic fallback are deterministic.
+        var ordered = candidates
+            .OrderBy(candidate => candidate.RegistrationOrder)
+            .ToList();
+
+        var targets = new List<ConsoleRunTarget>();
+        foreach (var openConsole in ordered)
+        {
             var displayName = string.IsNullOrWhiteSpace(openConsole.Registration.Title)
                 ? openConsole.Registration.ResourceKey.ResourceName
                 : openConsole.Registration.Title;
@@ -217,8 +260,7 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
             var target = new ConsoleRunTarget(
                 openConsole.SessionId,
                 openConsole.Registration.ResourceKey,
-                displayName,
-                runner.CommandTemplate);
+                displayName);
 
             targets.Add(target);
         }

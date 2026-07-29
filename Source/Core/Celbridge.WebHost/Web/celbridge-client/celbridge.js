@@ -354,6 +354,27 @@ export class Celbridge {
     }
 
     /**
+     * Sends a custom client-to-host notification (fire and forget). Use this for a package-declared
+     * channel's own methods (e.g. the console's 'console/input') — the send counterpart of onNotification.
+     * @param {string} method - The RPC method name.
+     * @param {Object} params - The notification parameters.
+     */
+    sendNotification(method, params) {
+        this.#transport.notify(method, params);
+    }
+
+    /**
+     * Sends a custom client-to-host request and resolves with the host's response. The send counterpart
+     * of onRequest.
+     * @param {string} method - The RPC method name.
+     * @param {Object} params - The request parameters.
+     * @returns {Promise<any>}
+     */
+    sendRequest(method, params) {
+        return this.#transport.request(method, params);
+    }
+
+    /**
      * Internal method to send requests (used by sub-modules).
      * @param {string} method - The method name.
      * @param {Object} params - The request parameters.

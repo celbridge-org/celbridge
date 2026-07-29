@@ -51,18 +51,4 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-    public static void ExpandFolder(ResourceKey folderResource, bool IsExpanded)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IExpandFolderCommand>(command =>
-        {
-            command.FolderResource = folderResource;
-            command.Expanded = IsExpanded;
-        });
-    }
 }

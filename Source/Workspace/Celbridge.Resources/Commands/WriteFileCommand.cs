@@ -64,19 +64,4 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
         return LineEndingHelper.DetectSeparatorOrDefault(readResult.Value);
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void WriteFile(ResourceKey fileResource, string content)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IWriteFileCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.Content = content;
-        });
-    }
 }

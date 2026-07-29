@@ -115,18 +115,4 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void DuplicateResourceDialog(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IDuplicateResourceDialogCommand>(command =>
-        {
-            command.Resource = resource;
-        });
-    }
 }

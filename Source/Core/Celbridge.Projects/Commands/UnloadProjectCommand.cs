@@ -30,15 +30,4 @@ public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 
         return await _projectUnloader.UnloadProjectAsync();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void UnloadProject()
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IUnloadProjectCommand>();
-    }
 }

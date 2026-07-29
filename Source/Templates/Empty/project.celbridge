@@ -10,7 +10,3 @@ ignore-file = ".gitignore"
 add = []
 remove = [".gitignore"]
 lock = []
-
-[project]
-requires-python = "<python-version>"
-dependencies = []

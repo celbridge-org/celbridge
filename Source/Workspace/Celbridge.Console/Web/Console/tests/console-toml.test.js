@@ -110,6 +110,38 @@ describe('parseConsoleToml', () => {
         expect(config.environment.PROMPT).toBe('a # b');
     });
 
+    it('preserves a # that follows an escaped quote inside a value', () => {
+        const config = parseConsoleToml('[[session.shortcut]]\nlabel = "Tag"\ntext = "echo \\"#tag\\""');
+        expect(config.shortcuts[0].text).toBe('echo "#tag"');
+    });
+
+    it('splits array items on commas outside quotes only', () => {
+        const config = parseConsoleToml('[session.options]\narguments = ["-c", "print(\\"a, b\\")"]');
+        expect(config.arguments).toEqual(['-c', 'print("a, b")']);
+    });
+
+    it('keeps a comma inside a single-quoted array item', () => {
+        const config = parseConsoleToml("[session.options]\narguments = ['a, b', 'c']");
+        expect(config.arguments).toEqual(['a, b', 'c']);
+    });
+
+    it('parses a quoted environment key', () => {
+        const config = parseConsoleToml('[session.environment]\n"A#B" = "x"\n"TWO WORDS" = "y"');
+        expect(config.environment['A#B']).toBe('x');
+        expect(config.environment['TWO WORDS']).toBe('y');
+    });
+
+    it('parses CRLF input', () => {
+        const config = parseConsoleToml('[session]\r\ntype = "shell"\r\ntitle = "Build"\r\n');
+        expect(config.type).toBe('shell');
+        expect(config.title).toBe('Build');
+    });
+
+    it('unescapes a trailing backslash without consuming the closing quote', () => {
+        const config = parseConsoleToml('[session.options]\nexecutable = "C:\\\\tools\\\\"');
+        expect(config.executable).toBe('C:\\tools\\');
+    });
+
     it('unescapes quotes and backslashes in quoted values', () => {
         const config = parseConsoleToml('[session.options]\nexecutable = "C:\\\\Program Files\\\\pwsh.exe"');
         expect(config.executable).toBe('C:\\Program Files\\pwsh.exe');
@@ -186,5 +218,32 @@ describe('round-trip', () => {
 
         expect(once).toEqual(original);
         expect(twice).toEqual(once);
+    });
+
+    it('round-trips values built from hostile characters', () => {
+        // Every value mixes the characters that exercise escaping, comment stripping, and array
+        // splitting: double quote, backslash, hash, comma, single quote.
+        const hostileValues = [
+            'echo "#tag"',
+            'a, "b, c", d',
+            "single 'quoted' text",
+            'C:\\path\\with\\backslashes\\',
+            'mix \\" of # everything, \'here\'',
+            '#leading hash',
+            'trailing backslash \\',
+        ];
+
+        const original = {
+            ...defaultConsoleConfig(),
+            title: hostileValues[0],
+            executable: hostileValues[3],
+            arguments: hostileValues,
+            environment: { HOSTILE: hostileValues[4], 'ODD KEY#1': hostileValues[1] },
+            runners: [{ extensions: ['.py'], command: hostileValues[4] }],
+            shortcuts: [{ label: hostileValues[0], icon: 'bs-play-fill', text: hostileValues[1] }],
+        };
+
+        const once = parseConsoleToml(serializeConsoleToml(original));
+        expect(once).toEqual(original);
     });
 });

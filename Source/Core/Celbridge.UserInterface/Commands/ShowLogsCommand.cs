@@ -32,15 +32,4 @@ public class ShowLogsCommand : CommandBase, IShowLogsCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void ShowLogs()
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IShowLogsCommand>();
-    }
 }

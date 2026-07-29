@@ -26,18 +26,4 @@ public class OpenFileManagerCommand : CommandBase, IOpenFileManagerCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void OpenFileManager(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IOpenFileManagerCommand>(command =>
-        {
-            command.Resource = resource;
-        });
-    }
 }

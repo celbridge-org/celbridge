@@ -31,20 +31,4 @@ public class CopyComponentCommand : CommandBase, ICopyComponentCommand
 
         return copyResult;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static async Task<Result> CopyComponent(ResourceKey resource, int sourceComponentIndex, int destComponentIndex)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        return await commandService.ExecuteAsync<ICopyComponentCommand>(command =>
-        {
-            command.Resource = resource;
-            command.SourceComponentIndex = sourceComponentIndex;
-            command.DestComponentIndex = destComponentIndex;
-        });
-    }
 }

@@ -92,18 +92,4 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void ArchiveResourceDialog(ResourceKey folderResource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IArchiveResourceDialogCommand>(command =>
-        {
-            command.FolderResource = folderResource;
-        });
-    }
 }

@@ -15,6 +15,7 @@
 
     "Console_SessionEnded": "The console session ended.",
     "Console_StartFailed": "Failed to start the console session.",
+    "Console_InvalidConfig": "Invalid .console configuration.",
 
     "Console_Group_Session": "Session",
     "Console_Group_Environment": "Environment",

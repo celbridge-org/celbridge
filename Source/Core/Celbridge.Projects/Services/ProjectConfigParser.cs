@@ -13,13 +13,7 @@ namespace Celbridge.Projects.Services;
 /// </summary>
 public static class ProjectConfigParser
 {
-    private const string PathSeparator = "/";
-
-    // Mirrors Assets/Python/python_version.txt. Kept in sync manually because this static parser can't read the asset.
-    private const string DefaultPythonVersion = "3.13";
-
     private const string CelbridgeSectionName = "celbridge";
-    private const string ProjectSectionName = "project";
     private const string ContributionSectionName = "contribution";
 
     private const string CelbridgeVersionKey = "celbridge-version";
@@ -47,12 +41,6 @@ public static class ProjectConfigParser
         "add",
         "remove",
         "lock",
-    ];
-
-    private static readonly string[] KnownProjectKeys =
-    [
-        "requires-python",
-        "dependencies",
     ];
 
     /// <summary>
@@ -138,13 +126,6 @@ public static class ProjectConfigParser
             celbridgeSection = ParseCelbridgeTable(celbridgeTable, entryErrors, out resourcesSection, out featuresDict);
         }
 
-        var projectSection = new ProjectSection();
-        if (root.TryGetValue(ProjectSectionName, out var projectObject) &&
-            projectObject is TomlTable projectTable)
-        {
-            projectSection = ParseProjectTable(projectTable, entryErrors);
-        }
-
         // Editor overrides of the discovered defaults are declared as [[contribution]] entries.
         var contributions = new List<ContributionOverride>();
         if (root.TryGetValue(ContributionSectionName, out var contributionObject))
@@ -172,7 +153,6 @@ public static class ProjectConfigParser
         foreach (var (key, _) in root)
         {
             if (key == CelbridgeSectionName ||
-                key == ProjectSectionName ||
                 key == ContributionSectionName)
             {
                 continue;
@@ -194,7 +174,6 @@ public static class ProjectConfigParser
         return new ProjectConfig
         {
             Celbridge = celbridgeSection,
-            Project = projectSection,
             Resources = resourcesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
@@ -339,43 +318,6 @@ public static class ProjectConfigParser
             Description = ReadString(celbridgeTable, DescriptionKey),
             DisabledPackages = disabledPackages,
             EditorAssociations = editorAssociations
-        };
-    }
-
-    private static ProjectSection ParseProjectTable(
-        TomlTable projectTable,
-        List<ProjectConfigEntryError> entryErrors)
-    {
-        foreach (var key in projectTable.Keys)
-        {
-            if (!KnownProjectKeys.Contains(key, StringComparer.Ordinal))
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    ProjectSectionName, $"Unknown key '{key}' on [{ProjectSectionName}]. The key was ignored."));
-            }
-        }
-
-        List<string>? dependencies = null;
-        if (projectTable.TryGetValue("dependencies", out var dependenciesObject) &&
-            dependenciesObject is TomlArray dependenciesArray)
-        {
-            dependencies = dependenciesArray.Select(x => x?.ToString() ?? string.Empty).ToList();
-        }
-
-        string? requiresPythonValue = null;
-        if (projectTable.TryGetValue("requires-python", out var requiresPython))
-        {
-            requiresPythonValue = requiresPython?.ToString();
-            if (requiresPythonValue == "<python-version>")
-            {
-                requiresPythonValue = DefaultPythonVersion;
-            }
-        }
-
-        return new ProjectSection
-        {
-            RequiresPython = requiresPythonValue,
-            Dependencies = dependencies
         };
     }
 

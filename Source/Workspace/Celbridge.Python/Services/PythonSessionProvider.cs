@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Projects;
+using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
@@ -12,7 +12,6 @@ namespace Celbridge.Python.Services;
 /// </summary>
 public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
 {
-    private readonly IProjectService _projectService;
     private readonly IPythonConfigService _pythonConfigService;
     private readonly IPythonLaunchService _launchService;
     private readonly IMessengerService _messengerService;
@@ -25,24 +24,21 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
     private sealed record PendingFingerprint(string Fingerprint, string ProjectPythonFolder);
 
     public PythonSessionProvider(
-        IProjectService projectService,
         IPythonConfigService pythonConfigService,
         IPythonLaunchService launchService,
         IMessengerService messengerService,
         ILogger<PythonSessionProvider> logger)
     {
-        _projectService = projectService;
         _pythonConfigService = pythonConfigService;
         _launchService = launchService;
         _messengerService = messengerService;
         _logger = logger;
 
+        _messengerService.Register<ConsoleSessionConnectedMessage>(this, OnConsoleSessionConnected);
         _messengerService.Register<ConsoleSessionStateChangedMessage>(this, OnConsoleSessionStateChanged);
     }
 
     public string TypeId => "python";
-
-    public ConsoleHostBinding HostBinding => ConsoleHostBinding.CelProxy;
 
     public IReadOnlyList<ConsoleRunner> DefaultRunners { get; } = new[]
     {
@@ -71,19 +67,18 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
 
         // Remember the fingerprint so it can be persisted once the session connects back. The token was
         // seeded into the environment by the console channel.
-        if (context.Environment.TryGetValue("CELBRIDGE_SESSION_TOKEN", out var tokenText)
+        if (context.Environment.TryGetValue(ConsoleEnvironmentVariables.SessionToken, out var tokenText)
             && Guid.TryParse(tokenText, out var sessionToken))
         {
             _pendingFingerprints[sessionToken] = new PendingFingerprint(launch.Fingerprint, launch.ProjectPythonFolder);
         }
 
-        var workingDirectory = ResolveWorkingDirectory(context.WorkingDirectory, context.ProjectFolderPath);
+        var workingDirectory = ConsoleWorkingFolder.Resolve(context.WorkingDirectory, context.ProjectFolderPath);
         var launchSpec = new ConsoleLaunchSpec(launch.CommandLine, workingDirectory, launch.Environment);
         return launchSpec;
     }
 
-    // The version comes from the .console config first, then the project's requires-python, then the
-    // bundled default, so a blank console field resolves to a sensible version.
+    // The version comes from the .console config, or the bundled default when the console field is blank.
     private string ResolvePythonVersion(ConsoleSessionContext context)
     {
         if (!string.IsNullOrWhiteSpace(context.RuntimeVersion))
@@ -91,50 +86,26 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
             return context.RuntimeVersion;
         }
 
-        var configuredVersion = _projectService.CurrentProject?.Config.Project.RequiresPython;
-        if (!string.IsNullOrWhiteSpace(configuredVersion))
-        {
-            return configuredVersion;
-        }
-
         return _pythonConfigService.DefaultPythonVersion;
     }
 
-    private void OnConsoleSessionStateChanged(object recipient, ConsoleSessionStateChangedMessage message)
+    // A connected client proves the config launches, so the fingerprint is persisted for offline mode.
+    private void OnConsoleSessionConnected(object recipient, ConsoleSessionConnectedMessage message)
     {
-        if (message.State == ConsoleSessionState.Ready)
+        if (_pendingFingerprints.TryRemove(message.SessionId, out var pending))
         {
-            if (_pendingFingerprints.TryRemove(message.SessionId, out var pending))
-            {
-                _ = _launchService.SaveFingerprintAsync(pending.ProjectPythonFolder, pending.Fingerprint);
-            }
-            return;
-        }
-
-        // A session that ended without ever connecting leaves its fingerprint unsaved, so the next run
-        // reconciles online rather than trusting an unproven config.
-        if (message.State == ConsoleSessionState.Disconnected)
-        {
-            _pendingFingerprints.TryRemove(message.SessionId, out _);
+            _ = _launchService.SaveFingerprintAsync(pending.ProjectPythonFolder, pending.Fingerprint);
         }
     }
 
-    // A relative working folder resolves against the project root, an absolute path is used as given, and a
-    // blank value defaults to the project root.
-    private static string ResolveWorkingDirectory(string workingDirectory, string projectFolderPath)
+    // A session that ended without ever connecting leaves its fingerprint unsaved, so the next run
+    // reconciles online rather than trusting an unproven config.
+    private void OnConsoleSessionStateChanged(object recipient, ConsoleSessionStateChangedMessage message)
     {
-        if (string.IsNullOrWhiteSpace(workingDirectory))
+        if (message.State == ConsoleSessionState.Ended)
         {
-            return projectFolderPath;
+            _pendingFingerprints.TryRemove(message.SessionId, out _);
         }
-
-        if (Path.IsPathRooted(workingDirectory))
-        {
-            return workingDirectory;
-        }
-
-        var combined = Path.Combine(projectFolderPath, workingDirectory);
-        return Path.GetFullPath(combined);
     }
 
     public void Dispose()

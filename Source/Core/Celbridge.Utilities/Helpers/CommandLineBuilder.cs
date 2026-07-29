@@ -1,22 +1,42 @@
 using System.Text;
 
-namespace Celbridge.Console.Services;
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Builds a single command-line string from an executable and its arguments, quoting each token for the
 /// current platform. On Windows CreateProcess parses the string with a null application name (the first
 /// token is the PATH-searched executable). On the Unix heads the string is handed to /bin/sh -c.
 /// </summary>
-internal static class ConsoleCommandLine
+public sealed class CommandLineBuilder
 {
-    public static string Build(string executable, IReadOnlyList<string> arguments)
+    private readonly string _executable;
+    private readonly List<string> _arguments = new();
+
+    public CommandLineBuilder(string executable)
+    {
+        _executable = executable;
+    }
+
+    public CommandLineBuilder Add(string argument)
+    {
+        _arguments.Add(argument);
+        return this;
+    }
+
+    public CommandLineBuilder Add(params string[] arguments)
+    {
+        _arguments.AddRange(arguments);
+        return this;
+    }
+
+    public override string ToString()
     {
         var parts = new List<string>
         {
-            Quote(executable)
+            Quote(_executable)
         };
 
-        foreach (var argument in arguments)
+        foreach (var argument in _arguments)
         {
             parts.Add(Quote(argument));
         }

@@ -28,18 +28,4 @@ public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFrom
 
         return await dataTransferService.PasteClipboardResources(DestFolderResource);
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void PasteResourceFromClipboard(ResourceKey folderResource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
-        {
-            command.DestFolderResource = folderResource;
-        });
-    }
 }

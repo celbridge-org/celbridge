@@ -49,13 +49,23 @@ public interface IPythonLaunchService
     /// run. Failures are swallowed (the next run just uses online mode).
     /// </summary>
     Task SaveFingerprintAsync(string projectPythonFolder, string fingerprint);
+
+    /// <summary>
+    /// Returns a PATH value with the project's uv tool bin folder prepended to the given base (or to the
+    /// resolved child-process base PATH when null), so the installed celbridge-py command resolves in any
+    /// console. Already-prepended input is returned unchanged.
+    /// </summary>
+    string BuildConsolePath(string projectFolderPath, string? basePath);
+
+    /// <summary>
+    /// Returns the host-integration environment every console shares (host ports, tool feature flags, the
+    /// project folder, the per-project Python folders, and a PATH carrying the uv tool bin folder),
+    /// creating the folders the variables point at. A celbridge-py launched from any console then behaves
+    /// like a python console session.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync(string projectFolderPath);
 }
 
-/// <summary>
-/// Builds the uv command line and environment for a Python session, owning all the Python-specific launch
-/// machinery: the uv command, the per-project uv caches, wheel discovery, the offline fingerprint, and the
-/// IPython profile.
-/// </summary>
 public sealed class PythonLaunchService : IPythonLaunchService
 {
     private const int PythonLogMaxFiles = 10;
@@ -127,48 +137,26 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
         var uvCacheDir = Path.Combine(projectPythonFolder, UVCacheFolderName);
         var uvPythonInstallDir = Path.Combine(projectPythonFolder, UVPythonInstallsFolderName);
-        await _fileSystem.CreateFolderAsync(uvPythonInstallDir);
-
-        var ipythonDir = Path.Combine(projectPythonFolder, IPythonCacheFolderName);
-        await _fileSystem.CreateFolderAsync(ipythonDir);
-
-        var configuration = environmentInfo.Configuration;
-        var celbridgeVersion = configuration == "Debug" ? $"{appVersion} (Debug)" : $"{appVersion}";
-
-        var pythonLogFolder = Path.Combine(request.ProjectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.LogsFolder);
-
         var uvToolsFolder = Path.Combine(projectPythonFolder, UVToolsFolderName);
         var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
-        var currentPath = ResolveChildProcessBasePath();
-        var terminalPath = currentPath.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
-            ? currentPath
-            : uvBinFolder + Path.PathSeparator + currentPath;
 
-        // The session environment: the uv interpreter install dir and PATH, plus the host-integration
-        // variables the celbridge connector needs to dial back into the workspace.
-        var environment = new Dictionary<string, string>
-        {
-            ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
-            ["PATH"] = terminalPath,
-            ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
-            ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
-            ["CELBRIDGE_WEB_ACCESS_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.WebAccessTools) ? "1" : "0",
-            ["CELBRIDGE_PROJECT_FOLDER"] = request.ProjectFolderPath,
-            ["CELBRIDGE_VERSION"] = celbridgeVersion,
-            ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
-            ["PYTHON_LOG_LEVEL"] = "DEBUG",
-            ["PYTHON_LOG_DIR"] = pythonLogFolder,
-            ["PYTHON_LOG_MAX_FILES"] = PythonLogMaxFiles.ToString(),
-        };
+        // The session environment is the shared host-integration set, so a python console and a
+        // celbridge-py launched from any other console see the same variables.
+        var environment = new Dictionary<string, string>(await BuildConsoleEnvironmentAsync(request.ProjectFolderPath));
+
+        // Filter blank entries once, so the command and the fingerprint see the same effective config and
+        // a stray blank line cannot flip a launch to online mode.
+        var dependencies = request.Dependencies
+            .Where(dependency => !string.IsNullOrWhiteSpace(dependency))
+            .ToList();
+        var interpreterArguments = request.InterpreterArguments
+            .Where(argument => !string.IsNullOrWhiteSpace(argument))
+            .ToList();
 
         // Extra dependencies become --with pairs, deduped by uv against the per-project wheel cache.
         var packageArgs = new List<string>();
-        foreach (var dependency in request.Dependencies)
+        foreach (var dependency in dependencies)
         {
-            if (string.IsNullOrWhiteSpace(dependency))
-            {
-                continue;
-            }
             packageArgs.Add("--with");
             packageArgs.Add(dependency);
         }
@@ -190,12 +178,35 @@ public sealed class PythonLaunchService : IPythonLaunchService
             request.PythonVersion,
             celbridgeWheelPath,
             wheelHash,
-            request.Dependencies,
-            request.InterpreterArguments,
+            dependencies,
+            interpreterArguments,
             installStateHash);
         var savedFingerprint = await LoadSavedFingerprintAsync(projectPythonFolder);
         var useOfflineMode = currentFingerprint == savedFingerprint;
 
+        // Log the fingerprint components so an unexpected offline/online transition can be diagnosed
+        // from the log alone.
+        _logger.LogDebug(
+            "Python fingerprint: wheelHash={WheelHash} installStateHash={InstallStateHash} current={CurrentFingerprint} saved={SavedFingerprint}",
+            wheelHash,
+            installStateHash,
+            currentFingerprint,
+            string.IsNullOrEmpty(savedFingerprint) ? "(none)" : savedFingerprint);
+        if (useOfflineMode)
+        {
+            _logger.LogInformation("Python launch mode: offline (config fingerprint unchanged)");
+        }
+        else
+        {
+            var onlineReason = string.IsNullOrEmpty(savedFingerprint)
+                ? "no saved fingerprint, first run"
+                : "config changed since last run";
+            _logger.LogInformation("Python launch mode: online ({Reason})", onlineReason);
+        }
+
+        // The tool install publishes the celbridge-py command into the project's uv_bin folder, which
+        // every console's PATH carries, so the user can start a cel-connected REPL from a shell console
+        // or a spawned terminal.
         var uvBinFolderInfo = await _fileSystem.GetInfoAsync(uvBinFolder);
         var uvBinFolderExists = uvBinFolderInfo.IsSuccess
             && uvBinFolderInfo.Value.Kind == StorageItemKind.Folder;
@@ -230,12 +241,9 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
         // Interpreter arguments follow the interpreter invocation, reaching IPython via celbridge's
         // __main__ (which forwards sys.argv).
-        foreach (var interpreterArgument in request.InterpreterArguments)
+        foreach (var interpreterArgument in interpreterArguments)
         {
-            if (!string.IsNullOrWhiteSpace(interpreterArgument))
-            {
-                uvBuilder.Add(interpreterArgument);
-            }
+            uvBuilder.Add(interpreterArgument);
         }
 
         var commandLine = uvBuilder.ToString();
@@ -246,13 +254,56 @@ public sealed class PythonLaunchService : IPythonLaunchService
             environment[pair.Key] = pair.Value;
         }
 
-        _logger.LogDebug(
-            "Built Python launch: offline={Offline} command={Command}",
-            useOfflineMode,
-            commandLine);
+        _logger.LogDebug("Built Python launch command: {Command}", commandLine);
 
         var result = new PythonLaunchResult(commandLine, environment, currentFingerprint, projectPythonFolder);
         return result;
+    }
+
+    public string BuildConsolePath(string projectFolderPath, string? basePath)
+    {
+        var projectPythonFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
+        var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
+        var resolvedBase = string.IsNullOrEmpty(basePath) ? ResolveChildProcessBasePath() : basePath;
+
+        return resolvedBase.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
+            ? resolvedBase
+            : uvBinFolder + Path.PathSeparator + resolvedBase;
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync(string projectFolderPath)
+    {
+        var projectPythonFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
+
+        var uvPythonInstallDir = Path.Combine(projectPythonFolder, UVPythonInstallsFolderName);
+        await _fileSystem.CreateFolderAsync(uvPythonInstallDir);
+
+        var ipythonDir = Path.Combine(projectPythonFolder, IPythonCacheFolderName);
+        await _fileSystem.CreateFolderAsync(ipythonDir);
+
+        var environmentInfo = _environmentService.GetEnvironmentInfo();
+        var celbridgeVersion = environmentInfo.Configuration == "Debug"
+            ? $"{environmentInfo.AppVersion} (Debug)"
+            : $"{environmentInfo.AppVersion}";
+
+        var pythonLogFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.LogsFolder);
+
+        var environment = new Dictionary<string, string>
+        {
+            ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
+            ["PATH"] = BuildConsolePath(projectFolderPath, null),
+            ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
+            ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
+            ["CELBRIDGE_WEB_ACCESS_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.WebAccessTools) ? "1" : "0",
+            ["CELBRIDGE_PROJECT_FOLDER"] = projectFolderPath,
+            ["CELBRIDGE_VERSION"] = celbridgeVersion,
+            ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
+            ["CELBRIDGE_PYTHON_LOG_LEVEL"] = "DEBUG",
+            ["CELBRIDGE_PYTHON_LOG_DIR"] = pythonLogFolder,
+            ["CELBRIDGE_PYTHON_LOG_MAX_FILES"] = PythonLogMaxFiles.ToString(),
+        };
+
+        return environment;
     }
 
     public async Task SaveFingerprintAsync(string projectPythonFolder, string fingerprint)

@@ -70,10 +70,15 @@ describe('shortcut lines', () => {
         ]);
     });
 
-    it('rejoins extra pipes into the injected text', () => {
-        expect(parseShortcutLines('Both | bs-x | a | b')).toEqual([
-            { label: 'Both', icon: 'bs-x', text: 'a|b' },
+    it('keeps pipes and spacing inside the injected text', () => {
+        expect(parseShortcutLines('Pipeline | bs-x | ls -la | grep foo')).toEqual([
+            { label: 'Pipeline', icon: 'bs-x', text: 'ls -la | grep foo' },
         ]);
+    });
+
+    it('round-trips a shortcut whose text is a shell pipeline', () => {
+        const shortcuts = [{ label: 'Pipeline', icon: 'bs-x', text: 'ls -la | grep foo' }];
+        expect(parseShortcutLines(formatShortcutLines(shortcuts))).toEqual(shortcuts);
     });
 
     it('skips lines with neither a label nor injected text', () => {

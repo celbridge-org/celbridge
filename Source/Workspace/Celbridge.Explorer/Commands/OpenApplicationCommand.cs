@@ -26,18 +26,4 @@ public class OpenApplicationCommand : CommandBase, IOpenApplicationCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void OpenApplication(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IOpenApplicationCommand>(command =>
-        {
-            command.Resource = resource;
-        });
-    }
 }

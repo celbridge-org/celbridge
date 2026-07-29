@@ -24,18 +24,4 @@ public class RedoEntityCommand : CommandBase, IRedoEntityCommand
 
         return redoResult;
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static async Task<Result> RedoEntity(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        return await commandService.ExecuteAsync<IRedoEntityCommand>(command =>
-        {
-            command.Resource = resource;
-        });
-    }
 }

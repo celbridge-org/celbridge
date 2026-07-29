@@ -28,14 +28,15 @@ export function attachSplitter(splitterElement, options = {}) {
         }
     }
 
-    function onPointerUp(event) {
+    function endDrag(event) {
         if (!dragging) {
             return;
         }
         dragging = false;
         splitterElement.classList.remove('dragging');
         window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointerup', endDrag);
+        window.removeEventListener('pointercancel', endDrag);
         try {
             splitterElement.releasePointerCapture(event.pointerId);
         } catch {
@@ -44,6 +45,10 @@ export function attachSplitter(splitterElement, options = {}) {
     }
 
     splitterElement.addEventListener('pointerdown', (event) => {
+        // Only the primary button starts a drag.
+        if (event.button !== 0) {
+            return;
+        }
         if (typeof isEnabled === 'function' && !isEnabled()) {
             return;
         }
@@ -59,7 +64,8 @@ export function attachSplitter(splitterElement, options = {}) {
             // Some environments lack pointer capture. The window listeners still track the drag.
         }
         window.addEventListener('pointermove', onPointerMove);
-        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointerup', endDrag);
+        window.addEventListener('pointercancel', endDrag);
     });
 
     if (typeof onReset === 'function') {

@@ -1,15 +1,13 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// The lifecycle state of an open console. A None-binding console (a plain shell) is Ready as soon as its
-/// pty starts. A host-bound console (CelProxy or Mcp) stays Connecting until its client says hello.
+/// The lifecycle state of an open console: Ready while its pty runs, Ended once the process exits. A
+/// reopen registers a fresh session.
 /// </summary>
 public enum ConsoleSessionState
 {
-    Launching,
-    Connecting,
     Ready,
-    Disconnected,
+    Ended,
 }
 
 /// <summary>
@@ -19,13 +17,12 @@ public sealed record ConsoleRegistration(
     ResourceKey ResourceKey,
     string TypeId,
     string Title,
-    ConsoleHostBinding HostBinding,
     IReadOnlyList<ConsoleRunner> Runners,
     IConsoleCommandInjector Injector);
 
 /// <summary>
 /// A registered open console. Its session id doubles as the handshake token, and its connection id is null
-/// until a host-bound client says hello.
+/// until a client says hello.
 /// </summary>
 public sealed record ConsoleSession(
     Guid SessionId,
@@ -36,14 +33,12 @@ public sealed record ConsoleSession(
     int? ConnectionId);
 
 /// <summary>
-/// A console that can run a clicked file, with the command template whose "{script_path}" is replaced with
-/// the file path.
+/// A console that can run a clicked file, addressed by its session id.
 /// </summary>
 public sealed record ConsoleRunTarget(
     Guid SessionId,
     ResourceKey ResourceKey,
-    string DisplayName,
-    string CommandTemplate);
+    string DisplayName);
 
 /// <summary>
 /// Writes text into a console's pty.
@@ -57,9 +52,9 @@ public interface IConsoleCommandInjector
 }
 
 /// <summary>
-/// Tracks the open consoles in a workspace and, for host-bound consoles, maps inbound transport connections
-/// to the console that launched them. Owns the shared cel-proxy JSON-RPC listener, and resolves the Explorer
-/// Run menu's targets.
+/// Tracks the open consoles in a workspace and maps inbound transport connections to the console that
+/// launched them. Session state follows the pty (the connection is attribution only). Owns the shared
+/// cel-proxy JSON-RPC listener, and resolves the Explorer Run menu's targets.
 /// </summary>
 public interface IConsoleSessionRegistry
 {
@@ -69,9 +64,8 @@ public interface IConsoleSessionRegistry
     Task<int> EnsureRpcListenerAsync();
 
     /// <summary>
-    /// Registers, or on reopen replaces, the open console for a resource, returning it with a fresh session
-    /// id that doubles as the handshake token. A None-binding console starts Ready. A host-bound one starts
-    /// Connecting.
+    /// Registers, or on reopen replaces, the open console for a resource as Ready, returning it with a
+    /// fresh session id that doubles as the handshake token.
     /// </summary>
     ConsoleSession Register(ConsoleRegistration registration);
 
@@ -86,13 +80,14 @@ public interface IConsoleSessionRegistry
     void Unregister(ResourceKey resourceKey);
 
     /// <summary>
-    /// Binds a transport connection to the console whose token matches, moving it to Ready. Returns false
-    /// if no open console matches the token.
+    /// Binds a transport connection to the console whose token matches, broadcasting
+    /// ConsoleSessionConnectedMessage. Returns false if no open console matches the token.
     /// </summary>
     bool TryBindConnection(Guid sessionToken, int connectionId, out ConsoleSession? session);
 
     /// <summary>
-    /// Handles a lost transport connection, moving its bound console to Disconnected.
+    /// Clears a lost transport connection's binding. The console's state is unaffected, since session
+    /// liveness follows the pty.
     /// </summary>
     void OnConnectionLost(int connectionId);
 
@@ -102,7 +97,8 @@ public interface IConsoleSessionRegistry
     bool TryGetByResource(ResourceKey resourceKey, out ConsoleSession? session);
 
     /// <summary>
-    /// Returns the Ready consoles whose effective runners cover a file extension, as Run menu targets.
+    /// Returns the Ready consoles whose effective runners cover a file extension, as Run menu targets in
+    /// open order.
     /// </summary>
     IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension);
 

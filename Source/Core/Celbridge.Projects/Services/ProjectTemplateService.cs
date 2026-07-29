@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using Celbridge.Platform;
-using Celbridge.Python;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Projects.Services;
@@ -11,17 +10,14 @@ public class ProjectTemplateService : IProjectTemplateService
     private const string ProjectsModuleFolder = "Celbridge.Projects";
 
     private readonly List<ProjectTemplate> _templates;
-    private readonly IPythonConfigService _pythonConfigService;
     private readonly ILocalFileSystem _fileSystem;
     private readonly IAppEnvironment _appEnvironment;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
-        IPythonConfigService pythonConfigService,
         ILocalFileSystem fileSystem,
         IAppEnvironment appEnvironment)
     {
-        _pythonConfigService = pythonConfigService;
         _fileSystem = fileSystem;
         _appEnvironment = appEnvironment;
 
@@ -106,8 +102,7 @@ public class ProjectTemplateService : IProjectTemplateService
             }
 
             var projectFileContents = readResult.Value
-                .Replace("<application-version>", appVersion)
-                .Replace("<python-version>", _pythonConfigService.DefaultPythonVersion);
+                .Replace("<application-version>", appVersion);
 
             var writeResult = await _fileSystem.WriteAllTextAsync(extractedProjectFile, projectFileContents);
             if (writeResult.IsFailure)

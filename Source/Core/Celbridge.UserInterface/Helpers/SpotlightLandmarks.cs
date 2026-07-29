@@ -31,8 +31,6 @@ internal static class SpotlightLandmarks
             new("search-replace-input", LayoutRegion.Primary),
             new("search-replace-history-button", LayoutRegion.Primary),
             new("search-replace-all-button", LayoutRegion.Primary),
-            new("console-input", LayoutRegion.Console),
-            new("console-maximize-button", LayoutRegion.Console),
             new("document-tab-strip", null),
             new("split-editor-button", null),
             new("home-button", null),

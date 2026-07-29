@@ -6,7 +6,7 @@ A loaded project arranges the UI around a central editor area. You can highlight
 - **Documents** (centre) — the editor area. Files open as tabs across up to three sections (sectionIndex 0, 1, 2 from left to right); a split-editor button on the document toolbar sets the section count. `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content.
 - **Inspector** (right sidebar) — contextual properties for the selected resource.
 - **Search** — full-text search, reached from the Utility Panel rail alongside Explorer. From the agent, use `file_grep` for the same purpose.
-- **Console** (bottom) — a Python REPL where the user converses with you; it can be maximised to fill the editor area.
+- **Console** (bottom) — shows project error and notification banners. Interactive consoles are `.console` documents opened in the Documents panel.
 
 The left sidebar is the **Utility Panel**: an icon rail switches its content between Explorer, Search, and any utilities the project's packages contribute. The sidebars and console are shown or hidden from the title-bar toggle buttons. `app_get_state` reports which panels are currently visible and focused, and `activeUtility` names the rail surface currently shown.
 

@@ -45,6 +45,8 @@ term.unicode.activeVersion = '11';
 
 function handleLink(event, uri) {
     event?.preventDefault?.();
+    // Assigning the location triggers a WebView navigation. The host intercepts NavigationStarting and
+    // opens the system browser instead, so this never navigates the editor away.
     location.assign(uri);
 }
 
@@ -137,8 +139,36 @@ client.onNotification('console/sessionState', (params) => {
     }
 });
 
-term.onData((data) => client._notify('console/input', { data }));
-term.onResize(({ cols, rows }) => client._notify('console/resize', { cols, rows }));
+term.onData((data) => client.sendNotification('console/input', { data }));
+term.onResize(({ cols, rows }) => client.sendNotification('console/resize', { cols, rows }));
+
+// Reports which edit verbs the console can perform: copy needs a selection, paste and select-all are
+// always available. Sent on focus and selection change so the host Edit menu enables correctly.
+function reportEditAvailability() {
+    client.input.notifyEditAvailability({
+        canCopy: term.hasSelection(),
+        canPaste: true,
+        canSelectAll: true,
+    });
+}
+
+document.addEventListener('focusin', reportEditAvailability);
+term.onSelectionChange(reportEditAvailability);
+
+// Host-mediated clipboard: the host fetches the selection for copy and pushes clipboard text for paste,
+// because the WebView's own JS clipboard is blocked on the Skia WKWebView. Paste writes the text straight
+// to the pty as input. Select-all runs here.
+client.onRequest('editor/getSelectedText', () => term.getSelection());
+client.onNotification('editor/insertText', (params) => {
+    if (params && typeof params.text === 'string' && params.text !== '') {
+        client.sendNotification('console/input', { data: params.text });
+    }
+});
+client.onNotification('input/performEdit', (params) => {
+    if (params && params.command === 'selectAll') {
+        term.selectAll();
+    }
+});
 
 // Force the wheel to scroll the xterm viewport while the shell prompt owns the screen, so a TUI does not
 // receive wheel-as-arrow-keys. Shift bypasses this. A TUI on the alternate buffer keeps native scroll.
@@ -156,6 +186,7 @@ terminalElement.addEventListener('wheel', (event) => {
 }, { capture: true, passive: false });
 
 term.attachCustomKeyEventHandler((event) => {
+    // Copy: with a selection, Ctrl+C copies it. Without one it falls through to the pty as an interrupt.
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
         if (term.hasSelection()) {
             navigator.clipboard.writeText(term.getSelection());
@@ -164,9 +195,15 @@ term.attachCustomKeyEventHandler((event) => {
         }
         return true;
     }
+    // Paste: Ctrl+V arrives as a native paste event on xterm's hidden textarea, which xterm handles
+    // itself. Returning false stops xterm also sending the Ctrl+V control character to the pty. Not
+    // navigator.clipboard.readText(): over http that prompts for clipboard read permission.
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
         return false;
     }
+    // Swallow Ctrl+D and Ctrl+Z. On Windows, IPython treats Ctrl+D as quit-with-confirmation and the
+    // shell layer treats Ctrl+Z as the legacy MS-DOS EOF marker; neither is what a user pressing these
+    // keys expects here.
     if (event.ctrlKey && (event.key === 'd' || event.key === 'z')) {
         return false;
     }
@@ -316,7 +353,7 @@ function injectShortcut(text) {
     if (!text) {
         return;
     }
-    client._notify('console/input', { data: '\x15' + text + '\r' });
+    client.sendNotification('console/input', { data: '\x15' + text + '\r' });
     term.focus();
 }
 
@@ -337,9 +374,34 @@ sessionTypeSelect.addEventListener('change', () => {
     onFormInput();
 });
 
-for (const field of [executableInput, pythonVersionInput, argumentsInput, dependenciesInput, workingDirectoryInput, environmentInput, runnersInput, shortcutsInput]) {
-    field.addEventListener('input', onFormInput);
+const formFields = [
+    sessionTypeSelect,
+    executableInput,
+    pythonVersionInput,
+    argumentsInput,
+    dependenciesInput,
+    workingDirectoryInput,
+    environmentInput,
+    runnersInput,
+    shortcutsInput,
+];
+
+for (const field of formFields) {
+    if (field !== sessionTypeSelect) {
+        field.addEventListener('input', onFormInput);
+    }
 }
+
+// A read-only document disables the settings form so no edit marks the document dirty. The terminal stays
+// interactive and Reopen stays available, since neither writes the file.
+function applyWritableState() {
+    const writable = client.viewState.current?.writable !== false;
+    for (const field of formFields) {
+        field.disabled = !writable;
+    }
+}
+
+client.viewState.onChanged(() => applyWritableState());
 
 reopenSettingsButton.addEventListener('click', () => { startSession(); });
 reopenTerminalButton.addEventListener('click', () => { startSession(); });
@@ -372,22 +434,34 @@ function hideSessionFailed() {
     sessionFailed.classList.add('hidden');
 }
 
+let startInFlight = false;
+
 async function startSession() {
+    // A start doubles as reopen, so a second click while one is in flight would launch a second pty.
+    if (startInFlight) {
+        return;
+    }
+    startInFlight = true;
+
     // The terminal is always visible beside the settings sidebar. Launch and relaunch against it in place.
     hideSessionFailed();
     fitAddon.fit();
     term.reset();
 
+    // Snapshot the config being launched before the request: edits typed while the start is in flight must
+    // still light the pip against the config the session actually received.
+    const sentConfig = JSON.parse(JSON.stringify(currentConfig));
+
     // Send the full config, not the launch-only view: the host needs the runners to register the console
     // with the Run menu and the title for its display name, alongside the launch-affecting fields.
-    const config = buildStartConfig(currentConfig);
+    const config = buildStartConfig(sentConfig);
     const cols = term.cols;
     const rows = term.rows;
 
     try {
-        const result = await client._request('console/start', { cols, rows, config });
+        const result = await client.sendRequest('console/start', { cols, rows, config });
         if (result && result.ok) {
-            launchedConfig = JSON.parse(JSON.stringify(currentConfig));
+            launchedConfig = sentConfig;
             updateAttention();
             term.focus();
         } else {
@@ -395,6 +469,8 @@ async function startSession() {
         }
     } catch (error) {
         showSessionFailed((error && error.message) || String(error));
+    } finally {
+        startInFlight = false;
     }
 }
 
@@ -403,7 +479,7 @@ function applyContent(content) {
         currentConfig = parseConsoleToml(content);
         configError = null;
     } catch (error) {
-        configError = (error && error.message) || 'Invalid .console configuration.';
+        configError = (error && error.message) || t('Console_InvalidConfig');
     }
     populateForm(currentConfig);
     updateAttention();
@@ -459,6 +535,7 @@ async function main() {
         },
     });
 
+    applyWritableState();
     await startSession();
 }
 

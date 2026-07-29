@@ -120,23 +120,6 @@ public sealed record class ResourcesSection
 }
 
 /// <summary>
-/// Models the interim [project] table from the .celbridge project config, carrying the Python
-/// environment keys. Uses pyproject.toml naming conventions.
-/// </summary>
-public sealed record class ProjectSection
-{
-    /// <summary>
-    /// Python version requirement (e.g., ">=3.12").
-    /// </summary>
-    public string? RequiresPython { get; init; }
-
-    /// <summary>
-    /// List of Python package dependencies to install in the environment.
-    /// </summary>
-    public IReadOnlyList<string>? Dependencies { get; init; }
-}
-
-/// <summary>
 /// Root Celbridge project config, parsed from the .celbridge file's v2 schema.
 /// </summary>
 public sealed record class ProjectConfig
@@ -145,11 +128,6 @@ public sealed record class ProjectConfig
     /// The [celbridge] table: versions, package activation, and editor defaults.
     /// </summary>
     public CelbridgeSection Celbridge { get; init; } = new();
-
-    /// <summary>
-    /// The interim [project] table carrying the Python environment keys.
-    /// </summary>
-    public ProjectSection Project { get; init; } = new();
 
     /// <summary>
     /// File policy from the [celbridge.resources] sub-table.

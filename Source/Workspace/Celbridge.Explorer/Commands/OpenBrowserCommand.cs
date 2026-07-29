@@ -26,18 +26,4 @@ public class OpenBrowserCommand : CommandBase, IOpenBrowserCommand
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void OpenBrowser(string url)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IOpenBrowserCommand>(command =>
-        {
-            command.URL = url;
-        });
-    }
 }

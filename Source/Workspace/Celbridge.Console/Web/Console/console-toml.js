@@ -1,7 +1,8 @@
 // Minimal TOML parse/serialise for the constrained .console config shape. It handles the documented shape
 // (single-line string and string-array values under [session], [session.options], [session.environment],
-// plus [[session.runner]] and [[session.shortcut]] array-of-tables). Anything outside that raises a config
-// error surfaced in the settings view.
+// plus [[session.runner]] and [[session.shortcut]] array-of-tables). Unknown keys and sections are parsed
+// and ignored; a malformed line raises a config error surfaced in the settings view. Comments are not
+// preserved across a save.
 
 /**
  * @typedef {Object} ConsoleRunner
@@ -84,7 +85,7 @@ export function parseConsoleToml(text) {
             throw new Error(`Invalid line in .console config: "${line}"`);
         }
 
-        const key = line.slice(0, equalsIndex).trim();
+        const key = parseKey(line.slice(0, equalsIndex).trim());
         const rawValue = line.slice(equalsIndex + 1).trim();
         assignValue(config, section, currentTable, key, rawValue);
     }
@@ -127,7 +128,7 @@ export function serializeConsoleToml(config) {
     lines.push('');
     lines.push('[session.environment]');
     for (const [name, value] of Object.entries(config.environment || {})) {
-        lines.push(`${name} = ${quote(value)}`);
+        lines.push(`${serializeKey(name)} = ${quote(value)}`);
     }
 
     for (const runner of config.runners || []) {
@@ -220,11 +221,15 @@ function assignValue(config, section, currentTable, key, rawValue) {
 }
 
 // Cuts a line at its first unquoted '#'. A '#' inside a quoted value (either quote style) is preserved.
+// Inside a double-quoted string a backslash escapes the next character; a literal (single-quoted) string
+// has no escapes.
 function stripComment(line) {
     let quoteChar = null;
     for (let index = 0; index < line.length; index++) {
         const character = line[index];
-        if (quoteChar !== null) {
+        if (quoteChar === '"' && character === '\\') {
+            index++;
+        } else if (quoteChar !== null) {
             if (character === quoteChar) {
                 quoteChar = null;
             }
@@ -237,10 +242,18 @@ function stripComment(line) {
     return line;
 }
 
+// A quoted key (emitted for environment names that are not TOML bare keys) is unquoted like a scalar.
+function parseKey(rawKey) {
+    if ((rawKey.startsWith('"') && rawKey.endsWith('"') && rawKey.length >= 2) ||
+        (rawKey.startsWith("'") && rawKey.endsWith("'") && rawKey.length >= 2)) {
+        return parseScalar(rawKey);
+    }
+    return rawKey;
+}
+
 function parseScalar(rawValue) {
     if (rawValue.startsWith('"') && rawValue.endsWith('"') && rawValue.length >= 2) {
-        const inner = rawValue.slice(1, -1);
-        return inner.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        return unescapeBasicString(rawValue.slice(1, -1));
     }
     // TOML literal (single-quoted) strings take their content verbatim, with no escape processing. Used for
     // values that contain double quotes, such as a runner command like: '%run "{script_path}"'.
@@ -249,6 +262,25 @@ function parseScalar(rawValue) {
     }
     // A bare (unquoted) value is returned verbatim, so numbers and booleans round-trip as text.
     return rawValue;
+}
+
+// Unescapes a double-quoted string body in one pass, so an unescaped backslash never pairs with the
+// character an earlier escape produced. Escapes other than \" and \\ pass through verbatim.
+function unescapeBasicString(inner) {
+    let result = '';
+    for (let index = 0; index < inner.length; index++) {
+        const character = inner[index];
+        if (character === '\\' && index + 1 < inner.length) {
+            const next = inner[index + 1];
+            if (next === '"' || next === '\\') {
+                result += next;
+                index++;
+                continue;
+            }
+        }
+        result += character;
+    }
+    return result;
 }
 
 function parseArray(rawValue) {
@@ -264,18 +296,30 @@ function parseArray(rawValue) {
     return splitTopLevel(inner).map((item) => parseScalar(item.trim()));
 }
 
-// Splits an array body on commas that sit outside a double-quoted string.
+// Splits an array body on commas that sit outside a quoted string (either quote style). Inside a
+// double-quoted string a backslash escapes the next character.
 function splitTopLevel(inner) {
     const items = [];
     let current = '';
-    let inString = false;
+    let quoteChar = null;
 
     for (let index = 0; index < inner.length; index++) {
         const character = inner[index];
-        if (character === '"') {
-            inString = !inString;
+        if (quoteChar === '"' && character === '\\') {
             current += character;
-        } else if (character === ',' && !inString) {
+            index++;
+            if (index < inner.length) {
+                current += inner[index];
+            }
+        } else if (quoteChar !== null) {
+            if (character === quoteChar) {
+                quoteChar = null;
+            }
+            current += character;
+        } else if (character === '"' || character === "'") {
+            quoteChar = character;
+            current += character;
+        } else if (character === ',') {
             items.push(current);
             current = '';
         } else {
@@ -293,4 +337,13 @@ function splitTopLevel(inner) {
 function quote(value) {
     const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     return `"${escaped}"`;
+}
+
+// An environment name that is not a TOML bare key (letters, digits, underscore, dash) is emitted quoted so
+// it survives the round trip.
+function serializeKey(name) {
+    if (/^[A-Za-z0-9_-]+$/.test(name)) {
+        return name;
+    }
+    return quote(name);
 }

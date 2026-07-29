@@ -120,12 +120,11 @@ public class ShellSessionProviderTests
     }
 
     [Test]
-    public void ShellProvider_ReportsShellTypeWithNoHostBindingAndNoRunners()
+    public void ShellProvider_ReportsShellTypeWithNoRunners()
     {
         var provider = new ShellSessionProvider();
 
         provider.TypeId.Should().Be("shell");
-        provider.HostBinding.Should().Be(ConsoleHostBinding.None);
         provider.DefaultRunners.Should().BeEmpty();
     }
 }

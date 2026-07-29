@@ -141,29 +141,4 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void DeleteResourceDialog(ResourceKey resource)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IDeleteResourceDialogCommand>(command =>
-        {
-            command.Resources = [resource];
-        });
-    }
-
-    public static void DeleteResourcesDialog(List<ResourceKey> resources)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IDeleteResourceDialogCommand>(command =>
-        {
-            command.Resources = resources;
-        });
-    }
-
 }

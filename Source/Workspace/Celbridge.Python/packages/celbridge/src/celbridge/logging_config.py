@@ -12,16 +12,16 @@ def configure_logging(log_level: str = "INFO", log_dir: str | None = None, max_l
 
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-                   Can be overridden by PYTHON_LOG_LEVEL environment variable.
+                   Can be overridden by CELBRIDGE_PYTHON_LOG_LEVEL environment variable.
         log_dir: Optional path to log folder. If provided, creates timestamped log files.
-                 Can be set via PYTHON_LOG_DIR environment variable.
+                 Can be set via CELBRIDGE_PYTHON_LOG_DIR environment variable.
         max_log_files: Maximum number of log files to keep. Older files are deleted.
-                       Can be overridden by PYTHON_LOG_MAX_FILES environment variable.
+                       Can be overridden by CELBRIDGE_PYTHON_LOG_MAX_FILES environment variable.
     """
     # Allow environment variables to override defaults
-    log_level = os.environ.get('PYTHON_LOG_LEVEL', log_level).upper()
-    log_dir = os.environ.get('PYTHON_LOG_DIR', log_dir)
-    max_log_files = int(os.environ.get('PYTHON_LOG_MAX_FILES', max_log_files))
+    log_level = os.environ.get('CELBRIDGE_PYTHON_LOG_LEVEL', log_level).upper()
+    log_dir = os.environ.get('CELBRIDGE_PYTHON_LOG_DIR', log_dir)
+    max_log_files = int(os.environ.get('CELBRIDGE_PYTHON_LOG_MAX_FILES', max_log_files))
 
     # Convert string level to logging constant
     numeric_level = getattr(logging, log_level, logging.INFO)
