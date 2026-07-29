@@ -38,7 +38,7 @@
     <Button x:Name="CloseButton"
             Grid.Column="4"
             Style="{StaticResource TransparentIconButtonStyle}"
-            ToolTipService.ToolTip="Close panel"
+            ToolTipService.ToolTip="{x:Bind CloseButtonTooltip}"
             Margin="0,0,8,0"
             VerticalAlignment="Center"
             Click="CloseButton_Click">

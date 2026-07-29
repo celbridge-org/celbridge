@@ -28,7 +28,7 @@
              Title="{x:Bind ViewModel.ErrorBannerTitle, Mode=OneWay}"
              Message="{x:Bind ViewModel.ErrorBannerMessage, Mode=OneWay}">
       <InfoBar.ActionButton>
-        <Button Content="Reload Project"
+        <Button Content="{x:Bind ReloadProjectText}"
                 Click="{x:Bind ViewModel.OnReloadProjectClicked}"/>
       </InfoBar.ActionButton>
     </InfoBar>
@@ -42,7 +42,7 @@
              Message="{x:Bind ViewModel.ProjectChangeBannerMessage, Mode=OneWay}"
              Closed="{x:Bind ViewModel.OnProjectChangeBannerClosed}">
       <InfoBar.ActionButton>
-        <Button Content="Reload Project"
+        <Button Content="{x:Bind ReloadProjectText}"
                 Click="{x:Bind ViewModel.OnReloadProjectClicked}"/>
       </InfoBar.ActionButton>
     </InfoBar>

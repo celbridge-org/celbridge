@@ -13,15 +13,18 @@ public sealed partial class ConsolePanel : UserControl
 
     private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
+    private string ReloadProjectText => _stringLocalizer.GetString("ConsolePanel_ReloadProjectButton");
+
     public ConsolePanelViewModel ViewModel { get; }
 
     public ConsolePanel()
     {
-        this.InitializeComponent();
-
+        // Acquire the localizer and view model before InitializeComponent so the x:Bind bindings
+        // (TitleText, ReloadProjectText, ViewModel.*) have their sources ready when they first evaluate.
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
+
+        this.InitializeComponent();
     }
 
     public void Cleanup()

@@ -21,7 +21,7 @@
     <div id="app">
         <div id="toolbar">
             <div id="shortcut-toolbar" class="hidden"></div>
-            <button id="settings-toggle" class="cel-icon-button" type="button" title="Settings" aria-label="Settings" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
+            <button id="settings-toggle" class="cel-icon-button" type="button" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
                 <i class="bi bi-gear"></i>
                 <span id="pip" class="pip hidden"></span>
             </button>
@@ -33,7 +33,7 @@
                 <div id="session-failed" class="overlay hidden">
                     <div class="overlay-card">
                         <div id="session-failed-message" class="overlay-message"></div>
-                        <button id="reopen-terminal" type="button" class="cel-accent" data-loc-key="Console_Reopen" data-loc-title="Console_Reopen_Tooltip">Reopen Console</button>
+                        <button id="reopen-terminal" type="button" class="cel-accent" data-loc-key="Console_Reopen" data-loc-title="Console_Reopen_Tooltip"></button>
                     </div>
                 </div>
             </div>
@@ -42,92 +42,92 @@
 
             <div id="settings-view" class="hidden">
                 <div class="settings-header">
-                    <h1 data-loc-key="Console_Settings_Heading">Console Settings</h1>
-                    <p class="settings-subtitle" data-loc-key="Console_Settings_Subtitle">Configure how this console launches and what it runs.</p>
+                    <h1 data-loc-key="Console_Settings_Heading"></h1>
+                    <p class="settings-subtitle" data-loc-key="Console_Settings_Subtitle"></p>
                     <div id="config-error" class="config-error hidden"></div>
                 </div>
                 <div id="settings-scroll" class="settings-scroll">
 
                 <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Session">Session</summary>
+                    <summary data-loc-key="Console_Group_Session"></summary>
                     <div class="cel-expander-body">
                         <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Type">Type</span>
+                            <span class="field-label" data-loc-key="Console_Field_Type"></span>
                             <select id="session-type">
-                                <option value="shell" data-loc-key="Console_Type_Shell">Shell</option>
-                                <option value="python" data-loc-key="Console_Type_Python">Python</option>
+                                <option value="shell" data-loc-key="Console_Type_Shell"></option>
+                                <option value="python" data-loc-key="Console_Type_Python"></option>
                             </select>
                         </label>
 
                         <label class="field" id="executable-field">
-                            <span class="field-label" data-loc-key="Console_Field_Executable">Executable</span>
-                            <input id="executable" type="text" spellcheck="false" placeholder="Executable name or path" data-loc-key="Console_Placeholder_Executable" data-loc-attr="placeholder">
-                            <span class="field-hint" data-loc-key="Console_Hint_Executable">Blank uses the platform default shell. Example: pwsh</span>
+                            <span class="field-label" data-loc-key="Console_Field_Executable"></span>
+                            <input id="executable" type="text" spellcheck="false" data-loc-key="Console_Placeholder_Executable" data-loc-attr="placeholder">
+                            <span class="field-hint" data-loc-key="Console_Hint_Executable"></span>
                         </label>
 
                         <label class="field hidden" id="python-version-field">
-                            <span class="field-label" data-loc-key="Console_Field_PythonVersion">Python Version</span>
-                            <input id="python-version" type="text" spellcheck="false" placeholder="Version specifier" data-loc-key="Console_Placeholder_PythonVersion" data-loc-attr="placeholder">
-                            <span class="field-hint" data-loc-key="Console_Hint_PythonVersion">Blank uses the default. Examples: 3.13, &gt;=3.12</span>
+                            <span class="field-label" data-loc-key="Console_Field_PythonVersion"></span>
+                            <input id="python-version" type="text" spellcheck="false" data-loc-key="Console_Placeholder_PythonVersion" data-loc-attr="placeholder">
+                            <span class="field-hint" data-loc-key="Console_Hint_PythonVersion"></span>
                         </label>
 
                         <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Arguments">Arguments</span>
-                            <textarea id="arguments" rows="2" spellcheck="false" placeholder="One argument per line" data-loc-key="Console_Placeholder_Arguments" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Arguments">Passed to the interpreter, one per line. Example: -q</span>
+                            <span class="field-label" data-loc-key="Console_Field_Arguments"></span>
+                            <textarea id="arguments" rows="2" spellcheck="false" data-loc-key="Console_Placeholder_Arguments" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_Arguments"></span>
                         </label>
 
                         <label class="field hidden" id="dependencies-field">
-                            <span class="field-label" data-loc-key="Console_Field_Dependencies">Dependencies</span>
-                            <textarea id="dependencies" rows="3" spellcheck="false" placeholder="One package per line" data-loc-key="Console_Placeholder_Dependencies" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Dependencies">Installed with uv, one per line. Examples: numpy, pandas&gt;=2</span>
+                            <span class="field-label" data-loc-key="Console_Field_Dependencies"></span>
+                            <textarea id="dependencies" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Dependencies" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_Dependencies"></span>
                         </label>
 
                         <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_WorkingDirectory">Working Directory</span>
-                            <input id="working-directory" type="text" spellcheck="false" placeholder="Folder path" data-loc-key="Console_Placeholder_WorkingDirectory" data-loc-attr="placeholder">
-                            <span class="field-hint" data-loc-key="Console_Hint_WorkingDirectory">Relative to the project root; blank uses it. Example: tools</span>
-                        </label>
-                    </div>
-                </details>
-
-                <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Environment">Environment</summary>
-                    <div class="cel-expander-body">
-                        <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Environment">Environment Variables</span>
-                            <textarea id="environment" rows="4" spellcheck="false" placeholder="KEY=value, one per line" data-loc-key="Console_Placeholder_Environment" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Environment">Injected before launch, one per line. Example: PYTHONWARNINGS=default</span>
+                            <span class="field-label" data-loc-key="Console_Field_WorkingDirectory"></span>
+                            <input id="working-directory" type="text" spellcheck="false" data-loc-key="Console_Placeholder_WorkingDirectory" data-loc-attr="placeholder">
+                            <span class="field-hint" data-loc-key="Console_Hint_WorkingDirectory"></span>
                         </label>
                     </div>
                 </details>
 
                 <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Runners">Script Runners</summary>
+                    <summary data-loc-key="Console_Group_Environment"></summary>
                     <div class="cel-expander-body">
                         <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Runners">Script Runners</span>
-                            <textarea id="runners" rows="3" spellcheck="false" placeholder="extensions = command, one per line" data-loc-key="Console_Placeholder_Runners" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Runners">Run a file in this console; {script_path} is the file path. Example: .py, .ipy = %run "{script_path}"</span>
+                            <span class="field-label" data-loc-key="Console_Field_Environment"></span>
+                            <textarea id="environment" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Environment" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_Environment"></span>
                         </label>
                     </div>
                 </details>
 
                 <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Shortcuts">Shortcuts</summary>
+                    <summary data-loc-key="Console_Group_Runners"></summary>
                     <div class="cel-expander-body">
                         <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Shortcuts">Shortcuts</span>
-                            <textarea id="shortcuts" rows="3" spellcheck="false" placeholder="label | icon | text, one per line" data-loc-key="Console_Placeholder_Shortcuts" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Shortcuts">Toolbar button that types text; icon is a Bootstrap name. Example: Run tests | bs-play-fill | pytest -q</span>
+                            <span class="field-label" data-loc-key="Console_Field_Runners"></span>
+                            <textarea id="runners" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Runners" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_Runners"></span>
+                        </label>
+                    </div>
+                </details>
+
+                <details class="cel-expander">
+                    <summary data-loc-key="Console_Group_Shortcuts"></summary>
+                    <div class="cel-expander-body">
+                        <label class="field">
+                            <span class="field-label" data-loc-key="Console_Field_Shortcuts"></span>
+                            <textarea id="shortcuts" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Shortcuts" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_Shortcuts"></span>
                         </label>
                     </div>
                 </details>
 
                 </div>
                 <div class="cel-panel-footer">
-                    <p data-loc-key="Console_ReopenCaption">Some settings take effect when the console is reopened.</p>
-                    <button id="reopen-settings" type="button" data-loc-key="Console_ReopenSession" data-loc-title="Console_Reopen_Tooltip">Reopen Console</button>
+                    <p data-loc-key="Console_ReopenCaption"></p>
+                    <button id="reopen-settings" type="button" data-loc-key="Console_ReopenSession" data-loc-title="Console_Reopen_Tooltip"></button>
                 </div>
             </div>
         </div>

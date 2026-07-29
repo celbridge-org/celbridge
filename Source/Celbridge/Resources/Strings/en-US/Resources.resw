@@ -360,6 +360,12 @@
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
+  <data name="ConsolePanel_ReloadProjectButton" xml:space="preserve">
+    <value>Reload Project</value>
+  </data>
+  <data name="PanelHeader_CloseTooltip" xml:space="preserve">
+    <value>Close panel</value>
+  </data>
   <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
   </data>
