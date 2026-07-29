@@ -7,14 +7,12 @@ namespace Celbridge.Console;
 public interface IConsoleService
 {
     /// <summary>
-    /// Returns the registry of open consoles, which owns the shared cel-proxy JSON-RPC listener and
-    /// resolves the Explorer Run menu's targets.
+    /// Returns the registry of open consoles.
     /// </summary>
     IConsoleSessionRegistry SessionRegistry { get; }
 
     /// <summary>
-    /// Returns the owner of the open consoles' child processes, which tears them down on project close or
-    /// app crash.
+    /// Returns the owner of the open consoles' child processes.
     /// </summary>
     IConsoleProcessOwner ProcessOwner { get; }
 }

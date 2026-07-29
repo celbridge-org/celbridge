@@ -5,7 +5,7 @@ namespace Celbridge.Console.Services;
 /// <summary>
 /// Builds a single command-line string from an executable and its arguments, quoting each token for the
 /// current platform. On Windows CreateProcess parses the string with a null application name (the first
-/// token is the PATH-searched executable); on the Unix heads the string is handed to /bin/sh -c.
+/// token is the PATH-searched executable). On the Unix heads the string is handed to /bin/sh -c.
 /// </summary>
 internal static class ConsoleCommandLine
 {
@@ -55,7 +55,7 @@ internal static class ConsoleCommandLine
         }
 
         // Windows CreateProcess command-line quoting: a run of backslashes before a quote is doubled and
-        // the quote escaped; a trailing run before the closing quote is doubled.
+        // the quote escaped. A trailing run before the closing quote is doubled.
         var builder = new StringBuilder();
         builder.Append('"');
 

@@ -138,7 +138,6 @@ public partial class WorkspacePageViewModel : ObservableObject
             _workspaceLoader.ResetProcessWorkingFolder();
 
             // Dispose the workspace service
-            // This disposes all the sub-services and releases all resources held by the workspace.
             var disposableWorkspace = _workspaceService as IDisposable;
             Guard.IsNotNull(disposableWorkspace);
             disposableWorkspace.Dispose();
@@ -149,7 +148,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         }
 
         // Notify listeners that the workspace has been unloaded. This must always be sent, even after a
-        // failure above, because the ProjectUnloader wait completes only when this message clears the
+        // failure above, because the project-unload wait completes only when this message clears the
         // workspace loaded state.
         var message = new WorkspaceUnloadedMessage();
         _messengerService.Send(message);

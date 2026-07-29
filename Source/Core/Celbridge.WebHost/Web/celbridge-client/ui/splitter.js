@@ -5,7 +5,7 @@
 //
 //   attachSplitter(splitterElement, {
 //     onDragStart() { /* capture the pane's current size */ },
-//     onDrag(deltaX) { /* deltaX = pixels moved from the drag start; resize the pane */ },
+//     onDrag(deltaX) { /* deltaX = pixels moved from the drag start. Resize the pane */ },
 //     onReset() { /* optional: double-click resets, e.g. to 50/50 */ },
 //     isEnabled() { return true; /* optional: skip the gesture while false */ },
 //   });
@@ -56,7 +56,7 @@ export function attachSplitter(splitterElement, options = {}) {
         try {
             splitterElement.setPointerCapture(event.pointerId);
         } catch {
-            // Some environments lack pointer capture; the window listeners still track the drag.
+            // Some environments lack pointer capture. The window listeners still track the drag.
         }
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);

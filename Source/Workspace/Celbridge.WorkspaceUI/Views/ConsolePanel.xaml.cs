@@ -4,9 +4,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
-/// The bottom-panel banners host: it shows the project-notification banners (project error, project
-/// change, migration, and project check) for the workspace shell. It no longer hosts any terminal, which
-/// now lives in the .console document.
+/// The bottom-panel banners host: shows the project-notification banners (project error, project
+/// change, migration, and project check) for the workspace shell.
 /// </summary>
 public sealed partial class ConsolePanel : UserControl
 {

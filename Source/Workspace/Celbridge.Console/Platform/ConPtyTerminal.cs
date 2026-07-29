@@ -240,7 +240,7 @@ public sealed class ConPtyTerminal : IPtyBackend
             _hInputWrite = IntPtr.Zero;
         }
 
-        // Kill the shell immediately; an interactive shell never exits on stdin close, so a graceful wait
+        // Kill the shell immediately. An interactive shell never exits on stdin close, so a graceful wait
         // only stalls the close. Not Kill(entireProcessTree: true): it scans every system process
         // (Access-denied spam) and is redundant, as descendants die with the pseudoconsole (closed below)
         // and the console job object.

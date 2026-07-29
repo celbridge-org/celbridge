@@ -54,7 +54,7 @@ public class MenuBuilder<TContext> : IMenuBuilder<TContext> where TContext : IMe
                 items.Add(new MenuFlyoutSeparator());
             }
 
-            // An option that yields more than one dynamic child renders as a submenu; otherwise it is a
+            // An option that yields more than one dynamic child renders as a submenu. Otherwise it is a
             // flat item wired to the option's own Execute (which handles the single-child case).
             var subMenuItems = (item.Option as ISubMenuOption<TContext>)?.GetSubMenuItems(context);
             if (subMenuItems is not null && subMenuItems.Count > 1)

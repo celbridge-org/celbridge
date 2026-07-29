@@ -94,7 +94,7 @@ public sealed class ConsoleSessionRegistry : IConsoleSessionRegistry, IDisposabl
     {
         var sessionId = Guid.NewGuid();
 
-        // A plain shell is a runnable target as soon as its pty is up; a host-bound console must wait for
+        // A plain shell is a runnable target as soon as its pty is up. A host-bound console must wait for
         // its client to say hello before it counts as Ready.
         var initialState = registration.HostBinding == ConsoleHostBinding.None
             ? ConsoleSessionState.Ready

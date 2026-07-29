@@ -1,8 +1,8 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// Owns the child processes of the workspace's open consoles so they are torn down together when the
-/// project closes or the application crashes, complementing each pty's own cleanup on a clean tab close.
+/// Owns the child processes of the workspace's open consoles and tears them down together when the
+/// project closes or the application crashes.
 /// </summary>
 public interface IConsoleProcessOwner
 {

@@ -2,8 +2,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// A DI-registered source of bundled package descriptors, discovered at workspace load alongside the
-/// module-contributed packages. Lets a core project own and register its own bundled package without being
-/// a module.
+/// module-contributed packages.
 /// </summary>
 public interface IBundledPackageProvider
 {

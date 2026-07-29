@@ -74,8 +74,7 @@ public class AppToolTests
     public void GetState_DoesNotIncludeAgentDocs()
     {
         // The agentDocs pointer is intentionally absent because the orientation
-        // guide auto-attaches on first tool use. Pin the absence so a regression
-        // that re-introduces the field surfaces here.
+        // guide auto-attaches on first tool use.
         WireAppStateDependencies();
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);

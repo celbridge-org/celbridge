@@ -16,10 +16,7 @@ public record class LayoutModeInfo(
     bool ConsolePanelVisible);
 
 /// <summary>
-/// Result returned by app_get_state, reporting the running version, project load
-/// state, feature flag states, the focused panel ("None" when unfocused), the utility
-/// currently shown in the Utility Panel rail ("" when no project is loaded), the current
-/// panel layout, and the spotlightable landmark ids app_spotlight accepts.
+/// Result returned by app_get_state, describing the current app and workspace state.
 /// </summary>
 public record class AppStateResult(
     string Version,

@@ -34,7 +34,7 @@ public sealed record PythonLaunchResult(
 
 /// <summary>
 /// Builds the uv command line and environment for a Python session, owning all the Python-specific launch
-/// machinery. Shared by the Python session provider and the legacy Python service.
+/// machinery.
 /// </summary>
 public interface IPythonLaunchService
 {
@@ -54,7 +54,7 @@ public interface IPythonLaunchService
 /// <summary>
 /// Builds the uv command line and environment for a Python session, owning all the Python-specific launch
 /// machinery: the uv command, the per-project uv caches, wheel discovery, the offline fingerprint, and the
-/// IPython profile. Shared by the Python session provider and the legacy Python service.
+/// IPython profile.
 /// </summary>
 public sealed class PythonLaunchService : IPythonLaunchService
 {

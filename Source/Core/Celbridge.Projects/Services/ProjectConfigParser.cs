@@ -7,15 +7,15 @@ namespace Celbridge.Projects.Services;
 
 /// <summary>
 /// Static utility class for parsing Celbridge project configuration files (v2 schema).
-/// Host-level declarations live on the [celbridge] table; every other top-level table declares
-/// an editor contribution. Malformed entries are skipped with a recorded entry error; a TOML syntax
+/// Host-level declarations live on the [celbridge] table. Every other top-level table declares
+/// an editor contribution. Malformed entries are skipped with a recorded entry error. A TOML syntax
 /// error fails the whole parse.
 /// </summary>
 public static class ProjectConfigParser
 {
     private const string PathSeparator = "/";
 
-    // Mirrors Assets/Python/python_version.txt; kept in sync manually because this static parser can't read the asset.
+    // Mirrors Assets/Python/python_version.txt. Kept in sync manually because this static parser can't read the asset.
     private const string DefaultPythonVersion = "3.13";
 
     private const string CelbridgeSectionName = "celbridge";

@@ -63,15 +63,13 @@ public sealed record class CelbridgeSection
     public string? ProjectVersion { get; init; }
 
     /// <summary>
-    /// A human-readable description of what the project is for, shown on the Project Settings page
-    /// and readable from the .celbridge file. Null when the project sets no description.
+    /// A human-readable description of what the project is for. Null when the project sets no description.
     /// </summary>
     public string? Description { get; init; }
 
     /// <summary>
     /// Package names the project has turned off. A discovered package not listed here contributes its
-    /// default-active contributions; a listed package contributes nothing. Activation is otherwise
-    /// discovery-driven, so this records opt-outs rather than opt-ins.
+    /// default-active contributions. A listed package contributes nothing.
     /// </summary>
     public IReadOnlyList<string> DisabledPackages { get; init; } = Array.Empty<string>();
 
@@ -122,9 +120,8 @@ public sealed record class ResourcesSection
 }
 
 /// <summary>
-/// Models the interim [project] table from the .celbridge project config, carrying only the
-/// Python environment keys until they move to console instance config. Uses pyproject.toml
-/// naming conventions so the section can be copied to a pyproject.toml file.
+/// Models the interim [project] table from the .celbridge project config, carrying the Python
+/// environment keys. Uses pyproject.toml naming conventions.
 /// </summary>
 public sealed record class ProjectSection
 {
@@ -171,8 +168,7 @@ public sealed record class ProjectConfig
     public IReadOnlyList<ContributionOverride> ContributionOverrides { get; init; } = Array.Empty<ContributionOverride>();
 
     /// <summary>
-    /// Entries that were skipped or degraded during parsing, surfaced as console banners when
-    /// the workspace loads.
+    /// Entries that were skipped or degraded during parsing.
     /// </summary>
     public IReadOnlyList<ProjectConfigEntryError> EntryErrors { get; init; } = Array.Empty<ProjectConfigEntryError>();
 }

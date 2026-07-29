@@ -46,7 +46,7 @@ public class PackageServiceDocumentTypeTests
         });
         _projectService.CurrentProject.Returns(project);
 
-        // The registry reconciles and persists through IProjectService; mirror the real delegation to
+        // The registry reconciles and persists through IProjectService. Mirror the real delegation to
         // the static reconciler so the mocked service produces the same active set.
         _projectService.ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), Arg.Any<bool>())
             .Returns(callInfo =>
@@ -364,7 +364,7 @@ public class PackageServiceDocumentTypeTests
     /// <summary>
     /// Helper to create a bundled package folder with TOML manifests and optional files. Registers the
     /// path with the module service mock and re-discovers packages. A required editor is active by
-    /// discovery; pass activation: ActivationPolicy.Optional to ship it inert.
+    /// discovery. Pass activation: ActivationPolicy.Optional to ship it inert.
     /// </summary>
     private async Task CreateBundledPackage(
         string dirName,

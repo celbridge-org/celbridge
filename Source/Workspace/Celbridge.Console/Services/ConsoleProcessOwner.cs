@@ -7,7 +7,7 @@ namespace Celbridge.Console.Services;
 
 /// <summary>
 /// Workspace-scoped owner of the open consoles' child processes. On Windows it assigns them to a job that
-/// kills them when the app process dies (crash safety); on every platform it kills any still-tracked child
+/// kills them when the app process dies (crash safety). On every platform it kills any still-tracked child
 /// when the workspace is disposed (project close). A clean tab close is handled by the pty itself.
 /// </summary>
 public sealed class ConsoleProcessOwner : IConsoleProcessOwner, IDisposable
@@ -21,7 +21,7 @@ public sealed class ConsoleProcessOwner : IConsoleProcessOwner, IDisposable
     {
         _logger = logger;
 
-        // The Windows job gives crash safety; on other platforms the dispose-time kill covers project close.
+        // The Windows job gives crash safety. On other platforms the dispose-time kill covers project close.
         if (OperatingSystem.IsWindows())
         {
             _jobObject = new WindowsJobObject();

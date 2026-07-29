@@ -1,6 +1,6 @@
 // Pure helpers for the console settings form: parsing the one-per-line textarea formats into config
 // structures and back, comparing configs to decide whether a reopen is needed, and shaping the payload the
-// host receives. No DOM or session state, so these are unit-tested directly (tests/console-config.test.js).
+// host receives. No DOM or session state.
 
 export function splitLines(text) {
     return text.split('\n').map((line) => line.trim()).filter((line) => line !== '');
@@ -86,9 +86,9 @@ export function formatShortcutLines(shortcuts) {
         .join('\n');
 }
 
-// A comparable view of the config for the "needs a reopen" check, with a stable env order. Only shortcuts
-// are excluded: they are a live client-side toolbar, not a launch input, so editing them never lights the
-// pip. Every other field (title and runners included) applies on reopen, so a change to any of them does.
+// A comparable view of the config for the "needs a reopen" check, with a stable env order. Shortcuts are
+// excluded because they are a live client-side toolbar, not a launch input. Every other field applies on
+// reopen.
 export function normalizeConfig(config) {
     const environment = {};
     for (const name of Object.keys(config.environment || {}).sort()) {
@@ -114,8 +114,7 @@ export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
-// The full config payload the host receives on start and on a live update. Kept separate from
-// normalizeConfig (which is only the launch-affecting subset used for the pip comparison).
+// The full config payload the host receives on start and on a live update.
 export function buildStartConfig(config) {
     return {
         type: config.type || 'shell',

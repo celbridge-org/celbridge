@@ -34,8 +34,8 @@ public sealed partial class PageNavigationToolbar : UserControl
     {
         ViewModel.OnLoaded();
 
-        // macOS surfaces these commands through the native menubar (see MacOSMainMenu), so the in-window
-        // hamburger menu is shown only on platforms without one (Windows, Linux).
+        // macOS surfaces these commands through the native menubar, so the in-window hamburger menu is
+        // shown only on platforms without one (Windows, Linux).
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (!platformInfo.UsesNativeMenuBar)
         {
@@ -109,7 +109,7 @@ public sealed partial class PageNavigationToolbar : UserControl
     private void RecentProjectsButton_Tapped(object sender, TappedRoutedEventArgs e)
     {
         // Open the switcher (anchored to the whole button so it aligns to the button's left edge) and mark the
-        // tap handled so it does not reach the button's own click; opening it must never also navigate.
+        // tap handled so it does not reach the button's own click. Opening it must never also navigate.
         FlyoutBase.ShowAttachedFlyout(WorkspaceButton);
         e.Handled = true;
     }

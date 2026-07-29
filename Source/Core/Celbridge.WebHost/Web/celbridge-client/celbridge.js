@@ -208,7 +208,7 @@ export class Celbridge {
 
     /**
      * The application-global state store (theme, ...), shared by every WebView. Read the latest snapshot
-     * via `cel.appState.current.theme`; react with `cel.appState.onChanged(snapshot => ...)`. The host
+     * via `cel.appState.current.theme`. React with `cel.appState.onChanged(snapshot => ...)`. The host
      * pushes the current snapshot on connect.
      * @returns {import('./core/state-store.js').Store}
      */
@@ -218,7 +218,7 @@ export class Celbridge {
 
     /**
      * This view's own state store (a document's writability, ...). Read the latest snapshot via
-     * `cel.viewState.current.writable`; react with `cel.viewState.onChanged(snapshot => ...)`. The host
+     * `cel.viewState.current.writable`. React with `cel.viewState.onChanged(snapshot => ...)`. The host
      * pushes the current snapshot on connect, so a handler registered after connect still sees it.
      * @returns {import('./core/state-store.js').Store}
      */
@@ -320,7 +320,7 @@ export class Celbridge {
             this.document.onExternalChange(handlers.onExternalChange);
         }
         // Always register the state handlers, defaulting to "no state" / no-op. The host requests state on
-        // close (to save workspace state); an editor that leaves these unset would otherwise have no
+        // close (to save workspace state). An editor that leaves these unset would otherwise have no
         // document/requestState method registered, so the request would fail with RemoteMethodNotFound.
         this.document.onRequestState(handlers.onRequestState || (() => null));
         this.document.onRestoreState(handlers.onRestoreState || (() => { }));
@@ -347,7 +347,7 @@ export class Celbridge {
      * editor's current selection for a clipboard operation. The handler's return value (or resolved
      * promise) is sent back to the host as the response.
      * @param {string} method - The RPC method name (e.g. 'editor/getSelectedText').
-     * @param {Function} handler - Called with the request params; returns the response value.
+     * @param {Function} handler - Called with the request params. Returns the response value.
      */
     onRequest(method, handler) {
         this.#transport.setRequestHandler(method, handler);

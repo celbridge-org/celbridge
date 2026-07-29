@@ -57,8 +57,8 @@ public sealed class SpreadsheetBundledPackageProvider : IBundledPackageProvider
 
         return new[]
         {
-            // SpreadJS's licence is domain-locked, so its page loads under a synthetic origin owned by
-            // SyntheticOriginEditorLoader. The descriptor supplies the licence secrets and blocks DevTools.
+            // SpreadJS's licence is domain-locked, so its page loads under a synthetic origin. The
+            // descriptor supplies the licence secrets and blocks DevTools.
             new BundledPackageDescriptor
             {
                 Folder = packageFolder,

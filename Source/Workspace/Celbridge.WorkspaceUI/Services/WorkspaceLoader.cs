@@ -197,9 +197,7 @@ public class WorkspaceLoader
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
 
-        // Nothing launches a console on load: a session starts only when the user opens a .console
-        // document. Project-scoped load errors are surfaced as banners above; console-scoped errors
-        // surface in the console document.
+        // A console session starts only when the user opens a .console document, not on load.
 
         // Awaited so the consistency check completes before any project script that runs on load can
         // modify the structure the scan reads.

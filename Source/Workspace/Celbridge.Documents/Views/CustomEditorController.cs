@@ -124,14 +124,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // flow returns only when the WebView and host are ready for RPCs.
     private TaskCompletionSource<Result>? _initTcs;
 
-    /// <summary>
-    /// The WebView2 control acquired from the factory.
-    /// </summary>
+    // The WebView2 control, acquired from the factory.
     private WebView2? WebView { get; set; }
 
-    /// <summary>
-    /// The Celbridge host for JSON-RPC communication with the WebView.
-    /// </summary>
+    // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
 
     public CustomEditorController(
@@ -322,8 +318,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
         // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
-        // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels;
-        // the .webview browser and HTML viewer keep zoom.
+        // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels.
+        // The .webview browser and HTML viewer keep zoom.
         _webViewAdapter.SetZoomControlEnabled(WebView.CoreWebView2, false);
 
         // Register this editor's web surface. It hosts an edit target (this) for the Edit commands.
@@ -702,8 +698,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// The writable state last applied to the editor. Used by the save tick to suppress expected read-only
-    /// save failures.
+    /// The writable state last applied to the editor.
     /// </summary>
     public WritableState WritableState => _writableState;
 

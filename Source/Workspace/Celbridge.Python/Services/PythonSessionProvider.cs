@@ -8,8 +8,7 @@ namespace Celbridge.Python.Services;
 
 /// <summary>
 /// The python session type: an IPython REPL that dials the shared cel-proxy JSON-RPC server and exposes
-/// cel.* against the workspace. All the Python-specific launch machinery lives behind PythonLaunchService,
-/// so no Python knowledge leaks into the host.
+/// cel.* against the workspace.
 /// </summary>
 public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
 {

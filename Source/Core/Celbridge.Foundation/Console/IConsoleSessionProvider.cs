@@ -1,8 +1,8 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// How a console session reaches the Celbridge host. None is a plain pty with no host RPC; CelProxy dials
-/// the shared JSON-RPC server for a cel.* proxy; Mcp is handed an MCP port for an MCP-speaking client.
+/// How a console session reaches the Celbridge host. None is a plain pty with no host RPC. CelProxy dials
+/// the shared JSON-RPC server for a cel.* proxy. Mcp is handed an MCP port for an MCP-speaking client.
 /// </summary>
 public enum ConsoleHostBinding
 {
@@ -12,9 +12,8 @@ public enum ConsoleHostBinding
 }
 
 /// <summary>
-/// The resolved inputs to start a console session's process: the command line to run, the working folder
-/// to run it in, and the environment variables to inject. The pty backend merges the environment with the
-/// process environment, so this carries only the deltas.
+/// The resolved inputs to start a console session's process. The environment variables carry only the
+/// deltas the pty backend merges into the process environment.
 /// </summary>
 public sealed record ConsoleLaunchSpec(
     string CommandLine,
@@ -30,11 +29,9 @@ public sealed record ConsoleRunner(
     string CommandTemplate);
 
 /// <summary>
-/// The resolved configuration a provider builds a launch spec from: the console resource, its session
-/// type, the executable and arguments, the working folder as written in the config, the environment
-/// variables to inject (already carrying the host-binding variables for a host-bound type), the project
-/// root the working folder resolves against, the extra package dependencies to install, and the runtime
-/// version to select. Fields a given type does not use are left at their defaults.
+/// The resolved configuration a provider builds a launch spec from. WorkingDirectory is as written in the
+/// config and resolves against ProjectFolderPath, and the environment variables already carry the
+/// host-binding variables for a host-bound type. Fields a given type does not use are left at their defaults.
 /// </summary>
 public sealed record ConsoleSessionContext(
     ResourceKey ResourceKey,
@@ -48,8 +45,7 @@ public sealed record ConsoleSessionContext(
     string? RuntimeVersion = null);
 
 /// <summary>
-/// Builds the launch spec for one console session type, keyed by TypeId (e.g. "shell"). A new pty-only
-/// type is added by registering a new provider, with no host change.
+/// Builds the launch spec for one console session type, keyed by TypeId (e.g. "shell").
 /// </summary>
 public interface IConsoleSessionProvider
 {
@@ -59,7 +55,7 @@ public interface IConsoleSessionProvider
     string TypeId { get; }
 
     /// <summary>
-    /// How this type's session reaches the host. The shell type is None (a plain pty with no host RPC).
+    /// How this type's session reaches the host.
     /// </summary>
     ConsoleHostBinding HostBinding { get; }
 

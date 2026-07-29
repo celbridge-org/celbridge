@@ -16,7 +16,6 @@ public interface IWorkspaceService
 {
     /// <summary>
     /// Sets all workspace panel references.
-    /// Called by WorkspacePage during initialization.
     /// </summary>
     void SetPanels(
         IUtilityPanel utilityPanel,

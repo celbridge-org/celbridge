@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Menu.Options;
 
 /// <summary>
 /// Menu option to run a file in an open console. The console runner registry decides which open consoles
-/// can run the clicked file; a single runner runs on click, several expand to a submenu.
+/// can run the clicked file. A single runner runs on click, several expand to a submenu.
 /// </summary>
 public class RunMenuOption : IMenuOption<ExplorerMenuContext>, ISubMenuOption<ExplorerMenuContext>
 {

@@ -31,7 +31,7 @@ public class PackageRegistry
     private List<ResolvedEditor> _builtInEditors = [];
 
     // The reconciled, normalized config from the most recent discovery pass. RegisterPackagesAsync
-    // persists it; a rescan leaves it unwritten.
+    // persists it. A rescan leaves it unwritten.
     private ProjectConfig? _normalizedConfig;
 
     // Failures from the most recent discovery pass, retained so package_status
@@ -509,7 +509,7 @@ public class PackageRegistry
 
     // Publishes the per-extension icons declared by the catalog and by package manifests, so every
     // surface that draws a file resource picks them up through the icon service. The catalog wins for an
-    // established type; a manifest icon covers the extensions a package introduces. An unusable glyph or
+    // established type. A manifest icon covers the extensions a package introduces. An unusable glyph or
     // colour is dropped with a warning, leaving the extension on the default file icon.
     private void ApplyFileIconOverrides(List<ContributionIssue> contributionIssues)
     {
@@ -647,7 +647,7 @@ public class PackageRegistry
         var failures = new List<PackageLoadFailure>();
 
         // Every bundled package is contributed by an IBundledPackageProvider, whether from a module or a
-        // core project like the console. Discovered on every workspace load; descriptors without a folder
+        // core project like the console. Discovered on every workspace load. Descriptors without a folder
         // are ignored.
         var descriptors = new List<BundledPackageDescriptor>();
         foreach (var provider in _bundledPackageProviders)

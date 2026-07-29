@@ -119,7 +119,7 @@ public partial class MainPage : Page
     private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
         // Show/hide the application toolbar based on the layout mode. Default and Focus keep the
-        // toolbar; Presentation hides it so only the document content is shown.
+        // toolbar. Presentation hides it so only the document content is shown.
         if (_titleBar != null)
         {
             bool showToolbar = message.LayoutMode != LayoutMode.Presentation;

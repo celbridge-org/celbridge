@@ -19,11 +19,9 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// Hosts an arbitrary user URL from a .webview document (JSON storage), or a
-/// project-served HTML page from a .html / .htm document. The role is selected
-/// per-instance via Options before LoadContent runs. The two paths share a
-/// single WebView2 lifecycle and differ only in URL source and navigation
-/// policy.
+/// Hosts an arbitrary user URL from a .webview document, or a project-served
+/// HTML page from a .html / .htm document. The two roles share a single WebView2
+/// lifecycle and differ only in URL source and navigation policy.
 /// </summary>
 public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget
 {
@@ -37,7 +35,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private WebView2? _webView;
-    // Host RPC channel. Only created for the HtmlViewer role; external-URL documents run without one.
+    // Host RPC channel. Only created for the HtmlViewer role. External-URL documents run without one.
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
@@ -53,8 +51,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     /// <summary>
     /// Per-instance options supplied by the editor factory. Defaults to the .webview
-    /// external-URL behaviour. The HTML viewer factory overrides this before LoadContent
-    /// runs so the view's first init applies HtmlViewer options from the start.
+    /// external-URL behaviour.
     /// </summary>
     internal WebViewDocumentOptions Options { get; set; } = DefaultOptions;
 
@@ -233,17 +230,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
-            // The .webview browser and HTML viewer render page content, so keep user zoom (Ctrl+/-,
-            // Ctrl+scroll, and Ctrl+0 to reset) enabled, unlike the zoom-free custom-editor chrome.
+            // The .webview browser and HTML viewer render page content, so keep user zoom enabled.
             _webViewAdapter.SetZoomControlEnabled(_webView.CoreWebView2, true);
             // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
             var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
             _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");
 
             // Only the HtmlViewer role runs a host RPC channel. External-URL .webview documents load
-            // untrusted third-party content and get no injected client, so they are given no channel or
-            // RPC target at all: the native message bus is unauthenticated, and a channel there would let
-            // a page drive host RPC methods.
+            // untrusted third-party content: the native message bus is unauthenticated, so a channel
+            // there would let a page drive host RPC methods.
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {
                 // The HTML viewer renders loopback project content and supports the webview_* MCP tools.
@@ -373,8 +368,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     /// <summary>
     /// Tears down the WebView, host channel, and associated event handlers. Safe
-    /// to call multiple times and from partially initialized states. Used on
-    /// orderly shutdown (PrepareToClose) and on failure recovery (Loaded catch).
+    /// to call multiple times and from partially initialized states.
     /// </summary>
     private void TeardownWebViewState()
     {
@@ -430,10 +424,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             return;
         }
 
-        // Install the shim as a document-start script so it wraps console/fetch before page scripts run --
-        // required for get_console / get_network capture. This runs before the first navigation, so the
-        // initial page's boot output is captured. CoreWebView2_NavigationCompleted re-delivers it per
-        // navigation on the Skia heads.
+        // Install the shim as a document-start script so it wraps console/fetch before page scripts run,
+        // required for get_console / get_network capture. Running before the first navigation captures the
+        // initial page's boot output.
         try
         {
             var script = toolBridge.GetShimScript();
@@ -496,10 +489,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
-        // The HTML viewer renders static project-served content, so the WebView's
-        // own NavigationCompleted is a sufficient content-ready signal — there is no
-        // editor-side notifyContentLoaded handshake. External-URL .webview documents
-        // never register so this no-ops on the .webview path.
+        // The HTML viewer renders static project-served content, so the WebView's own
+        // NavigationCompleted is a sufficient content-ready signal. External-URL .webview
+        // documents never register, so this no-ops on the .webview path.
         if (Options.Role == WebViewDocumentRole.HtmlViewer)
         {
             if (e.IsSuccess)
@@ -525,7 +517,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         // Reset the tool bridge's content-ready gate so webview_* tool calls block
         // until the new navigation completes. Cross-origin navigations (e.g. an
         // attacker-controlled redirect from project content) reset support here too.
-        // Tool calls remain blocked until a matching NavigationCompleted fires.
         if (Options.Role == WebViewDocumentRole.HtmlViewer)
         {
             _toolBridge?.NotifyContentLoading(FileResource);
@@ -683,8 +674,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     }
 
     // Returns a path that doesn't collide with an existing file or folder by
-    // appending " (N)" before any extension. Used to resolve the user's chosen
-    // download destination if a file with the same name already exists.
+    // appending " (N)" before any extension.
     private static async Task<Result<string>> GetUniquePathAsync(string path)
     {
         try

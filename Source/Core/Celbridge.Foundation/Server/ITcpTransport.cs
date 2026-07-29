@@ -30,8 +30,8 @@ public interface ITcpTransport : IDisposable
 
     /// <summary>
     /// Registers a factory invoked once per accepted connection to build an RPC target bound to that
-    /// connection alone. The connection id is passed so the target can attribute inbound calls (for
-    /// example the session/handshake handshake) to the connection. Must be called before StartListeningAsync.
+    /// connection alone. The connection id is passed so the target can attribute inbound calls to the
+    /// connection. Must be called before StartListeningAsync.
     /// </summary>
     void AddRpcTargetFactory(Func<int, object> targetFactory);
 

@@ -42,7 +42,7 @@ public class PackageServiceTests
         _projectService = Substitute.For<IProjectService>();
         _projectService.CurrentProject.Returns((IProject?)null);
 
-        // The registry reconciles and persists through IProjectService; mirror the real delegation to
+        // The registry reconciles and persists through IProjectService. Mirror the real delegation to
         // the static reconciler so the mocked service produces the same active set.
         _projectService.ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), Arg.Any<bool>())
             .Returns(callInfo =>
@@ -156,7 +156,7 @@ public class PackageServiceTests
 
     /// <summary>
     /// A dropped icon leaves the contribution loaded, so it is reported as a contribution warning rather
-    /// than a load failure. Project Settings keys these by editor id to flag the offending contribution.
+    /// than a load failure, keyed by editor id.
     /// </summary>
     [Test]
     public async Task RegisterPackages_UnknownIconName_IsReportedAgainstTheContribution()
@@ -521,7 +521,7 @@ public class PackageServiceTests
     public async Task RegisterPackages_PackageWithCelInMiddleSegment_Accepted()
     {
         // Only the trailing extension is reserved. .cel.bar ends in .bar and
-        // does not conflict with sidecar pairing — the editor binds normally
+        // does not conflict with sidecar pairing, so the editor binds normally
         // and the sidecar lives next to the parent at <name>.cel.bar.cel.
         CreateProjectPackage("midcel", "mid-cel", "MidCel", ".cel.bar");
 

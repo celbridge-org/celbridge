@@ -60,7 +60,7 @@ public class AgentResponseFilterTests
         _filter = new AgentResponseFilter(_monitor, _guides, _appStateProvider, _documentStateProvider);
     }
 
-    // ApplyAutoAttachAsync — first-use behaviour
+    // ApplyAutoAttachAsync - first-use behaviour
 
     [Test]
     public async Task ApplyAutoAttachAsync_FirstCall_AttachesSessionStateOrientationNamespacePerToolAndRelated()
@@ -200,7 +200,7 @@ public class AgentResponseFilterTests
 
         var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("grep result"), session, "file_grep");
 
-        // file_grep declares ["resource_keys", "regex_syntax"]; resource_keys
+        // file_grep declares ["resource_keys", "regex_syntax"]. resource_keys
         // already served on the warmup call. So expect: file_grep body, then
         // regex_syntax, then the result. Per-tool stays before related.
         attached.Result.Content.Should().HaveCount(3);
@@ -261,7 +261,7 @@ public class AgentResponseFilterTests
         var session = new AgentSessionState("session-1");
         var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
 
-        // App state still attaches; document state is omitted because the
+        // App state still attaches. Document state is omitted because the
         // provider failed. Slot count drops by one.
         var bodies = ExtractBodies(attached.Result);
         bodies.Should().Contain(b => b.StartsWith("# App state"));
@@ -315,7 +315,7 @@ public class AgentResponseFilterTests
     public async Task ApplyAutoAttachAsync_UnknownToolName_DoesNotPrependPerToolBody()
     {
         var session = new AgentSessionState("session-1");
-        // No matching per-tool entry in FakeGuides; namespace, orientation, and
+        // No matching per-tool entry in FakeGuides. Namespace, orientation, and
         // session state still attach because they exist.
         var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_unknown");
 
@@ -328,7 +328,7 @@ public class AgentResponseFilterTests
         session.WasGuideRead("file_unknown").Should().BeTrue();
     }
 
-    // AutoAttachOutcome — AttachedNames list for the diagnostic column
+    // AutoAttachOutcome - AttachedNames list for the diagnostic column
 
     [Test]
     public async Task ApplyAutoAttachAsync_FirstCall_ReturnsAttachedNamesInBroadestFirstOrder()
@@ -403,7 +403,7 @@ public class AgentResponseFilterTests
         candidates.Should().Equal("agent_instructions", "standalone");
     }
 
-    // ParseRequestedGuideNames — JSON array of strings
+    // ParseRequestedGuideNames - JSON array of strings
 
     [Test]
     public void ParseRequestedGuideNames_FromJsonArrayElement()
@@ -445,7 +445,7 @@ public class AgentResponseFilterTests
         names.Should().Equal("agent_instructions");
     }
 
-    // ApplyGuidesReadSideEffects — full path through to AgentSessionState
+    // ApplyGuidesReadSideEffects - full path through to AgentSessionState
 
     [Test]
     public void ApplyGuidesReadSideEffects_RecordsRequestedGuides()
@@ -557,7 +557,7 @@ public class AgentResponseFilterTests
 
     /// <summary>
     /// Minimal IGuides used for filter tests. Returns a GuideEntry with the
-    /// canned body for known names and null for unknown names; carries a
+    /// canned body for known names and null for unknown names. Carries a
     /// per-tool related-guides map keyed on alias name.
     /// </summary>
     private sealed class FakeGuides : IGuides

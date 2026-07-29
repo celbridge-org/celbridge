@@ -1,8 +1,7 @@
-// Minimal TOML parse/serialise for the constrained .console config shape. The console owns this rather
-// than the C# host, so the session providers take structured config with no Tomlyn dependency. It handles
-// the documented shape (single-line string and string-array values under [session], [session.options],
-// [session.environment], plus [[session.runner]] and [[session.shortcut]] array-of-tables); anything
-// outside that raises a config error surfaced in the settings view.
+// Minimal TOML parse/serialise for the constrained .console config shape. It handles the documented shape
+// (single-line string and string-array values under [session], [session.options], [session.environment],
+// plus [[session.runner]] and [[session.shortcut]] array-of-tables). Anything outside that raises a config
+// error surfaced in the settings view.
 
 /**
  * @typedef {Object} ConsoleRunner

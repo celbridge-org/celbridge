@@ -19,7 +19,7 @@ public partial record MenuOptionGroup(string Id);
 
 /// <summary>
 /// A dynamically generated child of a menu option: its label, optional icon, and the action to run when
-/// chosen. Used to expand an option into a submenu when it has several targets.
+/// chosen.
 /// </summary>
 public record SubMenuItem(string LocalizedText, IconSymbol? Icon, Action Execute);
 
@@ -56,7 +56,7 @@ public interface IMenuOption<TContext> where TContext : IMenuContext
 
 /// <summary>
 /// An option that can expand into a submenu. When it returns more than one child the builder renders a
-/// submenu of those children; with one or none it renders a flat item wired to the option's own Execute.
+/// submenu of those children. With one or none it renders a flat item wired to the option's own Execute.
 /// </summary>
 public interface ISubMenuOption<TContext> where TContext : IMenuContext
 {

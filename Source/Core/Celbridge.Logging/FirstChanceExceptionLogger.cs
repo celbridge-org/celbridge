@@ -5,7 +5,7 @@ namespace Celbridge.Logging;
 
 /// <summary>
 /// Logs every first-chance exception (including caught ones) with its type,
-/// message, and originating user-code frame. DEBUG-only diagnostic; install
+/// message, and originating user-code frame. DEBUG-only diagnostic. Install
 /// once at app startup.
 /// </summary>
 public static class FirstChanceExceptionLogger
@@ -155,7 +155,7 @@ public static class FirstChanceExceptionLogger
         if (!string.IsNullOrEmpty(fileName)
             && lineNumber > 0)
         {
-            // File name only; the type name already locates the file.
+            // File name only. The type name already locates the file.
             var shortFile = System.IO.Path.GetFileName(fileName);
             return $"{typeName}.{methodName} ({shortFile}:{lineNumber})";
         }

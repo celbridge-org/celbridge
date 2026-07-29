@@ -49,6 +49,5 @@ public record ActiveUtilityChangedMessage(string UtilityId);
 
 /// <summary>
 /// Message sent when the layout should be reset to defaults.
-/// Listeners should reset their layout state (e.g., document sections).
 /// </summary>
 public record ResetLayoutRequestedMessage();

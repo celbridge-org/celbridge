@@ -13,7 +13,7 @@ public interface IModuleService
     IReadOnlyList<IModule> LoadedModules { get; }
 
     /// <summary>
-    /// Initializes all loaded modules
+    /// Initializes all loaded modules.
     /// </summary>
     Result InitializeModules();
 

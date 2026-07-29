@@ -8,8 +8,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Verifies that OpenDocumentCommand forwards its public options (TargetSectionIndex,
-/// TargetTabIndex, ForceReload, Location, Activate, EditorId, EditorStateJson) to
+/// Verifies that OpenDocumentCommand forwards its public options to
 /// IDocumentsService.OpenDocument via the OpenDocumentOptions record.
 /// </summary>
 [TestFixture]

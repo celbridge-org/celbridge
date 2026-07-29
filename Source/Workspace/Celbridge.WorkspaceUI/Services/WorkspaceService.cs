@@ -64,10 +64,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
-        //
-        // Let the workspace settings service know where to find the workspace settings database
-        //
-
+        // Let the workspace settings service know where to find the workspace settings database.
         var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
         var workspaceSettingsFolder = Path.Combine(
@@ -103,7 +100,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
     {
-        // Focus on chrome (toolbars, dialogs) reports None; keep the active panel on the last real panel so
+        // Focus on chrome (toolbars, dialogs) reports None. Keep the active panel on the last real panel so
         // panel-scoped undo still targets it after such an interaction.
         if (message.FocusedPanel != WorkspacePanel.None)
         {
@@ -206,8 +203,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         {
             if (disposing)
             {
-                // We use the dispose pattern to ensure that the sub-services release all their resources when the project is closed.
-                // This helps avoid memory leaks and orphaned objects/tasks when the user edits multiple projects during a session.
+                // Release the sub-services' resources on project close so editing multiple projects in a session does not leak.
 
                 // Unregister message handlers
                 _messengerService.UnregisterAll(this);

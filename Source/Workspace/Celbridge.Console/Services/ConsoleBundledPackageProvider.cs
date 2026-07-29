@@ -3,8 +3,7 @@ using Celbridge.Packages;
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// Registers the bundled console document package (the .console editor and its web assets), discovered at
-/// workspace load alongside the module-contributed packages.
+/// Registers the bundled console document package (the .console editor and its web assets).
 /// </summary>
 public sealed class ConsoleBundledPackageProvider : IBundledPackageProvider
 {

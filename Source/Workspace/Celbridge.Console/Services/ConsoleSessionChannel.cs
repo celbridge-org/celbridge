@@ -168,7 +168,7 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
     private static IReadOnlyList<ConsoleRunner> ResolveRunners(ConsoleConfigDto config, IConsoleSessionProvider provider)
     {
-        // Any runners in the config replace the type defaults outright; an empty list falls back to them.
+        // Any runners in the config replace the type defaults outright. An empty list falls back to them.
         var configuredRunners = config.Runners;
         if (configuredRunners is null || configuredRunners.Count == 0)
         {

@@ -95,7 +95,7 @@ const runnersInput = document.getElementById('runners');
 const shortcutsInput = document.getElementById('shortcuts');
 const reopenSettingsButton = document.getElementById('reopen-settings');
 
-// State. currentConfig mirrors the settings form / .console file; launchedConfig is the config the live
+// State. currentConfig mirrors the settings form / .console file. launchedConfig is the config the live
 // session was started from, so the pip can flag "changed, needs a reopen".
 let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
@@ -108,7 +108,7 @@ function applyTheme(theme) {
     try {
         term.options.theme = isDark ? darkTheme : lightTheme;
     } catch {
-        // term.options not ready yet; the next change will apply it.
+        // term.options not ready yet. The next change will apply it.
     }
 }
 
@@ -135,7 +135,7 @@ term.onData((data) => client._notify('console/input', { data }));
 term.onResize(({ cols, rows }) => client._notify('console/resize', { cols, rows }));
 
 // Force the wheel to scroll the xterm viewport while the shell prompt owns the screen, so a TUI does not
-// receive wheel-as-arrow-keys. Shift bypasses this; a TUI on the alternate buffer keeps native scroll.
+// receive wheel-as-arrow-keys. Shift bypasses this. A TUI on the alternate buffer keeps native scroll.
 terminalElement.addEventListener('wheel', (event) => {
     if (event.shiftKey) {
         return;
@@ -169,7 +169,7 @@ term.attachCustomKeyEventHandler((event) => {
 
 window.addEventListener('resize', refitTerminal);
 
-// The terminal is always visible; the settings form is a sidebar beside it. Refit the terminal whenever the
+// The terminal is always visible. The settings form is a sidebar beside it. Refit the terminal whenever the
 // space it occupies changes (sidebar toggled or resized, window resized), coalesced to one fit per frame.
 let refitPending = false;
 function refitTerminal() {
@@ -182,7 +182,7 @@ function refitTerminal() {
         try {
             fitAddon.fit();
         } catch {
-            // The terminal may not be laid out yet; a later refit will apply.
+            // The terminal may not be laid out yet. A later refit will apply.
         }
     });
 }
@@ -236,7 +236,7 @@ attachSplitter(splitter, {
     },
 });
 
-// Settings form. The executable field is shown only for the shell type; the dependency field only for the
+// Settings form. The executable field is shown only for the shell type. The dependency field only for the
 // Python types. The other fields apply to every type.
 function applyTypeVisibility(type) {
     const isShell = type === 'shell';
@@ -264,7 +264,7 @@ function populateForm(config) {
 function readForm() {
     return {
         type: sessionTypeSelect.value || 'shell',
-        // Title is not a form field; carry through whatever the .console file set.
+        // Title is not a form field. Carry through whatever the .console file set.
         title: currentConfig.title || '',
         executable: executableInput.value.trim(),
         pythonVersion: pythonVersionInput.value.trim(),
@@ -345,7 +345,7 @@ function updateAttention() {
     pip.classList.toggle('hidden', !needsAttention);
 
     // The Reopen button stays enabled so the session can be restarted at any time. The accent colour appears
-    // only when a reopen is needed to apply changed launch settings; the footer caption explains it.
+    // only when a reopen is needed to apply changed launch settings. The footer caption explains it.
     reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
     if (configError) {
@@ -367,7 +367,7 @@ function hideSessionFailed() {
 }
 
 async function startSession() {
-    // The terminal is always visible beside the settings sidebar; launch and relaunch against it in place.
+    // The terminal is always visible beside the settings sidebar. Launch and relaunch against it in place.
     hideSessionFailed();
     fitAddon.fit();
     term.reset();
@@ -419,8 +419,7 @@ async function main() {
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
         },
-        // Persist the settings sidebar's open state and width so they survive a reopen. Registering this
-        // handler also means closing the document no longer hits RemoteMethodNotFound for document/requestState.
+        // Persist the settings sidebar's open state and width so they survive a reopen.
         onRequestState: () => JSON.stringify({
             settingsOpen: !settingsView.classList.contains('hidden'),
             sidebarWidth,
@@ -435,7 +434,7 @@ async function main() {
                     setSettingsVisible(true);
                 }
             } catch (error) {
-                // Ignore malformed state; fall back to the defaults.
+                // Ignore malformed state. Fall back to the defaults.
             }
         },
     });

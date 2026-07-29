@@ -2,7 +2,7 @@ namespace Celbridge.Console.Services;
 
 /// <summary>
 /// The built-in "shell" session type: a plain pty with no host RPC. A blank executable launches the
-/// platform default shell; a set executable runs any process with its arguments, working folder, and
+/// platform default shell. A set executable runs any process with its arguments, working folder, and
 /// environment straight from the config.
 /// </summary>
 public sealed class ShellSessionProvider : IConsoleSessionProvider

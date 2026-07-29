@@ -44,9 +44,7 @@ public class TcpTransport : ITcpTransport
 
     /// <summary>
     /// Registers an additional RPC target whose public methods will be exposed
-    /// to all connections. Must be called before StartListeningAsync. Used by
-    /// callers that own a non-DI handler instance and want it surfaced
-    /// alongside the broker's built-in targets.
+    /// to all connections. Must be called before StartListeningAsync.
     /// </summary>
     public void AddRpcTarget(object target)
     {

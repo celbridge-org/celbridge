@@ -142,10 +142,7 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-        //
         // Populate the workspace panels.
-        //
-
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
@@ -274,10 +271,7 @@ public sealed partial class WorkspacePage : Page
 
     private void UpdatePanels()
     {
-        //
         // Update panel and splitter visibility based on the panel visibility state
-        //
-
         if (ViewModel.IsPrimaryPanelVisible)
         {
             PrimaryPanelSplitter.Visibility = Visibility.Visible;
@@ -326,10 +320,7 @@ public sealed partial class WorkspacePage : Page
         }
     }
 
-    //
     // Splitter event handlers for panel resizing
-    //
-
     private void PrimaryPanelSplitter_DragStarted(object? sender, EventArgs e)
     {
         _primaryPanelSplitterHelper?.OnDragStarted();

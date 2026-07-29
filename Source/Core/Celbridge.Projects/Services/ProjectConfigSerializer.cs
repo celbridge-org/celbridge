@@ -6,8 +6,7 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// Serializes a project config to canonical, deterministic TOML. The same resolved model always
 /// produces the same bytes: a fixed section and key order, uniform inline arrays and tables, and
-/// config keys sorted per contribution. This is the counterpart of ProjectConfigParser and the write half
-/// of the normalize-on-load contract, so it round-trips every section the parser reads.
+/// config keys sorted per contribution.
 /// </summary>
 public static class ProjectConfigSerializer
 {
@@ -207,7 +206,7 @@ public static class ProjectConfigSerializer
                     break;
                 default:
                     // TOML basic strings forbid unescaped control characters. The common ones are
-                    // handled above; escape the rest (and DEL) as \uXXXX so the file re-parses.
+                    // handled above. Escape the rest (and DEL) as \uXXXX so the file re-parses.
                     if (character < ' '
                         || character == '\u007f')
                     {

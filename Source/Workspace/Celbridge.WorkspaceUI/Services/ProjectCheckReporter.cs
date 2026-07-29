@@ -6,11 +6,8 @@ using Celbridge.Projects;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Formats and dispatches the output of a workspace-load project-consistency
-/// check. Writes one multi-line warning per non-empty finding category to the
-/// host log (capped per category so a project with many findings doesn't flood
-/// the log) and publishes a single summary banner via IMessengerService so the
-/// user notices the findings at workspace load.
+/// Formats the output of a workspace-load project-consistency check: logs one warning per
+/// non-empty finding category and publishes a summary banner via IMessengerService.
 /// </summary>
 public sealed class ProjectCheckReporter
 {
@@ -30,9 +27,8 @@ public sealed class ProjectCheckReporter
     }
 
     /// <summary>
-    /// Logs one warning per non-empty finding category and, when the total
-    /// finding count is non-zero, sends a ProjectErrorMessage carrying the
-    /// total so the banner surface can show a dismissable warning banner.
+    /// Logs one warning per non-empty finding category and, when there are findings,
+    /// sends a ProjectErrorMessage carrying the total finding count.
     /// </summary>
     public void Report(ProjectCheckReport report)
     {
@@ -78,9 +74,7 @@ public sealed class ProjectCheckReporter
 
     // Emits a single multi-line warning per category: header line followed by
     // each entry indented two spaces, with a trailing "... and N more" when
-    // the list was truncated. Keeps developer-facing diagnostics in one place
-    // (the host log) rather than splitting them across a count-only warning
-    // and a separate MCP tool invocation.
+    // the list was truncated.
     private void LogFindingsCategory(string headerSummary, IReadOnlyList<string> entries)
     {
         var builder = new StringBuilder();

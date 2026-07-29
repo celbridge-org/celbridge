@@ -7,8 +7,7 @@ namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
 /// Drives the bottom-panel project-notification banners: a non-dismissable project error banner, a
-/// dismissable project-change banner, a migration banner, and a project-check warning banner. The banners
-/// are project or workspace-scoped; console-scoped errors surface in the console document instead.
+/// dismissable project-change banner, a migration banner, and a project-check warning banner.
 /// </summary>
 public partial class ConsolePanelViewModel : ObservableObject
 {

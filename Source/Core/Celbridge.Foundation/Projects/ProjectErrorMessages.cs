@@ -2,7 +2,7 @@ namespace Celbridge.Projects;
 
 /// <summary>
 /// Project or workspace-scoped error states surfaced in the project-notification banners when a
-/// workspace loads. Console-scoped failures are shown in the console document, not here.
+/// workspace loads.
 /// </summary>
 public enum ProjectErrorType
 {

@@ -7,8 +7,8 @@ namespace Celbridge.WebHost.Platform;
 
 /// <summary>
 /// IWebViewAdapter for the Uno Skia heads. Falls back to ExecuteScriptAsync where the managed CoreWebView2
-/// surface is unimplemented and, on macOS, to the native WKWebView interop in MacOSWebViewInterop. The macOS
-/// fallbacks are runtime-gated, so the same implementation also serves the desktop Windows head.
+/// surface is unimplemented and, on macOS, to the native WKWebView interop. The macOS fallbacks are
+/// runtime-gated, so the same implementation also serves the desktop Windows head.
 /// </summary>
 public sealed class SkiaWebViewAdapter : IWebViewAdapter
 {
@@ -30,11 +30,11 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         _logger = logger;
     }
 
-    // Windows-under-Skia hosts a real WebView2 that implements virtual-host mapping; macOS WKWebView and the
+    // Windows-under-Skia hosts a real WebView2 that implements virtual-host mapping. macOS WKWebView and the
     // Linux Skia head do not, and use loadHTMLString instead.
     public bool SupportsVirtualHostMapping => OperatingSystem.IsWindows();
 
-    // Windows-under-Skia hosts Chromium's WebView2 with its own find bar; the macOS WKWebView and Linux
+    // Windows-under-Skia hosts Chromium's WebView2 with its own find bar. The macOS WKWebView and Linux
     // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
     public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
 
@@ -64,8 +64,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
             // Pin the native WKWebView for the process lifetime and keep it schedulable while hidden. Uno's
             // native element disposes the view on every Unloaded and later touches the stale handle, which is
-            // a use-after-free (see RetainNativeWebView). The handle may not be resolvable yet at this point,
-            // so the other adapter entry points that resolve it also pin (RetainNativeWebView is idempotent).
+            // a use-after-free. The handle may not be resolvable yet at this point, so the other adapter entry
+            // points that resolve it also pin (RetainNativeWebView is idempotent).
             if (OperatingSystem.IsMacOS() && webView.CoreWebView2 is not null)
             {
                 if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
@@ -140,8 +140,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     {
         // On macOS programmatic managed focus flips the WebView's input routing to the managed pipeline,
         // where keys never reach the web content. Reproduce the responder state a click inside the view
-        // establishes instead: make the native WKWebView the window's first responder. There is no managed
-        // fallback on failure, because managed focus would leave typing broken anyway.
+        // establishes instead: make the native WKWebView the window's first responder.
         if (OperatingSystem.IsMacOS()
             && webView.CoreWebView2 is not null)
         {
@@ -168,7 +167,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // ArgumentNullException). WebView2 returns the JSON literal "null" silently in the equivalent cases.
         // Normalise the faults so common errors and undefined results read as None on Python callers across
         // platforms. Best-effort: exotic return values (Promise, Date, NaN, circular references) may still
-        // serialise differently per platform. Agents are expected to adapt to the result they get.
+        // serialise differently per platform.
         try
         {
             var result = await coreWebView2.ExecuteScriptAsync(expression);
@@ -254,7 +253,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     public async Task InstallDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script)
     {
         // The Skia WebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, so document-start
-        // injection is native-only. macOS uses a WKUserScript; the desktop Windows head has no equivalent and
+        // injection is native-only. macOS uses a WKUserScript. The desktop Windows head has no equivalent and
         // relies on the ReinjectDocumentStartScriptAsync (ExecuteScriptAsync) re-delivery after each navigation.
         if (OperatingSystem.IsMacOS()
             && MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
@@ -279,7 +278,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
 
     // Used only when the installed Safari version cannot be read. Kept comfortably above Gmail's minimum so the
-    // UA still passes; the real version is preferred whenever available.
+    // UA still passes. The real version is preferred whenever available.
     private const string FallbackSafariVersion = "18.0";
 
     private string? _safariVersion;
@@ -288,7 +287,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     {
         if (!OperatingSystem.IsMacOS())
         {
-            // The Linux/X11 Skia head's WebKitGTK UA is recognised as-is; only the macOS WKWebView UA needs the
+            // The Linux/X11 Skia head's WebKitGTK UA is recognised as-is. Only the macOS WKWebView UA needs the
             // Safari tokens, so leave the other Skia heads on their default.
             return;
         }

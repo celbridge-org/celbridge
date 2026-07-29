@@ -12,7 +12,7 @@ const client = celbridge;
 
 const inputEl = document.getElementById('process-input');
 
-// Demonstrate the shared splitter: drag the divider to resize the left pane; double-click to reset.
+// Demonstrate the shared splitter: drag the divider to resize the left pane. Double-click to reset.
 const demoSplit = document.querySelector('.demo-split');
 const demoLeftPane = document.querySelector('.demo-pane-left');
 const demoSplitter = document.getElementById('demo-splitter');

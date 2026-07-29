@@ -31,7 +31,6 @@ public class ShowSearchCommand : CommandBase, IShowSearchCommand
             _layoutService.SetRegionVisibility(LayoutRegion.Primary, true);
         }
 
-        // Get the search panel
         var searchPanel = ServiceLocator.AcquireService<ISearchPanel>();
 
         // Configure search options
@@ -49,16 +48,11 @@ public class ShowSearchCommand : CommandBase, IShowSearchCommand
         searchPanel.SetSearchText(SearchText);
         searchPanel.ExecuteSearch();
 
-        // Focus the search input
         searchPanel.FocusSearchInput();
 
         await Task.CompletedTask;
         return Result.Ok();
     }
-
-    //
-    // Static methods for scripting support.
-    //
 
     public static void Search(string searchText, bool matchCase = false, bool wholeWord = false)
     {

@@ -11,8 +11,7 @@ public interface IUserInterfaceService
     object MainWindow { get; }
 
     /// <summary>
-    /// Returns the XamlRoot of the the application.
-    /// This is initialized with the XamlRoot property of the application's RootFrame during startup.
+    /// Returns the XamlRoot of the application.
     /// </summary>
     object XamlRoot { get; }
 

@@ -14,7 +14,7 @@ public interface IRunCommand : IExecutableCommand
 
     /// <summary>
     /// The session id of the console to run the script in. Empty resolves the first open console that can
-    /// run the script's file type, for programmatic callers that do not target a specific console.
+    /// run the script's file type.
     /// </summary>
     Guid SessionId { get; set; }
 
