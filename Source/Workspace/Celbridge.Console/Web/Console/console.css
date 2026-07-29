@@ -201,12 +201,15 @@ html, body {
     margin: 0;
 }
 
+/* Pinned in the fixed header under the subtitle (hidden until a parse error), so a validation error stays
+   visible while the cards scroll. The top margin separates it from the subtitle; the header padding below
+   provides the gap to the divider. */
 .config-error {
     border: 1px solid var(--console-pip);
     background: var(--console-pip-bg);
     padding: 8px 10px;
     border-radius: var(--cel-radius-control);
-    margin-bottom: 12px;
+    margin: 12px 0 0;
     white-space: pre-wrap;
 }
 
