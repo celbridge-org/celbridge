@@ -32,17 +32,17 @@ public class RunCommand : CommandBase, IRunCommand
             return Result.Fail("Workspace not loaded");
         }
 
-        // The runner registry substitutes {script_path} into the target console's runner template and
+        // The session service substitutes {script_path} into the target console's runner template and
         // injects it. Passing the resource path (not ToString) keeps the run relative to the project root.
-        var registry = _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry;
+        var sessions = _workspaceWrapper.WorkspaceService.ConsoleService.Sessions;
 
         var sessionId = SessionId;
         if (sessionId == Guid.Empty)
         {
-            // A programmatic caller that did not target a console runs in the first open console that can
-            // run the file type.
+            // A programmatic caller that did not target a console runs in the first console that can run
+            // the file type, by the same name order the Run menu lists.
             var extension = Path.GetExtension(ScriptResource.Path);
-            var targets = registry.GetRunTargets(extension);
+            var targets = sessions.GetRunTargets(extension);
             if (targets.Count == 0)
             {
                 return Result.Fail($"No open console can run '{ScriptResource.Path}'");
@@ -50,7 +50,7 @@ public class RunCommand : CommandBase, IRunCommand
             sessionId = targets[0].SessionId;
         }
 
-        registry.RunScript(sessionId, ScriptResource.Path, Arguments);
+        sessions.RunScript(sessionId, ScriptResource.Path, Arguments);
 
         _logger.LogDebug("Run script '{Script}' in console session {SessionId}", ScriptResource.Path, sessionId);
 

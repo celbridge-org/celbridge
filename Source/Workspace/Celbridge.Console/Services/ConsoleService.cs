@@ -4,7 +4,7 @@ namespace Celbridge.Console.Services;
 
 public class ConsoleService : IConsoleService, IDisposable
 {
-    public IConsoleSessionRegistry SessionRegistry { get; }
+    public IConsoleSessionService Sessions { get; }
 
     public IConsoleProcessOwner ProcessOwner { get; }
 
@@ -15,8 +15,8 @@ public class ConsoleService : IConsoleService, IDisposable
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
-        SessionRegistry = serviceProvider.AcquireService<IConsoleSessionRegistry>();
         ProcessOwner = serviceProvider.AcquireService<IConsoleProcessOwner>();
+        Sessions = serviceProvider.AcquireService<IConsoleSessionService>();
     }
 
     private bool _disposed;
@@ -33,7 +33,8 @@ public class ConsoleService : IConsoleService, IDisposable
         {
             if (disposing)
             {
-                (SessionRegistry as IDisposable)?.Dispose();
+                // Sessions first so their processes are released before the owner goes.
+                (Sessions as IDisposable)?.Dispose();
                 (ProcessOwner as IDisposable)?.Dispose();
             }
 

@@ -55,7 +55,7 @@ public class FocusService : IFocusService
             // report triggered by the release observes the new panel rather than the old one.
             releasePreviousFocus?.Invoke();
 
-            _logger.LogDebug(
+            _logger.LogTrace(
                 "Panel focus {PreviousPanel} -> {Panel}, edit target {EditTarget}",
                 previousPanel,
                 panel,

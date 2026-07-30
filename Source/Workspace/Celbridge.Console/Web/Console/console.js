@@ -1,7 +1,7 @@
 // Console document editor. One WebView carries two channels: the standard document content/save channel
 // (the .console TOML edited through the settings form) and a custom console/* RPC channel (the live pty
-// terminal). The pty launch is JS-triggered (console/start) after console/write is registered, so no early
-// output is lost.
+// terminal). The session itself runs host-side from the moment the document opens; this view attaches to
+// it (console/attach), replays its buffered output, and streams from there.
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
@@ -80,6 +80,7 @@ const terminalView = document.getElementById('terminal-view');
 const splitter = document.getElementById('splitter');
 const settingsView = document.getElementById('settings-view');
 const settingsScroll = document.getElementById('settings-scroll');
+const sessionStarting = document.getElementById('session-starting');
 const sessionFailed = document.getElementById('session-failed');
 const sessionFailedMessage = document.getElementById('session-failed-message');
 const reopenTerminalButton = document.getElementById('reopen-terminal');
@@ -93,6 +94,7 @@ const argumentsInput = document.getElementById('arguments');
 const dependenciesField = document.getElementById('dependencies-field');
 const dependenciesInput = document.getElementById('dependencies');
 const workingDirectoryInput = document.getElementById('working-directory');
+const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
 const runnersInput = document.getElementById('runners');
 const shortcutsInput = document.getElementById('shortcuts');
@@ -126,7 +128,8 @@ client.appState.onChanged((appState) => {
     }
 });
 
-// Terminal I/O over the console/* live-session channel.
+// Terminal I/O over the console/* live-session channel. The live session owns the startup-noise
+// trimming, so everything that arrives here is renderable output.
 client.onNotification('console/write', (params) => {
     if (params && typeof params.text === 'string') {
         term.write(params.text);
@@ -137,6 +140,11 @@ client.onNotification('console/sessionState', (params) => {
     if (params && params.state === 'ended') {
         showSessionFailed(t('Console_SessionEnded'));
     }
+});
+
+// The live session's startup phase is over and its output stream is clean, so reveal the terminal.
+client.onNotification('console/startupComplete', () => {
+    hideStartingVeil();
 });
 
 term.onData((data) => client.sendNotification('console/input', { data }));
@@ -296,6 +304,7 @@ function populateForm(config) {
     argumentsInput.value = (config.arguments || []).join('\n');
     dependenciesInput.value = (config.dependencies || []).join('\n');
     workingDirectoryInput.value = config.workingDirectory || '';
+    startupScriptInput.value = config.startupScript || '';
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
@@ -307,13 +316,12 @@ function populateForm(config) {
 function readForm() {
     return {
         type: sessionTypeSelect.value || 'shell',
-        // Title is not a form field. Carry through whatever the .console file set.
-        title: currentConfig.title || '',
         executable: executableInput.value.trim(),
         pythonVersion: pythonVersionInput.value.trim(),
         arguments: splitLines(argumentsInput.value),
         dependencies: splitLines(dependenciesInput.value),
         workingDirectory: workingDirectoryInput.value.trim(),
+        startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: parseRunnerLines(runnersInput.value),
         shortcuts: parseShortcutLines(shortcutsInput.value),
@@ -381,6 +389,7 @@ const formFields = [
     argumentsInput,
     dependenciesInput,
     workingDirectoryInput,
+    startupScriptInput,
     environmentInput,
     runnersInput,
     shortcutsInput,
@@ -403,8 +412,8 @@ function applyWritableState() {
 
 client.viewState.onChanged(() => applyWritableState());
 
-reopenSettingsButton.addEventListener('click', () => { startSession(); });
-reopenTerminalButton.addEventListener('click', () => { startSession(); });
+reopenSettingsButton.addEventListener('click', () => { reopenSession(); });
+reopenTerminalButton.addEventListener('click', () => { reopenSession(); });
 
 // The pip flags either a config error or a config that diverges from the launched session.
 function updateAttention() {
@@ -426,6 +435,7 @@ function updateAttention() {
 
 // Session lifecycle.
 function showSessionFailed(message) {
+    hideStartingVeil();
     sessionFailedMessage.textContent = message;
     sessionFailed.classList.remove('hidden');
 }
@@ -434,43 +444,186 @@ function hideSessionFailed() {
     sessionFailed.classList.add('hidden');
 }
 
-let startInFlight = false;
+// The starting veil covers the terminal from launch until the shell reports its screen clear, hiding the
+// shell-startup phase. The timers are the safety reveal for a shell that never echoes the ready marker.
+const VEIL_FADE_MS = 240;
 
-async function startSession() {
-    // A start doubles as reopen, so a second click while one is in flight would launch a second pty.
-    if (startInFlight) {
+let veilTimeout = null;
+let veilFadeTimer = null;
+
+function showStartingVeil() {
+    clearVeilTimers();
+    sessionStarting.classList.remove('fading-out');
+    sessionStarting.classList.remove('hidden');
+}
+
+function hideStartingVeil() {
+    clearVeilTimers();
+
+    if (sessionStarting.classList.contains('hidden')) {
         return;
     }
-    startInFlight = true;
 
-    // The terminal is always visible beside the settings sidebar. Launch and relaunch against it in place.
+    // Fade rather than cut: the terminal materializes instead of appearing mid-repaint.
+    sessionStarting.classList.add('fading-out');
+    veilFadeTimer = setTimeout(() => {
+        veilFadeTimer = null;
+        sessionStarting.classList.add('hidden');
+        sessionStarting.classList.remove('fading-out');
+    }, VEIL_FADE_MS);
+}
+
+// Arms (or shortens) the safety reveal, so a missed startup-complete notification cannot leave the
+// terminal veiled forever.
+function armVeilTimeout(delayMs) {
+    if (sessionStarting.classList.contains('hidden')) {
+        return;
+    }
+
+    if (veilTimeout !== null) {
+        clearTimeout(veilTimeout);
+    }
+
+    veilTimeout = setTimeout(() => {
+        veilTimeout = null;
+        hideStartingVeil();
+    }, delayMs);
+}
+
+function clearVeilTimers() {
+    if (veilTimeout !== null) {
+        clearTimeout(veilTimeout);
+        veilTimeout = null;
+    }
+    if (veilFadeTimer !== null) {
+        clearTimeout(veilFadeTimer);
+        veilFadeTimer = null;
+    }
+}
+
+// The pty is created at the terminal's measured size, so measure only once the layout has settled. On
+// application startup the WebView is still being laid out when this script runs, and a resize that lands
+// after the shell has painted makes ConPTY reflow its buffer, which shows up as a block of blank lines.
+async function waitForStableSize() {
+    const settled = (async () => {
+        let previousWidth = -1;
+        let previousHeight = -1;
+
+        for (let frame = 0; frame < 30; frame++) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+
+            const width = terminalView.clientWidth;
+            const height = terminalView.clientHeight;
+            if (width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
+                return;
+            }
+
+            previousWidth = width;
+            previousHeight = height;
+        }
+    })();
+
+    // Animation frames stop entirely while the document is hidden, so the measurement can never be what
+    // gates the launch: a timer keeps the session starting even when the frames never arrive.
+    const deadline = new Promise((resolve) => setTimeout(resolve, 500));
+
+    await Promise.race([settled, deadline]);
+}
+
+let requestInFlight = false;
+
+// Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
+// terminal, and the state decides between the veil, the failed overlay, and a live prompt.
+function applyAttachResult(result) {
+    launchedConfig = null;
+    if (result && result.launchedConfigToml) {
+        try {
+            launchedConfig = parseConsoleToml(result.launchedConfigToml);
+        } catch {
+            // An unparseable launched config just leaves the pip dark until the next reopen.
+        }
+    }
+    updateAttention();
+
+    if (!result || result.state === 'failed') {
+        showSessionFailed((result && result.error) || t('Console_StartFailed'));
+        return;
+    }
+
+    if (result.replay) {
+        term.write(result.replay);
+    }
+
+    if (result.state === 'ended') {
+        hideStartingVeil();
+        showSessionFailed(t('Console_SessionEnded'));
+        return;
+    }
+
+    if (result.startupPending) {
+        showStartingVeil();
+        armVeilTimeout(4000);
+    } else {
+        hideStartingVeil();
+    }
+
+    term.focus();
+}
+
+// Attaches this view to the live session, which has been running since the document opened. The
+// terminal size sent here is the first accurate one the session has had: a headless launch guesses.
+async function attachSession() {
+    if (requestInFlight) {
+        return;
+    }
+    requestInFlight = true;
+
     hideSessionFailed();
+
+    // The veil is already up: it is the page's initial state, so the terminal is covered from the first
+    // paint until the attach result decides whether it stays. Attach waits on the session start, which on
+    // a first run includes installing the runtime's toolchain.
+    await waitForStableSize();
     fitAddon.fit();
     term.reset();
 
-    // Snapshot the config being launched before the request: edits typed while the start is in flight must
-    // still light the pip against the config the session actually received.
-    const sentConfig = JSON.parse(JSON.stringify(currentConfig));
-
-    // Send the full config, not the launch-only view: the host needs the runners to register the console
-    // with the Run menu and the title for its display name, alongside the launch-affecting fields.
-    const config = buildStartConfig(sentConfig);
-    const cols = term.cols;
-    const rows = term.rows;
-
     try {
-        const result = await client.sendRequest('console/start', { cols, rows, config });
-        if (result && result.ok) {
-            launchedConfig = sentConfig;
-            updateAttention();
-            term.focus();
-        } else {
-            showSessionFailed((result && result.error) || t('Console_StartFailed'));
-        }
+        const result = await client.sendRequest('console/attach', { cols: term.cols, rows: term.rows });
+        applyAttachResult(result);
     } catch (error) {
         showSessionFailed((error && error.message) || String(error));
     } finally {
-        startInFlight = false;
+        requestInFlight = false;
+    }
+}
+
+// Relaunches the session from the file on disk. The form is flushed to the document first, so the file
+// is the single source of truth for what a reopen launches.
+async function reopenSession() {
+    if (requestInFlight) {
+        return;
+    }
+    requestInFlight = true;
+
+    hideSessionFailed();
+    showStartingVeil();
+
+    try {
+        await client.document.save(serializeConsoleToml(currentConfig));
+    } catch (error) {
+        console.error('[Console] Failed to flush the config before reopen:', error);
+    }
+
+    fitAddon.fit();
+    term.reset();
+
+    try {
+        const result = await client.sendRequest('console/reopen', { cols: term.cols, rows: term.rows });
+        applyAttachResult(result);
+    } catch (error) {
+        showSessionFailed((error && error.message) || String(error));
+    } finally {
+        requestInFlight = false;
     }
 }
 
@@ -536,7 +689,7 @@ async function main() {
     });
 
     applyWritableState();
-    await startSession();
+    await attachSession();
 }
 
 main();

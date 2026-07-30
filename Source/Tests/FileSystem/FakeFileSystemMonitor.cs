@@ -13,6 +13,8 @@ public sealed class FakeFileSystemMonitor : IFileSystemMonitor
 
     public event EventHandler<FileSystemMonitorEvent>? FileSystemChanged;
 
+    public event EventHandler? MonitoringDesynchronized;
+
     public FakeFileSystemMonitor(string backingFolderPath)
     {
         BackingFolderPath = backingFolderPath;
@@ -42,6 +44,11 @@ public sealed class FakeFileSystemMonitor : IFileSystemMonitor
     public void RaiseRenamed(string oldPath, string newPath)
     {
         Raise(new FileSystemMonitorEvent(FileSystemMonitorEventKind.Renamed, newPath, oldPath));
+    }
+
+    public void RaiseDesynchronized()
+    {
+        MonitoringDesynchronized?.Invoke(this, EventArgs.Empty);
     }
 
     private void Raise(FileSystemMonitorEvent monitorEvent)

@@ -35,6 +35,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private WebView2? _webView;
+    // Set on the first initialization attempt, so LoadContent and Loaded share a single run.
+    private Task? _initializeWebViewTask;
     // Host RPC channel. Only created for the HtmlViewer role. External-URL documents run without one.
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
@@ -216,8 +218,24 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     {
         Loaded -= WebViewDocumentView_Loaded;
 
-        // async void is required for a Loaded handler. Any exception in init
-        // must be caught here so a faulty load cannot crash the process.
+        // Backstop for a view that reaches the visual tree without LoadContent having run.
+        await EnsureWebViewInitializedAsync();
+    }
+
+    // Initialization runs once, from whichever of LoadContent and Loaded comes first. LoadContent is
+    // awaited by the open command, so the WebView and its webview_* tool bridge registration exist by
+    // the time document_open returns rather than whenever the tab happens to render.
+    private async Task EnsureWebViewInitializedAsync()
+    {
+        _initializeWebViewTask ??= InitializeWebViewAsync();
+
+        await _initializeWebViewTask;
+    }
+
+    private async Task InitializeWebViewAsync()
+    {
+        // An exception here must not escape: the caller is a Loaded handler on one path, so an
+        // unobserved failure would crash the process rather than leaving an empty document.
         try
         {
             _webView = await _webViewFactory.AcquireAsync();
@@ -731,8 +749,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             return loadResult;
         }
 
-        if (_webView?.CoreWebView2 is not null)
+        // Runs after the view model so NavigateUrl is resolved by the time initialization navigates.
+        var wasInitialized = _initializeWebViewTask is not null;
+        await EnsureWebViewInitializedAsync();
+
+        if (wasInitialized)
         {
+            // A rename reloads the same view, so the URL initialization already navigated to is stale.
             TryNavigate();
         }
 

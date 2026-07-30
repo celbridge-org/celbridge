@@ -1,15 +1,15 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// The console service owns the workspace's open-console registry and the process owner that tears down
-/// their child processes.
+/// The console service owns the workspace's console sessions and the process owner that tears down their
+/// child processes.
 /// </summary>
 public interface IConsoleService
 {
     /// <summary>
-    /// Returns the registry of open consoles.
+    /// Returns the service that runs the workspace's console sessions.
     /// </summary>
-    IConsoleSessionRegistry SessionRegistry { get; }
+    IConsoleSessionService Sessions { get; }
 
     /// <summary>
     /// Returns the owner of the open consoles' child processes.

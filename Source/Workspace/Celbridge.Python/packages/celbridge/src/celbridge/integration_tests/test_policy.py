@@ -59,11 +59,12 @@ class TestResourcePolicy:
         # .celbridge is system-denied: never a resource, never in the tree.
         assert ".celbridge" not in _root_child_names(file)
 
-    def test_project_file_visible(self, file):
-        # The *.celbridge project file is system-allowed and stays visible even
-        # though the ignore-file and remove sets never mention it.
+    def test_project_file_hidden(self, file):
+        # The *.celbridge project file is edited through Project Settings rather than as a tree
+        # resource, so a project whose config parsed cleanly hides it. A faulted config skips the
+        # rule so the file reappears for the code editor to repair.
         names = _root_child_names(file)
-        assert any(name.endswith(".celbridge") for name in names)
+        assert not any(name.endswith(".celbridge") for name in names)
 
     def test_write_into_metadata_folder_denied(self, file):
         with pytest.raises(CelError, match="(?i)denied"):

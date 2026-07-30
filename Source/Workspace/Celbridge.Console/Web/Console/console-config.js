@@ -110,16 +110,16 @@ export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
-// The full config payload the host receives on console/start.
+// The comparable launch-relevant view of a config, shared by the divergence check.
 export function buildStartConfig(config) {
     return {
         type: config.type || 'shell',
-        title: config.title || '',
         executable: config.executable || '',
         pythonVersion: config.pythonVersion || '',
         arguments: config.arguments || [],
         dependencies: config.dependencies || [],
         workingDirectory: config.workingDirectory || '',
+        startupScript: config.startupScript || '',
         environment: config.environment || {},
         runners: (config.runners || []).map((runner) => ({
             extensions: runner.extensions || [],

@@ -2,4 +2,3 @@
 # so the Explorer Run menu can run .py files in it. Configure packages and shortcuts from the settings view.
 [session]
 type = "python"
-title = "Python"

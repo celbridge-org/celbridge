@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 
 namespace Celbridge.Logging;
@@ -24,6 +25,19 @@ public static class FirstChanceExceptionLogger
     private static readonly HashSet<string> SuppressedExceptionTypeFullNames = new(StringComparer.Ordinal)
     {
         "StreamJsonRpc.RemoteMethodNotFoundException",
+    };
+
+    // Socket errors that mean the peer went away rather than that anything failed. Every client that
+    // holds a loopback connection produces one of these when it closes: a console document, a WebView
+    // navigating away, a Python session exiting. The read that was waiting on the connection throws once
+    // per await boundary as it unwinds, so a single ordinary close logs a burst of them.
+    private static readonly HashSet<SocketError> DisconnectSocketErrors = new()
+    {
+        SocketError.ConnectionReset,
+        SocketError.ConnectionAborted,
+        SocketError.Shutdown,
+        SocketError.OperationAborted,
+        SocketError.Interrupted,
     };
 
     private static int _installed;
@@ -73,6 +87,11 @@ public static class FirstChanceExceptionLogger
                 return;
             }
 
+            if (IsExpectedDisconnect(exception))
+            {
+                return;
+            }
+
             var originatingFrame = FindOriginatingFrame();
             var location = FormatLocation(originatingFrame);
 
@@ -87,6 +106,25 @@ public static class FirstChanceExceptionLogger
         {
             _isLogging.Value = false;
         }
+    }
+
+    // A socket stream reports a dropped connection as an IOException wrapping the SocketException that
+    // carries the reason, so the reason is what is matched rather than the exception type. Any other
+    // IOException still logs, since a real IO failure is worth seeing.
+    private static bool IsExpectedDisconnect(Exception exception)
+    {
+        Exception? candidate = exception;
+        if (exception is IOException)
+        {
+            candidate = exception.InnerException;
+        }
+
+        if (candidate is not SocketException socketException)
+        {
+            return false;
+        }
+
+        return DisconnectSocketErrors.Contains(socketException.SocketErrorCode);
     }
 
     // First stack frame that isn't framework or this logger. Async state-machine

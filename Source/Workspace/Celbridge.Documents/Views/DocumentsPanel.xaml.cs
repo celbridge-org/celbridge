@@ -564,6 +564,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
 
+        // Announce after the view exists so listeners can act on a fully opened document, whether or not
+        // its tab is the active one. The view model owns both halves of the open/close pair.
+        documentTab.ViewModel.NotifyDocumentOpened();
+
         if (effectiveOptions.Activate)
         {
             SectionContainer.ActivateDocument(fileResource, sectionIndex);
@@ -690,6 +694,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             section.AddTab(documentTab);
         }
 
+        // No open announcement: a utility is presented by docking, never opened as a document, and the
+        // documents service refuses to open one. The view model suppresses the matching close.
         documentTab.ViewModel.DocumentView = dockedView;
         documentTab.Content = dockedView;
 

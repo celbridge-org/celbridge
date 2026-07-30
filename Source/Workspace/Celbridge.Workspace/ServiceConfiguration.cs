@@ -28,6 +28,7 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
+        Python.ServiceConfiguration.Initialize();
         WorkspaceUI.ServiceConfiguration.Initialize();
     }
 }

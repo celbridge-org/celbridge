@@ -103,6 +103,10 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             else
             {
                 needsCreation = true;
+
+                // Replenish from the empty pool too, otherwise the pool stays empty for the rest of
+                // the session and every later acquire pays full WebView2 creation inline.
+                shouldReplenish = true;
             }
         }
 

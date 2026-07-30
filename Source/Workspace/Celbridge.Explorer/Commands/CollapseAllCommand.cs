@@ -39,11 +39,6 @@ public class CollapseAllCommand : CommandBase, ICollapseAllCommand
             {
                 var folderKey = resourceRegistry.GetResourceKey(childFolder);
 
-                if (childFolder.IsExpanded)
-                {
-                    childFolder.IsExpanded = false;
-                }
-
                 if (folderStateService.IsExpanded(folderKey))
                 {
                     folderStateService.SetExpanded(folderKey, false);

@@ -9,12 +9,12 @@ describe('defaultConsoleConfig', () => {
     it('returns a blank shell config', () => {
         expect(defaultConsoleConfig()).toEqual({
             type: 'shell',
-            title: '',
             executable: '',
             pythonVersion: '',
             arguments: [],
             dependencies: [],
             workingDirectory: '',
+            startupScript: '',
             environment: {},
             runners: [],
             shortcuts: [],
@@ -27,7 +27,6 @@ describe('parseConsoleToml', () => {
         const toml = [
             '[session]',
             'type = "shell"',
-            'title = "Build"',
             'working_directory = "tools"',
             '',
             '[session.options]',
@@ -40,16 +39,36 @@ describe('parseConsoleToml', () => {
 
         expect(parseConsoleToml(toml)).toEqual({
             type: 'shell',
-            title: 'Build',
             executable: 'pwsh',
             pythonVersion: '',
             arguments: ['-NoLogo', '-NoProfile'],
             dependencies: [],
             workingDirectory: 'tools',
+            startupScript: '',
             environment: { BUILD_CONFIG: 'Debug' },
             runners: [],
             shortcuts: [],
         });
+    });
+
+    it('parses a startup script written as a multi-line block', () => {
+        const toml = [
+            '[session]',
+            "startup_script = '''",
+            'import numpy as np',
+            '# not a comment inside the block',
+            "'''",
+        ].join('\n');
+        expect(parseConsoleToml(toml).startupScript)
+            .toBe('import numpy as np\n# not a comment inside the block');
+    });
+
+    it('parses a single-line startup script', () => {
+        expect(parseConsoleToml('[session]\nstartup_script = "x = 1"').startupScript).toBe('x = 1');
+    });
+
+    it('throws on an unterminated block', () => {
+        expect(() => parseConsoleToml("[session]\nstartup_script = '''\noops")).toThrow(/Unterminated/);
     });
 
     it('parses dependencies and python version for a python console', () => {
@@ -132,9 +151,9 @@ describe('parseConsoleToml', () => {
     });
 
     it('parses CRLF input', () => {
-        const config = parseConsoleToml('[session]\r\ntype = "shell"\r\ntitle = "Build"\r\n');
+        const config = parseConsoleToml('[session]\r\ntype = "shell"\r\nworking_directory = "tools"\r\n');
         expect(config.type).toBe('shell');
-        expect(config.title).toBe('Build');
+        expect(config.workingDirectory).toBe('tools');
     });
 
     it('unescapes a trailing backslash without consuming the closing quote', () => {
@@ -183,6 +202,18 @@ describe('serializeConsoleToml', () => {
         expect(toml).toContain('arguments = ["-NoLogo", "-c", "echo hi"]');
     });
 
+    it('emits a multi-line startup script as a literal block', () => {
+        const config = { ...defaultConsoleConfig(), startupScript: 'import numpy as np\nx = 1' };
+        const toml = serializeConsoleToml(config);
+        expect(toml).toContain("startup_script = '''");
+        expect(parseConsoleToml(toml).startupScript).toBe('import numpy as np\nx = 1');
+    });
+
+    it('emits a single-line startup script as a plain string', () => {
+        const config = { ...defaultConsoleConfig(), startupScript: 'x = 1' };
+        expect(serializeConsoleToml(config)).toContain('startup_script = "x = 1"');
+    });
+
     it('emits runner and shortcut tables', () => {
         const config = {
             ...defaultConsoleConfig(),
@@ -202,12 +233,12 @@ describe('round-trip', () => {
     it('parse -> serialize -> parse is stable', () => {
         const original = {
             type: 'python',
-            title: 'Python',
             executable: '',
             pythonVersion: '3.13',
             arguments: [],
             dependencies: ['numpy'],
             workingDirectory: 'tools',
+            startupScript: 'import numpy as np\n%load_ext autoreload',
             environment: { A: '1', B: 'two words' },
             runners: [{ extensions: ['.py', '.ipy'], command: '%run "{script_path}"' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],
@@ -235,7 +266,7 @@ describe('round-trip', () => {
 
         const original = {
             ...defaultConsoleConfig(),
-            title: hostileValues[0],
+            workingDirectory: hostileValues[0],
             executable: hostileValues[3],
             arguments: hostileValues,
             environment: { HOSTILE: hostileValues[4], 'ODD KEY#1': hostileValues[1] },

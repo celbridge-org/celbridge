@@ -3,6 +3,21 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.Explorer.Models;
 
 /// <summary>
+/// Everything a resource row draws from, as a value. Two rows with equal appearances render
+/// identically.
+/// </summary>
+public readonly record struct ResourceViewItemAppearance(
+    string Name,
+    int IndentLevel,
+    bool IsFolder,
+    bool HasChildren,
+    bool IsExpanded,
+    bool IsProjectFolder,
+    WritableState WritableState,
+    string ReadOnlyMessage,
+    string ProjectFolderTooltip);
+
+/// <summary>
 /// Represents a single resource item in the resource view.
 /// </summary>
 public partial class ResourceViewItem : ObservableObject
@@ -10,7 +25,18 @@ public partial class ResourceViewItem : ObservableObject
     /// <summary>
     /// The resource (file or folder) this item represents.
     /// </summary>
-    public IResource Resource { get; }
+    public IResource Resource { get; private set; }
+
+    /// <summary>
+    /// Re-points the item at the equivalent node in a rebuilt resource tree. The registry replaces every
+    /// IResource on each update, and resource identity is by reference, so an item that outlives a
+    /// rebuild has to follow it. Raises no notification: the caller only rebinds an item that renders
+    /// identically to the one it replaces.
+    /// </summary>
+    public void RebindResource(IResource resource)
+    {
+        Resource = resource;
+    }
 
     /// <summary>
     /// The depth level in the tree hierarchy (0 = root level).
@@ -112,6 +138,20 @@ public partial class ResourceViewItem : ObservableObject
                 : ReadOnlyMessage;
         }
     }
+
+    /// <summary>
+    /// The values this row renders from, gathered for comparison against a rebuilt row.
+    /// </summary>
+    public ResourceViewItemAppearance Appearance => new(
+        Name,
+        IndentLevel,
+        IsFolder,
+        HasChildren,
+        IsExpanded,
+        IsProjectFolder,
+        WritableState,
+        ReadOnlyMessage,
+        ProjectFolderTooltip);
 
     /// <summary>
     /// Creates a new ResourceViewItem for the given resource.

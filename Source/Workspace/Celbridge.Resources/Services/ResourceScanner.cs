@@ -7,6 +7,34 @@ using Tomlyn.Model;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
+/// Reference index built by ResourceScanner.BuildReferenceIndexAsync.
+/// </summary>
+internal sealed class ResourceReferenceIndex : IResourceReferenceIndex
+{
+    private readonly IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceKey>> _referencersByTarget;
+
+    public ResourceReferenceIndex(
+        IReadOnlyList<ResourceKey> referencedTargets,
+        IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceKey>> referencersByTarget)
+    {
+        ReferencedTargets = referencedTargets;
+        _referencersByTarget = referencersByTarget;
+    }
+
+    public IReadOnlyList<ResourceKey> ReferencedTargets { get; }
+
+    public IReadOnlyList<ResourceKey> GetReferencers(ResourceKey target)
+    {
+        if (_referencersByTarget.TryGetValue(target, out var referencers))
+        {
+            return referencers;
+        }
+
+        return Array.Empty<ResourceKey>();
+    }
+}
+
+/// <summary>
 /// Stateless, on-demand scanner that searches the project's text files for
 /// resource references and tags.
 /// </summary>
@@ -54,42 +82,9 @@ public sealed class ResourceScanner : IResourceScanner
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<IReadOnlyList<ResourceKey>> FindReferencersAsync(ResourceKey target)
+    public async Task<IResourceReferenceIndex> BuildReferenceIndexAsync()
     {
-        var matches = new ConcurrentBag<ResourceKey>();
-
-        await EnumerateProjectTextFilesAsync(async (resourceKey, _) =>
-        {
-            var readResult = await ReadFileTextAsync(resourceKey);
-            if (readResult is null)
-            {
-                return;
-            }
-
-            if (ContainsReferenceTo(readResult, target))
-            {
-                matches.Add(resourceKey);
-            }
-        });
-
-        return matches
-            .OrderBy(k => k.ToString(), StringComparer.Ordinal)
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<ResourceKey>> FindReferencesInAsync(ResourceKey source)
-    {
-        var text = await ReadFileTextAsync(source);
-        if (text is null)
-        {
-            return Array.Empty<ResourceKey>();
-        }
-        return ScanReferences(text).ToList();
-    }
-
-    public async Task<IReadOnlyList<ResourceKey>> FindAllReferencedTargetsAsync()
-    {
-        var targets = new ConcurrentDictionary<ResourceKey, byte>();
+        var referencersByTarget = new ConcurrentDictionary<ResourceKey, ConcurrentBag<ResourceKey>>();
 
         await EnumerateProjectTextFilesAsync(async (resourceKey, _) =>
         {
@@ -101,13 +96,34 @@ public sealed class ResourceScanner : IResourceScanner
 
             foreach (var target in ScanReferences(text))
             {
-                targets.TryAdd(target, 0);
+                var referencers = referencersByTarget.GetOrAdd(target, _ => new ConcurrentBag<ResourceKey>());
+                referencers.Add(resourceKey);
             }
         });
 
-        return targets.Keys
+        var referencedTargets = referencersByTarget.Keys
             .OrderBy(t => t.ToString(), StringComparer.Ordinal)
             .ToList();
+
+        var sortedReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>();
+        foreach (var target in referencedTargets)
+        {
+            sortedReferencers[target] = referencersByTarget[target]
+                .OrderBy(k => k.ToString(), StringComparer.Ordinal)
+                .ToList();
+        }
+
+        return new ResourceReferenceIndex(referencedTargets, sortedReferencers);
+    }
+
+    public async Task<IReadOnlyList<ResourceKey>> FindReferencesInAsync(ResourceKey source)
+    {
+        var text = await ReadFileTextAsync(source);
+        if (text is null)
+        {
+            return Array.Empty<ResourceKey>();
+        }
+        return ScanReferences(text).ToList();
     }
 
     public async Task<IReadOnlyList<string>> ListAllTagsAsync()
@@ -203,32 +219,6 @@ public sealed class ResourceScanner : IResourceScanner
             return null;
         }
         return readResult.Value;
-    }
-
-    // True when `text` contains a tracked "project:<target>" reference. The
-    // boundary rules in ResourceReferenceParser constrain the match to canonical
-    // quoted forms.
-    private static bool ContainsReferenceTo(string text, ResourceKey target)
-    {
-        var marker = ResourceReferenceParser.ReferenceMarker;
-        int searchStart = 0;
-        while (true)
-        {
-            int markerIndex = text.IndexOf(marker, searchStart, StringComparison.Ordinal);
-            if (markerIndex < 0)
-            {
-                return false;
-            }
-
-            var parsed = ResourceReferenceParser.TryParseReferenceAt(text, markerIndex);
-            if (parsed is not null
-                && parsed.Key.Equals(target))
-            {
-                return true;
-            }
-
-            searchStart = parsed?.EndIndex ?? markerIndex + marker.Length;
-        }
     }
 
     // Returns the distinct set of "project:" keys named in `text`.

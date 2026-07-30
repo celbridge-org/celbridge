@@ -600,13 +600,8 @@ public class PackageRegistry
             fileNameOverrides[fileName] = ApplyScale(createResult.Value, catalogIcon.Scale);
         }
 
-        foreach (var publishedOverride in overrides.Concat(fileNameOverrides))
-        {
-            var icon = publishedOverride.Value;
-            var codePoint = char.ConvertToUtf32(icon.FontCharacter, 0);
-            _logger.LogDebug(
-                $"File icon override: '{publishedOverride.Key}' glyph U+{codePoint:X4} colour {icon.FontColor} font {icon.FontFamily}");
-        }
+        _logger.LogDebug(
+            $"Registered {overrides.Count} file extension and {fileNameOverrides.Count} file name icon overrides");
 
         _iconService.SetFileIconOverrides(overrides, fileNameOverrides);
     }

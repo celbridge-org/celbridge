@@ -59,10 +59,9 @@ public class ResourceOperationServiceTests
         });
 
         var resourceScanner = Substitute.For<IResourceScanner>();
-        resourceScanner.FindReferencersAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
-        resourceScanner.FindAllReferencedTargetsAsync()
-            .Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
+        var referenceIndex = ResourceReferenceIndexTestHelper.Empty();
+        resourceScanner.BuildReferenceIndexAsync()
+            .Returns(Task.FromResult(referenceIndex));
 
         var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());

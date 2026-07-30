@@ -138,13 +138,26 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public void RebuildResourceTree(List<ResourceKey>? selectedResources = null)
     {
+        var items = BuildResourceViewItems();
+
+        // Most registry updates leave the tree looking exactly as it did, and swapping the collection
+        // anyway destroys and regenerates every row for nothing. A caller that asked for a specific
+        // selection still goes through, since the selection applies whether or not the rows moved.
+        if (selectedResources is null
+            && DisplaysSameItems(TreeItems, items))
+        {
+            // The surviving rows are re-pointed at the rebuilt tree the registry has already swapped
+            // to. Comparison covers only what a row renders, so a row left holding its old node would
+            // still expose that tree's children and fail a reference comparison against the live one.
+            RebindResources(TreeItems, items);
+            return;
+        }
+
         // Notify view to save scroll position before rebuild
         PreBuildResourceTree?.Invoke();
 
         // Use provided selection, or preserve current selection
         var resourcesToSelect = selectedResources ?? GetSelectedResourceKeys();
-
-        var items = BuildResourceViewItems();
 
         // Replace the entire collection to trigger a single UI update (no flicker)
         TreeItems = new ObservableCollection<ResourceViewItem>(items);
@@ -156,6 +169,45 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // Notify view to restore scroll position after rebuild
         PostBuildResourceTree?.Invoke();
+    }
+
+    private static void RebindResources(
+        IReadOnlyList<ResourceViewItem> displayedItems,
+        IReadOnlyList<ResourceViewItem> rebuiltItems)
+    {
+        for (var itemIndex = 0; itemIndex < displayedItems.Count; itemIndex++)
+        {
+            var displayedItem = displayedItems[itemIndex];
+            var rebuiltItem = rebuiltItems[itemIndex];
+
+            displayedItem.RebindResource(rebuiltItem.Resource);
+        }
+    }
+
+    // Whether a rebuilt list would render exactly as the one on display. Both lists are depth-first
+    // flattenings, so matching appearances in the same order mean the same hierarchy as well as the same
+    // rows. Comparing positionally also lets the caller pair each displayed row with its replacement.
+    private static bool DisplaysSameItems(
+        IReadOnlyList<ResourceViewItem> displayedItems,
+        IReadOnlyList<ResourceViewItem> rebuiltItems)
+    {
+        if (displayedItems.Count != rebuiltItems.Count)
+        {
+            return false;
+        }
+
+        for (var itemIndex = 0; itemIndex < rebuiltItems.Count; itemIndex++)
+        {
+            var displayedAppearance = displayedItems[itemIndex].Appearance;
+            var rebuiltAppearance = rebuiltItems[itemIndex].Appearance;
+
+            if (displayedAppearance != rebuiltAppearance)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -352,8 +404,6 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         if (item.Resource is IFolderResource folderResource)
         {
-            folderResource.IsExpanded = true;
-
             var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
             _folderStateService.SetExpanded(folderResourceKey, true);
         }
@@ -390,11 +440,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         item.IsExpanded = false;
 
-        if (item.Resource is IFolderResource folderResource)
-        {
-            folderResource.IsExpanded = false;
-            _folderStateService.SetExpanded(folderKey, false);
-        }
+        _folderStateService.SetExpanded(folderKey, false);
 
         RebuildResourceTree(newSelectedKeys);
         RequestWorkspaceSave();
@@ -430,8 +476,6 @@ public partial class ResourceTreeViewModel : ObservableObject
                 item.IsExpanded = false;
                 if (item.Resource is IFolderResource folderResource)
                 {
-                    folderResource.IsExpanded = false;
-
                     var folderResourceKey = _resourceRegistry.GetResourceKey(folderResource);
                     _folderStateService.SetExpanded(folderResourceKey, false);
                 }
@@ -458,11 +502,10 @@ public partial class ResourceTreeViewModel : ObservableObject
             var folderKey = new ResourceKey(currentPath);
 
             var folderResult = _resourceRegistry.GetResource(folderKey);
-            if (folderResult.IsSuccess && folderResult.Value is IFolderResource folder)
+            if (folderResult.IsSuccess && folderResult.Value is IFolderResource)
             {
-                if (!folder.IsExpanded)
+                if (!_folderStateService.IsExpanded(folderKey))
                 {
-                    folder.IsExpanded = true;
                     _folderStateService.SetExpanded(folderKey, true);
                     anyExpanded = true;
                 }

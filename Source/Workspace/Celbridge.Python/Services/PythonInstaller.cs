@@ -19,6 +19,9 @@ public class PythonInstaller : IPythonInstaller
     private readonly ILogger<PythonInstaller> _logger;
     private readonly IAppEnvironment _appEnvironment;
 
+    private readonly object _installLock = new();
+    private Task<Result<string>>? _installTask;
+
     public PythonInstaller(
         ILocalFileSystem fileSystem,
         ILogger<PythonInstaller> logger,
@@ -29,11 +32,50 @@ public class PythonInstaller : IPythonInstaller
         _appEnvironment = appEnvironment;
     }
 
-    public async Task<Result<string>> InstallPythonAsync(string appVersion)
+    public string PythonFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
+
+    public Task<Result<string>> InstallPythonAsync(string appVersion)
+    {
+        // A reinstall deletes and re-extracts one shared app-data folder, so concurrent callers must share a
+        // single run rather than each deleting the folder the others are extracting into. Consoles start
+        // together, so this is reached concurrently whenever a project has several of them open.
+        lock (_installLock)
+        {
+            if (ShouldStartInstall())
+            {
+                _installTask = RunInstallAsync(appVersion);
+            }
+
+            return _installTask!;
+        }
+    }
+
+    // A failed install is not cached, so the next console to start retries rather than inheriting it.
+    private bool ShouldStartInstall()
+    {
+        if (_installTask is null)
+        {
+            return true;
+        }
+
+        if (!_installTask.IsCompleted)
+        {
+            return false;
+        }
+
+        if (_installTask.IsFaulted)
+        {
+            return true;
+        }
+
+        return _installTask.Result.IsFailure;
+    }
+
+    private async Task<Result<string>> RunInstallAsync(string appVersion)
     {
         try
         {
-            var pythonFolderPath = Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
+            var pythonFolderPath = PythonFolderPath;
 
             bool needsReinstall = await IsInstallRequiredAsync(pythonFolderPath, appVersion);
 

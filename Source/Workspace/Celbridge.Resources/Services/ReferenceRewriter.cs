@@ -44,8 +44,11 @@ internal sealed class ReferenceRewriter
     {
         var scanner = _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
 
+        // One walk covers the source and, for a folder, every descendant target.
+        var referenceIndex = await scanner.BuildReferenceIndexAsync();
+
         var referencerSet = new HashSet<ResourceKey>();
-        foreach (var referencer in await scanner.FindReferencersAsync(source))
+        foreach (var referencer in referenceIndex.GetReferencers(source))
         {
             referencerSet.Add(referencer);
         }
@@ -54,11 +57,11 @@ internal sealed class ReferenceRewriter
         {
             // Folder rename also rewrites every "project:<source>/<child>" form,
             // so gather referencers of every descendant target too.
-            foreach (var target in await scanner.FindAllReferencedTargetsAsync())
+            foreach (var target in referenceIndex.ReferencedTargets)
             {
                 if (target.IsDescendantOf(source))
                 {
-                    foreach (var referencer in await scanner.FindReferencersAsync(target))
+                    foreach (var referencer in referenceIndex.GetReferencers(target))
                     {
                         referencerSet.Add(referencer);
                     }

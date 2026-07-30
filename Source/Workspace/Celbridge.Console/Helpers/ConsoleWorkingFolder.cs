@@ -1,6 +1,4 @@
-using Path = System.IO.Path;
-
-namespace Celbridge.Utilities;
+namespace Celbridge.Console.Helpers;
 
 /// <summary>
 /// Resolves a console session's working folder: a relative path resolves against the project root, an

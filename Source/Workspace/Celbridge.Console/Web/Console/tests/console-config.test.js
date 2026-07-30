@@ -94,10 +94,9 @@ describe('shortcut lines', () => {
 });
 
 describe('normalizeConfig', () => {
-    it('keeps title and runners, drops only shortcuts, and sorts env keys', () => {
+    it('keeps runners, drops only shortcuts, and sorts env keys', () => {
         const config = {
             type: 'python',
-            title: 'Kept',
             executable: '',
             pythonVersion: '3.13',
             arguments: [],
@@ -108,7 +107,6 @@ describe('normalizeConfig', () => {
             shortcuts: [{ label: 'L', icon: '', text: 't' }],
         };
         const normalized = normalizeConfig(config);
-        expect(normalized.title).toBe('Kept');
         expect(normalized.runners).toEqual([{ extensions: ['.py'], command: 'x' }]);
         expect(normalized).not.toHaveProperty('shortcuts');
         expect(Object.keys(normalized.environment)).toEqual(['A', 'B']);
@@ -119,7 +117,6 @@ describe('configsEqual', () => {
     it('ignores shortcuts and env order', () => {
         const base = {
             type: 'python',
-            title: 'Same',
             executable: '',
             arguments: [],
             environment: { A: '1', B: '2' },
@@ -127,7 +124,6 @@ describe('configsEqual', () => {
         };
         const other = {
             type: 'python',
-            title: 'Same',
             executable: '',
             arguments: [],
             environment: { B: '2', A: '1' },
@@ -143,11 +139,7 @@ describe('configsEqual', () => {
         expect(configsEqual(a, b)).toBe(false);
     });
 
-    it('is false when the title or the runners differ (both need a reopen now)', () => {
-        const titleA = { type: 'python', title: 'A' };
-        const titleB = { type: 'python', title: 'B' };
-        expect(configsEqual(titleA, titleB)).toBe(false);
-
+    it('is false when the runners differ (they need a reopen now)', () => {
         const runnersX = { type: 'python', runners: [{ extensions: ['.py'], command: 'x' }] };
         const runnersY = { type: 'python', runners: [{ extensions: ['.py'], command: 'y' }] };
         expect(configsEqual(runnersX, runnersY)).toBe(false);
@@ -155,34 +147,38 @@ describe('configsEqual', () => {
 });
 
 describe('buildStartConfig', () => {
-    it('carries runners and title and fills missing fields with defaults', () => {
+    it('carries runners and fills missing fields with defaults', () => {
         const built = buildStartConfig({
             type: 'python',
-            title: 'Py',
             runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
         });
         expect(built).toEqual({
             type: 'python',
-            title: 'Py',
             executable: '',
             pythonVersion: '',
             arguments: [],
             dependencies: [],
             workingDirectory: '',
+            startupScript: '',
             environment: {},
             runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
         });
     });
 
+    it('carries the startup script through to the payload', () => {
+        const built = buildStartConfig({ startupScript: 'import numpy as np\nx = 1' });
+        expect(built.startupScript).toBe('import numpy as np\nx = 1');
+    });
+
     it('defaults an empty config to a blank shell payload', () => {
         expect(buildStartConfig({})).toEqual({
             type: 'shell',
-            title: '',
             executable: '',
             pythonVersion: '',
             arguments: [],
             dependencies: [],
             workingDirectory: '',
+            startupScript: '',
             environment: {},
             runners: [],
         });

@@ -256,6 +256,8 @@ public partial class DocumentTabViewModel : ObservableObject
             UnregisterMessageHandlers();
             await DocumentView.PrepareToClose();
 
+            NotifyDocumentClosed();
+
             return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Closed);
         }
 
@@ -290,7 +292,39 @@ public partial class DocumentTabViewModel : ObservableObject
         UnregisterMessageHandlers();
         await DocumentView.PrepareToClose();
 
+        NotifyDocumentClosed();
+
         return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Closed);
+    }
+
+    /// <summary>
+    /// Announces that the document is open and its view is ready. Called by the panel once the tab is
+    /// fully constructed, rather than fired from the DocumentView setter, because a resource rename
+    /// replaces the view on a tab that was never closed.
+    /// </summary>
+    public void NotifyDocumentOpened()
+    {
+        if (IsUtility)
+        {
+            return;
+        }
+
+        var documentOpenedMessage = new DocumentOpenedMessage(FileResource);
+        _messengerService.Send(documentOpenedMessage);
+    }
+
+    // The closing half of the pair. It lives here rather than in the panel because every close path routes
+    // through CloseDocument, including the reopen-with-a-different-editor path that removes the tab
+    // directly. A docked utility never announced an open, so it announces no close either.
+    private void NotifyDocumentClosed()
+    {
+        if (IsUtility)
+        {
+            return;
+        }
+
+        var documentClosedMessage = new DocumentClosedMessage(FileResource);
+        _messengerService.Send(documentClosedMessage);
     }
 
     public async Task<Result> ReloadDocument()

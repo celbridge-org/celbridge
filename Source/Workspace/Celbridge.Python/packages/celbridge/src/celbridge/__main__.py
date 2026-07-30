@@ -1,20 +1,53 @@
 """Entry point for the Celbridge Python connector.
 
 Usage: python -m celbridge
-       celbridge          (when installed as a tool via uv)
+       celbridge-py       (when installed as a tool via uv)
 
-The RPC port is read from the CELBRIDGE_RPC_PORT environment variable,
-which is set by the Celbridge application when launching the terminal.
+A Celbridge python console seeds its configured launch into the environment (CELBRIDGE_PYTHON_*),
+which this command re-execs through uv to honour, so retyping celbridge-py in that console
+reproduces it. With none of that set the REPL starts directly from the installed tool venv. Any
+arguments are forwarded to IPython, and the RPC port is read from CELBRIDGE_RPC_PORT.
 """
 
 import logging
 import os
 import sys
+from typing import NamedTuple
 
 from celbridge.logging_config import configure_logging
 from celbridge.rpc_client import RpcClient
 from celbridge.cel_proxy import CelProxy
 from celbridge.repl_setup import setup_repl, POST_STARTUP_LINE
+
+# Set on the re-exec'd process so the inner python -m celbridge never re-bootstraps, then cleared
+# once consumed so terminals spawned from the REPL can bootstrap again.
+BOOTSTRAP_MARKER = 'CELBRIDGE_BOOTSTRAPPED'
+
+
+class ResolvedLaunch(NamedTuple):
+    """The launch a python console configured, plus the arguments to forward to IPython."""
+    python_version: str | None
+    with_packages: list[str]
+    offline: bool
+    ipython_arguments: list[str]
+
+    @property
+    def requires_bootstrap(self) -> bool:
+        return bool(self.python_version or self.with_packages or self.offline)
+
+
+def _build_exec_lines(startup_script):
+    """Build IPython's exec_lines: the REPL customizations, then the console's startup script.
+
+    The script is one entry rather than one per line, so IPython runs it as a single cell and multi-line
+    constructs work. It runs here rather than being typed at the prompt because the REPL discards pending
+    terminal input as it starts.
+    """
+    exec_lines = [POST_STARTUP_LINE]
+    if startup_script and startup_script.strip():
+        exec_lines.append(startup_script)
+
+    return exec_lines
 
 
 def _resolve_rpc_port() -> int:
@@ -31,8 +64,93 @@ def _resolve_rpc_port() -> int:
         raise SystemExit(f"Error: CELBRIDGE_RPC_PORT has invalid value: '{port_string}'")
 
 
+def _split_lines(value):
+    """Split a newline-separated environment value into a list, dropping blank lines."""
+    if not value:
+        return []
+
+    return [line.strip() for line in value.splitlines() if line.strip()]
+
+
+def _resolve_launch(environ, arguments) -> ResolvedLaunch:
+    """Read the launch a python console configured into its environment.
+
+    Typed arguments are appended to the console's configured interpreter arguments, so both apply.
+    """
+    return ResolvedLaunch(
+        environ.get('CELBRIDGE_PYTHON_VERSION'),
+        _split_lines(environ.get('CELBRIDGE_PYTHON_WITH')),
+        environ.get('CELBRIDGE_PYTHON_OFFLINE') == '1',
+        _split_lines(environ.get('CELBRIDGE_PYTHON_ARGS')) + list(arguments),
+    )
+
+
+def _build_bootstrap_command(resolved: ResolvedLaunch, environ):
+    """Build the uv run command that relaunches the REPL with the resolved launch options."""
+    uv_path = environ.get('CELBRIDGE_UV')
+    wheel_path = environ.get('CELBRIDGE_WHEEL')
+    if not uv_path or not wheel_path:
+        raise SystemExit(
+            "Error: launching the configured Python environment requires the Celbridge console "
+            "environment (CELBRIDGE_UV and CELBRIDGE_WHEEL are not set)."
+        )
+
+    command = [uv_path, 'run']
+
+    cache_dir = environ.get('CELBRIDGE_UV_CACHE_DIR')
+    if cache_dir:
+        command.extend(['--cache-dir', cache_dir])
+
+    if resolved.offline:
+        command.append('--offline')
+
+    command.append('--no-project')
+
+    if resolved.python_version:
+        command.extend(['--python', resolved.python_version])
+
+    command.extend(['--managed-python', '--with', wheel_path])
+
+    for package in resolved.with_packages:
+        command.extend(['--with', package])
+
+    command.extend(['python', '-m', 'celbridge'])
+    command.extend(resolved.ipython_arguments)
+
+    return command
+
+
+def _bootstrap(resolved: ResolvedLaunch):
+    """Re-exec through uv. Does not return."""
+    command = _build_bootstrap_command(resolved, os.environ)
+
+    environment = dict(os.environ)
+    environment[BOOTSTRAP_MARKER] = '1'
+
+    if os.name == 'posix':
+        os.execvpe(command[0], command, environment)
+
+    # Windows has no true exec, so run the child and mirror its exit code. Ctrl+C reaches both
+    # processes through the shared console; the wrapper ignores it and lets the REPL handle it.
+    import signal
+    import subprocess
+
+    process = subprocess.Popen(command, env=environment)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    raise SystemExit(process.wait())
+
+
 def main():
     """Connect to the Celbridge application and launch an interactive REPL."""
+
+    # A bootstrapped (inner) run received its effective arguments on the command line, so it skips
+    # option resolution entirely and must not re-bootstrap.
+    ipython_forward_arguments = sys.argv[1:]
+    if os.environ.pop(BOOTSTRAP_MARKER, None) != '1':
+        resolved = _resolve_launch(os.environ, sys.argv[1:])
+        if resolved.requires_bootstrap:
+            _bootstrap(resolved)
+        ipython_forward_arguments = resolved.ipython_arguments
 
     port = _resolve_rpc_port()
 
@@ -85,15 +203,17 @@ def main():
     if ipython_folder:
         ipython_args.extend(['--ipython-dir', ipython_folder])
 
-    # Forward any interpreter arguments the console config passed after '-m celbridge' to IPython.
-    ipython_args.extend(sys.argv[1:])
+    # Forward the interpreter arguments (explicit, or the console-provided environment defaults on
+    # an un-bootstrapped launch) to IPython.
+    ipython_args.extend(ipython_forward_arguments)
 
     # Launch IPython with the cel proxy injected into the user namespace.
     # exec_lines runs after IPython is fully initialized, so customizations
     # that need get_ipython() (prompts, exit hooks, caching) work correctly.
     from traitlets.config import Config
     ipython_config = Config()
-    ipython_config.InteractiveShellApp.exec_lines = [POST_STARTUP_LINE]
+    ipython_config.InteractiveShellApp.exec_lines = _build_exec_lines(
+        os.environ.get('CELBRIDGE_PYTHON_STARTUP', ''))
 
     import IPython
     IPython.start_ipython(

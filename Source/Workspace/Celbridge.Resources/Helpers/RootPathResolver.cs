@@ -1,24 +1,34 @@
+using System.Collections.Concurrent;
 using FileAttributes = System.IO.FileAttributes;
 
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for a single
-/// root, checking that paths stay within the backing folder. Reparse points
-/// (symlinks, junctions) are rejected best-effort via File.GetAttributes. The
-/// check is not atomic with the following I/O, so it is a containment filter,
-/// not a hardened boundary against symlink races.
+/// root, checking that paths stay within the backing folder. Containment is
+/// re-checked on every call. Reparse points (symlinks, junctions) are rejected
+/// best-effort via File.GetAttributes, once per folder for the life of the
+/// resolver, so a junction is caught when it arrives with a project but not
+/// when it replaces a folder that has already been verified. This is a
+/// containment filter, not a hardened boundary against symlink races.
 /// </summary>
 [AllowDirectFileSystemAccess]
 public class RootPathResolver
 {
+    // Safety valve for a session that touches an unbounded number of folders. An entry costs one
+    // verification to rebuild, so clearing wholesale is enough.
+    private const int MaxVerifiedFolders = 100_000;
+
     private readonly string _rootName;
     private readonly string _backingLocation;
     // Pre-computed once at construction so the GetResourceKey / ValidateAndResolve
     // hot paths don't repeat Path.GetFullPath + TrimEnd on every call.
     private readonly string _normalizedBackingWithSeparator;
     private readonly string _normalizedBackingTrimmed;
-    private readonly HashSet<string> _verifiedFolders;
+    // Resolution runs on the scanner's parallel workers as well as the tree walk. The count is tracked
+    // separately because ConcurrentDictionary.Count locks every bucket.
+    private readonly ConcurrentDictionary<string, byte> _verifiedFolders;
+    private int _verifiedFolderCount;
 
     public RootPathResolver(string rootName, string backingLocation)
     {
@@ -27,7 +37,7 @@ public class RootPathResolver
         _normalizedBackingWithSeparator = NormalizeBackingLocation(backingLocation);
         _normalizedBackingTrimmed = _normalizedBackingWithSeparator
             .TrimEnd(Path.DirectorySeparatorChar);
-        _verifiedFolders = new HashSet<string>(PathComparison.Comparer);
+        _verifiedFolders = new ConcurrentDictionary<string, byte>(PathComparison.Comparer);
     }
 
     /// <summary>
@@ -60,6 +70,7 @@ public class RootPathResolver
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
         }
 
+        // Containment above is re-checked every call; only the reparse-point walk below is cached.
         var reparseResult = CheckForReparsePoints(resolvedPath, _normalizedBackingWithSeparator);
         if (reparseResult.IsFailure)
         {
@@ -153,19 +164,21 @@ public class RootPathResolver
     }
 
     /// <summary>
-    /// Clears the cache of verified directory paths. Call this when the directory
-    /// structure may have changed (e.g. after ResourceMonitor triggers a registry sync).
+    /// Clears the cache of verified directory paths so those folders are checked for reparse points
+    /// again. Warranted when the watcher has lost events, leaving changes to the folder structure
+    /// unobserved.
     /// </summary>
     public void InvalidateCache()
     {
         _verifiedFolders.Clear();
+        Interlocked.Exchange(ref _verifiedFolderCount, 0);
     }
 
     private Result CheckForReparsePoints(string resolvedPath, string normalizedBackingLocation)
     {
         var folderPath = GetFolderPath(resolvedPath);
 
-        if (_verifiedFolders.Contains(folderPath))
+        if (_verifiedFolders.ContainsKey(folderPath))
         {
             return Result.Ok();
         }
@@ -174,7 +187,7 @@ public class RootPathResolver
         var backingTrimmed = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
         if (resolvedPath.Equals(backingTrimmed, PathComparison.Comparison))
         {
-            _verifiedFolders.Add(folderPath);
+            AddVerifiedFolder(folderPath);
             return Result.Ok();
         }
 
@@ -202,8 +215,20 @@ public class RootPathResolver
             }
         }
 
-        _verifiedFolders.Add(folderPath);
+        AddVerifiedFolder(folderPath);
         return Result.Ok();
+    }
+
+    // The count drifts when threads verify the same folder at once; the valve then trips early, which
+    // costs one re-verification per folder.
+    private void AddVerifiedFolder(string folderPath)
+    {
+        _verifiedFolders[folderPath] = 0;
+
+        if (Interlocked.Increment(ref _verifiedFolderCount) >= MaxVerifiedFolders)
+        {
+            InvalidateCache();
+        }
     }
 
     private static string GetFolderPath(string resolvedPath)

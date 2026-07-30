@@ -40,8 +40,8 @@ public class LocalResourceFileSystemTests
             .Returns(Result<string>.Fail("not stubbed"));
 
         _resourceScanner = Substitute.For<IResourceScanner>();
-        _resourceScanner.FindReferencersAsync(Arg.Any<ResourceKey>()).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
-        _resourceScanner.FindAllReferencedTargetsAsync().Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
+        var referenceIndex = ResourceReferenceIndexTestHelper.Empty();
+        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         _rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
@@ -466,7 +466,9 @@ public class LocalResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
+        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
+
+        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
@@ -506,7 +508,9 @@ public class LocalResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
+        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
+
+        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
@@ -543,7 +547,9 @@ public class LocalResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("My Document.md.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("My Renamed Document.md.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
+        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
+
+        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
@@ -577,7 +583,9 @@ public class LocalResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("foo.md.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("bar.md.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
+        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
+
+        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
@@ -774,7 +782,9 @@ public class LocalResourceFileSystemTests
             _resourceRegistry.ResolveResourcePath(new ResourceKey("target2.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
             _resourceRegistry.ResolveResourcePath(new ResourceKey("doc.json")).Returns(Result<string>.Ok(referencerPath));
 
-            _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
+            var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
+
+            _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
             var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 

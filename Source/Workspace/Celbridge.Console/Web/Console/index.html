@@ -30,6 +30,9 @@
         <div id="content">
             <div id="terminal-view">
                 <div id="terminal"></div>
+                <div id="session-starting" class="overlay">
+                    <div class="overlay-message" data-loc-key="Console_Opening"></div>
+                </div>
                 <div id="session-failed" class="overlay hidden">
                     <div class="overlay-card">
                         <div id="session-failed-message" class="overlay-message"></div>
@@ -87,6 +90,12 @@
                             <span class="field-label" data-loc-key="Console_Field_WorkingDirectory"></span>
                             <input id="working-directory" type="text" spellcheck="false" data-loc-key="Console_Placeholder_WorkingDirectory" data-loc-attr="placeholder">
                             <span class="field-hint" data-loc-key="Console_Hint_WorkingDirectory"></span>
+                        </label>
+
+                        <label class="field">
+                            <span class="field-label" data-loc-key="Console_Field_StartupScript"></span>
+                            <textarea id="startup-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_StartupScript" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_StartupScript"></span>
                         </label>
                     </div>
                 </details>

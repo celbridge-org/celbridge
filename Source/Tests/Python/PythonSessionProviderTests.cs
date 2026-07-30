@@ -31,10 +31,13 @@ public class PythonSessionProviderTests
 
         _capturedRequest = null;
         _launchService = Substitute.For<IPythonLaunchService>();
-        _launchService.BuildLaunchAsync(Arg.Do<PythonLaunchRequest>(request => _capturedRequest = request))
-            .Returns(Result<PythonLaunchResult>.Ok(new PythonLaunchResult(
-                "uv run python -m celbridge",
-                new Dictionary<string, string>(),
+        _launchService.BuildStartupAsync(Arg.Do<PythonLaunchRequest>(request => _capturedRequest = request))
+            .Returns(Result<PythonStartupResult>.Ok(new PythonStartupResult(
+                "celbridge-py",
+                new Dictionary<string, string>
+                {
+                    ["CELBRIDGE_PYTHON_VERSION"] = "3.13",
+                },
                 LaunchFingerprint,
                 ProjectPythonFolder)));
 
@@ -55,7 +58,8 @@ public class PythonSessionProviderTests
 
     private static ConsoleSessionContext MakeContext(
         string? runtimeVersion = null,
-        IReadOnlyDictionary<string, string>? environment = null)
+        IReadOnlyDictionary<string, string>? environment = null,
+        string? startupScript = null)
     {
         return new ConsoleSessionContext(
             ResourceKey.Empty,
@@ -65,25 +69,63 @@ public class PythonSessionProviderTests
             string.Empty,
             environment ?? new Dictionary<string, string>(),
             ProjectRoot,
-            RuntimeVersion: runtimeVersion);
+            RuntimeVersion: runtimeVersion,
+            StartupScript: startupScript);
     }
 
     [Test]
-    public async Task BuildLaunchSpec_ConsoleVersion_WinsOverBundledDefault()
+    public async Task BuildStartupInvocation_ConsoleVersion_WinsOverBundledDefault()
     {
-        var result = await _provider.BuildLaunchSpecAsync(MakeContext(runtimeVersion: "3.11"));
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext(runtimeVersion: "3.11"));
 
         result.IsFailure.Should().BeFalse();
         _capturedRequest!.PythonVersion.Should().Be("3.11");
     }
 
     [Test]
-    public async Task BuildLaunchSpec_BlankVersion_FallsBackToBundledDefault()
+    public async Task BuildStartupInvocation_BlankVersion_FallsBackToBundledDefault()
     {
-        var result = await _provider.BuildLaunchSpecAsync(MakeContext(runtimeVersion: "  "));
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext(runtimeVersion: "  "));
 
         result.IsFailure.Should().BeFalse();
         _capturedRequest!.PythonVersion.Should().Be(BundledDefaultVersion);
+    }
+
+    [Test]
+    public async Task BuildStartupInvocation_ReturnsTheBareCommandWithLaunchDefaultEnvironment()
+    {
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext());
+
+        result.IsFailure.Should().BeFalse();
+        var command = result.Value;
+        command.Executable.Should().Be("celbridge-py");
+        command.Arguments.Should().BeEmpty();
+        command.Environment.Should().ContainKey("CELBRIDGE_PYTHON_VERSION").WhoseValue.Should().Be("3.13");
+    }
+
+    [Test]
+    public async Task BuildStartupInvocation_StartupScript_IsHandledByTheProvider()
+    {
+        // The REPL discards type-ahead as it starts, so the script must ride the environment into
+        // IPython rather than being typed at the prompt by the host.
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext(startupScript: "%run \"hello.py\""));
+
+        result.IsFailure.Should().BeFalse();
+        var invocation = result.Value;
+        invocation.HandlesStartupScript.Should().BeTrue();
+        invocation.Environment.Should().ContainKey("CELBRIDGE_PYTHON_STARTUP")
+            .WhoseValue.Should().Be("%run \"hello.py\"");
+    }
+
+    [Test]
+    public async Task BuildStartupInvocation_NoStartupScript_LeavesItToTheHost()
+    {
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext(startupScript: "   "));
+
+        result.IsFailure.Should().BeFalse();
+        var invocation = result.Value;
+        invocation.HandlesStartupScript.Should().BeFalse();
+        invocation.Environment.Should().NotContainKey("CELBRIDGE_PYTHON_STARTUP");
     }
 
     [Test]
@@ -95,7 +137,7 @@ public class PythonSessionProviderTests
             [ConsoleEnvironmentVariables.SessionToken] = sessionToken.ToString(),
         };
 
-        var result = await _provider.BuildLaunchSpecAsync(MakeContext(environment: environment));
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext(environment: environment));
         result.IsFailure.Should().BeFalse();
 
         _messengerService.Send(new ConsoleSessionConnectedMessage(sessionToken));
@@ -112,12 +154,12 @@ public class PythonSessionProviderTests
             [ConsoleEnvironmentVariables.SessionToken] = sessionToken.ToString(),
         };
 
-        var result = await _provider.BuildLaunchSpecAsync(MakeContext(environment: environment));
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext(environment: environment));
         result.IsFailure.Should().BeFalse();
 
         // A session that dies before its client connects must not persist its unproven fingerprint,
         // even if a stray connected message for the same session id arrives afterwards.
-        _messengerService.Send(new ConsoleSessionStateChangedMessage(sessionToken, ConsoleSessionState.Ended));
+        _messengerService.Send(new ConsoleSessionStateChangedMessage(sessionToken, ConsoleSessionRunState.Ended));
         _messengerService.Send(new ConsoleSessionConnectedMessage(sessionToken));
 
         await _launchService.DidNotReceive().SaveFingerprintAsync(Arg.Any<string>(), Arg.Any<string>());

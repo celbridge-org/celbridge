@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using Timer = System.Timers.Timer;
@@ -34,6 +35,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private readonly List<WatchedRoot> _watchedRoots = new();
     private Timer? _updateDebounceTimer;
+    private long _updateRequestedTimestamp;
+    private long _updateStartedTimestamp;
     private bool _isDisposed;
 
     public ResourceMonitor(
@@ -59,6 +62,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
+            _messengerService.Register<ResourceRegistryUpdateStartingMessage>(this, OnResourceRegistryUpdateStarting);
+
             // Spin up one file system monitor per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
             // returns the configured registry instance here.
@@ -72,6 +77,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
                 var monitor = _fileSystemMonitorFactory.Create(handler.BackingLocation);
                 monitor.FileSystemChanged += (sender, monitorEvent) => OnFileSystemChanged(handler, monitorEvent);
+                monitor.MonitoringDesynchronized += (sender, args) => OnMonitoringDesynchronized(handler);
 
                 var startResult = monitor.Start();
                 if (startResult.IsFailure)
@@ -106,6 +112,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
+            _messengerService.UnregisterAll(this);
+
             lock (_updateLock)
             {
                 _updateDebounceTimer?.Dispose();
@@ -165,7 +173,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         // that watch for content changes need to react in that case too.
         OnResourceChanged(handler, fullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
     private void HandleChanged(IResourceRootHandler handler, string fullPath)
@@ -177,7 +185,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         OnResourceChanged(handler, fullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
     private void HandleDeleted(IResourceRootHandler handler, string fullPath)
@@ -189,7 +197,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         OnResourceDeleted(handler, fullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
     private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
@@ -209,14 +217,35 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         // (handles applications that use rename as part of save, e.g., Excel)
         OnResourceChanged(handler, newFullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
-    private void ScheduleResourceUpdateIfProjectRoot(IResourceRootHandler handler)
+    private void OnResourceRegistryUpdateStarting(object recipient, ResourceRegistryUpdateStartingMessage message)
     {
-        // The project tree sync (Registry.UpdateResourceRegistry) is project-scoped.
-        // Events from non-project roots (temp:, logs:) don't touch the project tree,
-        // so they skip the debounce.
+        lock (_updateLock)
+        {
+            _updateStartedTimestamp = Stopwatch.GetTimestamp();
+        }
+    }
+
+    // The monitor lost events, so which resources were missed is exactly what is unknown: the tree is
+    // rescanned unconditionally, and the path cache is dropped because one of the missing events may
+    // have been a folder being replaced by a reparse point.
+    private void OnMonitoringDesynchronized(IResourceRootHandler handler)
+    {
+        _logger.LogWarning(
+            "Resource monitoring for root '{RootName}' lost events; rescanning", handler.RootName);
+
+        handler.InvalidatePathCache();
+
+        ScheduleResourceUpdate(handler);
+    }
+
+    // Schedules an update prompted by an event on a root. The project tree sync
+    // (Registry.UpdateResourceRegistry) is project-scoped, so an event on any other root (temp:, logs:)
+    // does not touch the tree and schedules nothing.
+    private void ScheduleResourceUpdate(IResourceRootHandler handler)
+    {
         if (handler.RootName == ResourceKey.DefaultRoot)
         {
             ScheduleResourceUpdate();
@@ -232,6 +261,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         lock (_updateLock)
         {
+            _updateRequestedTimestamp = Stopwatch.GetTimestamp();
+
             if (_updateDebounceTimer != null)
             {
                 // Timer already running - reset it
@@ -251,10 +282,21 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
+        bool alreadyCovered;
         lock (_updateLock)
         {
             _updateDebounceTimer?.Dispose();
             _updateDebounceTimer = null;
+
+            // A read that began after the last request enumerated a file system that already contained
+            // whatever those requests described. Mutating commands rebuild the registry themselves, so
+            // without this every command is trailed by a redundant watcher-driven rescan.
+            alreadyCovered = _updateStartedTimestamp > _updateRequestedTimestamp;
+        }
+
+        if (alreadyCovered)
+        {
+            return;
         }
 
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
@@ -262,15 +304,29 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return;
         }
 
-        // Marshal to UI thread since UpdateResources may trigger UI updates via message
+        // Marshal to UI thread since UpdateResources may trigger UI updates via message. The workspace
+        // can unload before this runs, hence the guard and the catch: an exception escaping an async
+        // dispatcher continuation terminates the process.
         _dispatcher.TryEnqueue(async () =>
         {
-            var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-
-            var result = await resourceService.UpdateResourcesAsync();
-            if (result.IsFailure)
+            try
             {
-                _logger.LogWarning(result, "Failed to refresh resources");
+                if (!_workspaceWrapper.IsWorkspacePageLoaded)
+                {
+                    return;
+                }
+
+                var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+
+                var result = await resourceService.UpdateResourcesAsync();
+                if (result.IsFailure)
+                {
+                    _logger.LogWarning(result, "Failed to refresh resources");
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "An exception occurred while refreshing resources");
             }
         });
     }
