@@ -96,8 +96,8 @@ public class RunMenuOption : IMenuOption<ExplorerMenuContext>, ISubMenuOption<Ex
         }
 
         var extension = Path.GetExtension(resourceKey);
-        var registry = _workspaceWrapper.WorkspaceService.ConsoleService.SessionRegistry;
-        return registry.GetRunTargets(extension);
+        var sessions = _workspaceWrapper.WorkspaceService.ConsoleService.Sessions;
+        return sessions.GetRunTargets(extension);
     }
 
     private bool TryGetClickedResourceKey(ExplorerMenuContext context, out ResourceKey resourceKey)

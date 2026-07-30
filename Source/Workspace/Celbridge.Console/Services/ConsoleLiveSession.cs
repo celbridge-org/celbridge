@@ -1,0 +1,573 @@
+using Celbridge.Console.Helpers;
+using Celbridge.Logging;
+using Celbridge.Utilities;
+using Celbridge.Workspace;
+
+namespace Celbridge.Console.Services;
+
+/// <summary>
+/// One running console session, owned by the session service independently of any document view. It owns the
+/// pty, injects the startup lines, consumes the ready marker so its scrollback starts on a clean screen,
+/// buffers output while no view is attached, and forwards output live to the attached view.
+/// </summary>
+internal sealed class ConsoleLiveSession : IDisposable
+{
+    // Prefixes the ready marker the injected command echoes once it has cleared the screen. The random
+    // per-launch suffix guards against a stale marker from a previous launch arriving late on the old
+    // pty's stream. What stops the shell's own echo of the injected line matching is the literal split in
+    // ShellCommandComposer, not this suffix.
+    private const string ReadyMarkerPrefix = "CELBRIDGE-CONSOLE-READY-";
+
+    // How long after injection the marker scan keeps going before giving up and buffering raw output.
+    private const int MarkerTimeoutMs = 4000;
+
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILogger<ConsoleLiveSession> _logger;
+    private readonly ConsoleOutputBuffer _outputBuffer = new();
+
+    private readonly object _gateLock = new();
+    private readonly List<string> _bufferedInjections = new();
+    private volatile bool _startupInjectionPending;
+
+    private readonly object _streamLock = new();
+    private StartupMarkerScanner? _markerScanner;
+    private IConsoleView? _attachedView;
+
+    private ITerminal? _terminal;
+    private StartupInjector? _startupInjector;
+    private Timer? _markerTimeout;
+    private int? _trackedProcessId;
+    private bool _disposed;
+
+    public ConsoleLiveSession(
+        IServiceProvider serviceProvider,
+        IWorkspaceWrapper workspaceWrapper,
+        ResourceKey resource)
+    {
+        _serviceProvider = serviceProvider;
+        _workspaceWrapper = workspaceWrapper;
+        Resource = resource;
+        _logger = serviceProvider.GetRequiredService<ILogger<ConsoleLiveSession>>();
+    }
+
+    public ResourceKey Resource { get; private set; }
+
+    public ConsoleSessionRunState State { get; private set; } = ConsoleSessionRunState.Starting;
+
+    public string? Error { get; private set; }
+
+    public string? LaunchedConfigToml { get; private set; }
+
+    /// <summary>
+    /// Regenerated on each launch and seeded into the session environment as the handshake token, so a
+    /// connecting client can be attributed to this session.
+    /// </summary>
+    public Guid SessionId { get; private set; } = Guid.NewGuid();
+
+    public string TypeId { get; private set; } = string.Empty;
+
+    public IReadOnlyList<ConsoleRunner> Runners { get; private set; } = Array.Empty<ConsoleRunner>();
+
+    /// <summary>
+    /// The bound client connection, or null when no client is connected.
+    /// </summary>
+    public int? ConnectionId { get; set; }
+
+    /// <summary>
+    /// Whether a client has connected at any point during this launch.
+    /// </summary>
+    public bool HasConnected { get; set; }
+
+    /// <summary>
+    /// A session that bound a client and then lost it is a live shell whose REPL has exited, so its
+    /// runners target a prompt that is no longer there.
+    /// </summary>
+    public bool HasStaleRunners => HasConnected && ConnectionId is null;
+
+    /// <summary>
+    /// Raised when the run state changes, so the owning service can broadcast it.
+    /// </summary>
+    public event EventHandler<ConsoleSessionRunState>? StateChanged;
+
+    /// <summary>
+    /// The single-flight start, awaited by attach so a view never observes a half-started session.
+    /// </summary>
+    public Task? StartTask { get; set; }
+
+    /// <summary>
+    /// The currently attached view, or null. Read by the host to carry an attachment across a reopen.
+    /// </summary>
+    public IConsoleView? CurrentView
+    {
+        get
+        {
+            lock (_streamLock)
+            {
+                return _attachedView;
+            }
+        }
+    }
+
+    public void Rekey(ResourceKey newResource)
+    {
+        Resource = newResource;
+    }
+
+    public async Task StartAsync(int cols, int rows, int rpcPort)
+    {
+        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var readResult = await fileSystem.ReadAllTextAsync(Resource);
+        if (readResult.IsFailure)
+        {
+            Fail($"Cannot read the console file: {readResult.FirstErrorMessage}");
+            return;
+        }
+        var tomlText = readResult.Value;
+
+        var parseResult = ConsoleDocumentConfigParser.Parse(tomlText);
+        if (parseResult.IsFailure)
+        {
+            Fail(parseResult.FirstErrorMessage);
+            return;
+        }
+        var config = parseResult.Value;
+
+        var provider = ResolveProvider(config.Type);
+        if (provider is null)
+        {
+            Fail($"Unknown console session type '{config.Type}'.");
+            return;
+        }
+
+        // The identity and runners a Run target is resolved from, available from launch so a console is
+        // targetable before any view attaches. A fresh token per launch stops a stale client from a
+        // previous launch binding to this one.
+        SessionId = Guid.NewGuid();
+        TypeId = config.Type;
+        Runners = ResolveRunners(config, provider);
+        ConnectionId = null;
+        HasConnected = false;
+
+        // Seed the host-connection variables for every console: the shared listener port every peer dials,
+        // and this console's session token, inherited by anything the shell launches.
+        var environment = new Dictionary<string, string>(config.Environment);
+        environment[ConsoleEnvironmentVariables.RpcPort] = rpcPort.ToString();
+        environment[ConsoleEnvironmentVariables.SessionToken] = SessionId.ToString();
+
+        var projectFolderPath = registry.ProjectFolderPath;
+
+        var sessionContext = new ConsoleSessionContext(
+            Resource,
+            config.Type,
+            config.Executable,
+            config.Arguments,
+            config.WorkingDirectory,
+            environment,
+            projectFolderPath,
+            config.Dependencies,
+            config.PythonVersion,
+            config.StartupScript);
+
+        // A provider throw (e.g. file IO while resolving a Python launch) must surface as a failed
+        // session, not an unhandled exception on the open path.
+        Result<ConsoleStartupInvocation> invocationResult;
+        try
+        {
+            invocationResult = await provider.BuildStartupInvocationAsync(sessionContext);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to build the console startup invocation");
+            invocationResult = Result<ConsoleStartupInvocation>.Fail(exception.Message);
+        }
+
+        if (invocationResult.IsFailure)
+        {
+            Fail(invocationResult.FirstErrorMessage);
+            return;
+        }
+
+        var startupInvocation = invocationResult.Value;
+
+        // Every session runs the platform shell; the session type only decides what is injected into it.
+        // The injected line clears the shell-startup noise and echoes the ready marker, so the buffer
+        // begins on a clean screen.
+        var shell = ConsoleShell.Resolve();
+        var shellCommandLine = new CommandLineBuilder(shell.Executable).ToString();
+
+        string? readyMarker = null;
+        if (ShellCommandComposer.SupportsReadyMarker(shell.Family))
+        {
+            readyMarker = ReadyMarkerPrefix + Guid.NewGuid().ToString("N").Substring(0, 8);
+        }
+
+        var injectedCommandLine = ShellCommandComposer.Compose(shell.Family, startupInvocation, readyMarker);
+        var hasStartupInvocation = !string.IsNullOrEmpty(injectedCommandLine);
+
+        var injectedLines = new List<string>();
+        if (hasStartupInvocation)
+        {
+            injectedLines.Add(injectedCommandLine);
+        }
+        if (!startupInvocation.HandlesStartupScript)
+        {
+            injectedLines.AddRange(ConsoleStartupScript.SplitLines(config.StartupScript));
+        }
+
+        var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
+
+        var terminal = _serviceProvider.GetRequiredService<ITerminal>();
+        terminal.OutputReceived += OnTerminalOutput;
+        terminal.ProcessExited += OnTerminalProcessExited;
+        terminal.SetSize(cols, rows);
+
+        var environmentCopy = new Dictionary<string, string>(environment);
+
+        // The startup invocation's own environment (e.g. the python launch defaults a retyped celbridge-py
+        // reads) merges add-if-absent, so the console's [session.environment] still wins.
+        if (startupInvocation.Environment is not null)
+        {
+            foreach (var pair in startupInvocation.Environment)
+            {
+                if (!environmentCopy.ContainsKey(pair.Key))
+                {
+                    environmentCopy[pair.Key] = pair.Value;
+                }
+            }
+        }
+
+        foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
+        {
+            try
+            {
+                await contributor.ContributeAsync(sessionContext, environmentCopy);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "A console environment contributor failed; launching without its variables");
+            }
+        }
+
+        // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
+        // injected lines. The marker scanner keeps the buffer clean of the shell-startup noise.
+        _startupInjectionPending = injectedLines.Count > 0;
+        if (readyMarker is not null && hasStartupInvocation)
+        {
+            _markerScanner = new StartupMarkerScanner(readyMarker);
+        }
+
+        try
+        {
+            terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to start the console session");
+            _startupInjectionPending = false;
+            _markerScanner = null;
+            terminal.OutputReceived -= OnTerminalOutput;
+            terminal.ProcessExited -= OnTerminalProcessExited;
+            terminal.Dispose();
+            Fail(exception.Message);
+            return;
+        }
+
+        _terminal = terminal;
+        LaunchedConfigToml = tomlText;
+        SetState(ConsoleSessionRunState.Running);
+
+        if (injectedLines.Count > 0)
+        {
+            _startupInjector = StartupInjector.Begin(terminal, injectedLines, CompleteStartup);
+        }
+
+        // Track the child so the workspace-scoped owner tears it down on project close or app crash.
+        if (terminal.ProcessId is int processId)
+        {
+            _trackedProcessId = processId;
+            _workspaceWrapper.WorkspaceService.ConsoleService.ProcessOwner.Track(processId);
+        }
+    }
+
+    public ConsoleAttachSnapshot Attach(IConsoleView attachedView)
+    {
+        lock (_streamLock)
+        {
+            _attachedView = attachedView;
+
+            return new ConsoleAttachSnapshot(
+                State,
+                Error,
+                _markerScanner is not null,
+                _outputBuffer.Snapshot(),
+                LaunchedConfigToml);
+        }
+    }
+
+    public void Detach(IConsoleView attachedView)
+    {
+        lock (_streamLock)
+        {
+            if (ReferenceEquals(_attachedView, attachedView))
+            {
+                _attachedView = null;
+            }
+        }
+    }
+
+    public void Input(string data)
+    {
+        if (_startupInjectionPending)
+        {
+            return;
+        }
+
+        _terminal?.Write(data);
+    }
+
+    public void Resize(int cols, int rows)
+    {
+        _terminal?.SetSize(cols, rows);
+    }
+
+    public void InjectCommand(string text)
+    {
+        // Clear any partial input (Ctrl+U, U+0015) before submitting, so a run command or shortcut is not
+        // concatenated with whatever the user had half-typed at the prompt.
+        var submission = "\u0015" + text + "\r";
+
+        // A programmatic injection during startup queues behind the startup lines rather than racing
+        // them, so a Run issued at console open still lands as type-ahead for the starting REPL.
+        lock (_gateLock)
+        {
+            if (_startupInjectionPending)
+            {
+                _bufferedInjections.Add(submission);
+                return;
+            }
+        }
+
+        _terminal?.Write(submission);
+    }
+
+    // Ends the startup phase, on the injector's worker once the startup lines have been written: the input
+    // gate reopens, buffered programmatic injections flush behind them, and the marker scan is put on a
+    // clock so a marker that never arrives cannot suppress output forever.
+    private void CompleteStartup()
+    {
+        List<string> bufferedInjections;
+        lock (_gateLock)
+        {
+            _startupInjectionPending = false;
+            bufferedInjections = new List<string>(_bufferedInjections);
+            _bufferedInjections.Clear();
+        }
+
+        foreach (var text in bufferedInjections)
+        {
+            _terminal?.Write(text);
+        }
+
+        lock (_streamLock)
+        {
+            if (_markerScanner is not null &&
+                _markerTimeout is null)
+            {
+                _markerTimeout = new Timer(_ => AbandonMarkerScan(), null, MarkerTimeoutMs, Timeout.Infinite);
+            }
+        }
+    }
+
+    private void AbandonMarkerScan()
+    {
+        IConsoleView? attachedView;
+        string held;
+        lock (_streamLock)
+        {
+            if (_markerScanner is null)
+            {
+                return;
+            }
+
+            held = _markerScanner.Flush();
+            _markerScanner = null;
+            attachedView = _attachedView;
+
+            if (held.Length > 0)
+            {
+                _outputBuffer.Append(held);
+            }
+        }
+
+        if (held.Length > 0)
+        {
+            attachedView?.OnOutput(held);
+        }
+        attachedView?.OnStartupComplete();
+    }
+
+    private void OnTerminalOutput(object? sender, string output)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        IConsoleView? attachedView;
+        string forwarded;
+        var startupCompleted = false;
+
+        lock (_streamLock)
+        {
+            if (_markerScanner is not null)
+            {
+                // Pre-marker output is the shell-startup noise the reveal is meant to hide: not buffered,
+                // not forwarded. The chunk containing the marker contributes only its remainder.
+                var (text, found) = _markerScanner.Push(output);
+                if (!found)
+                {
+                    return;
+                }
+
+                _markerScanner = null;
+                startupCompleted = true;
+                forwarded = text;
+            }
+            else
+            {
+                forwarded = output;
+            }
+
+            if (forwarded.Length > 0)
+            {
+                _outputBuffer.Append(forwarded);
+            }
+            attachedView = _attachedView;
+        }
+
+        if (startupCompleted)
+        {
+            attachedView?.OnStartupComplete();
+        }
+        if (forwarded.Length > 0)
+        {
+            attachedView?.OnOutput(forwarded);
+        }
+    }
+
+    private void OnTerminalProcessExited(object? sender, EventArgs e)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        // A marker that never arrived must not swallow the session's final output.
+        AbandonMarkerScan();
+
+        SetState(ConsoleSessionRunState.Ended);
+
+        IConsoleView? attachedView;
+        lock (_streamLock)
+        {
+            attachedView = _attachedView;
+        }
+        attachedView?.OnSessionEnded();
+    }
+
+    private void Fail(string? message)
+    {
+        Error = message;
+        SetState(ConsoleSessionRunState.Failed);
+
+        // A session starts when its document opens, which may be long before anyone looks at the tab, so
+        // the log is the only place the failure surfaces until then.
+        _logger.LogWarning("Console session '{Resource}' failed to start: {Error}", Resource, message);
+    }
+
+    private void SetState(ConsoleSessionRunState state)
+    {
+        State = state;
+        StateChanged?.Invoke(this, state);
+    }
+
+    private IConsoleSessionProvider? ResolveProvider(string typeId)
+    {
+        foreach (var candidate in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        {
+            if (candidate.TypeId == typeId)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static IReadOnlyList<ConsoleRunner> ResolveRunners(ConsoleDocumentConfig config, IConsoleSessionProvider provider)
+    {
+        // Any runners in the config replace the type defaults outright. An empty list falls back to them.
+        if (config.Runners.Count == 0)
+        {
+            return provider.DefaultRunners;
+        }
+
+        var runners = new List<ConsoleRunner>();
+        foreach (var runner in config.Runners)
+        {
+            runners.Add(new ConsoleRunner(runner.Extensions, runner.Command));
+        }
+
+        return runners;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        _markerTimeout?.Dispose();
+        _markerTimeout = null;
+
+        _startupInjector?.Dispose();
+        _startupInjector = null;
+
+        lock (_gateLock)
+        {
+            _startupInjectionPending = false;
+            _bufferedInjections.Clear();
+        }
+
+        lock (_streamLock)
+        {
+            _markerScanner = null;
+            _attachedView = null;
+        }
+
+        var terminal = _terminal;
+        if (terminal is not null)
+        {
+            _terminal = null;
+            terminal.OutputReceived -= OnTerminalOutput;
+            terminal.ProcessExited -= OnTerminalProcessExited;
+            terminal.Dispose();
+        }
+
+        if (_trackedProcessId is int processId)
+        {
+            _trackedProcessId = null;
+            if (_workspaceWrapper.HasWorkspaceService)
+            {
+                _workspaceWrapper.WorkspaceService.ConsoleService.ProcessOwner.Untrack(processId);
+            }
+        }
+
+    }
+}

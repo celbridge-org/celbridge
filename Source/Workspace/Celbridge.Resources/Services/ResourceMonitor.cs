@@ -72,6 +72,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
                 var monitor = _fileSystemMonitorFactory.Create(handler.BackingLocation);
                 monitor.FileSystemChanged += (sender, monitorEvent) => OnFileSystemChanged(handler, monitorEvent);
+                monitor.MonitoringDesynchronized += (sender, args) => OnMonitoringDesynchronized(handler);
 
                 var startResult = monitor.Start();
                 if (startResult.IsFailure)
@@ -165,7 +166,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         // that watch for content changes need to react in that case too.
         OnResourceChanged(handler, fullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
     private void HandleChanged(IResourceRootHandler handler, string fullPath)
@@ -177,7 +178,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         OnResourceChanged(handler, fullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
     private void HandleDeleted(IResourceRootHandler handler, string fullPath)
@@ -189,7 +190,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         OnResourceDeleted(handler, fullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
     private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
@@ -209,14 +210,24 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         // (handles applications that use rename as part of save, e.g., Excel)
         OnResourceChanged(handler, newFullPath);
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+        ScheduleResourceUpdate(handler);
     }
 
-    private void ScheduleResourceUpdateIfProjectRoot(IResourceRootHandler handler)
+    // The monitor lost events, so the tree cannot be brought up to date incrementally. A rescan is
+    // scheduled unconditionally: which resources were missed is exactly what is unknown.
+    private void OnMonitoringDesynchronized(IResourceRootHandler handler)
     {
-        // The project tree sync (Registry.UpdateResourceRegistry) is project-scoped.
-        // Events from non-project roots (temp:, logs:) don't touch the project tree,
-        // so they skip the debounce.
+        _logger.LogWarning(
+            "Resource monitoring for root '{RootName}' lost events; rescanning", handler.RootName);
+
+        ScheduleResourceUpdate(handler);
+    }
+
+    // Schedules an update prompted by an event on a root. The project tree sync
+    // (Registry.UpdateResourceRegistry) is project-scoped, so an event on any other root (temp:, logs:)
+    // does not touch the tree and schedules nothing.
+    private void ScheduleResourceUpdate(IResourceRootHandler handler)
+    {
         if (handler.RootName == ResourceKey.DefaultRoot)
         {
             ScheduleResourceUpdate();

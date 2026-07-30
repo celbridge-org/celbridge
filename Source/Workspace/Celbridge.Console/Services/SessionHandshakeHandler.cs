@@ -9,12 +9,12 @@ namespace Celbridge.Console.Services;
 /// </summary>
 internal sealed class SessionHandshakeHandler
 {
-    private readonly IConsoleSessionRegistry _registry;
+    private readonly IConsoleSessionService _sessionService;
     private readonly int _connectionId;
 
-    public SessionHandshakeHandler(IConsoleSessionRegistry registry, int connectionId)
+    public SessionHandshakeHandler(IConsoleSessionService sessionService, int connectionId)
     {
-        _registry = registry;
+        _sessionService = sessionService;
         _connectionId = connectionId;
     }
 
@@ -26,6 +26,6 @@ internal sealed class SessionHandshakeHandler
             return false;
         }
 
-        return _registry.TryBindConnection(token, _connectionId, out _);
+        return _sessionService.TryBindConnection(token, _connectionId);
     }
 }

@@ -159,7 +159,7 @@ public class PythonSessionProviderTests
 
         // A session that dies before its client connects must not persist its unproven fingerprint,
         // even if a stray connected message for the same session id arrives afterwards.
-        _messengerService.Send(new ConsoleSessionStateChangedMessage(sessionToken, ConsoleSessionState.Ended));
+        _messengerService.Send(new ConsoleSessionStateChangedMessage(sessionToken, ConsoleSessionRunState.Ended));
         _messengerService.Send(new ConsoleSessionConnectedMessage(sessionToken));
 
         await _launchService.DidNotReceive().SaveFingerprintAsync(Arg.Any<string>(), Arg.Any<string>());

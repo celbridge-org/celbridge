@@ -95,6 +95,11 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private static string? _resolvedLoginShellPath;
     private static readonly object _loginShellPathLock = new();
 
+    // Consoles start together, so the tool install is serialized: a --force reinstall republishes the
+    // celbridge-py entry point, which would otherwise vanish from under another console about to run it.
+    private readonly SemaphoreSlim _toolInstallGate = new(1, 1);
+    private string? _installedToolFingerprint;
+
     public PythonLaunchService(
         IAppEnvironment environmentService,
         IServerService serverService,
@@ -199,15 +204,31 @@ public sealed class PythonLaunchService : IPythonLaunchService
         // The tool install publishes the celbridge-py command into the project's uv_bin folder, which
         // every console's PATH carries, so the user can start a cel-connected REPL from a shell console
         // or a spawned terminal.
-        var uvBinFolderInfo = await _fileSystem.GetInfoAsync(uvBinFolder);
-        var uvBinFolderExists = uvBinFolderInfo.IsSuccess
-            && uvBinFolderInfo.Value.Kind == StorageItemKind.Folder;
-        var shouldInstallTool = !useOfflineMode || !uvBinFolderExists;
-        if (shouldInstallTool)
+        await _toolInstallGate.WaitAsync();
+        try
         {
-            await InstallCelbridgeToolAsync(
-                uvExePath, uvCacheDir, uvToolsFolder, uvBinFolder,
-                uvPythonInstallDir, request.PythonVersion, celbridgeWheelPath);
+            var uvBinFolderInfo = await _fileSystem.GetInfoAsync(uvBinFolder);
+            var uvBinFolderExists = uvBinFolderInfo.IsSuccess
+                && uvBinFolderInfo.Value.Kind == StorageItemKind.Folder;
+
+            // A console that waited on the gate inherits the install the console ahead of it just did, as
+            // long as they resolved the same config.
+            var alreadyInstalled = _installedToolFingerprint == currentFingerprint
+                && uvBinFolderExists;
+            var shouldInstallTool = !alreadyInstalled
+                && (!useOfflineMode || !uvBinFolderExists);
+            if (shouldInstallTool)
+            {
+                await InstallCelbridgeToolAsync(
+                    uvExePath, uvCacheDir, uvToolsFolder, uvBinFolder,
+                    uvPythonInstallDir, request.PythonVersion, celbridgeWheelPath);
+
+                _installedToolFingerprint = currentFingerprint;
+            }
+        }
+        finally
+        {
+            _toolInstallGate.Release();
         }
 
         // The injected command is a bare celbridge-py; these per-console variables are the launch

@@ -20,7 +20,6 @@
 /**
  * @typedef {Object} ConsoleConfig
  * @property {string} type
- * @property {string} title
  * @property {string} executable
  * @property {string} pythonVersion
  * @property {string[]} arguments
@@ -36,7 +35,6 @@
 export function defaultConsoleConfig() {
     return {
         type: 'shell',
-        title: '',
         executable: '',
         pythonVersion: '',
         arguments: [],
@@ -139,9 +137,6 @@ export function serializeConsoleToml(config) {
 
     lines.push('[session]');
     lines.push(`type = ${quote(config.type || 'shell')}`);
-    if (config.title) {
-        lines.push(`title = ${quote(config.title)}`);
-    }
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
     }
@@ -212,8 +207,6 @@ function assignValue(config, section, currentTable, key, rawValue) {
     if (section === 'session') {
         if (key === 'type') {
             config.type = parseScalar(rawValue);
-        } else if (key === 'title') {
-            config.title = parseScalar(rawValue);
         } else if (key === 'working_directory') {
             config.workingDirectory = parseScalar(rawValue);
         } else if (key === 'startup_script') {

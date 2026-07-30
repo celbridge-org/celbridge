@@ -116,7 +116,7 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
     // reconciles online rather than trusting an unproven config.
     private void OnConsoleSessionStateChanged(object recipient, ConsoleSessionStateChangedMessage message)
     {
-        if (message.State == ConsoleSessionState.Ended)
+        if (message.State == ConsoleSessionRunState.Ended)
         {
             _pendingFingerprints.TryRemove(message.SessionId, out _);
         }

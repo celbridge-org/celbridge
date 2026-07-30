@@ -9,7 +9,6 @@ describe('defaultConsoleConfig', () => {
     it('returns a blank shell config', () => {
         expect(defaultConsoleConfig()).toEqual({
             type: 'shell',
-            title: '',
             executable: '',
             pythonVersion: '',
             arguments: [],
@@ -28,7 +27,6 @@ describe('parseConsoleToml', () => {
         const toml = [
             '[session]',
             'type = "shell"',
-            'title = "Build"',
             'working_directory = "tools"',
             '',
             '[session.options]',
@@ -41,7 +39,6 @@ describe('parseConsoleToml', () => {
 
         expect(parseConsoleToml(toml)).toEqual({
             type: 'shell',
-            title: 'Build',
             executable: 'pwsh',
             pythonVersion: '',
             arguments: ['-NoLogo', '-NoProfile'],
@@ -154,9 +151,9 @@ describe('parseConsoleToml', () => {
     });
 
     it('parses CRLF input', () => {
-        const config = parseConsoleToml('[session]\r\ntype = "shell"\r\ntitle = "Build"\r\n');
+        const config = parseConsoleToml('[session]\r\ntype = "shell"\r\nworking_directory = "tools"\r\n');
         expect(config.type).toBe('shell');
-        expect(config.title).toBe('Build');
+        expect(config.workingDirectory).toBe('tools');
     });
 
     it('unescapes a trailing backslash without consuming the closing quote', () => {
@@ -236,7 +233,6 @@ describe('round-trip', () => {
     it('parse -> serialize -> parse is stable', () => {
         const original = {
             type: 'python',
-            title: 'Python',
             executable: '',
             pythonVersion: '3.13',
             arguments: [],
@@ -270,7 +266,7 @@ describe('round-trip', () => {
 
         const original = {
             ...defaultConsoleConfig(),
-            title: hostileValues[0],
+            workingDirectory: hostileValues[0],
             executable: hostileValues[3],
             arguments: hostileValues,
             environment: { HOSTILE: hostileValues[4], 'ODD KEY#1': hostileValues[1] },

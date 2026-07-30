@@ -305,6 +305,14 @@ public sealed class LocalFileSystem : ILocalFileSystem
 
         try
         {
+            // Clearing an attribute on a path that does not exist yet is the normal case for a caller
+            // preparing to create the file, so it succeeds rather than failing on the missing file.
+            if (!File.Exists(path)
+                && !Directory.Exists(path))
+            {
+                return Result.Ok();
+            }
+
             // Read-modify-write on the DOS attribute bitfield. Only the bits
             // named in mask are touched; everything else is preserved.
             var currentNative = File.GetAttributes(path);

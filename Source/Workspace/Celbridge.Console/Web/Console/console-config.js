@@ -110,56 +110,10 @@ export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
-// Watches the terminal output stream for the host's readiness marker while the starting veil is up.
-// push() returns the text to write on to the terminal, with the marker itself removed. A trailing
-// partial match is held back, so a marker split across two chunks is never painted.
-export function createMarkerScanner(marker) {
-    let buffer = '';
-
-    return {
-        push(text) {
-            buffer += text;
-
-            const index = buffer.indexOf(marker);
-            if (index >= 0) {
-                const before = buffer.slice(0, index);
-                const after = buffer.slice(index + marker.length);
-                buffer = '';
-                return { text: before + after, found: true };
-            }
-
-            const held = partialMatchLength(buffer, marker);
-            const emitted = buffer.slice(0, buffer.length - held);
-            buffer = buffer.slice(buffer.length - held);
-            return { text: emitted, found: false };
-        },
-
-        // The held-back text, for when the marker never arrives and the veil times out.
-        flush() {
-            const text = buffer;
-            buffer = '';
-            return text;
-        },
-    };
-}
-
-// The length of the longest suffix of text that is also a prefix of marker.
-function partialMatchLength(text, marker) {
-    const maximum = Math.min(text.length, marker.length - 1);
-    for (let length = maximum; length > 0; length--) {
-        if (text.endsWith(marker.slice(0, length))) {
-            return length;
-        }
-    }
-
-    return 0;
-}
-
-// The full config payload the host receives on console/start.
+// The comparable launch-relevant view of a config, shared by the divergence check.
 export function buildStartConfig(config) {
     return {
         type: config.type || 'shell',
-        title: config.title || '',
         executable: config.executable || '',
         pythonVersion: config.pythonVersion || '',
         arguments: config.arguments || [],

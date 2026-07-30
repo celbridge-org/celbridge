@@ -165,7 +165,7 @@ public class ResourceService : IResourceService, IDisposable
                 .WithErrors(updateResult);
         }
 
-        _logger.LogDebug("Updated resources successfully.");
+        _logger.LogTrace("Updated resources successfully.");
 
         return Result.Ok();
     }

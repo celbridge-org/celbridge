@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="StreamJsonRpc" />
+    <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
   <ItemGroup>

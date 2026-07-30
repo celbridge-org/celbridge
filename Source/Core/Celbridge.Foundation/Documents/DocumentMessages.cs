@@ -62,3 +62,18 @@ public record WebViewGoForwardMessage(ResourceKey DocumentResource);
 /// A message sent when the web view document's navigation state changes.
 /// </summary>
 public record WebViewNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh, string CurrentUrl);
+
+/// <summary>
+/// A message sent when a document has been opened and its view created. Paired with
+/// DocumentClosedMessage: both are sent by DocumentTabViewModel, so a listener can own a resource for
+/// exactly as long as its document is open. Docked utilities are presented rather than opened, and take
+/// no part in the pairing.
+/// </summary>
+public record DocumentOpenedMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent when a document has been closed and its tab removed. The counterpart to
+/// DocumentOpenedMessage; see its summary for the pairing. Sent on every close path, including a reopen
+/// that swaps to a different editor, which removes the tab without going through the documents service.
+/// </summary>
+public record DocumentClosedMessage(ResourceKey DocumentResource);

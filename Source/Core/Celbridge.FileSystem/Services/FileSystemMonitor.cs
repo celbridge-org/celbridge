@@ -18,6 +18,13 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
     // probe size or read content.
     private const int ChangedDebounceMs = 75;
 
+    // The substrate watcher buffers events in non-paged pool until they are read. A tool that writes
+    // thousands of files into the watched subtree in one burst (uv populating its per-project caches under
+    // the hidden project folder) overflows the 8K default, at which point the OS drops events. 64K is the
+    // largest size worth requesting; a burst can still outrun it, which is what MonitoringDesynchronized
+    // reports.
+    private const int WatcherBufferSize = 64 * 1024;
+
     private sealed class ChangedDebounceEntry
     {
         public ThreadingTimer? Timer;
@@ -36,6 +43,8 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
     private bool _isDisposed;
 
     public event EventHandler<FileSystemMonitorEvent>? FileSystemChanged;
+
+    public event EventHandler? MonitoringDesynchronized;
 
     public FileSystemMonitor(ILogger<FileSystemMonitor> logger, string backingFolderPath)
     {
@@ -70,6 +79,7 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
                              | NotifyFilters.Size
                              | NotifyFilters.Attributes,
                 IncludeSubdirectories = true,
+                InternalBufferSize = WatcherBufferSize,
                 EnableRaisingEvents = false
             };
 
@@ -114,6 +124,23 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
     private void OnWatcherError(object sender, ErrorEventArgs e)
     {
         var exception = e.GetException();
+
+        // An overflow means the OS discarded events before we saw them, so nothing downstream can be
+        // brought up to date incrementally. The watcher itself keeps running.
+        if (exception is InternalBufferOverflowException)
+        {
+            _logger.LogWarning(
+                "File system watcher buffer overflowed for '{BackingFolder}'; some change events were lost",
+                _backingFolderPath);
+
+            if (!_isDisposed)
+            {
+                MonitoringDesynchronized?.Invoke(this, EventArgs.Empty);
+            }
+
+            return;
+        }
+
         if (exception is not null)
         {
             _logger.LogError(exception, "File system watcher error");

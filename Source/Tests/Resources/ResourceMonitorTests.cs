@@ -181,6 +181,22 @@ public class ResourceMonitorTests
     }
 
     [Test]
+    public async Task MonitoringDesynchronized_RescansTheProjectTree()
+    {
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        resourceService.UpdateResourcesAsync().Returns(Result.Ok());
+        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+
+        var monitor = InitializeAndGetProjectMonitor();
+
+        // No path keys in this fixture, so a rescan can only have come from the desynchronization.
+        monitor.RaiseDesynchronized();
+        await Task.Delay(500);
+
+        await resourceService.Received(1).UpdateResourcesAsync();
+    }
+
+    [Test]
     public void Shutdown_DisposesMonitors()
     {
         var monitor = InitializeAndGetProjectMonitor();
