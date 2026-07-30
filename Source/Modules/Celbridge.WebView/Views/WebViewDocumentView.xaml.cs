@@ -738,6 +738,24 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
+    {
+        var previousResource = FileResource;
+
+        var setResult = await base.SetFileResource(fileResource);
+        if (setResult.IsFailure)
+        {
+            return setResult;
+        }
+
+        // A rename reuses this view, so the bridge entry has to follow the resource. Left on the
+        // old key, every webview_* call for the renamed document finds no registration and the
+        // stale entry survives until the workspace closes.
+        _toolBridge?.Rekey(previousResource, FileResource);
+
+        return setResult;
+    }
+
     public override async Task<Result> LoadContent()
     {
         // Push the role onto the view model so NavigateUrl knows which URL to compute.

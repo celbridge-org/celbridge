@@ -52,6 +52,17 @@ def data():
     return celbridge.data
 
 
+@pytest.fixture(scope="class")
+def eval_enabled(app):
+    """True when the webview-dev-tools-eval flag is on.
+
+    Only webview.eval is gated by the flag; the tools that route through the in-page
+    shim are not. Cases that need to inject script skip themselves when it is off.
+    """
+    flags = app.get_state().get("featureFlags", {})
+    return flags.get("webview-dev-tools-eval", False)
+
+
 @pytest.fixture(scope="session")
 def answer_dialog_available(app):
     """Skip the suite (or a single test) when the dialog-answer surface is unavailable.

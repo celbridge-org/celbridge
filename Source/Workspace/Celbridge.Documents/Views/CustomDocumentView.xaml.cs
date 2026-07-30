@@ -61,6 +61,21 @@ public sealed partial class CustomDocumentView : DocumentView
         _controller.SetWritableState(WritableState);
     }
 
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
+    {
+        var setResult = await base.SetFileResource(fileResource);
+        if (setResult.IsFailure)
+        {
+            return setResult;
+        }
+
+        // A rename reuses this view, so the bridge entry has to follow the resource. Left on the old
+        // key, every webview_* call for the renamed document finds no registration.
+        _controller.RekeyToolBridgeRegistration();
+
+        return setResult;
+    }
+
     public override async Task<Result> LoadContent()
     {
         if (ResolvedEditor is null)

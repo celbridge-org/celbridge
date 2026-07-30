@@ -74,12 +74,6 @@ _WEBVIEW_TEST_HTML = """<!doctype html>
 """
 
 
-@pytest.fixture(scope="class")
-def eval_enabled(app):
-    flags = app.get_state().get("featureFlags", {})
-    return flags.get("webview-dev-tools-eval", False)
-
-
 @pytest.fixture(autouse=True)
 def workspace(explorer, file, document):
     delete_if_exists(explorer, "TestWebView")

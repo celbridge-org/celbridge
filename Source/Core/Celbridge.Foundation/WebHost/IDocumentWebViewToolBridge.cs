@@ -151,6 +151,14 @@ public interface IDocumentWebViewToolBridge
         Func<ScreenshotRequest, Task<ScreenshotData>>? screenshotAsync = null);
 
     /// <summary>
+    /// Moves an existing registration onto a new resource key, preserving the WebView's
+    /// console and network history and its content-ready state. Called when a document is
+    /// renamed and its view is reused. Replaces any registration already held under the new
+    /// key. No effect if the old resource is not registered.
+    /// </summary>
+    void Rekey(ResourceKey oldResource, ResourceKey newResource);
+
+    /// <summary>
     /// Removes a previously registered WebView. Called when the document view tears down.
     /// </summary>
     void Unregister(ResourceKey resource);
