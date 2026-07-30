@@ -6,6 +6,9 @@ namespace Celbridge.Tests.Console;
 [TestFixture]
 public class ShellCommandComposerTests
 {
+    private const char Escape = (char)27;
+    private const char Bell = (char)7;
+
     private static ConsoleStartupInvocation Command(string executable, params string[] arguments)
     {
         return new ConsoleStartupInvocation(executable, arguments);
@@ -16,7 +19,8 @@ public class ShellCommandComposerTests
     {
         var composed = ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, ConsoleStartupInvocation.None);
 
-        composed.Should().BeEmpty();
+        composed.Line.Should().BeEmpty();
+        composed.ScanMarker.Should().BeNull();
     }
 
     [Test]
@@ -24,11 +28,11 @@ public class ShellCommandComposerTests
     {
         var command = Command("celbridge-py", "--python", "3.13", "--with", "numpy", "--offline");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be("celbridge-py --python 3.13 --with numpy --offline");
-        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command).Line
             .Should().Be("celbridge-py --python 3.13 --with numpy --offline");
-        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command).Line
             .Should().Be("celbridge-py --python 3.13 --with numpy --offline");
     }
 
@@ -38,11 +42,11 @@ public class ShellCommandComposerTests
         // An unquoted '>' would redirect in every shell family.
         var command = Command("celbridge-py", "--with", "pandas>=2");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be("celbridge-py --with 'pandas>=2'");
-        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command).Line
             .Should().Be("celbridge-py --with 'pandas>=2'");
-        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command).Line
             .Should().Be("celbridge-py --with \"pandas>=2\"");
     }
 
@@ -51,7 +55,7 @@ public class ShellCommandComposerTests
     {
         var command = Command(@"C:\Program Files\App\tool.exe", "-x");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be(@"& 'C:\Program Files\App\tool.exe' -x");
     }
 
@@ -60,7 +64,7 @@ public class ShellCommandComposerTests
     {
         var command = Command(@"C:\Tools\tool.exe", "-x");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be(@"C:\Tools\tool.exe -x");
     }
 
@@ -69,7 +73,7 @@ public class ShellCommandComposerTests
     {
         var command = Command("/bin/echo", "it's");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command).Line
             .Should().Be("/bin/echo 'it'\\''s'");
     }
 
@@ -78,7 +82,7 @@ public class ShellCommandComposerTests
     {
         var command = Command("echo", "it's");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be("echo 'it''s'");
     }
 
@@ -88,9 +92,9 @@ public class ShellCommandComposerTests
         // Single quotes keep $ literal in PowerShell and POSIX shells alike.
         var command = Command("echo", "$HOME");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be("echo '$HOME'");
-        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command).Line
             .Should().Be("echo '$HOME'");
     }
 
@@ -99,35 +103,46 @@ public class ShellCommandComposerTests
     {
         var command = Command("tool", "");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command).Line
             .Should().Be("tool ''");
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command)
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
             .Should().Be("tool \"\"");
     }
 
     [Test]
-    public void Compose_ReadyMarker_ClearsThenEchoesTheMarker()
+    public void Compose_ReadyMarker_ClearsThenEmitsTheMarker()
     {
         var command = Command("celbridge-py");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, "READY-1234")
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, "READY-1234").Line
             .Should().Be("Clear-Host; Write-Host -NoNewline ('READY' + '-1234'); celbridge-py");
-        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command, "READY-1234")
-            .Should().Be("clear; printf '%s' 'READY''-1234'; celbridge-py");
+
+        // POSIX emits an invisible OSC via printf octal escapes rather than visible text.
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command, "READY-1234").Line
+            .Should().Be("clear; printf '\\033]7000;READY-1234\\007'; celbridge-py");
     }
 
     [Test]
-    public void Compose_ReadyMarker_IsSplitSoTheEchoedLineDoesNotContainIt()
+    public void Compose_ReadyMarker_PosixScanMarkerIsTheInvisibleOscBytes()
     {
-        // The shell echoes this line as it reads it, before executing the write. If the echo contained
-        // the marker the document would reveal the terminal before the clear had run.
+        var composed = ShellCommandComposer.Compose(ConsoleShellFamily.Posix, Command("celbridge-py"), "READY-1234");
+
+        composed.ScanMarker.Should().Be($"{Escape}]7000;READY-1234{Bell}");
+    }
+
+    [Test]
+    public void Compose_ReadyMarker_ComposedLineNeverContainsTheScanMarker()
+    {
+        // The shell echoes this line as it reads it, before executing the write. If the echo contained the
+        // scan marker the document would reveal the terminal before the clear had run.
         const string marker = "CELBRIDGE-CONSOLE-READY-a1b2c3d4";
         var command = Command("celbridge-py");
 
         foreach (var family in new[] { ConsoleShellFamily.PowerShell, ConsoleShellFamily.Posix })
         {
-            var line = ShellCommandComposer.Compose(family, command, marker);
-            line.Should().NotContain(marker);
+            var composed = ShellCommandComposer.Compose(family, command, marker);
+            composed.ScanMarker.Should().NotBeNull();
+            composed.Line.Should().NotContain(composed.ScanMarker!);
         }
     }
 
@@ -137,8 +152,10 @@ public class ShellCommandComposerTests
         var command = Command("celbridge-py");
 
         ShellCommandComposer.SupportsReadyMarker(ConsoleShellFamily.Cmd).Should().BeFalse();
-        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command, "READY-1234")
-            .Should().Be("cls & celbridge-py");
+
+        var composed = ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command, "READY-1234");
+        composed.Line.Should().Be("cls & celbridge-py");
+        composed.ScanMarker.Should().BeNull();
     }
 
     [Test]
@@ -146,14 +163,25 @@ public class ShellCommandComposerTests
     {
         var command = Command(@"C:\Program Files\App\tool.exe");
 
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, "READY-1234")
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, "READY-1234").Line
             .Should().Be(@"Clear-Host; Write-Host -NoNewline ('READY' + '-1234'); & 'C:\Program Files\App\tool.exe'");
     }
 
     [Test]
-    public void Compose_ReadyMarker_EmptyCommandStaysEmpty()
+    public void Compose_ReadyMarker_PosixPlainShellRevealsWithoutACommand()
     {
-        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, ConsoleStartupInvocation.None, "READY-1234")
-            .Should().BeEmpty();
+        var composed = ShellCommandComposer.Compose(ConsoleShellFamily.Posix, ConsoleStartupInvocation.None, "READY-1234");
+
+        composed.Line.Should().Be("clear; printf '\\033]7000;READY-1234\\007';");
+        composed.ScanMarker.Should().Be($"{Escape}]7000;READY-1234{Bell}");
+    }
+
+    [Test]
+    public void Compose_ReadyMarker_PowerShellPlainShellStaysEmpty()
+    {
+        var composed = ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, ConsoleStartupInvocation.None, "READY-1234");
+
+        composed.Line.Should().BeEmpty();
+        composed.ScanMarker.Should().BeNull();
     }
 }

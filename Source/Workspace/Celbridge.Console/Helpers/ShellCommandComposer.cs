@@ -1,15 +1,25 @@
-using System.Text;
-
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
+/// A composed shell startup line and the exact marker bytes the host scans the output stream for. A null
+/// ScanMarker means the line emits no marker, so the session reveals on its timer instead.
+/// </summary>
+public sealed record ComposedStartup(string Line, string? ScanMarker);
+
+/// <summary>
 /// Composes a startup command into a single line safe to inject at a shell prompt, quoting each token for
-/// the target shell's dialect. Given a ready marker the line also clears the screen and echoes the marker
+/// the target shell's dialect. Given a ready marker the line also clears the screen and emits the marker
 /// before running the command, so the shell wipes its own startup noise (banner, prompt, the echoed line)
-/// and the document knows the exact moment the screen is ready to reveal.
+/// and the document knows the exact moment the screen is ready to reveal. A shell whose marker is invisible
+/// still gets the clear-and-mark reveal with no command, so a plain shell also starts on a clean screen.
 /// </summary>
 public static class ShellCommandComposer
 {
+    // Private OSC identifier carrying the POSIX ready marker. Any number the terminal does not itself
+    // handle works: the host consumes the sequence before xterm.js sees it, and a leaked marker renders as
+    // nothing rather than visible text.
+    private const string PosixReadyMarkerOscCode = "7000";
+
     /// <summary>
     /// Whether a shell family can emit a ready marker. Cmd has no concise way to write a string whose
     /// source text differs from its output, so a cmd console reveals on the document's timer instead.
@@ -19,11 +29,23 @@ public static class ShellCommandComposer
         return family != ConsoleShellFamily.Cmd;
     }
 
-    public static string Compose(ConsoleShellFamily family, ConsoleStartupInvocation command, string? readyMarker = null)
+    public static ComposedStartup Compose(ConsoleShellFamily family, ConsoleStartupInvocation command, string? readyMarker = null)
     {
-        if (string.IsNullOrWhiteSpace(command.Executable))
+        var hasExecutable = !string.IsNullOrWhiteSpace(command.Executable);
+
+        // A plain shell injects no command, but a shell whose marker is invisible still clears the startup
+        // noise and marks the ready point so the buffer begins on a clean prompt. A visible-marker shell
+        // cannot reveal here without leaving the cursor mid-line, so it reveals nothing.
+        if (!hasExecutable)
         {
-            return string.Empty;
+            if (readyMarker is not null &&
+                family == ConsoleShellFamily.Posix)
+            {
+                var revealOnly = BuildReveal(family, readyMarker);
+                return new ComposedStartup(revealOnly.Prefix.TrimEnd(), revealOnly.ScanMarker);
+            }
+
+            return new ComposedStartup(string.Empty, null);
         }
 
         var tokens = new List<string>
@@ -51,34 +73,61 @@ public static class ShellCommandComposer
             line = "& " + line;
         }
 
+        string? scanMarker = null;
         if (readyMarker is not null)
         {
-            line = StartupPrefix(family, readyMarker) + line;
+            var reveal = BuildReveal(family, readyMarker);
+            line = reveal.Prefix + line;
+            scanMarker = reveal.ScanMarker;
         }
 
-        return line;
+        return new ComposedStartup(line, scanMarker);
     }
 
-    // Clears the screen, then writes the ready marker. The marker is split across two adjacent string
-    // literals, which the shell concatenates on execution: the line the shell echoes as it reads the
-    // input therefore never contains the marker, so only the executed write matches it.
-    private static string StartupPrefix(ConsoleShellFamily family, string readyMarker)
+    // The reveal injected before the command: clears the screen and emits the marker. The prefix's source
+    // text never contains the scan marker, so the shell's echo of the injected line cannot match it. POSIX
+    // emits an invisible escape sequence whose printf source differs from its output; PowerShell splits the
+    // marker across two concatenated literals.
+    private static (string Prefix, string? ScanMarker) BuildReveal(ConsoleShellFamily family, string readyMarker)
     {
-        var splitIndex = readyMarker.Length / 2;
-        var head = readyMarker.Substring(0, splitIndex);
-        var tail = readyMarker.Substring(splitIndex);
-
         switch (family)
         {
             case ConsoleShellFamily.PowerShell:
-                return $"Clear-Host; Write-Host -NoNewline ('{head}' + '{tail}'); ";
+            {
+                var splitIndex = readyMarker.Length / 2;
+                var head = readyMarker.Substring(0, splitIndex);
+                var tail = readyMarker.Substring(splitIndex);
+                var prefix = $"Clear-Host; Write-Host -NoNewline ('{head}' + '{tail}'); ";
+                return (prefix, readyMarker);
+            }
 
             case ConsoleShellFamily.Cmd:
-                return "cls & ";
+                return ("cls & ", null);
 
             default:
-                return $"clear; printf '%s' '{head}''{tail}'; ";
+            {
+                // Invisible, cursor-neutral OSC carrying the marker: leaves the shell at column 0 so a
+                // reveal with no following command does not trip zsh's partial-line indicator.
+                var prefix = $"clear; printf '{PosixMarkerPrintfSource(readyMarker)}'; ";
+                return (prefix, PosixMarkerStreamBytes(readyMarker));
+            }
         }
+    }
+
+    // The OSC marker as printf source text: backslash-escaped ESC and BEL, so its literal form differs from
+    // the bytes printf writes.
+    private static string PosixMarkerPrintfSource(string readyMarker)
+    {
+        return $"\\033]{PosixReadyMarkerOscCode};{readyMarker}\\007";
+    }
+
+    // The OSC marker as it appears in the output stream: real ESC and BEL bytes, which is what the host
+    // scans for.
+    private static string PosixMarkerStreamBytes(string readyMarker)
+    {
+        var escape = (char)27;
+        var bell = (char)7;
+        return $"{escape}]{PosixReadyMarkerOscCode};{readyMarker}{bell}";
     }
 
     private static string QuoteToken(ConsoleShellFamily family, string token)
