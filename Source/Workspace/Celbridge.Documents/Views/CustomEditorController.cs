@@ -179,6 +179,23 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Moves the WebView tool bridge registration onto the view model's current file resource. Called after a
+    /// rename, which reuses this controller and its WebView rather than building a new one.
+    /// </summary>
+    public void RekeyToolBridgeRegistration()
+    {
+        if (_toolBridge is null)
+        {
+            return;
+        }
+
+        var newResource = _viewModel.FileResource;
+
+        _toolBridge.Rekey(_toolBridgeRegisteredResource, newResource);
+        _toolBridgeRegisteredResource = newResource;
+    }
+
     public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
     /// <summary>

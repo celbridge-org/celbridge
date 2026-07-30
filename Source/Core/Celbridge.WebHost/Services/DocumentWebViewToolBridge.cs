@@ -98,6 +98,23 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         _entries[resource] = entry;
     }
 
+    public void Rekey(ResourceKey oldResource, ResourceKey newResource)
+    {
+        if (oldResource == newResource)
+        {
+            return;
+        }
+
+        // The entry holds no resource state of its own, so the move carries the accumulated
+        // console and network history and the content-ready gate across with it.
+        if (!_entries.TryRemove(oldResource, out var entry))
+        {
+            return;
+        }
+
+        _entries[newResource] = entry;
+    }
+
     public void Unregister(ResourceKey resource)
     {
         _entries.TryRemove(resource, out _);

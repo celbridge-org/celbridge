@@ -235,6 +235,76 @@ public partial class DocumentWebViewToolBridgeTests
     }
 
     [Test]
+    public async Task Rekey_MovesRegistrationToTheNewResource()
+    {
+        // A rename reuses the document view, so the registration has to move with it.
+        ResourceKey.TryCreate("docs/renamed.md", out var renamedResource).Should().BeTrue();
+
+        _bridge.Register(
+            _resource,
+            evalAsync: _ => Task.FromResult("\"alive\""),
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        _bridge.Rekey(_resource, renamedResource);
+
+        // The new key inherits the registration, including the open content-ready gate.
+        var renamedResult = await _bridge.EvalAsync(renamedResource, "x");
+        renamedResult.IsSuccess.Should().BeTrue();
+        renamedResult.Value.Should().Be("\"alive\"");
+
+        // The old key no longer resolves, so the entry does not leak.
+        var oldResult = await _bridge.EvalAsync(_resource, "x");
+        oldResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Rekey_PreservesConsoleHistory()
+    {
+        // The WebView itself is untouched by a rename, so entries captured under the old
+        // key must remain readable under the new one.
+        ResourceKey.TryCreate("docs/renamed.md", out var renamedResource).Should().BeTrue();
+
+        var drained = false;
+        _bridge.Register(
+            _resource,
+            evalAsync: _ =>
+            {
+                if (drained)
+                {
+                    return Task.FromResult(BuildFlushEnvelope("[]"));
+                }
+                drained = true;
+                return Task.FromResult(BuildFlushEnvelope("[{\"level\":\"log\",\"timestampMs\":10,\"args\":[\"before-rename\"]}]"));
+            },
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        await _bridge.GetConsoleAsync(_resource, new ConsoleQueryOptions());
+
+        _bridge.Rekey(_resource, renamedResource);
+
+        var result = await _bridge.GetConsoleAsync(renamedResource, new ConsoleQueryOptions());
+
+        result.IsSuccess.Should().BeTrue();
+        using var snapshot = JsonDocument.Parse(result.Value);
+        var entries = snapshot.RootElement.GetProperty("entries");
+        entries.GetArrayLength().Should().Be(1);
+        entries[0].GetProperty("args")[0].GetString().Should().Be("before-rename");
+    }
+
+    [Test]
+    public async Task Rekey_UnregisteredResource_DoesNotCreateAnEntry()
+    {
+        ResourceKey.TryCreate("docs/renamed.md", out var renamedResource).Should().BeTrue();
+
+        _bridge.Rekey(_resource, renamedResource);
+
+        var result = await _bridge.EvalAsync(renamedResource, "x");
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public async Task Unregister_RemovesEntry()
     {
         _bridge.Register(
