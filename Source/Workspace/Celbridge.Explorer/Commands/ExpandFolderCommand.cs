@@ -29,8 +29,7 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
                 .WithErrors(getResult);
         }
 
-        var folderResource = getResult.Value as IFolderResource;
-        if (folderResource is null)
+        if (getResult.Value is not IFolderResource)
         {
             return Result.Fail($"Resource is not a folder. {FolderResource}");
         }
@@ -40,11 +39,6 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
         if (folderStateService.IsExpanded(FolderResource) != Expanded)
         {
             folderStateService.SetExpanded(FolderResource, Expanded);
-        }
-
-        if (folderResource.IsExpanded != Expanded)
-        {
-            folderResource.IsExpanded = Expanded;
         }
 
         await Task.CompletedTask;

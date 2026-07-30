@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using GitIgnore = Ignore.Ignore;
 
 namespace Celbridge.Resources.Services;
@@ -26,8 +27,18 @@ internal interface IIgnoreFileMatcher
 /// </summary>
 internal sealed class IgnoreFileMatcher : IIgnoreFileMatcher
 {
+    // Safety valve for a session that touches an unbounded number of distinct paths. An entry costs one
+    // match to rebuild, so clearing wholesale is enough.
+    private const int MaxCachedVerdicts = 100_000;
+
     private readonly GitIgnore _ignore;
     private readonly bool _isEmpty;
+
+    // The pattern set is fixed at construction, so a path's verdict never changes. Matching runs on the
+    // scanner's parallel workers as well as the tree walk. The count is tracked separately because
+    // ConcurrentDictionary.Count locks every bucket.
+    private readonly ConcurrentDictionary<(string Path, bool IsFolder), bool> _matchCache = new();
+    private int _cachedVerdictCount;
 
     public IgnoreFileMatcher(IEnumerable<string> patternLines)
     {
@@ -87,10 +98,32 @@ internal sealed class IgnoreFileMatcher : IIgnoreFileMatcher
         return false;
     }
 
+    private bool Matches(string path, bool isFolder)
+    {
+        var cacheKey = (path, isFolder);
+        if (_matchCache.TryGetValue(cacheKey, out var cachedVerdict))
+        {
+            return cachedVerdict;
+        }
+
+        var verdict = MatchesPatterns(path, isFolder);
+        _matchCache[cacheKey] = verdict;
+
+        // The count drifts when threads match the same path at once; the valve then trips early, which
+        // costs one match per path.
+        if (Interlocked.Increment(ref _cachedVerdictCount) >= MaxCachedVerdicts)
+        {
+            _matchCache.Clear();
+            Interlocked.Exchange(ref _cachedVerdictCount, 0);
+        }
+
+        return verdict;
+    }
+
     // The library matches purely on the string. A directory-only pattern such as
     // "build/" requires a trailing slash to match the folder itself, so folders
     // are tested both with and without the slash.
-    private bool Matches(string path, bool isFolder)
+    private bool MatchesPatterns(string path, bool isFolder)
     {
         if (_ignore.IsIgnored(path))
         {

@@ -27,7 +27,19 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
 
     private sealed class ChangedDebounceEntry
     {
+        // Guards the timer and the two fields below against a Changed event arriving while the debounce
+        // callback for the same path is running.
+        public readonly object Lock = new();
+
         public ThreadingTimer? Timer;
+
+        // Environment.TickCount64 reading at which the burst is considered settled. Pushed out by each
+        // Changed event so a callback that fires against a stale deadline can wait out the remainder.
+        public long DeadlineMilliseconds;
+
+        // Set once the debounce has fired and the entry has left the dictionary, so an event that picked
+        // this entry up beforehand starts a new burst instead of arming a timer nothing owns.
+        public bool IsElapsed;
     }
 
     private readonly ILogger<FileSystemMonitor> _logger;
@@ -162,42 +174,62 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
             return;
         }
 
-        _changedDebounceEntries.AddOrUpdate(
-            fullPath,
-            addValueFactory: _ =>
+        while (true)
+        {
+            // The factory only allocates. ConcurrentDictionary is free to run it more than once when
+            // threads race on one path and keep only one result, so starting the timer inside it would
+            // leave the losing invocations holding undisposed timers that still fire, evicting the entry
+            // the winner is debouncing against.
+            var entry = _changedDebounceEntries.GetOrAdd(fullPath, _ => new ChangedDebounceEntry());
+
+            lock (entry.Lock)
             {
-                var entry = new ChangedDebounceEntry();
-                entry.Timer = new ThreadingTimer(
-                    callback: state => OnChangedDebounceElapsed(fullPath),
-                    state: null,
-                    dueTime: ChangedDebounceMs,
-                    period: Timeout.Infinite);
-                return entry;
-            },
-            updateValueFactory: (_, existing) =>
-            {
-                // A concurrent OnChangedDebounceElapsed may dispose this timer
-                // between the lookup and here. Treat the race as the burst already
-                // settling rather than letting the watcher callback throw.
-                try
+                if (entry.IsElapsed)
                 {
-                    existing.Timer?.Change(ChangedDebounceMs, Timeout.Infinite);
+                    // This entry's debounce has already fired and left the dictionary, so the event
+                    // belongs to the next burst for the path. Retry to pick up a fresh entry.
+                    continue;
                 }
-                catch (ObjectDisposedException)
+
+                entry.DeadlineMilliseconds = Environment.TickCount64 + ChangedDebounceMs;
+
+                if (entry.Timer is null)
                 {
+                    entry.Timer = new ThreadingTimer(
+                        callback: _ => OnChangedDebounceElapsed(fullPath, entry),
+                        state: null,
+                        dueTime: ChangedDebounceMs,
+                        period: Timeout.Infinite);
                 }
-                return existing;
-            });
+                else
+                {
+                    entry.Timer.Change(ChangedDebounceMs, Timeout.Infinite);
+                }
+
+                return;
+            }
+        }
     }
 
-    private void OnChangedDebounceElapsed(string fullPath)
+    private void OnChangedDebounceElapsed(string fullPath, ChangedDebounceEntry entry)
     {
-        if (!_changedDebounceEntries.TryRemove(fullPath, out var entry))
+        lock (entry.Lock)
         {
-            return;
-        }
+            // A Changed event can push the deadline out after the timer fires but before this callback
+            // takes the lock. Serve out the remainder rather than raising mid-burst.
+            var remainingMilliseconds = entry.DeadlineMilliseconds - Environment.TickCount64;
+            if (remainingMilliseconds > 0)
+            {
+                entry.Timer?.Change((int)remainingMilliseconds, Timeout.Infinite);
+                return;
+            }
 
-        entry.Timer?.Dispose();
+            entry.IsElapsed = true;
+            entry.Timer?.Dispose();
+            entry.Timer = null;
+
+            _changedDebounceEntries.TryRemove(fullPath, out _);
+        }
 
         if (_isDisposed)
         {
@@ -240,12 +272,17 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
             _watcher = null;
         }
 
-        // Drain any in-flight per-path Changed debounce timers. Dispose before
-        // clearing so a timer that fires mid-shutdown finds an empty dict and
-        // exits via the TryRemove guard.
+        // Drain any in-flight per-path Changed debounce timers. Marking each entry elapsed stops a
+        // watcher callback that is already holding one from arming a replacement timer.
         foreach (var pair in _changedDebounceEntries)
         {
-            pair.Value.Timer?.Dispose();
+            var entry = pair.Value;
+            lock (entry.Lock)
+            {
+                entry.IsElapsed = true;
+                entry.Timer?.Dispose();
+                entry.Timer = null;
+            }
         }
         _changedDebounceEntries.Clear();
     }

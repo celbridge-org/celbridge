@@ -52,8 +52,10 @@ public interface IResourceRootHandler
     Func<string, bool> PathValidator { get; }
 
     /// <summary>
-    /// Clears this handler's path-validator cache so subsequent resolves re-verify
-    /// folders against the current filesystem state.
+    /// Clears this handler's path-validator cache so subsequent resolves re-verify folders against the
+    /// current filesystem state. A folder is otherwise verified once and trusted for the life of the
+    /// handler, so this is reserved for the case where changes to the folder structure may have gone
+    /// unobserved.
     /// </summary>
     void InvalidatePathCache();
 }

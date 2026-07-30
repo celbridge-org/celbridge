@@ -28,15 +28,18 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
         var registry = workspaceService.ResourceService.Registry;
         var scanner = workspaceService.ResourceService.Scanner;
 
+        // One walk covers every target; a per-target query re-reads the whole project each time.
+        var referenceIndex = await scanner.BuildReferenceIndexAsync();
+
         var brokenReferences = new List<BrokenReference>();
-        foreach (var target in await scanner.FindAllReferencedTargetsAsync())
+        foreach (var target in referenceIndex.ReferencedTargets)
         {
             var resourceResult = registry.GetResource(target);
             if (resourceResult.IsSuccess)
             {
                 continue;
             }
-            foreach (var source in await scanner.FindReferencersAsync(target))
+            foreach (var source in referenceIndex.GetReferencers(target))
             {
                 brokenReferences.Add(new BrokenReference(source, target));
             }

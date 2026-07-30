@@ -40,9 +40,8 @@ public interface IRootHandlerRegistry
     Result<string> ResolveResourcePath(ResourceKey resource);
 
     /// <summary>
-    /// Clears the path-validator cache on every registered handler. Call after
-    /// the project folder layout changes so stale verified-folder entries do
-    /// not mask new reparse-point risks.
+    /// Clears the path-validator cache on every registered handler. See
+    /// IResourceRootHandler.InvalidatePathCache for when that is warranted.
     /// </summary>
     void InvalidatePathCache();
 }

@@ -28,6 +28,7 @@ public sealed partial class ResourceTree : UserControl
     private readonly IPlatformInfo _platformInfo;
     private readonly IStringLocalizer _stringLocalizer;
     private double _savedScrollOffset;
+    private bool _scrollRestorePending;
     private bool _treeHadFocusBeforeRebuild;
 
     public ResourceTreeViewModel ViewModel { get; }
@@ -71,13 +72,27 @@ public sealed partial class ResourceTree : UserControl
         ViewModel.SelectionRequested -= OnSelectionRequested;
         ViewModel.PreBuildResourceTree -= OnPreBuildResourceTree;
         ViewModel.PostBuildResourceTree -= OnPostBuildResourceTree;
+
+        // The pending restore is waiting on a layout pass that will not come once the tree is out of
+        // the visual tree.
+        if (_scrollRestorePending)
+        {
+            _scrollRestorePending = false;
+            ResourceListView.LayoutUpdated -= OnResourceListLayoutUpdated;
+        }
+
         UnregisterAsDropTarget();
         ViewModel.OnUnloaded();
     }
 
     private void OnPreBuildResourceTree()
     {
-        _savedScrollOffset = GetScrollOffset();
+        // While a restore is outstanding the live offset has already been reset by the previous
+        // collection swap, so reading it again would save a zero over the user's actual position.
+        if (!_scrollRestorePending)
+        {
+            _savedScrollOffset = GetScrollOffset();
+        }
 
         // Snapshot before TreeItems is replaced, while focus is still on the row the rebuild will destroy.
         _treeHadFocusBeforeRebuild = IsResourceListFocused();
@@ -85,8 +100,14 @@ public sealed partial class ResourceTree : UserControl
 
     private void OnPostBuildResourceTree()
     {
-        ResourceListView.UpdateLayout();
-        SetScrollOffset(_savedScrollOffset);
+        // Restoring the offset needs the replacement rows measured, so it waits for the next layout
+        // pass. Forcing one here with UpdateLayout cost tens of milliseconds per rebuild, independent
+        // of how many rows the tree held.
+        if (!_scrollRestorePending)
+        {
+            _scrollRestorePending = true;
+            ResourceListView.LayoutUpdated += OnResourceListLayoutUpdated;
+        }
 
         // A rebuild destroys the focused row, and the built-in-drag heads (Windows) rescue focus to chrome
         // outside the Explorer panel, dropping the panel's focused state and unlighting the utility rail
@@ -98,6 +119,14 @@ public sealed partial class ResourceTree : UserControl
             _restoreTreeFocusAfterMove = false;
             FocusTree();
         }
+    }
+
+    private void OnResourceListLayoutUpdated(object? sender, object e)
+    {
+        ResourceListView.LayoutUpdated -= OnResourceListLayoutUpdated;
+        _scrollRestorePending = false;
+
+        SetScrollOffset(_savedScrollOffset);
     }
 
     // Whether keyboard focus currently rests on the resource list or one of its rows.

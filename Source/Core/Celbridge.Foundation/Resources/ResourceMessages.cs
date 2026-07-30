@@ -49,6 +49,12 @@ public enum ResourceOperationType
 public record RequestResourceRegistryUpdateMessage;
 
 /// <summary>
+/// A message sent immediately before a resource registry update reads the file system. Sent before the
+/// read rather than after, so a listener can tell which changes that read is guaranteed to have observed.
+/// </summary>
+public record ResourceRegistryUpdateStartingMessage;
+
+/// <summary>
 /// A message sent when the resource registry has been updated.
 /// </summary>
 public record ResourceRegistryUpdatedMessage;

@@ -158,6 +158,9 @@ public class ResourceService : IResourceService, IDisposable
 
     public async Task<Result> UpdateResourcesAsync()
     {
+        var updateStartingMessage = new ResourceRegistryUpdateStartingMessage();
+        _messengerService.Send(updateStartingMessage);
+
         var updateResult = await Registry.UpdateResourceRegistryAsync();
         if (updateResult.IsFailure)
         {

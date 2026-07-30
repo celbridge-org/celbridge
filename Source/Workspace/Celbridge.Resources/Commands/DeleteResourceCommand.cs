@@ -90,6 +90,9 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             return false;
         }
 
+        // One walk covers every key below; a per-key query re-reads the whole project each time.
+        var referenceIndex = await ResourceScanner.BuildReferenceIndexAsync();
+
         var externalReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>();
         foreach (var resource in Resources)
         {
@@ -100,7 +103,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 // Walk every referenced target and pull in those that live under
                 // this folder so we surface every incoming reference that the
                 // recursive delete will leave dangling.
-                foreach (var target in await ResourceScanner.FindAllReferencedTargetsAsync())
+                foreach (var target in referenceIndex.ReferencedTargets)
                 {
                     if (target.IsDescendantOf(resource))
                     {
@@ -117,7 +120,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             foreach (var key in keysToCheck)
             {
                 var perKeyReferencers = new List<ResourceKey>();
-                foreach (var referencer in await ResourceScanner.FindReferencersAsync(key))
+                foreach (var referencer in referenceIndex.GetReferencers(key))
                 {
                     if (!IsInsideBatch(referencer))
                     {

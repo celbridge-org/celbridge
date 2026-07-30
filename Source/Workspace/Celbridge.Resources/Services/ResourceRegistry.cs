@@ -209,8 +209,6 @@ public class ResourceRegistry : IResourceRegistry
                 _sidecarReport = sidecarReport;
             }
 
-            _rootHandlerRegistry.InvalidatePathCache();
-
             try
             {
                 _messengerService.Send(new ResourceRegistryUpdatedMessage());
