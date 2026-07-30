@@ -102,10 +102,20 @@ internal sealed class TabDragController
             return;
         }
 
-        var position = e.GetCurrentPoint(_overlay).Position;
+        var pointerPoint = e.GetCurrentPoint(_overlay);
+        var position = pointerPoint.Position;
 
         if (!_isDragging)
         {
+            // A double-tap's second release is not delivered to this handler, so a press can outlive
+            // the button. A move with the button up is that missed release: drop the stale press
+            // rather than starting a phantom drag that follows the pointer with no button held.
+            if (!pointerPoint.Properties.IsLeftButtonPressed)
+            {
+                EndTracking();
+                return;
+            }
+
             if (Math.Abs(position.X - _pressPosition.X) < DragThreshold &&
                 Math.Abs(position.Y - _pressPosition.Y) < DragThreshold)
             {
