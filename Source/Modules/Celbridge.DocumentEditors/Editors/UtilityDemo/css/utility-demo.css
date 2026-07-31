@@ -5,11 +5,55 @@ html, body {
     height: 100%;
 }
 
+/* The showcase, the inspector panel, and the inspector rail sit side by side, with the rail pinned to the
+   right edge. */
+#demo-app {
+    display: flex;
+    height: 100%;
+}
+
 #process-container {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
+    min-width: 0;
     height: 100%;
+    overflow: auto;
     padding: 12px;
+}
+
+/* Illustrates the shared .cel-nav-tabs and .cel-rail components working together as a document inspector: a
+   fixed title and tab strip above a scrolling section, with the rail alongside. */
+#inspector-panel {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    min-height: 0;
+    border-left: 1px solid var(--cel-divider-subtle);
+}
+
+/* Mirrors the native PanelHeader above the settings panels' tab strip: 40px tall, at the base text size. */
+.inspector-title {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 12px;
+    background: var(--cel-panel-bg);
+}
+
+#inspector-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+}
+
+.inspector-section p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--cel-text-secondary);
 }
 
 /* Illustrates the shared .cel-expander component. The container is a gapless flex column, so give it room. */
@@ -106,6 +150,10 @@ html, body {
     margin: 8px 0 0 0;
     font-size: 12px;
     color: var(--cel-text-secondary);
+}
+
+.hidden {
+    display: none !important;
 }
 
 /* Border, radius, fill, and colour come from the shared textarea styling (celbridge.css); only the notes

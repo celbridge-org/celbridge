@@ -2,37 +2,37 @@
    (linked in index.html) so its controls, colors, and fonts match the rest of the application. The terminal
    is its own themed surface, styled here. Only genuinely console-specific rules live in this file. */
 
-/* The terminal surface and its indicators stay console-specific: the terminal is its own themed surface
-   (like a code editor's canvas), not app chrome. The celbridge client mirrors the theme onto
+/* The terminal surface and the config-error callout stay console-specific: the terminal is its own themed
+   surface (like a code editor's canvas), not app chrome. The celbridge client mirrors the theme onto
    html[data-theme]; until it lands, fall back to prefers-color-scheme so the terminal never flashes on load. */
 :root {
     --console-terminal-bg: #ffffff;
     --console-overlay: rgba(255, 255, 255, 0.85);
-    --console-pip: #d9822b;
-    --console-pip-bg: rgba(217, 130, 43, 0.15);
+    --console-alert: #d9822b;
+    --console-alert-bg: rgba(217, 130, 43, 0.15);
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
         --console-terminal-bg: #1e1e1e;
         --console-overlay: rgba(20, 20, 20, 0.85);
-        --console-pip: #e0a458;
-        --console-pip-bg: rgba(224, 164, 88, 0.18);
+        --console-alert: #e0a458;
+        --console-alert-bg: rgba(224, 164, 88, 0.18);
     }
 }
 
 :root[data-theme="light"] {
     --console-terminal-bg: #ffffff;
     --console-overlay: rgba(255, 255, 255, 0.85);
-    --console-pip: #d9822b;
-    --console-pip-bg: rgba(217, 130, 43, 0.15);
+    --console-alert: #d9822b;
+    --console-alert-bg: rgba(217, 130, 43, 0.15);
 }
 
 :root[data-theme="dark"] {
     --console-terminal-bg: #1e1e1e;
     --console-overlay: rgba(20, 20, 20, 0.85);
-    --console-pip: #e0a458;
-    --console-pip-bg: rgba(224, 164, 88, 0.18);
+    --console-alert: #e0a458;
+    --console-alert-bg: rgba(224, 164, 88, 0.18);
 }
 
 html, body {
@@ -41,67 +41,32 @@ html, body {
     overflow: hidden;
 }
 
+/* The content and the inspector rail sit side by side, with the rail pinned to the right edge of the
+   document. */
 #app {
     display: flex;
-    flex-direction: column;
     height: 100vh;
     width: 100vw;
 }
 
-/* The terminal and the settings sidebar sit side by side below the toolbar, split by a draggable divider,
-   so opening settings narrows the terminal rather than hiding it. */
+/* The terminal and the settings sidebar sit side by side, split by a draggable divider, so opening settings
+   narrows the terminal rather than hiding it. */
 #content {
     display: flex;
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
 }
 
-#toolbar {
-    flex: 0 0 auto;
+/* The shortcut group sits below the settings button and scrolls once it outgrows the rail, so growth pushes
+   downward into empty space rather than moving the settings button. */
+#shortcut-rail {
     display: flex;
-    align-items: center;
-    height: 40px;
-    padding: 0 6px;
-    border-bottom: 1px solid var(--cel-divider);
-    background: var(--cel-panel-bg);
-}
-
-/* The shortcut toolbar fills the left of the bar; the settings button is pushed to the right edge. */
-#shortcut-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    overflow-x: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-.shortcut-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-    flex: 0 0 auto;
-}
-
-#settings-toggle {
-    position: relative;
-    margin-left: auto;
-    flex: 0 0 auto;
-}
-
-#settings-toggle.active {
-    background: var(--cel-control-hover-bg);
-}
-
-.pip {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--console-pip);
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
 }
 
 .hidden {
@@ -180,16 +145,25 @@ html, body {
     flex-direction: column;
 }
 
-/* The heading stays fixed above the scrolling cards, separated by a divider so the title can't be scrolled
-   out of view, mirroring the native settings panels (fixed header, scrolling content, fixed action footer).
-   The left inset is pulled in 4px to 8px like .settings-scroll so the title lines up with the cards. */
-.settings-header {
+/* The panel title, mirroring the native PanelHeader above the settings panels' tab strip (40px tall, over the
+   panel background, at the base text size). The left inset is pulled in 4px to 8px like .settings-scroll so
+   it lines up with the content below. */
+.settings-title {
     flex: 0 0 auto;
-    padding: 12px 12px 10px 8px;
-    border-bottom: 1px solid var(--cel-divider);
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 12px 0 8px;
+    background: var(--cel-panel-bg);
 }
 
-/* Only the cards scroll; the header above and the footer below stay pinned. */
+/* The shared tab strip stays fixed above the scrolling section, so the section name and any config error
+   can't be scrolled out of view. Its left inset matches the content below (see .settings-scroll). */
+#settings-view .cel-nav-tabs {
+    padding-left: 8px;
+}
+
+/* Only the active section scrolls; the title and tab strip above and the footer below stay pinned. */
 .settings-scroll {
     flex: 1 1 auto;
     min-height: 0;
@@ -201,40 +175,16 @@ html, body {
     padding: 12px 12px 12px 8px;
 }
 
-/* Match the native settings panels' section header (ProjectSettingsPanel.xaml: 20px SemiBold) so the
-   console settings surface reads as a peer of the XAML settings panels shown beside it. */
-#settings-view h1 {
-    font-size: 20px;
-    font-weight: 600;
-    /* 2px title->subtitle gap matches the native section title StackPanel (Spacing="2"). */
-    margin: 0 0 2px;
-}
-
-/* Mirrors the native settings panels' description line under the title (12px secondary). The header's
-   padding provides the gap to the divider below, so the subtitle needs no bottom margin. */
-.settings-subtitle {
-    font-size: 12px;
-    color: var(--cel-text-secondary);
-    margin: 0;
-}
-
-/* Pinned in the fixed header under the subtitle (hidden until a parse error), so a validation error stays
-   visible while the cards scroll. The top margin separates it from the subtitle; the header padding below
-   provides the gap to the divider. */
+/* Pinned in the tab strip below the section header (hidden until a parse error), so a validation error stays
+   visible while the section scrolls. The top margin separates it from the description; the strip's padding
+   below provides the gap to the divider. */
 .config-error {
-    border: 1px solid var(--console-pip);
-    background: var(--console-pip-bg);
+    border: 1px solid var(--console-alert);
+    background: var(--console-alert-bg);
     padding: 8px 10px;
     border-radius: var(--cel-radius-control);
     margin: 12px 0 0;
     white-space: pre-wrap;
-}
-
-/* The settings cards use the shared .cel-expander component (celbridge.css). Only the settings-panel layout
-   here is console-specific. All cards start collapsed. Their open state is persisted as document view state. */
-#settings-view .cel-expander {
-    max-width: 640px;
-    margin-bottom: 8px;
 }
 
 .field {
@@ -243,7 +193,7 @@ html, body {
     max-width: 640px;
 }
 
-.cel-expander-body .field:last-child {
+.settings-section .field:last-child {
     margin-bottom: 0;
 }
 

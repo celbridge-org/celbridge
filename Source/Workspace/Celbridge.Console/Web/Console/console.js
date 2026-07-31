@@ -7,6 +7,7 @@ import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { t } from '/assets/celbridge-client/localization.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
+import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
 import {
     splitLines,
@@ -75,7 +76,8 @@ fitAddon.fit();
 // DOM references.
 const settingsToggle = document.getElementById('settings-toggle');
 const pip = document.getElementById('pip');
-const shortcutToolbar = document.getElementById('shortcut-toolbar');
+const shortcutRail = document.getElementById('shortcut-rail');
+const shortcutSeparator = document.getElementById('shortcut-separator');
 const terminalView = document.getElementById('terminal-view');
 const splitter = document.getElementById('splitter');
 const settingsView = document.getElementById('settings-view');
@@ -100,10 +102,24 @@ const runnersInput = document.getElementById('runners');
 const shortcutsInput = document.getElementById('shortcuts');
 const reopenSettingsButton = document.getElementById('reopen-settings');
 
-// The collapsible settings cards, in document order (Session, Environment, Script Runners, Shortcuts).
-function settingsCards() {
-    return settingsScroll.querySelectorAll('details.cel-expander');
+// The settings sections and their headers, selected by the shared nav tab strip. Both are present in the
+// markup with only the active one shown, mirroring how the native settings panel toggles its section views.
+const settingsSections = Array.from(settingsScroll.querySelectorAll('.settings-section'));
+const sectionHeaders = Array.from(settingsView.querySelectorAll('.cel-section-header'));
+
+function showSection(sectionId) {
+    for (const section of settingsSections) {
+        section.classList.toggle('hidden', section.dataset.section !== sectionId);
+    }
+    for (const header of sectionHeaders) {
+        header.classList.toggle('hidden', header.dataset.section !== sectionId);
+    }
+    settingsScroll.scrollTop = 0;
 }
+
+const navTabs = attachNavTabs(document.getElementById('settings-tabs'), {
+    onChange: (sectionId) => showSection(sectionId),
+});
 
 // State. currentConfig mirrors the settings form / .console file. launchedConfig is the config the live
 // session was started from, so the pip can flag "changed, needs a reopen".
@@ -246,7 +262,9 @@ settingsToggle.addEventListener('click', () => {
 function setSettingsVisible(visible) {
     settingsView.classList.toggle('hidden', !visible);
     splitter.classList.toggle('hidden', !visible);
-    settingsToggle.classList.toggle('active', visible);
+    // The rail capsule tracks the panel being open, not focused: the terminal holds focus most of the time,
+    // so a focus-following capsule would read as "closed" while the panel is plainly on screen.
+    settingsToggle.classList.toggle('selected', visible);
     refitTerminal();
     if (!visible) {
         term.focus();
@@ -310,7 +328,7 @@ function populateForm(config) {
         .join('\n');
     runnersInput.value = formatRunnerLines(config.runners);
     shortcutsInput.value = formatShortcutLines(config.shortcuts);
-    renderShortcutToolbar();
+    renderShortcutRail();
 }
 
 function readForm() {
@@ -328,31 +346,36 @@ function readForm() {
     };
 }
 
-// The per-console shortcut toolbar: flat buttons that inject their text into the pty on click.
-function renderShortcutToolbar() {
-    shortcutToolbar.replaceChildren();
+// A shortcut with no icon still needs a glyph to be clickable, so it falls back to the icon the Automation
+// settings tab uses.
+const SHORTCUT_FALLBACK_ICON = 'bi-lightning-charge';
+
+// The per-console shortcuts, rendered as icon-only cells at the top of the inspector rail. Each injects its
+// text into the pty on click; the tooltip carries the label, falling back to the text it types.
+function renderShortcutRail() {
+    shortcutRail.replaceChildren();
     const shortcuts = currentConfig.shortcuts || [];
-    shortcutToolbar.classList.toggle('hidden', shortcuts.length === 0);
+    shortcutSeparator.classList.toggle('hidden', shortcuts.length === 0);
 
     for (const shortcut of shortcuts) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'shortcut-button';
-        button.title = shortcut.text || shortcut.label || '';
+        button.className = 'cel-rail-button';
 
+        const tooltip = shortcut.label || shortcut.text || '';
+        button.title = tooltip;
+        button.setAttribute('aria-label', tooltip);
+
+        const iconElement = document.createElement('i');
         if (shortcut.icon && shortcut.icon.startsWith('bs-')) {
-            const iconElement = document.createElement('i');
             iconElement.className = 'bi bi-' + shortcut.icon.slice('bs-'.length);
-            button.appendChild(iconElement);
+        } else {
+            iconElement.className = 'bi ' + SHORTCUT_FALLBACK_ICON;
         }
-        if (shortcut.label) {
-            const labelElement = document.createElement('span');
-            labelElement.textContent = shortcut.label;
-            button.appendChild(labelElement);
-        }
+        button.appendChild(iconElement);
 
         button.addEventListener('click', () => injectShortcut(shortcut.text));
-        shortcutToolbar.appendChild(button);
+        shortcutRail.appendChild(button);
     }
 }
 
@@ -371,9 +394,9 @@ function onFormInput() {
     configError = null;
     // Mark the document dirty so the host's save timer flushes the serialised TOML through onRequestSave.
     client.document.notifyChanged();
-    // The shortcut toolbar is pure client-side UI, so it previews live as the user edits. Every other
+    // The shortcut rail is pure client-side UI, so it previews live as the user edits. Every other
     // setting applies on the next reopen, flagged by updateAttention.
-    renderShortcutToolbar();
+    renderShortcutRail();
     updateAttention();
 }
 
@@ -654,12 +677,12 @@ async function main() {
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
         },
-        // Persist the settings sidebar's open state and width, each card's expanded state, and the scroll
-        // position so they survive a reopen. openCards is by card order; the cards are a fixed set.
+        // Persist the settings sidebar's open state and width, the selected section, and the scroll position
+        // so they survive a reopen.
         onRequestState: () => JSON.stringify({
             settingsOpen: !settingsView.classList.contains('hidden'),
             sidebarWidth,
-            openCards: Array.from(settingsCards()).map((card) => card.open),
+            activeSection: navTabs.selected(),
             scrollTop: settingsScroll.scrollTop,
         }),
         onRestoreState: (stateJson) => {
@@ -668,12 +691,10 @@ async function main() {
                 if (typeof state.sidebarWidth === 'number' && state.sidebarWidth > 0) {
                     applySidebarWidth(state.sidebarWidth);
                 }
-                // Restore each card's expanded state before showing the sidebar, so the scroll height is
-                // correct when the scroll position is applied below.
-                if (Array.isArray(state.openCards)) {
-                    settingsCards().forEach((card, index) => {
-                        card.open = state.openCards[index] === true;
-                    });
+                // Select the section before showing the sidebar, so the scroll height is correct when the
+                // scroll position is applied below. An unknown id leaves the default section selected.
+                if (typeof state.activeSection === 'string') {
+                    navTabs.select(state.activeSection);
                 }
                 if (state.settingsOpen) {
                     setSettingsVisible(true);

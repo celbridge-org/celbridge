@@ -29,6 +29,11 @@
     --cel-icon-size-large: 22px;
     --cel-icon-button-size: 32px;
 
+    /* Vertical icon rail sizing, mirroring the workspace utility rail (UtilityPanel.xaml's 50px column and
+       UtilityButton.xaml's 48px cell); keep the three in sync when either changes. */
+    --cel-rail-width: 50px;
+    --cel-rail-item-size: 48px;
+
     color-scheme: light;
 
     --cel-app-bg: #F3F3F3;
@@ -43,6 +48,8 @@
     --cel-text-secondary: rgba(0, 0, 0, 0.6);
     --cel-error-text: #D32F2F;
     --cel-warning-text: #FFA000;
+    /* Attention pip fill (WinUI SystemFillColorCaution), matching the pips on the native rail and tab strip. */
+    --cel-caution: #9D5D00;
     --cel-search-highlight: #C66300;
     --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
 
@@ -73,6 +80,7 @@
     --cel-text-secondary: rgba(255, 255, 255, 0.6);
     --cel-error-text: #FF5252;
     --cel-warning-text: #FFCA28;
+    --cel-caution: #FCE100;
     --cel-search-highlight: #FFD966;
     --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
 
