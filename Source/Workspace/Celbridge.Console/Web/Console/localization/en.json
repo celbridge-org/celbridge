@@ -47,8 +47,7 @@
     "Console_Runner_Untitled": "New script runner",
     "Console_Shortcut_Untitled": "New shortcut",
     "Console_Card_Delete": "Delete",
-    "Console_Card_MoveUp": "Move up",
-    "Console_Card_MoveDown": "Move down",
+    "Console_Card_Reorder": "Drag to reorder, or press Alt+Up and Alt+Down on the header.",
     "Console_Warning_UnknownIcon": "Unknown icon. The button will use the default glyph.",
 
     "Console_Type_Shell": "Shell",
@@ -75,7 +74,7 @@
     "Console_Hint_StartupScript": "Runs each time the console opens, once it is ready. Example: import numpy as np",
     "Console_Hint_Environment": "Injected before launch, one per line. Example: PYTHONWARNINGS=default",
     "Console_Hint_Runners": "Run a file in this console from the Explorer Run menu.",
-    "Console_Hint_Shortcuts": "Buttons on the console rail, in rail order, that type a command into the session.",
+    "Console_Hint_Shortcuts": "Buttons on the console rail that type a command into the session.",
     "Console_Hint_RunnerExtensions": "File extensions this runner handles. Example: .py, .ipy",
     "Console_Hint_RunnerCommand": "{script_path} is the path of the file being run. Example: %run \"{script_path}\"",
     "Console_Hint_ShortcutIcon": "A Bootstrap Icons name. Example: bs-play-fill"
