@@ -34,6 +34,23 @@
     "Console_Field_Runners": "Script Runners",
     "Console_Field_Shortcuts": "Shortcuts",
 
+    "Console_Field_RunnerExtensions": "Extensions",
+    "Console_Field_RunnerCommand": "Command",
+    "Console_Field_ShortcutLabel": "Label",
+    "Console_Field_ShortcutIcon": "Icon",
+    "Console_Field_ShortcutText": "Command",
+
+    "Console_Add_Runner": "Add Script Runner",
+    "Console_Add_Shortcut": "Add Shortcut",
+    "Console_Empty_Runners": "No script runners yet.",
+    "Console_Empty_Shortcuts": "No shortcuts yet.",
+    "Console_Runner_Untitled": "New script runner",
+    "Console_Shortcut_Untitled": "New shortcut",
+    "Console_Card_Delete": "Delete",
+    "Console_Card_MoveUp": "Move up",
+    "Console_Card_MoveDown": "Move down",
+    "Console_Warning_UnknownIcon": "Unknown icon. The button will use the default glyph.",
+
     "Console_Type_Shell": "Shell",
     "Console_Type_Python": "Python",
 
@@ -44,8 +61,11 @@
     "Console_Placeholder_WorkingDirectory": "Folder path",
     "Console_Placeholder_StartupScript": "Commands to run on open",
     "Console_Placeholder_Environment": "KEY=value, one per line",
-    "Console_Placeholder_Runners": "extensions = command, one per line",
-    "Console_Placeholder_Shortcuts": "label | icon | text, one per line",
+    "Console_Placeholder_RunnerExtensions": "Comma-separated file extensions",
+    "Console_Placeholder_RunnerCommand": "Command that runs the file",
+    "Console_Placeholder_ShortcutLabel": "Shown as the button tooltip",
+    "Console_Placeholder_ShortcutIcon": "Bootstrap icon name",
+    "Console_Placeholder_ShortcutText": "Text typed into the console",
 
     "Console_Hint_Executable": "Typed into the platform shell after it starts; blank leaves just the shell. Example: node",
     "Console_Hint_PythonVersion": "Blank uses the default. Examples: 3.13, >=3.12",
@@ -54,6 +74,9 @@
     "Console_Hint_WorkingDirectory": "Relative to the project root; blank uses it. Example: tools",
     "Console_Hint_StartupScript": "Runs each time the console opens, once it is ready. Example: import numpy as np",
     "Console_Hint_Environment": "Injected before launch, one per line. Example: PYTHONWARNINGS=default",
-    "Console_Hint_Runners": "Run a file in this console; {script_path} is the file path. Example: .py, .ipy = %run \"{script_path}\"",
-    "Console_Hint_Shortcuts": "Rail button that types text; the label is its tooltip and the icon is a Bootstrap name. Example: Run tests | bs-play-fill | pytest -q"
+    "Console_Hint_Runners": "Run a file in this console from the Explorer Run menu.",
+    "Console_Hint_Shortcuts": "Buttons on the console rail, in rail order, that type a command into the session.",
+    "Console_Hint_RunnerExtensions": "File extensions this runner handles. Example: .py, .ipy",
+    "Console_Hint_RunnerCommand": "{script_path} is the path of the file being run. Example: %run \"{script_path}\"",
+    "Console_Hint_ShortcutIcon": "A Bootstrap Icons name. Example: bs-play-fill"
 }

@@ -179,7 +179,28 @@ Settings goes above the action buttons, inverting the workspace rail's ordering,
 
 Rail buttons are icon-only with a tooltip, so a button whose action has no natural glyph still needs a fallback icon rather than a text label. Add `selected` to the button whose surface is showing; its accent edge capsule stays lit for as long as that surface is open. This deliberately differs from the workspace utility rail, whose capsule dims while its panel is unfocused — with several rails and panels on screen at once, "this panel is open" is the more useful signal, and an editor's own content usually holds focus anyway. `.cel-rail-right` moves the rail's border and its capsules to the window edge; omit it for a rail on the left.
 
-The console editor is the reference: its shortcut buttons render into the rail above the settings toggle, and its settings panel is a `.cel-nav-tabs` hierarchy.
+The console editor is the reference: its shortcut buttons render into the rail below the settings toggle, and its settings panel is a `.cel-nav-tabs` hierarchy.
+
+### Editing a list of entries
+
+A setting that is a list of records — the console's script runners and shortcuts — is edited as one `.cel-expander` card per entry, matching how the native Packages and Pages panels render their lists. The card header carries the entry's name and a one-line summary; the body carries its fields. Add and delete controls belong on the list and the card header, and a list whose order is user-visible needs move-up and move-down buttons too.
+
+`Source/Workspace/Celbridge.Console/Web/Console/console-cards.js` implements this as `createCardList()`. It is console-local rather than shared, since it has one consumer so far, but it is the pattern to copy or promote:
+
+```javascript
+const list = createCardList({
+    listElement, emptyElement, addButton, template,
+    blankItem: () => ({ label: '', command: '' }),
+    focusSelector: '.entry-label',
+    reorderable: true,              // wires move-up / move-down
+    fillCard(card, item) { },       // entry -> inputs
+    readCard(card) { },             // inputs -> entry, or null to drop the card
+    updateHeader(card) { },         // refresh the collapsed summary
+    localize, onChanged, isWritable,
+});
+```
+
+Prefer this over a delimited text field (`a | b | c` per line) for anything Celbridge-specific: it removes a syntax the user has to learn and a parser you have to maintain. The exception is a setting whose data has a canonical text form elsewhere — command-line arguments, `requirements.txt` entries, `KEY=value` environment pairs — where a plain textarea is the better control, because it lets the user paste from the file the data already lives in.
 
 ## Edit verbs (optional)
 

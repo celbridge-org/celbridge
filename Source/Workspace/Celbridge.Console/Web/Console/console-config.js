@@ -26,71 +26,9 @@ export function parseEnvironmentLines(text) {
     return environment;
 }
 
-// A runner is edited as one line per runner: comma-separated extensions, then '=', then the command.
-export function parseRunnerLines(text) {
-    const runners = [];
-    for (const rawLine of text.split('\n')) {
-        const line = rawLine.trim();
-        if (line === '') {
-            continue;
-        }
-        const equalsIndex = line.indexOf('=');
-        if (equalsIndex < 0) {
-            continue;
-        }
-        const extensions = line.slice(0, equalsIndex).split(',').map((part) => part.trim()).filter((part) => part !== '');
-        const command = line.slice(equalsIndex + 1).trim();
-        if (extensions.length === 0 || command === '') {
-            continue;
-        }
-        runners.push({ extensions, command });
-    }
-    return runners;
-}
-
-export function formatRunnerLines(runners) {
-    return (runners || [])
-        .map((runner) => `${(runner.extensions || []).join(', ')} = ${runner.command || ''}`)
-        .join('\n');
-}
-
-// A shortcut is edited as one line per shortcut: label, then icon, then injected text, separated by '|'.
-// Only the first two pipes delimit, so the injected text may itself be a shell pipeline with its interior
-// spacing preserved.
-export function parseShortcutLines(text) {
-    const shortcuts = [];
-    for (const rawLine of text.split('\n')) {
-        const line = rawLine.trim();
-        if (line === '') {
-            continue;
-        }
-        const firstPipe = line.indexOf('|');
-        const secondPipe = firstPipe >= 0 ? line.indexOf('|', firstPipe + 1) : -1;
-        let label = '';
-        let icon = '';
-        let injected = '';
-        if (secondPipe >= 0) {
-            label = line.slice(0, firstPipe).trim();
-            icon = line.slice(firstPipe + 1, secondPipe).trim();
-            injected = line.slice(secondPipe + 1).trim();
-        } else if (firstPipe >= 0) {
-            label = line.slice(0, firstPipe).trim();
-            injected = line.slice(firstPipe + 1).trim();
-        } else {
-            label = line;
-        }
-        if (label === '' && injected === '') {
-            continue;
-        }
-        shortcuts.push({ label, icon, text: injected });
-    }
-    return shortcuts;
-}
-
-export function formatShortcutLines(shortcuts) {
-    return (shortcuts || [])
-        .map((shortcut) => `${shortcut.label || ''} | ${shortcut.icon || ''} | ${shortcut.text || ''}`)
-        .join('\n');
+// Comma-separated extensions, as a runner card edits them.
+export function parseExtensionList(text) {
+    return text.split(',').map((part) => part.trim()).filter((part) => part !== '');
 }
 
 // A comparable view of the config for the "needs a reopen" check: the start payload with a stable env

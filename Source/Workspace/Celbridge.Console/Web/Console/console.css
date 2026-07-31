@@ -193,8 +193,82 @@ html, body {
     max-width: 640px;
 }
 
-.settings-section .field:last-child {
+.settings-section .field:last-child,
+.cel-expander-body .field:last-child {
     margin-bottom: 0;
+}
+
+/* The Automation lists: a titled group per entry kind, its cards, and the button that appends one. */
+.card-list-group {
+    max-width: 640px;
+}
+
+.card-list-group + .card-list-group {
+    margin-top: 20px;
+}
+
+.card-list-title {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.card-list-hint,
+.card-list-empty {
+    margin: 0 0 8px;
+    font-size: 11px;
+    color: var(--cel-text-secondary);
+}
+
+.add-card-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Card header: the entry's name, with the card's controls right-aligned before the expander's chevron. The
+   name alone identifies the entry; its fields are one expand away. */
+.card-list .cel-expander {
+    margin-bottom: 8px;
+}
+
+.card-list .cel-expander > summary {
+    gap: 8px;
+}
+
+.card-icon {
+    flex: 0 0 auto;
+    font-size: var(--cel-icon-size-medium);
+    line-height: 1;
+}
+
+.card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 2px;
+}
+
+/* Smaller than the standard icon button, so three of them do not stretch the card header. */
+.card-actions .cel-icon-button {
+    width: 24px;
+    height: 24px;
+    font-size: var(--cel-icon-size-small);
+}
+
+/* Flags a setting the console will not be able to honour, below the field that produced it. */
+.field-warning {
+    display: block;
+    font-size: 11px;
+    color: var(--cel-warning-text);
+    margin-top: 4px;
 }
 
 .field-label {
