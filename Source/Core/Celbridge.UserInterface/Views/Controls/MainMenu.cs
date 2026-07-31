@@ -17,12 +17,12 @@ public class MainMenu
     private readonly IStringLocalizer _stringLocalizer;
     private readonly MenuFlyout _menuFlyout;
 
-    public MainMenuViewModel ViewModel { get; }
+    public ApplicationMenuViewModel ViewModel { get; }
 
     public MainMenu(MenuFlyout menuFlyout)
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        ViewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+        ViewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
 
         _menuFlyout = menuFlyout;
 

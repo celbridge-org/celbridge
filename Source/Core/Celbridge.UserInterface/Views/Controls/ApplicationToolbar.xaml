@@ -54,9 +54,8 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <!-- Page Navigation Toolbar. Hosts the utility and shortcut launcher buttons in its pane content. -->
-        <controls:PageNavigationToolbar x:Name="PageNavigationToolbar"
-                                         Grid.Column="1"/>
+        <controls:NavigationToolbar x:Name="NavigationToolbar"
+                                    Grid.Column="1"/>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
         <ic:Icon x:Name="SaveIcon"
