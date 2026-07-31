@@ -7,6 +7,7 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
+import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
 
 const client = celbridge;
 
@@ -28,6 +29,29 @@ attachSplitter(demoSplitter, {
     onReset() {
         demoLeftPane.style.width = '45%';
     },
+});
+
+// Demonstrate the shared inspector rail and nav tab strip: the rail's settings button toggles the inspector
+// panel, and the tab strip switches which of the panel's sections is shown.
+const inspectorPanel = document.getElementById('inspector-panel');
+const inspectorToggle = document.getElementById('inspector-toggle');
+const inspectorSections = Array.from(document.querySelectorAll('.inspector-section'));
+const inspectorHeaders = Array.from(document.querySelectorAll('.cel-section-header'));
+
+attachNavTabs(document.getElementById('inspector-tabs'), {
+    onChange(sectionId) {
+        for (const section of inspectorSections) {
+            section.classList.toggle('hidden', section.dataset.section !== sectionId);
+        }
+        for (const header of inspectorHeaders) {
+            header.classList.toggle('hidden', header.dataset.section !== sectionId);
+        }
+    },
+});
+
+inspectorToggle.addEventListener('click', () => {
+    const visible = inspectorPanel.classList.toggle('hidden') === false;
+    inspectorToggle.classList.toggle('selected', visible);
 });
 
 // Gates change notifications while the document is read-only or being loaded by the framework, so a

@@ -128,7 +128,58 @@ Core tokens:
 
 The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and window background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
 
-The Utility Demo utility is the minimal reference for consuming these tokens — the UI font, host-styled controls, and a bordered input.
+Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.cel-panel-footer` (a pinned caption-and-action row), and the two navigation components below. The Utility Demo utility is the reference for all of them — the UI font, host-styled controls, a bordered input, and each shared component in use.
+
+### Panel navigation
+
+A panel whose content divides into sections uses `.cel-nav-tabs`: a strip of icon tabs over an accent underline, above the active section's name and description. This is the standard across utility panels and document inspectors — do not build a section hierarchy out of stacked collapsible cards, which hides the panel's shape and makes a deep panel a scroll hunt.
+
+```html
+<div class="cel-nav-tabs">
+  <div id="tabs" class="cel-nav-tab-strip" role="tablist">
+    <button class="cel-nav-tab" type="button" role="tab" data-section="session" aria-selected="true" title="Session">
+      <span class="cel-nav-tab-icon"><i class="bi bi-terminal"></i></span>
+    </button>
+    <!-- ... one button per section ... -->
+  </div>
+  <div class="cel-section-header" data-section="session"><h1>Session</h1><p>What this section covers.</p></div>
+  <!-- ... one header per section, all but the active one hidden ... -->
+</div>
+```
+
+Drive it with `attachNavTabs()` from `ui/nav-tabs.js`, which owns `aria-selected`, the roving tabindex, and arrow-key navigation, and reports the selected section id:
+
+```javascript
+import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
+
+const tabs = attachNavTabs(document.getElementById('tabs'), {
+    onChange(sectionId) { /* show that section */ },
+});
+tabs.select('environment');   // e.g. when restoring view state
+tabs.selected();              // persist this in onRequestState()
+```
+
+Each tab is an icon with a tooltip, not a text label, so the strip stays a fixed width however many sections a panel has; the section name below it is what names the selection. Add a `<span class="cel-nav-tab-pip">` inside a tab's icon to flag that its section needs attention.
+
+### Inspector rail
+
+An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon rail down the right edge of its content, mirroring the workspace utility rail. The settings button sits at the top, the editor's own action buttons below it, separated by a `.cel-rail-separator`; the settings button uses `bi-sliders`, the same glyph as the workspace Project Settings button, and toggles the panel.
+
+```html
+<div class="cel-rail cel-rail-right">
+  <button class="cel-rail-button selected" type="button" title="Settings">
+    <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>
+  </button>
+  <div class="cel-rail-separator"></div>
+  <button class="cel-rail-button" type="button" title="Run tests"><i class="bi bi-play-fill"></i></button>
+</div>
+```
+
+Settings goes above the action buttons, inverting the workspace rail's ordering, because an editor's action buttons are usually configured from the panel that settings button opens — below them, its position would shift every time the user adds or removes one. Above them it is fixed, and a growing action group overflows downward into empty space instead. The separator is what carries the family resemblance to the workspace rail, not the ordering.
+
+Rail buttons are icon-only with a tooltip, so a button whose action has no natural glyph still needs a fallback icon rather than a text label. Add `selected` to the button whose surface is showing; its accent edge capsule stays lit for as long as that surface is open. This deliberately differs from the workspace utility rail, whose capsule dims while its panel is unfocused — with several rails and panels on screen at once, "this panel is open" is the more useful signal, and an editor's own content usually holds focus anyway. `.cel-rail-right` moves the rail's border and its capsules to the window edge; omit it for a rail on the left.
+
+The console editor is the reference: its shortcut buttons render into the rail above the settings toggle, and its settings panel is a `.cel-nav-tabs` hierarchy.
 
 ## Edit verbs (optional)
 

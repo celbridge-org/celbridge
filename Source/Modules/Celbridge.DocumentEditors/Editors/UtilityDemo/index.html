@@ -6,11 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Celbridge Utility Demo</title>
     <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
     <link rel="stylesheet" href="css/utility-demo.css">
 </head>
 
 <body>
+    <div id="demo-app">
     <div id="process-container">
         <h1 id="process-title">Utility Demo</h1>
         <p id="process-blurb">
@@ -73,6 +75,75 @@
             Every control here is styled by <code>celbridge.css</code>.
             <a href="#">Learn more</a>.
         </p>
+    </div>
+
+    <!-- Illustrates the shared .cel-nav-tabs component: an icon tab strip over the active section's name and
+         description, with the sections themselves in the scrolling area below. -->
+    <div id="inspector-panel" class="hidden">
+        <div class="inspector-title">Inspector</div>
+        <div class="cel-nav-tabs">
+            <div id="inspector-tabs" class="cel-nav-tab-strip" role="tablist">
+                <button class="cel-nav-tab" type="button" role="tab" data-section="general" aria-selected="true"
+                        title="General" aria-label="General">
+                    <span class="cel-nav-tab-icon"><i class="bi bi-info-circle"></i></span>
+                </button>
+                <button class="cel-nav-tab" type="button" role="tab" data-section="appearance"
+                        title="Appearance" aria-label="Appearance">
+                    <span class="cel-nav-tab-icon">
+                        <i class="bi bi-palette"></i>
+                        <span class="cel-nav-tab-pip" title="This section needs attention"></span>
+                    </span>
+                </button>
+                <button class="cel-nav-tab" type="button" role="tab" data-section="advanced"
+                        title="Advanced" aria-label="Advanced">
+                    <span class="cel-nav-tab-icon"><i class="bi bi-gear"></i></span>
+                </button>
+            </div>
+
+            <div class="cel-section-header" data-section="general">
+                <h1>General</h1>
+                <p>The active section's name and description, below the tab strip.</p>
+            </div>
+            <div class="cel-section-header hidden" data-section="appearance">
+                <h1>Appearance</h1>
+                <p>A tab carries a pip when its section has something to look at.</p>
+            </div>
+            <div class="cel-section-header hidden" data-section="advanced">
+                <h1>Advanced</h1>
+                <p>Arrow keys move between tabs once the strip has focus.</p>
+            </div>
+        </div>
+
+        <div id="inspector-scroll">
+            <section class="inspector-section" data-section="general">
+                <p>Each tab is an icon with a tooltip, so the strip stays a fixed width however many
+                    sections a panel has.</p>
+            </section>
+            <section class="inspector-section hidden" data-section="appearance">
+                <p>Only one section shows at a time, which keeps a deep panel navigable without
+                    scroll-hunting through collapsed cards.</p>
+            </section>
+            <section class="inspector-section hidden" data-section="advanced">
+                <p>The selected section is worth persisting as view state, so it survives a reload.</p>
+            </section>
+        </div>
+    </div>
+
+    <!-- Illustrates the shared .cel-rail component: an inspector rail down the right edge, with the settings
+         toggle pinned at the top and icon-only action buttons below it. -->
+    <div class="cel-rail cel-rail-right">
+        <button id="inspector-toggle" class="cel-rail-button" type="button" title="Inspector" aria-label="Inspector">
+            <i class="bi bi-sliders"></i>
+            <span class="cel-rail-pip"></span>
+        </button>
+        <div class="cel-rail-separator"></div>
+        <button class="cel-rail-button" type="button" title="Run" aria-label="Run">
+            <i class="bi bi-play-fill"></i>
+        </button>
+        <button class="cel-rail-button" type="button" title="Stop" aria-label="Stop">
+            <i class="bi bi-stop-fill"></i>
+        </button>
+    </div>
     </div>
 
     <script type="module" src="js/utility-demo.js"></script>

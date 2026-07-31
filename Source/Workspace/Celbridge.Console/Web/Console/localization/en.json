@@ -7,7 +7,6 @@
 
     "Console_Settings_Title": "Settings",
     "Console_Settings_Heading": "Console Settings",
-    "Console_Settings_Subtitle": "Configure how this console launches and what it runs.",
     "Console_Reopen": "Reopen Console",
     "Console_ReopenSession": "Reopen Console",
     "Console_Reopen_Tooltip": "Close and reopen the console session.",
@@ -19,9 +18,10 @@
     "Console_InvalidConfig": "Invalid .console configuration.",
 
     "Console_Group_Session": "Session",
-    "Console_Group_Environment": "Environment",
-    "Console_Group_Runners": "Script Runners",
-    "Console_Group_Shortcuts": "Shortcuts",
+    "Console_Group_Automation": "Automation",
+
+    "Console_Desc_Session": "Choose what this console launches, the environment it launches into, and what it runs on open.",
+    "Console_Desc_Automation": "Ways to run a command in this console, keyed on a file extension or a button press.",
 
     "Console_Field_Type": "Type",
     "Console_Field_Executable": "Executable",
@@ -29,8 +29,8 @@
     "Console_Field_Arguments": "Arguments",
     "Console_Field_Dependencies": "Dependencies",
     "Console_Field_WorkingDirectory": "Working Directory",
-    "Console_Field_StartupScript": "Startup Script",
     "Console_Field_Environment": "Environment Variables",
+    "Console_Field_StartupScript": "Startup Script",
     "Console_Field_Runners": "Script Runners",
     "Console_Field_Shortcuts": "Shortcuts",
 
@@ -55,5 +55,5 @@
     "Console_Hint_StartupScript": "Runs each time the console opens, once it is ready. Example: import numpy as np",
     "Console_Hint_Environment": "Injected before launch, one per line. Example: PYTHONWARNINGS=default",
     "Console_Hint_Runners": "Run a file in this console; {script_path} is the file path. Example: .py, .ipy = %run \"{script_path}\"",
-    "Console_Hint_Shortcuts": "Toolbar button that types text; icon is a Bootstrap name. Example: Run tests | bs-play-fill | pytest -q"
+    "Console_Hint_Shortcuts": "Rail button that types text; the label is its tooltip and the icon is a Bootstrap name. Example: Run tests | bs-play-fill | pytest -q"
 }

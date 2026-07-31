@@ -270,6 +270,194 @@ hr {
     background: var(--cel-accent);
 }
 
+/* Navigation tab strip for a panel whose content divides into sections, mirroring the native settings panels
+   (ProjectSettingsPanel.xaml): a row of icon tabs, each over an accent underline slot, above the active
+   section's name and description. Use as:
+     <div class="cel-nav-tabs">
+       <div class="cel-nav-tab-strip" role="tablist">
+         <button class="cel-nav-tab" type="button" role="tab" data-section="session" aria-selected="true"
+                 title="Session">
+           <span class="cel-nav-tab-icon"><i class="bi bi-terminal"></i></span>
+         </button>
+         ...
+       </div>
+       <div class="cel-section-header"><h1>Session</h1><p>What this section covers.</p></div>
+     </div>
+   Drive the selection with attachNavTabs() from ui/nav-tabs.js, which owns aria-selected and the arrow-key
+   navigation. Each tab carries an icon and a tooltip rather than a text label, so the strip stays a fixed
+   width; the section name below it is what names the selection. */
+.cel-nav-tabs {
+    flex: 0 0 auto;
+    padding: 6px 12px 8px;
+    border-bottom: 1px solid var(--cel-divider);
+}
+
+.cel-nav-tab-strip {
+    display: flex;
+    gap: 4px;
+}
+
+/* A bare hit target: the underline is the only selection visual, matching the native strip, which has no
+   hover or pressed state either. */
+.cel-nav-tab {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--cel-text-primary);
+    cursor: pointer;
+}
+
+.cel-nav-tab:hover {
+    background: transparent;
+}
+
+.cel-nav-tab:focus-visible {
+    outline: 1px solid var(--cel-accent);
+    outline-offset: 1px;
+}
+
+.cel-nav-tab-icon {
+    position: relative;
+    display: block;
+    padding: 2px 10px 0;
+    font-size: var(--cel-icon-size-medium);
+    line-height: 1;
+}
+
+/* The underline slot is always present, so selecting a tab shows the bar without shifting the icons. */
+.cel-nav-tab::after {
+    content: "";
+    height: 2px;
+    margin-top: 5px;
+    border-radius: 1px;
+    background: transparent;
+}
+
+.cel-nav-tab[aria-selected="true"]::after {
+    background: var(--cel-accent);
+}
+
+/* Reports that this tab's section has something to look at; the detail belongs in the section itself. Place
+   it inside .cel-nav-tab-icon. */
+.cel-nav-tab-pip {
+    position: absolute;
+    top: -1px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cel-caution);
+}
+
+/* The active section's name and description. Usable on its own for a panel with no tab strip. */
+.cel-section-header {
+    margin: 6px 0 0 2px;
+}
+
+.cel-section-header h1 {
+    margin: 0 0 2px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.cel-section-header p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--cel-text-secondary);
+}
+
+/* Vertical icon rail, mirroring the workspace utility rail (UtilityPanel.xaml and UtilityButton.xaml): a
+   fixed-width strip of icon cells with a hover fill, an edge capsule marking the surface on screen, and
+   hairline separators between groups. An editor uses it as an inspector rail down the right of its content,
+   with .cel-rail-right moving the border and the capsules to that edge:
+     <div class="cel-rail cel-rail-right">
+       <button class="cel-rail-button selected" type="button" title="Settings">
+         <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>
+       </button>
+       <div class="cel-rail-separator"></div>
+       <button class="cel-rail-button" type="button" title="Run tests"><i class="bi bi-play-fill"></i></button>
+     </div>
+   Add `selected` to the button whose surface is showing. Unlike the workspace rail, whose capsule dims while
+   its panel is unfocused, an editor rail's capsule stays accent for as long as the surface is open: with
+   several rails and panels on screen at once, "this panel is open" is the more useful signal. */
+.cel-rail {
+    flex: 0 0 var(--cel-rail-width);
+    display: flex;
+    flex-direction: column;
+    width: var(--cel-rail-width);
+    background: var(--cel-panel-bg);
+    border-right: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-rail-right {
+    border-right: none;
+    border-left: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-rail-separator {
+    flex: 0 0 auto;
+    height: 1px;
+    margin: 4px 8px;
+    background: var(--cel-divider);
+}
+
+.cel-rail-button {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--cel-rail-item-size);
+    padding: 0;
+    font-size: var(--cel-icon-size-large);
+    line-height: 1;
+    background: transparent;
+    border: none;
+    border-radius: var(--cel-radius-control);
+    color: var(--cel-text-primary);
+    cursor: pointer;
+}
+
+.cel-rail-button:hover {
+    background: var(--cel-control-hover-bg);
+}
+
+/* Tall capsule on the rail's outer edge, inset evenly from the top and bottom of the cell. */
+.cel-rail-button::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: 3px;
+    border-radius: 1.5px;
+    background: var(--cel-accent);
+    opacity: 0;
+}
+
+.cel-rail-right .cel-rail-button::before {
+    left: auto;
+    right: 2px;
+}
+
+.cel-rail-button.selected::before {
+    opacity: 1;
+}
+
+/* Caution pip on the glyph's corner, positioned off the centred 22px icon box the way the native rail
+   button's pip is. */
+.cel-rail-pip {
+    position: absolute;
+    top: 10px;
+    right: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cel-caution);
+}
+
 /* Pinned action footer for a settings-style panel: a top divider (over the panel background, which the
    native panels' footer also relies on) above a secondary-text caption and an action button that is capped
    and centred rather than full-width. Pair it with a scrolling body -- a flex-column parent whose body is

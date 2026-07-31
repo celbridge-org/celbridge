@@ -19,14 +19,6 @@
 </head>
 <body>
     <div id="app">
-        <div id="toolbar">
-            <div id="shortcut-toolbar" class="hidden"></div>
-            <button id="settings-toggle" class="cel-icon-button" type="button" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
-                <i class="bi bi-gear"></i>
-                <span id="pip" class="pip hidden"></span>
-            </button>
-        </div>
-
         <div id="content">
             <div id="terminal-view">
                 <div id="terminal"></div>
@@ -44,16 +36,37 @@
             <div id="splitter" class="cel-splitter hidden"></div>
 
             <div id="settings-view" class="hidden">
-                <div class="settings-header">
-                    <h1 data-loc-key="Console_Settings_Heading"></h1>
-                    <p class="settings-subtitle" data-loc-key="Console_Settings_Subtitle"></p>
+                <div class="settings-title" data-loc-key="Console_Settings_Heading"></div>
+
+                <div class="cel-nav-tabs">
+                    <div id="settings-tabs" class="cel-nav-tab-strip" role="tablist">
+                        <button class="cel-nav-tab" type="button" role="tab" data-section="session" aria-selected="true"
+                                data-loc-key="Console_Group_Session" data-loc-attr="title,aria-label">
+                            <span class="cel-nav-tab-icon"><i class="bi bi-terminal"></i></span>
+                        </button>
+                        <button class="cel-nav-tab" type="button" role="tab" data-section="automation"
+                                data-loc-key="Console_Group_Automation" data-loc-attr="title,aria-label">
+                            <span class="cel-nav-tab-icon"><i class="bi bi-lightning-charge"></i></span>
+                        </button>
+                    </div>
+
+                    <!-- One header per section, all present with the active one shown, mirroring how the
+                         native settings panel toggles between its section views. -->
+                    <div class="cel-section-header" data-section="session">
+                        <h1 data-loc-key="Console_Group_Session"></h1>
+                        <p data-loc-key="Console_Desc_Session"></p>
+                    </div>
+                    <div class="cel-section-header hidden" data-section="automation">
+                        <h1 data-loc-key="Console_Group_Automation"></h1>
+                        <p data-loc-key="Console_Desc_Automation"></p>
+                    </div>
+
                     <div id="config-error" class="config-error hidden"></div>
                 </div>
+
                 <div id="settings-scroll" class="settings-scroll">
 
-                <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Session"></summary>
-                    <div class="cel-expander-body">
+                    <section class="settings-section" data-section="session">
                         <label class="field">
                             <span class="field-label" data-loc-key="Console_Field_Type"></span>
                             <select id="session-type">
@@ -93,45 +106,33 @@
                         </label>
 
                         <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_StartupScript"></span>
-                            <textarea id="startup-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_StartupScript" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_StartupScript"></span>
-                        </label>
-                    </div>
-                </details>
-
-                <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Environment"></summary>
-                    <div class="cel-expander-body">
-                        <label class="field">
                             <span class="field-label" data-loc-key="Console_Field_Environment"></span>
                             <textarea id="environment" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Environment" data-loc-attr="placeholder"></textarea>
                             <span class="field-hint" data-loc-key="Console_Hint_Environment"></span>
                         </label>
-                    </div>
-                </details>
 
-                <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Runners"></summary>
-                    <div class="cel-expander-body">
+                        <label class="field">
+                            <span class="field-label" data-loc-key="Console_Field_StartupScript"></span>
+                            <textarea id="startup-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_StartupScript" data-loc-attr="placeholder"></textarea>
+                            <span class="field-hint" data-loc-key="Console_Hint_StartupScript"></span>
+                        </label>
+                    </section>
+
+                    <!-- Every way of getting a command into this console: keyed on a file extension, or on a
+                         button press. -->
+                    <section class="settings-section hidden" data-section="automation">
                         <label class="field">
                             <span class="field-label" data-loc-key="Console_Field_Runners"></span>
-                            <textarea id="runners" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Runners" data-loc-attr="placeholder"></textarea>
+                            <textarea id="runners" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Runners" data-loc-attr="placeholder"></textarea>
                             <span class="field-hint" data-loc-key="Console_Hint_Runners"></span>
                         </label>
-                    </div>
-                </details>
 
-                <details class="cel-expander">
-                    <summary data-loc-key="Console_Group_Shortcuts"></summary>
-                    <div class="cel-expander-body">
                         <label class="field">
                             <span class="field-label" data-loc-key="Console_Field_Shortcuts"></span>
-                            <textarea id="shortcuts" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Shortcuts" data-loc-attr="placeholder"></textarea>
+                            <textarea id="shortcuts" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Shortcuts" data-loc-attr="placeholder"></textarea>
                             <span class="field-hint" data-loc-key="Console_Hint_Shortcuts"></span>
                         </label>
-                    </div>
-                </details>
+                    </section>
 
                 </div>
                 <div class="cel-panel-footer">
@@ -139,6 +140,17 @@
                     <button id="reopen-settings" type="button" data-loc-key="Console_ReopenSession" data-loc-title="Console_Reopen_Tooltip"></button>
                 </div>
             </div>
+        </div>
+
+        <!-- Inspector rail: the settings toggle sits above the shortcut buttons, so its position stays fixed
+             as the user adds and removes shortcuts from the panel that button opens. -->
+        <div class="cel-rail cel-rail-right">
+            <button id="settings-toggle" class="cel-rail-button" type="button" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
+                <i class="bi bi-sliders"></i>
+                <span id="pip" class="cel-rail-pip hidden"></span>
+            </button>
+            <div id="shortcut-separator" class="cel-rail-separator hidden"></div>
+            <div id="shortcut-rail"></div>
         </div>
     </div>
 
