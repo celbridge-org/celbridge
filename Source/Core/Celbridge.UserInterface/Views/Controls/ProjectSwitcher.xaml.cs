@@ -15,7 +15,7 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private MainMenuViewModel? _recentProjectsViewModel;
+    private ApplicationMenuViewModel? _applicationMenuViewModel;
 
     public ProjectSwitcherViewModel ViewModel { get; }
 
@@ -37,8 +37,7 @@ public sealed partial class ProjectSwitcher : UserControl
     {
         ViewModel.OnLoaded();
 
-        // The switcher reuses the main menu view model for the recent-projects list and open logic.
-        _recentProjectsViewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+        _applicationMenuViewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
         RecentProjectsFlyout.Opening += OnRecentProjectsFlyoutOpening;
 
         ApplyTooltips();
@@ -66,7 +65,7 @@ public sealed partial class ProjectSwitcher : UserControl
             RecentProjectsFlyout.Items.RemoveAt(StaticFlyoutItemCount);
         }
 
-        var viewModel = _recentProjectsViewModel;
+        var viewModel = _applicationMenuViewModel;
         if (viewModel is null)
         {
             return;
@@ -120,13 +119,13 @@ public sealed partial class ProjectSwitcher : UserControl
     {
         // The button handles the pointer, so the row's own click never runs and the flyout stays open.
         RecentProjectsFlyout.Hide();
-        _recentProjectsViewModel?.ReloadProject();
+        _applicationMenuViewModel?.ReloadProject();
     }
 
     private void ShowCurrentProject(object sender, RoutedEventArgs e)
     {
         RecentProjectsFlyout.Hide();
-        _recentProjectsViewModel?.ShowProject();
+        _applicationMenuViewModel?.ShowProject();
     }
 
     private void RecentProjectsButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -139,7 +138,7 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private async void OpenRecentProjectFromSwitcher(string projectFilePath)
     {
-        if (_recentProjectsViewModel is null)
+        if (_applicationMenuViewModel is null)
         {
             return;
         }
@@ -148,7 +147,7 @@ public sealed partial class ProjectSwitcher : UserControl
         // crash on the UI thread.
         try
         {
-            await _recentProjectsViewModel.OpenRecentProjectAsync(projectFilePath);
+            await _applicationMenuViewModel.OpenRecentProjectAsync(projectFilePath);
         }
         catch (Exception ex)
         {

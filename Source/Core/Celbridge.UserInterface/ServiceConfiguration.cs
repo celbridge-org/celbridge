@@ -74,7 +74,7 @@ public static class ServiceConfiguration
         services.AddTransient<TitleBarViewModel>();
         services.AddTransient<NavigationToolbarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
-        services.AddTransient<MainMenuViewModel>();
+        services.AddTransient<ApplicationMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();
         services.AddTransient<ConfirmationDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();

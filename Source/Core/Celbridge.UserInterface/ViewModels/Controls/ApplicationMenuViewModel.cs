@@ -8,9 +8,10 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
 /// <summary>
-/// ViewModel for the MainMenu control, handling project operations and application exit.
+/// Shared view model for the application-level menu commands: project operations, the recent projects
+/// list, application logs, settings and exit.
 /// </summary>
-public partial class MainMenuViewModel : ObservableObject
+public partial class ApplicationMenuViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -24,7 +25,7 @@ public partial class MainMenuViewModel : ObservableObject
     [ObservableProperty]
     private bool _isWorkspaceLoaded;
 
-    public MainMenuViewModel(
+    public ApplicationMenuViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
         INavigationService navigationService,

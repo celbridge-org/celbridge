@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// Defines and installs Celbridge's native macOS menubar. Mirrors the in-window hamburger menu's project
-/// commands (dispatched to the same MainMenuViewModel) and adds the standard App, Edit, and Window menus
+/// commands (dispatched to the same ApplicationMenuViewModel) and adds the standard App, Edit, and Window menus
 /// macOS users expect. macOS-only. Call once at startup on the UI thread.
 /// </summary>
 internal static class MacOSMainMenu
@@ -151,7 +151,7 @@ internal static class MacOSMainMenu
     private static IReadOnlyList<MacMenuItem> BuildRecentProjectItems()
     {
         var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        var viewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+        var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
         var recentProjects = viewModel.GetRecentProjects();
 
         _recentProjectPaths.Clear();
@@ -231,7 +231,7 @@ internal static class MacOSMainMenu
 
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
         // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
-        var viewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
+        var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
 
         // Recent project items carry generated tags above the fixed range. Open the project they map to.
         if (tag >= TagRecentProjectBase)
