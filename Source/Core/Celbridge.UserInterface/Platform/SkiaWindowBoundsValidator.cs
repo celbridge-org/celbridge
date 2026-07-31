@@ -10,8 +10,6 @@ namespace Celbridge.UserInterface.Platform;
 /// </summary>
 public sealed class SkiaWindowBoundsValidator : IWindowBoundsValidator
 {
-    private const int TitleBarHeight = 40;
-
     private readonly ILogger<SkiaWindowBoundsValidator> _logger;
 
     public SkiaWindowBoundsValidator(ILogger<SkiaWindowBoundsValidator> logger)
@@ -38,13 +36,7 @@ public sealed class SkiaWindowBoundsValidator : IWindowBoundsValidator
         // both point space and pixel space. A hit in either accepts the restore, which keeps the unit
         // ambiguity from silently rejecting a valid placement. The values are logged so the
         // interpretation can be tightened once confirmed on device.
-        var titleBarRect = new RectInt32
-        {
-            X = windowBounds.X,
-            Y = windowBounds.Y,
-            Width = windowBounds.Width,
-            Height = TitleBarHeight
-        };
+        var titleBarRect = WindowPlacementPolicy.GetTitleBarStrip(windowBounds);
 
         // The flip from a bottom-left to a top-left origin is relative to the primary display (the one
         // whose origin is at 0,0), falling back to the first screen.
@@ -89,8 +81,8 @@ public sealed class SkiaWindowBoundsValidator : IWindowBoundsValidator
                 pixelRect.X, pixelRect.Y, pixelRect.Width, pixelRect.Height,
                 scale);
 
-            if (titleBarRect.IntersectsWith(pointRect)
-                || titleBarRect.IntersectsWith(pixelRect))
+            if (WindowPlacementPolicy.IsTitleBarUsable(titleBarRect, pointRect)
+                || WindowPlacementPolicy.IsTitleBarUsable(titleBarRect, pixelRect))
             {
                 return true;
             }

@@ -45,5 +45,9 @@
     <EmbeddedResource Include="Assets\Fonts\**\*.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>
 
