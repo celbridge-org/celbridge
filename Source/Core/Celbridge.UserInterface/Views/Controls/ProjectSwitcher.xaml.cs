@@ -1,13 +1,13 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Navigation;
 using Celbridge.Platform;
-using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
-public sealed partial class PageNavigationToolbar : UserControl
+public sealed partial class ProjectSwitcher : UserControl
 {
     // The current-project row and its separator are declared in XAML and kept across rebuilds; every item
     // after them is a recent project and is rebuilt each time the flyout opens.
@@ -15,41 +15,29 @@ public sealed partial class PageNavigationToolbar : UserControl
 
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private MainMenu? _mainMenu;
     private MainMenuViewModel? _recentProjectsViewModel;
 
-    public PageNavigationToolbarViewModel ViewModel { get; }
+    public ProjectSwitcherViewModel ViewModel { get; }
 
-    public PageNavigationToolbar()
+    public ProjectSwitcher()
     {
         this.InitializeComponent();
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        ViewModel = ServiceLocator.AcquireService<PageNavigationToolbarViewModel>();
+        ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
 
         this.DataContext = ViewModel;
 
-        Loaded += OnPageNavigationToolbar_Loaded;
-        Unloaded += OnPageNavigationToolbar_Unloaded;
+        Loaded += OnProjectSwitcher_Loaded;
+        Unloaded += OnProjectSwitcher_Unloaded;
     }
 
-    private void OnPageNavigationToolbar_Loaded(object sender, RoutedEventArgs e)
+    private void OnProjectSwitcher_Loaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnLoaded();
 
-        // macOS surfaces these commands through the native menubar, so the in-window hamburger menu is
-        // shown only on platforms without one (Windows, Linux).
-        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-        if (!platformInfo.UsesNativeMenuBar)
-        {
-            _mainMenu = new MainMenu(MainMenuFlyout);
-            _mainMenu.OnLoaded();
-            MainMenuButton.Visibility = Visibility.Visible;
-        }
-
-        // The Workspace button's switcher reuses the main menu view model for the recent-projects list and open
-        // logic. It is available on every platform, not only those without a native menu bar.
+        // The switcher reuses the main menu view model for the recent-projects list and open logic.
         _recentProjectsViewModel = ServiceLocator.AcquireService<MainMenuViewModel>();
         RecentProjectsFlyout.Opening += OnRecentProjectsFlyoutOpening;
 
@@ -59,16 +47,14 @@ public sealed partial class PageNavigationToolbar : UserControl
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
     }
 
-    private void OnPageNavigationToolbar_Unloaded(object sender, RoutedEventArgs e)
+    private void OnProjectSwitcher_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnUnloaded();
 
-        _mainMenu?.OnUnloaded();
-
         RecentProjectsFlyout.Opening -= OnRecentProjectsFlyoutOpening;
 
-        Loaded -= OnPageNavigationToolbar_Loaded;
-        Unloaded -= OnPageNavigationToolbar_Unloaded;
+        Loaded -= OnProjectSwitcher_Loaded;
+        Unloaded -= OnProjectSwitcher_Unloaded;
 
         _messengerService.UnregisterAll(this);
     }
@@ -158,26 +144,21 @@ public sealed partial class PageNavigationToolbar : UserControl
             return;
         }
 
-        // async void: observe exceptions so a failed open (e.g. the project moved or was deleted) cannot crash
-        // on the UI thread.
+        // async void: observe exceptions so a failed open (e.g. the recent project moved or was deleted) cannot
+        // crash on the UI thread.
         try
         {
             await _recentProjectsViewModel.OpenRecentProjectAsync(projectFilePath);
         }
         catch (Exception ex)
         {
-            var logger = ServiceLocator.AcquireService<Logging.ILogger<PageNavigationToolbar>>();
+            var logger = ServiceLocator.AcquireService<Logging.ILogger<ProjectSwitcher>>();
             logger.LogError(ex, "Failed to open recent project from the switcher");
         }
     }
 
     private void ApplyTooltips()
     {
-        var mainMenuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
-        ToolTipService.SetToolTip(MainMenuButton, mainMenuTooltip);
-        ToolTipService.SetPlacement(MainMenuButton, PlacementMode.Bottom);
-        AutomationProperties.SetName(MainMenuButton, mainMenuTooltip);
-
         // The switcher chevron carries only an icon, so give it a tooltip and an accessible name.
         var recentProjectsTooltip = _stringLocalizer.GetString("MainMenu_OpenRecent");
         ToolTipService.SetToolTip(RecentProjectsButton, recentProjectsTooltip);
@@ -194,17 +175,6 @@ public sealed partial class PageNavigationToolbar : UserControl
         ToolTipService.SetToolTip(ShowProjectButton, showProjectTooltip);
         AutomationProperties.SetName(ShowProjectButton, showProjectTooltip);
 
-        // Home and Community carry only an icon in their Content, so give assistive technology an explicit name.
-        var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
-        ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
-        ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
-        AutomationProperties.SetName(HomeNavItem, homeTooltip);
-
-        var communityTooltip = _stringLocalizer.GetString("TitleBar_CommunityTooltip");
-        ToolTipService.SetToolTip(CommunityNavItem, communityTooltip);
-        ToolTipService.SetPlacement(CommunityNavItem, PlacementMode.Bottom);
-        AutomationProperties.SetName(CommunityNavItem, communityTooltip);
-
         UpdateWorkspaceTooltip();
     }
 
@@ -220,69 +190,27 @@ public sealed partial class PageNavigationToolbar : UserControl
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        UpdateNavigationSelection(ApplicationPage.Workspace);
+        UpdateActiveIndicator(ApplicationPage.Workspace);
         UpdateWorkspaceTooltip();
     }
 
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
     {
-        UpdateNavigationSelection(message.ActivePage);
+        UpdateActiveIndicator(message.ActivePage);
     }
 
-    private void UpdateNavigationSelection(ApplicationPage activePage)
+    private void UpdateActiveIndicator(ApplicationPage activePage)
     {
-        PageNavigation.SelectionChanged -= PageNavigation_SelectionChanged;
-
-        // The Workspace button is custom, so drive its active underline directly from the active page.
+        // The switcher is a custom button rather than a nav item, so its active underline is driven directly
+        // from the active page.
         WorkspaceActiveIndicator.Visibility = activePage == ApplicationPage.Workspace
             ? Visibility.Visible
             : Visibility.Collapsed;
-
-        try
-        {
-            switch (activePage)
-            {
-                case ApplicationPage.Home:
-                    PageNavigation.SelectedItem = HomeNavItem;
-                    break;
-                case ApplicationPage.Community:
-                    PageNavigation.SelectedItem = CommunityNavItem;
-                    break;
-                case ApplicationPage.Workspace:
-                    // The Workspace button is custom, not a nav item, so no menu item is selected here.
-                    PageNavigation.SelectedItem = null;
-                    break;
-                case ApplicationPage.Settings:
-                    PageNavigation.SelectedItem = null;
-                    break;
-                default:
-                    PageNavigation.SelectedItem = null;
-                    break;
-            }
-        }
-        finally
-        {
-            PageNavigation.SelectionChanged += PageNavigation_SelectionChanged;
-        }
-    }
-
-    private void PageNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
-    {
-        if (args.SelectedItem is NavigationViewItem selectedItem)
-        {
-            var tag = selectedItem.Tag?.ToString();
-            if (string.IsNullOrEmpty(tag))
-            {
-                return;
-            }
-
-            ViewModel.NavigateToPage(tag);
-        }
     }
 
     private void WorkspaceButton_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.NavigateToPage("Workspace");
+        ViewModel.NavigateToWorkspace();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspacePageLoaded)

@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
-public partial class PageNavigationToolbarViewModel : ObservableObject
+public partial class ProjectSwitcherViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly INavigationService _navigationService;
@@ -19,7 +19,7 @@ public partial class PageNavigationToolbarViewModel : ObservableObject
 
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
 
-    public PageNavigationToolbarViewModel(
+    public ProjectSwitcherViewModel(
         IMessengerService messengerService,
         INavigationService navigationService,
         IWorkspaceWrapper workspaceWrapper,
@@ -70,8 +70,8 @@ public partial class PageNavigationToolbarViewModel : ObservableObject
         }
     }
 
-    public void NavigateToPage(string tag)
+    public void NavigateToWorkspace()
     {
-        _navigationService.NavigateToPage(tag);
+        _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag);
     }
 }

@@ -58,7 +58,7 @@ public sealed partial class ApplicationToolbar : UserControl
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         LayoutToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
-        PageNavigationToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
+        NavigationToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
         SettingsButton.SizeChanged += OnInteractiveElement_SizeChanged;
 
         // A host that derives window-chrome regions from the toolbar (the Windows TitleBar wrapper)
@@ -74,7 +74,7 @@ public sealed partial class ApplicationToolbar : UserControl
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
-        PageNavigationToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
+        NavigationToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         SettingsButton.SizeChanged -= OnInteractiveElement_SizeChanged;
         this.LayoutUpdated -= OnApplicationToolbar_LayoutUpdated;
 
@@ -98,9 +98,9 @@ public sealed partial class ApplicationToolbar : UserControl
     {
         var elements = new List<FrameworkElement>();
 
-        if (PageNavigationToolbar.ActualWidth > 0)
+        if (NavigationToolbar.ActualWidth > 0)
         {
-            elements.Add(PageNavigationToolbar);
+            elements.Add(NavigationToolbar);
         }
 
         if (ViewModel.IsWorkspaceActive
