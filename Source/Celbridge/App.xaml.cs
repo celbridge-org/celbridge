@@ -26,6 +26,9 @@ public partial class App : Application
         this.InitializeComponent();
     }
 
+    // Log files from previous runs kept on disk. Each run writes one file, so this is a count of runs.
+    private const int RetainedLogFileCount = 50;
+
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
@@ -361,6 +364,7 @@ public partial class App : Application
     /// <summary>
     /// Set an environment variable for where the application log file should be created.
     /// This allows us to easily share the value with both NLog and with Python host child processes.
+    /// Also deletes the oldest log files, since each run adds one.
     /// </summary>
     private static void SetupLoggingEnvironment()
     {
@@ -373,10 +377,13 @@ public partial class App : Application
         var processStartTime = System.Diagnostics.Process.GetCurrentProcess().StartTime;
         var timestamp = processStartTime.ToString("yyyyMMdd_HHmmss");
 
+        var logFolderPath = System.IO.Path.Combine(localDataPath, "Logs");
         var logFileName = $"celbridge_{timestamp}.log";
-        var logFilePath = System.IO.Path.Combine(localDataPath, "Logs", logFileName);
+        var logFilePath = System.IO.Path.Combine(logFolderPath, logFileName);
 
         Environment.SetEnvironmentVariable("CELBRIDGE_LOG_FILE", logFilePath);
+
+        Celbridge.Logging.LogFileRetention.DeleteOldLogFiles(logFolderPath, logFilePath, RetainedLogFileCount);
     }
 }
 
