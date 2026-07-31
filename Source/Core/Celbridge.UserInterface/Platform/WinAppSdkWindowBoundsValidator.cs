@@ -10,8 +10,6 @@ namespace Celbridge.UserInterface.Platform;
 /// </summary>
 public sealed class WinAppSdkWindowBoundsValidator : IWindowBoundsValidator
 {
-    private const int TitleBarHeight = 40;
-
     private readonly ILogger<WinAppSdkWindowBoundsValidator> _logger;
 
     public WinAppSdkWindowBoundsValidator(ILogger<WinAppSdkWindowBoundsValidator> logger)
@@ -23,13 +21,7 @@ public sealed class WinAppSdkWindowBoundsValidator : IWindowBoundsValidator
     {
         try
         {
-            var titleBarRect = new RectInt32
-            {
-                X = windowBounds.X,
-                Y = windowBounds.Y,
-                Width = windowBounds.Width,
-                Height = TitleBarHeight
-            };
+            var titleBarRect = WindowPlacementPolicy.GetTitleBarStrip(windowBounds);
 
             var displayAreas = DisplayArea.FindAll();
             if (displayAreas == null || displayAreas.Count == 0)
@@ -47,7 +39,7 @@ public sealed class WinAppSdkWindowBoundsValidator : IWindowBoundsValidator
                     continue;
                 }
 
-                if (titleBarRect.IntersectsWith(displayArea.WorkArea))
+                if (WindowPlacementPolicy.IsTitleBarUsable(titleBarRect, displayArea.WorkArea))
                 {
                     return true;
                 }
