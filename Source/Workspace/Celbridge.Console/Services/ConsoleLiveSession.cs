@@ -12,10 +12,11 @@ namespace Celbridge.Console.Services;
 /// </summary>
 internal sealed class ConsoleLiveSession : IDisposable
 {
-    // Prefixes the ready marker the injected command echoes once it has cleared the screen. The random
+    // Prefixes the ready marker the injected command emits once it has cleared the screen. The random
     // per-launch suffix guards against a stale marker from a previous launch arriving late on the old
-    // pty's stream. What stops the shell's own echo of the injected line matching is the literal split in
-    // ShellCommandComposer, not this suffix.
+    // pty's stream. What stops the shell's own echo of the injected line matching is that the marker's
+    // source text differs from its output (an escape sequence on POSIX, a split literal on PowerShell),
+    // not this suffix.
     private const string ReadyMarkerPrefix = "CELBRIDGE-CONSOLE-READY-";
 
     // How long after injection the marker scan keeps going before giving up and buffering raw output.
@@ -36,6 +37,7 @@ internal sealed class ConsoleLiveSession : IDisposable
 
     private ITerminal? _terminal;
     private StartupInjector? _startupInjector;
+    private List<string>? _deferredInjectionLines;
     private Timer? _markerTimeout;
     private int? _trackedProcessId;
     private bool _disposed;
@@ -193,7 +195,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         var startupInvocation = invocationResult.Value;
 
         // Every session runs the platform shell; the session type only decides what is injected into it.
-        // The injected line clears the shell-startup noise and echoes the ready marker, so the buffer
+        // The injected line clears the shell-startup noise and emits the ready marker, so the buffer
         // begins on a clean screen.
         var shell = ConsoleShell.Resolve();
         var shellCommandLine = new CommandLineBuilder(shell.Executable).ToString();
@@ -204,11 +206,12 @@ internal sealed class ConsoleLiveSession : IDisposable
             readyMarker = ReadyMarkerPrefix + Guid.NewGuid().ToString("N").Substring(0, 8);
         }
 
-        var injectedCommandLine = ShellCommandComposer.Compose(shell.Family, startupInvocation, readyMarker);
-        var hasStartupInvocation = !string.IsNullOrEmpty(injectedCommandLine);
+        var composedStartup = ShellCommandComposer.Compose(shell.Family, startupInvocation, readyMarker);
+        var injectedCommandLine = composedStartup.Line;
+        var hasInjectedLine = !string.IsNullOrEmpty(injectedCommandLine);
 
         var injectedLines = new List<string>();
-        if (hasStartupInvocation)
+        if (hasInjectedLine)
         {
             injectedLines.Add(injectedCommandLine);
         }
@@ -254,9 +257,9 @@ internal sealed class ConsoleLiveSession : IDisposable
         // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
         // injected lines. The marker scanner keeps the buffer clean of the shell-startup noise.
         _startupInjectionPending = injectedLines.Count > 0;
-        if (readyMarker is not null && hasStartupInvocation)
+        if (composedStartup.ScanMarker is not null)
         {
-            _markerScanner = new StartupMarkerScanner(readyMarker);
+            _markerScanner = new StartupMarkerScanner(composedStartup.ScanMarker);
         }
 
         try
@@ -281,7 +284,25 @@ internal sealed class ConsoleLiveSession : IDisposable
 
         if (injectedLines.Count > 0)
         {
-            _startupInjector = StartupInjector.Begin(terminal, injectedLines, CompleteStartup);
+            // A plain shell's reveal is held until the terminal has a real size, which arrives on the
+            // first resize (at attach). Injecting at the headless guess would draw the revealed prompt at
+            // the wrong width, and zsh's PROMPT_SP fill would leave a stray marker glyph when the view
+            // renders at its own width. A command console injects immediately: its own output takes over
+            // after the marker, so no shell prompt is drawn at the guessed width.
+            var deferUntilSized = string.IsNullOrWhiteSpace(startupInvocation.Executable) &&
+                composedStartup.ScanMarker is not null;
+
+            if (deferUntilSized)
+            {
+                lock (_gateLock)
+                {
+                    _deferredInjectionLines = injectedLines;
+                }
+            }
+            else
+            {
+                _startupInjector = StartupInjector.Begin(terminal, injectedLines, CompleteStartup);
+            }
         }
 
         // Track the child so the workspace-scoped owner tears it down on project close or app crash.
@@ -331,6 +352,22 @@ internal sealed class ConsoleLiveSession : IDisposable
     public void Resize(int cols, int rows)
     {
         _terminal?.SetSize(cols, rows);
+
+        // A deferred reveal waits for this first real size before injecting, so the revealed prompt is
+        // drawn at the width it will be shown at. The resize itself redraws the pre-reveal prompt, which
+        // the marker scan still discards.
+        List<string>? deferredInjectionLines;
+        lock (_gateLock)
+        {
+            deferredInjectionLines = _deferredInjectionLines;
+            _deferredInjectionLines = null;
+        }
+
+        if (deferredInjectionLines is not null &&
+            _terminal is not null)
+        {
+            _startupInjector = StartupInjector.Begin(_terminal, deferredInjectionLines, CompleteStartup);
+        }
     }
 
     public void InjectCommand(string text)
@@ -543,6 +580,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         {
             _startupInjectionPending = false;
             _bufferedInjections.Clear();
+            _deferredInjectionLines = null;
         }
 
         lock (_streamLock)
