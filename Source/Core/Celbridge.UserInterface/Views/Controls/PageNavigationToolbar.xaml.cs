@@ -9,6 +9,10 @@ namespace Celbridge.UserInterface.Views;
 
 public sealed partial class PageNavigationToolbar : UserControl
 {
+    // The current-project row and its separator are declared in XAML and kept across rebuilds; every item
+    // after them is a recent project and is rebuilt each time the flyout opens.
+    private const int StaticFlyoutItemCount = 2;
+
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private MainMenu? _mainMenu;
@@ -71,13 +75,34 @@ public sealed partial class PageNavigationToolbar : UserControl
 
     private void OnRecentProjectsFlyoutOpening(object? sender, object e)
     {
-        RecentProjectsFlyout.Items.Clear();
+        while (RecentProjectsFlyout.Items.Count > StaticFlyoutItemCount)
+        {
+            RecentProjectsFlyout.Items.RemoveAt(StaticFlyoutItemCount);
+        }
 
         var viewModel = _recentProjectsViewModel;
-        var recentProjects = viewModel?.GetRecentProjects();
-        if (viewModel is null ||
-            recentProjects is null ||
-            recentProjects.Count == 0)
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        // GetRecentProjects excludes the open project, so it is never listed twice.
+        var currentProject = viewModel.GetCurrentProject();
+        if (currentProject is null)
+        {
+            CurrentProjectItem.Visibility = Visibility.Collapsed;
+            CurrentProjectSeparator.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            CurrentProjectItem.Text = currentProject.ProjectName;
+            CurrentProjectItem.KeyboardAcceleratorTextOverride = currentProject.ProjectFilePath;
+            CurrentProjectItem.Visibility = Visibility.Visible;
+            CurrentProjectSeparator.Visibility = Visibility.Visible;
+        }
+
+        var recentProjects = viewModel.GetRecentProjects();
+        if (recentProjects.Count == 0)
         {
             var emptyItem = new MenuFlyoutItem
             {
@@ -96,7 +121,6 @@ public sealed partial class PageNavigationToolbar : UserControl
             IsEnabled = false
         };
         RecentProjectsFlyout.Items.Add(headerItem);
-        RecentProjectsFlyout.Items.Add(new MenuFlyoutSeparator());
 
         RecentProjectsMenu.Populate(
             RecentProjectsFlyout.Items,
@@ -104,6 +128,19 @@ public sealed partial class PageNavigationToolbar : UserControl
             OpenRecentProjectFromSwitcher,
             _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
             viewModel.ClearRecentProjects);
+    }
+
+    private void ReloadCurrentProject(object sender, RoutedEventArgs e)
+    {
+        // The button handles the pointer, so the row's own click never runs and the flyout stays open.
+        RecentProjectsFlyout.Hide();
+        _recentProjectsViewModel?.ReloadProject();
+    }
+
+    private void ShowCurrentProject(object sender, RoutedEventArgs e)
+    {
+        RecentProjectsFlyout.Hide();
+        _recentProjectsViewModel?.ShowProject();
     }
 
     private void RecentProjectsButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -146,6 +183,16 @@ public sealed partial class PageNavigationToolbar : UserControl
         ToolTipService.SetToolTip(RecentProjectsButton, recentProjectsTooltip);
         ToolTipService.SetPlacement(RecentProjectsButton, PlacementMode.Bottom);
         AutomationProperties.SetName(RecentProjectsButton, recentProjectsTooltip);
+
+        var reloadProjectTooltip = _stringLocalizer.GetString("MainMenu_ReloadProject");
+        ToolTipService.SetToolTip(ReloadProjectButton, reloadProjectTooltip);
+        AutomationProperties.SetName(ReloadProjectButton, reloadProjectTooltip);
+
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        var fileManagerName = _stringLocalizer.GetString(platformInfo.FileManagerNameStringKey);
+        var showProjectTooltip = _stringLocalizer.GetString("TitleBar_ShowProjectInFileManager", fileManagerName);
+        ToolTipService.SetToolTip(ShowProjectButton, showProjectTooltip);
+        AutomationProperties.SetName(ShowProjectButton, showProjectTooltip);
 
         // Home and Community carry only an icon in their Content, so give assistive technology an explicit name.
         var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");

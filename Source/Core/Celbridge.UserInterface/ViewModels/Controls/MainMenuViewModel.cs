@@ -82,6 +82,11 @@ public partial class MainMenuViewModel : ObservableObject
         _commandService.Execute<IReloadProjectCommand>();
     }
 
+    public void ShowProject()
+    {
+        _commandService.Execute<IShowProjectCommand>();
+    }
+
     public void ShowLogs()
     {
         _commandService.Execute<IShowLogsCommand>();
@@ -115,6 +120,14 @@ public partial class MainMenuViewModel : ObservableObject
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         var mainWindow = userInterfaceService.MainWindow as Window;
         mainWindow?.Close();
+    }
+
+    /// <summary>
+    /// Returns the currently opened project, or null when no project is open.
+    /// </summary>
+    public IProject? GetCurrentProject()
+    {
+        return _projectService.CurrentProject;
     }
 
     /// <summary>
