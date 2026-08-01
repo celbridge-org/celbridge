@@ -83,17 +83,17 @@ describe('parseConsoleToml', () => {
         const toml = [
             '[[session.runner]]',
             'extensions = [".py", ".ipy"]',
-            'command = \'%run "{script_path}"\'',
+            'command = \'%run "{resource}"\'',
             '',
             '[[session.runner]]',
             'extensions = [".sh"]',
-            'command = "bash {script_path}"',
+            'command = "bash {resource}"',
         ].join('\n');
 
         const config = parseConsoleToml(toml);
         expect(config.runners).toEqual([
-            { extensions: ['.py', '.ipy'], command: '%run "{script_path}"' },
-            { extensions: ['.sh'], command: 'bash {script_path}' },
+            { extensions: ['.py', '.ipy'], command: '%run "{resource}"' },
+            { extensions: ['.sh'], command: 'bash {resource}' },
         ]);
     });
 
@@ -237,7 +237,7 @@ describe('serializeConsoleToml', () => {
     it('emits runner and shortcut tables', () => {
         const config = {
             ...defaultConsoleConfig(),
-            runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
+            runners: [{ extensions: ['.py'], command: '%run "{resource}"' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest' }],
         };
         const toml = serializeConsoleToml(config);
@@ -271,7 +271,7 @@ describe('round-trip', () => {
             workingDirectory: 'tools',
             startupScript: 'import numpy as np\n%load_ext autoreload',
             environment: { A: '1', B: 'two words' },
-            runners: [{ extensions: ['.py', '.ipy'], command: '%run "{script_path}"' }],
+            runners: [{ extensions: ['.py', '.ipy'], command: '%run "{resource}"' }],
             triggers: [{ pattern: 'data/**/*.xlsx', command: '%run clean_data.py' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],
         };

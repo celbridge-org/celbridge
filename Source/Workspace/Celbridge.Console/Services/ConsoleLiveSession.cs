@@ -12,6 +12,13 @@ namespace Celbridge.Console.Services;
 /// </summary>
 internal sealed class ConsoleLiveSession : IDisposable
 {
+    // Carriage return, the submit key at a shell or REPL prompt.
+    private const string SubmitKey = "\r";
+
+    // How long after the invocation text the submit key is written. Long enough that a terminal app
+    // grouping a burst of stdin does not take the two for one paste.
+    private const int SubmitKeyDelayMs = 100;
+
     // Prefixes the ready marker the injected command emits once it has cleared the screen. The random
     // per-launch suffix guards against a stale marker from a previous launch arriving late on the old
     // pty's stream. What stops the shell's own echo of the injected line matching is that the marker's
@@ -380,7 +387,7 @@ internal sealed class ConsoleLiveSession : IDisposable
     {
         // Clear any partial input (Ctrl+U, U+0015) before submitting, so the invocation is not concatenated
         // with whatever the user had half-typed at the prompt.
-        var submission = "\u0015" + invocation + "\r";
+        var text = "\u0015" + invocation;
 
         // A programmatic injection during startup queues behind the startup lines rather than racing
         // them, so a Run issued at console open still lands as type-ahead for the starting REPL.
@@ -388,12 +395,37 @@ internal sealed class ConsoleLiveSession : IDisposable
         {
             if (_startupInjectionPending)
             {
-                _bufferedInjections.Add(submission);
+                _bufferedInjections.Add(text);
                 return;
             }
         }
 
-        _terminal?.Write(submission);
+        _ = SubmitAsync(text);
+    }
+
+    // The submit key goes in a write of its own, a beat after the text. A terminal app that groups a
+    // burst of stdin into a single paste reads a carriage return inside that burst as a literal newline
+    // rather than a submit, leaving the invocation unsent at its prompt. Typing by hand does not hit this
+    // because each keystroke arrives as its own write. A shell or REPL is unaffected either way.
+    private async Task SubmitAsync(string text)
+    {
+        try
+        {
+            _terminal?.Write(text);
+
+            await Task.Delay(SubmitKeyDelayMs);
+
+            if (_disposed)
+            {
+                return;
+            }
+
+            _terminal?.Write(SubmitKey);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to submit an invocation to the console session");
+        }
     }
 
     // Ends the startup phase, on the injector's worker once the startup lines have been written: the input
@@ -409,9 +441,9 @@ internal sealed class ConsoleLiveSession : IDisposable
             _bufferedInjections.Clear();
         }
 
-        foreach (var text in bufferedInjections)
+        if (bufferedInjections.Count > 0)
         {
-            _terminal?.Write(text);
+            _ = SubmitBufferedAsync(bufferedInjections);
         }
 
         lock (_streamLock)
@@ -421,6 +453,15 @@ internal sealed class ConsoleLiveSession : IDisposable
             {
                 _markerTimeout = new Timer(_ => AbandonMarkerScan(), null, MarkerTimeoutMs, Timeout.Infinite);
             }
+        }
+    }
+
+    // Awaited in turn so buffered invocations submit in order rather than racing each other.
+    private async Task SubmitBufferedAsync(IReadOnlyList<string> submissions)
+    {
+        foreach (var submission in submissions)
+        {
+            await SubmitAsync(submission);
         }
     }
 

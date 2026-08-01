@@ -132,4 +132,10 @@ public interface IConsoleSessionService
     /// Fails if the session has ended or has lost its client connection.
     /// </summary>
     Result SubmitInvocation(Guid sessionId, string invocation);
+
+    /// <summary>
+    /// Submits an invocation to whichever session a console document is currently running, rather than to
+    /// one specific launch. A resource with no session is ignored.
+    /// </summary>
+    void SubmitInvocation(ResourceKey resource, string invocation);
 }

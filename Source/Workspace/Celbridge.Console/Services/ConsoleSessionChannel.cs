@@ -49,6 +49,11 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         Sessions.Input(_fileResource, data);
     }
 
+    public void OnSubmit(string invocation)
+    {
+        Sessions.SubmitInvocation(_fileResource, invocation);
+    }
+
     public void OnResize(int cols, int rows)
     {
         Sessions.Resize(_fileResource, cols, rows);

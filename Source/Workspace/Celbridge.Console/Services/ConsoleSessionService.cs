@@ -331,7 +331,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             return Result<string>.Fail($"Console '{session.Resource}' has no runner for '{extension}'");
         }
 
-        var invocation = runner.CommandTemplate.Replace("{script_path}", scriptPath);
+        var invocation = ConsoleInvocationTemplate.Substitute(runner.CommandTemplate, scriptPath);
         if (!string.IsNullOrEmpty(arguments))
         {
             invocation += " " + arguments;
@@ -353,6 +353,17 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         session.InjectInvocation(invocation);
 
         return Result.Ok();
+    }
+
+    public void SubmitInvocation(ResourceKey resource, string invocation)
+    {
+        ConsoleLiveSession? session;
+        lock (_sessionsLock)
+        {
+            _sessions.TryGetValue(resource, out session);
+        }
+
+        session?.InjectInvocation(invocation);
     }
 
     // A session that can still accept an invocation. A session that bound a client and then lost it is a
