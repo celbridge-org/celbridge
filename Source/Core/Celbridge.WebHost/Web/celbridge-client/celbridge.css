@@ -210,8 +210,11 @@ hr {
     border-bottom: 1px solid var(--cel-card-border);
 }
 
+/* The expanded content carries its own fill, a shade below the header, so the body reads as belonging to the
+   card rather than floating on the panel behind it. */
 .cel-expander-body {
     padding: 12px;
+    background: var(--cel-expander-content-bg);
 }
 
 /* Splitter: a draggable divider between two flex panes, matching the native WinUI Splitter — a thin base

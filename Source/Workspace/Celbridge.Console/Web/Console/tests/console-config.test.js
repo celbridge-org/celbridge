@@ -2,10 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     splitLines,
     parseEnvironmentLines,
-    parseRunnerLines,
-    formatRunnerLines,
-    parseShortcutLines,
-    formatShortcutLines,
+    parseExtensionList,
     normalizeConfig,
     configsEqual,
     buildStartConfig,
@@ -35,61 +32,17 @@ describe('parseEnvironmentLines', () => {
     });
 });
 
-describe('runner lines', () => {
-    it('parses comma-separated extensions and the command', () => {
-        expect(parseRunnerLines('.py, .ipy = %run "{script_path}"')).toEqual([
-            { extensions: ['.py', '.ipy'], command: '%run "{script_path}"' },
-        ]);
+describe('parseExtensionList', () => {
+    it('splits on commas and trims each extension', () => {
+        expect(parseExtensionList(' .py , .ipy ')).toEqual(['.py', '.ipy']);
     });
 
-    it('skips lines with no extensions or no command', () => {
-        expect(parseRunnerLines('= nothing\n.py =\n\n.sh = bash')).toEqual([
-            { extensions: ['.sh'], command: 'bash' },
-        ]);
+    it('drops empty entries so a trailing comma is harmless', () => {
+        expect(parseExtensionList('.sh,,')).toEqual(['.sh']);
     });
 
-    it('round-trips through format and parse', () => {
-        const runners = [
-            { extensions: ['.py', '.ipy'], command: '%run "{script_path}"' },
-            { extensions: ['.sh'], command: 'bash "{script_path}"' },
-        ];
-        expect(parseRunnerLines(formatRunnerLines(runners))).toEqual(runners);
-    });
-});
-
-describe('shortcut lines', () => {
-    it('parses label | icon | text', () => {
-        expect(parseShortcutLines('Run tests | bs-play-fill | pytest -q')).toEqual([
-            { label: 'Run tests', icon: 'bs-play-fill', text: 'pytest -q' },
-        ]);
-    });
-
-    it('treats a two-part line as label + text with no icon', () => {
-        expect(parseShortcutLines('Clear | clear')).toEqual([
-            { label: 'Clear', icon: '', text: 'clear' },
-        ]);
-    });
-
-    it('keeps pipes and spacing inside the injected text', () => {
-        expect(parseShortcutLines('Pipeline | bs-x | ls -la | grep foo')).toEqual([
-            { label: 'Pipeline', icon: 'bs-x', text: 'ls -la | grep foo' },
-        ]);
-    });
-
-    it('round-trips a shortcut whose text is a shell pipeline', () => {
-        const shortcuts = [{ label: 'Pipeline', icon: 'bs-x', text: 'ls -la | grep foo' }];
-        expect(parseShortcutLines(formatShortcutLines(shortcuts))).toEqual(shortcuts);
-    });
-
-    it('skips lines with neither a label nor injected text', () => {
-        expect(parseShortcutLines(' | | \nKeep | echo')).toEqual([
-            { label: 'Keep', icon: '', text: 'echo' },
-        ]);
-    });
-
-    it('round-trips a fully-specified shortcut', () => {
-        const shortcuts = [{ label: 'Run', icon: 'bs-play', text: 'pytest' }];
-        expect(parseShortcutLines(formatShortcutLines(shortcuts))).toEqual(shortcuts);
+    it('returns an empty array for blank text', () => {
+        expect(parseExtensionList('  ')).toEqual([]);
     });
 });
 

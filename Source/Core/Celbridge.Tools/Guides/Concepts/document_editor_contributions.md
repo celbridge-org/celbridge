@@ -179,7 +179,38 @@ Settings goes above the action buttons, inverting the workspace rail's ordering,
 
 Rail buttons are icon-only with a tooltip, so a button whose action has no natural glyph still needs a fallback icon rather than a text label. Add `selected` to the button whose surface is showing; its accent edge capsule stays lit for as long as that surface is open. This deliberately differs from the workspace utility rail, whose capsule dims while its panel is unfocused — with several rails and panels on screen at once, "this panel is open" is the more useful signal, and an editor's own content usually holds focus anyway. `.cel-rail-right` moves the rail's border and its capsules to the window edge; omit it for a rail on the left.
 
-The console editor is the reference: its shortcut buttons render into the rail above the settings toggle, and its settings panel is a `.cel-nav-tabs` hierarchy.
+The console editor is the reference: its shortcut buttons render into the rail below the settings toggle, and its settings panel is a `.cel-nav-tabs` hierarchy.
+
+### Editing a list of entries
+
+A setting that is a list of records — the console's script runners and shortcuts — is edited as one `.cel-expander` card per entry, matching how the native Packages and Pages panels render their lists. The card header carries just the entry's name; its fields are one expand away, so the header stays scannable. Add and delete controls belong on the list and the card header.
+
+A list whose order is user-visible reorders by dragging a `.card-grip` handle in the header, with Alt+Up / Alt+Down on the focused header as the keyboard equivalent. Do not use move-up / move-down buttons: chevrons read as a second expander control, and clicking one while a card is expanded jumps the layout out from under the user. A drag runs only against a collapsed list. Pressing the handle while any card is open therefore collapses the list and starts no drag; the user presses again to actually drag, and the cards stay collapsed afterwards. The extra press buys an exact grab: collapsing as part of the grab would shorten everything above the grabbed row and slide it out from under the pointer, by as much as a few hundred pixels, and no amount of scroll compensation reliably gets it back — the panel is often already at the top of its scroll range. Splitting the two makes the collapse a visible, understandable step rather than a mysterious offset.
+
+The list then reorders live under the pointer, and Escape (or the browser cancelling the pointer) restores the order it started in.
+
+Collapsing is what makes the live reorder tractable: uniform rows give the list a single row pitch, so the target slot can come from how far the pointer has travelled in whole pitches rather than from hit-testing the rows themselves. That one-way dependency is the important part — a reorder driven by the rows' live positions feeds its own output back into its next input, and the list oscillates as the row you just moved lands back under the cursor. Report the change once on release, not per slot, or every pixel of drag marks the document dirty and re-renders whatever the order drives.
+
+Displaced rows slide to their new positions with a FLIP transition (measure, reorder, invert with a transform, let the transition carry it away), gated on `prefers-reduced-motion`. The before-positions are measured live, so a row interrupted mid-slide continues from where it visually is. The dragged row is excluded from both the slide and its transition, and instead carries a transform of the pointer delta minus the pitches its slot has already absorbed — so it stays under the pointer while the rows snap around it, and is stacked above them since it spends most of a drag straddling two. Because the slot rounds to the nearest pitch, that leftover never exceeds half a row, which is all the card has to travel when it settles on release.
+
+All of this is decoration layered on a gesture that never reads the rows, so no transform in flight can influence where the next slot lands.
+
+`Source/Workspace/Celbridge.Console/Web/Console/console-cards.js` implements this as `createCardList()`. It is console-local rather than shared, since it has one consumer so far, but it is the pattern to copy or promote:
+
+```javascript
+const list = createCardList({
+    listElement, emptyElement, addButton, template,
+    blankItem: () => ({ label: '', command: '' }),
+    focusSelector: '.entry-label',
+    reorderable: true,              // wires the grip handle and Alt+Up / Alt+Down
+    fillCard(card, item) { },       // entry -> inputs
+    readCard(card) { },             // inputs -> entry, or null to drop the card
+    updateHeader(card) { },         // refresh the collapsed summary
+    localize, onChanged, isWritable,
+});
+```
+
+Prefer this over a delimited text field (`a | b | c` per line) for anything Celbridge-specific: it removes a syntax the user has to learn and a parser you have to maintain. The exception is a setting whose data has a canonical text form elsewhere — command-line arguments, `requirements.txt` entries, `KEY=value` environment pairs — where a plain textarea is the better control, because it lets the user paste from the file the data already lives in.
 
 ## Edit verbs (optional)
 
