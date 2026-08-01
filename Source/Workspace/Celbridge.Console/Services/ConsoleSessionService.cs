@@ -34,6 +34,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly Dictionary<int, Guid> _connectionToSession = new();
 
     private readonly ConsoleProxyListener _proxyListener;
+    private readonly ConsoleTriggerScheduler _triggerScheduler;
 
     private bool _disposed;
 
@@ -48,6 +49,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService = messengerService;
         _logger = logger;
 
+        _triggerScheduler = new ConsoleTriggerScheduler(FireTrigger);
+
         var tcpTransport = serviceProvider.GetRequiredService<ITcpTransport>();
         var listenerLogger = serviceProvider.GetRequiredService<ILogger<ConsoleProxyListener>>();
         _proxyListener = new ConsoleProxyListener(tcpTransport, this, listenerLogger);
@@ -55,6 +58,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService.Register<DocumentOpenedMessage>(this, OnDocumentOpened);
         _messengerService.Register<DocumentClosedMessage>(this, OnDocumentClosed);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChanged);
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
+        _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
     }
 
     public async Task EnsureStartedAsync(ResourceKey resource)
@@ -309,7 +314,50 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         return ConsoleRunTargets.Resolve(candidates, fileExtension);
     }
 
-    public void RunScript(Guid sessionId, string scriptPath, string arguments)
+    public Result<string> ResolveRunnerInvocation(Guid sessionId, string scriptPath, string arguments)
+    {
+        var findResult = FindSubmittableSession(sessionId);
+        if (findResult.IsFailure)
+        {
+            return Result<string>.Fail($"Cannot resolve a runner for '{scriptPath}'")
+                .WithErrors(findResult);
+        }
+        var session = findResult.Value;
+
+        var extension = Path.GetExtension(scriptPath);
+        var runner = ConsoleRunTargets.FindRunner(session.Runners, extension);
+        if (runner is null)
+        {
+            return Result<string>.Fail($"Console '{session.Resource}' has no runner for '{extension}'");
+        }
+
+        var invocation = runner.CommandTemplate.Replace("{script_path}", scriptPath);
+        if (!string.IsNullOrEmpty(arguments))
+        {
+            invocation += " " + arguments;
+        }
+
+        return invocation;
+    }
+
+    public Result SubmitInvocation(Guid sessionId, string invocation)
+    {
+        var findResult = FindSubmittableSession(sessionId);
+        if (findResult.IsFailure)
+        {
+            return Result.Fail("Cannot submit an invocation")
+                .WithErrors(findResult);
+        }
+        var session = findResult.Value;
+
+        session.InjectInvocation(invocation);
+
+        return Result.Ok();
+    }
+
+    // A session that can still accept an invocation. A session that bound a client and then lost it is a
+    // live shell whose REPL has exited, so its prompt is no longer the one the invocation was written for.
+    private Result<ConsoleLiveSession> FindSubmittableSession(Guid sessionId)
     {
         ConsoleLiveSession? target = null;
         lock (_sessionsLock)
@@ -326,31 +374,15 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
         if (target is null)
         {
-            _logger.LogWarning("No console session {SessionId} to run '{Script}'", sessionId, scriptPath);
-            return;
+            return Result<ConsoleLiveSession>.Fail($"No console session {sessionId}");
         }
 
         if (target.HasStaleRunners)
         {
-            _logger.LogWarning("Console '{Resource}' lost its client connection; not injecting a run command", target.Resource);
-            return;
+            return Result<ConsoleLiveSession>.Fail($"Console '{target.Resource}' has lost its client connection");
         }
 
-        var extension = Path.GetExtension(scriptPath);
-        var runner = ConsoleRunTargets.FindRunner(target.Runners, extension);
-        if (runner is null)
-        {
-            _logger.LogWarning("No runner for '{Extension}' in console '{Resource}'", extension, target.Resource);
-            return;
-        }
-
-        var command = runner.CommandTemplate.Replace("{script_path}", scriptPath);
-        if (!string.IsNullOrEmpty(arguments))
-        {
-            command += " " + arguments;
-        }
-
-        target.InjectCommand(command);
+        return target;
     }
 
     private void OnSessionStateChanged(object? sender, ConsoleSessionRunState state)
@@ -418,6 +450,75 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                 _sessions[message.NewResource] = session;
                 session.Rekey(message.NewResource);
             }
+        }
+    }
+
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
+    {
+        ScheduleTriggers(message.Resource);
+    }
+
+    private void OnResourceCreated(object recipient, ResourceCreatedMessage message)
+    {
+        ScheduleTriggers(message.Resource);
+    }
+
+    // The watcher reports one write as several events (an atomic save arrives as both Created and Changed),
+    // and an editor saves on a timer while the user types. The scheduler's window is what turns all of that
+    // into a single run, so every match is scheduled here and the collapsing happens there.
+    private void ScheduleTriggers(ResourceKey resource)
+    {
+        List<ConsoleLiveSession> sessions;
+        lock (_sessionsLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            sessions = _sessions.Values.ToList();
+        }
+
+        foreach (var session in sessions)
+        {
+            if (session.Triggers.Count == 0)
+            {
+                continue;
+            }
+
+            var invocations = ConsoleTriggerMatcher.Resolve(session.Triggers, resource);
+            foreach (var invocation in invocations)
+            {
+                _triggerScheduler.Schedule(session.SessionId, invocation);
+            }
+        }
+    }
+
+    // Submits straight to the session rather than through a command. A trigger firing is the tail of a
+    // decision the host has already made, not a capability worth exposing to automation, and the command
+    // queue stalls behind any command that awaits a modal dialog, which would hold the run back and then
+    // release a burst of them. Runs on the scheduler's background task, so a fault here has nothing above
+    // it to observe and is logged rather than left to escape.
+    private void FireTrigger(Guid sessionId, string invocation)
+    {
+        try
+        {
+            var submitResult = SubmitInvocation(sessionId, invocation);
+            if (submitResult.IsFailure)
+            {
+                // A console can close or reopen while a trigger's debounce is running, leaving nothing to
+                // submit to. That is ordinary for an automatic run rather than a fault.
+                _logger.LogDebug("Console trigger did not run '{Invocation}': {Reason}",
+                    invocation, submitResult.FirstErrorMessage);
+
+                return;
+            }
+
+            _logger.LogDebug("Trigger ran '{Invocation}' in console session {SessionId}", invocation, sessionId);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to run a console trigger");
         }
     }
 

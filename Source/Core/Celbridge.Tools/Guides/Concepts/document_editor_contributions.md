@@ -183,9 +183,9 @@ The console editor is the reference: its shortcut buttons render into the rail b
 
 ### Editing a list of entries
 
-A setting that is a list of records — the console's script runners and shortcuts — is edited as one `.cel-expander` card per entry, matching how the native Packages and Pages panels render their lists. The card header carries just the entry's name; its fields are one expand away, so the header stays scannable. Add and delete controls belong on the list and the card header.
+A setting that is a list of records — the console's script runners, triggers and shortcuts — is edited as one `.cel-expander` card per entry, matching how the native Packages and Pages panels render their lists. The card header carries just the entry's name; its fields are one expand away, so the header stays scannable. Add belongs on the list, below it. Delete belongs in the card header but only shows while that card is open, which keeps a collapsed list free of destructive controls and means an entry cannot be deleted without its contents having been on screen first — worth having while there is no undo behind it. A newly added card opens on add, so deleting one added by mistake still costs a single click.
 
-A list whose order is user-visible reorders by dragging a `.card-grip` handle in the header, with Alt+Up / Alt+Down on the focused header as the keyboard equivalent. Do not use move-up / move-down buttons: chevrons read as a second expander control, and clicking one while a card is expanded jumps the layout out from under the user. A drag runs only against a collapsed list. Pressing the handle while any card is open therefore collapses the list and starts no drag; the user presses again to actually drag, and the cards stay collapsed afterwards. The extra press buys an exact grab: collapsing as part of the grab would shorten everything above the grabbed row and slide it out from under the pointer, by as much as a few hundred pixels, and no amount of scroll compensation reliably gets it back — the panel is often already at the top of its scroll range. Splitting the two makes the collapse a visible, understandable step rather than a mysterious offset.
+Lists reorder by dragging a `.cel-card-grip` handle in the header, with Alt+Up / Alt+Down on the focused header as the keyboard equivalent. This is on by default, and worth leaving on even where the order looks cosmetic: a card list is a list the user curates, its file order is what gets persisted, and one list that reorders next to another that does not reads as a bug. Order is also load-bearing more often than it first appears — the console resolves a file's runner by taking the first one whose extensions match. Do not use move-up / move-down buttons: chevrons read as a second expander control, and clicking one while a card is expanded jumps the layout out from under the user. A drag runs only against a collapsed list. Pressing the handle while any card is open therefore collapses the list and starts no drag; the user presses again to actually drag, and the cards stay collapsed afterwards. The extra press buys an exact grab: collapsing as part of the grab would shorten everything above the grabbed row and slide it out from under the pointer, by as much as a few hundred pixels, and no amount of scroll compensation reliably gets it back — the panel is often already at the top of its scroll range. Splitting the two makes the collapse a visible, understandable step rather than a mysterious offset.
 
 The list then reorders live under the pointer, and Escape (or the browser cancelling the pointer) restores the order it started in.
 
@@ -195,14 +195,16 @@ Displaced rows slide to their new positions with a FLIP transition (measure, reo
 
 All of this is decoration layered on a gesture that never reads the rows, so no transform in flight can influence where the next slot lands.
 
-`Source/Workspace/Celbridge.Console/Web/Console/console-cards.js` implements this as `createCardList()`. It is console-local rather than shared, since it has one consumer so far, but it is the pattern to copy or promote:
+`ui/card-list.js` in the shared client implements this as `createCardList()`, and `celbridge.css` styles it. The list element takes `.cel-card-list`; the card template supplies `.cel-card-grip`, `.cel-card-icon`, `.cel-card-title`, `.cel-card-actions` and `.cel-card-delete`, of which the grip and the delete button are the two the module drives.
 
 ```javascript
+import { createCardList } from '/assets/celbridge-client/ui/card-list.js';
+
 const list = createCardList({
     listElement, emptyElement, addButton, template,
     blankItem: () => ({ label: '', command: '' }),
     focusSelector: '.entry-label',
-    reorderable: true,              // wires the grip handle and Alt+Up / Alt+Down
+    reorderable: false,             // opt out of the grip handle and Alt+Up / Alt+Down
     fillCard(card, item) { },       // entry -> inputs
     readCard(card) { },             // inputs -> entry, or null to drop the card
     updateHeader(card) { },         // refresh the collapsed summary

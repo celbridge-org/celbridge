@@ -1,15 +1,18 @@
-// Card-list editor for the console's Automation settings: one expander card per entry, with add, delete and
-// optional reorder controls. The cards are the source of truth for the setting they edit, the way the form
-// inputs are for the rest of the settings.
+// Editor for a setting that is a list of records: one expander card per entry, with add, delete and reorder
+// controls. The cards are the source of truth for the setting they edit, the way form inputs are for a
+// setting that is a single value.
 //
 // The module drives the DOM and nothing else. Localization, the change notification and the writable check
-// are injected, so it carries no dependency on the celbridge client.
+// are injected, so it carries no dependency on the rest of the client.
+//
+// The card template supplies the structural classes the module drives (`.cel-card-grip`, `.cel-card-delete`)
+// and celbridge.css styles them, along with `.cel-card-list` on the list element.
 //
 //   const list = createCardList({
 //     listElement, emptyElement, addButton, template,
 //     blankItem: () => ({ ... }),   // the entry an added card starts from
 //     focusSelector: '.some-input', // focused when a card is added
-//     reorderable: true,            // wires the grip handle and Alt+Up / Alt+Down on the header
+//     reorderable: false,           // opt out of the grip handle and Alt+Up / Alt+Down on the header
 //     fillCard(card, item) {},      // entry -> inputs
 //     readCard(card) {},            // inputs -> entry, or null to drop the card from the result
 //     updateHeader(card) {},        // refresh the collapsed summary
@@ -47,7 +50,9 @@ export function createCardList(options) {
         template,
         blankItem,
         focusSelector,
-        reorderable = false,
+        // A card list is a list the user curates, and its file order is what gets persisted, so it is
+        // reorderable unless a caller says otherwise.
+        reorderable = true,
         fillCard,
         readCard,
         updateHeader,
@@ -70,7 +75,7 @@ export function createCardList(options) {
 
         // The card controls sit inside the <summary>, whose default action toggles the card open, so each
         // one cancels that before acting.
-        card.querySelector('.card-delete').addEventListener('click', (event) => {
+        card.querySelector('.cel-card-delete').addEventListener('click', (event) => {
             event.preventDefault();
             card.remove();
             refreshState();
@@ -78,7 +83,7 @@ export function createCardList(options) {
         });
 
         if (reorderable) {
-            const grip = card.querySelector('.card-grip');
+            const grip = card.querySelector('.cel-card-grip');
 
             grip.addEventListener('pointerdown', (event) => {
                 // Only the primary button starts a drag.

@@ -17,6 +17,7 @@ describe('defaultConsoleConfig', () => {
             startupScript: '',
             environment: {},
             runners: [],
+            triggers: [],
             shortcuts: [],
         });
     });
@@ -47,6 +48,7 @@ describe('parseConsoleToml', () => {
             startupScript: '',
             environment: { BUILD_CONFIG: 'Debug' },
             runners: [],
+            triggers: [],
             shortcuts: [],
         });
     });
@@ -92,6 +94,24 @@ describe('parseConsoleToml', () => {
         expect(config.runners).toEqual([
             { extensions: ['.py', '.ipy'], command: '%run "{script_path}"' },
             { extensions: ['.sh'], command: 'bash {script_path}' },
+        ]);
+    });
+
+    it('parses repeated [[session.trigger]] tables', () => {
+        const toml = [
+            '[[session.trigger]]',
+            'pattern = "data/**/*.xlsx"',
+            'command = "%run clean_data.py"',
+            '',
+            '[[session.trigger]]',
+            'pattern = "*.py"',
+            'command = \'%run "{resource}"\'',
+        ].join('\n');
+
+        const config = parseConsoleToml(toml);
+        expect(config.triggers).toEqual([
+            { pattern: 'data/**/*.xlsx', command: '%run clean_data.py' },
+            { pattern: '*.py', command: '%run "{resource}"' },
         ]);
     });
 
@@ -227,6 +247,17 @@ describe('serializeConsoleToml', () => {
         expect(toml).toContain('label = "Test"');
         expect(toml).toContain('icon = "bs-play-fill"');
     });
+
+    it('emits trigger tables', () => {
+        const config = {
+            ...defaultConsoleConfig(),
+            triggers: [{ pattern: '*.xlsx', command: '%run clean.py' }],
+        };
+        const toml = serializeConsoleToml(config);
+        expect(toml).toContain('[[session.trigger]]');
+        expect(toml).toContain('pattern = "*.xlsx"');
+        expect(toml).toContain('command = "%run clean.py"');
+    });
 });
 
 describe('round-trip', () => {
@@ -241,6 +272,7 @@ describe('round-trip', () => {
             startupScript: 'import numpy as np\n%load_ext autoreload',
             environment: { A: '1', B: 'two words' },
             runners: [{ extensions: ['.py', '.ipy'], command: '%run "{script_path}"' }],
+            triggers: [{ pattern: 'data/**/*.xlsx', command: '%run clean_data.py' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],
         };
 

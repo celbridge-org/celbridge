@@ -1,12 +1,18 @@
 // Minimal TOML parse/serialise for the constrained .console config shape. It handles the documented shape
 // (single-line string and string-array values under [session], [session.options], [session.environment],
-// plus [[session.runner]] and [[session.shortcut]] array-of-tables). Unknown keys and sections are parsed
-// and ignored; a malformed line raises a config error surfaced in the settings view. Comments are not
-// preserved across a save.
+// plus [[session.runner]], [[session.trigger]] and [[session.shortcut]] array-of-tables). Unknown keys and
+// sections are parsed and ignored; a malformed line raises a config error surfaced in the settings view.
+// Comments are not preserved across a save.
 
 /**
  * @typedef {Object} ConsoleRunner
  * @property {string[]} extensions
+ * @property {string} command
+ */
+
+/**
+ * @typedef {Object} ConsoleTrigger
+ * @property {string} pattern
  * @property {string} command
  */
 
@@ -28,6 +34,7 @@
  * @property {string} startupScript
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
+ * @property {ConsoleTrigger[]} triggers
  * @property {ConsoleShortcut[]} shortcuts
  */
 
@@ -43,6 +50,7 @@ export function defaultConsoleConfig() {
         startupScript: '',
         environment: {},
         runners: [],
+        triggers: [],
         shortcuts: [],
     };
 }
@@ -172,6 +180,13 @@ export function serializeConsoleToml(config) {
         lines.push(`command = ${quote(runner.command || '')}`);
     }
 
+    for (const trigger of config.triggers || []) {
+        lines.push('');
+        lines.push('[[session.trigger]]');
+        lines.push(`pattern = ${quote(trigger.pattern || '')}`);
+        lines.push(`command = ${quote(trigger.command || '')}`);
+    }
+
     for (const shortcut of config.shortcuts || []) {
         lines.push('');
         lines.push('[[session.shortcut]]');
@@ -192,6 +207,12 @@ function beginArrayTable(config, section) {
         const runner = { extensions: [], command: '' };
         config.runners.push(runner);
         return runner;
+    }
+
+    if (section === 'session.trigger') {
+        const trigger = { pattern: '', command: '' };
+        config.triggers.push(trigger);
+        return trigger;
     }
 
     if (section === 'session.shortcut') {
@@ -236,6 +257,15 @@ function assignValue(config, section, currentTable, key, rawValue) {
     if (section === 'session.runner' && currentTable) {
         if (key === 'extensions') {
             currentTable.extensions = parseArray(rawValue);
+        } else if (key === 'command') {
+            currentTable.command = parseScalar(rawValue);
+        }
+        return;
+    }
+
+    if (section === 'session.trigger' && currentTable) {
+        if (key === 'pattern') {
+            currentTable.pattern = parseScalar(rawValue);
         } else if (key === 'command') {
             currentTable.command = parseScalar(rawValue);
         }

@@ -57,6 +57,55 @@ public class ConsoleDocumentConfigParserTests
     }
 
     [Test]
+    public void Parse_Triggers_MapsPatternAndCommand()
+    {
+        var toml = string.Join('\n', new[]
+        {
+            "[[session.trigger]]",
+            "pattern = \"data/**/*.xlsx\"",
+            "command = \"%run clean_data.py\"",
+            "",
+            "[[session.trigger]]",
+            "pattern = \"*.py\"",
+            "command = '%run \"{resource}\"'",
+        });
+
+        var result = ConsoleDocumentConfigParser.Parse(toml);
+
+        result.IsFailure.Should().BeFalse();
+        var triggers = result.Value.Triggers;
+        triggers.Should().HaveCount(2);
+        triggers[0].Pattern.Should().Be("data/**/*.xlsx");
+        triggers[0].Command.Should().Be("%run clean_data.py");
+
+        triggers[1].Pattern.Should().Be("*.py");
+        triggers[1].Command.Should().Be("%run \"{resource}\"");
+    }
+
+    [Test]
+    public void Parse_TriggerMissingPatternOrCommand_IsDropped()
+    {
+        var toml = string.Join('\n', new[]
+        {
+            "[[session.trigger]]",
+            "pattern = \"*.xlsx\"",
+            "",
+            "[[session.trigger]]",
+            "command = \"%run clean_data.py\"",
+            "",
+            "[[session.trigger]]",
+            "pattern = \"*.csv\"",
+            "command = \"%run load.py\"",
+        });
+
+        var result = ConsoleDocumentConfigParser.Parse(toml);
+
+        result.IsFailure.Should().BeFalse();
+        result.Value.Triggers.Should().HaveCount(1);
+        result.Value.Triggers[0].Pattern.Should().Be("*.csv");
+    }
+
+    [Test]
     public void Parse_MultiLineStartupScript_IsTakenVerbatim()
     {
         var toml = string.Join('\n', new[]

@@ -14,6 +14,14 @@ public sealed record ConsoleDocumentRunner(
     string Command);
 
 /// <summary>
+/// A trigger parsed from a .console file: the resource path pattern it watches and the command template
+/// injected when a matching resource changes.
+/// </summary>
+public sealed record ConsoleDocumentTrigger(
+    string Pattern,
+    string Command);
+
+/// <summary>
 /// The launch-relevant configuration parsed from a .console file. Shortcuts are not represented: they are
 /// a client-side toolbar the host never consumes.
 /// </summary>
@@ -26,7 +34,8 @@ public sealed record ConsoleDocumentConfig(
     string WorkingDirectory,
     string StartupScript,
     IReadOnlyDictionary<string, string> Environment,
-    IReadOnlyList<ConsoleDocumentRunner> Runners);
+    IReadOnlyList<ConsoleDocumentRunner> Runners,
+    IReadOnlyList<ConsoleDocumentTrigger> Triggers);
 
 /// <summary>
 /// Parses .console TOML into the launch configuration. The settings form edits the same file with its own
@@ -85,6 +94,25 @@ public static class ConsoleDocumentConfigParser
             }
         }
 
+        var triggers = new List<ConsoleDocumentTrigger>();
+        if (session is not null &&
+            session.TryGetValue("trigger", out var triggerValue) &&
+            triggerValue is TomlTableArray triggerTables)
+        {
+            foreach (var triggerTable in triggerTables)
+            {
+                var pattern = GetString(triggerTable, "pattern");
+                var triggerCommand = GetString(triggerTable, "command");
+                if (string.IsNullOrWhiteSpace(pattern) ||
+                    string.IsNullOrWhiteSpace(triggerCommand))
+                {
+                    continue;
+                }
+
+                triggers.Add(new ConsoleDocumentTrigger(pattern, triggerCommand));
+            }
+        }
+
         var config = new ConsoleDocumentConfig(
             GetString(session, "type", "shell"),
             GetString(options, "executable"),
@@ -94,7 +122,8 @@ public static class ConsoleDocumentConfigParser
             GetString(session, "working_directory"),
             GetString(session, "startup_script"),
             environment,
-            runners);
+            runners,
+            triggers);
 
         return config;
     }

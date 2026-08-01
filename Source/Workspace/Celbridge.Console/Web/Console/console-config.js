@@ -31,6 +31,7 @@ export function parseExtensionList(text) {
     return text.split(',').map((part) => part.trim()).filter((part) => part !== '');
 }
 
+
 // A comparable view of the config for the "needs a reopen" check: the start payload with a stable env
 // order. Shortcuts are excluded because they are a live client-side toolbar, not a launch input. Every
 // other field applies on reopen.
@@ -62,6 +63,10 @@ export function buildStartConfig(config) {
         runners: (config.runners || []).map((runner) => ({
             extensions: runner.extensions || [],
             command: runner.command || '',
+        })),
+        triggers: (config.triggers || []).map((trigger) => ({
+            pattern: trigger.pattern || '',
+            command: trigger.command || '',
         })),
     };
 }

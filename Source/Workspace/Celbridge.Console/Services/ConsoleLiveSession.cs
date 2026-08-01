@@ -72,6 +72,11 @@ internal sealed class ConsoleLiveSession : IDisposable
     public IReadOnlyList<ConsoleRunner> Runners { get; private set; } = Array.Empty<ConsoleRunner>();
 
     /// <summary>
+    /// The triggers this launch is watching, with their patterns already compiled.
+    /// </summary>
+    public IReadOnlyList<ConsoleTrigger> Triggers { get; private set; } = Array.Empty<ConsoleTrigger>();
+
+    /// <summary>
     /// The bound client connection, or null when no client is connected.
     /// </summary>
     public int? ConnectionId { get; set; }
@@ -150,6 +155,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         SessionId = Guid.NewGuid();
         TypeId = config.Type;
         Runners = ResolveRunners(config, provider);
+        Triggers = ResolveTriggers(config);
         ConnectionId = null;
         HasConnected = false;
 
@@ -370,11 +376,11 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
     }
 
-    public void InjectCommand(string text)
+    public void InjectInvocation(string invocation)
     {
-        // Clear any partial input (Ctrl+U, U+0015) before submitting, so a run command or shortcut is not
-        // concatenated with whatever the user had half-typed at the prompt.
-        var submission = "\u0015" + text + "\r";
+        // Clear any partial input (Ctrl+U, U+0015) before submitting, so the invocation is not concatenated
+        // with whatever the user had half-typed at the prompt.
+        var submission = "\u0015" + invocation + "\r";
 
         // A programmatic injection during startup queues behind the startup lines rather than racing
         // them, so a Run issued at console open still lands as type-ahead for the starting REPL.
@@ -559,6 +565,28 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
 
         return runners;
+    }
+
+    // Patterns are compiled once per launch rather than per resource change, since every change is tested
+    // against every trigger of every open console.
+    private IReadOnlyList<ConsoleTrigger> ResolveTriggers(ConsoleDocumentConfig config)
+    {
+        var triggers = new List<ConsoleTrigger>();
+        foreach (var trigger in config.Triggers)
+        {
+            try
+            {
+                var matcher = ResourcePathMatcher.Compile(trigger.Pattern);
+                triggers.Add(new ConsoleTrigger(matcher, trigger.Command));
+            }
+            catch (Exception exception)
+            {
+                // One unusable pattern drops its own trigger; the rest of the console still launches.
+                _logger.LogWarning(exception, "Ignoring console trigger with an invalid pattern '{Pattern}'", trigger.Pattern);
+            }
+        }
+
+        return triggers;
     }
 
     public void Dispose()

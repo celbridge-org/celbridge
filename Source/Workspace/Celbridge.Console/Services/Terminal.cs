@@ -7,6 +7,11 @@ public class Terminal : ITerminal, IDisposable
     // Null on a platform with no pty backend. The terminal operations then report it as unsupported.
     private readonly IPtyBackend? _backend;
 
+    // Writes reach the pty from more than one thread: user keystrokes from the UI, and trigger runs from
+    // the scheduler's own continuations. Neither backend serializes its write, so an invocation submitted
+    // while the user is typing could otherwise interleave with their input part way through the line.
+    private readonly object _writeLock = new();
+
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
 
@@ -37,7 +42,12 @@ public class Terminal : ITerminal, IDisposable
 
     public void Write(string input)
     {
-        GetBackend().Write(input);
+        var backend = GetBackend();
+
+        lock (_writeLock)
+        {
+            backend.Write(input);
+        }
     }
 
     public void SetSize(int cols, int rows)

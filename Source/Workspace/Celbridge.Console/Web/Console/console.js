@@ -8,6 +8,7 @@ import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.j
 import { t, applyLocalization } from '/assets/celbridge-client/localization.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
 import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
+import { createCardList } from '/assets/celbridge-client/ui/card-list.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
 import {
     splitLines,
@@ -16,7 +17,6 @@ import {
     configsEqual,
     buildStartConfig,
 } from './console-config.js';
-import { createCardList } from './console-cards.js';
 
 const client = celbridge;
 
@@ -323,6 +323,7 @@ function populateForm(config) {
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
     runnerCards.populate(config.runners);
+    triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
     renderShortcutRail();
 }
@@ -338,6 +339,7 @@ function readForm() {
         startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: runnerCards.read(),
+        triggers: triggerCards.read(),
         shortcuts: shortcutCards.read(),
     };
 }
@@ -409,7 +411,41 @@ const runnerCards = createCardList({
     // The collapsed card identifies the runner by the extensions it handles; the command is one expand away.
     updateHeader(card) {
         const extensions = card.querySelector('.runner-extensions').value.trim();
-        card.querySelector('.card-title').textContent = extensions || t('Console_Runner_Untitled');
+        card.querySelector('.cel-card-title').textContent = extensions || t('Console_Runner_Untitled');
+    },
+});
+
+const triggerCards = createCardList({
+    listElement: document.getElementById('trigger-cards'),
+    emptyElement: document.getElementById('trigger-empty'),
+    addButton: document.getElementById('add-trigger'),
+    template: document.getElementById('trigger-card-template'),
+    blankItem: () => ({ pattern: '', command: '' }),
+    focusSelector: '.trigger-pattern',
+    localize: applyLocalization,
+    onChanged: () => onFormInput(),
+    isWritable: isDocumentWritable,
+
+    fillCard(card, trigger) {
+        card.querySelector('.trigger-pattern').value = trigger.pattern || '';
+        card.querySelector('.trigger-command').value = trigger.command || '';
+    },
+
+    readCard(card) {
+        const pattern = card.querySelector('.trigger-pattern').value.trim();
+        const command = card.querySelector('.trigger-command').value.trim();
+        if (pattern === '' || command === '') {
+            return null;
+        }
+
+        return { pattern, command };
+    },
+
+    // The collapsed card identifies the trigger by the pattern it watches, as the runner cards do by the
+    // extensions they handle.
+    updateHeader(card) {
+        const pattern = card.querySelector('.trigger-pattern').value.trim();
+        card.querySelector('.cel-card-title').textContent = pattern || t('Console_Trigger_Untitled');
     },
 });
 
@@ -420,8 +456,6 @@ const shortcutCards = createCardList({
     template: document.getElementById('shortcut-card-template'),
     blankItem: () => ({ label: '', icon: '', text: '' }),
     focusSelector: '.shortcut-label',
-    // Shortcut order is rail order, so the user needs to be able to reorder the cards.
-    reorderable: true,
     localize: applyLocalization,
     onChanged: () => onFormInput(),
     isWritable: isDocumentWritable,
@@ -446,12 +480,12 @@ const shortcutCards = createCardList({
     // The header doubles as the shortcut's preview: the glyph and label here are what the rail button shows.
     updateHeader(card) {
         const label = card.querySelector('.shortcut-label').value.trim();
-        card.querySelector('.card-title').textContent = label || t('Console_Shortcut_Untitled');
+        card.querySelector('.cel-card-title').textContent = label || t('Console_Shortcut_Untitled');
 
         const iconName = card.querySelector('.shortcut-icon').value.trim();
-        const iconElement = card.querySelector('.card-icon');
+        const iconElement = card.querySelector('.cel-card-icon');
         const resolved = resolveShortcutIconClass(iconName, iconElement);
-        iconElement.className = 'card-icon bi ' + resolved;
+        iconElement.className = 'cel-card-icon bi ' + resolved;
 
         const isKnownIcon = resolved === toBootstrapIconClass(iconName);
         card.querySelector('.shortcut-icon-unknown').classList.toggle('hidden', iconName === '' || isKnownIcon);
@@ -541,6 +575,7 @@ function applyWritableState() {
     }
 
     runnerCards.refreshState();
+    triggerCards.refreshState();
     shortcutCards.refreshState();
 }
 

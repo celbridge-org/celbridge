@@ -1,6 +1,6 @@
-using Celbridge.Resources.Services;
+using Celbridge.Utilities;
 
-namespace Celbridge.Tests.Resources;
+namespace Celbridge.Tests.Utilities;
 
 [TestFixture]
 public class ResourcePathMatcherTests
