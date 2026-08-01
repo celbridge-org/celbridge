@@ -44,7 +44,7 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider, IDisposable
 
     public IReadOnlyList<ConsoleRunner> DefaultRunners { get; } = new[]
     {
-        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{script_path}\""),
+        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\""),
     };
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)

@@ -103,7 +103,7 @@ describe('buildStartConfig', () => {
     it('carries runners and fills missing fields with defaults', () => {
         const built = buildStartConfig({
             type: 'python',
-            runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
+            runners: [{ extensions: ['.py'], command: '%run "{resource}"' }],
         });
         expect(built).toEqual({
             type: 'python',
@@ -114,7 +114,7 @@ describe('buildStartConfig', () => {
             workingDirectory: '',
             startupScript: '',
             environment: {},
-            runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
+            runners: [{ extensions: ['.py'], command: '%run "{resource}"' }],
             triggers: [],
         });
     });

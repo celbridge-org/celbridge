@@ -519,11 +519,14 @@ function renderShortcutRail() {
 }
 
 // Injects a shortcut's text into the pty: clear any partial input (Ctrl+U) then submit with a return.
+// Submitted through console/submit rather than written as raw input, so the host owns how an invocation is
+// entered and confirmed at the prompt. A terminal app that reads a burst of stdin as one paste treats a
+// carriage return inside it as a newline, so the submit key cannot travel with the text.
 function injectShortcut(text) {
     if (!text) {
         return;
     }
-    client.sendNotification('console/input', { data: '\x15' + text + '\r' });
+    client.sendNotification('console/submit', { invocation: text });
     term.focus();
 }
 

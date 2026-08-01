@@ -161,6 +161,18 @@ tabs.selected();              // persist this in onRequestState()
 
 Each tab is an icon with a tooltip, not a text label, so the strip stays a fixed width however many sections a panel has; the section name below it is what names the selection. Add a `<span class="cel-nav-tab-pip">` inside a tab's icon to flag that its section needs attention.
 
+### Field help
+
+Three things can explain a settings field, and each has its own job:
+
+- **Label** — what the setting is.
+- **Placeholder** — the shape of the value: "Comma-separated file extensions", "Shown as the button tooltip".
+- **Inline hint** (`.field-hint`) — syntax, a format constraint, or an example the user has to reproduce, and nothing else. A hint that restates the label or the placeholder is the common failure; delete it.
+
+A field whose label and placeholder already say everything gets no hint. That is why the console's shortcut Label and Command carry none while its Icon does: `bs-play-fill` is a naming scheme nobody guesses.
+
+The native XAML settings panels use tooltips for this instead, and an editor panel should not copy them. Their fields hold values you read once, where a tooltip is fine. An editor's settings tend to hold syntax you type, and a tooltip disappears the moment the pointer moves to the field it describes. Keep tooltips for background nobody needs in hand while typing.
+
 ### Inspector rail
 
 An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon rail down the right edge of its content, mirroring the workspace utility rail. The settings button sits at the top, the editor's own action buttons below it, separated by a `.cel-rail-separator`; the settings button uses `bi-sliders`, the same glyph as the workspace Project Settings button, and toggles the panel.

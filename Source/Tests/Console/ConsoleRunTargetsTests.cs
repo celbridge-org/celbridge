@@ -10,7 +10,7 @@ public class ConsoleRunTargetsTests
 
     private static readonly IReadOnlyList<ConsoleRunner> PythonRunners = new[]
     {
-        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{script_path}\""),
+        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\""),
     };
 
     // filePath defaults to the resource resolved under the project folder, which is what the service

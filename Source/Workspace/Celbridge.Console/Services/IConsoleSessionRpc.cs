@@ -24,6 +24,7 @@ public static class ConsoleSessionRpcMethods
     public const string Attach = "console/attach";
     public const string Reopen = "console/reopen";
     public const string Input = "console/input";
+    public const string Submit = "console/submit";
     public const string Resize = "console/resize";
 
     // Host to client
@@ -46,6 +47,9 @@ public interface IConsoleSessionRpc
 
     [JsonRpcMethod(ConsoleSessionRpcMethods.Input)]
     void OnInput(string data);
+
+    [JsonRpcMethod(ConsoleSessionRpcMethods.Submit)]
+    void OnSubmit(string invocation);
 
     [JsonRpcMethod(ConsoleSessionRpcMethods.Resize)]
     void OnResize(int cols, int rows);

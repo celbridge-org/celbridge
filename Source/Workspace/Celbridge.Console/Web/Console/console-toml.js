@@ -320,7 +320,7 @@ function parseScalar(rawValue) {
         return unescapeBasicString(rawValue.slice(1, -1));
     }
     // TOML literal (single-quoted) strings take their content verbatim, with no escape processing. Used for
-    // values that contain double quotes, such as a runner command like: '%run "{script_path}"'.
+    // values that contain double quotes, such as a runner command like: '%run "{resource}"'.
     if (rawValue.startsWith("'") && rawValue.endsWith("'") && rawValue.length >= 2) {
         return rawValue.slice(1, -1);
     }

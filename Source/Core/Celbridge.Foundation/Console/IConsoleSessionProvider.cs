@@ -24,7 +24,7 @@ public sealed record ConsoleStartupInvocation(
 
 /// <summary>
 /// A default way a session type runs a file: the file extensions it handles and a command template
-/// injected to run a matching file, where "{script_path}" is replaced with the file path.
+/// injected to run a matching file, where "{resource}" is replaced with the file's path.
 /// </summary>
 public sealed record ConsoleRunner(
     IReadOnlyList<string> FileExtensions,

@@ -16,11 +16,6 @@ public sealed record ConsoleTrigger(
 public static class ConsoleTriggerMatcher
 {
     /// <summary>
-    /// The placeholder a trigger command substitutes the changed resource's path for.
-    /// </summary>
-    public const string ResourcePlaceholder = "{resource}";
-
-    /// <summary>
     /// Returns the resolved commands for every trigger a changed resource matches. Triggers watch the
     /// project tree only, so a resource under any other root matches nothing.
     /// </summary>
@@ -43,7 +38,7 @@ public static class ConsoleTriggerMatcher
                 continue;
             }
 
-            var invocation = trigger.CommandTemplate.Replace(ResourcePlaceholder, resource.Path);
+            var invocation = ConsoleInvocationTemplate.Substitute(trigger.CommandTemplate, resource.Path);
             invocations.Add(invocation);
         }
 

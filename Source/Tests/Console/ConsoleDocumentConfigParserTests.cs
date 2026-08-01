@@ -38,7 +38,7 @@ public class ConsoleDocumentConfigParserTests
             "",
             "[[session.runner]]",
             "extensions = [\".py\", \".ipy\"]",
-            "command = '%run \"{script_path}\"'",
+            "command = '%run \"{resource}\"'",
         });
 
         var result = ConsoleDocumentConfigParser.Parse(toml);
@@ -53,7 +53,7 @@ public class ConsoleDocumentConfigParserTests
         config.Environment.Should().ContainKey("BUILD_CONFIG").WhoseValue.Should().Be("Debug");
         config.Runners.Should().HaveCount(1);
         config.Runners[0].Extensions.Should().Equal(".py", ".ipy");
-        config.Runners[0].Command.Should().Be("%run \"{script_path}\"");
+        config.Runners[0].Command.Should().Be("%run \"{resource}\"");
     }
 
     [Test]
