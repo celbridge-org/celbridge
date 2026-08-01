@@ -120,8 +120,16 @@ public interface IConsoleSessionService
     IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension);
 
     /// <summary>
-    /// Runs a script in a specific session by substituting its path into the matching runner template,
-    /// appending any arguments, and injecting the result into that session's pty.
+    /// Returns the invocation that runs a file in a session, built from the first runner whose extensions
+    /// cover the file type, with any arguments appended. Fails if the session has ended, has lost its
+    /// client connection, or carries no runner for that file type.
     /// </summary>
-    void RunScript(Guid sessionId, string scriptPath, string arguments);
+    Result<string> ResolveRunnerInvocation(Guid sessionId, string scriptPath, string arguments);
+
+    /// <summary>
+    /// Submits an invocation to a session, as if it were typed at the prompt: any partially typed input is
+    /// cleared first, and the line queues behind the startup lines while the session is still starting.
+    /// Fails if the session has ended or has lost its client connection.
+    /// </summary>
+    Result SubmitInvocation(Guid sessionId, string invocation);
 }

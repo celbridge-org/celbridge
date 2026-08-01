@@ -32,8 +32,7 @@ public class RunCommand : CommandBase, IRunCommand
             return Result.Fail("Workspace not loaded");
         }
 
-        // The session service substitutes {script_path} into the target console's runner template and
-        // injects it. Passing the resource path (not ToString) keeps the run relative to the project root.
+        // Passing the resource path (not ToString) keeps the run relative to the project root.
         var sessions = _workspaceWrapper.WorkspaceService.ConsoleService.Sessions;
 
         var sessionId = SessionId;
@@ -50,7 +49,20 @@ public class RunCommand : CommandBase, IRunCommand
             sessionId = targets[0].SessionId;
         }
 
-        sessions.RunScript(sessionId, ScriptResource.Path, Arguments);
+        var resolveResult = sessions.ResolveRunnerInvocation(sessionId, ScriptResource.Path, Arguments);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to run script '{ScriptResource.Path}'")
+                .WithErrors(resolveResult);
+        }
+        var invocation = resolveResult.Value;
+
+        var submitResult = sessions.SubmitInvocation(sessionId, invocation);
+        if (submitResult.IsFailure)
+        {
+            return Result.Fail($"Failed to run script '{ScriptResource.Path}'")
+                .WithErrors(submitResult);
+        }
 
         _logger.LogDebug("Run script '{Script}' in console session {SessionId}", ScriptResource.Path, sessionId);
 

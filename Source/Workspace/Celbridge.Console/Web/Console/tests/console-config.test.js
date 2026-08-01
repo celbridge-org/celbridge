@@ -115,7 +115,17 @@ describe('buildStartConfig', () => {
             startupScript: '',
             environment: {},
             runners: [{ extensions: ['.py'], command: '%run "{script_path}"' }],
+            triggers: [],
         });
+    });
+
+    it('carries triggers, so editing one flags the console for a reopen', () => {
+        const built = buildStartConfig({
+            triggers: [{ pattern: '*.xlsx', command: '%run clean.py' }],
+        });
+        expect(built.triggers).toEqual([
+            { pattern: '*.xlsx', command: '%run clean.py' },
+        ]);
     });
 
     it('carries the startup script through to the payload', () => {
@@ -134,6 +144,7 @@ describe('buildStartConfig', () => {
             startupScript: '',
             environment: {},
             runners: [],
+            triggers: [],
         });
     });
 });

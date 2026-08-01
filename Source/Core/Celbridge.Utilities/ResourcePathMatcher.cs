@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Celbridge.Resources.Services;
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Indicates whether a compiled pattern applies to both files and folders, or to folders only.

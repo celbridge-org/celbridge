@@ -118,15 +118,15 @@
                         </label>
                     </section>
 
-                    <!-- Every way of getting a command into this console: keyed on a file extension, or on a
-                         button press. Each entry is a card, so the list is edited through the cards rather
-                         than through a delimited text format. -->
+                    <!-- Every way of getting a command into this console: keyed on a file extension, on a
+                         file changing, or on a button press. Each entry is a card, so the list is edited
+                         through the cards rather than through a delimited text format. -->
                     <section class="settings-section hidden" data-section="automation">
 
                         <div class="card-list-group">
                             <h2 class="card-list-title" data-loc-key="Console_Field_Runners"></h2>
                             <p class="card-list-hint" data-loc-key="Console_Hint_Runners"></p>
-                            <div id="runner-cards" class="card-list"></div>
+                            <div id="runner-cards" class="cel-card-list"></div>
                             <p id="runner-empty" class="card-list-empty" data-loc-key="Console_Empty_Runners"></p>
                             <button id="add-runner" type="button" class="add-card-button">
                                 <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Runner"></span>
@@ -134,9 +134,19 @@
                         </div>
 
                         <div class="card-list-group">
+                            <h2 class="card-list-title" data-loc-key="Console_Field_Triggers"></h2>
+                            <p class="card-list-hint" data-loc-key="Console_Hint_Triggers"></p>
+                            <div id="trigger-cards" class="cel-card-list"></div>
+                            <p id="trigger-empty" class="card-list-empty" data-loc-key="Console_Empty_Triggers"></p>
+                            <button id="add-trigger" type="button" class="add-card-button">
+                                <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Trigger"></span>
+                            </button>
+                        </div>
+
+                        <div class="card-list-group">
                             <h2 class="card-list-title" data-loc-key="Console_Field_Shortcuts"></h2>
                             <p class="card-list-hint" data-loc-key="Console_Hint_Shortcuts"></p>
-                            <div id="shortcut-cards" class="card-list"></div>
+                            <div id="shortcut-cards" class="cel-card-list"></div>
                             <p id="shortcut-empty" class="card-list-empty" data-loc-key="Console_Empty_Shortcuts"></p>
                             <button id="add-shortcut" type="button" class="add-card-button">
                                 <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Shortcut"></span>
@@ -168,11 +178,14 @@
     <!-- Card templates for the Automation lists, cloned per entry. Template content sits outside the document
          tree, so a cloned card is localized explicitly rather than by the host's startup pass. -->
     <template id="runner-card-template">
-        <details class="cel-expander card">
+        <details class="cel-expander">
             <summary>
-                <span class="card-title"></span>
-                <span class="card-actions">
-                    <button class="cel-icon-button card-delete" type="button" data-loc-key="Console_Card_Delete" data-loc-attr="title,aria-label">
+                <span class="cel-card-grip" data-loc-key="Console_Card_Reorder" data-loc-attr="title,aria-label">
+                    <i class="bi bi-grip-vertical"></i>
+                </span>
+                <span class="cel-card-title"></span>
+                <span class="cel-card-actions">
+                    <button class="cel-icon-button cel-card-delete" type="button" data-loc-key="Console_Card_Delete" data-loc-attr="title,aria-label">
                         <i class="bi bi-trash"></i>
                     </button>
                 </span>
@@ -192,16 +205,44 @@
         </details>
     </template>
 
-    <template id="shortcut-card-template">
-        <details class="cel-expander card">
+    <template id="trigger-card-template">
+        <details class="cel-expander">
             <summary>
-                <span class="card-grip" data-loc-key="Console_Card_Reorder" data-loc-attr="title,aria-label">
+                <span class="cel-card-grip" data-loc-key="Console_Card_Reorder" data-loc-attr="title,aria-label">
                     <i class="bi bi-grip-vertical"></i>
                 </span>
-                <i class="card-icon bi"></i>
-                <span class="card-title"></span>
-                <span class="card-actions">
-                    <button class="cel-icon-button card-delete" type="button" data-loc-key="Console_Card_Delete" data-loc-attr="title,aria-label">
+                <span class="cel-card-title"></span>
+                <span class="cel-card-actions">
+                    <button class="cel-icon-button cel-card-delete" type="button" data-loc-key="Console_Card_Delete" data-loc-attr="title,aria-label">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </span>
+            </summary>
+            <div class="cel-expander-body">
+                <label class="field">
+                    <span class="field-label" data-loc-key="Console_Field_TriggerPattern"></span>
+                    <input class="trigger-pattern" type="text" spellcheck="false" data-loc-key="Console_Placeholder_TriggerPattern" data-loc-attr="placeholder">
+                    <span class="field-hint" data-loc-key="Console_Hint_TriggerPattern"></span>
+                </label>
+                <label class="field">
+                    <span class="field-label" data-loc-key="Console_Field_TriggerCommand"></span>
+                    <input class="trigger-command" type="text" spellcheck="false" data-loc-key="Console_Placeholder_TriggerCommand" data-loc-attr="placeholder">
+                    <span class="field-hint" data-loc-key="Console_Hint_TriggerCommand"></span>
+                </label>
+            </div>
+        </details>
+    </template>
+
+    <template id="shortcut-card-template">
+        <details class="cel-expander">
+            <summary>
+                <span class="cel-card-grip" data-loc-key="Console_Card_Reorder" data-loc-attr="title,aria-label">
+                    <i class="bi bi-grip-vertical"></i>
+                </span>
+                <i class="cel-card-icon bi"></i>
+                <span class="cel-card-title"></span>
+                <span class="cel-card-actions">
+                    <button class="cel-icon-button cel-card-delete" type="button" data-loc-key="Console_Card_Delete" data-loc-attr="title,aria-label">
                         <i class="bi bi-trash"></i>
                     </button>
                 </span>

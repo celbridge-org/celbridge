@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createCardList, placementForPointer } from '../console-cards.js';
+import { createCardList, placementForPointer } from '../ui/card-list.js';
 
 const ROW_HEIGHT = 40;
 const ROW_GAP = 8;
@@ -31,7 +31,7 @@ function stubCardLayout() {
 function startDrag(card) {
     stubCardLayout();
     const clientY = card.getBoundingClientRect().top + GRAB_OFFSET;
-    card.querySelector('.card-grip').dispatchEvent(
+    card.querySelector('.cel-card-grip').dispatchEvent(
         new window.PointerEvent('pointerdown', { button: 0, clientY, bubbles: true, cancelable: true }));
 }
 
@@ -44,12 +44,12 @@ function dragToRowTop(offsetFromListTop) {
 
 // A minimal stand-in for the shortcut card template: the classes the card list drives, and one input.
 const CARD_TEMPLATE = `
-    <details class="cel-expander card">
+    <details class="cel-expander">
         <summary>
-            <span class="card-grip"></span>
-            <span class="card-title"></span>
-            <span class="card-actions">
-                <button class="cel-icon-button card-delete" type="button"></button>
+            <span class="cel-card-grip"></span>
+            <span class="cel-card-title"></span>
+            <span class="cel-card-actions">
+                <button class="cel-icon-button cel-card-delete" type="button"></button>
             </span>
         </summary>
         <div class="cel-expander-body">
@@ -59,7 +59,7 @@ const CARD_TEMPLATE = `
 
 function buildList(overrides = {}) {
     document.body.innerHTML = `
-        <div id="cards" class="card-list"></div>
+        <div id="cards" class="cel-card-list"></div>
         <p id="empty"></p>
         <button id="add" type="button"></button>
         <template id="template">${CARD_TEMPLATE}</template>`;
@@ -72,7 +72,6 @@ function buildList(overrides = {}) {
         template: document.getElementById('template'),
         blankItem: () => ({ name: '' }),
         focusSelector: '.card-name',
-        reorderable: true,
         localize: () => { },
         onChanged,
         isWritable: () => true,
@@ -88,7 +87,7 @@ function buildList(overrides = {}) {
             return { name };
         },
         updateHeader(card) {
-            card.querySelector('.card-title').textContent = card.querySelector('.card-name').value;
+            card.querySelector('.cel-card-title').textContent = card.querySelector('.card-name').value;
         },
         ...overrides,
     });
@@ -159,11 +158,14 @@ describe('createCardList', () => {
         input.dispatchEvent(new window.Event('input', { bubbles: true }));
 
         expect(onChanged).toHaveBeenCalled();
-        expect(cardAt(0).querySelector('.card-title').textContent).toBe('edited');
+        expect(cardAt(0).querySelector('.cel-card-title').textContent).toBe('edited');
     });
 
     it('removes a card on delete and reports the change', () => {
-        cardAt(1).querySelector('.card-delete').click();
+        // Expanded first because the delete button only shows on an open card, so this is the only way a
+        // user reaches it.
+        cardAt(1).open = true;
+        cardAt(1).querySelector('.cel-card-delete').click();
 
         expect(names()).toEqual(['first', 'third']);
         expect(onChanged).toHaveBeenCalled();
@@ -239,7 +241,7 @@ describe('createCardList', () => {
 
     it('does not toggle a card open when its grip is pressed', () => {
         const clickEvent = new window.MouseEvent('click', { bubbles: true, cancelable: true });
-        cardAt(0).querySelector('.card-grip').dispatchEvent(clickEvent);
+        cardAt(0).querySelector('.cel-card-grip').dispatchEvent(clickEvent);
 
         expect(clickEvent.defaultPrevented).toBe(true);
     });
@@ -386,7 +388,7 @@ describe('createCardList', () => {
 
         expect(document.getElementById('add').disabled).toBe(true);
         expect(cardAt(0).querySelector('.card-name').disabled).toBe(true);
-        expect(cardAt(0).querySelector('.card-delete').disabled).toBe(true);
+        expect(cardAt(0).querySelector('.cel-card-delete').disabled).toBe(true);
         expect(document.getElementById('cards').classList.contains('reorder-disabled')).toBe(true);
     });
 
@@ -398,6 +400,17 @@ describe('createCardList', () => {
 
         expect(names()).toEqual(['first', 'second']);
         expect(readOnly.onChanged).not.toHaveBeenCalled();
+    });
+
+    // Every drag test above builds its list without the option, so they all run against this default; the
+    // assertion is repeated here so the default is stated somewhere rather than only implied.
+    it('reorders by default, without the caller asking for it', () => {
+        const { list } = buildList();
+        list.populate([{ name: 'first' }, { name: 'second' }]);
+
+        pressOnHeader(cardAt(1), 'ArrowUp');
+
+        expect(names()).toEqual(['second', 'first']);
     });
 
     it('leaves a list that is not reorderable without reorder handling', () => {

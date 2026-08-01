@@ -59,15 +59,13 @@
     --cel-control-hover-bg: #F0F0F0;
     --cel-control-border: #E5E5E5;
 
-    /* Expander header fill, expanded-content fill, and card border, matching the WinUI Expander brushes used
-       by the native settings panels. The header and border are sampled exactly from the running app (header
-       #FBFBFB / #36383B, border #E5E5E5 / #27292B). The content fill is ExpanderContentBackground
-       (CardBackgroundFillColorSecondary) composited over the panel background, the same derivation that
-       reproduces the sampled header from CardBackgroundFillColorDefault. It is a shade below the header, so
-       an expanded card's body still reads as part of the card. */
+    /* Expander fills and card borders. The header fills are sampled from the native Expander; the content
+       fill and the borders deliberately diverge from it, because WinUI's values leave every boundary in an
+       expanded card near-invisible. The strong border is for an open card. */
     --cel-expander-header-bg: #FBFBFB;
-    --cel-expander-content-bg: #F4F4F4;
+    --cel-expander-content-bg: #EDEDED;
     --cel-card-border: #E5E5E5;
+    --cel-card-border-strong: #D0D0D0;
 }
 
 :root[data-theme="dark"] {
@@ -93,6 +91,7 @@
     --cel-control-border: #3F4143;
 
     --cel-expander-header-bg: #36383B;
-    --cel-expander-content-bg: #323437;
-    --cel-card-border: #27292B;
+    --cel-expander-content-bg: #26282B;
+    --cel-card-border: #3F4143;
+    --cel-card-border-strong: #4A4D51;
 }
