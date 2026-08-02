@@ -12,7 +12,7 @@
     "Console_Reopen_Tooltip": "Close and reopen the console session.",
     "Console_ReopenCaption": "Configuration changes take effect when the console is reopened.",
 
-    "Console_Opening": "Opening Console",
+    "Console_Opening": "Opening console...",
     "Console_SessionEnded": "The console session ended.",
     "Console_StartFailed": "Failed to start the console session.",
     "Console_InvalidConfig": "Invalid .console configuration.",

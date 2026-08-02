@@ -6,7 +6,7 @@
     padding: 4px 6px;
     background-color: var(--toolbar-bg);
     border-bottom: 1px solid var(--toolbar-border);
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: var(--cel-font-ui);
     font-size: 13px;
     color: var(--toolbar-btn-fg);
 }
@@ -88,7 +88,7 @@
     border: 1px solid var(--toolbar-border);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: var(--cel-font-ui);
     font-size: 13px;
 }
 

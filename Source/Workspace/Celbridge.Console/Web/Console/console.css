@@ -4,9 +4,12 @@
 
 /* The terminal surface and the config-error callout stay console-specific: the terminal is its own themed
    surface (like a code editor's canvas), not app chrome. The celbridge client mirrors the theme onto
-   html[data-theme]; until it lands, fall back to prefers-color-scheme so the terminal never flashes on load. */
+   html[data-theme]; until it lands, fall back to prefers-color-scheme so the terminal never flashes on load.
+   The terminal background and foreground mirror the xterm themes in terminal-themes.js. Keep the two in
+   sync when either changes. */
 :root {
     --console-terminal-bg: #ffffff;
+    --console-terminal-fg: #333333;
     --console-overlay: rgba(255, 255, 255, 0.85);
     --console-alert: #d9822b;
     --console-alert-bg: rgba(217, 130, 43, 0.15);
@@ -15,6 +18,7 @@
 @media (prefers-color-scheme: dark) {
     :root {
         --console-terminal-bg: #1e1e1e;
+        --console-terminal-fg: #d4d4d4;
         --console-overlay: rgba(20, 20, 20, 0.85);
         --console-alert: #e0a458;
         --console-alert-bg: rgba(224, 164, 88, 0.18);
@@ -23,6 +27,7 @@
 
 :root[data-theme="light"] {
     --console-terminal-bg: #ffffff;
+    --console-terminal-fg: #333333;
     --console-overlay: rgba(255, 255, 255, 0.85);
     --console-alert: #d9822b;
     --console-alert-bg: rgba(217, 130, 43, 0.15);
@@ -30,6 +35,7 @@
 
 :root[data-theme="dark"] {
     --console-terminal-bg: #1e1e1e;
+    --console-terminal-fg: #d4d4d4;
     --console-overlay: rgba(20, 20, 20, 0.85);
     --console-alert: #e0a458;
     --console-alert-bg: rgba(224, 164, 88, 0.18);
@@ -105,8 +111,11 @@ html, body {
 }
 
 /* The starting veil must fully hide the shell-startup phase behind it, so it is opaque terminal
-   background rather than the translucent overlay tint. It fades out so the terminal materializes. */
+   background rather than the translucent overlay tint. It fades out so the terminal materializes.
+   It is not modal, unlike #session-failed: it imitates the terminal surface it covers. */
 #session-starting {
+    align-items: flex-start;
+    justify-content: flex-start;
     background: var(--console-terminal-bg);
     transition: opacity 240ms ease-out;
 }
@@ -119,6 +128,16 @@ html, body {
     #session-starting {
         transition: none;
     }
+}
+
+/* Sits at the terminal's first cell. The 8px inset matches #terminal, and the font size and row height
+   are the terminal's own, written to the custom properties by console.js after term.open(). */
+.starting-message {
+    margin: 8px 0 0 8px;
+    font-family: var(--cel-font-mono);
+    font-size: var(--console-terminal-font-size, var(--cel-font-size-base));
+    line-height: var(--console-terminal-line-height, normal);
+    color: var(--console-terminal-fg);
 }
 
 .overlay-card {
@@ -145,15 +164,18 @@ html, body {
     flex-direction: column;
 }
 
-/* The panel title, mirroring the native PanelHeader above the settings panels' tab strip (40px tall, over the
-   panel background, at the base text size). The left inset is pulled in 4px to 8px like .settings-scroll so
-   it lines up with the content below. */
+/* The panel title, mirroring the native PanelHeader above the settings panels' tab strip (40px tall, over
+   the panel background, at the panel title type). The left inset is pulled in 4px to 8px like
+   .settings-scroll so it lines up with the content below. */
 .settings-title {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     height: 40px;
     padding: 0 12px 0 8px;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
+    color: var(--cel-text-secondary);
     background: var(--cel-panel-bg);
 }
 
@@ -187,14 +209,14 @@ html, body {
     white-space: pre-wrap;
 }
 
-.field {
-    display: block;
-    margin-bottom: 12px;
-    max-width: 640px;
+/* The fields are the shared .field primitives (celbridge.css). Command-line-ish fields read better in the
+   monospace font, and every field in this panel holds command-line text. */
+.field input,
+.field textarea {
+    font-family: var(--cel-font-mono);
 }
 
-.settings-section .field:last-child,
-.cel-expander-body .field:last-child {
+.settings-section .field:last-child {
     margin-bottom: 0;
 }
 
@@ -207,16 +229,17 @@ html, body {
     margin-top: 20px;
 }
 
+/* Names a group of controls, so it takes the field label type rather than a heading size. */
 .card-list-title {
     margin: 0 0 2px;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
 }
 
 .card-list-hint,
 .card-list-empty {
     margin: 0 0 8px;
-    font-size: 11px;
+    font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
 }
 
@@ -228,48 +251,6 @@ html, body {
 
 /* The cards themselves are the shared .cel-card-list component (celbridge.css). Only the group chrome around
    them is console-specific and lives here. */
-
-/* Flags a setting the console will not be able to honour, below the field that produced it. */
-.field-warning {
-    display: block;
-    font-size: 11px;
-    color: var(--cel-warning-text);
-    margin-top: 4px;
-}
-
-.field-label {
-    display: block;
-    font-size: 12px;
-    color: var(--cel-text-primary);
-    margin-bottom: 4px;
-}
-
-/* Explains a field's expected syntax below its control, for the fields that need one. */
-.field-hint {
-    display: block;
-    font-size: 11px;
-    color: var(--cel-text-secondary);
-    margin-top: 4px;
-}
-
-/* Command-line-ish fields read better in the monospace font; everything else inherits celbridge.css. */
-.field input,
-.field textarea {
-    width: 100%;
-    font-family: var(--cel-font-mono);
-}
-
-/* The browser default placeholder is dim enough that an empty field reads as disabled. Lift it to the
-   secondary text colour (matching the labels and hints) and cancel the UA opacity so it stays legible. */
-.field input::placeholder,
-.field textarea::placeholder {
-    color: var(--cel-text-secondary);
-    opacity: 1;
-}
-
-.field textarea {
-    resize: vertical;
-}
 
 /* The footer uses the shared .cel-panel-footer; only the left inset is console-specific: the content is
    pulled in 4px to 8px to compensate for the splitter (see .settings-scroll), so keep the footer aligned

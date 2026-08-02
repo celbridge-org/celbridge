@@ -6,7 +6,7 @@
   <ScrollViewer Padding="12">
     <StackPanel Spacing="12">
       <StackPanel Spacing="2">
-        <TextBlock Text="{x:Bind DescriptionLabel}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
+        <TextBlock Text="{x:Bind DescriptionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind DescriptionTooltip}"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
@@ -14,16 +14,16 @@
                  Text="{x:Bind ViewModel.DescriptionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
       </StackPanel>
       <StackPanel Spacing="2" ToolTipService.ToolTip="{x:Bind SchemaVersionTooltip}">
-        <TextBlock Text="{x:Bind SchemaVersionLabel}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
+        <TextBlock Text="{x:Bind SchemaVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBlock Text="{x:Bind ViewModel.SchemaVersionText, Mode=OneWay}"/>
       </StackPanel>
       <StackPanel Spacing="2">
-        <TextBlock Text="{x:Bind ProjectVersionLabel}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
+        <TextBlock Text="{x:Bind ProjectVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind ProjectVersionTooltip}"
                  Text="{x:Bind ViewModel.ProjectVersionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
       </StackPanel>
       <StackPanel Spacing="2">
-        <TextBlock Text="{x:Bind IgnoreFileLabel}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
+        <TextBlock Text="{x:Bind IgnoreFileLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind IgnoreFileTooltip}"
                  Text="{x:Bind ViewModel.IgnoreFileText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
       </StackPanel>

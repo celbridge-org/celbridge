@@ -17,14 +17,14 @@
                 Margin="0,0,0,8">
         <Expander.Header>
           <TextBlock Text="{x:Bind Title}"
-                     FontWeight="SemiBold"
+                     Style="{StaticResource ListItemTitleTextStyle}"
                      VerticalAlignment="Center"
                      TextTrimming="CharacterEllipsis"
                      Opacity="{x:Bind IsEffectivelyEnabled, Mode=OneWay, Converter={StaticResource BoolToDimmedOpacityConverter}}"/>
         </Expander.Header>
 
         <StackPanel Spacing="8">
-          <TextBlock Text="{x:Bind Description}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+          <TextBlock Text="{x:Bind Description}" Style="{StaticResource SupportingTextStyle}" TextWrapping="Wrap"/>
           <ComboBox HorizontalAlignment="Left"
                     MinWidth="128"
                     ItemsSource="{x:Bind StateOptions}"

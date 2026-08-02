@@ -42,7 +42,7 @@
 html, body {
     height: 100%;
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--cel-font-ui);
     background: var(--bg-primary);
     color: var(--text-primary);
     color-scheme: light dark;
@@ -194,7 +194,7 @@ body {
     background: var(--code-bg);
     border-radius: 3px;
     padding: 0.15em 0.35em;
-    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-family: var(--cel-font-mono);
     font-size: 0.9em;
 }
 

@@ -130,11 +130,9 @@
 
         <StackPanel Spacing="2" Margin="2,2,0,0">
           <TextBlock Text="{x:Bind ViewModel.ActiveSectionName, Mode=OneWay}"
-                     FontSize="20"
-                     FontWeight="SemiBold"/>
+                     Style="{StaticResource SectionHeadingTextStyle}"/>
           <TextBlock Text="{x:Bind ViewModel.ActiveSectionDescription, Mode=OneWay}"
-                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                     FontSize="12"
+                     Style="{StaticResource SupportingTextStyle}"
                      TextWrapping="Wrap"/>
         </StackPanel>
 
@@ -169,8 +167,7 @@
             Padding="12,8">
       <StackPanel Spacing="6">
         <TextBlock Text="{x:Bind ReloadCaptionText}"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   FontSize="12"
+                   Style="{StaticResource SupportingTextStyle}"
                    TextWrapping="Wrap"/>
         <Button x:Name="ReloadProjectButton"
                 HorizontalAlignment="Stretch"

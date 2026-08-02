@@ -119,6 +119,8 @@ Core tokens:
 |---|---|
 | `--cel-font-ui` | UI and prose text. A system font stack, matching the host chrome per platform. |
 | `--cel-font-mono` | Code and monospace text. The bundled Cascadia Mono, consistent across platforms. |
+| `--cel-font-size-small`, `--cel-font-size-base`, `--cel-font-size-heading` | The type scale. Small for panel titles, field labels and supporting prose; base for input, button and body text; heading for a section heading. |
+| `--cel-font-weight-regular`, `--cel-font-weight-strong` | Weight, which is what separates a label from prose at the same size. |
 | `--cel-app-bg`, `--cel-panel-bg`, `--cel-panel-bg-alt` | Window, panel, and inner-content backgrounds. |
 | `--cel-text-primary`, `--cel-text-secondary` | Primary and muted foreground text. |
 | `--cel-divider` | Separator and control-border color. |
@@ -128,7 +130,7 @@ Core tokens:
 
 The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and window background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
 
-Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.cel-panel-footer` (a pinned caption-and-action row), and the two navigation components below. The Utility Demo utility is the reference for all of them — the UI font, host-styled controls, a bordered input, and each shared component in use.
+Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.cel-panel-footer` (a pinned caption-and-action row), `.field` (a settings form row, covered below), and the two navigation components below. The Utility Demo utility is the reference for all of them — the UI font, host-styled controls, a bordered input, and each shared component in use.
 
 ### Panel navigation
 
@@ -160,6 +162,20 @@ tabs.selected();              // persist this in onRequestState()
 ```
 
 Each tab is an icon with a tooltip, not a text label, so the strip stays a fixed width however many sections a panel has; the section name below it is what names the selection. Add a `<span class="cel-nav-tab-pip">` inside a tab's icon to flag that its section needs attention.
+
+### Settings form fields
+
+A settings row is a `.field`: the label naming the control, the control itself, and an optional hint or warning below it.
+
+```html
+<label class="field">
+  <span class="field-label">Working directory</span>
+  <input type="text" placeholder="Relative to the project folder">
+  <span class="field-hint">A relative path resolves against the project folder.</span>
+</label>
+```
+
+The label carries the strong weight and the hint the secondary colour, so a form scans by its labels. Use `.field-warning` for a setting the panel will not be able to honour.
 
 ### Field help
 

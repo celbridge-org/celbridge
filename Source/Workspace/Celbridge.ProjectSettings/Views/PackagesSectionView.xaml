@@ -41,7 +41,7 @@
       <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
+    <Style x:Key="PropertyLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FieldLabelTextStyle}">
       <Setter Property="VerticalAlignment" Value="Center"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
@@ -111,8 +111,8 @@
                        Visibility="{x:Bind HasIcon, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-              <TextBlock Text="{x:Bind DisplayName}"/>
-              <TextBlock Text="{x:Bind TypeLabel}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+              <TextBlock Text="{x:Bind DisplayName}" Style="{StaticResource ListItemTitleTextStyle}"/>
+              <TextBlock Text="{x:Bind TypeLabel}" Style="{StaticResource SupportingTextStyle}"/>
             </StackPanel>
           </Grid>
 
@@ -127,8 +127,8 @@
 
           <StackPanel Margin="0,3,0,3"
                       Visibility="{x:Bind HasFileExtensions, Converter={StaticResource BoolToVisibilityConverter}}">
-            <TextBlock Text="{x:Bind FileExtensionsLabel}"/>
-            <TextBlock Text="{x:Bind FileExtensionsText}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+            <TextBlock Text="{x:Bind FileExtensionsLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
+            <TextBlock Text="{x:Bind FileExtensionsText}" Style="{StaticResource SupportingTextStyle}" TextWrapping="Wrap"/>
           </StackPanel>
 
           <Grid Margin="0,3,0,3"
@@ -195,13 +195,12 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
-              <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{x:Bind DisplayName}" Style="{StaticResource ListItemTitleTextStyle}" TextTrimming="CharacterEllipsis"/>
               <!-- The package id, with the installed version appended when the package records one. -->
               <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{x:Bind NameLabel}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{x:Bind NameLabel}" Style="{StaticResource SupportingTextStyle}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{x:Bind VersionText}"
-                           FontSize="11"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Style="{StaticResource SupportingTextStyle}"
                            Margin="6,0,0,0"
                            Visibility="{x:Bind HasVersion, Converter={StaticResource BoolToVisibilityConverter}}"/>
               </StackPanel>

@@ -30,7 +30,7 @@
       <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
+    <Style x:Key="PropertyLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource FieldLabelTextStyle}">
       <Setter Property="VerticalAlignment" Value="Center"/>
       <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
@@ -51,7 +51,7 @@
 
             <TextBlock Grid.Column="0"
                        Text="{x:Bind Title}"
-                       FontWeight="SemiBold"
+                       Style="{StaticResource ListItemTitleTextStyle}"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"/>
 
