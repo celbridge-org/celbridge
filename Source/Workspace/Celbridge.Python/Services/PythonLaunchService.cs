@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Platform;
@@ -7,8 +6,60 @@ using Celbridge.Projects;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.Python.Services;
+
+/// <summary>
+/// The state of a project's installed celbridge-py tool environment, as observed on disk. Incomplete means
+/// the environment is present but no longer carries the celbridge package, which is what a reinstall
+/// interrupted by a running console leaves behind.
+/// </summary>
+internal enum ToolEnvironmentHealth
+{
+    Healthy,
+    Missing,
+    Incomplete,
+}
+
+/// <summary>
+/// What a launch does about the project's shared celbridge-py tool: install it, skip because the installed
+/// tool is already current, or defer because a reinstall would disturb a running console.
+/// </summary>
+internal enum ToolInstallDecision
+{
+    Install,
+    Skip,
+    Defer,
+}
+
+/// <summary>
+/// The rule that decides whether a launch reinstalls the project's shared celbridge-py tool.
+/// </summary>
+internal static class ToolInstallPolicy
+{
+    public static ToolInstallDecision Decide(
+        ToolEnvironmentHealth health,
+        bool wheelHashChanged,
+        bool hasRunningSessions)
+    {
+        if (health == ToolEnvironmentHealth.Healthy
+            && !wheelHashChanged)
+        {
+            return ToolInstallDecision.Skip;
+        }
+
+        // A reinstall removes the tool environment that a running console is executing from. On Windows the
+        // running process holds those files open, so the removal half-succeeds and leaves an environment
+        // without its packages, which every later console then fails against.
+        if (hasRunningSessions)
+        {
+            return ToolInstallDecision.Defer;
+        }
+
+        return ToolInstallDecision.Install;
+    }
+}
 
 /// <summary>
 /// The inputs to build a Python session's startup command: the project root, the interpreter version, the
@@ -21,37 +72,28 @@ public sealed record PythonLaunchRequest(
     IReadOnlyList<string> InterpreterArguments);
 
 /// <summary>
-/// The resolved startup: the installed celbridge-py tool to inject, the per-console environment carrying
-/// its launch defaults, and the config fingerprint plus the project Python folder so the caller can
-/// persist the fingerprint once the session proves it launches.
+/// The resolved startup: the installed celbridge-py tool to inject, and the per-console environment
+/// carrying its launch defaults.
 /// </summary>
 public sealed record PythonStartupResult(
     string Executable,
-    IReadOnlyDictionary<string, string> Environment,
-    string Fingerprint,
-    string ProjectPythonFolder);
+    IReadOnlyDictionary<string, string> Environment);
 
 /// <summary>
 /// Builds the startup command and shared environment for Python sessions, owning all the Python-specific
 /// launch machinery. The injected command is a bare celbridge-py; the console's interpreter version,
-/// dependencies, interpreter arguments, and offline mode ride per-console environment variables that the
-/// tool reads as launch defaults, so retyping celbridge-py after exiting the REPL reproduces the same
-/// environment. The uv and wheel locations ride the shared console environment.
+/// dependencies, and interpreter arguments ride per-console environment variables that the tool reads as
+/// launch defaults, so retyping celbridge-py after exiting the REPL reproduces the same environment. The
+/// uv and wheel locations ride the shared console environment.
 /// </summary>
 public interface IPythonLaunchService
 {
     /// <summary>
     /// Resolves the startup command and its per-console environment for a Python session, installing
-    /// support files, installing the celbridge-py tool when needed, and computing the offline
-    /// fingerprint. Fails if uv or the celbridge wheel is missing.
+    /// support files and installing the celbridge-py tool when needed. Fails if uv or the celbridge wheel
+    /// is missing, or if the tool install fails.
     /// </summary>
     Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
-
-    /// <summary>
-    /// Persists the config fingerprint once a session has proven it launches, enabling offline mode next
-    /// run. Failures are swallowed (the next run just uses online mode).
-    /// </summary>
-    Task SaveFingerprintAsync(string projectPythonFolder, string fingerprint);
 
     /// <summary>
     /// Returns a PATH value with the project's uv tool bin folder prepended to the given base (or to the
@@ -71,10 +113,11 @@ public interface IPythonLaunchService
 
 public sealed class PythonLaunchService : IPythonLaunchService
 {
-    private const int PythonLogMaxFiles = 10;
     private const int LoginShellPathTimeoutMs = 5000;
 
     private const string CelbridgeToolCommand = "celbridge-py";
+    private const string CelbridgePackageName = "celbridge";
+    private const string SitePackagesFolderName = "site-packages";
     private const string UVCacheFolderName = "uv_cache";
     private const string UVExecutableName = "uv";
     private const string UVExecutableNameWindows = "uv.exe";
@@ -82,13 +125,15 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private const string UVToolsFolderName = "uv_tools";
     private const string UVBinFolderName = "uv_bin";
     private const string IPythonCacheFolderName = "ipython";
-    private const string PythonFingerprintFileName = "python_config.fingerprint";
+    private const string PythonToolWheelHashFileName = "python_tool.wheelhash";
 
     private readonly IAppEnvironment _environmentService;
     private readonly IServerService _serverService;
     private readonly IFeatureFlags _featureFlags;
+    private readonly IPythonConfigService _pythonConfigService;
     private readonly IPythonInstaller _pythonInstaller;
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILogger<PythonLaunchService> _logger;
 
     // The login-shell PATH is app-global and costs a subprocess to resolve, so cache it for the app run.
@@ -98,32 +143,36 @@ public sealed class PythonLaunchService : IPythonLaunchService
     // Consoles start together, so the tool install is serialized: a --force reinstall republishes the
     // celbridge-py entry point, which would otherwise vanish from under another console about to run it.
     private readonly SemaphoreSlim _toolInstallGate = new(1, 1);
-    private string? _installedToolFingerprint;
 
     public PythonLaunchService(
         IAppEnvironment environmentService,
         IServerService serverService,
         IFeatureFlags featureFlags,
+        IPythonConfigService pythonConfigService,
         IPythonInstaller pythonInstaller,
         ILocalFileSystem fileSystem,
+        IWorkspaceWrapper workspaceWrapper,
         ILogger<PythonLaunchService> logger)
     {
         _environmentService = environmentService;
         _serverService = serverService;
         _featureFlags = featureFlags;
+        _pythonConfigService = pythonConfigService;
         _pythonInstaller = pythonInstaller;
         _fileSystem = fileSystem;
+        _workspaceWrapper = workspaceWrapper;
         _logger = logger;
     }
 
     public async Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request)
     {
+        var startupTimer = Stopwatch.StartNew();
+
         var environmentInfo = _environmentService.GetEnvironmentInfo();
         var appVersion = environmentInfo.AppVersion;
 
         // The per-project Python folder under .celbridge/ holds this project's uv caches, interpreter
-        // installs, tool install, IPython profile, and the config fingerprint, so one project reinstalling
-        // never disturbs another.
+        // installs, tool install, and IPython profile, so one project reinstalling never disturbs another.
         var projectPythonFolder = Path.Combine(request.ProjectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
 
         var installResult = await _pythonInstaller.InstallPythonAsync(appVersion);
@@ -149,8 +198,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var uvToolsFolder = Path.Combine(projectPythonFolder, UVToolsFolderName);
         var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
 
-        // Filter blank entries once, so the command and the fingerprint see the same effective config and
-        // a stray blank line cannot flip a launch to online mode.
+        // Filter blank entries, so a stray blank line cannot reach uv as an empty package specifier.
         var dependencies = request.Dependencies
             .Where(dependency => !string.IsNullOrWhiteSpace(dependency))
             .ToList();
@@ -166,64 +214,26 @@ public sealed class PythonLaunchService : IPythonLaunchService
         }
         var celbridgeWheelPath = findWheelResult.Value;
 
-        // The fingerprint combines the config with a hash of the wheel contents and a structural hash of
-        // the stable parts of the install, so an unchanged config launches in offline mode.
         var wheelHash = await FileHashHelper.HashFileContentsAsync(celbridgeWheelPath);
-        var installStateHash = await ComputeInstallStateHashAsync(pythonFolder, projectPythonFolder);
-        var currentFingerprint = ComputeConfigFingerprint(
-            appVersion,
-            request.PythonVersion,
-            celbridgeWheelPath,
-            wheelHash,
-            dependencies,
-            interpreterArguments,
-            installStateHash);
-        var savedFingerprint = await LoadSavedFingerprintAsync(projectPythonFolder);
-        var useOfflineMode = currentFingerprint == savedFingerprint;
-
-        // Log the fingerprint components so an unexpected offline/online transition can be diagnosed
-        // from the log alone.
-        _logger.LogDebug(
-            "Python fingerprint: wheelHash={WheelHash} installStateHash={InstallStateHash} current={CurrentFingerprint} saved={SavedFingerprint}",
-            wheelHash,
-            installStateHash,
-            currentFingerprint,
-            string.IsNullOrEmpty(savedFingerprint) ? "(none)" : savedFingerprint);
-        if (useOfflineMode)
-        {
-            _logger.LogInformation("Python launch mode: offline (config fingerprint unchanged)");
-        }
-        else
-        {
-            var onlineReason = string.IsNullOrEmpty(savedFingerprint)
-                ? "no saved fingerprint, first run"
-                : "config changed since last run";
-            _logger.LogInformation("Python launch mode: online ({Reason})", onlineReason);
-        }
 
         // The tool install publishes the celbridge-py command into the project's uv_bin folder, which
         // every console's PATH carries, so the user can start a cel-connected REPL from a shell console
         // or a spawned terminal.
+        // Consoles start together, so a console behind the one doing the install spends most of its
+        // startup waiting here. Timed separately, so its total does not read as work it did.
+        var gateTimer = Stopwatch.StartNew();
         await _toolInstallGate.WaitAsync();
+        var gateWaitMilliseconds = gateTimer.ElapsedMilliseconds;
+
         try
         {
-            var uvBinFolderInfo = await _fileSystem.GetInfoAsync(uvBinFolder);
-            var uvBinFolderExists = uvBinFolderInfo.IsSuccess
-                && uvBinFolderInfo.Value.Kind == StorageItemKind.Folder;
-
-            // A console that waited on the gate inherits the install the console ahead of it just did, as
-            // long as they resolved the same config.
-            var alreadyInstalled = _installedToolFingerprint == currentFingerprint
-                && uvBinFolderExists;
-            var shouldInstallTool = !alreadyInstalled
-                && (!useOfflineMode || !uvBinFolderExists);
-            if (shouldInstallTool)
+            var ensureToolResult = await EnsureCelbridgeToolAsync(
+                uvExePath, uvCacheDir, uvToolsFolder, uvBinFolder,
+                uvPythonInstallDir, projectPythonFolder, celbridgeWheelPath, wheelHash);
+            if (ensureToolResult.IsFailure)
             {
-                await InstallCelbridgeToolAsync(
-                    uvExePath, uvCacheDir, uvToolsFolder, uvBinFolder,
-                    uvPythonInstallDir, request.PythonVersion, celbridgeWheelPath);
-
-                _installedToolFingerprint = currentFingerprint;
+                return Result<PythonStartupResult>.Fail("Failed to install the celbridge-py tool")
+                    .WithErrors(ensureToolResult);
             }
         }
         finally
@@ -234,7 +244,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
         // The injected command is a bare celbridge-py; these per-console variables are the launch
         // defaults it reads, making the tool re-exec through uv (located via the shared console
         // environment) with this console's interpreter, packages, and arguments. Lists are
-        // newline-separated because PEP 508 specifiers can contain commas and semicolons.
+        // newline-separated because PEP 508 specifiers can contain commas and semicolons. Offline mode is
+        // not among them: celbridge-py measures the cache itself at launch.
         var startupEnvironment = new Dictionary<string, string>
         {
             ["CELBRIDGE_PYTHON_VERSION"] = request.PythonVersion,
@@ -250,16 +261,13 @@ public sealed class PythonLaunchService : IPythonLaunchService
             startupEnvironment["CELBRIDGE_PYTHON_ARGS"] = string.Join('\n', interpreterArguments);
         }
 
-        if (useOfflineMode)
-        {
-            startupEnvironment["CELBRIDGE_PYTHON_OFFLINE"] = "1";
-        }
-
-        _logger.LogDebug("Built Python startup: {Command} with launch defaults {Environment}",
+        _logger.LogDebug("Built Python startup in {DurationMs}ms (gate wait {GateWaitMs}ms): {Command} with launch defaults {Environment}",
+            startupTimer.ElapsedMilliseconds,
+            gateWaitMilliseconds,
             CelbridgeToolCommand,
             string.Join(' ', startupEnvironment.Select(pair => $"{pair.Key}={pair.Value.Replace('\n', ';')}")));
 
-        var result = new PythonStartupResult(CelbridgeToolCommand, startupEnvironment, currentFingerprint, projectPythonFolder);
+        var result = new PythonStartupResult(CelbridgeToolCommand, startupEnvironment);
         return result;
     }
 
@@ -289,8 +297,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ? $"{environmentInfo.AppVersion} (Debug)"
             : $"{environmentInfo.AppVersion}";
 
-        var pythonLogFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.LogsFolder);
-
         var environment = new Dictionary<string, string>
         {
             ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
@@ -301,9 +307,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["CELBRIDGE_PROJECT_FOLDER"] = projectFolderPath,
             ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
-            ["CELBRIDGE_PYTHON_LOG_LEVEL"] = "DEBUG",
-            ["CELBRIDGE_PYTHON_LOG_DIR"] = pythonLogFolder,
-            ["CELBRIDGE_PYTHON_LOG_MAX_FILES"] = PythonLogMaxFiles.ToString(),
             ["CELBRIDGE_UV_CACHE_DIR"] = Path.Combine(projectPythonFolder, UVCacheFolderName),
         };
 
@@ -331,20 +334,161 @@ public sealed class PythonLaunchService : IPythonLaunchService
         return environment;
     }
 
-    public async Task SaveFingerprintAsync(string projectPythonFolder, string fingerprint)
+    // The tool environment is shared by every console in the project, so it is keyed on the wheel hash
+    // alone. Keying it on anything a console chooses (its dependencies, its interpreter version) is what
+    // makes opening a second console reinstall a tool the first console is running from.
+    private async Task<Result> EnsureCelbridgeToolAsync(
+        string uvExePath,
+        string uvCacheDir,
+        string uvToolsFolder,
+        string uvBinFolder,
+        string uvPythonInstallDir,
+        string projectPythonFolder,
+        string celbridgeWheelPath,
+        string wheelHash)
     {
-        // Non-critical: failures here just mean the next run uses online mode.
-        var createFolderResult = await _fileSystem.CreateFolderAsync(projectPythonFolder);
-        if (createFolderResult.IsFailure)
+        var health = await CheckToolEnvironmentHealthAsync(uvToolsFolder, uvBinFolder);
+        var installedWheelHash = await LoadInstalledToolWheelHashAsync(projectPythonFolder);
+        var wheelHashChanged = installedWheelHash != wheelHash;
+        var hasRunningSessions = HasRunningConsoleSessions();
+
+        _logger.LogDebug(
+            "Python tool key: wheelHash={WheelHash} installed={InstalledWheelHash} changed={WheelHashChanged} health={Health}",
+            wheelHash,
+            string.IsNullOrEmpty(installedWheelHash) ? "(none)" : installedWheelHash,
+            wheelHashChanged,
+            health);
+
+        var decision = ToolInstallPolicy.Decide(health, wheelHashChanged, hasRunningSessions);
+        if (decision == ToolInstallDecision.Skip)
         {
-            return;
+            _logger.LogInformation("Python tool install skipped: the installed tool is already current");
+
+            return Result.Ok();
         }
 
-        var filePath = Path.Combine(projectPythonFolder, PythonFingerprintFileName);
-        await _fileSystem.WriteAllTextAsync(filePath, fingerprint);
+        if (decision == ToolInstallDecision.Defer)
+        {
+            _logger.LogWarning(
+                "Python tool install deferred because console sessions are running (health={Health}, wheelHashChanged={WheelHashChanged}). Launching against the existing tool.",
+                health,
+                wheelHashChanged);
+
+            return Result.Ok();
+        }
+
+        // A fixed interpreter version, so the wheel hash fully describes the installed tool. The tool
+        // environment only runs the bootstrap shim; the version the REPL runs on is chosen by the inner
+        // uv run.
+        var toolPythonVersion = _pythonConfigService.DefaultPythonVersion;
+
+        var installResult = await InstallCelbridgeToolAsync(
+            uvExePath, uvCacheDir, uvToolsFolder, uvBinFolder,
+            uvPythonInstallDir, toolPythonVersion, celbridgeWheelPath);
+        if (installResult.IsFailure)
+        {
+            return installResult;
+        }
+
+        await SaveInstalledToolWheelHashAsync(projectPythonFolder, wheelHash);
+
+        return Result.Ok();
     }
 
-    private async Task InstallCelbridgeToolAsync(
+    // Health is read off the disk rather than from a recorded flag, so an environment gutted by a failed
+    // install is repaired on the next launch without the user having to clear anything.
+    private async Task<ToolEnvironmentHealth> CheckToolEnvironmentHealthAsync(string uvToolsFolder, string uvBinFolder)
+    {
+        var toolEnvironmentFolder = Path.Combine(uvToolsFolder, CelbridgePackageName);
+        var toolEnvironmentInfoResult = await _fileSystem.GetInfoAsync(toolEnvironmentFolder);
+        var toolEnvironmentExists = toolEnvironmentInfoResult.IsSuccess
+            && toolEnvironmentInfoResult.Value.Kind == StorageItemKind.Folder;
+        if (!toolEnvironmentExists)
+        {
+            return ToolEnvironmentHealth.Missing;
+        }
+
+        var entryPointName = OperatingSystem.IsWindows() ? CelbridgeToolCommand + ".exe" : CelbridgeToolCommand;
+        var entryPointPath = Path.Combine(uvBinFolder, entryPointName);
+        var entryPointInfoResult = await _fileSystem.GetInfoAsync(entryPointPath);
+        var entryPointExists = entryPointInfoResult.IsSuccess
+            && entryPointInfoResult.Value.Kind == StorageItemKind.File;
+        if (!entryPointExists)
+        {
+            return ToolEnvironmentHealth.Missing;
+        }
+
+        var sitePackagesFolder = await FindSitePackagesFolderAsync(toolEnvironmentFolder);
+        if (sitePackagesFolder is null)
+        {
+            return ToolEnvironmentHealth.Incomplete;
+        }
+
+        var packageFolder = Path.Combine(sitePackagesFolder, CelbridgePackageName);
+        var packageInfoResult = await _fileSystem.GetInfoAsync(packageFolder);
+        var packageExists = packageInfoResult.IsSuccess
+            && packageInfoResult.Value.Kind == StorageItemKind.Folder;
+        if (!packageExists)
+        {
+            return ToolEnvironmentHealth.Incomplete;
+        }
+
+        return ToolEnvironmentHealth.Healthy;
+    }
+
+    // A uv tool environment is a venv: Windows puts site-packages under Lib, other platforms under
+    // lib/pythonX.Y, so the interpreter folder is discovered rather than assumed.
+    private async Task<string?> FindSitePackagesFolderAsync(string toolEnvironmentFolder)
+    {
+        var windowsSitePackages = Path.Combine(toolEnvironmentFolder, "Lib", SitePackagesFolderName);
+        var windowsInfoResult = await _fileSystem.GetInfoAsync(windowsSitePackages);
+        var windowsSitePackagesExists = windowsInfoResult.IsSuccess
+            && windowsInfoResult.Value.Kind == StorageItemKind.Folder;
+        if (windowsSitePackagesExists)
+        {
+            return windowsSitePackages;
+        }
+
+        var libFolder = Path.Combine(toolEnvironmentFolder, "lib");
+        var enumerateResult = await _fileSystem.EnumerateAsync(libFolder, "python*", recursive: false);
+        if (enumerateResult.IsFailure)
+        {
+            return null;
+        }
+
+        foreach (var entry in enumerateResult.Value)
+        {
+            if (!entry.IsFolder)
+            {
+                continue;
+            }
+
+            var candidateFolder = Path.Combine(entry.FullPath, SitePackagesFolderName);
+            var candidateInfoResult = await _fileSystem.GetInfoAsync(candidateFolder);
+            var candidateExists = candidateInfoResult.IsSuccess
+                && candidateInfoResult.Value.Kind == StorageItemKind.Folder;
+            if (candidateExists)
+            {
+                return candidateFolder;
+            }
+        }
+
+        return null;
+    }
+
+    // PythonLaunchService is an application singleton, so the workspace-scoped session service is resolved
+    // at call time. The console requesting the launch is still starting and so does not count itself.
+    private bool HasRunningConsoleSessions()
+    {
+        if (!_workspaceWrapper.HasWorkspaceService)
+        {
+            return false;
+        }
+
+        return _workspaceWrapper.WorkspaceService.ConsoleService.Sessions.HasRunningSessions;
+    }
+
+    private async Task<Result> InstallCelbridgeToolAsync(
         string uvExePath,
         string uvCacheDir,
         string uvToolsFolder,
@@ -353,7 +497,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         string pythonVersion,
         string celbridgeWheelPath)
     {
-        _logger.LogInformation("Installing celbridge as uv tool");
+        _logger.LogInformation("Installing celbridge as uv tool with Python {PythonVersion}", pythonVersion);
 
         var processStartInfo = new ProcessStartInfo
         {
@@ -386,133 +530,56 @@ public sealed class PythonLaunchService : IPythonLaunchService
         processStartInfo.Environment["UV_TOOL_BIN_DIR"] = uvBinFolder;
         processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir;
 
+        var installTimer = Stopwatch.StartNew();
+
         using var process = Process.Start(processStartInfo);
-        if (process != null)
+        if (process is null)
         {
-            var stdoutTask = process.StandardOutput.ReadToEndAsync();
-            var stderrTask = process.StandardError.ReadToEndAsync();
-
-            using var timeoutCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-            try
-            {
-                await process.WaitForExitAsync(timeoutCancellation.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogWarning("uv tool install timed out after 2 minutes, killing process");
-                process.Kill(entireProcessTree: true);
-                return;
-            }
-
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
-
-            if (process.ExitCode != 0)
-            {
-                _logger.LogWarning("uv tool install exited with code {ExitCode}. Stderr: {Stderr}. Stdout: {Stdout}",
-                    process.ExitCode, stderr, stdout);
-            }
-            else
-            {
-                _logger.LogInformation("celbridge tool installed successfully");
-            }
+            return Result.Fail($"Failed to start uv at '{uvExePath}'");
         }
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        using var timeoutCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        try
+        {
+            await process.WaitForExitAsync(timeoutCancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+
+            return Result.Fail("uv tool install timed out after 2 minutes");
+        }
+
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        // Launching against a half-removed tool environment turns an install failure into an unrelated
+        // Python traceback, so the failure is surfaced here instead.
+        if (process.ExitCode != 0)
+        {
+            _logger.LogError("uv tool install exited with code {ExitCode} after {DurationMs}ms. Stderr: {Stderr}. Stdout: {Stdout}",
+                process.ExitCode, installTimer.ElapsedMilliseconds, stderr, stdout);
+
+            return Result.Fail($"uv tool install exited with code {process.ExitCode}. {stderr.Trim()}");
+        }
+
+        _logger.LogInformation("celbridge tool installed successfully in {DurationMs}ms", installTimer.ElapsedMilliseconds);
+
+        return Result.Ok();
     }
 
-    private async Task<string> ComputeInstallStateHashAsync(string appPythonFolder, string projectPythonFolder)
+    // The wheel hash the installed tool was built from. Recorded in the project's Python folder rather than
+    // in memory, so a restarted application does not reinstall a tool that is already current.
+    private async Task<string?> LoadInstalledToolWheelHashAsync(string projectPythonFolder)
     {
-        var sb = new StringBuilder();
-
-        var uvExeName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
-        var uvExePath = Path.Combine(appPythonFolder, uvExeName);
-        var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
-        if (uvExeInfoResult.IsSuccess
-            && uvExeInfoResult.Value.Kind == StorageItemKind.File)
-        {
-            sb.AppendLine($"uv|{uvExeInfoResult.Value.Size}");
-        }
-        else
-        {
-            sb.AppendLine("uv|missing");
-        }
-
-        var installsHash = await FileHashHelper.HashFolderStructureAsync(
-            Path.Combine(projectPythonFolder, UVPythonInstallsFolderName),
-            maxDepth: 1);
-        sb.AppendLine($"installs|{installsHash}");
-
-        var uvCacheDir = Path.Combine(projectPythonFolder, UVCacheFolderName);
-        var uvCacheInfoResult = await _fileSystem.GetInfoAsync(uvCacheDir);
-        if (uvCacheInfoResult.IsSuccess
-            && uvCacheInfoResult.Value.Kind == StorageItemKind.Folder)
-        {
-            var wheelsFolders = new List<string>();
-            var enumerateFoldersResult = await _fileSystem.EnumerateAsync(uvCacheDir, "*", recursive: false);
-            if (enumerateFoldersResult.IsSuccess)
-            {
-                foreach (var entry in enumerateFoldersResult.Value)
-                {
-                    if (!entry.IsFolder)
-                    {
-                        continue;
-                    }
-                    var folderName = Path.GetFileName(entry.FullPath);
-                    if (folderName.StartsWith("wheels-v", StringComparison.Ordinal))
-                    {
-                        wheelsFolders.Add(entry.FullPath);
-                    }
-                }
-                wheelsFolders.Sort(StringComparer.Ordinal);
-            }
-
-            foreach (var wheelsFolder in wheelsFolders)
-            {
-                var folderName = Path.GetFileName(wheelsFolder);
-                var wheelsHash = await FileHashHelper.HashFolderStructureAsync(wheelsFolder, maxDepth: 3);
-                sb.AppendLine($"wheels|{folderName}|{wheelsHash}");
-            }
-        }
-
-        return FileHashHelper.HashString(sb.ToString());
-    }
-
-    private static string ComputeConfigFingerprint(
-        string appVersion,
-        string pythonVersion,
-        string celbridgeWheelPath,
-        string wheelHash,
-        IReadOnlyList<string> dependencies,
-        IReadOnlyList<string> interpreterArguments,
-        string installStateHash)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine(appVersion);
-        sb.AppendLine(pythonVersion);
-        sb.AppendLine(Path.GetFileName(celbridgeWheelPath));
-        sb.AppendLine(wheelHash);
-
-        foreach (var dependency in dependencies)
-        {
-            sb.AppendLine(dependency);
-        }
-
-        foreach (var interpreterArgument in interpreterArguments)
-        {
-            sb.AppendLine($"arg|{interpreterArgument}");
-        }
-
-        sb.AppendLine(installStateHash);
-
-        return FileHashHelper.HashString(sb.ToString());
-    }
-
-    private async Task<string?> LoadSavedFingerprintAsync(string projectPythonFolder)
-    {
-        var filePath = Path.Combine(projectPythonFolder, PythonFingerprintFileName);
-        var fingerprintInfoResult = await _fileSystem.GetInfoAsync(filePath);
-        var fingerprintExists = fingerprintInfoResult.IsSuccess
-            && fingerprintInfoResult.Value.Kind == StorageItemKind.File;
-        if (!fingerprintExists)
+        var filePath = Path.Combine(projectPythonFolder, PythonToolWheelHashFileName);
+        var infoResult = await _fileSystem.GetInfoAsync(filePath);
+        var fileExists = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File;
+        if (!fileExists)
         {
             return null;
         }
@@ -524,6 +591,23 @@ public sealed class PythonLaunchService : IPythonLaunchService
         }
 
         return readResult.Value.Trim();
+    }
+
+    private async Task SaveInstalledToolWheelHashAsync(string projectPythonFolder, string wheelHash)
+    {
+        var createFolderResult = await _fileSystem.CreateFolderAsync(projectPythonFolder);
+        if (createFolderResult.IsFailure)
+        {
+            _logger.LogWarning("Failed to record the installed Python tool wheel hash: {Error}", createFolderResult.FirstErrorMessage);
+            return;
+        }
+
+        var filePath = Path.Combine(projectPythonFolder, PythonToolWheelHashFileName);
+        var writeResult = await _fileSystem.WriteAllTextAsync(filePath, wheelHash);
+        if (writeResult.IsFailure)
+        {
+            _logger.LogWarning("Failed to record the installed Python tool wheel hash: {Error}", writeResult.FirstErrorMessage);
+        }
     }
 
     private async Task<Result<string>> FindWheelFileAsync(string folderPath, string packageName)

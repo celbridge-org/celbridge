@@ -14,7 +14,6 @@ import os
 import sys
 from typing import NamedTuple
 
-from celbridge.logging_config import configure_logging
 from celbridge.rpc_client import RpcClient
 from celbridge.cel_proxy import CelProxy
 from celbridge.repl_setup import setup_repl, POST_STARTUP_LINE
@@ -22,6 +21,12 @@ from celbridge.repl_setup import setup_repl, POST_STARTUP_LINE
 # Set on the re-exec'd process so the inner python -m celbridge never re-bootstraps, then cleared
 # once consumed so terminals spawned from the REPL can bootstrap again.
 BOOTSTRAP_MARKER = 'CELBRIDGE_BOOTSTRAPPED'
+
+# Private OSC identifier carrying a diagnostic for the host application log, alongside the console's
+# ready marker on 7000. A terminal that never sees it renders nothing, and the host lifts it out of the
+# output stream before the user's terminal does. ConPTY forwards an OSC as it parses it rather than when
+# it paints the surrounding text, so the sequence carries no position and must not be used to mark one.
+DIAGNOSTIC_OSC_CODE = '7001'
 
 
 class ResolvedLaunch(NamedTuple):
@@ -85,8 +90,8 @@ def _resolve_launch(environ, arguments) -> ResolvedLaunch:
     )
 
 
-def _build_bootstrap_command(resolved: ResolvedLaunch, environ):
-    """Build the uv run command that relaunches the REPL with the resolved launch options."""
+def _build_uv_run_command(resolved: ResolvedLaunch, environ, payload):
+    """Build the uv run command that runs payload in the launch's environment."""
     uv_path = environ.get('CELBRIDGE_UV')
     wheel_path = environ.get('CELBRIDGE_WHEEL')
     if not uv_path or not wheel_path:
@@ -114,14 +119,68 @@ def _build_bootstrap_command(resolved: ResolvedLaunch, environ):
     for package in resolved.with_packages:
         command.extend(['--with', package])
 
-    command.extend(['python', '-m', 'celbridge'])
-    command.extend(resolved.ipython_arguments)
+    command.extend(payload)
 
     return command
 
 
+def _build_bootstrap_command(resolved: ResolvedLaunch, environ):
+    """Build the uv run command that relaunches the REPL with the resolved launch options."""
+    payload = ['python', '-m', 'celbridge'] + list(resolved.ipython_arguments)
+
+    return _build_uv_run_command(resolved, environ, payload)
+
+
+def _build_probe_command(resolved: ResolvedLaunch, environ):
+    """Build the cache probe: the launch command with --offline forced on and a no-op payload."""
+    return _build_uv_run_command(resolved._replace(offline=True), environ, ['python', '-c', ''])
+
+
+def _probe_offline_cache(resolved: ResolvedLaunch, environ):
+    """Measure whether the launch resolves entirely from the uv cache.
+
+    Returns whether it did, and how long the measurement took in milliseconds. Exit zero means every
+    package resolved with no network access, so the real launch can bootstrap offline. uv caches the
+    environment it builds here, so the launch that follows finds it already built. The probe's output is
+    discarded: on a cache miss uv explains itself at length, and the launch simply goes online instead.
+    """
+    import subprocess
+    import time
+
+    command = _build_probe_command(resolved, environ)
+
+    started = time.monotonic()
+    try:
+        completed = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        exit_code = completed.returncode
+    except OSError:
+        exit_code = -1
+    duration_ms = int((time.monotonic() - started) * 1000)
+
+    return exit_code == 0, duration_ms
+
+
+def _emit_diagnostic(text):
+    """Write a diagnostic for the host to lift into its application log."""
+    sys.stdout.write(f'\x1b]{DIAGNOSTIC_OSC_CODE};{text}\x07')
+    sys.stdout.flush()
+
+
 def _bootstrap(resolved: ResolvedLaunch):
     """Re-exec through uv. Does not return."""
+
+    # A launch that was not told the cache is warm measures it rather than predicting it. Nothing is
+    # remembered between launches, so no launch can inherit a wrong answer from an earlier one.
+    if not resolved.offline:
+        offline, duration_ms = _probe_offline_cache(resolved, os.environ)
+        mode = 'offline' if offline else 'online'
+        _emit_diagnostic(f'python-probe mode={mode} ms={duration_ms}')
+        resolved = resolved._replace(offline=offline)
+
     command = _build_bootstrap_command(resolved, os.environ)
 
     environment = dict(os.environ)
@@ -153,9 +212,6 @@ def main():
         ipython_forward_arguments = resolved.ipython_arguments
 
     port = _resolve_rpc_port()
-
-    # Configure logging first
-    configure_logging()
 
     mcp_tools_enabled = os.environ.get('CELBRIDGE_MCP_TOOLS') == '1'
 

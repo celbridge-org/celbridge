@@ -39,6 +39,7 @@ internal sealed class ConsoleLiveSession : IDisposable
     private volatile bool _startupInjectionPending;
 
     private readonly object _streamLock = new();
+    private readonly DiagnosticSequenceScanner _diagnosticScanner = new();
     private StartupMarkerScanner? _markerScanner;
     private IConsoleView? _attachedView;
 
@@ -493,6 +494,37 @@ internal sealed class ConsoleLiveSession : IDisposable
         attachedView?.OnStartupComplete();
     }
 
+    private void LogDiagnostics(IReadOnlyList<string> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            _logger.LogInformation("Console '{Resource}' reported: {Diagnostic}", Resource, diagnostic);
+        }
+    }
+
+    // A session that ends mid-sequence leaves the scanner holding a partial match, which is ordinary
+    // output rather than a diagnostic once no more is coming.
+    private void FlushHeldDiagnosticText()
+    {
+        IConsoleView? attachedView;
+        string held;
+        lock (_streamLock)
+        {
+            held = _diagnosticScanner.Flush();
+            attachedView = _attachedView;
+
+            if (held.Length > 0)
+            {
+                _outputBuffer.Append(held);
+            }
+        }
+
+        if (held.Length > 0)
+        {
+            attachedView?.OnOutput(held);
+        }
+    }
+
     private void OnTerminalOutput(object? sender, string output)
     {
         if (_disposed)
@@ -502,34 +534,48 @@ internal sealed class ConsoleLiveSession : IDisposable
 
         IConsoleView? attachedView;
         string forwarded;
+        IReadOnlyList<string> diagnostics;
         var startupCompleted = false;
+        var markerPending = false;
 
         lock (_streamLock)
         {
+            // Diagnostics come off the raw stream, ahead of the marker scan. A pty forwards an OSC as it
+            // parses it rather than when it paints the surrounding text, so a diagnostic can overtake the
+            // ready marker, and pre-marker output is discarded. The scanner stays live for the session,
+            // so a command the user runs later reports the same way.
+            var scanned = _diagnosticScanner.Push(output);
+            diagnostics = scanned.Diagnostics;
+            forwarded = scanned.Text;
+
             if (_markerScanner is not null)
             {
                 // Pre-marker output is the shell-startup noise the reveal is meant to hide: not buffered,
                 // not forwarded. The chunk containing the marker contributes only its remainder.
-                var (text, found) = _markerScanner.Push(output);
-                if (!found)
-                {
-                    return;
-                }
+                var (text, found) = _markerScanner.Push(forwarded);
+                markerPending = !found;
 
-                _markerScanner = null;
-                startupCompleted = true;
+                if (found)
+                {
+                    _markerScanner = null;
+                    startupCompleted = true;
+                }
                 forwarded = text;
             }
-            else
-            {
-                forwarded = output;
-            }
 
-            if (forwarded.Length > 0)
+            if (!markerPending
+                && forwarded.Length > 0)
             {
                 _outputBuffer.Append(forwarded);
             }
             attachedView = _attachedView;
+        }
+
+        LogDiagnostics(diagnostics);
+
+        if (markerPending)
+        {
+            return;
         }
 
         if (startupCompleted)
@@ -551,6 +597,7 @@ internal sealed class ConsoleLiveSession : IDisposable
 
         // A marker that never arrived must not swallow the session's final output.
         AbandonMarkerScan();
+        FlushHeldDiagnosticText();
 
         SetState(ConsoleSessionRunState.Ended);
 

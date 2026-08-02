@@ -61,6 +61,13 @@ public interface IConsoleView
 public interface IConsoleSessionService
 {
     /// <summary>
+    /// Returns true while any session in the workspace has a live process, so callers can defer work that
+    /// would disturb the files a running session is executing from. A session that has not yet launched
+    /// its pty does not count as running.
+    /// </summary>
+    bool HasRunningSessions { get; }
+
+    /// <summary>
     /// Starts the session for a .console document if it is not already running. Failures are recorded on
     /// the session and surface when a view attaches.
     /// </summary>

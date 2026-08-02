@@ -88,6 +88,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Assets\UV\" />
   </ItemGroup>
 
