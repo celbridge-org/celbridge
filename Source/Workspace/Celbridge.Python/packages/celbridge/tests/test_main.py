@@ -2,9 +2,12 @@
 
 import pytest
 from celbridge.__main__ import (
+    DIAGNOSTIC_OSC_CODE,
     ResolvedLaunch,
     _build_bootstrap_command,
     _build_exec_lines,
+    _build_probe_command,
+    _emit_diagnostic,
     _resolve_launch,
     _resolve_rpc_port,
 )
@@ -134,3 +137,48 @@ def test_build_bootstrap_command_requires_console_environment():
     with pytest.raises(SystemExit) as exit_info:
         _build_bootstrap_command(resolved, {})
     assert "CELBRIDGE_UV" in str(exit_info.value)
+
+
+def test_build_probe_command_forces_offline_with_a_no_op_payload():
+    """Test that the probe runs the launch it is measuring, offline, without starting the REPL."""
+    resolved = ResolvedLaunch("3.13", ["numpy"], False, ["-i"])
+    environ = {
+        "CELBRIDGE_UV": "/apps/python/uv",
+        "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
+        "CELBRIDGE_UV_CACHE_DIR": "/project/.celbridge/python/uv_cache",
+    }
+    command = _build_probe_command(resolved, environ)
+    assert command == [
+        "/apps/python/uv", "run",
+        "--cache-dir", "/project/.celbridge/python/uv_cache",
+        "--offline",
+        "--no-project",
+        "--python", "3.13",
+        "--managed-python",
+        "--with", "/apps/python/celbridge-0.1.0-py3-none-any.whl",
+        "--with", "numpy",
+        "python", "-c", "",
+    ]
+
+
+def test_build_probe_command_matches_the_launch_it_measures():
+    """Test that the probe differs from the real launch only in offline mode and the payload."""
+    resolved = ResolvedLaunch("3.12", ["pandas>=2"], False, ["-q"])
+    environ = {
+        "CELBRIDGE_UV": "/apps/python/uv",
+        "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
+    }
+    probe = _build_probe_command(resolved, environ)
+    launch = _build_bootstrap_command(resolved._replace(offline=True), environ)
+
+    payload_index = probe.index("python")
+    assert probe[:payload_index] == launch[:payload_index]
+    assert probe[payload_index:] == ["python", "-c", ""]
+
+
+def test_emit_diagnostic_writes_a_private_osc_sequence(capsys):
+    """Test that a diagnostic is a private OSC, which a terminal that saw it would render as nothing."""
+    _emit_diagnostic("python-probe mode=offline ms=412")
+
+    expected = f"\x1b]{DIAGNOSTIC_OSC_CODE};python-probe mode=offline ms=412\x07"
+    assert capsys.readouterr().out == expected

@@ -1,13 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using Celbridge.FileSystem;
-using Path = System.IO.Path;
 
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// Utility methods for computing SHA256 hashes of files, strings, and folder
-/// structures.
+/// Utility methods for computing SHA256 hashes of files, strings, and byte arrays.
 /// </summary>
 public static class FileHashHelper
 {
@@ -63,78 +61,5 @@ public static class FileHashHelper
     {
         var hashBytes = SHA256.HashData(bytes);
         return Convert.ToHexString(hashBytes);
-    }
-
-    /// <summary>
-    /// Computes a fingerprint of a folder's structure by walking the tree up to
-    /// the specified depth and recording each entry's relative path and file size.
-    /// Detects files being added, removed, renamed, or replaced in place without
-    /// reading file contents. The depth cap keeps the scan bounded on deep trees
-    /// like Python's Lib/site-packages while still surfacing the changes that
-    /// matter for install-state validation.
-    /// </summary>
-    public static async Task<string> HashFolderStructureAsync(string folderPath, int maxDepth = 3)
-    {
-        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
-
-        var rootInfoResult = await fileSystem.GetInfoAsync(folderPath);
-        if (rootInfoResult.IsFailure
-            || rootInfoResult.Value.Kind != StorageItemKind.Folder)
-        {
-            return string.Empty;
-        }
-
-        var entries = new List<string>();
-        var stack = new Stack<(string Path, int Depth)>();
-        stack.Push((folderPath, 0));
-
-        while (stack.Count > 0)
-        {
-            var (currentPath, depth) = stack.Pop();
-            if (depth >= maxDepth)
-            {
-                continue;
-            }
-
-            var enumerateResult = await fileSystem.EnumerateAsync(currentPath, "*", recursive: false);
-
-            // Best effort: a child we cannot enumerate is treated as
-            // contributing nothing to the hash. Same as it being absent.
-            if (enumerateResult.IsFailure)
-            {
-                continue;
-            }
-
-            foreach (var child in enumerateResult.Value)
-            {
-                if (!child.IsFolder)
-                {
-                    continue;
-                }
-                var relativePath = Path.GetRelativePath(folderPath, child.FullPath);
-                entries.Add($"D|{relativePath}");
-                stack.Push((child.FullPath, depth + 1));
-            }
-
-            foreach (var child in enumerateResult.Value)
-            {
-                if (child.IsFolder)
-                {
-                    continue;
-                }
-                var relativePath = Path.GetRelativePath(folderPath, child.FullPath);
-                long size = 0;
-                var infoResult = await fileSystem.GetInfoAsync(child.FullPath);
-                if (infoResult.IsSuccess
-                    && infoResult.Value.Kind == StorageItemKind.File)
-                {
-                    size = infoResult.Value.Size;
-                }
-                entries.Add($"F|{relativePath}|{size}");
-            }
-        }
-
-        entries.Sort(StringComparer.Ordinal);
-        return HashString(string.Join("\n", entries));
     }
 }

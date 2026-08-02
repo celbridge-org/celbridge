@@ -1,6 +1,5 @@
 using Celbridge.Console;
 using Celbridge.Logging;
-using Celbridge.Messaging.Services;
 using Celbridge.Python;
 using Celbridge.Python.Services;
 
@@ -10,16 +9,11 @@ namespace Celbridge.Tests.Python;
 public class PythonSessionProviderTests
 {
     private const string BundledDefaultVersion = "3.13";
-    private const string LaunchFingerprint = "fingerprint-1";
 
     private static string ProjectRoot =>
         OperatingSystem.IsWindows() ? @"C:\Projects\Demo" : "/projects/demo";
 
-    private static string ProjectPythonFolder =>
-        Path.Combine(ProjectRoot, ".celbridge", "python");
-
     private IPythonLaunchService _launchService = null!;
-    private MessengerService _messengerService = null!;
     private PythonSessionProvider _provider = null!;
     private PythonLaunchRequest? _capturedRequest;
 
@@ -37,23 +31,12 @@ public class PythonSessionProviderTests
                 new Dictionary<string, string>
                 {
                     ["CELBRIDGE_PYTHON_VERSION"] = "3.13",
-                },
-                LaunchFingerprint,
-                ProjectPythonFolder)));
-
-        _messengerService = new MessengerService();
+                })));
 
         _provider = new PythonSessionProvider(
             pythonConfigService,
             _launchService,
-            _messengerService,
             Substitute.For<ILogger<PythonSessionProvider>>());
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _provider.Dispose();
     }
 
     private static ConsoleSessionContext MakeContext(
@@ -129,39 +112,12 @@ public class PythonSessionProviderTests
     }
 
     [Test]
-    public async Task Fingerprint_SavedWhenTheSessionConnects()
+    public async Task BuildStartupInvocation_DoesNotPredictOfflineMode()
     {
-        var sessionToken = Guid.NewGuid();
-        var environment = new Dictionary<string, string>
-        {
-            [ConsoleEnvironmentVariables.SessionToken] = sessionToken.ToString(),
-        };
+        // The launch measures the cache in celbridge-py, so the host never sets the offline default.
+        var result = await _provider.BuildStartupInvocationAsync(MakeContext());
 
-        var result = await _provider.BuildStartupInvocationAsync(MakeContext(environment: environment));
         result.IsFailure.Should().BeFalse();
-
-        _messengerService.Send(new ConsoleSessionConnectedMessage(sessionToken));
-
-        await _launchService.Received(1).SaveFingerprintAsync(ProjectPythonFolder, LaunchFingerprint);
-    }
-
-    [Test]
-    public async Task Fingerprint_DroppedWhenTheSessionEndsBeforeConnecting()
-    {
-        var sessionToken = Guid.NewGuid();
-        var environment = new Dictionary<string, string>
-        {
-            [ConsoleEnvironmentVariables.SessionToken] = sessionToken.ToString(),
-        };
-
-        var result = await _provider.BuildStartupInvocationAsync(MakeContext(environment: environment));
-        result.IsFailure.Should().BeFalse();
-
-        // A session that dies before its client connects must not persist its unproven fingerprint,
-        // even if a stray connected message for the same session id arrives afterwards.
-        _messengerService.Send(new ConsoleSessionStateChangedMessage(sessionToken, ConsoleSessionRunState.Ended));
-        _messengerService.Send(new ConsoleSessionConnectedMessage(sessionToken));
-
-        await _launchService.DidNotReceive().SaveFingerprintAsync(Arg.Any<string>(), Arg.Any<string>());
+        result.Value.Environment.Should().NotContainKey("CELBRIDGE_PYTHON_OFFLINE");
     }
 }
