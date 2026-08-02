@@ -15,13 +15,15 @@ html, body {
 
 /* Light theme defaults. Dark theme keys off html[data-theme], which the parent sets to the effective
    app theme (an in-app override, or the OS theme for the System setting), so the preview follows the
-   Celbridge theme setting rather than only the OS prefers-color-scheme. */
+   Celbridge theme setting rather than only the OS prefers-color-scheme.
+
+   The surface colours are the editor canvas Monaco renders on, not the app panel colours, because the
+   preview and the code view swap places inside one tab. Only the accent comes from the shared tokens. */
 :root {
     --bg-color: #ffffff;
     --text-color: #24292f;
     --heading-color: #1f2328;
-    --link-color: #0969da;
-    --link-hover-color: #0550ae;
+    --link-color: var(--cel-accent);
     --code-bg: #f6f8fa;
     --code-text: #24292f;
     --blockquote-border: #d0d7de;
@@ -42,8 +44,6 @@ html[data-theme="dark"] {
     --bg-color: #1e1e1e;
     --text-color: #d4d4d4;
     --heading-color: #e0e0e0;
-    --link-color: #58a6ff;
-    --link-hover-color: #79c0ff;
     --code-bg: #282828;
     --code-text: #d4d4d4;
     --blockquote-border: #444;
@@ -58,9 +58,9 @@ html[data-theme="dark"] {
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    font-family: var(--cel-font-ui);
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.5;
     word-wrap: break-word;
     overflow-wrap: break-word;
     overflow-x: hidden;
@@ -75,13 +75,19 @@ body {
 #preview-content {
     max-width: 900px;
     margin: 0 auto;
-    padding: 32px;
+    padding: 20px 32px;
     /* Matches Monaco's scrollBeyondLastLine overscroll so the editor and
        preview can scroll past end together. */
     padding-bottom: calc(100vh - 4em);
     word-wrap: break-word;
     overflow-wrap: break-word;
     overflow-x: hidden;
+}
+
+/* The first block sits on the container's padding. Headings carry a top margin for the space above them
+   in the flow, which at the top of the document would stack on that padding. */
+#preview-content > :first-child {
+    margin-top: 0;
 }
 
 /* Empty state */
@@ -112,7 +118,7 @@ body {
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
     color: var(--heading-color);
-    margin-top: 24px;
+    margin-top: 20px;
     margin-bottom: 16px;
     font-weight: 600;
     line-height: 1.25;
@@ -160,7 +166,6 @@ a {
 }
 
 a:hover {
-    color: var(--link-hover-color);
     text-decoration: underline;
 }
 
@@ -216,7 +221,7 @@ li > p + p {
 
 /* Code */
 code {
-    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-family: var(--cel-font-mono);
     font-size: 0.875em;
     padding: 0.2em 0.4em;
     background-color: var(--code-bg);
@@ -312,7 +317,7 @@ img {
 kbd {
     display: inline-block;
     padding: 3px 5px;
-    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-family: var(--cel-font-mono);
     font-size: 0.75em;
     line-height: normal;
     color: var(--text-color);
