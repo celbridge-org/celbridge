@@ -39,33 +39,22 @@
     <!-- Search Input -->
     <Grid Grid.Row="1"
           Padding="12,8,12,4">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/>
-      </Grid.RowDefinitions>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
-      <!-- Search label -->
-      <TextBlock Grid.Row="0"
-                 Grid.Column="0"
-                 Text="{x:Bind ViewModel.SearchPlaceholder, Mode=OneWay}"
-                 Margin="0,0,0,4"/>
-
       <TextBox x:Name="SearchTextBox"
                AutomationProperties.AutomationId="search-input"
-               Grid.Row="1"
                Grid.Column="0"
+               PlaceholderText="{x:Bind ViewModel.SearchPlaceholder, Mode=OneWay}"
                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                KeyDown="SearchTextBox_KeyDown"
                LostFocus="SearchTextBox_LostFocus"/>
 
       <!-- Progress ring overlay -->
-      <ProgressRing Grid.Row="1"
-                    IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}"
+      <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}"
                     Width="16"
                     Height="16"
                     HorizontalAlignment="Right"
@@ -73,8 +62,7 @@
                     Margin="0,0,8,0"/>
 
       <!-- Search History dropdown button -->
-      <Button Grid.Row="1"
-              Grid.Column="1"
+      <Button Grid.Column="1"
               AutomationProperties.AutomationId="search-history-button"
               Padding="4,0"
               Margin="0"
@@ -96,8 +84,7 @@
       </Button>
 
       <!-- Search button -->
-      <Button Grid.Row="1"
-              Grid.Column="2"
+      <Button Grid.Column="2"
               AutomationProperties.AutomationId="search-run-button"
               Command="{x:Bind ViewModel.ExecuteSearchCommand}"
               Padding="8,0"
@@ -171,7 +158,7 @@
       <TextBox x:Name="ReplaceTextBox"
                Grid.Column="0"
                AutomationProperties.AutomationId="search-replace-input"
-               Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
+               PlaceholderText="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
                Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                LostFocus="ReplaceTextBox_LostFocus"/>
 
@@ -180,8 +167,7 @@
               AutomationProperties.AutomationId="search-replace-history-button"
               Padding="4,0"
               Margin="0"
-              VerticalAlignment="Bottom"
-              Height="32"
+              VerticalAlignment="Stretch"
               ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceHistoryTooltip, Mode=OneWay}">
         <controls:Icon Symbol="ChevronDown" FontSize="12"/>
         <Button.Flyout>
@@ -204,8 +190,7 @@
               Command="{x:Bind ViewModel.ReplaceAllCommand}"
               Padding="8,0"
               Margin="4,0,0,0"
-              VerticalAlignment="Bottom"
-              Height="32"
+              VerticalAlignment="Stretch"
               IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
               ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceAllTooltip, Mode=OneWay}">
         <controls:Icon Symbol="Replace" FontSize="14"/>

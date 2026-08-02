@@ -17,7 +17,15 @@
 :root {
     --cel-font-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", sans-serif;
     --cel-font-mono: "Cascadia Mono", ui-monospace, Consolas, Menlo, monospace;
+
+    /* The type scale, mirroring the named TextBlock styles in Celbridge.UserInterface/Resources/Styles.xaml;
+       keep the two in sync when either changes. Small carries panel titles, field labels and supporting
+       prose. Base carries input, button and body text. Heading carries the section heading. */
+    --cel-font-size-small: 12px;
     --cel-font-size-base: 14px;
+    --cel-font-size-heading: 16px;
+    --cel-font-weight-regular: 400;
+    --cel-font-weight-strong: 600;
 
     --cel-radius-control: 4px;
     --cel-radius-card: 8px;

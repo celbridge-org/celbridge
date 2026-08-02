@@ -33,13 +33,16 @@ html, body {
     border-left: 1px solid var(--cel-divider-subtle);
 }
 
-/* Mirrors the native PanelHeader above the settings panels' tab strip: 40px tall, at the base text size. */
+/* Mirrors the native PanelHeader above the settings panels' tab strip: 40px tall, at the panel title type. */
 .inspector-title {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     height: 40px;
     padding: 0 12px;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
+    color: var(--cel-text-secondary);
     background: var(--cel-panel-bg);
 }
 
@@ -52,7 +55,7 @@ html, body {
 
 .inspector-section p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
 }
 
@@ -115,19 +118,19 @@ html, body {
 
 .demo-panel-body p {
     margin: 0 0 8px;
-    font-size: 13px;
+    font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
 }
 
 #process-title {
     margin: 0 0 4px 0;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--cel-font-size-heading);
+    font-weight: var(--cel-font-weight-strong);
 }
 
 #process-blurb {
     margin: 0 0 12px 0;
-    font-size: 12px;
+    font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
 }
 
@@ -143,12 +146,11 @@ html, body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 13px;
 }
 
 #process-footer {
     margin: 8px 0 0 0;
-    font-size: 12px;
+    font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
 }
 
@@ -163,5 +165,4 @@ html, body {
     resize: none;
     padding: 8px;
     font-family: var(--cel-font-mono);
-    font-size: 13px;
 }

@@ -71,6 +71,15 @@ term.open(terminalElement);
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 fitAddon.fit();
 
+// Metrics for the starting veil's status line, which sits at the terminal's first cell. The row height
+// is on the rows container xterm just laid out.
+const terminalRows = terminalElement.querySelector('.xterm-rows');
+document.documentElement.style.setProperty('--console-terminal-font-size', `${term.options.fontSize}px`);
+if (terminalRows) {
+    const rowLineHeight = getComputedStyle(terminalRows).lineHeight;
+    document.documentElement.style.setProperty('--console-terminal-line-height', rowLineHeight);
+}
+
 // DOM references.
 const settingsToggle = document.getElementById('settings-toggle');
 const pip = document.getElementById('pip');

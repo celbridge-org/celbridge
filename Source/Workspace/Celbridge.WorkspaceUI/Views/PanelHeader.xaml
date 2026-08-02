@@ -25,6 +25,7 @@
     <!-- Title -->
     <TextBlock Grid.Column="1"
                Text="{x:Bind Title, Mode=OneWay}"
+               Style="{StaticResource PanelTitleTextStyle}"
                Margin="6,0,0,0"
                VerticalAlignment="Center"/>
 
