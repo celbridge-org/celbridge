@@ -15,10 +15,34 @@ public sealed record ConsoleRunCandidate(
     bool HasStaleRunners);
 
 /// <summary>
-/// Selects which console sessions can run a file, and which runner each would use.
+/// Resolves a console's effective runners, and selects which console sessions can run a file.
 /// </summary>
 public static class ConsoleRunTargets
 {
+    /// <summary>
+    /// Layers a console's own runners over the ones its session type contributes, so a console handles the
+    /// type's file extensions without declaring anything.
+    /// </summary>
+    public static IReadOnlyList<ConsoleRunner> ResolveEffectiveRunners(
+        IReadOnlyList<ConsoleDocumentRunner> configRunners,
+        IReadOnlyList<ConsoleRunner> defaultRunners)
+    {
+        // Config runners go first because FindRunner takes the first match: a runner for an extension the
+        // type already handles shadows the default, and extensions the config leaves alone keep theirs.
+        var runners = new List<ConsoleRunner>();
+        foreach (var configRunner in configRunners)
+        {
+            runners.Add(new ConsoleRunner(configRunner.Extensions, configRunner.Command));
+        }
+
+        foreach (var defaultRunner in defaultRunners)
+        {
+            runners.Add(defaultRunner);
+        }
+
+        return runners;
+    }
+
     /// <summary>
     /// Returns the candidates whose runners cover a file extension, sorted by display name, skipping any
     /// whose runners are stale.

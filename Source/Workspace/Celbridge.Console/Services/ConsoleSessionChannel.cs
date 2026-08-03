@@ -35,13 +35,13 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
     public async Task<ConsoleAttachResult> AttachAsync(int cols, int rows)
     {
         var snapshot = await Sessions.AttachAsync(_fileResource, this, cols, rows);
-        return ToResult(snapshot);
+        return ToResult(snapshot, Sessions.GetDefaultRunners());
     }
 
     public async Task<ConsoleAttachResult> ReopenAsync(int cols, int rows)
     {
         var snapshot = await Sessions.ReopenAsync(_fileResource, cols, rows);
-        return ToResult(snapshot);
+        return ToResult(snapshot, Sessions.GetDefaultRunners());
     }
 
     public void OnInput(string data)
@@ -91,7 +91,9 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.StartupComplete, new { });
     }
 
-    private static ConsoleAttachResult ToResult(ConsoleAttachSnapshot snapshot)
+    private static ConsoleAttachResult ToResult(
+        ConsoleAttachSnapshot snapshot,
+        IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> defaultRunners)
     {
         var state = snapshot.State switch
         {
@@ -106,7 +108,8 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             snapshot.Error,
             snapshot.StartupPending,
             snapshot.Replay,
-            snapshot.LaunchedConfigToml);
+            snapshot.LaunchedConfigToml,
+            defaultRunners);
     }
 
     public void Dispose()

@@ -126,6 +126,10 @@
                         <div class="card-list-group">
                             <h2 class="card-list-title" data-loc-key="Console_Field_Runners"></h2>
                             <p class="card-list-hint" data-loc-key="Console_Hint_Runners"></p>
+                            <div id="runner-inherited" class="inherited-list hidden">
+                                <p class="inherited-caption" data-loc-key="Console_Inherited_Runners"></p>
+                                <div id="runner-inherited-rows"></div>
+                            </div>
                             <div id="runner-cards" class="cel-card-list"></div>
                             <p id="runner-empty" class="card-list-empty" data-loc-key="Console_Empty_Runners"></p>
                             <button id="add-runner" type="button" class="add-card-button">
@@ -203,6 +207,15 @@
                 </label>
             </div>
         </details>
+    </template>
+
+    <!-- One runner the console's session type provides. Read-only: it is not in the file, so there is nothing
+         to edit or delete, and a runner card for the same extension takes precedence over it. -->
+    <template id="inherited-runner-template">
+        <div class="inherited-row">
+            <span class="inherited-row-name"></span>
+            <span class="inherited-row-detail"></span>
+        </div>
     </template>
 
     <template id="trigger-card-template">

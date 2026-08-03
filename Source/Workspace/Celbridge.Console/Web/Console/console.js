@@ -106,6 +106,9 @@ const workingDirectoryInput = document.getElementById('working-directory');
 const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
 const reopenSettingsButton = document.getElementById('reopen-settings');
+const inheritedRunners = document.getElementById('runner-inherited');
+const inheritedRunnerRows = document.getElementById('runner-inherited-rows');
+const inheritedRunnerTemplate = document.getElementById('inherited-runner-template');
 
 // The settings sections and their headers, selected by the shared nav tab strip. Both are present in the
 // markup with only the active one shown, mirroring how the native settings panel toggles its section views.
@@ -131,6 +134,9 @@ const navTabs = attachNavTabs(document.getElementById('settings-tabs'), {
 let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
+// The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
+// then, so the inherited list simply renders nothing on the first populate.
+let defaultRunnersByType = {};
 
 // Theme.
 function applyTheme(theme) {
@@ -334,7 +340,31 @@ function populateForm(config) {
     runnerCards.populate(config.runners);
     triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
+    renderInheritedRunners();
     renderShortcutRail();
+}
+
+// The runners the selected session type provides, shown above the console's own so the Run menu's behaviour
+// is visible in the form. They are not part of the config: the host layers them under whatever the file
+// declares, and re-reads them from the provider on every launch.
+function renderInheritedRunners() {
+    const runners = defaultRunnersByType[sessionTypeSelect.value] || [];
+    inheritedRunners.classList.toggle('hidden', runners.length === 0);
+    inheritedRunnerRows.replaceChildren();
+
+    // These come straight off the provider contract, so they are named for it rather than for the TOML keys
+    // the runner cards use.
+    for (const runner of runners) {
+        const row = inheritedRunnerTemplate.content.firstElementChild.cloneNode(true);
+        const command = runner.commandTemplate || '';
+        row.querySelector('.inherited-row-name').textContent = (runner.fileExtensions || []).join(', ');
+
+        const detail = row.querySelector('.inherited-row-detail');
+        detail.textContent = command;
+        detail.title = command;
+
+        inheritedRunnerRows.appendChild(row);
+    }
 }
 
 function readForm() {
@@ -553,6 +583,8 @@ function onFormInput() {
 
 sessionTypeSelect.addEventListener('change', () => {
     applyTypeVisibility(sessionTypeSelect.value);
+    // The inherited runners belong to the type, so they follow the dropdown rather than the launched session.
+    renderInheritedRunners();
     onFormInput();
 });
 
@@ -716,6 +748,13 @@ let requestInFlight = false;
 // Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
 // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
 function applyAttachResult(result) {
+    // The type defaults are static host knowledge that rides along with the attach, so the settings form can
+    // show them. The first attach lands after the form is populated, hence the re-render.
+    if (result && result.defaultRunners) {
+        defaultRunnersByType = result.defaultRunners;
+        renderInheritedRunners();
+    }
+
     launchedConfig = null;
     if (result && result.launchedConfigToml) {
         try {

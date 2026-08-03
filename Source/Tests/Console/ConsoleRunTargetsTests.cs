@@ -30,6 +30,45 @@ public class ConsoleRunTargetsTests
     }
 
     [Test]
+    public void ResolveEffectiveRunners_NoConfigRunners_KeepsTheTypeDefaults()
+    {
+        var runners = ConsoleRunTargets.ResolveEffectiveRunners(Array.Empty<ConsoleDocumentRunner>(), PythonRunners);
+
+        ConsoleRunTargets.FindRunner(runners, ".py")!.CommandTemplate.Should().Be("%run \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".ipy").Should().NotBeNull();
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_UnrelatedConfigRunner_LeavesTheDefaultsInPlace()
+    {
+        // Declaring a runner is additive: the type's own extensions keep working alongside it.
+        var configRunners = new[]
+        {
+            new ConsoleDocumentRunner(new[] { ".sql" }, "%sql {resource}"),
+        };
+
+        var runners = ConsoleRunTargets.ResolveEffectiveRunners(configRunners, PythonRunners);
+
+        ConsoleRunTargets.FindRunner(runners, ".sql")!.CommandTemplate.Should().Be("%sql {resource}");
+        ConsoleRunTargets.FindRunner(runners, ".py")!.CommandTemplate.Should().Be("%run \"{resource}\"");
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_ConfigRunnerForTheSameExtension_ShadowsTheDefault()
+    {
+        // Only the extension it names: .ipy still resolves to the default runner alongside it.
+        var configRunners = new[]
+        {
+            new ConsoleDocumentRunner(new[] { ".py" }, "%run -i \"{resource}\""),
+        };
+
+        var runners = ConsoleRunTargets.ResolveEffectiveRunners(configRunners, PythonRunners);
+
+        ConsoleRunTargets.FindRunner(runners, ".py")!.CommandTemplate.Should().Be("%run -i \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".ipy")!.CommandTemplate.Should().Be("%run \"{resource}\"");
+    }
+
+    [Test]
     public void Resolve_CandidateWithAMatchingRunner_IsATarget()
     {
         var candidates = new[] { MakeCandidate() };

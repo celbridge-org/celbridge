@@ -5,15 +5,18 @@ namespace Celbridge.Console.Services;
 /// <summary>
 /// The outcome of a console/attach or console/reopen request: the session's run state
 /// ("starting" | "running" | "ended" | "failed"), the failure reason when failed, whether the startup
-/// phase is still pending (keep the starting veil up), the buffered output to replay, and the raw
-/// .console text the session launched from (parsed client-side for the settings form's divergence check).
+/// phase is still pending (keep the starting veil up), the buffered output to replay, the raw .console
+/// text the session launched from (parsed client-side for the settings form's divergence check), and the
+/// default runners of every registered session type keyed by type id, so the form can follow its type
+/// dropdown rather than the launched session.
 /// </summary>
 public sealed record ConsoleAttachResult(
     string State,
     string? Error,
     bool StartupPending,
     string Replay,
-    string? LaunchedConfigToml);
+    string? LaunchedConfigToml,
+    IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> DefaultRunners);
 
 /// <summary>
 /// JSON-RPC method names for the console channel.

@@ -120,6 +120,12 @@ public interface IConsoleSessionService
     void OnConnectionLost(int connectionId);
 
     /// <summary>
+    /// Returns the default runners each registered session type contributes, keyed by type id. A console's
+    /// own runners layer over these, so the settings form can show what its type already handles.
+    /// </summary>
+    IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetDefaultRunners();
+
+    /// <summary>
     /// Returns the sessions whose effective runners cover a file extension, as Run menu targets sorted by
     /// display name. A session whose client connection was bound and then lost (its REPL exited back to
     /// the shell prompt) is excluded until a client reconnects or the console reopens.

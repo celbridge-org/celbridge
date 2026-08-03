@@ -287,6 +287,17 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
+    public IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetDefaultRunners()
+    {
+        var defaultRunners = new Dictionary<string, IReadOnlyList<ConsoleRunner>>();
+        foreach (var provider in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        {
+            defaultRunners[provider.TypeId] = provider.DefaultRunners;
+        }
+
+        return defaultRunners;
+    }
+
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)
     {
         var runningSessions = new List<ConsoleLiveSession>();

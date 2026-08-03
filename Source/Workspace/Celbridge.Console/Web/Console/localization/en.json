@@ -49,6 +49,7 @@
     "Console_Empty_Runners": "No runners yet.",
     "Console_Empty_Triggers": "No triggers yet.",
     "Console_Empty_Shortcuts": "No shortcuts yet.",
+    "Console_Inherited_Runners": "Built in:",
     "Console_Runner_Untitled": "New runner",
     "Console_Trigger_Untitled": "New trigger",
     "Console_Shortcut_Untitled": "New shortcut",

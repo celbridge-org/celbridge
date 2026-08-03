@@ -162,7 +162,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         // previous launch binding to this one.
         SessionId = Guid.NewGuid();
         TypeId = config.Type;
-        Runners = ResolveRunners(config, provider);
+        Runners = ConsoleRunTargets.ResolveEffectiveRunners(config.Runners, provider.DefaultRunners);
         Triggers = ResolveTriggers(config);
         ConnectionId = null;
         HasConnected = false;
@@ -636,23 +636,6 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
 
         return null;
-    }
-
-    private static IReadOnlyList<ConsoleRunner> ResolveRunners(ConsoleDocumentConfig config, IConsoleSessionProvider provider)
-    {
-        // Any runners in the config replace the type defaults outright. An empty list falls back to them.
-        if (config.Runners.Count == 0)
-        {
-            return provider.DefaultRunners;
-        }
-
-        var runners = new List<ConsoleRunner>();
-        foreach (var runner in config.Runners)
-        {
-            runners.Add(new ConsoleRunner(runner.Extensions, runner.Command));
-        }
-
-        return runners;
     }
 
     // Patterns are compiled once per launch rather than per resource change, since every change is tested

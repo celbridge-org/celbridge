@@ -243,6 +243,47 @@ html, body {
     color: var(--cel-text-secondary);
 }
 
+/* Runners the session type provides. They sit above the editable cards, flat and unboxed, so the list reads
+   as context for the cards rather than as more of them. */
+.inherited-list {
+    margin-bottom: 8px;
+}
+
+.inherited-caption {
+    margin: 0 0 4px;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+/* The built-in runners already say what the console runs, so the empty note would only contradict them. */
+.card-list-group:has(.inherited-list:not(.hidden)) .card-list-empty {
+    display: none;
+}
+
+.inherited-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 2px 0;
+    font-size: var(--cel-font-size-small);
+}
+
+.inherited-row-name {
+    flex: none;
+    font-family: var(--cel-font-mono);
+    font-weight: var(--cel-font-weight-strong);
+    color: var(--cel-text-secondary);
+}
+
+/* The command truncates rather than wrapping: it identifies the runner, and the full text is in the tooltip. */
+.inherited-row-detail {
+    overflow: hidden;
+    font-family: var(--cel-font-mono);
+    color: var(--cel-text-secondary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
 .add-card-button {
     display: inline-flex;
     align-items: center;
