@@ -243,45 +243,88 @@ html, body {
     color: var(--cel-text-secondary);
 }
 
-/* Runners the session type provides. They sit above the editable cards, flat and unboxed, so the list reads
-   as context for the cards rather than as more of them. */
-.inherited-list {
-    margin-bottom: 8px;
+/* Runners the session type provides, above the console's own. They take the same card shape, since they are
+   the same kind of thing, and read as text because they come from the type rather than the file. */
+.built-in-card .cel-card-title {
+    font-family: var(--cel-font-mono);
 }
 
-.inherited-caption {
-    margin: 0 0 4px;
+.built-in-value {
+    margin: 0;
+    font-family: var(--cel-font-mono);
+    color: var(--cel-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.built-in-badge {
+    flex: 0 0 auto;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--cel-expander-content-bg);
     font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
+}
+
+/* A turned-off runner stays listed so it can be turned back on, struck through to show it no longer runs. */
+.built-in-card.off .cel-card-title {
+    text-decoration: line-through;
+}
+
+.built-in-card.off .cel-card-title,
+.built-in-card.off .built-in-badge,
+.built-in-card.off .built-in-value {
+    opacity: 0.5;
 }
 
 /* The built-in runners already say what the console runs, so the empty note would only contradict them. */
-.card-list-group:has(.inherited-list:not(.hidden)) .card-list-empty {
+.card-list-group:has(.built-in-list:not(:empty)) .card-list-empty {
     display: none;
 }
 
-.inherited-row {
-    display: flex;
-    gap: 8px;
-    align-items: baseline;
-    padding: 2px 0;
-    font-size: var(--cel-font-size-small);
+/* Inset from the chevron to match .cel-card-actions, so the switch is not in the path of a near-miss. */
+.built-in-switch {
+    flex: 0 0 auto;
+    position: relative;
+    width: 32px;
+    height: 18px;
+    margin-right: 8px;
+    padding: 0;
+    border: 1px solid var(--cel-text-secondary);
+    border-radius: 9px;
+    background: none;
+    cursor: pointer;
 }
 
-.inherited-row-name {
-    flex: none;
-    font-family: var(--cel-font-mono);
-    font-weight: var(--cel-font-weight-strong);
-    color: var(--cel-text-secondary);
+.built-in-switch[aria-checked="true"] {
+    border-color: var(--cel-accent);
+    background: var(--cel-accent);
 }
 
-/* The command truncates rather than wrapping: it identifies the runner, and the full text is in the tooltip. */
-.inherited-row-detail {
-    overflow: hidden;
-    font-family: var(--cel-font-mono);
-    color: var(--cel-text-secondary);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+.built-in-switch:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.built-in-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--cel-text-secondary);
+    transition: transform 100ms ease, background 100ms ease;
+}
+
+.built-in-switch[aria-checked="true"] .built-in-switch-thumb {
+    background: var(--cel-accent-text);
+    transform: translateX(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .built-in-switch-thumb {
+        transition: none;
+    }
 }
 
 .add-card-button {

@@ -115,6 +115,7 @@ describe('buildStartConfig', () => {
             startupScript: '',
             environment: {},
             runners: [{ extensions: ['.py'], command: '%run "{resource}"' }],
+            disabledExtensions: [],
             triggers: [],
         });
     });
@@ -144,6 +145,7 @@ describe('buildStartConfig', () => {
             startupScript: '',
             environment: {},
             runners: [],
+            disabledExtensions: [],
             triggers: [],
         });
     });

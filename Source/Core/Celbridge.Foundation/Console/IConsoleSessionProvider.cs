@@ -23,12 +23,14 @@ public sealed record ConsoleStartupInvocation(
 }
 
 /// <summary>
-/// A default way a session type runs a file: the file extensions it handles and a command template
-/// injected to run a matching file, where "{resource}" is replaced with the file's path.
+/// A way of running a file in a console: the file extensions it handles and a command template injected to
+/// run a matching file, where "{resource}" is replaced with the file's path. Used both for the runners a
+/// session type provides and for the ones a .console file declares, which are the same thing from different
+/// sources, so the property names match the file's own keys.
 /// </summary>
 public sealed record ConsoleRunner(
-    IReadOnlyList<string> FileExtensions,
-    string CommandTemplate);
+    IReadOnlyList<string> Extensions,
+    string Command);
 
 /// <summary>
 /// The resolved configuration a provider builds a startup command from. WorkingDirectory is as written in

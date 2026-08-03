@@ -162,7 +162,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         // previous launch binding to this one.
         SessionId = Guid.NewGuid();
         TypeId = config.Type;
-        Runners = ConsoleRunTargets.ResolveEffectiveRunners(config.Runners, provider.DefaultRunners);
+        Runners = ConsoleRunTargets.ResolveEffectiveRunners(config.Runners, provider.DefaultRunners, config.DisabledExtensions);
         Triggers = ResolveTriggers(config);
         ConnectionId = null;
         HasConnected = false;

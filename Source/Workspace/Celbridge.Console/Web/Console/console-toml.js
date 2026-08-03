@@ -34,6 +34,7 @@
  * @property {string} startupScript
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
+ * @property {string[]} disabledExtensions file extensions the session type's own runners are ignored for
  * @property {ConsoleTrigger[]} triggers
  * @property {ConsoleShortcut[]} shortcuts
  */
@@ -50,6 +51,7 @@ export function defaultConsoleConfig() {
         startupScript: '',
         environment: {},
         runners: [],
+        disabledExtensions: [],
         triggers: [],
         shortcuts: [],
     };
@@ -151,6 +153,9 @@ export function serializeConsoleToml(config) {
     if (config.startupScript) {
         lines.push(`startup_script = ${quoteScript(config.startupScript)}`);
     }
+    if (config.disabledExtensions && config.disabledExtensions.length > 0) {
+        lines.push(`disabled_extensions = [${config.disabledExtensions.map(quote).join(', ')}]`);
+    }
 
     lines.push('');
     lines.push('[session.options]');
@@ -232,6 +237,8 @@ function assignValue(config, section, currentTable, key, rawValue) {
             config.workingDirectory = parseScalar(rawValue);
         } else if (key === 'startup_script') {
             config.startupScript = parseScalar(rawValue);
+        } else if (key === 'disabled_extensions') {
+            config.disabledExtensions = parseArray(rawValue);
         }
         return;
     }

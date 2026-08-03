@@ -29,12 +29,22 @@ public class ConsoleRunTargetsTests
             hasStaleRunners);
     }
 
+    private static IReadOnlyList<ConsoleRunner> ResolveAgainstPythonDefaults(
+        IReadOnlyList<ConsoleRunner>? configRunners = null,
+        IReadOnlyList<string>? disabledExtensions = null)
+    {
+        return ConsoleRunTargets.ResolveEffectiveRunners(
+            configRunners ?? Array.Empty<ConsoleRunner>(),
+            PythonRunners,
+            disabledExtensions ?? Array.Empty<string>());
+    }
+
     [Test]
     public void ResolveEffectiveRunners_NoConfigRunners_KeepsTheTypeDefaults()
     {
-        var runners = ConsoleRunTargets.ResolveEffectiveRunners(Array.Empty<ConsoleDocumentRunner>(), PythonRunners);
+        var runners = ResolveAgainstPythonDefaults();
 
-        ConsoleRunTargets.FindRunner(runners, ".py")!.CommandTemplate.Should().Be("%run \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run \"{resource}\"");
         ConsoleRunTargets.FindRunner(runners, ".ipy").Should().NotBeNull();
     }
 
@@ -44,13 +54,13 @@ public class ConsoleRunTargetsTests
         // Declaring a runner is additive: the type's own extensions keep working alongside it.
         var configRunners = new[]
         {
-            new ConsoleDocumentRunner(new[] { ".sql" }, "%sql {resource}"),
+            new ConsoleRunner(new[] { ".sql" }, "%sql {resource}"),
         };
 
-        var runners = ConsoleRunTargets.ResolveEffectiveRunners(configRunners, PythonRunners);
+        var runners = ResolveAgainstPythonDefaults(configRunners);
 
-        ConsoleRunTargets.FindRunner(runners, ".sql")!.CommandTemplate.Should().Be("%sql {resource}");
-        ConsoleRunTargets.FindRunner(runners, ".py")!.CommandTemplate.Should().Be("%run \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".sql")!.Command.Should().Be("%sql {resource}");
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run \"{resource}\"");
     }
 
     [Test]
@@ -59,13 +69,45 @@ public class ConsoleRunTargetsTests
         // Only the extension it names: .ipy still resolves to the default runner alongside it.
         var configRunners = new[]
         {
-            new ConsoleDocumentRunner(new[] { ".py" }, "%run -i \"{resource}\""),
+            new ConsoleRunner(new[] { ".py" }, "%run -i \"{resource}\""),
         };
 
-        var runners = ConsoleRunTargets.ResolveEffectiveRunners(configRunners, PythonRunners);
+        var runners = ResolveAgainstPythonDefaults(configRunners);
 
-        ConsoleRunTargets.FindRunner(runners, ".py")!.CommandTemplate.Should().Be("%run -i \"{resource}\"");
-        ConsoleRunTargets.FindRunner(runners, ".ipy")!.CommandTemplate.Should().Be("%run \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run -i \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".ipy")!.Command.Should().Be("%run \"{resource}\"");
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_DisabledExtension_DropsItAndKeepsTheRest()
+    {
+        var runners = ResolveAgainstPythonDefaults(disabledExtensions: new[] { ".py" });
+
+        ConsoleRunTargets.FindRunner(runners, ".py").Should().BeNull();
+        ConsoleRunTargets.FindRunner(runners, ".ipy").Should().NotBeNull();
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_EveryExtensionDisabled_DropsTheRunnerEntirely()
+    {
+        var runners = ResolveAgainstPythonDefaults(disabledExtensions: new[] { ".PY", ".IPY" });
+
+        // Matched without regard to case, as FindRunner matches the file extension it is given.
+        runners.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_DisabledExtensionDeclaredByTheConfig_StillRuns()
+    {
+        // Turning off the type's runner says nothing about a runner the console declares for itself.
+        var configRunners = new[]
+        {
+            new ConsoleRunner(new[] { ".py" }, "%run -i \"{resource}\""),
+        };
+
+        var runners = ResolveAgainstPythonDefaults(configRunners, new[] { ".py" });
+
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run -i \"{resource}\"");
     }
 
     [Test]

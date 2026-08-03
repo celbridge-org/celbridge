@@ -21,23 +21,40 @@ public static class ConsoleRunTargets
 {
     /// <summary>
     /// Layers a console's own runners over the ones its session type contributes, so a console handles the
-    /// type's file extensions without declaring anything.
+    /// type's file extensions without declaring anything. Extensions listed in disabledExtensions drop out
+    /// of the type's runners, which is how a console opts out of one it does not want.
     /// </summary>
     public static IReadOnlyList<ConsoleRunner> ResolveEffectiveRunners(
-        IReadOnlyList<ConsoleDocumentRunner> configRunners,
-        IReadOnlyList<ConsoleRunner> defaultRunners)
+        IReadOnlyList<ConsoleRunner> configRunners,
+        IReadOnlyList<ConsoleRunner> defaultRunners,
+        IReadOnlyList<string> disabledExtensions)
     {
         // Config runners go first because FindRunner takes the first match: a runner for an extension the
         // type already handles shadows the default, and extensions the config leaves alone keep theirs.
-        var runners = new List<ConsoleRunner>();
-        foreach (var configRunner in configRunners)
-        {
-            runners.Add(new ConsoleRunner(configRunner.Extensions, configRunner.Command));
-        }
+        // The settings form draws them in this order too, so the list reads as the chain it is.
+        var runners = new List<ConsoleRunner>(configRunners);
 
+        var disabled = new HashSet<string>(disabledExtensions, StringComparer.OrdinalIgnoreCase);
+
+        // Opting out is per extension, so a type runner covering several keeps the ones still wanted and
+        // drops out entirely only once none are left.
         foreach (var defaultRunner in defaultRunners)
         {
-            runners.Add(defaultRunner);
+            var extensions = new List<string>();
+            foreach (var extension in defaultRunner.Extensions)
+            {
+                if (!disabled.Contains(extension))
+                {
+                    extensions.Add(extension);
+                }
+            }
+
+            if (extensions.Count == 0)
+            {
+                continue;
+            }
+
+            runners.Add(defaultRunner with { Extensions = extensions });
         }
 
         return runners;
@@ -130,7 +147,7 @@ public static class ConsoleRunTargets
     {
         foreach (var runner in runners)
         {
-            foreach (var extension in runner.FileExtensions)
+            foreach (var extension in runner.Extensions)
             {
                 if (string.Equals(extension, fileExtension, StringComparison.OrdinalIgnoreCase))
                 {

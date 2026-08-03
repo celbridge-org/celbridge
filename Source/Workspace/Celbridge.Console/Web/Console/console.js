@@ -106,9 +106,8 @@ const workingDirectoryInput = document.getElementById('working-directory');
 const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
 const reopenSettingsButton = document.getElementById('reopen-settings');
-const inheritedRunners = document.getElementById('runner-inherited');
-const inheritedRunnerRows = document.getElementById('runner-inherited-rows');
-const inheritedRunnerTemplate = document.getElementById('inherited-runner-template');
+const builtInRunnerList = document.getElementById('runner-built-in');
+const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
 
 // The settings sections and their headers, selected by the shared nav tab strip. Both are present in the
 // markup with only the active one shown, mirroring how the native settings panel toggles its section views.
@@ -135,8 +134,11 @@ let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
 // The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
-// then, so the inherited list simply renders nothing on the first populate.
+// then, so the built-in list simply renders nothing on the first populate.
 let defaultRunnersByType = {};
+// The file extensions those runners are switched off for. Held apart from the form inputs because a built-in
+// card carries no editable field, so readForm carries this through rather than reading it back out of the DOM.
+let disabledExtensions = [];
 
 // Theme.
 function applyTheme(theme) {
@@ -337,34 +339,64 @@ function populateForm(config) {
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
+    disabledExtensions = config.disabledExtensions || [];
     runnerCards.populate(config.runners);
     triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
-    renderInheritedRunners();
+    renderBuiltInRunners();
     renderShortcutRail();
 }
 
 // The runners the selected session type provides, shown above the console's own so the Run menu's behaviour
 // is visible in the form. They are not part of the config: the host layers them under whatever the file
-// declares, and re-reads them from the provider on every launch.
-function renderInheritedRunners() {
+// declares, and re-reads them from the provider on every launch. Switching one off is the exception, and it
+// records the extensions rather than the runner, since that is what the host resolves against.
+function renderBuiltInRunners() {
     const runners = defaultRunnersByType[sessionTypeSelect.value] || [];
-    inheritedRunners.classList.toggle('hidden', runners.length === 0);
-    inheritedRunnerRows.replaceChildren();
+    builtInRunnerList.replaceChildren();
 
     // These come straight off the provider contract, so they are named for it rather than for the TOML keys
     // the runner cards use.
     for (const runner of runners) {
-        const row = inheritedRunnerTemplate.content.firstElementChild.cloneNode(true);
-        const command = runner.commandTemplate || '';
-        row.querySelector('.inherited-row-name').textContent = (runner.fileExtensions || []).join(', ');
+        const card = builtInRunnerTemplate.content.firstElementChild.cloneNode(true);
+        applyLocalization(card);
 
-        const detail = row.querySelector('.inherited-row-detail');
-        detail.textContent = command;
-        detail.title = command;
+        const extensions = runner.extensions || [];
+        const extensionList = extensions.join(', ');
+        card.querySelector('.cel-card-title').textContent = extensionList;
+        card.querySelector('.built-in-extensions').textContent = extensionList;
+        card.querySelector('.built-in-command').textContent = runner.command || '';
 
-        inheritedRunnerRows.appendChild(row);
+        // A card reads as off only once nothing it covers is left, so a partly disabled one (hand-edited)
+        // still shows as running and switching it off completes the set.
+        const isOff = extensions.length > 0 && extensions.every(isExtensionDisabled);
+        card.classList.toggle('off', isOff);
+
+        const toggle = card.querySelector('.built-in-switch');
+        toggle.setAttribute('aria-checked', String(!isOff));
+        toggle.disabled = !isDocumentWritable();
+
+        // The switch sits inside the summary, whose default action would otherwise toggle the card open.
+        toggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            setExtensionsDisabled(extensions, !isOff);
+        });
+
+        builtInRunnerList.appendChild(card);
     }
+}
+
+function isExtensionDisabled(extension) {
+    return disabledExtensions.some((disabled) => disabled.toLowerCase() === extension.toLowerCase());
+}
+
+function setExtensionsDisabled(extensions, disabled) {
+    const remaining = disabledExtensions.filter((entry) => !extensions.some(
+        (extension) => extension.toLowerCase() === entry.toLowerCase()));
+
+    disabledExtensions = disabled ? remaining.concat(extensions) : remaining;
+    renderBuiltInRunners();
+    onFormInput();
 }
 
 function readForm() {
@@ -378,6 +410,7 @@ function readForm() {
         startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: runnerCards.read(),
+        disabledExtensions: disabledExtensions.slice(),
         triggers: triggerCards.read(),
         shortcuts: shortcutCards.read(),
     };
@@ -583,8 +616,11 @@ function onFormInput() {
 
 sessionTypeSelect.addEventListener('change', () => {
     applyTypeVisibility(sessionTypeSelect.value);
-    // The inherited runners belong to the type, so they follow the dropdown rather than the launched session.
-    renderInheritedRunners();
+    // A switched-off runner names an extension of the type it was switched off for, so it means nothing to
+    // the new type. Carrying it over would leave the old type's opt-out invisible in the file, waiting to
+    // reapply if the user switched back.
+    disabledExtensions = [];
+    renderBuiltInRunners();
     onFormInput();
 });
 
@@ -621,6 +657,7 @@ function applyWritableState() {
     runnerCards.refreshState();
     triggerCards.refreshState();
     shortcutCards.refreshState();
+    renderBuiltInRunners();
 }
 
 client.viewState.onChanged(() => applyWritableState());
@@ -752,7 +789,7 @@ function applyAttachResult(result) {
     // show them. The first attach lands after the form is populated, hence the re-render.
     if (result && result.defaultRunners) {
         defaultRunnersByType = result.defaultRunners;
-        renderInheritedRunners();
+        renderBuiltInRunners();
     }
 
     launchedConfig = null;

@@ -361,7 +361,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             return Result<string>.Fail($"Console '{session.Resource}' has no runner for '{extension}'");
         }
 
-        var invocation = ConsoleInvocationTemplate.Substitute(runner.CommandTemplate, scriptPath);
+        var invocation = ConsoleInvocationTemplate.Substitute(runner.Command, scriptPath);
         if (!string.IsNullOrEmpty(arguments))
         {
             invocation += " " + arguments;
