@@ -37,9 +37,9 @@ public sealed partial class WorkspacePage : Page
     private SplitterHelper? _secondaryPanelSplitterHelper;
     private SplitterHelper? _consolePanelSplitterHelper;
 
-    // The banners-only project-notification host, kept so its messenger subscriptions can be torn down
-    // on page unload. Null when the console-panel feature is disabled.
-    private ConsolePanel? _consolePanel;
+    // The project-notification banner strip, kept so its messenger subscriptions can be torn down on
+    // page unload.
+    private NotificationBar? _notificationBar;
 
     public WorkspacePage()
     {
@@ -125,7 +125,7 @@ public sealed partial class WorkspacePage : Page
         _secondaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 2, minSize: MinSidePanelWidth, invertDelta: true,
             maxSizeFunc: () => LayoutRoot.ActualWidth - PrimaryPanelColumn.ActualWidth - MinDocumentsWidth);
         _consolePanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Rows, 1, minSize: MinConsolePanelHeight, invertDelta: true,
-            maxSizeFunc: () => LayoutRoot.ActualHeight - MinDocumentsHeight);
+            maxSizeFunc: () => LayoutRoot.ActualHeight - NotificationBarHost.ActualHeight - MinDocumentsHeight);
 
         // Set up splitter event handlers
         PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
@@ -154,12 +154,7 @@ public sealed partial class WorkspacePage : Page
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
         var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
 
-        if (isConsolePanelEnabled)
-        {
-            _consolePanel = ServiceLocator.AcquireService<ConsolePanel>();
-            ConsolePanelHost.Children.Add(_consolePanel);
-        }
-        else
+        if (!isConsolePanelEnabled)
         {
             // Hide console panel row and splitter completely when feature is disabled
             ConsolePanelRow.Height = new GridLength(0);
@@ -167,6 +162,11 @@ public sealed partial class WorkspacePage : Page
             ConsolePanelSplitter.Visibility = Visibility.Collapsed;
             ConsolePanelHost.Visibility = Visibility.Collapsed;
         }
+
+        // The notification bar is not a layout region, so it is always present and is not gated on
+        // the console panel feature flag. It collapses to zero height when no banners are showing.
+        _notificationBar = ServiceLocator.AcquireService<NotificationBar>();
+        NotificationBarHost.Children.Add(_notificationBar);
 
         // Register panels with the workspace service
         workspaceService.SetPanels(utilityPanel, documentsPanel, inspectorPanel);
@@ -213,9 +213,9 @@ public sealed partial class WorkspacePage : Page
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
 
-        // Tear down the banners-only project-notification host's messenger subscriptions.
-        _consolePanel?.Cleanup();
-        _consolePanel = null;
+        // Tear down the notification bar's messenger subscriptions.
+        _notificationBar?.Cleanup();
+        _notificationBar = null;
 
         await ViewModel.OnWorkspacePageUnloadedAsync();
 

@@ -6,10 +6,10 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
-/// Drives the bottom-panel project-notification banners: a non-dismissable project error banner, a
-/// dismissable project-change banner, a migration banner, and a project-check warning banner.
+/// Tracks project-scoped conditions worth telling the user about, such as a config file that failed
+/// to load or has changed on disk, and exposes them as banners for the notification bar.
 /// </summary>
-public partial class ConsolePanelViewModel : ObservableObject
+public partial class NotificationBarViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
@@ -19,6 +19,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly ICommandService _commandService;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
     private bool _isErrorBannerVisible;
 
     [ObservableProperty]
@@ -34,9 +35,11 @@ public partial class ConsolePanelViewModel : ObservableObject
     private string _projectChangeBannerMessage = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
     private bool _isProjectChangeBannerVisible;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
     private bool _isMigrationBannerVisible;
 
     [ObservableProperty]
@@ -46,6 +49,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private string _migrationBannerMessage = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
     private bool _isProjectCheckBannerVisible;
 
     [ObservableProperty]
@@ -54,9 +58,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private string _projectCheckBannerMessage = string.Empty;
 
+    public bool IsAnyBannerVisible =>
+        IsErrorBannerVisible ||
+        IsProjectChangeBannerVisible ||
+        IsMigrationBannerVisible ||
+        IsProjectCheckBannerVisible;
+
     private string? _originalProjectFileHash = null;
 
-    public ConsolePanelViewModel(
+    public NotificationBarViewModel(
         IMessengerService messengerService,
         IDispatcher dispatcher,
         IStringLocalizer stringLocalizer,
@@ -105,28 +115,28 @@ public partial class ConsolePanelViewModel : ObservableObject
         switch (message.ErrorType)
         {
             case ProjectErrorType.InvalidProjectConfig:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectConfigErrorMessage", configFile);
+                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectConfigErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectConfigErrorMessage", configFile);
                 break;
 
             case ProjectErrorType.IncompatibleVersion:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_IncompatibleVersionMessage", configFile);
+                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_IncompatibleVersionTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_IncompatibleVersionMessage", configFile);
                 break;
 
             case ProjectErrorType.InvalidVersion:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_InvalidVersionTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_InvalidVersionMessage", configFile);
+                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_InvalidVersionTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_InvalidVersionMessage", configFile);
                 break;
 
             case ProjectErrorType.MigrationError:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationErrorMessage", configFile);
+                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_MigrationErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_MigrationErrorMessage", configFile);
                 break;
 
             case ProjectErrorType.PackageLoadError:
-                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorMessage");
+                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_PackageLoadErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_PackageLoadErrorMessage");
                 break;
 
             case ProjectErrorType.ProjectCheckError:
@@ -135,20 +145,18 @@ public partial class ConsolePanelViewModel : ObservableObject
                 // banner rather than the non-dismissable error banner, and
                 // return early so the error-banner side effects below do
                 // not fire.
-                ProjectCheckBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectCheckFindingsTitle");
-                ProjectCheckBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectCheckFindingsMessage", configFile);
+                ProjectCheckBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsTitle");
+                ProjectCheckBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsMessage", configFile);
                 IsProjectCheckBannerVisible = true;
-                ShowConsolePanel();
                 return;
 
             case ProjectErrorType.ProjectConfigEntryError:
                 // Per-entry config errors are advisory: the rest of the file
                 // applied and the project loaded. Route to the dismissable
                 // warning banner like project check findings.
-                ProjectCheckBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectConfigEntryErrorTitle");
-                ProjectCheckBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectConfigEntryErrorMessage", configFile);
+                ProjectCheckBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectConfigEntryErrorTitle");
+                ProjectCheckBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectConfigEntryErrorMessage", configFile);
                 IsProjectCheckBannerVisible = true;
-                ShowConsolePanel();
                 return;
 
             default:
@@ -156,7 +164,6 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         IsErrorBannerVisible = true;
-        ShowConsolePanel();
 
         // Hide project change banner when error banner is shown
         IsProjectChangeBannerVisible = false;
@@ -170,17 +177,6 @@ public partial class ConsolePanelViewModel : ObservableObject
     public void OnReloadProjectClicked()
     {
         _commandService.Execute<IReloadProjectCommand>();
-    }
-
-    private void ShowConsolePanel()
-    {
-        // Force the console panel to be visible when an error occurs
-        // This ensures the user can see the error banner even if they had previously collapsed the console
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
-        {
-            command.Regions = LayoutRegion.Console;
-            command.IsVisible = true;
-        });
     }
 
     private void OnResourceChanged(object recipient, ResourceChangedMessage message)
@@ -271,11 +267,10 @@ public partial class ConsolePanelViewModel : ObservableObject
             || !string.Equals(currentHash, _originalProjectFileHash, StringComparison.Ordinal))
         {
             // Populate the project change banner strings
-            ProjectChangeBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerTitle");
-            ProjectChangeBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerMessage");
+            ProjectChangeBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectChangeBannerTitle");
+            ProjectChangeBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectChangeBannerMessage");
 
             IsProjectChangeBannerVisible = true;
-            ShowConsolePanel();
         }
         else
         {
@@ -305,10 +300,9 @@ public partial class ConsolePanelViewModel : ObservableObject
             oldVersion != newVersion)
         {
             // Populate the migration banner strings
-            MigrationBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationBannerTitle");
-            MigrationBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationBannerMessage", oldVersion, newVersion);
+            MigrationBannerTitle = _stringLocalizer.GetString("NotificationBar_MigrationBannerTitle");
+            MigrationBannerMessage = _stringLocalizer.GetString("NotificationBar_MigrationBannerMessage", oldVersion, newVersion);
             IsMigrationBannerVisible = true;
-            ShowConsolePanel();
         }
     }
 

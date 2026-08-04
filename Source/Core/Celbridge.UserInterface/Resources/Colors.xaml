@@ -24,7 +24,8 @@
       <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
       <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
       <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
-      <Color x:Key="DividerColor">#1E1F22</Color>
+      <!-- Lighter than both panel backgrounds so a divider reads against either surface. -->
+      <Color x:Key="DividerColor">#393B40</Color>
       <Color x:Key="ErrorTextColor">#FF5252</Color>
       <Color x:Key="WarningTextColor">#FFCA28</Color>
       <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>

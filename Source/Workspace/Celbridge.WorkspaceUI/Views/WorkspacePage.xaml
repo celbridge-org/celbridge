@@ -29,11 +29,12 @@
       <RowDefinition x:Name="ConsolePanelRow"
                      Height="200"
                      MinHeight="150"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Primary Panel -->
     <Grid x:Name="PrimaryPanel"
-          Grid.RowSpan="2"
+          Grid.RowSpan="3"
           MinWidth="200"
           layout:WorkspaceLayout.Region="Primary"
           AutomationProperties.AutomationId="explorer-panel"
@@ -58,7 +59,7 @@
           Background="{ThemeResource PanelBackgroundABrush}">
     </Grid>
 
-    <!-- Console Panel (banners-only project-notification host) -->
+    <!-- Console Panel, currently empty. Gated by the console panel feature flag. -->
     <Grid x:Name="ConsolePanelHost"
           Grid.Column="1"
           Grid.Row="1"
@@ -67,11 +68,20 @@
           Background="{ThemeResource PanelBackgroundBBrush}">
     </Grid>
 
+    <!-- Notification Bar. Spans the workspace to the right of the Primary Panel and sizes to its
+         content, so it takes no space when no banners are showing. -->
+    <Grid x:Name="NotificationBarHost"
+          Grid.Column="1"
+          Grid.ColumnSpan="2"
+          Grid.Row="2"
+          AutomationProperties.AutomationId="notification-bar">
+    </Grid>
+
     <!-- Grid splitters -->
 
     <controls:Splitter x:Name="PrimaryPanelSplitter"
                        Grid.Column="0"
-                       Grid.RowSpan="2"
+                       Grid.RowSpan="3"
                        HorizontalAlignment="Right"
                        Orientation="Vertical"/>
 
@@ -92,7 +102,7 @@
     <Canvas x:Name="ResourceDragOverlay"
             Grid.Row="0"
             Grid.Column="0"
-            Grid.RowSpan="2"
+            Grid.RowSpan="3"
             Grid.ColumnSpan="3"
             IsHitTestVisible="False"/>
   </Grid>
