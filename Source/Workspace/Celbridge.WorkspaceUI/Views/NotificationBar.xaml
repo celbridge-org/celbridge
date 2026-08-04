@@ -18,8 +18,15 @@
 
       <StackPanel>
 
+        <!-- The banners are docked to the workspace edge rather than floating in a panel, so each
+             one drops the default InfoBar card treatment and fills the bar edge to edge. The only
+             boundary is the divider along the top of the bar. -->
+
         <InfoBar x:Name="ErrorInfoBar"
                  Severity="Error"
+                 CornerRadius="0"
+                 BorderThickness="0"
+                 Margin="0"
                  IsOpen="{x:Bind ViewModel.IsErrorBannerVisible, Mode=OneWay}"
                  IsClosable="False"
                  Title="{x:Bind ViewModel.ErrorBannerTitle, Mode=OneWay}"
@@ -32,6 +39,9 @@
 
         <InfoBar x:Name="MigrationInfoBar"
                  Severity="Informational"
+                 CornerRadius="0"
+                 BorderThickness="0"
+                 Margin="0"
                  IsOpen="{x:Bind ViewModel.IsMigrationBannerVisible, Mode=OneWay}"
                  IsClosable="True"
                  Title="{x:Bind ViewModel.MigrationBannerTitle, Mode=OneWay}"
@@ -40,6 +50,9 @@
 
         <InfoBar x:Name="ProjectCheckInfoBar"
                  Severity="Warning"
+                 CornerRadius="0"
+                 BorderThickness="0"
+                 Margin="0"
                  IsOpen="{x:Bind ViewModel.IsProjectCheckBannerVisible, Mode=OneWay}"
                  IsClosable="True"
                  Title="{x:Bind ViewModel.ProjectCheckBannerTitle, Mode=OneWay}"
