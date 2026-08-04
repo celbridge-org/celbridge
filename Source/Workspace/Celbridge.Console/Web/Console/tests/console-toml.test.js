@@ -17,7 +17,7 @@ describe('defaultConsoleConfig', () => {
             startupScript: '',
             environment: {},
             runners: [],
-            disabledBuiltIns: [],
+            disabledBuiltInRunners: [],
             triggers: [],
             shortcuts: [],
         });
@@ -49,7 +49,7 @@ describe('parseConsoleToml', () => {
             startupScript: '',
             environment: { BUILD_CONFIG: 'Debug' },
             runners: [],
-            disabledBuiltIns: [],
+            disabledBuiltInRunners: [],
             triggers: [],
             shortcuts: [],
         });
@@ -99,9 +99,9 @@ describe('parseConsoleToml', () => {
         ]);
     });
 
-    it('parses disabled_built_ins', () => {
-        const config = parseConsoleToml('[session]\ntype = "python"\ndisabled_built_ins = ["python"]');
-        expect(config.disabledBuiltIns).toEqual(['python']);
+    it('parses disabled_built_in_runners', () => {
+        const config = parseConsoleToml('[session]\ntype = "python"\ndisabled_built_in_runners = ["python"]');
+        expect(config.disabledBuiltInRunners).toEqual(['python']);
     });
 
     it('parses repeated [[session.trigger]] tables', () => {
@@ -217,14 +217,17 @@ describe('serializeConsoleToml', () => {
         expect(toml).not.toContain('dependencies');
         expect(toml).not.toContain('session.runner');
         expect(toml).not.toContain('session.shortcut');
-        expect(toml).not.toContain('disabled_built_ins');
+        expect(toml).not.toContain('disabled_built_in_runners');
+        // A section with no keys is as empty as an omitted key, so its header goes too.
+        expect(toml).not.toContain('session.options');
+        expect(toml).not.toContain('session.environment');
     });
 
-    it('round-trips disabled_built_ins', () => {
-        const config = { ...defaultConsoleConfig(), type: 'python', disabledBuiltIns: ['python'] };
+    it('round-trips disabled_built_in_runners', () => {
+        const config = { ...defaultConsoleConfig(), type: 'python', disabledBuiltInRunners: ['python'] };
         const toml = serializeConsoleToml(config);
-        expect(toml).toContain('disabled_built_ins = ["python"]');
-        expect(parseConsoleToml(toml).disabledBuiltIns).toEqual(['python']);
+        expect(toml).toContain('disabled_built_in_runners = ["python"]');
+        expect(parseConsoleToml(toml).disabledBuiltInRunners).toEqual(['python']);
     });
 
     it('quotes and comma-joins arguments', () => {
@@ -287,7 +290,7 @@ describe('round-trip', () => {
             startupScript: 'import numpy as np\n%load_ext autoreload',
             environment: { A: '1', B: 'two words' },
             runners: [{ extensions: ['.py', '.ipy'], command: '%run "{resource}"' }],
-            disabledBuiltIns: ['python'],
+            disabledBuiltInRunners: ['python'],
             triggers: [{ pattern: 'data/**/*.xlsx', command: '%run clean_data.py' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],
         };

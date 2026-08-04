@@ -27,7 +27,7 @@ public sealed record ConsoleDocumentConfig(
     string StartupScript,
     IReadOnlyDictionary<string, string> Environment,
     IReadOnlyList<ConsoleRunner> Runners,
-    IReadOnlyList<string> DisabledBuiltIns,
+    IReadOnlyList<string> DisabledBuiltInRunners,
     IReadOnlyList<ConsoleDocumentTrigger> Triggers);
 
 /// <summary>
@@ -116,7 +116,7 @@ public static class ConsoleDocumentConfigParser
             GetString(session, "startup_script"),
             environment,
             runners,
-            GetStringList(session, "disabled_built_ins"),
+            GetStringList(session, "disabled_built_in_runners"),
             triggers);
 
         return config;

@@ -21,20 +21,20 @@ public static class ConsoleRunTargets
 {
     /// <summary>
     /// Layers a console's own runners over the ones its session type contributes, so a console handles the
-    /// type's file extensions without declaring anything. Built-in runners named in disabledBuiltIns are
+    /// type's file extensions without declaring anything. Built-in runners named in disabledBuiltInRunners are
     /// left out, which is how a console opts out of one it does not want.
     /// </summary>
     public static IReadOnlyList<ConsoleRunner> ResolveEffectiveRunners(
         IReadOnlyList<ConsoleRunner> configRunners,
         IReadOnlyList<ConsoleRunner> builtInRunners,
-        IReadOnlyList<string> disabledBuiltIns)
+        IReadOnlyList<string> disabledBuiltInRunners)
     {
         // Config runners go first because FindRunner takes the first match: a runner for an extension the
         // type already handles shadows the built-in, and extensions the config leaves alone keep theirs.
         // The settings form draws them in this order too, so the list reads as the chain it is.
         var runners = new List<ConsoleRunner>(configRunners);
 
-        var disabled = new HashSet<string>(disabledBuiltIns, StringComparer.OrdinalIgnoreCase);
+        var disabled = new HashSet<string>(disabledBuiltInRunners, StringComparer.OrdinalIgnoreCase);
 
         foreach (var builtInRunner in builtInRunners)
         {

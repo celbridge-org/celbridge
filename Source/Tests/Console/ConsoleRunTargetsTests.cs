@@ -31,12 +31,12 @@ public class ConsoleRunTargetsTests
 
     private static IReadOnlyList<ConsoleRunner> ResolveAgainstPythonBuiltIns(
         IReadOnlyList<ConsoleRunner>? configRunners = null,
-        IReadOnlyList<string>? disabledBuiltIns = null)
+        IReadOnlyList<string>? disabledBuiltInRunners = null)
     {
         return ConsoleRunTargets.ResolveEffectiveRunners(
             configRunners ?? Array.Empty<ConsoleRunner>(),
             PythonRunners,
-            disabledBuiltIns ?? Array.Empty<string>());
+            disabledBuiltInRunners ?? Array.Empty<string>());
     }
 
     [Test]
@@ -83,7 +83,7 @@ public class ConsoleRunTargetsTests
     {
         // Named by id, so every extension it covers goes with it. Matched without regard to case, so a
         // hand-edited config still names the runner it looks like it names.
-        var runners = ResolveAgainstPythonBuiltIns(disabledBuiltIns: new[] { "Python" });
+        var runners = ResolveAgainstPythonBuiltIns(disabledBuiltInRunners: new[] { "Python" });
 
         runners.Should().BeEmpty();
     }

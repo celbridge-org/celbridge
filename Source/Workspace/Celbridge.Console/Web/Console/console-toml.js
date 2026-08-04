@@ -34,7 +34,7 @@
  * @property {string} startupScript
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
- * @property {string[]} disabledBuiltIns ids of the session type's built-in runners this console leaves out
+ * @property {string[]} disabledBuiltInRunners ids of the session type's built-in runners this console leaves out
  * @property {ConsoleTrigger[]} triggers
  * @property {ConsoleShortcut[]} shortcuts
  */
@@ -51,7 +51,7 @@ export function defaultConsoleConfig() {
         startupScript: '',
         environment: {},
         runners: [],
-        disabledBuiltIns: [],
+        disabledBuiltInRunners: [],
         triggers: [],
         shortcuts: [],
     };
@@ -153,29 +153,39 @@ export function serializeConsoleToml(config) {
     if (config.startupScript) {
         lines.push(`startup_script = ${quoteScript(config.startupScript)}`);
     }
-    if (config.disabledBuiltIns && config.disabledBuiltIns.length > 0) {
-        lines.push(`disabled_built_ins = [${config.disabledBuiltIns.map(quote).join(', ')}]`);
+    if (config.disabledBuiltInRunners && config.disabledBuiltInRunners.length > 0) {
+        lines.push(`disabled_built_in_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
     }
 
-    lines.push('');
-    lines.push('[session.options]');
+    // A section with no keys is left out like any other empty field, so saving the form never adds
+    // anything the console did not set.
+    const optionLines = [];
     if (config.executable) {
-        lines.push(`executable = ${quote(config.executable)}`);
+        optionLines.push(`executable = ${quote(config.executable)}`);
     }
     if (config.pythonVersion) {
-        lines.push(`python_version = ${quote(config.pythonVersion)}`);
+        optionLines.push(`python_version = ${quote(config.pythonVersion)}`);
     }
     if (config.arguments && config.arguments.length > 0) {
-        lines.push(`arguments = [${config.arguments.map(quote).join(', ')}]`);
+        optionLines.push(`arguments = [${config.arguments.map(quote).join(', ')}]`);
     }
     if (config.dependencies && config.dependencies.length > 0) {
-        lines.push(`dependencies = [${config.dependencies.map(quote).join(', ')}]`);
+        optionLines.push(`dependencies = [${config.dependencies.map(quote).join(', ')}]`);
+    }
+    if (optionLines.length > 0) {
+        lines.push('');
+        lines.push('[session.options]');
+        lines.push(...optionLines);
     }
 
-    lines.push('');
-    lines.push('[session.environment]');
+    const environmentLines = [];
     for (const [name, value] of Object.entries(config.environment || {})) {
-        lines.push(`${serializeKey(name)} = ${quote(value)}`);
+        environmentLines.push(`${serializeKey(name)} = ${quote(value)}`);
+    }
+    if (environmentLines.length > 0) {
+        lines.push('');
+        lines.push('[session.environment]');
+        lines.push(...environmentLines);
     }
 
     for (const runner of config.runners || []) {
@@ -237,8 +247,8 @@ function assignValue(config, section, currentTable, key, rawValue) {
             config.workingDirectory = parseScalar(rawValue);
         } else if (key === 'startup_script') {
             config.startupScript = parseScalar(rawValue);
-        } else if (key === 'disabled_built_ins') {
-            config.disabledBuiltIns = parseArray(rawValue);
+        } else if (key === 'disabled_built_in_runners') {
+            config.disabledBuiltInRunners = parseArray(rawValue);
         }
         return;
     }

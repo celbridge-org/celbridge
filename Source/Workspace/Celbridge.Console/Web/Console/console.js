@@ -139,7 +139,7 @@ let configError = null;
 let builtInRunnersByType = {};
 // The ids of the built-in runners switched off for this console. Held apart from the form inputs because a
 // card carries no editable field, so readForm carries this through rather than reading it back out of the DOM.
-let disabledBuiltIns = [];
+let disabledBuiltInRunners = [];
 
 // Theme.
 function applyTheme(theme) {
@@ -343,7 +343,7 @@ function populateForm(config) {
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
-    disabledBuiltIns = config.disabledBuiltIns || [];
+    disabledBuiltInRunners = config.disabledBuiltInRunners || [];
     runnerCards.populate(config.runners);
     triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
@@ -368,7 +368,7 @@ function renderBuiltInRunners() {
         card.querySelector('.built-in-extensions').textContent = extensionList;
         card.querySelector('.built-in-command').textContent = runner.command || '';
 
-        const isOff = isBuiltInDisabled(runner.builtInId);
+        const isOff = isBuiltInRunnerDisabled(runner.builtInId);
         card.classList.toggle('off', isOff);
 
         const toggle = card.querySelector('.built-in-switch');
@@ -378,21 +378,21 @@ function renderBuiltInRunners() {
         // The switch sits inside the summary, whose default action would otherwise toggle the card open.
         toggle.addEventListener('click', (event) => {
             event.preventDefault();
-            setBuiltInDisabled(runner.builtInId, !isOff);
+            setBuiltInRunnerDisabled(runner.builtInId, !isOff);
         });
 
         builtInRunnerList.appendChild(card);
     }
 }
 
-function isBuiltInDisabled(id) {
-    return disabledBuiltIns.some((disabled) => disabled.toLowerCase() === (id || '').toLowerCase());
+function isBuiltInRunnerDisabled(id) {
+    return disabledBuiltInRunners.some((disabled) => disabled.toLowerCase() === (id || '').toLowerCase());
 }
 
-function setBuiltInDisabled(id, disabled) {
-    const remaining = disabledBuiltIns.filter((entry) => entry.toLowerCase() !== (id || '').toLowerCase());
+function setBuiltInRunnerDisabled(id, disabled) {
+    const remaining = disabledBuiltInRunners.filter((entry) => entry.toLowerCase() !== (id || '').toLowerCase());
 
-    disabledBuiltIns = disabled ? remaining.concat(id) : remaining;
+    disabledBuiltInRunners = disabled ? remaining.concat(id) : remaining;
     renderBuiltInRunners();
     onFormInput();
 }
@@ -408,7 +408,7 @@ function readForm() {
         startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: runnerCards.read(),
-        disabledBuiltIns: disabledBuiltIns.slice(),
+        disabledBuiltInRunners: disabledBuiltInRunners.slice(),
         triggers: triggerCards.read(),
         shortcuts: shortcutCards.read(),
     };
@@ -617,7 +617,7 @@ sessionTypeSelect.addEventListener('change', () => {
     // A switched-off runner names an extension of the type it was switched off for, so it means nothing to
     // the new type. Carrying it over would leave the old type's opt-out invisible in the file, waiting to
     // reapply if the user switched back.
-    disabledBuiltIns = [];
+    disabledBuiltInRunners = [];
     renderBuiltInRunners();
     onFormInput();
 });
