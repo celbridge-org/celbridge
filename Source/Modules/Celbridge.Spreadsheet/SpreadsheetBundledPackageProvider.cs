@@ -4,7 +4,7 @@ using Celbridge.Packages;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Registers the "celbridge.spreadsheet" package when the SpreadJS library is present. The public GitHub
+/// Registers the "celbridge-spreadsheet" package when the SpreadJS library is present. The public GitHub
 /// repo does not ship the licensed library files, so the package is skipped when they are absent.
 /// </summary>
 public sealed class SpreadsheetBundledPackageProvider : IBundledPackageProvider
@@ -44,7 +44,7 @@ public sealed class SpreadsheetBundledPackageProvider : IBundledPackageProvider
 
         if (!isLibraryPresent)
         {
-            _logger.LogInformation("SpreadJS library not found under '{LibraryFolder}'; skipping celbridge.spreadsheet package registration", libraryFolder);
+            _logger.LogInformation("SpreadJS library not found under '{LibraryFolder}'; skipping celbridge-spreadsheet package registration", libraryFolder);
 
             return Array.Empty<BundledPackageDescriptor>();
         }

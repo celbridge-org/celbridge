@@ -56,9 +56,9 @@ public static class BuiltInEditors
     /// </summary>
     public static readonly IReadOnlyList<string> AlwaysActivePackages =
     [
-        "celbridge.code-editor",
-        "celbridge.file-viewer",
-        "celbridge.spreadsheet",
+        "celbridge-code-editor",
+        "celbridge-file-viewer",
+        "celbridge-spreadsheet",
     ];
 
     /// <summary>
@@ -69,10 +69,10 @@ public static class BuiltInEditors
     /// </summary>
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
     [
-        new BuiltInEditorDefinition(MarkdownEditorId, "celbridge.code-editor", "markdown"),
-        new BuiltInEditorDefinition(SpreadsheetEditorId, "celbridge.spreadsheet", "spreadsheet", Optional: true),
-        new BuiltInEditorDefinition(FileViewerId, "celbridge.file-viewer", "file-viewer"),
-        new BuiltInEditorDefinition(CodeEditorId, "celbridge.code-editor", "code"),
+        new BuiltInEditorDefinition(MarkdownEditorId, "celbridge-code-editor", "markdown"),
+        new BuiltInEditorDefinition(SpreadsheetEditorId, "celbridge-spreadsheet", "spreadsheet", Optional: true),
+        new BuiltInEditorDefinition(FileViewerId, "celbridge-file-viewer", "file-viewer"),
+        new BuiltInEditorDefinition(CodeEditorId, "celbridge-code-editor", "code"),
     ];
 
     /// <summary>

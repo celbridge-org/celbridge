@@ -1,5 +1,5 @@
 [package]
-name = "celbridge.notes"
+name = "celbridge-notes"
 title = "Notes_Package_Name"
 
 [contributes]

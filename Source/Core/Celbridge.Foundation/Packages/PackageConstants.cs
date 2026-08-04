@@ -23,7 +23,7 @@ public static class PackageConstants
     /// <summary>
     /// Name prefix reserved for first-party packages shipped inside Celbridge module DLLs.
     /// </summary>
-    public const string ReservedNamePrefix = "celbridge.";
+    public const string ReservedNamePrefix = "celbridge-";
 
     /// <summary>
     /// Name of the server-managed alias that points at a package's highest live version.

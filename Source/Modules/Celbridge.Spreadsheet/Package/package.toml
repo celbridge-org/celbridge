@@ -1,5 +1,5 @@
 [package]
-name = "celbridge.spreadsheet"
+name = "celbridge-spreadsheet"
 title = "Spreadsheet_Package_Name"
 
 [contributes]

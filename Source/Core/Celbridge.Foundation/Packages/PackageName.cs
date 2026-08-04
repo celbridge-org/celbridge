@@ -53,31 +53,4 @@ public static class PackageName
         return true;
     }
 
-    /// <summary>
-    /// Returns true if the string is a well-formed bundled package name: one
-    /// or more valid package name segments separated by single dots (e.g.
-    /// "celbridge.notes"). Dotted names are internal to first-party bundled
-    /// packages and are never published to a workshop.
-    /// </summary>
-    public static bool IsValidBundledName(string name)
-    {
-        if (string.IsNullOrEmpty(name) ||
-            name.Length > PackageConstants.MaxNameLength)
-        {
-            return false;
-        }
-
-        // An empty segment (leading, trailing, or consecutive dots) fails the
-        // per-segment check.
-        var segments = name.Split('.');
-        foreach (var segment in segments)
-        {
-            if (!IsValid(segment))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }

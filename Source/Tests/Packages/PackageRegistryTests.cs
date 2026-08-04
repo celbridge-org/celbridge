@@ -430,7 +430,7 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_IncludesModulePackages()
     {
-        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", ".bnd");
+        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge-bundled", "Bundled", ".bnd");
 
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
@@ -445,7 +445,7 @@ public class PackageServiceTests
     public async Task RegisterPackages_CombinesProjectAndBundled()
     {
         CreateProjectPackage("proj-editor", "proj", "Project", ".proj");
-        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge.bundled", "Bundled", ".bnd");
+        var bundledDir = CreateBundledPackage("bundled-editor", "celbridge-bundled", "Bundled", ".bnd");
 
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
@@ -461,8 +461,8 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_ProjectPackageWithReservedNamePrefix_Skipped()
     {
-        // Project packages may not claim a name under the reserved "celbridge." namespace.
-        CreateProjectPackage("impostor", "celbridge.notes", "Impostor Notes", ".imp");
+        // Project packages may not claim a name under the reserved "celbridge-" prefix.
+        CreateProjectPackage("impostor", "celbridge-notes", "Impostor Notes", ".imp");
         CreateProjectPackage("legit", "legit", "Legit", ".legit");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
@@ -536,7 +536,7 @@ public class PackageServiceTests
     public async Task RegisterPackages_BundledPackageWithCelExtension_Skipped()
     {
         // The reservation applies to bundled and project packages alike.
-        var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge.reserved", "Bundled Reserved", ".cel");
+        var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge-reserved", "Bundled Reserved", ".cel");
 
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = reservedDir } });
 
@@ -548,8 +548,8 @@ public class PackageServiceTests
     [Test]
     public async Task RegisterPackages_BundledPackageWithReservedNamePrefix_Allowed()
     {
-        // Bundled packages are the intended owners of the "celbridge." namespace.
-        var bundledDir = CreateBundledPackage("bundled-official", "celbridge.notes", "Official Notes", ".note");
+        // Bundled packages are the intended owners of the "celbridge-" prefix.
+        var bundledDir = CreateBundledPackage("bundled-official", "celbridge-notes", "Official Notes", ".note");
 
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
@@ -557,7 +557,7 @@ public class PackageServiceTests
 
         var contributions = _service.GetAllEditors();
         contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("celbridge.notes");
+        contributions[0].Package.Name.Should().Be("celbridge-notes");
     }
 
     [Test]
@@ -565,8 +565,8 @@ public class PackageServiceTests
     {
         // Two bundled packages with the same name is a first-party build bug.
         // Both are skipped rather than silently picking a winner.
-        var dirA = CreateBundledPackage("bundled-a", "celbridge.conflict", "Conflict A", ".a");
-        var dirB = CreateBundledPackage("bundled-b", "celbridge.conflict", "Conflict B", ".b");
+        var dirA = CreateBundledPackage("bundled-a", "celbridge-conflict", "Conflict A", ".a");
+        var dirB = CreateBundledPackage("bundled-b", "celbridge-conflict", "Conflict B", ".b");
 
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor>
         {
@@ -757,16 +757,16 @@ public class PackageServiceTests
     [Test]
     public async Task GetContributingPackage_ActiveContributionId_ReturnsThePackage()
     {
-        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
+        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge-notes", "Notes", ".note");
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(EditorId.Create("celbridge.notes", "editor"));
+        var package = _service.GetContributingPackage(EditorId.Create("celbridge-notes", "editor"));
 
         package.Should().NotBeNull();
-        package!.Info.Name.Should().Be("celbridge.notes");
+        package!.Info.Name.Should().Be("celbridge-notes");
     }
 
     [Test]
@@ -786,13 +786,13 @@ public class PackageServiceTests
     {
         // Editors are addressed by the "{package}.{contribution}" reference, not the bare package
         // name, so a lookup by package name alone resolves to nothing.
-        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", ".note");
+        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge-notes", "Notes", ".note");
         _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
         SetProjectConfig();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var package = _service.GetContributingPackage(new EditorId("celbridge.notes"));
+        var package = _service.GetContributingPackage(new EditorId("celbridge-notes"));
 
         package.Should().BeNull();
     }
@@ -936,7 +936,7 @@ public class PackageServiceTests
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
             [package]
-            name = "celbridge.code-editor"
+            name = "celbridge-code-editor"
             title = "Code Editor"
 
             [contributes]
@@ -968,7 +968,7 @@ public class PackageServiceTests
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
             [package]
-            name = "celbridge.spreadsheet"
+            name = "celbridge-spreadsheet"
             title = "Spreadsheet"
 
             [contributes]

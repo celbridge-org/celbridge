@@ -29,7 +29,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.my-editor"
+            name = "test-my-editor"
             title = "My Editor"
 
             [contributes]
@@ -223,12 +223,9 @@ public class ManifestTests
         result.FirstErrorMessage.Should().Contain("invalid");
     }
 
-    [TestCase("celbridge.notes", Description = "reserved namespace prefix")]
-    [TestCase("my-org.my-tool", Description = "dotted namespace")]
-    [TestCase("a.b", Description = "minimal dotted")]
-    [TestCase("a.b.c.d", Description = "deeply nested")]
-    [TestCase("digits123.allowed", Description = "digits in namespace")]
-    [TestCase("hyphens-are-fine.here", Description = "hyphens in namespace")]
+    [TestCase("celbridge-notes", Description = "reserved name prefix")]
+    [TestCase("digits123", Description = "digits")]
+    [TestCase("hyphens-are-fine", Description = "interior hyphens")]
     [TestCase("flat-name", Description = "flat global namespace name")]
     [TestCase("simple", Description = "single-word flat name")]
     [TestCase("a", Description = "single character")]
@@ -299,7 +296,7 @@ public class ManifestTests
         // References in [contributes].editors must use the ".editor.toml" extension.
         WritePackageToml("""
             [package]
-            name = "test.wrong-ext"
+            name = "test-wrong-ext"
             title = "WrongExtension"
 
             [contributes]
@@ -328,7 +325,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.missing-editor"
+            name = "test-missing-editor"
             title = "MissingEditor"
 
             [contributes]
@@ -345,7 +342,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.duplicate"
+            name = "test-duplicate"
             title = "Duplicate"
 
             [contributes]
@@ -387,7 +384,7 @@ public class ManifestTests
         // silently skipped.
         WritePackageToml("""
             [package]
-            name = "test.partial"
+            name = "test-partial"
             title = "Partial"
 
             [contributes]
@@ -724,7 +721,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.multi"
+            name = "test-multi"
             title = "Multi"
 
             [contributes]
@@ -766,7 +763,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.shared"
+            name = "test-shared"
             title = "Shared"
 
             [contributes]
@@ -810,7 +807,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.permissions-section"
+            name = "test-permissions-section"
             title = "PermissionsSection"
 
             [permissions]
@@ -831,7 +828,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.no-permissions"
+            name = "test-no-permissions"
             title = "NoPermissions"
 
             [contributes]
@@ -848,7 +845,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.mixed"
+            name = "test-mixed"
             title = "Mixed"
 
             [permissions]
@@ -868,7 +865,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.secrets"
+            name = "test-secrets"
             title = "WithSecrets"
 
             [contributes]
@@ -896,7 +893,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.no-secrets"
+            name = "test-no-secrets"
             title = "NoSecrets"
 
             [contributes]
@@ -1730,7 +1727,7 @@ public class ManifestTests
     {
         WritePackageToml("""
             [package]
-            name = "test.widget"
+            name = "test-widget"
             title = "Widget"
 
             [contributes]

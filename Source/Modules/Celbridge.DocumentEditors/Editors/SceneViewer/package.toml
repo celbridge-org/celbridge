@@ -1,5 +1,5 @@
 [package]
-name = "celbridge.scene-viewer"
+name = "celbridge-scene-viewer"
 title = "SceneViewer_Package_Name"
 
 [contributes]
