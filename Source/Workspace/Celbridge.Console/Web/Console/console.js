@@ -99,6 +99,7 @@ const executableField = document.getElementById('executable-field');
 const executableInput = document.getElementById('executable');
 const pythonVersionField = document.getElementById('python-version-field');
 const pythonVersionInput = document.getElementById('python-version');
+const argumentsField = document.getElementById('arguments-field');
 const argumentsInput = document.getElementById('arguments');
 const dependenciesField = document.getElementById('dependencies-field');
 const dependenciesInput = document.getElementById('dependencies');
@@ -106,6 +107,8 @@ const workingDirectoryInput = document.getElementById('working-directory');
 const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
 const reopenSettingsButton = document.getElementById('reopen-settings');
+const builtInRunnerList = document.getElementById('runner-built-in');
+const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
 
 // The settings sections and their headers, selected by the shared nav tab strip. Both are present in the
 // markup with only the active one shown, mirroring how the native settings panel toggles its section views.
@@ -131,6 +134,12 @@ const navTabs = attachNavTabs(document.getElementById('settings-tabs'), {
 let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
+// The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
+// then, so the built-in list simply renders nothing on the first populate.
+let builtInRunnersByType = {};
+// The ids of the built-in runners switched off for this console. Held apart from the form inputs because a
+// card carries no editable field, so readForm carries this through rather than reading it back out of the DOM.
+let disabledBuiltInRunners = [];
 
 // Theme.
 function applyTheme(theme) {
@@ -315,6 +324,9 @@ attachSplitter(splitter, {
 function applyTypeVisibility(type) {
     const isShell = type === 'shell';
     executableField.classList.toggle('hidden', !isShell);
+    // Arguments are the executable's, so only a shell console has anything to pass them to. A python
+    // console configures its REPL through the startup script instead.
+    argumentsField.classList.toggle('hidden', !isShell);
     pythonVersionField.classList.toggle('hidden', isShell);
     dependenciesField.classList.toggle('hidden', isShell);
 }
@@ -331,10 +343,58 @@ function populateForm(config) {
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
+    disabledBuiltInRunners = config.disabledBuiltInRunners || [];
     runnerCards.populate(config.runners);
     triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
+    renderBuiltInRunners();
     renderShortcutRail();
+}
+
+// The runners the selected session type provides, shown above the console's own so the Run menu's behaviour
+// is visible in the form. They are not part of the config: the host layers them under whatever the file
+// declares, and re-reads them from the provider on every launch. Switching one off is the exception: the
+// config names it by id, which is what the host resolves against.
+function renderBuiltInRunners() {
+    const runners = builtInRunnersByType[sessionTypeSelect.value] || [];
+    builtInRunnerList.replaceChildren();
+
+    for (const runner of runners) {
+        const card = builtInRunnerTemplate.content.firstElementChild.cloneNode(true);
+        applyLocalization(card);
+
+        const extensionList = (runner.extensions || []).join(', ');
+        card.querySelector('.cel-card-title').textContent = extensionList;
+        card.querySelector('.built-in-extensions').textContent = extensionList;
+        card.querySelector('.built-in-command').textContent = runner.command || '';
+
+        const isOff = isBuiltInRunnerDisabled(runner.builtInId);
+        card.classList.toggle('off', isOff);
+
+        const toggle = card.querySelector('.built-in-switch');
+        toggle.setAttribute('aria-checked', String(!isOff));
+        toggle.disabled = !isDocumentWritable();
+
+        // The switch sits inside the summary, whose default action would otherwise toggle the card open.
+        toggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            setBuiltInRunnerDisabled(runner.builtInId, !isOff);
+        });
+
+        builtInRunnerList.appendChild(card);
+    }
+}
+
+function isBuiltInRunnerDisabled(id) {
+    return disabledBuiltInRunners.some((disabled) => disabled.toLowerCase() === (id || '').toLowerCase());
+}
+
+function setBuiltInRunnerDisabled(id, disabled) {
+    const remaining = disabledBuiltInRunners.filter((entry) => entry.toLowerCase() !== (id || '').toLowerCase());
+
+    disabledBuiltInRunners = disabled ? remaining.concat(id) : remaining;
+    renderBuiltInRunners();
+    onFormInput();
 }
 
 function readForm() {
@@ -348,6 +408,7 @@ function readForm() {
         startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: runnerCards.read(),
+        disabledBuiltInRunners: disabledBuiltInRunners.slice(),
         triggers: triggerCards.read(),
         shortcuts: shortcutCards.read(),
     };
@@ -551,8 +612,12 @@ function onFormInput() {
     updateAttention();
 }
 
+// Changing the type resets the console: every other setting is written for the type selected at the time.
 sessionTypeSelect.addEventListener('change', () => {
-    applyTypeVisibility(sessionTypeSelect.value);
+    const resetConfig = defaultConsoleConfig();
+    resetConfig.type = sessionTypeSelect.value;
+
+    populateForm(resetConfig);
     onFormInput();
 });
 
@@ -589,6 +654,7 @@ function applyWritableState() {
     runnerCards.refreshState();
     triggerCards.refreshState();
     shortcutCards.refreshState();
+    renderBuiltInRunners();
 }
 
 client.viewState.onChanged(() => applyWritableState());
@@ -628,6 +694,11 @@ function hideSessionFailed() {
 // The starting veil covers the terminal from launch until the shell reports its screen clear, hiding the
 // shell-startup phase. The timers are the safety reveal for a shell that never echoes the ready marker.
 const VEIL_FADE_MS = 240;
+
+// Backstop for a host that never reports the startup phase ending. The host reveals a quiet session itself
+// and notifies, so this only has to outlast its silence window: no output reaches the client while the veil
+// is up, which leaves nothing here to measure progress against.
+const VEIL_BACKSTOP_MS = 15000;
 
 let veilTimeout = null;
 let veilFadeTimer = null;
@@ -716,6 +787,13 @@ let requestInFlight = false;
 // Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
 // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
 function applyAttachResult(result) {
+    // The built-in runners are static host knowledge that rides along with the attach, so the settings form can
+    // show them. The first attach lands after the form is populated, hence the re-render.
+    if (result && result.builtInRunners) {
+        builtInRunnersByType = result.builtInRunners;
+        renderBuiltInRunners();
+    }
+
     launchedConfig = null;
     if (result && result.launchedConfigToml) {
         try {
@@ -743,7 +821,7 @@ function applyAttachResult(result) {
 
     if (result.startupPending) {
         showStartingVeil();
-        armVeilTimeout(4000);
+        armVeilTimeout(VEIL_BACKSTOP_MS);
     } else {
         hideStartingVeil();
     }

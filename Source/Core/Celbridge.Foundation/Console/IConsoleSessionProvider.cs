@@ -23,12 +23,19 @@ public sealed record ConsoleStartupInvocation(
 }
 
 /// <summary>
-/// A default way a session type runs a file: the file extensions it handles and a command template
-/// injected to run a matching file, where "{resource}" is replaced with the file's path.
+/// A way of running a file in a console: the file extensions it handles and a command template injected to
+/// run a matching file, where "{resource}" is replaced with the file's path. Used both for the runners a
+/// session type provides and for the ones a .console file declares, which are the same thing from different
+/// sources, so the property names match the file's own keys. Only a built-in runner carries a BuiltInId,
+/// which is how a console names the one it switches off; runners a .console file declares are anonymous
+/// entries in its own list and leave it empty. The id is unique across every session type, so it is
+/// conventionally the type id, qualified further with a hyphen ("python-notebook") only by a type
+/// contributing more than one runner.
 /// </summary>
 public sealed record ConsoleRunner(
-    IReadOnlyList<string> FileExtensions,
-    string CommandTemplate);
+    IReadOnlyList<string> Extensions,
+    string Command,
+    string BuiltInId = "");
 
 /// <summary>
 /// The resolved configuration a provider builds a startup command from. WorkingDirectory is as written in
@@ -60,10 +67,10 @@ public interface IConsoleSessionProvider
     string TypeId { get; }
 
     /// <summary>
-    /// The default runners this type contributes (file extensions plus a run-command template), or an
+    /// The built-in runners this type contributes (file extensions plus a run-command template), or an
     /// empty list if the type runs nothing by default.
     /// </summary>
-    IReadOnlyList<ConsoleRunner> DefaultRunners { get; }
+    IReadOnlyList<ConsoleRunner> BuiltInRunners { get; }
 
     /// <summary>
     /// Builds the startup command for a session from its resolved config, or a failure if the config

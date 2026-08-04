@@ -2,9 +2,9 @@ namespace Celbridge.Console.Services;
 
 /// <summary>
 /// Watches a terminal output stream for the session's ready marker, which separates shell-startup noise
-/// from real session output. Push emits pre-marker text chunk by chunk (the caller discards it); on the
-/// chunk containing the marker it emits only the post-marker remainder. A trailing partial match is held
-/// back so a marker split across two chunks is never emitted early.
+/// from real session output. Push emits pre-marker text chunk by chunk, for the caller to discard or
+/// forward; on the chunk containing the marker it emits only the post-marker remainder. A trailing partial
+/// match is held back so a marker split across two chunks is never emitted early.
 /// </summary>
 public sealed class StartupMarkerScanner
 {
@@ -14,6 +14,16 @@ public sealed class StartupMarkerScanner
     public StartupMarkerScanner(string marker)
     {
         _marker = marker;
+    }
+
+    /// <summary>
+    /// Releases any held-back text, for when no marker can still arrive and scanning stops.
+    /// </summary>
+    public string Flush()
+    {
+        var text = _buffer;
+        _buffer = string.Empty;
+        return text;
     }
 
     public (string Text, bool Found) Push(string text)
@@ -32,16 +42,6 @@ public sealed class StartupMarkerScanner
         var emitted = _buffer.Substring(0, _buffer.Length - held);
         _buffer = _buffer.Substring(_buffer.Length - held);
         return (emitted, false);
-    }
-
-    /// <summary>
-    /// Releases any held-back text, for when the marker never arrives and scanning gives up.
-    /// </summary>
-    public string Flush()
-    {
-        var text = _buffer;
-        _buffer = string.Empty;
-        return text;
     }
 
     // The length of the longest suffix of the buffer that is also a prefix of the marker.

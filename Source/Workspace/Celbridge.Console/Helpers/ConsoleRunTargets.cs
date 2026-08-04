@@ -15,10 +15,40 @@ public sealed record ConsoleRunCandidate(
     bool HasStaleRunners);
 
 /// <summary>
-/// Selects which console sessions can run a file, and which runner each would use.
+/// Resolves a console's effective runners, and selects which console sessions can run a file.
 /// </summary>
 public static class ConsoleRunTargets
 {
+    /// <summary>
+    /// Layers a console's own runners over the ones its session type contributes, so a console handles the
+    /// type's file extensions without declaring anything. Built-in runners named in disabledBuiltInRunners are
+    /// left out, which is how a console opts out of one it does not want.
+    /// </summary>
+    public static IReadOnlyList<ConsoleRunner> ResolveEffectiveRunners(
+        IReadOnlyList<ConsoleRunner> configRunners,
+        IReadOnlyList<ConsoleRunner> builtInRunners,
+        IReadOnlyList<string> disabledBuiltInRunners)
+    {
+        // Config runners go first because FindRunner takes the first match: a runner for an extension the
+        // type already handles shadows the built-in, and extensions the config leaves alone keep theirs.
+        // The settings form draws them in this order too, so the list reads as the chain it is.
+        var runners = new List<ConsoleRunner>(configRunners);
+
+        var disabled = new HashSet<string>(disabledBuiltInRunners, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var builtInRunner in builtInRunners)
+        {
+            if (disabled.Contains(builtInRunner.BuiltInId))
+            {
+                continue;
+            }
+
+            runners.Add(builtInRunner);
+        }
+
+        return runners;
+    }
+
     /// <summary>
     /// Returns the candidates whose runners cover a file extension, sorted by display name, skipping any
     /// whose runners are stale.
@@ -106,7 +136,7 @@ public static class ConsoleRunTargets
     {
         foreach (var runner in runners)
         {
-            foreach (var extension in runner.FileExtensions)
+            foreach (var extension in runner.Extensions)
             {
                 if (string.Equals(extension, fileExtension, StringComparison.OrdinalIgnoreCase))
                 {

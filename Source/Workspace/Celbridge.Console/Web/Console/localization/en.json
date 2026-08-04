@@ -1,6 +1,6 @@
 {
     "Console_Package_Name": "Console",
-    "Console_Editor_Name": "Console",
+    "Console_Editor_Name": "Console Editor",
     "Console_FileType_Console": "Console (.console)",
     "Console_Template_Shell": "Shell Console",
     "Console_Template_Python": "Python Console",
@@ -49,6 +49,8 @@
     "Console_Empty_Runners": "No runners yet.",
     "Console_Empty_Triggers": "No triggers yet.",
     "Console_Empty_Shortcuts": "No shortcuts yet.",
+    "Console_Runner_BuiltIn": "Built-in",
+    "Console_Runner_BuiltInEnabled": "Enabled",
     "Console_Runner_Untitled": "New runner",
     "Console_Trigger_Untitled": "New trigger",
     "Console_Shortcut_Untitled": "New shortcut",
@@ -76,7 +78,7 @@
 
     "Console_Hint_Executable": "Blank leaves just the shell. Example: node",
     "Console_Hint_PythonVersion": "Blank uses the default. Examples: 3.13, >=3.12",
-    "Console_Hint_Arguments": "Example: -q",
+    "Console_Hint_Arguments": "Passed to the executable. Example: -NoLogo",
     "Console_Hint_Dependencies": "Installed with uv. Examples: numpy, pandas>=2",
     "Console_Hint_WorkingDirectory": "Relative to the project root. Blank uses the root.",
     "Console_Hint_StartupScript": "Runs once the session is ready. Example: import numpy as np",

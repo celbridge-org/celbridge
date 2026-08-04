@@ -6,14 +6,6 @@ using Tomlyn.Parsing;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// A script runner parsed from a .console file: the file extensions it handles and the command template
-/// injected to run a matching file.
-/// </summary>
-public sealed record ConsoleDocumentRunner(
-    IReadOnlyList<string> Extensions,
-    string Command);
-
-/// <summary>
 /// A trigger parsed from a .console file: the resource path pattern it watches and the command template
 /// injected when a matching resource changes.
 /// </summary>
@@ -34,7 +26,8 @@ public sealed record ConsoleDocumentConfig(
     string WorkingDirectory,
     string StartupScript,
     IReadOnlyDictionary<string, string> Environment,
-    IReadOnlyList<ConsoleDocumentRunner> Runners,
+    IReadOnlyList<ConsoleRunner> Runners,
+    IReadOnlyList<string> DisabledBuiltInRunners,
     IReadOnlyList<ConsoleDocumentTrigger> Triggers);
 
 /// <summary>
@@ -77,7 +70,7 @@ public static class ConsoleDocumentConfigParser
             }
         }
 
-        var runners = new List<ConsoleDocumentRunner>();
+        var runners = new List<ConsoleRunner>();
         if (session is not null &&
             session.TryGetValue("runner", out var runnerValue) &&
             runnerValue is TomlTableArray runnerTables)
@@ -89,7 +82,7 @@ public static class ConsoleDocumentConfigParser
                 if (extensions.Count > 0 &&
                     !string.IsNullOrWhiteSpace(command))
                 {
-                    runners.Add(new ConsoleDocumentRunner(extensions, command));
+                    runners.Add(new ConsoleRunner(extensions, command));
                 }
             }
         }
@@ -123,6 +116,7 @@ public static class ConsoleDocumentConfigParser
             GetString(session, "startup_script"),
             environment,
             runners,
+            GetStringList(session, "disabled_built_in_runners"),
             triggers);
 
         return config;

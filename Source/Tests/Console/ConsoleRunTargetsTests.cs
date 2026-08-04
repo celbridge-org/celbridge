@@ -10,7 +10,7 @@ public class ConsoleRunTargetsTests
 
     private static readonly IReadOnlyList<ConsoleRunner> PythonRunners = new[]
     {
-        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\""),
+        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\"", "python"),
     };
 
     // filePath defaults to the resource resolved under the project folder, which is what the service
@@ -27,6 +27,80 @@ public class ConsoleRunTargetsTests
             filePath ?? $"{ProjectFolderPath}/{resourcePath}",
             runners ?? PythonRunners,
             hasStaleRunners);
+    }
+
+    private static IReadOnlyList<ConsoleRunner> ResolveAgainstPythonBuiltIns(
+        IReadOnlyList<ConsoleRunner>? configRunners = null,
+        IReadOnlyList<string>? disabledBuiltInRunners = null)
+    {
+        return ConsoleRunTargets.ResolveEffectiveRunners(
+            configRunners ?? Array.Empty<ConsoleRunner>(),
+            PythonRunners,
+            disabledBuiltInRunners ?? Array.Empty<string>());
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_NoConfigRunners_KeepsTheBuiltInRunners()
+    {
+        var runners = ResolveAgainstPythonBuiltIns();
+
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".ipy").Should().NotBeNull();
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_UnrelatedConfigRunner_LeavesTheBuiltInRunnersInPlace()
+    {
+        // Declaring a runner is additive: the built-in extensions keep working alongside it.
+        var configRunners = new[]
+        {
+            new ConsoleRunner(new[] { ".sql" }, "%sql {resource}"),
+        };
+
+        var runners = ResolveAgainstPythonBuiltIns(configRunners);
+
+        ConsoleRunTargets.FindRunner(runners, ".sql")!.Command.Should().Be("%sql {resource}");
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run \"{resource}\"");
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_ConfigRunnerForTheSameExtension_ShadowsTheBuiltInRunner()
+    {
+        // Only the extension it names: .ipy still resolves to the built-in runner alongside it.
+        var configRunners = new[]
+        {
+            new ConsoleRunner(new[] { ".py" }, "%run -i \"{resource}\""),
+        };
+
+        var runners = ResolveAgainstPythonBuiltIns(configRunners);
+
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run -i \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".ipy")!.Command.Should().Be("%run \"{resource}\"");
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_DisabledBuiltIn_DropsTheWholeRunner()
+    {
+        // Named by id, so every extension it covers goes with it. Matched without regard to case, so a
+        // hand-edited config still names the runner it looks like it names.
+        var runners = ResolveAgainstPythonBuiltIns(disabledBuiltInRunners: new[] { "Python" });
+
+        runners.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ResolveEffectiveRunners_DisabledBuiltInWithAConfigRunner_StillRuns()
+    {
+        // Switching off a built-in runner says nothing about a runner the console declares for itself.
+        var configRunners = new[]
+        {
+            new ConsoleRunner(new[] { ".py" }, "%run -i \"{resource}\""),
+        };
+
+        var runners = ResolveAgainstPythonBuiltIns(configRunners, new[] { "python" });
+
+        ConsoleRunTargets.FindRunner(runners, ".py")!.Command.Should().Be("%run -i \"{resource}\"");
+        ConsoleRunTargets.FindRunner(runners, ".ipy").Should().BeNull();
     }
 
     [Test]

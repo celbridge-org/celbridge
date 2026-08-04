@@ -287,6 +287,17 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
+    public IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetBuiltInRunners()
+    {
+        var builtInRunners = new Dictionary<string, IReadOnlyList<ConsoleRunner>>();
+        foreach (var provider in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        {
+            builtInRunners[provider.TypeId] = provider.BuiltInRunners;
+        }
+
+        return builtInRunners;
+    }
+
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)
     {
         var runningSessions = new List<ConsoleLiveSession>();
@@ -350,7 +361,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             return Result<string>.Fail($"Console '{session.Resource}' has no runner for '{extension}'");
         }
 
-        var invocation = ConsoleInvocationTemplate.Substitute(runner.CommandTemplate, scriptPath);
+        var invocation = ConsoleInvocationTemplate.Substitute(runner.Command, scriptPath);
         if (!string.IsNullOrEmpty(arguments))
         {
             invocation += " " + arguments;

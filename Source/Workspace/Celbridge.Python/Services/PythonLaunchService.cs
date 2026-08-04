@@ -62,14 +62,13 @@ internal static class ToolInstallPolicy
 }
 
 /// <summary>
-/// The inputs to build a Python session's startup command: the project root, the interpreter version, the
-/// extra package dependencies, and the interpreter arguments forwarded to IPython.
+/// The inputs to build a Python session's startup command: the project root, the interpreter version, and
+/// the extra package dependencies.
 /// </summary>
 public sealed record PythonLaunchRequest(
     string ProjectFolderPath,
     string PythonVersion,
-    IReadOnlyList<string> Dependencies,
-    IReadOnlyList<string> InterpreterArguments);
+    IReadOnlyList<string> Dependencies);
 
 /// <summary>
 /// The resolved startup: the installed celbridge-py tool to inject, and the per-console environment
@@ -81,10 +80,10 @@ public sealed record PythonStartupResult(
 
 /// <summary>
 /// Builds the startup command and shared environment for Python sessions, owning all the Python-specific
-/// launch machinery. The injected command is a bare celbridge-py; the console's interpreter version,
-/// dependencies, and interpreter arguments ride per-console environment variables that the tool reads as
-/// launch defaults, so retyping celbridge-py after exiting the REPL reproduces the same environment. The
-/// uv and wheel locations ride the shared console environment.
+/// launch machinery. The injected command is a bare celbridge-py; the console's interpreter version and
+/// dependencies ride per-console environment variables that the tool reads as launch defaults, so retyping
+/// celbridge-py after exiting the REPL reproduces the same environment. The uv and wheel locations ride the
+/// shared console environment.
 /// </summary>
 public interface IPythonLaunchService
 {
@@ -202,10 +201,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var dependencies = request.Dependencies
             .Where(dependency => !string.IsNullOrWhiteSpace(dependency))
             .ToList();
-        var interpreterArguments = request.InterpreterArguments
-            .Where(argument => !string.IsNullOrWhiteSpace(argument))
-            .ToList();
-
         var findWheelResult = await FindWheelFileAsync(pythonFolder, "celbridge");
         if (findWheelResult.IsFailure)
         {
@@ -243,9 +238,9 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
         // The injected command is a bare celbridge-py; these per-console variables are the launch
         // defaults it reads, making the tool re-exec through uv (located via the shared console
-        // environment) with this console's interpreter, packages, and arguments. Lists are
-        // newline-separated because PEP 508 specifiers can contain commas and semicolons. Offline mode is
-        // not among them: celbridge-py measures the cache itself at launch.
+        // environment) with this console's interpreter and packages. Dependencies are newline-separated
+        // because PEP 508 specifiers can contain commas and semicolons. Offline mode is not among them:
+        // celbridge-py measures the cache itself at launch.
         var startupEnvironment = new Dictionary<string, string>
         {
             ["CELBRIDGE_PYTHON_VERSION"] = request.PythonVersion,
@@ -254,11 +249,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
         if (dependencies.Count > 0)
         {
             startupEnvironment["CELBRIDGE_PYTHON_WITH"] = string.Join('\n', dependencies);
-        }
-
-        if (interpreterArguments.Count > 0)
-        {
-            startupEnvironment["CELBRIDGE_PYTHON_ARGS"] = string.Join('\n', interpreterArguments);
         }
 
         _logger.LogDebug("Built Python startup in {DurationMs}ms (gate wait {GateWaitMs}ms): {Command} with launch defaults {Environment}",

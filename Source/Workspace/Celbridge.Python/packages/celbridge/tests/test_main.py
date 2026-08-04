@@ -69,18 +69,17 @@ def test_resolve_launch_reads_the_console_configuration():
     environ = {
         "CELBRIDGE_PYTHON_VERSION": "3.13",
         "CELBRIDGE_PYTHON_WITH": "numpy\npandas>=2",
-        "CELBRIDGE_PYTHON_ARGS": "-i",
         "CELBRIDGE_PYTHON_OFFLINE": "1",
     }
     resolved = _resolve_launch(environ, [])
-    assert resolved == ResolvedLaunch("3.13", ["numpy", "pandas>=2"], True, ["-i"])
+    assert resolved == ResolvedLaunch("3.13", ["numpy", "pandas>=2"], True, [])
     assert resolved.requires_bootstrap is True
 
 
-def test_resolve_launch_appends_typed_arguments_to_the_configured_ones():
-    """Test that typed arguments add to the console's configured interpreter arguments."""
+def test_resolve_launch_takes_arguments_only_from_the_command_line():
+    """Test that IPython flags come from the command line, never from a console's configuration."""
     environ = {"CELBRIDGE_PYTHON_ARGS": "-i"}
-    assert _resolve_launch(environ, ["-q"]).ipython_arguments == ["-i", "-q"]
+    assert _resolve_launch(environ, ["-q"]).ipython_arguments == ["-q"]
 
 
 def test_resolve_launch_dependencies_only_still_bootstraps():

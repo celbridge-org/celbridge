@@ -87,7 +87,7 @@
                             <span class="field-hint" data-loc-key="Console_Hint_PythonVersion"></span>
                         </label>
 
-                        <label class="field">
+                        <label class="field" id="arguments-field">
                             <span class="field-label" data-loc-key="Console_Field_Arguments"></span>
                             <textarea id="arguments" rows="2" spellcheck="false" data-loc-key="Console_Placeholder_Arguments" data-loc-attr="placeholder"></textarea>
                             <span class="field-hint" data-loc-key="Console_Hint_Arguments"></span>
@@ -126,7 +126,11 @@
                         <div class="card-list-group">
                             <h2 class="card-list-title" data-loc-key="Console_Field_Runners"></h2>
                             <p class="card-list-hint" data-loc-key="Console_Hint_Runners"></p>
+                            <!-- Built-in runners sit below the console's own because the whole section is one
+                                 precedence chain read top to bottom: FindRunner takes the first match, so a
+                                 card above shadows one below it for the extensions they share. -->
                             <div id="runner-cards" class="cel-card-list"></div>
+                            <div id="runner-built-in" class="cel-card-list built-in-list"></div>
                             <p id="runner-empty" class="card-list-empty" data-loc-key="Console_Empty_Runners"></p>
                             <button id="add-runner" type="button" class="add-card-button">
                                 <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Runner"></span>
@@ -201,6 +205,33 @@
                     <input class="runner-command" type="text" spellcheck="false" data-loc-key="Console_Placeholder_RunnerCommand" data-loc-attr="placeholder">
                     <span class="field-hint" data-loc-key="Console_Hint_RunnerCommand"></span>
                 </label>
+            </div>
+        </details>
+    </template>
+
+    <!-- One runner the console's session type provides. Its fields are text rather than inputs: they come from
+         the type, not the file, so there is nothing to edit. The switch is the one thing that is writable,
+         recording the runner's extensions under disabled_built_in_runners. It sits outside .cel-card-actions so it
+         still reads while the card is collapsed, since it shows state rather than offering an action. -->
+    <template id="built-in-runner-template">
+        <details class="cel-expander built-in-card">
+            <summary>
+                <span class="cel-card-title"></span>
+                <span class="built-in-badge" data-loc-key="Console_Runner_BuiltIn"></span>
+                <button class="built-in-switch" type="button" role="switch"
+                        data-loc-key="Console_Runner_BuiltInEnabled" data-loc-attr="title,aria-label">
+                    <span class="built-in-switch-thumb"></span>
+                </button>
+            </summary>
+            <div class="cel-expander-body">
+                <div class="field">
+                    <span class="field-label" data-loc-key="Console_Field_RunnerExtensions"></span>
+                    <p class="built-in-value built-in-extensions"></p>
+                </div>
+                <div class="field">
+                    <span class="field-label" data-loc-key="Console_Field_RunnerCommand"></span>
+                    <p class="built-in-value built-in-command"></p>
+                </div>
             </div>
         </details>
     </template>

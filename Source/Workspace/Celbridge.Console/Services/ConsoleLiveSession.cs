@@ -26,8 +26,11 @@ internal sealed class ConsoleLiveSession : IDisposable
     // not this suffix.
     private const string ReadyMarkerPrefix = "CELBRIDGE-CONSOLE-READY-";
 
-    // How long after injection the marker scan keeps going before giving up and buffering raw output.
-    private const int MarkerTimeoutMs = 4000;
+    // How long the marker scan waits without any output before revealing what the runtime is printing.
+    // Measured from the last output rather than from injection, because the expensive part of a launch
+    // happens after the command is typed: a first run resolves an interpreter and installs packages, which
+    // can take far longer than any fixed budget while still making progress.
+    private const int MarkerSilenceTimeoutMs = 10000;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -41,6 +44,7 @@ internal sealed class ConsoleLiveSession : IDisposable
     private readonly object _streamLock = new();
     private readonly DiagnosticSequenceScanner _diagnosticScanner = new();
     private StartupMarkerScanner? _markerScanner;
+    private bool _markerRevealed;
     private IConsoleView? _attachedView;
 
     private ITerminal? _terminal;
@@ -162,7 +166,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         // previous launch binding to this one.
         SessionId = Guid.NewGuid();
         TypeId = config.Type;
-        Runners = ResolveRunners(config, provider);
+        Runners = ConsoleRunTargets.ResolveEffectiveRunners(config.Runners, provider.BuiltInRunners, config.DisabledBuiltInRunners);
         Triggers = ResolveTriggers(config);
         ConnectionId = null;
         HasConnected = false;
@@ -271,6 +275,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
         // injected lines. The marker scanner keeps the buffer clean of the shell-startup noise.
         _startupInjectionPending = injectedLines.Count > 0;
+        _markerRevealed = false;
         if (composedStartup.ScanMarker is not null)
         {
             _markerScanner = new StartupMarkerScanner(composedStartup.ScanMarker);
@@ -449,12 +454,27 @@ internal sealed class ConsoleLiveSession : IDisposable
 
         lock (_streamLock)
         {
-            if (_markerScanner is not null &&
-                _markerTimeout is null)
-            {
-                _markerTimeout = new Timer(_ => AbandonMarkerScan(), null, MarkerTimeoutMs, Timeout.Infinite);
-            }
+            ArmMarkerSilenceTimer();
         }
+    }
+
+    // Restarts the silence window. Called on every chunk of output, so a launch that is slow but still
+    // printing is never cut short. Caller holds _streamLock.
+    private void ArmMarkerSilenceTimer()
+    {
+        if (_markerScanner is null ||
+            _markerRevealed)
+        {
+            return;
+        }
+
+        if (_markerTimeout is null)
+        {
+            _markerTimeout = new Timer(_ => RevealStartupOutput(), null, MarkerSilenceTimeoutMs, Timeout.Infinite);
+            return;
+        }
+
+        _markerTimeout.Change(MarkerSilenceTimeoutMs, Timeout.Infinite);
     }
 
     // Awaited in turn so buffered invocations submit in order rather than racing each other.
@@ -466,7 +486,35 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
     }
 
-    private void AbandonMarkerScan()
+    // The runtime has gone quiet without emitting its ready marker, so it is either far slower than a
+    // console usually is or stuck. Show what it is printing rather than holding the terminal blank, but
+    // keep scanning: a marker that arrives late is then still swallowed instead of printed as output.
+    private void RevealStartupOutput()
+    {
+        IConsoleView? attachedView;
+        lock (_streamLock)
+        {
+            if (_markerScanner is null ||
+                _markerRevealed)
+            {
+                return;
+            }
+
+            _markerRevealed = true;
+            attachedView = _attachedView;
+        }
+
+        _logger.LogWarning(
+            "Console '{Resource}' produced no ready marker within {TimeoutMs}ms of silence; revealing its startup output",
+            Resource,
+            MarkerSilenceTimeoutMs);
+
+        attachedView?.OnStartupComplete();
+    }
+
+    // The process has exited, so no marker can still arrive and nothing further will be forwarded. Release
+    // what the scanner held back, so the session's last output is not swallowed along with it.
+    private void ReleaseMarkerScan()
     {
         IConsoleView? attachedView;
         string held;
@@ -551,16 +599,21 @@ internal sealed class ConsoleLiveSession : IDisposable
             if (_markerScanner is not null)
             {
                 // Pre-marker output is the shell-startup noise the reveal is meant to hide: not buffered,
-                // not forwarded. The chunk containing the marker contributes only its remainder.
+                // not forwarded. The chunk containing the marker contributes only its remainder. Once the
+                // silence window has revealed the session, that noise flows instead, but the scan runs on
+                // so the marker is still consumed rather than printed.
                 var (text, found) = _markerScanner.Push(forwarded);
-                markerPending = !found;
+                markerPending = !found && !_markerRevealed;
 
                 if (found)
                 {
                     _markerScanner = null;
-                    startupCompleted = true;
+                    startupCompleted = !_markerRevealed;
                 }
                 forwarded = text;
+
+                // Output means the launch is still progressing, so the silence window starts again.
+                ArmMarkerSilenceTimer();
             }
 
             if (!markerPending
@@ -596,7 +649,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
 
         // A marker that never arrived must not swallow the session's final output.
-        AbandonMarkerScan();
+        ReleaseMarkerScan();
         FlushHeldDiagnosticText();
 
         SetState(ConsoleSessionRunState.Ended);
@@ -636,23 +689,6 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
 
         return null;
-    }
-
-    private static IReadOnlyList<ConsoleRunner> ResolveRunners(ConsoleDocumentConfig config, IConsoleSessionProvider provider)
-    {
-        // Any runners in the config replace the type defaults outright. An empty list falls back to them.
-        if (config.Runners.Count == 0)
-        {
-            return provider.DefaultRunners;
-        }
-
-        var runners = new List<ConsoleRunner>();
-        foreach (var runner in config.Runners)
-        {
-            runners.Add(new ConsoleRunner(runner.Extensions, runner.Command));
-        }
-
-        return runners;
     }
 
     // Patterns are compiled once per launch rather than per resource change, since every change is tested

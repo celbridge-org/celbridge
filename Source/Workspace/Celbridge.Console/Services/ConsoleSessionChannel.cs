@@ -35,13 +35,13 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
     public async Task<ConsoleAttachResult> AttachAsync(int cols, int rows)
     {
         var snapshot = await Sessions.AttachAsync(_fileResource, this, cols, rows);
-        return ToResult(snapshot);
+        return ToResult(snapshot, Sessions.GetBuiltInRunners());
     }
 
     public async Task<ConsoleAttachResult> ReopenAsync(int cols, int rows)
     {
         var snapshot = await Sessions.ReopenAsync(_fileResource, cols, rows);
-        return ToResult(snapshot);
+        return ToResult(snapshot, Sessions.GetBuiltInRunners());
     }
 
     public void OnInput(string data)
@@ -78,7 +78,7 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             return;
         }
 
-        _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.SessionState, new { state = "ended" });
+        _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.SessionState, new { state = ConsoleSessionStates.Ended });
     }
 
     public void OnStartupComplete()
@@ -91,14 +91,19 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.StartupComplete, new { });
     }
 
-    private static ConsoleAttachResult ToResult(ConsoleAttachSnapshot snapshot)
+    private static ConsoleAttachResult ToResult(
+        ConsoleAttachSnapshot snapshot,
+        IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> builtInRunners)
     {
+        // An unrecognized state throws rather than falling back to failed, so a state added to
+        // ConsoleSessionRunState without a wire spelling surfaces instead of reading as a broken session.
         var state = snapshot.State switch
         {
-            ConsoleSessionRunState.Starting => "starting",
-            ConsoleSessionRunState.Running => "running",
-            ConsoleSessionRunState.Ended => "ended",
-            _ => "failed",
+            ConsoleSessionRunState.Starting => ConsoleSessionStates.Starting,
+            ConsoleSessionRunState.Running => ConsoleSessionStates.Running,
+            ConsoleSessionRunState.Ended => ConsoleSessionStates.Ended,
+            ConsoleSessionRunState.Failed => ConsoleSessionStates.Failed,
+            _ => throw new ArgumentOutOfRangeException(nameof(snapshot), snapshot.State, "Unhandled console session run state"),
         };
 
         return new ConsoleAttachResult(
@@ -106,7 +111,8 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             snapshot.Error,
             snapshot.StartupPending,
             snapshot.Replay,
-            snapshot.LaunchedConfigToml);
+            snapshot.LaunchedConfigToml,
+            builtInRunners);
     }
 
     public void Dispose()

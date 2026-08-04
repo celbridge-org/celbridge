@@ -28,9 +28,9 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
 
     public string TypeId => "python";
 
-    public IReadOnlyList<ConsoleRunner> DefaultRunners { get; } = new[]
+    public IReadOnlyList<ConsoleRunner> BuiltInRunners { get; } = new[]
     {
-        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\""),
+        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\"", "python"),
     };
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
@@ -38,11 +38,13 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
         var pythonVersion = ResolvePythonVersion(context);
         var dependencies = context.Dependencies ?? Array.Empty<string>();
 
+        // A python console has no executable to pass arguments to, and raw interpreter flags are not part
+        // of its configuration surface, so context.Arguments is deliberately unused here. The REPL is
+        // configured through the startup script, which runs as IPython exec_lines.
         var request = new PythonLaunchRequest(
             context.ProjectFolderPath,
             pythonVersion,
-            dependencies,
-            context.Arguments);
+            dependencies);
 
         var startupResult = await _launchService.BuildStartupAsync(request);
         if (startupResult.IsFailure)

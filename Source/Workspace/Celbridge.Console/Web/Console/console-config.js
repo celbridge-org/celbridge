@@ -64,6 +64,7 @@ export function buildStartConfig(config) {
             extensions: runner.extensions || [],
             command: runner.command || '',
         })),
+        disabledBuiltInRunners: config.disabledBuiltInRunners || [],
         triggers: (config.triggers || []).map((trigger) => ({
             pattern: trigger.pattern || '',
             command: trigger.command || '',
