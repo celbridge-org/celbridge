@@ -17,7 +17,7 @@ describe('defaultConsoleConfig', () => {
             startupScript: '',
             environment: {},
             runners: [],
-            disabledExtensions: [],
+            disabledBuiltIns: [],
             triggers: [],
             shortcuts: [],
         });
@@ -49,7 +49,7 @@ describe('parseConsoleToml', () => {
             startupScript: '',
             environment: { BUILD_CONFIG: 'Debug' },
             runners: [],
-            disabledExtensions: [],
+            disabledBuiltIns: [],
             triggers: [],
             shortcuts: [],
         });
@@ -99,9 +99,9 @@ describe('parseConsoleToml', () => {
         ]);
     });
 
-    it('parses disabled_extensions', () => {
-        const config = parseConsoleToml('[session]\ntype = "python"\ndisabled_extensions = [".py"]');
-        expect(config.disabledExtensions).toEqual(['.py']);
+    it('parses disabled_built_ins', () => {
+        const config = parseConsoleToml('[session]\ntype = "python"\ndisabled_built_ins = ["python"]');
+        expect(config.disabledBuiltIns).toEqual(['python']);
     });
 
     it('parses repeated [[session.trigger]] tables', () => {
@@ -217,14 +217,14 @@ describe('serializeConsoleToml', () => {
         expect(toml).not.toContain('dependencies');
         expect(toml).not.toContain('session.runner');
         expect(toml).not.toContain('session.shortcut');
-        expect(toml).not.toContain('disabled_extensions');
+        expect(toml).not.toContain('disabled_built_ins');
     });
 
-    it('round-trips disabled_extensions', () => {
-        const config = { ...defaultConsoleConfig(), type: 'python', disabledExtensions: ['.py', '.ipy'] };
+    it('round-trips disabled_built_ins', () => {
+        const config = { ...defaultConsoleConfig(), type: 'python', disabledBuiltIns: ['python'] };
         const toml = serializeConsoleToml(config);
-        expect(toml).toContain('disabled_extensions = [".py", ".ipy"]');
-        expect(parseConsoleToml(toml).disabledExtensions).toEqual(['.py', '.ipy']);
+        expect(toml).toContain('disabled_built_ins = ["python"]');
+        expect(parseConsoleToml(toml).disabledBuiltIns).toEqual(['python']);
     });
 
     it('quotes and comma-joins arguments', () => {
@@ -287,7 +287,7 @@ describe('round-trip', () => {
             startupScript: 'import numpy as np\n%load_ext autoreload',
             environment: { A: '1', B: 'two words' },
             runners: [{ extensions: ['.py', '.ipy'], command: '%run "{resource}"' }],
-            disabledExtensions: ['.ipy'],
+            disabledBuiltIns: ['python'],
             triggers: [{ pattern: 'data/**/*.xlsx', command: '%run clean_data.py' }],
             shortcuts: [{ label: 'Test', icon: 'bs-play-fill', text: 'pytest -q' }],
         };

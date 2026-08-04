@@ -136,10 +136,10 @@ let launchedConfig = null;
 let configError = null;
 // The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
 // then, so the built-in list simply renders nothing on the first populate.
-let defaultRunnersByType = {};
-// The file extensions those runners are switched off for. Held apart from the form inputs because a built-in
+let builtInRunnersByType = {};
+// The ids of the built-in runners switched off for this console. Held apart from the form inputs because a
 // card carries no editable field, so readForm carries this through rather than reading it back out of the DOM.
-let disabledExtensions = [];
+let disabledBuiltIns = [];
 
 // Theme.
 function applyTheme(theme) {
@@ -343,7 +343,7 @@ function populateForm(config) {
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
-    disabledExtensions = config.disabledExtensions || [];
+    disabledBuiltIns = config.disabledBuiltIns || [];
     runnerCards.populate(config.runners);
     triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
@@ -353,27 +353,22 @@ function populateForm(config) {
 
 // The runners the selected session type provides, shown above the console's own so the Run menu's behaviour
 // is visible in the form. They are not part of the config: the host layers them under whatever the file
-// declares, and re-reads them from the provider on every launch. Switching one off is the exception, and it
-// records the extensions rather than the runner, since that is what the host resolves against.
+// declares, and re-reads them from the provider on every launch. Switching one off is the exception: the
+// config names it by id, which is what the host resolves against.
 function renderBuiltInRunners() {
-    const runners = defaultRunnersByType[sessionTypeSelect.value] || [];
+    const runners = builtInRunnersByType[sessionTypeSelect.value] || [];
     builtInRunnerList.replaceChildren();
 
-    // These come straight off the provider contract, so they are named for it rather than for the TOML keys
-    // the runner cards use.
     for (const runner of runners) {
         const card = builtInRunnerTemplate.content.firstElementChild.cloneNode(true);
         applyLocalization(card);
 
-        const extensions = runner.extensions || [];
-        const extensionList = extensions.join(', ');
+        const extensionList = (runner.extensions || []).join(', ');
         card.querySelector('.cel-card-title').textContent = extensionList;
         card.querySelector('.built-in-extensions').textContent = extensionList;
         card.querySelector('.built-in-command').textContent = runner.command || '';
 
-        // A card reads as off only once nothing it covers is left, so a partly disabled one (hand-edited)
-        // still shows as running and switching it off completes the set.
-        const isOff = extensions.length > 0 && extensions.every(isExtensionDisabled);
+        const isOff = isBuiltInDisabled(runner.builtInId);
         card.classList.toggle('off', isOff);
 
         const toggle = card.querySelector('.built-in-switch');
@@ -383,22 +378,21 @@ function renderBuiltInRunners() {
         // The switch sits inside the summary, whose default action would otherwise toggle the card open.
         toggle.addEventListener('click', (event) => {
             event.preventDefault();
-            setExtensionsDisabled(extensions, !isOff);
+            setBuiltInDisabled(runner.builtInId, !isOff);
         });
 
         builtInRunnerList.appendChild(card);
     }
 }
 
-function isExtensionDisabled(extension) {
-    return disabledExtensions.some((disabled) => disabled.toLowerCase() === extension.toLowerCase());
+function isBuiltInDisabled(id) {
+    return disabledBuiltIns.some((disabled) => disabled.toLowerCase() === (id || '').toLowerCase());
 }
 
-function setExtensionsDisabled(extensions, disabled) {
-    const remaining = disabledExtensions.filter((entry) => !extensions.some(
-        (extension) => extension.toLowerCase() === entry.toLowerCase()));
+function setBuiltInDisabled(id, disabled) {
+    const remaining = disabledBuiltIns.filter((entry) => entry.toLowerCase() !== (id || '').toLowerCase());
 
-    disabledExtensions = disabled ? remaining.concat(extensions) : remaining;
+    disabledBuiltIns = disabled ? remaining.concat(id) : remaining;
     renderBuiltInRunners();
     onFormInput();
 }
@@ -414,7 +408,7 @@ function readForm() {
         startupScript: startupScriptInput.value.trimEnd(),
         environment: parseEnvironmentLines(environmentInput.value),
         runners: runnerCards.read(),
-        disabledExtensions: disabledExtensions.slice(),
+        disabledBuiltIns: disabledBuiltIns.slice(),
         triggers: triggerCards.read(),
         shortcuts: shortcutCards.read(),
     };
@@ -623,7 +617,7 @@ sessionTypeSelect.addEventListener('change', () => {
     // A switched-off runner names an extension of the type it was switched off for, so it means nothing to
     // the new type. Carrying it over would leave the old type's opt-out invisible in the file, waiting to
     // reapply if the user switched back.
-    disabledExtensions = [];
+    disabledBuiltIns = [];
     renderBuiltInRunners();
     onFormInput();
 });
@@ -794,10 +788,10 @@ let requestInFlight = false;
 // Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
 // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
 function applyAttachResult(result) {
-    // The type defaults are static host knowledge that rides along with the attach, so the settings form can
+    // The built-in runners are static host knowledge that rides along with the attach, so the settings form can
     // show them. The first attach lands after the form is populated, hence the re-render.
-    if (result && result.defaultRunners) {
-        defaultRunnersByType = result.defaultRunners;
+    if (result && result.builtInRunners) {
+        builtInRunnersByType = result.builtInRunners;
         renderBuiltInRunners();
     }
 

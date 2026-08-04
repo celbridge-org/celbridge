@@ -287,15 +287,15 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
-    public IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetDefaultRunners()
+    public IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetBuiltInRunners()
     {
-        var defaultRunners = new Dictionary<string, IReadOnlyList<ConsoleRunner>>();
+        var builtInRunners = new Dictionary<string, IReadOnlyList<ConsoleRunner>>();
         foreach (var provider in _serviceProvider.GetServices<IConsoleSessionProvider>())
         {
-            defaultRunners[provider.TypeId] = provider.DefaultRunners;
+            builtInRunners[provider.TypeId] = provider.BuiltInRunners;
         }
 
-        return defaultRunners;
+        return builtInRunners;
     }
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)

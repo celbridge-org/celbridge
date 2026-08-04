@@ -34,7 +34,7 @@
  * @property {string} startupScript
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
- * @property {string[]} disabledExtensions file extensions the session type's own runners are ignored for
+ * @property {string[]} disabledBuiltIns ids of the session type's built-in runners this console leaves out
  * @property {ConsoleTrigger[]} triggers
  * @property {ConsoleShortcut[]} shortcuts
  */
@@ -51,7 +51,7 @@ export function defaultConsoleConfig() {
         startupScript: '',
         environment: {},
         runners: [],
-        disabledExtensions: [],
+        disabledBuiltIns: [],
         triggers: [],
         shortcuts: [],
     };
@@ -153,8 +153,8 @@ export function serializeConsoleToml(config) {
     if (config.startupScript) {
         lines.push(`startup_script = ${quoteScript(config.startupScript)}`);
     }
-    if (config.disabledExtensions && config.disabledExtensions.length > 0) {
-        lines.push(`disabled_extensions = [${config.disabledExtensions.map(quote).join(', ')}]`);
+    if (config.disabledBuiltIns && config.disabledBuiltIns.length > 0) {
+        lines.push(`disabled_built_ins = [${config.disabledBuiltIns.map(quote).join(', ')}]`);
     }
 
     lines.push('');
@@ -237,8 +237,8 @@ function assignValue(config, section, currentTable, key, rawValue) {
             config.workingDirectory = parseScalar(rawValue);
         } else if (key === 'startup_script') {
             config.startupScript = parseScalar(rawValue);
-        } else if (key === 'disabled_extensions') {
-            config.disabledExtensions = parseArray(rawValue);
+        } else if (key === 'disabled_built_ins') {
+            config.disabledBuiltIns = parseArray(rawValue);
         }
         return;
     }

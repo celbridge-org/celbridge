@@ -8,7 +8,7 @@ public sealed class ShellSessionProvider : IConsoleSessionProvider
 {
     public string TypeId => "shell";
 
-    public IReadOnlyList<ConsoleRunner> DefaultRunners => Array.Empty<ConsoleRunner>();
+    public IReadOnlyList<ConsoleRunner> BuiltInRunners => Array.Empty<ConsoleRunner>();
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
     {

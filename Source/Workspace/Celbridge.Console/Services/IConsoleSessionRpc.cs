@@ -7,7 +7,7 @@ namespace Celbridge.Console.Services;
 /// ("starting" | "running" | "ended" | "failed"), the failure reason when failed, whether the startup
 /// phase is still pending (keep the starting veil up), the buffered output to replay, the raw .console
 /// text the session launched from (parsed client-side for the settings form's divergence check), and the
-/// default runners of every registered session type keyed by type id, so the form can follow its type
+/// built-in runners of every registered session type keyed by type id, so the form can follow its type
 /// dropdown rather than the launched session.
 /// </summary>
 public sealed record ConsoleAttachResult(
@@ -16,7 +16,7 @@ public sealed record ConsoleAttachResult(
     bool StartupPending,
     string Replay,
     string? LaunchedConfigToml,
-    IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> DefaultRunners);
+    IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> BuiltInRunners);
 
 /// <summary>
 /// The run-state values the client matches on, as carried by an attach result and by the session state

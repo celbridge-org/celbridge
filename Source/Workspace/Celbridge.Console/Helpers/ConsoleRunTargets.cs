@@ -21,40 +21,29 @@ public static class ConsoleRunTargets
 {
     /// <summary>
     /// Layers a console's own runners over the ones its session type contributes, so a console handles the
-    /// type's file extensions without declaring anything. Extensions listed in disabledExtensions drop out
-    /// of the type's runners, which is how a console opts out of one it does not want.
+    /// type's file extensions without declaring anything. Built-in runners named in disabledBuiltIns are
+    /// left out, which is how a console opts out of one it does not want.
     /// </summary>
     public static IReadOnlyList<ConsoleRunner> ResolveEffectiveRunners(
         IReadOnlyList<ConsoleRunner> configRunners,
-        IReadOnlyList<ConsoleRunner> defaultRunners,
-        IReadOnlyList<string> disabledExtensions)
+        IReadOnlyList<ConsoleRunner> builtInRunners,
+        IReadOnlyList<string> disabledBuiltIns)
     {
         // Config runners go first because FindRunner takes the first match: a runner for an extension the
-        // type already handles shadows the default, and extensions the config leaves alone keep theirs.
+        // type already handles shadows the built-in, and extensions the config leaves alone keep theirs.
         // The settings form draws them in this order too, so the list reads as the chain it is.
         var runners = new List<ConsoleRunner>(configRunners);
 
-        var disabled = new HashSet<string>(disabledExtensions, StringComparer.OrdinalIgnoreCase);
+        var disabled = new HashSet<string>(disabledBuiltIns, StringComparer.OrdinalIgnoreCase);
 
-        // Opting out is per extension, so a type runner covering several keeps the ones still wanted and
-        // drops out entirely only once none are left.
-        foreach (var defaultRunner in defaultRunners)
+        foreach (var builtInRunner in builtInRunners)
         {
-            var extensions = new List<string>();
-            foreach (var extension in defaultRunner.Extensions)
-            {
-                if (!disabled.Contains(extension))
-                {
-                    extensions.Add(extension);
-                }
-            }
-
-            if (extensions.Count == 0)
+            if (disabled.Contains(builtInRunner.BuiltInId))
             {
                 continue;
             }
 
-            runners.Add(defaultRunner with { Extensions = extensions });
+            runners.Add(builtInRunner);
         }
 
         return runners;

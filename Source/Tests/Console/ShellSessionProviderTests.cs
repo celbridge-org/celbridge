@@ -65,6 +65,6 @@ public class ShellSessionProviderTests
         var provider = new ShellSessionProvider();
 
         provider.TypeId.Should().Be("shell");
-        provider.DefaultRunners.Should().BeEmpty();
+        provider.BuiltInRunners.Should().BeEmpty();
     }
 }

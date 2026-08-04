@@ -28,9 +28,9 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
 
     public string TypeId => "python";
 
-    public IReadOnlyList<ConsoleRunner> DefaultRunners { get; } = new[]
+    public IReadOnlyList<ConsoleRunner> BuiltInRunners { get; } = new[]
     {
-        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\""),
+        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\"", "python"),
     };
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
