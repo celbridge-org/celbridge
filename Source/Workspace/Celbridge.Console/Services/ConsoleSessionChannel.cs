@@ -95,10 +95,8 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         ConsoleAttachSnapshot snapshot,
         IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> defaultRunners)
     {
-        // Every state is mapped explicitly and an unrecognized one throws, so adding a state to
-        // ConsoleSessionRunState without a wire spelling surfaces as a failed attach the user can see,
-        // rather than silently reporting the session as broken. A discard returning "failed" would hide it,
-        // and one listing only the four named values still warns (an enum can hold any underlying value).
+        // An unrecognized state throws rather than falling back to failed, so a state added to
+        // ConsoleSessionRunState without a wire spelling surfaces instead of reading as a broken session.
         var state = snapshot.State switch
         {
             ConsoleSessionRunState.Starting => ConsoleSessionStates.Starting,
