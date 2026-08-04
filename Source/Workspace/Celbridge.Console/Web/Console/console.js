@@ -612,13 +612,12 @@ function onFormInput() {
     updateAttention();
 }
 
+// Changing the type resets the console: every other setting is written for the type selected at the time.
 sessionTypeSelect.addEventListener('change', () => {
-    applyTypeVisibility(sessionTypeSelect.value);
-    // A switched-off runner names an extension of the type it was switched off for, so it means nothing to
-    // the new type. Carrying it over would leave the old type's opt-out invisible in the file, waiting to
-    // reapply if the user switched back.
-    disabledBuiltInRunners = [];
-    renderBuiltInRunners();
+    const resetConfig = defaultConsoleConfig();
+    resetConfig.type = sessionTypeSelect.value;
+
+    populateForm(resetConfig);
     onFormInput();
 });
 
