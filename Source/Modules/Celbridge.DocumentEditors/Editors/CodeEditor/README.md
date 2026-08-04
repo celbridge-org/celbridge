@@ -1,4 +1,4 @@
-# celbridge.code-editor
+# celbridge-code-editor
 
 Monaco-based text editor contribution package. Hosts arbitrary code files and — when
 the package's options opt in — an adjacent preview pane driven by a format-specific

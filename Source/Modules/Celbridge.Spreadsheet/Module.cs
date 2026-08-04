@@ -10,7 +10,7 @@ namespace Celbridge.Spreadsheet;
 
 /// <summary>
 /// SpreadJS spreadsheet editor integration.
-/// Bundles the "celbridge.spreadsheet" package.
+/// Bundles the "celbridge-spreadsheet" package.
 /// </summary>
 public class Module : IModule
 {

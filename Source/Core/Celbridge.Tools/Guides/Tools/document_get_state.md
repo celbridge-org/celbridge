@@ -15,4 +15,4 @@ A JSON object with these fields:
   - `sectionIndex` (int) — which section (0 = left, 1 = center, 2 = right) the tab lives in.
   - `tabOrder` (int) — position within that section's tab strip.
   - `isActive` (bool) — `true` for the active tab in its section.
-  - `editorId` (string) — the bound editor id (e.g. `"celbridge.code-editor"`), or empty when no editor is bound yet.
+  - `editorId` (string) — the bound editor id (e.g. `"celbridge.code"`), or empty when no editor is bound yet.

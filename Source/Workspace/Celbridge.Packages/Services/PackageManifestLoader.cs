@@ -100,11 +100,9 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package missing required '{NameKey}' field: {packageTomlPath}");
             }
 
-            // Bundled first-party packages use dotted names (e.g. "celbridge.notes"),
-            // so structural validation accepts the dotted form for every origin.
-            // Project discovery rejects dotted names downstream with a specific
-            // failure reason.
-            if (!PackageName.IsValidBundledName(packageName))
+            // One name grammar for every origin. The reserved "celbridge-" prefix is what marks a
+            // bundled package, so a project package cannot impersonate one.
+            if (!PackageName.IsValid(packageName))
             {
                 return Result.Fail($"Package has invalid '{NameKey}' value '{packageName}': {packageTomlPath}. Package names must be lowercase ASCII letters and digits with single interior hyphens, at most {PackageConstants.MaxNameLength} characters.");
             }

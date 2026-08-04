@@ -236,7 +236,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         string name;
         if (string.IsNullOrWhiteSpace(title))
         {
-            name = PackageDisplayText.HumanizeLastSegment(package.Info.Name);
+            name = PackageDisplayText.Humanize(package.Info.Name);
         }
         else
         {

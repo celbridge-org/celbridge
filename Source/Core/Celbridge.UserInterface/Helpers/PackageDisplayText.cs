@@ -42,14 +42,4 @@ public static class PackageDisplayText
 
         return string.Join(" ", words);
     }
-
-    /// <summary>
-    /// Humanizes the last dot-separated segment of an identifier (e.g. "celbridge.notes" becomes
-    /// "Notes").
-    /// </summary>
-    public static string HumanizeLastSegment(string identifier)
-    {
-        var segments = identifier.Split('.');
-        return Humanize(segments[^1]);
-    }
 }

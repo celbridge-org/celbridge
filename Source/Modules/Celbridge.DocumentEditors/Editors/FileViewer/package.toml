@@ -1,5 +1,5 @@
 [package]
-name = "celbridge.file-viewer"
+name = "celbridge-file-viewer"
 title = "FileViewer_Package_Name"
 
 [contributes]

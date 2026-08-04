@@ -54,38 +54,14 @@ public class PackageNameTests
         PackageName.IsValid(overLongName).Should().BeFalse();
     }
 
-    [TestCase("celbridge.notes", Description = "reserved bundled namespace")]
+    // One grammar for every origin, so a bundled name is an ordinary name carrying the reserved prefix.
+    [TestCase("celbridge-notes", Description = "bundled name")]
+    [TestCase("celbridge.notes", Description = "dotted name rejected for every origin")]
     [TestCase("a.b", Description = "minimal dotted")]
-    [TestCase("a.b.c.d", Description = "deeply nested")]
-    [TestCase("digits123.allowed", Description = "digits in namespace")]
-    [TestCase("hyphens-are-fine.here", Description = "hyphens in segments")]
-    [TestCase("flat-name", Description = "flat names are also valid bundled names")]
-    public void IsValidBundledName_WellFormedNames_Accepted(string name)
+    [TestCase("Celbridge-Notes", Description = "uppercase rejected")]
+    [TestCase("has_underscore", Description = "underscore rejected")]
+    public void IsValid_DottedAndMalformedNames_Rejected(string name)
     {
-        PackageName.IsValidBundledName(name).Should().BeTrue();
-    }
-
-    [TestCase("", Description = "empty")]
-    [TestCase(".", Description = "bare dot rejected")]
-    [TestCase(".leading-dot", Description = "leading dot rejected")]
-    [TestCase("trailing-dot.", Description = "trailing dot rejected")]
-    [TestCase("double..dot", Description = "consecutive dots rejected")]
-    [TestCase("Celbridge.Notes", Description = "uppercase rejected")]
-    [TestCase("has_underscore.notes", Description = "underscore rejected")]
-    [TestCase("has spaces.notes", Description = "whitespace rejected")]
-    [TestCase("celbridge.-notes", Description = "segment with leading hyphen rejected")]
-    [TestCase("celbridge.no--tes", Description = "segment with consecutive hyphens rejected")]
-    public void IsValidBundledName_MalformedNames_Rejected(string name)
-    {
-        PackageName.IsValidBundledName(name).Should().BeFalse();
-    }
-
-    [Test]
-    public void IsValidBundledName_NameOverMaxLength_Rejected()
-    {
-        var segment = new string('a', PackageConstants.MaxNameLength);
-        var overLongName = $"celbridge.{segment}";
-
-        PackageName.IsValidBundledName(overLongName).Should().BeFalse();
+        PackageName.IsValid(name).Should().Be(name == "celbridge-notes");
     }
 }

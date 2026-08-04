@@ -10,7 +10,7 @@ namespace Celbridge.Console.Services;
 public sealed class ConsoleSessionChannelProvider : ICustomEditorChannelProvider
 {
     // This provider only backs the console package, so it matches by name.
-    private const string ConsolePackageName = "celbridge.console";
+    private const string ConsolePackageName = "celbridge-console";
 
     private readonly IServiceProvider _serviceProvider;
 

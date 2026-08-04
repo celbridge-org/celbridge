@@ -13,7 +13,7 @@ namespace Celbridge.Spreadsheet.Services;
 /// </summary>
 public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
 {
-    private const string SpreadsheetPackageName = "celbridge.spreadsheet";
+    private const string SpreadsheetPackageName = "celbridge-spreadsheet";
     private const string SyntheticHost = "spreadjs.celbridge";
 
     private readonly IFileServer _fileServer;

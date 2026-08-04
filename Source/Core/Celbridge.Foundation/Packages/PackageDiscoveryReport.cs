@@ -18,13 +18,6 @@ public enum PackageLoadFailureReason
     ReservedNamePrefix,
 
     /// <summary>
-    /// A project package used a dotted name but no namespace registry exists yet
-    /// to validate the prefix. Only flat names are currently permitted for
-    /// project packages.
-    /// </summary>
-    UnregisteredNamespace,
-
-    /// <summary>
     /// The package name collides with another loaded package. Covers bundled vs
     /// bundled, project vs bundled, and project vs project conflicts.
     /// </summary>

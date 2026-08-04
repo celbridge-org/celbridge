@@ -238,7 +238,7 @@ public class PackageServiceDocumentTypeTests
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
             [package]
-            name = "test.widget"
+            name = "test-widget"
             title = "Widget"
 
             [contributes]
@@ -378,7 +378,7 @@ public class PackageServiceDocumentTypeTests
         var packageDir = Path.Combine(_tempProjectFolder, "bundled", dirName);
         Directory.CreateDirectory(packageDir);
 
-        var bundledName = $"test.{dirName}";
+        var bundledName = $"test-{dirName}";
 
         File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]

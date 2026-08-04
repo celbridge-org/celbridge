@@ -13,7 +13,7 @@ The `webview_*` tools give the agent a feedback loop into a running contribution
 
 ## Confirm the right editor opened the document
 
-`document_get_state` returns an `editorId` per open document (e.g. `celbridge.html-viewer`, `celbridge.code-editor`). If you opened a `.html` file expecting the HTML viewer but `editorId` is the code editor, devtools will not work against it — check before any `webview_*` call.
+`document_get_state` returns an `editorId` per open document (e.g. `celbridge.html-viewer`, `celbridge.code`). If you opened a `.html` file expecting the HTML viewer but `editorId` is the code editor, devtools will not work against it — check before any `webview_*` call.
 
 ## Synthetic events have `isTrusted: false`
 

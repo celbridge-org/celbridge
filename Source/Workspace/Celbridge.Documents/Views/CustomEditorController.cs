@@ -346,7 +346,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // file server, so register this package's folder there. The resolved loader decides where the
         // entry page itself loads from.
         var fileServer = _serviceProvider.GetRequiredService<IFileServer>();
-        var packageUrlName = _contribution.Package.Name.Replace('.', '-');
+        var packageUrlName = _contribution.Package.Name;
 
         fileServer.RegisterPackageFolder(packageUrlName, _contribution.Package.PackageFolder);
 

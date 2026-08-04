@@ -827,21 +827,6 @@ public class PackageRegistry
                 continue;
             }
 
-            // Any other dotted name claims a namespace whose ownership a registry
-            // would need to validate. Until such a registry exists, project
-            // packages must use flat global-namespace names.
-            if (package.Info.Name.Contains('.'))
-            {
-                _logger.LogWarning(
-                    $"Skipping project package '{package.Info.Name}' with dotted name: no namespace registry is available to validate the prefix.");
-                failures.Add(new PackageLoadFailure
-                {
-                    Folder = packageFolder,
-                    PackageName = package.Info.Name,
-                    Reason = PackageLoadFailureReason.UnregisteredNamespace
-                });
-                continue;
-            }
 
             if (_bundledPackages.Any(b => b.Info.Name.Equals(package.Info.Name, StringComparison.Ordinal)))
             {
