@@ -34,7 +34,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IUtilityPanel, UtilityPanel>();
-        services.AddTransient<ConsolePanel>();
+        services.AddTransient<NotificationBar>();
 
         //
         // Register view models
@@ -42,7 +42,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<WorkspacePageViewModel>();
         services.AddTransient<UtilityPanelViewModel>();
-        services.AddTransient<ConsolePanelViewModel>();
+        services.AddTransient<NotificationBarViewModel>();
 
         //
         // Register commands

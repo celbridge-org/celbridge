@@ -357,19 +357,16 @@
   <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
     <value>Enter a name for the new copy:</value>
   </data>
-  <data name="ConsolePanel_Title" xml:space="preserve">
-    <value>Console</value>
-  </data>
-  <data name="ConsolePanel_ReloadProjectButton" xml:space="preserve">
+  <data name="NotificationBar_ReloadProjectButton" xml:space="preserve">
     <value>Reload Project</value>
   </data>
   <data name="PanelHeader_CloseTooltip" xml:space="preserve">
     <value>Close panel</value>
   </data>
-  <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
+  <data name="NotificationBar_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
   </data>
-  <data name="ConsolePanel_ProjectConfigErrorMessage" xml:space="preserve">
+  <data name="NotificationBar_ProjectConfigErrorMessage" xml:space="preserve">
     <value>Please check '{0}' for syntax errors and reload the project.</value>
   </data>
   <data name="AlertDialog_TitleDefault" xml:space="preserve">
@@ -644,52 +641,46 @@ Do you wish to continue?</value>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
   </data>
-  <data name="ConsolePanel_ProjectChangeBannerTitle" xml:space="preserve">
-    <value>Project Configuration Changed</value>
-  </data>
-  <data name="ConsolePanel_ProjectChangeBannerMessage" xml:space="preserve">
-    <value>The Celbridge project has been modified and needs to be reloaded.</value>
-  </data>
-  <data name="ConsolePanel_IncompatibleVersionTitle" xml:space="preserve">
+  <data name="NotificationBar_IncompatibleVersionTitle" xml:space="preserve">
     <value>Incompatible Project Version</value>
   </data>
-  <data name="ConsolePanel_IncompatibleVersionMessage" xml:space="preserve">
+  <data name="NotificationBar_IncompatibleVersionMessage" xml:space="preserve">
     <value>This project was created with a newer version of Celbridge. Please upgrade Celbridge and reload the project.</value>
   </data>
-  <data name="ConsolePanel_InvalidVersionTitle" xml:space="preserve">
+  <data name="NotificationBar_InvalidVersionTitle" xml:space="preserve">
     <value>Invalid Project Version</value>
   </data>
-  <data name="ConsolePanel_InvalidVersionMessage" xml:space="preserve">
+  <data name="NotificationBar_InvalidVersionMessage" xml:space="preserve">
     <value>Unable to determine project version compatibility. Please correct the 'celbridge-version' property in '{0}' and reload the project.</value>
   </data>
-  <data name="ConsolePanel_MigrationBannerTitle" xml:space="preserve">
+  <data name="NotificationBar_MigrationBannerTitle" xml:space="preserve">
     <value>Project Upgraded</value>
   </data>
-  <data name="ConsolePanel_MigrationBannerMessage" xml:space="preserve">
+  <data name="NotificationBar_MigrationBannerMessage" xml:space="preserve">
     <value>The project has been upgraded from version {0} to {1}</value>
   </data>
-  <data name="ConsolePanel_MigrationErrorMessage" xml:space="preserve">
+  <data name="NotificationBar_MigrationErrorMessage" xml:space="preserve">
     <value>Failed to migrate the project to the current version of Celbridge. Check the log for more information.</value>
   </data>
-  <data name="ConsolePanel_MigrationErrorTitle" xml:space="preserve">
+  <data name="NotificationBar_MigrationErrorTitle" xml:space="preserve">
     <value>Project Migration Error</value>
   </data>
-  <data name="ConsolePanel_PackageLoadErrorTitle" xml:space="preserve">
+  <data name="NotificationBar_PackageLoadErrorTitle" xml:space="preserve">
     <value>Package Load Error</value>
   </data>
-  <data name="ConsolePanel_PackageLoadErrorMessage" xml:space="preserve">
+  <data name="NotificationBar_PackageLoadErrorMessage" xml:space="preserve">
     <value>One or more packages failed to load. See the project load report for details.</value>
   </data>
-  <data name="ConsolePanel_ProjectCheckFindingsTitle" xml:space="preserve">
+  <data name="NotificationBar_ProjectCheckFindingsTitle" xml:space="preserve">
     <value>Project Check Findings</value>
   </data>
-  <data name="ConsolePanel_ProjectCheckFindingsMessage" xml:space="preserve">
+  <data name="NotificationBar_ProjectCheckFindingsMessage" xml:space="preserve">
     <value>Project check found {0} issue(s). See log for details.</value>
   </data>
-  <data name="ConsolePanel_ProjectConfigEntryErrorTitle" xml:space="preserve">
+  <data name="NotificationBar_ProjectConfigEntryErrorTitle" xml:space="preserve">
     <value>Project Config Issues</value>
   </data>
-  <data name="ConsolePanel_ProjectConfigEntryErrorMessage" xml:space="preserve">
+  <data name="NotificationBar_ProjectConfigEntryErrorMessage" xml:space="preserve">
     <value>Some entries in {0} were skipped or degraded. See log for details.</value>
   </data>
   <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
@@ -834,7 +825,7 @@ Do you wish to continue?</value>
     <value>Console Panel</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_ConsolePanel_Description" xml:space="preserve">
-    <value>Console panel that shows project error and notification banners.</value>
+    <value>Console panel region at the bottom of the workspace.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
     <value>MCP Tools</value>

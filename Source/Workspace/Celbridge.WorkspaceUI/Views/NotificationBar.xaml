@@ -1,0 +1,65 @@
+<UserControl
+  x:Class="Celbridge.WorkspaceUI.Views.NotificationBar"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Celbridge.WorkspaceUI.Views">
+
+  <Border BorderThickness="0,1,0,0"
+          BorderBrush="{ThemeResource DividerBrush}"
+          Background="{ThemeResource PanelBackgroundBBrush}"
+          Visibility="{x:Bind ViewModel.IsAnyBannerVisible, Mode=OneWay}">
+
+    <!-- Several banners can be raised by a single project load, so the stack scrolls
+         past a fixed height rather than pushing the documents area off screen. -->
+    <ScrollViewer MaxHeight="240"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollMode="Disabled"
+                  HorizontalScrollBarVisibility="Disabled">
+
+      <StackPanel>
+
+        <!-- The banners are docked to the workspace edge rather than floating in a panel, so each
+             one drops the default InfoBar card treatment and fills the bar edge to edge. The only
+             boundary is the divider along the top of the bar. -->
+
+        <InfoBar x:Name="ErrorInfoBar"
+                 Severity="Error"
+                 CornerRadius="0"
+                 BorderThickness="0"
+                 Margin="0"
+                 IsOpen="{x:Bind ViewModel.IsErrorBannerVisible, Mode=OneWay}"
+                 IsClosable="False"
+                 Title="{x:Bind ViewModel.ErrorBannerTitle, Mode=OneWay}"
+                 Message="{x:Bind ViewModel.ErrorBannerMessage, Mode=OneWay}">
+          <InfoBar.ActionButton>
+            <Button Content="{x:Bind ReloadProjectText}"
+                    Click="{x:Bind ViewModel.OnReloadProjectClicked}"/>
+          </InfoBar.ActionButton>
+        </InfoBar>
+
+        <InfoBar x:Name="MigrationInfoBar"
+                 Severity="Informational"
+                 CornerRadius="0"
+                 BorderThickness="0"
+                 Margin="0"
+                 IsOpen="{x:Bind ViewModel.IsMigrationBannerVisible, Mode=OneWay}"
+                 IsClosable="True"
+                 Title="{x:Bind ViewModel.MigrationBannerTitle, Mode=OneWay}"
+                 Message="{x:Bind ViewModel.MigrationBannerMessage, Mode=OneWay}"
+                 Closed="{x:Bind ViewModel.OnMigrationBannerClosed}"/>
+
+        <InfoBar x:Name="ProjectCheckInfoBar"
+                 Severity="Warning"
+                 CornerRadius="0"
+                 BorderThickness="0"
+                 Margin="0"
+                 IsOpen="{x:Bind ViewModel.IsProjectCheckBannerVisible, Mode=OneWay}"
+                 IsClosable="True"
+                 Title="{x:Bind ViewModel.ProjectCheckBannerTitle, Mode=OneWay}"
+                 Message="{x:Bind ViewModel.ProjectCheckBannerMessage, Mode=OneWay}"
+                 Closed="{x:Bind ViewModel.OnProjectCheckBannerClosed}"/>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>
