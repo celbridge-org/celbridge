@@ -702,6 +702,11 @@ function hideSessionFailed() {
 // shell-startup phase. The timers are the safety reveal for a shell that never echoes the ready marker.
 const VEIL_FADE_MS = 240;
 
+// Backstop for a host that never reports the startup phase ending. The host reveals a quiet session itself
+// and notifies, so this only has to outlast its silence window: no output reaches the client while the veil
+// is up, which leaves nothing here to measure progress against.
+const VEIL_BACKSTOP_MS = 15000;
+
 let veilTimeout = null;
 let veilFadeTimer = null;
 
@@ -823,7 +828,7 @@ function applyAttachResult(result) {
 
     if (result.startupPending) {
         showStartingVeil();
-        armVeilTimeout(4000);
+        armVeilTimeout(VEIL_BACKSTOP_MS);
     } else {
         hideStartingVeil();
     }

@@ -63,6 +63,7 @@ public class StartupMarkerScannerTests
         var scanner = new StartupMarkerScanner(Marker);
         var head = Marker.Substring(0, 10);
 
+        // Held back rather than emitted, so a marker split across two chunks is never printed as output.
         scanner.Push("noise" + head).Text.Should().Be("noise");
         scanner.Flush().Should().Be(head);
         scanner.Flush().Should().BeEmpty();
