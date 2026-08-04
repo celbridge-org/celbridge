@@ -78,7 +78,7 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             return;
         }
 
-        _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.SessionState, new { state = "ended" });
+        _ = _host?.NotifyAsync(ConsoleSessionRpcMethods.SessionState, new { state = ConsoleSessionStates.Ended });
     }
 
     public void OnStartupComplete()
@@ -95,12 +95,17 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
         ConsoleAttachSnapshot snapshot,
         IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> defaultRunners)
     {
+        // Every state is mapped explicitly and an unrecognized one throws, so adding a state to
+        // ConsoleSessionRunState without a wire spelling surfaces as a failed attach the user can see,
+        // rather than silently reporting the session as broken. A discard returning "failed" would hide it,
+        // and one listing only the four named values still warns (an enum can hold any underlying value).
         var state = snapshot.State switch
         {
-            ConsoleSessionRunState.Starting => "starting",
-            ConsoleSessionRunState.Running => "running",
-            ConsoleSessionRunState.Ended => "ended",
-            _ => "failed",
+            ConsoleSessionRunState.Starting => ConsoleSessionStates.Starting,
+            ConsoleSessionRunState.Running => ConsoleSessionStates.Running,
+            ConsoleSessionRunState.Ended => ConsoleSessionStates.Ended,
+            ConsoleSessionRunState.Failed => ConsoleSessionStates.Failed,
+            _ => throw new ArgumentOutOfRangeException(nameof(snapshot), snapshot.State, "Unhandled console session run state"),
         };
 
         return new ConsoleAttachResult(

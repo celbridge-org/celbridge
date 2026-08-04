@@ -19,6 +19,18 @@ public sealed record ConsoleAttachResult(
     IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> DefaultRunners);
 
 /// <summary>
+/// The run-state values the client matches on, as carried by an attach result and by the session state
+/// notification. The wire spelling of ConsoleSessionRunState.
+/// </summary>
+public static class ConsoleSessionStates
+{
+    public const string Starting = "starting";
+    public const string Running = "running";
+    public const string Ended = "ended";
+    public const string Failed = "failed";
+}
+
+/// <summary>
 /// JSON-RPC method names for the console channel.
 /// </summary>
 public static class ConsoleSessionRpcMethods

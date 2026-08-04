@@ -99,6 +99,7 @@ const executableField = document.getElementById('executable-field');
 const executableInput = document.getElementById('executable');
 const pythonVersionField = document.getElementById('python-version-field');
 const pythonVersionInput = document.getElementById('python-version');
+const argumentsField = document.getElementById('arguments-field');
 const argumentsInput = document.getElementById('arguments');
 const dependenciesField = document.getElementById('dependencies-field');
 const dependenciesInput = document.getElementById('dependencies');
@@ -323,6 +324,9 @@ attachSplitter(splitter, {
 function applyTypeVisibility(type) {
     const isShell = type === 'shell';
     executableField.classList.toggle('hidden', !isShell);
+    // Arguments are the executable's, so only a shell console has anything to pass them to. A python
+    // console configures its REPL through the startup script instead.
+    argumentsField.classList.toggle('hidden', !isShell);
     pythonVersionField.classList.toggle('hidden', isShell);
     dependenciesField.classList.toggle('hidden', isShell);
 }

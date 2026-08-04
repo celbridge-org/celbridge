@@ -80,13 +80,15 @@ def _split_lines(value):
 def _resolve_launch(environ, arguments) -> ResolvedLaunch:
     """Read the launch a python console configured into its environment.
 
-    Typed arguments are appended to the console's configured interpreter arguments, so both apply.
+    A console configures the interpreter version and packages, never IPython flags: those are an
+    implementation detail of the REPL rather than part of a console's configuration. Arguments therefore
+    come only from the command line, where they are typed deliberately by whoever runs the tool.
     """
     return ResolvedLaunch(
         environ.get('CELBRIDGE_PYTHON_VERSION'),
         _split_lines(environ.get('CELBRIDGE_PYTHON_WITH')),
         environ.get('CELBRIDGE_PYTHON_OFFLINE') == '1',
-        _split_lines(environ.get('CELBRIDGE_PYTHON_ARGS')) + list(arguments),
+        list(arguments),
     )
 
 

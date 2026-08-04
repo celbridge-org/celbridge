@@ -78,7 +78,7 @@
 
     "Console_Hint_Executable": "Blank leaves just the shell. Example: node",
     "Console_Hint_PythonVersion": "Blank uses the default. Examples: 3.13, >=3.12",
-    "Console_Hint_Arguments": "Example: -q",
+    "Console_Hint_Arguments": "Passed to the executable. Example: -NoLogo",
     "Console_Hint_Dependencies": "Installed with uv. Examples: numpy, pandas>=2",
     "Console_Hint_WorkingDirectory": "Relative to the project root. Blank uses the root.",
     "Console_Hint_StartupScript": "Runs once the session is ready. Example: import numpy as np",
