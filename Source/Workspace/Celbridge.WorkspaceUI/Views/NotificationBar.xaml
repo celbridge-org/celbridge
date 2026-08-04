@@ -30,19 +30,6 @@
           </InfoBar.ActionButton>
         </InfoBar>
 
-        <InfoBar x:Name="ProjectChangeInfoBar"
-                 Severity="Informational"
-                 IsOpen="{x:Bind ViewModel.IsProjectChangeBannerVisible, Mode=OneWay}"
-                 IsClosable="True"
-                 Title="{x:Bind ViewModel.ProjectChangeBannerTitle, Mode=OneWay}"
-                 Message="{x:Bind ViewModel.ProjectChangeBannerMessage, Mode=OneWay}"
-                 Closed="{x:Bind ViewModel.OnProjectChangeBannerClosed}">
-          <InfoBar.ActionButton>
-            <Button Content="{x:Bind ReloadProjectText}"
-                    Click="{x:Bind ViewModel.OnReloadProjectClicked}"/>
-          </InfoBar.ActionButton>
-        </InfoBar>
-
         <InfoBar x:Name="MigrationInfoBar"
                  Severity="Informational"
                  IsOpen="{x:Bind ViewModel.IsMigrationBannerVisible, Mode=OneWay}"

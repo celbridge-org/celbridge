@@ -7,7 +7,7 @@ namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
 /// Tracks project-scoped conditions worth telling the user about, such as a config file that failed
-/// to load or has changed on disk, and exposes them as banners for the notification bar.
+/// to load or was only partly applied, and exposes them as banners for the notification bar.
 /// </summary>
 public partial class NotificationBarViewModel : ObservableObject
 {
@@ -15,7 +15,6 @@ public partial class NotificationBarViewModel : ObservableObject
     private readonly IDispatcher _dispatcher;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     [ObservableProperty]
@@ -27,16 +26,6 @@ public partial class NotificationBarViewModel : ObservableObject
 
     [ObservableProperty]
     private string _errorBannerMessage = string.Empty;
-
-    [ObservableProperty]
-    private string _projectChangeBannerTitle = string.Empty;
-
-    [ObservableProperty]
-    private string _projectChangeBannerMessage = string.Empty;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
-    private bool _isProjectChangeBannerVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
@@ -60,38 +49,24 @@ public partial class NotificationBarViewModel : ObservableObject
 
     public bool IsAnyBannerVisible =>
         IsErrorBannerVisible ||
-        IsProjectChangeBannerVisible ||
         IsMigrationBannerVisible ||
         IsProjectCheckBannerVisible;
-
-    private string? _originalProjectFileHash = null;
 
     public NotificationBarViewModel(
         IMessengerService messengerService,
         IDispatcher dispatcher,
         IStringLocalizer stringLocalizer,
         IProjectService projectService,
-        IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
-        _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
 
         // Register for project error messages
         _messengerService.Register<ProjectErrorMessage>(this, OnProjectError);
-
-        // Register for resource change messages to monitor project file changes
-        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
-
-        // Snapshot the project file contents so subsequent changes can be
-        // detected. The hash read goes through the file storage gateway,
-        // which is async. Fire-and-forget here since the constructor is sync
-        // and the snapshot is only consulted on later change events.
-        _ = StoreProjectFileHashAsync();
 
         // Check if the project was migrated and show banner if needed
         CheckMigrationStatus();
@@ -164,9 +139,6 @@ public partial class NotificationBarViewModel : ObservableObject
         }
 
         IsErrorBannerVisible = true;
-
-        // Hide project change banner when error banner is shown
-        IsProjectChangeBannerVisible = false;
     }
 
     public void OnProjectCheckBannerClosed()
@@ -177,110 +149,6 @@ public partial class NotificationBarViewModel : ObservableObject
     public void OnReloadProjectClicked()
     {
         _commandService.Execute<IReloadProjectCommand>();
-    }
-
-    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
-    {
-        // Check if the changed resource is the .celbridge project file
-        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
-        if (string.IsNullOrEmpty(projectFilePath))
-        {
-            return;
-        }
-
-        var projectFileName = Path.GetFileName(projectFilePath);
-        var changedResourcePath = message.Resource.Path;
-
-        if (changedResourcePath.Equals(projectFileName, StringComparison.OrdinalIgnoreCase))
-        {
-            // This handler may be called from a background thread so ensure that the message
-            // is handled on the main UI thread.
-            _dispatcher.TryEnqueue(async () =>
-            {
-                await CheckProjectFileChangedAsync();
-            });
-        }
-    }
-
-    // Resolves the project config file as a ResourceKey at the project root.
-    // The .celbridge config sits next to the project folder root, so its key
-    // is just the file name on the default root.
-    private bool TryGetProjectFileResourceKey(out ResourceKey resourceKey)
-    {
-        resourceKey = default;
-        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
-        if (string.IsNullOrEmpty(projectFilePath))
-        {
-            return false;
-        }
-
-        var projectFileName = Path.GetFileName(projectFilePath);
-        return ResourceKey.TryCreate(projectFileName, out resourceKey);
-    }
-
-    private async Task StoreProjectFileHashAsync()
-    {
-        if (!TryGetProjectFileResourceKey(out var projectFileResource))
-        {
-            _originalProjectFileHash = null;
-            return;
-        }
-
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
-        if (hashResult.IsFailure)
-        {
-            _originalProjectFileHash = null;
-            return;
-        }
-
-        _originalProjectFileHash = hashResult.Value;
-    }
-
-    private async Task CheckProjectFileChangedAsync()
-    {
-        if (!TryGetProjectFileResourceKey(out var projectFileResource))
-        {
-            return;
-        }
-
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
-        if (hashResult.IsFailure)
-        {
-            // If we can't read the file, hide the banner
-            IsProjectChangeBannerVisible = false;
-            return;
-        }
-
-        var currentHash = hashResult.Value;
-
-        // If error banner is visible, don't show the project change banner
-        if (IsErrorBannerVisible)
-        {
-            IsProjectChangeBannerVisible = false;
-            return;
-        }
-
-        // Check if the hash has changed from the original
-        if (_originalProjectFileHash is null
-            || !string.Equals(currentHash, _originalProjectFileHash, StringComparison.Ordinal))
-        {
-            // Populate the project change banner strings
-            ProjectChangeBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectChangeBannerTitle");
-            ProjectChangeBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectChangeBannerMessage");
-
-            IsProjectChangeBannerVisible = true;
-        }
-        else
-        {
-            IsProjectChangeBannerVisible = false;
-        }
-    }
-
-    public void OnProjectChangeBannerClosed()
-    {
-        IsProjectChangeBannerVisible = false;
     }
 
     private void CheckMigrationStatus()

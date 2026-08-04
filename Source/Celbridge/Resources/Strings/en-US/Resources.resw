@@ -641,12 +641,6 @@ Do you wish to continue?</value>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
   </data>
-  <data name="NotificationBar_ProjectChangeBannerTitle" xml:space="preserve">
-    <value>Project Configuration Changed</value>
-  </data>
-  <data name="NotificationBar_ProjectChangeBannerMessage" xml:space="preserve">
-    <value>The Celbridge project has been modified and needs to be reloaded.</value>
-  </data>
   <data name="NotificationBar_IncompatibleVersionTitle" xml:space="preserve">
     <value>Incompatible Project Version</value>
   </data>
