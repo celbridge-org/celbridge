@@ -1,7 +1,8 @@
-﻿<views:DocumentView
+<views:DocumentView
     x:Class="Celbridge.WebView.Views.WebViewDocumentView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:views="using:Celbridge.Documents.Views"
     xmlns:local="using:Celbridge.WebView.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,16 +11,142 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <!-- Columns 1 and 2 are reserved for the settings side panel and its
+                 splitter gutter. While empty they collapse to zero width. -->
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
 
         <!-- Docked in its own row above the WebView, not overlaid on it: on the macOS Skia head the native
-             WKWebView sits above managed content and would otherwise intercept clicks meant for the bar. -->
+             WKWebView sits above managed content and would otherwise intercept clicks meant for the bar.
+             Spans every column so the address box does not shrink when the settings panel opens. -->
+        <Border x:Name="UrlBar"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Padding="8,4"
+                Background="{ThemeResource PanelBackgroundABrush}"
+                BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                Visibility="{x:Bind ViewModel.IsUrlBarVisible, Mode=OneWay}">
+            <Grid ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center">
+                    <Button x:Name="BackButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
+                            ToolTipService.ToolTip="{x:Bind BackTooltipString}"
+                            Click="BackButton_Click">
+                        <controls:Icon Symbol="Back" FontSize="{StaticResource IconSizeMedium}" />
+                    </Button>
+                    <Button x:Name="ForwardButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="{x:Bind ViewModel.CanGoForward, Mode=OneWay}"
+                            ToolTipService.ToolTip="{x:Bind ForwardTooltipString}"
+                            Click="ForwardButton_Click">
+                        <controls:Icon Symbol="Forward" FontSize="{StaticResource IconSizeMedium}" />
+                    </Button>
+                    <Button x:Name="ReloadOrStopButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="{x:Bind ViewModel.IsReloadOrStopEnabled, Mode=OneWay}"
+                            Click="ReloadOrStopButton_Click">
+                        <Grid>
+                            <controls:Icon Symbol="Refresh"
+                                           FontSize="{StaticResource IconSizeMedium}"
+                                           Visibility="{x:Bind ViewModel.IsReloadIconVisible, Mode=OneWay}" />
+                            <controls:Icon Symbol="Close"
+                                           FontSize="{StaticResource IconSizeMedium}"
+                                           Visibility="{x:Bind ViewModel.IsNavigating, Mode=OneWay}" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="HomeButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="{x:Bind ViewModel.IsHomeUrlValid, Mode=OneWay}"
+                            ToolTipService.ToolTip="{x:Bind HomeTooltipString}"
+                            Click="HomeButton_Click">
+                        <controls:Icon Symbol="Home" FontSize="{StaticResource IconSizeMedium}" />
+                    </Button>
+                </StackPanel>
+
+                <TextBox x:Name="AddressTextBox"
+                         Grid.Column="1"
+                         MinHeight="32"
+                         VerticalAlignment="Center"
+                         IsSpellCheckEnabled="False"
+                         PlaceholderText="{x:Bind AddressPlaceholderString}"
+                         Text="{x:Bind ViewModel.CurrentUrl, Mode=OneWay}"
+                         KeyDown="AddressTextBox_KeyDown" />
+
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center">
+                    <Button x:Name="DownloadIndicatorButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            Visibility="{x:Bind ViewModel.IsDownloadIndicatorVisible, Mode=OneWay}"
+                            Click="DownloadIndicatorButton_Click">
+                        <Grid>
+                            <ProgressRing Width="16"
+                                          Height="16"
+                                          IsActive="{x:Bind ViewModel.IsDownloadInProgress, Mode=OneWay}"
+                                          Visibility="{x:Bind ViewModel.IsDownloadInProgress, Mode=OneWay}" />
+                            <controls:Icon IconName="bs-check-circle-fill"
+                                           FontSize="{StaticResource IconSizeMedium}"
+                                           Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                           Visibility="{x:Bind ViewModel.IsDownloadSucceeded, Mode=OneWay}" />
+                            <controls:Icon IconName="bs-x-circle-fill"
+                                           FontSize="{StaticResource IconSizeMedium}"
+                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                           Visibility="{x:Bind ViewModel.IsDownloadFailed, Mode=OneWay}" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="OpenInBrowserButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="{x:Bind ViewModel.CanOpenInBrowser, Mode=OneWay}"
+                            ToolTipService.ToolTip="{x:Bind OpenInBrowserTooltipString}"
+                            Click="OpenInBrowserButton_Click">
+                        <controls:Icon Symbol="Reveal" FontSize="{StaticResource IconSizeMedium}" />
+                    </Button>
+                    <!-- Toggles the settings side panel. Disabled while the panel does not exist yet. -->
+                    <Button x:Name="SettingsButton"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="{x:Bind SettingsTooltipString}">
+                        <controls:Icon Symbol="Settings" FontSize="{StaticResource IconSizeMedium}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- The find bar sits inside the content column rather than spanning the full width: it drives
+             the WebView through IWebViewFindTarget and applies to nothing else. -->
         <local:WebViewFindBar x:Name="FindBar"
-                              Grid.Row="0" />
+                              Grid.Row="1"
+                              Grid.Column="0" />
 
         <Grid x:Name="AppWebViewContainer"
-              Grid.Row="1"
+              Grid.Row="2"
+              Grid.Column="0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch" />
     </Grid>

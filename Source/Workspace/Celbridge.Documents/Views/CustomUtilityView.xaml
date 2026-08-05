@@ -24,7 +24,7 @@
                         Style="{StaticResource TransparentIconButtonStyle}"
                         Click="OpenAsDocumentButton_Click">
                     <icons:Icon Symbol="Windowed"
-                                FontSize="14"/>
+                                FontSize="{StaticResource IconSizeMedium}"/>
                 </Button>
             </controls:PanelHeader.ToolbarContent>
         </controls:PanelHeader>

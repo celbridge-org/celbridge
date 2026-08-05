@@ -531,29 +531,41 @@
   <data name="ResourceTree_OpenApplication" xml:space="preserve">
     <value>Open with Application</value>
   </data>
-  <data name="WebInspector_HomeURL" xml:space="preserve">
-    <value>Home URL</value>
-  </data>
-  <data name="WebInspector_HomeTooltip" xml:space="preserve">
-    <value>Navigate to Home URL</value>
-  </data>
-  <data name="WebInspector_CurrentURL" xml:space="preserve">
-    <value>Current URL</value>
-  </data>
-  <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
-    <value>e.g. https://example.com or ../index.html</value>
-  </data>
-  <data name="WebInspector_GoBackTooltip" xml:space="preserve">
+  <data name="WebView_UrlBar_BackTooltip" xml:space="preserve">
     <value>Go Back</value>
   </data>
-  <data name="WebInspector_GoForwardTooltip" xml:space="preserve">
+  <data name="WebView_UrlBar_ForwardTooltip" xml:space="preserve">
     <value>Go Forward</value>
   </data>
-  <data name="WebInspector_RefreshTooltip" xml:space="preserve">
-    <value>Refresh (clears cache)</value>
+  <data name="WebView_UrlBar_ReloadTooltip" xml:space="preserve">
+    <value>Reload (clears cache)</value>
   </data>
-  <data name="WebInspector_InvalidUrl" xml:space="preserve">
-    <value>Enter a valid URL (https://...) or local path to an .html file.</value>
+  <data name="WebView_UrlBar_StopTooltip" xml:space="preserve">
+    <value>Stop Loading</value>
+  </data>
+  <data name="WebView_UrlBar_HomeTooltip" xml:space="preserve">
+    <value>Navigate to Home URL</value>
+  </data>
+  <data name="WebView_UrlBar_AddressPlaceholder" xml:space="preserve">
+    <value>e.g. https://example.com</value>
+  </data>
+  <data name="WebView_UrlBar_OpenInBrowserTooltip" xml:space="preserve">
+    <value>Open in System Browser</value>
+  </data>
+  <data name="WebView_UrlBar_SettingsTooltip" xml:space="preserve">
+    <value>Web View Settings</value>
+  </data>
+  <data name="WebView_UrlBar_DownloadInProgressTooltip" xml:space="preserve">
+    <value>Downloading...</value>
+  </data>
+  <data name="WebView_UrlBar_DownloadSucceededTooltip" xml:space="preserve">
+    <value>Download complete. Click to show in Explorer.</value>
+  </data>
+  <data name="WebView_UrlBar_DownloadFailedTooltip" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="WebView_InvalidUrl" xml:space="preserve">
+    <value>Enter a valid external URL (https://...).</value>
   </data>
   <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
     <value>Add a New Component</value>

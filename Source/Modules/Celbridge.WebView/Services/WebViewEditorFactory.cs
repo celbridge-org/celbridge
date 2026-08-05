@@ -6,7 +6,7 @@ namespace Celbridge.WebView.Services;
 
 /// <summary>
 /// Factory for the .webview editor. Produces a WebViewDocumentView configured for the
-/// external-URL role, with the URL read from the .webview document's JSON body.
+/// external-URL role, with the URL read from the .webview document's TOML body.
 /// </summary>
 public class WebViewEditorFactory : DocumentEditorFactoryBase
 {

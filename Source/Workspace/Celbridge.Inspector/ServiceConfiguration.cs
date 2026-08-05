@@ -29,7 +29,6 @@ public static class ServiceConfiguration
 
         services.AddTransient<InspectorPanelViewModel>();
         services.AddTransient<ResourceNameInspectorViewModel>();
-        services.AddTransient<WebInspectorViewModel>();
         services.AddTransient<ComponentListViewModel>();
         services.AddTransient<EntityEditorViewModel>();
         services.AddTransient<ComponentValueEditorViewModel>();

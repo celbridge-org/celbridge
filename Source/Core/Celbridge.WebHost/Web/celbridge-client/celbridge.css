@@ -106,8 +106,8 @@ button.cel-accent:hover {
     filter: brightness(1.08);
 }
 
-/* Transparent icon button, mirroring TransparentIconButtonStyle in Styles.xaml: a square hit target that
-   shows a subtle fill on hover. The square size and icon scale come from the sizing tokens. */
+/* Transparent icon button, mirroring TransparentIconButtonStyle in Styles.xaml: a rounded square hit target
+   that shows a subtle fill on hover. The square size, corner radius and icon scale come from the tokens. */
 .cel-icon-button {
     display: inline-flex;
     align-items: center;
@@ -118,6 +118,7 @@ button.cel-accent:hover {
     font-size: var(--cel-icon-size-medium);
     background: transparent;
     border: none;
+    border-radius: var(--cel-radius-control);
     color: var(--cel-text-primary);
     cursor: pointer;
 }

@@ -27,7 +27,7 @@ public class WebViewEditorFactoryTests
     {
         // .cel is reserved for project metadata sidecars; the .webview
         // editor binds to the plain .webview extension and stores its data
-        // directly in the .webview file as JSON.
+        // directly in the .webview file as TOML.
         _factory.SupportedExtensions.Should().NotContain(".webview.cel");
     }
 

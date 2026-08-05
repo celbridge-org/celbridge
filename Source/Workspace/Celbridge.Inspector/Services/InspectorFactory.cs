@@ -1,4 +1,3 @@
-using Celbridge.Explorer;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Inspector.Views;
 using Celbridge.Workspace;
@@ -85,23 +84,6 @@ public class InspectorFactory : IInspectorFactory
 
     private Result<IInspector> CreateFileInspector(ResourceKey resource)
     {
-        var extension = Path.GetExtension(resource.ResourceName).ToLowerInvariant();
-
-        IInspector? inspector = null;
-        if (extension == ExplorerConstants.WebViewExtension)
-        {
-            // WebInspector uses XAML with a parameterless constructor
-            inspector = new WebInspector
-            {
-                Resource = resource
-            };
-        }
-
-        if (inspector is not null)
-        {
-            return Result<IInspector>.Ok(inspector);
-        }
-
         return Result<IInspector>.Fail($"There is no inspector available for this resource: {resource}");
     }
 

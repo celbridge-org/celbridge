@@ -6,9 +6,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Visibility="Collapsed">
 
-    <Border Padding="8,6"
-            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+    <Border Padding="8,4"
+            Background="{ThemeResource PanelBackgroundABrush}"
+            BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,0,0,1">
         <StackPanel Orientation="Horizontal"
                     Spacing="6"
@@ -20,46 +20,39 @@
                      VerticalAlignment="Center"
                      KeyDown="FindTextBox_KeyDown"
                      TextChanged="FindTextBox_TextChanged" />
+            <!-- Keeps the default ToggleButton chrome: the checked state is the control's whole
+                 purpose, so the flat icon-button style would hide it. -->
             <ToggleButton x:Name="MatchCaseButton"
-                          Padding="8,6"
-                          MinWidth="36"
+                          Padding="0"
+                          MinWidth="32"
                           MinHeight="32"
                           VerticalAlignment="Center"
                           Click="MatchCaseButton_Click">
-                <controls:Icon Symbol="MatchCase" FontSize="14" />
+                <controls:Icon Symbol="MatchCase" FontSize="{StaticResource IconSizeMedium}" />
             </ToggleButton>
             <TextBlock x:Name="MatchSummaryText"
+                       Style="{StaticResource SupportingTextStyle}"
                        VerticalAlignment="Center"
                        MinWidth="56"
                        Margin="4,0"
-                       Visibility="Collapsed"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                       Visibility="Collapsed" />
             <Button x:Name="FindPreviousButton"
-                    Background="Transparent"
-                    Padding="8,6"
-                    MinWidth="36"
-                    MinHeight="32"
+                    Style="{StaticResource TransparentIconButtonStyle}"
                     VerticalAlignment="Center"
                     Click="FindPreviousButton_Click">
-                <controls:Icon Symbol="ChevronUp" FontSize="14" />
+                <controls:Icon Symbol="ChevronUp" FontSize="{StaticResource IconSizeMedium}" />
             </Button>
             <Button x:Name="FindNextButton"
-                    Background="Transparent"
-                    Padding="8,6"
-                    MinWidth="36"
-                    MinHeight="32"
+                    Style="{StaticResource TransparentIconButtonStyle}"
                     VerticalAlignment="Center"
                     Click="FindNextButton_Click">
-                <controls:Icon Symbol="ChevronDown" FontSize="14" />
+                <controls:Icon Symbol="ChevronDown" FontSize="{StaticResource IconSizeMedium}" />
             </Button>
             <Button x:Name="FindCloseButton"
-                    Background="Transparent"
-                    Padding="8,6"
-                    MinWidth="36"
-                    MinHeight="32"
+                    Style="{StaticResource TransparentIconButtonStyle}"
                     VerticalAlignment="Center"
                     Click="FindCloseButton_Click">
-                <controls:Icon Symbol="Close" FontSize="14" />
+                <controls:Icon Symbol="Close" FontSize="{StaticResource IconSizeMedium}" />
             </Button>
         </StackPanel>
     </Border>

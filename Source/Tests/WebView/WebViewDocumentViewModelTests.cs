@@ -46,7 +46,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_AcceptsExternalHttpUrl()
     {
-        StubWebViewFile("{\"sourceUrl\": \"http://example.com\"}");
+        StubWebViewFile("source_url = \"http://example.com\"");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -58,7 +58,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_AcceptsExternalHttpsUrl()
     {
-        StubWebViewFile("{\"sourceUrl\": \"https://example.com/path?q=1\"}");
+        StubWebViewFile("source_url = \"https://example.com/path?q=1\"");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -70,7 +70,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_FailsOnLocalAbsoluteUrl()
     {
-        StubWebViewFile("{\"sourceUrl\": \"local://Sites/index.html\"}");
+        StubWebViewFile("source_url = \"local://Sites/index.html\"");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -81,7 +81,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_FailsOnLocalPathUrl()
     {
-        StubWebViewFile("{\"sourceUrl\": \"../index.html\"}");
+        StubWebViewFile("source_url = \"../index.html\"");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -90,11 +90,11 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
-    public async Task LoadContent_FailsOnInvalidJson()
+    public async Task LoadContent_FailsOnInvalidToml()
     {
         // A malformed .webview file should surface as a parse failure, not silently
-        // open with an empty sourceUrl.
-        StubWebViewFile("{ not valid json ");
+        // open with an empty source_url.
+        StubWebViewFile("source_url = not quoted");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -107,7 +107,7 @@ public class WebViewDocumentViewModelTests
     public async Task LoadContent_TreatsMissingFileAsBlankUrl()
     {
         // No file on disk: open with no URL configured rather than failing. The
-        // inspector lets the user type a URL in afterward.
+        // settings surface lets the user configure a URL afterward.
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None))));
 
@@ -133,6 +133,34 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
+    public async Task LoadContent_ShowUrlBarDefaultsToTrue()
+    {
+        StubWebViewFile("source_url = \"https://example.com\"");
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.ShowUrlBar.Should().BeTrue();
+        viewModel.IsUrlBarVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task LoadContent_ReadsShowUrlBarFalse()
+    {
+        StubWebViewFile(
+            """
+            source_url = "https://example.com"
+            show_url_bar = false
+            """);
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.ShowUrlBar.Should().BeFalse();
+        viewModel.IsUrlBarVisible.Should().BeFalse();
+    }
+
+    [Test]
     public async Task LoadContent_HtmlViewer_IgnoresFileContents_AndSucceeds()
     {
         // The HtmlViewer role serves the HTML file directly via the project virtual
@@ -152,6 +180,19 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
+    public void IsUrlBarVisible_HtmlViewer_IsFalse()
+    {
+        // The URL bar is external-URL chrome; the HTML viewer never shows it.
+        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
+        {
+            FileResource = new ResourceKey("page.html"),
+            Role = WebViewDocumentRole.HtmlViewer,
+        };
+
+        viewModel.IsUrlBarVisible.Should().BeFalse();
+    }
+
+    [Test]
     public void NavigateUrl_HtmlViewer_BuildsLoopbackProjectUrlFromResourceKey()
     {
         var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
@@ -167,7 +208,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task NavigateUrl_ExternalUrl_ReturnsSourceUrl()
     {
-        StubWebViewFile("{\"sourceUrl\": \"https://example.com/x\"}");
+        StubWebViewFile("source_url = \"https://example.com/x\"");
 
         var viewModel = CreateViewModel();
         await viewModel.LoadContent();
@@ -175,10 +216,46 @@ public class WebViewDocumentViewModelTests
         viewModel.NavigateUrl.Should().Be("https://example.com/x");
     }
 
-    private void StubWebViewFile(string jsonContent)
+    [Test]
+    public async Task ChangingSourceUrl_AfterLoad_MarksUnsavedChanges()
+    {
+        StubWebViewFile("source_url = \"https://example.com\"");
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+
+        viewModel.SourceUrl = "https://example.org";
+
+        viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
+    public void TryNormalizeUserUrl_PrefixesHttpsWhenNoScheme()
+    {
+        var viewModel = CreateViewModel();
+
+        var isValid = viewModel.TryNormalizeUserUrl("example.com", out var url);
+
+        isValid.Should().BeTrue();
+        url.Should().Be("https://example.com");
+    }
+
+    [Test]
+    public void TryNormalizeUserUrl_RejectsNonHttpScheme()
+    {
+        var viewModel = CreateViewModel();
+
+        var isValid = viewModel.TryNormalizeUserUrl("file:///C:/secrets.txt", out _);
+
+        isValid.Should().BeFalse();
+    }
+
+    private void StubWebViewFile(string tomlContent)
     {
         _resourceFileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<string>.Ok(jsonContent)));
+            .Returns(Task.FromResult(Result<string>.Ok(tomlContent)));
     }
 
     private WebViewDocumentViewModel CreateViewModel()
