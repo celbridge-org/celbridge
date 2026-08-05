@@ -29,11 +29,18 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomeUrlValid))]
+    [NotifyPropertyChangedFor(nameof(IsHomeUrlInvalid))]
+    [NotifyPropertyChangedFor(nameof(HomeUrlTooltip))]
+    [NotifyPropertyChangedFor(nameof(CanSetCurrentPageAsHome))]
     private string _sourceUrl = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsUrlBarVisible))]
     private bool _showUrlBar = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSettingsPanelVisible))]
+    private bool _isSettingsPanelOpen;
 
     [ObservableProperty]
     private bool _canGoBack;
@@ -45,6 +52,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(CanReload))]
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
     [NotifyPropertyChangedFor(nameof(CanOpenInBrowser))]
+    [NotifyPropertyChangedFor(nameof(CanSetCurrentPageAsHome))]
+    [NotifyPropertyChangedFor(nameof(CanCreateDocumentFromCurrentPage))]
     private string _currentUrl = string.Empty;
 
     [ObservableProperty]
@@ -79,6 +88,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         {
             _role = value;
             OnPropertyChanged(nameof(IsUrlBarVisible));
+            OnPropertyChanged(nameof(IsSettingsPanelVisible));
         }
     }
 
@@ -89,9 +99,49 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public bool IsUrlBarVisible => Role == WebViewDocumentRole.ExternalUrl && ShowUrlBar;
 
     /// <summary>
+    /// True when the settings side panel should occupy its column. Like the URL bar,
+    /// the panel is external-URL chrome and never appears for the HTML viewer.
+    /// </summary>
+    public bool IsSettingsPanelVisible => Role == WebViewDocumentRole.ExternalUrl && IsSettingsPanelOpen;
+
+    /// <summary>
     /// True when the configured Home URL is a navigable external URL.
     /// </summary>
     public bool IsHomeUrlValid => TryNormalizeUserUrl(SourceUrl, out _);
+
+    /// <summary>
+    /// True when the user has entered a Home URL that cannot be navigated to. A blank
+    /// Home URL is unconfigured rather than wrong, so it does not report as invalid.
+    /// </summary>
+    public bool IsHomeUrlInvalid => !string.IsNullOrWhiteSpace(SourceUrl) && !IsHomeUrlValid;
+
+    /// <summary>
+    /// The whole Home URL, for a hover over the address box that shows it. Null when there is no URL
+    /// configured, so an empty box raises no tooltip at all.
+    /// </summary>
+    public string? HomeUrlTooltip
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(SourceUrl))
+            {
+                return null;
+            }
+
+            return SourceUrl;
+        }
+    }
+
+    /// <summary>
+    /// True when the page on screen is somewhere other than the configured Home URL,
+    /// so adopting it as the new Home URL would change something.
+    /// </summary>
+    public bool CanSetCurrentPageAsHome => IsPageUrl(CurrentUrl) && CurrentUrl != SourceUrl;
+
+    /// <summary>
+    /// True when the page on screen can be captured as a new .webview document.
+    /// </summary>
+    public bool CanCreateDocumentFromCurrentPage => IsPageUrl(CurrentUrl) && !FileResource.IsEmpty;
 
     public bool CanReload => IsPageUrl(CurrentUrl);
 
@@ -291,6 +341,51 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         _commandService.Execute<IOpenBrowserCommand>(command =>
         {
             command.URL = url;
+        });
+    }
+
+    public void ToggleSettingsPanel()
+    {
+        IsSettingsPanelOpen = !IsSettingsPanelOpen;
+    }
+
+    /// <summary>
+    /// Closes the settings panel. The panel needs a way out of its own, because a document that hides the
+    /// URL bar hides the toggle that opened it.
+    /// </summary>
+    public void CloseSettingsPanel()
+    {
+        IsSettingsPanelOpen = false;
+    }
+
+    /// <summary>
+    /// Adopts the page currently on screen as the document's Home URL.
+    /// </summary>
+    public void SetCurrentPageAsHome()
+    {
+        if (!TryNormalizeUserUrl(CurrentUrl, out var homeUrl))
+        {
+            return;
+        }
+
+        SourceUrl = homeUrl;
+    }
+
+    /// <summary>
+    /// Opens the dialog that names a new .webview document for the page currently on screen. The document
+    /// is created in this document's folder, so related links stay together.
+    /// </summary>
+    public void CreateDocumentFromCurrentPage()
+    {
+        if (!TryNormalizeUserUrl(CurrentUrl, out var pageUrl))
+        {
+            return;
+        }
+
+        _commandService.Execute<ICreateWebViewDialogCommand>(command =>
+        {
+            command.SourceUrl = pageUrl;
+            command.DestFolderResource = FileResource.GetParent();
         });
     }
 

@@ -252,6 +252,81 @@ public class WebViewDocumentViewModelTests
         isValid.Should().BeFalse();
     }
 
+    [Test]
+    public void IsHomeUrlInvalid_IsFalseForABlankHomeUrl()
+    {
+        // A blank Home URL is unconfigured, not wrong, so the settings panel shows no error for it.
+        var viewModel = CreateViewModel();
+
+        viewModel.IsHomeUrlInvalid.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsHomeUrlInvalid_IsTrueForANonNavigableHomeUrl()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.SourceUrl = "file:///C:/secrets.txt";
+
+        viewModel.IsHomeUrlInvalid.Should().BeTrue();
+    }
+
+    [Test]
+    public void SetCurrentPageAsHome_AdoptsTheCurrentPage()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.SourceUrl = "https://example.com";
+        viewModel.CurrentUrl = "https://example.com/page";
+
+        viewModel.CanSetCurrentPageAsHome.Should().BeTrue();
+
+        viewModel.SetCurrentPageAsHome();
+
+        viewModel.SourceUrl.Should().Be("https://example.com/page");
+        viewModel.CanSetCurrentPageAsHome.Should().BeFalse();
+    }
+
+    [Test]
+    public void CreateDocumentFromCurrentPage_DispatchesTheDialogForTheDocumentFolder()
+    {
+        // The dialog command owns naming and creation; the view model only supplies the page and the
+        // folder the current document lives in.
+        var dialogCommand = Substitute.For<ICreateWebViewDialogCommand>();
+        _commandService
+            .Execute(Arg.Any<Action<ICreateWebViewDialogCommand>>(), Arg.Any<string>(), Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ICreateWebViewDialogCommand>>();
+                configure(dialogCommand);
+                return Result.Ok();
+            });
+
+        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
+        {
+            FileResource = new ResourceKey("Links/start.webview"),
+        };
+        viewModel.CurrentUrl = "https://scratch.mit.edu/projects/1";
+
+        viewModel.CreateDocumentFromCurrentPage();
+
+        dialogCommand.SourceUrl.Should().Be("https://scratch.mit.edu/projects/1");
+        dialogCommand.DestFolderResource.Should().Be(new ResourceKey("Links"));
+    }
+
+    [Test]
+    public void CreateDocumentFromCurrentPage_DoesNothingWithoutANavigablePage()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "about:blank";
+
+        viewModel.CreateDocumentFromCurrentPage();
+
+        _commandService.DidNotReceive().Execute(
+            Arg.Any<Action<ICreateWebViewDialogCommand>>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
+
     private void StubWebViewFile(string tomlContent)
     {
         _resourceFileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())

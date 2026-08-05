@@ -1105,6 +1105,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.OpenApplication:
                 OpenApplicationForTab(tab);
                 break;
+            case DocumentTabMenuAction.RestoreChrome:
+                RestoreChromeForTab(tab);
+                break;
             case DocumentTabMenuAction.Reopen:
                 _ = ReopenTab(tab);
                 break;
@@ -1283,6 +1286,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void OpenApplicationForTab(DocumentTab tab)
     {
         ViewModel.OpenApplicationForTab(tab.ViewModel.FileResource);
+    }
+
+    private void RestoreChromeForTab(DocumentTab tab)
+    {
+        if (tab.Content is IDocumentChromeOwner chromeOwner)
+        {
+            chromeOwner.RestoreChrome();
+        }
     }
 
     private Task ReopenTab(DocumentTab tab)

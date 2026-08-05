@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -72,9 +73,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
         var resourceName = resource.Name;
 
-        // Select only the filename part without the extension
-        var extensionIndex = resourceName.LastIndexOf('.');
-        var selectedRange = extensionIndex > 0 ? 0..extensionIndex : ..;
+        var selectedRange = ResourceNameHelper.GetNameSelectionRange(resourceName);
 
         var renameResourceString = _stringLocalizer.GetString("ResourceTree_RenameResource", resourceName);
 

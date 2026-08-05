@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents;
@@ -8,6 +9,7 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
@@ -20,15 +22,34 @@ using Windows.System;
 namespace Celbridge.WebView.Views;
 
 /// <summary>
+/// The per-user view state of a .webview document: whether the settings side panel is open and how wide
+/// it is. Persisted through the document editor state, not the .webview file.
+/// </summary>
+internal sealed record WebViewEditorState(bool SettingsPanelOpen, double SettingsPanelWidth);
+
+/// <summary>
 /// Hosts an arbitrary user URL from a .webview document, or a project-served
 /// HTML page from a .html / .htm document. The two roles share a single WebView2
 /// lifecycle and differ only in URL source, navigation policy, and chrome: the
-/// external-URL role presents a browser-style URL bar above the page.
+/// external-URL role presents a browser-style URL bar above the page and a
+/// resizable settings side panel beside it.
 /// </summary>
-public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget, IDocumentChromeOwner
 {
     // How long the settled download indicator stays visible before fading out.
     private static readonly TimeSpan DownloadIndicatorDismissDelay = TimeSpan.FromSeconds(10);
+
+    // Sized so the panel's action buttons carry their full labels, with headroom for longer translations.
+    // A URL is too long to fit at any width a side panel can take, so the address is left to scroll.
+    private const double DefaultSettingsPanelWidth = 340;
+    private const double MinSettingsPanelWidth = 260;
+    // The narrowest the page is allowed to become while the settings panel is dragged wider.
+    private const double MinWebViewWidth = 240;
+
+    private static readonly JsonSerializerOptions EditorStateSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<WebViewDocumentView> _logger;
@@ -48,6 +69,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private IWebViewNavigationPolicy? _navigationPolicy;
 
     private DispatcherTimer? _downloadIndicatorDismissTimer;
+
+    private readonly SplitterHelper _settingsPanelSplitterHelper;
+    private double _settingsPanelWidth = DefaultSettingsPanelWidth;
 
     // Set on successful registration with the bridge. Only populated for the
     // HtmlViewer role. .webview (external URL) documents do not register and the
@@ -74,6 +98,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private string AddressPlaceholderString => _stringLocalizer.GetString("WebView_UrlBar_AddressPlaceholder");
     private string OpenInBrowserTooltipString => _stringLocalizer.GetString("WebView_UrlBar_OpenInBrowserTooltip");
     private string SettingsTooltipString => _stringLocalizer.GetString("WebView_UrlBar_SettingsTooltip");
+    private string SettingsTitleString => _stringLocalizer.GetString("WebView_Settings_Title");
+    private string CloseSettingsTooltipString => _stringLocalizer.GetString("WebView_Settings_CloseTooltip");
+    private string HomeUrlLabelString => _stringLocalizer.GetString("WebView_Settings_HomeUrlLabel");
+    private string InvalidUrlString => _stringLocalizer.GetString("WebView_InvalidUrl");
+    private string SetCurrentPageAsHomeString => _stringLocalizer.GetString("WebView_Settings_SetCurrentPageAsHome");
+    private string NewDocumentString => _stringLocalizer.GetString("WebView_Settings_NewDocument");
+    private string NewDocumentTooltipString => _stringLocalizer.GetString("WebView_Settings_NewDocumentTooltip");
+    private string ShowUrlBarLabelString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarLabel");
+    private string ShowUrlBarHintString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarHint");
 
     public WebViewDocumentView(
         IServiceProvider serviceProvider,
@@ -100,6 +133,20 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         FindBar.Attach(this);
         FindBar.Closed += OnFindBarClosed;
+
+        // The panel is docked to the right edge, so a drag towards the page has to widen it.
+        _settingsPanelSplitterHelper = new SplitterHelper(
+            LayoutRoot,
+            GridResizeMode.Columns,
+            index: 2,
+            minSize: MinSettingsPanelWidth,
+            invertDelta: true,
+            maxSizeFunc: () => LayoutRoot.ActualWidth - MinWebViewWidth);
+
+        SettingsPanelSplitter.DragStarted += SettingsPanelSplitter_DragStarted;
+        SettingsPanelSplitter.DragDelta += SettingsPanelSplitter_DragDelta;
+        SettingsPanelSplitter.DragCompleted += SettingsPanelSplitter_DragCompleted;
+        SettingsPanelSplitter.DoubleClicked += SettingsPanelSplitter_DoubleClicked;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateReloadOrStopTooltip();
@@ -560,6 +607,63 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleSettingsPanel();
+    }
+
+    private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CloseSettingsPanel();
+    }
+
+    private void SetCurrentPageAsHomeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SetCurrentPageAsHome();
+    }
+
+    private void NewDocumentButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CreateDocumentFromCurrentPage();
+    }
+
+    private void SettingsPanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _settingsPanelSplitterHelper.OnDragStarted();
+    }
+
+    private void SettingsPanelSplitter_DragDelta(object? sender, double delta)
+    {
+        _settingsPanelSplitterHelper.OnDragDelta(delta);
+    }
+
+    private void SettingsPanelSplitter_DragCompleted(object? sender, EventArgs e)
+    {
+        _settingsPanelWidth = SettingsPanelColumn.ActualWidth;
+    }
+
+    private void SettingsPanelSplitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        _settingsPanelWidth = DefaultSettingsPanelWidth;
+        ApplySettingsPanelLayout();
+    }
+
+    // Drives the panel column and its splitter gutter from the view model's open state. The panel border
+    // binds its own visibility, but the column and the splitter are layout, not content.
+    private void ApplySettingsPanelLayout()
+    {
+        if (ViewModel.IsSettingsPanelVisible)
+        {
+            SettingsPanelColumn.Width = new GridLength(_settingsPanelWidth, GridUnitType.Pixel);
+            SettingsPanelSplitter.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            SettingsPanelColumn.Width = new GridLength(0);
+            SettingsPanelSplitter.Visibility = Visibility.Collapsed;
+        }
+    }
+
     private void DownloadIndicatorButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.IsDownloadSucceeded)
@@ -577,6 +681,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         else if (e.PropertyName == nameof(WebViewDocumentViewModel.DownloadStatus))
         {
             UpdateDownloadIndicatorTooltip();
+        }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsPanelVisible))
+        {
+            ApplySettingsPanelLayout();
         }
     }
 
@@ -892,6 +1000,66 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     protected override async Task<Result> SaveDocumentContentAsync()
     {
         return await ViewModel.SaveDocumentContent();
+    }
+
+    public override async Task<string?> TrySaveEditorStateAsync()
+    {
+        await Task.CompletedTask;
+
+        // A view that has not finished initializing would report a default panel state, which the layout
+        // store would then write over good saved state. The HTML viewer has no settings panel at all.
+        if (Options.Role != WebViewDocumentRole.ExternalUrl ||
+            _webView is null)
+        {
+            return null;
+        }
+
+        var editorState = new WebViewEditorState(ViewModel.IsSettingsPanelOpen, _settingsPanelWidth);
+
+        return JsonSerializer.Serialize(editorState, EditorStateSerializerOptions);
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        await Task.CompletedTask;
+
+        if (Options.Role != WebViewDocumentRole.ExternalUrl)
+        {
+            return;
+        }
+
+        WebViewEditorState? editorState;
+        try
+        {
+            editorState = JsonSerializer.Deserialize<WebViewEditorState>(state, EditorStateSerializerOptions);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogDebug(ex, "Failed to restore the WebView document editor state");
+            return;
+        }
+
+        if (editorState is null)
+        {
+            return;
+        }
+
+        _settingsPanelWidth = Math.Max(editorState.SettingsPanelWidth, MinSettingsPanelWidth);
+        ViewModel.IsSettingsPanelOpen = editorState.SettingsPanelOpen;
+
+        // The open state may be unchanged from the default, which raises no property change, so apply the
+        // layout directly rather than relying on the view model notification.
+        ApplySettingsPanelLayout();
+    }
+
+    // The URL bar is the only chrome this view hides, and it carries every control the view owns.
+    public bool CanRestoreChrome => Options.Role == WebViewDocumentRole.ExternalUrl && !ViewModel.ShowUrlBar;
+
+    public string RestoreChromeMenuTextKey => "WebView_ShowUrlBar";
+
+    public void RestoreChrome()
+    {
+        ViewModel.ShowUrlBar = true;
     }
 
     private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)

@@ -67,10 +67,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             ? defaultKeyResult.Value.ResourceName
             : resource.Name;
 
-        // Select only the filename part without the extension so the user can
-        // type a replacement basename immediately.
-        var extensionIndex = defaultText.LastIndexOf('.');
-        var selectedRange = extensionIndex > 0 ? 0..extensionIndex : ..;
+        var selectedRange = ResourceNameHelper.GetNameSelectionRange(defaultText);
 
         var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resource.Name);
         var enterNameString = _stringLocalizer.GetString("ResourceTree_DuplicateResourceEnterName");

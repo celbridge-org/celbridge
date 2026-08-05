@@ -8,18 +8,18 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     DataContext="{x:Bind ViewModel}">
 
-    <Grid>
+    <Grid x:Name="LayoutRoot">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <!-- Columns 1 and 2 are reserved for the settings side panel and its
-                 splitter gutter. While empty they collapse to zero width. -->
+            <!-- The settings side panel occupies column 2 and its splitter the gutter in column 1. Both
+                 collapse to zero width while the panel is closed. -->
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition x:Name="SettingsPanelColumn" Width="0" />
         </Grid.ColumnDefinitions>
 
         <!-- Docked in its own row above the WebView, not overlaid on it: on the macOS Skia head the native
@@ -126,13 +126,12 @@
                             Click="OpenInBrowserButton_Click">
                         <controls:Icon Symbol="Reveal" FontSize="{StaticResource IconSizeMedium}" />
                     </Button>
-                    <!-- Toggles the settings side panel. Disabled while the panel does not exist yet. -->
                     <Button x:Name="SettingsButton"
                             Style="{StaticResource TransparentIconButtonStyle}"
                             VerticalAlignment="Center"
-                            IsEnabled="False"
-                            ToolTipService.ToolTip="{x:Bind SettingsTooltipString}">
-                        <controls:Icon Symbol="Settings" FontSize="{StaticResource IconSizeMedium}" />
+                            ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
+                            Click="SettingsButton_Click">
+                        <controls:Icon Symbol="Sliders" FontSize="{StaticResource IconSizeMedium}" />
                     </Button>
                 </StackPanel>
             </Grid>
@@ -149,5 +148,114 @@
               Grid.Column="0"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch" />
+
+        <!-- The splitter fills its own gutter column so its grab band never overlaps the WebView, where a
+             drag would be unreliable on macOS. It spans both content rows so the panel edge is grabbable
+             along its whole length. -->
+        <controls:Splitter x:Name="SettingsPanelSplitter"
+                           Grid.Row="1"
+                           Grid.RowSpan="2"
+                           Grid.Column="1"
+                           Orientation="Vertical"
+                           Visibility="Collapsed" />
+
+        <Border Grid.Row="1"
+                Grid.RowSpan="2"
+                Grid.Column="2"
+                Background="{ThemeResource PanelBackgroundABrush}"
+                Visibility="{x:Bind ViewModel.IsSettingsPanelVisible, Mode=OneWay}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Fixed rather than scrolling: the close button is the panel's only way out once the
+                     URL bar carrying the settings toggle is hidden. -->
+                <Grid Grid.Row="0" Height="40">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="{x:Bind SettingsTitleString}"
+                               Style="{StaticResource PanelTitleTextStyle}"
+                               Margin="12,0,0,0"
+                               VerticalAlignment="Center" />
+
+                    <Button Grid.Column="1"
+                            Style="{StaticResource TransparentIconButtonStyle}"
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="{x:Bind CloseSettingsTooltipString}"
+                            Click="CloseSettingsButton_Click">
+                        <controls:Icon Symbol="Close" FontSize="{StaticResource IconSizeMedium}" />
+                    </Button>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" Padding="12,0,12,12">
+                    <!-- Groups are separated by space rather than boxed: the panel already reads as one
+                         surface, and with this few controls the field labels carry the structure. -->
+                    <StackPanel Spacing="20">
+                        <StackPanel Spacing="4">
+                            <!-- The Home URL takes the full panel width rather than a form row: a URL is too
+                                 long to read in the half-width control column of a side panel. -->
+                            <TextBlock Text="{x:Bind HomeUrlLabelString}"
+                                       Style="{StaticResource FieldLabelTextStyle}" />
+                            <TextBox IsSpellCheckEnabled="False"
+                                     PlaceholderText="{x:Bind AddressPlaceholderString}"
+                                     ToolTipService.ToolTip="{x:Bind ViewModel.HomeUrlTooltip, Mode=OneWay}"
+                                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <TextBlock Text="{x:Bind InvalidUrlString}"
+                                       Style="{StaticResource SupportingTextStyle}"
+                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{x:Bind ViewModel.IsHomeUrlInvalid, Mode=OneWay}" />
+
+                            <Button HorizontalAlignment="Stretch"
+                                    Margin="0,4,0,0"
+                                    Content="{x:Bind SetCurrentPageAsHomeString}"
+                                    IsEnabled="{x:Bind ViewModel.CanSetCurrentPageAsHome, Mode=OneWay}"
+                                    Click="SetCurrentPageAsHomeButton_Click" />
+                            <Button HorizontalAlignment="Stretch"
+                                    Content="{x:Bind NewDocumentString}"
+                                    ToolTipService.ToolTip="{x:Bind NewDocumentTooltipString}"
+                                    IsEnabled="{x:Bind ViewModel.CanCreateDocumentFromCurrentPage, Mode=OneWay}"
+                                    Click="NewDocumentButton_Click" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <!-- The label takes the free width and the switch sits at the panel edge, rather
+                                 than the fixed label column a full-width settings page uses. -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="{x:Bind ShowUrlBarLabelString}"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <ToggleSwitch Grid.Column="1"
+                                              MinWidth="0"
+                                              OnContent=""
+                                              OffContent=""
+                                              IsOn="{x:Bind ViewModel.ShowUrlBar, Mode=TwoWay}" />
+                            </Grid>
+
+                            <!-- Shown before the bar is hidden, not after, so the way back is known in
+                                 advance rather than discovered once the toggle is out of reach. -->
+                            <TextBlock Text="{x:Bind ShowUrlBarHintString}"
+                                       Style="{StaticResource SupportingTextStyle}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
     </Grid>
 </views:DocumentView>

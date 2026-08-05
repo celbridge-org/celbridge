@@ -3,9 +3,8 @@ using Celbridge.Resources;
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// Helpers for working with resource names. Currently provides duplicate-name
-/// generation shared by the silent and dialog duplicate paths so both follow
-/// the same auto-naming convention.
+/// Helpers for working with resource names, so the naming conventions the user sees stay consistent
+/// across the paths that generate a name and the dialogs that offer one for editing.
 /// </summary>
 public static class ResourceNameHelper
 {
@@ -61,5 +60,21 @@ public static class ResourceNameHelper
 
         return Result<ResourceKey>.Fail(
             $"Could not generate a unique duplicate name for '{source}' after {MaxNameCollisionAttempts} attempts.");
+    }
+
+    /// <summary>
+    /// Returns the range a name dialog should pre-select, so typing replaces the basename and leaves the
+    /// extension intact. A name with no extension, and a dotfile such as ".gitignore" whose only dot
+    /// starts the name, select whole.
+    /// </summary>
+    public static Range GetNameSelectionRange(string resourceName)
+    {
+        int extensionIndex = resourceName.LastIndexOf('.');
+        if (extensionIndex > 0)
+        {
+            return 0..extensionIndex;
+        }
+
+        return ..;
     }
 }
