@@ -42,6 +42,9 @@ public static class MacOSWebViewInterop
     // WKUserScriptInjectionTimeAtDocumentStart == 0.
     private const nint InjectionTimeAtDocumentStart = 0;
 
+    // The name Uno registers its WKScriptMessageHandler under, from uno_webview_register_message_handler.
+    private const string UnoScriptMessageHandlerName = "unoWebView";
+
     // NSBitmapImageFileTypePNG == 4.
     private const nint BitmapImageFileTypePng = 4;
 
@@ -369,6 +372,20 @@ public static class MacOSWebViewInterop
             false);
 
         SendMessage(userContentController, GetSelector("addUserScript:"), userScript);
+    }
+
+    /// <summary>
+    /// Removes Uno's script message handler from the native webview's userContentController. Uno adds it
+    /// on every Loaded and removes it on no path, so WebKit raises an uncatchable NSInvalidArgumentException
+    /// the second time a WebView2 enters the visual tree. Calling this on Unloaded keeps the pair balanced.
+    /// </summary>
+    public static void RemoveUnoScriptMessageHandler(IntPtr webView)
+    {
+        var configuration = SendMessage(webView, GetSelector("configuration"));
+        var userContentController = SendMessage(configuration, GetSelector("userContentController"));
+
+        var handlerName = CreateNSString(UnoScriptMessageHandlerName);
+        SendMessage(userContentController, GetSelector("removeScriptMessageHandlerForName:"), handlerName);
     }
 
     /// <summary>

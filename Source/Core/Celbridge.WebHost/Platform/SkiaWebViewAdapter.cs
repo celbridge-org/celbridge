@@ -77,11 +77,36 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 {
                     _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
                 }
+
+                // Uno registers its script message handler on every Loaded and never removes it, so the
+                // second load of a control aborts the process inside WebKit. This control sees a second
+                // load as soon as it leaves the init host for its real container, so drop the handler on
+                // every Unloaded and let Uno's next Loaded register it again.
+                webView.Unloaded -= WebView_Unloaded;
+                webView.Unloaded += WebView_Unloaded;
             }
         }
         finally
         {
             host.Children.Remove(webView);
+        }
+    }
+
+    private void WebView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        var webView = sender as WebView2;
+        if (webView?.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
+        {
+            MacOSWebViewInterop.RemoveUnoScriptMessageHandler(nativeWebViewHandle);
+        }
+        else
+        {
+            _logger.LogWarning("Could not remove the WebView script message handler: {Detail}", detail);
         }
     }
 
