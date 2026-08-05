@@ -41,11 +41,19 @@ public interface IWebViewAdapter
     bool ProvidesBuiltInFind { get; }
 
     /// <summary>
-    /// True when browsing data can be cleared from a live WebView, taking effect immediately and without
-    /// closing anything. True on the packaged Windows head, whose CoreWebView2.Profile exposes the clear
-    /// API. False on the Skia heads, where that profile is unimplemented.
+    /// True when browsing data can be cleared while the application runs, taking effect immediately and
+    /// without closing anything. True on the packaged Windows head, through CoreWebView2.Profile, and on the
+    /// macOS Skia head, through the native WKWebsiteDataStore. False on the Windows and Linux Skia heads,
+    /// which have neither.
     /// </summary>
     bool SupportsLiveBrowsingDataClear { get; }
+
+    /// <summary>
+    /// True when ClearBrowsingDataAsync needs a live WebView to reach the shared store through. True on the
+    /// packaged Windows head, where the profile hangs off a CoreWebView2. False on macOS, where the default
+    /// WKWebsiteDataStore is process-wide and reachable with no instance.
+    /// </summary>
+    bool BrowsingDataClearRequiresInstance { get; }
 
     /// <summary>
     /// Brings a detached WebView2's CoreWebView2 to life. On the Skia heads this parents the control in a
@@ -54,10 +62,11 @@ public interface IWebViewAdapter
     Task EnsureCoreWebView2Async(WebView2 webView);
 
     /// <summary>
-    /// Removes the WebView from its container and closes it. On macOS this also calls the native WKWebView
-    /// teardown SPI, which the managed Close() does not reach on the Skia head.
+    /// Removes the WebView from its container and closes it. Pass a null container for a WebView that was
+    /// never parented, such as one taken straight from the pool. On macOS this also calls the native
+    /// WKWebView teardown SPI, which the managed Close() does not reach on the Skia head.
     /// </summary>
-    void CloseWebView(WebView2 webView, Panel container);
+    void CloseWebView(WebView2 webView, Panel? container);
 
     /// <summary>
     /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.
@@ -80,11 +89,12 @@ public interface IWebViewAdapter
     Task ReloadAsync(CoreWebView2 coreWebView2, bool clearCache);
 
     /// <summary>
-    /// Clears the cookies, cached credentials, site data and HTTP cache of the profile every WebView in the
-    /// application shares, so any live instance clears it for all of them. A no-op where
-    /// SupportsLiveBrowsingDataClear is false.
+    /// Clears the cookies, cached credentials, site data and HTTP cache of the store every WebView in the
+    /// application shares, so the clear applies to all of them. Takes a live instance only where
+    /// BrowsingDataClearRequiresInstance says one is needed, and is a no-op where
+    /// SupportsLiveBrowsingDataClear is false. Throws if the clear does not complete.
     /// </summary>
-    Task ClearBrowsingDataAsync(CoreWebView2 coreWebView2);
+    Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2);
 
     /// <summary>
     /// Captures the rendered surface to encoded image bytes. Uses the Chrome DevTools Protocol on Windows and

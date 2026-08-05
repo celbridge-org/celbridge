@@ -88,6 +88,14 @@ public static class MacOSWebViewInterop
     private static Action<bool>? _findCompletionCallback;
     private static IntPtr _findBlock;
 
+    // Single clear in flight at a time: the clear is application-wide and runs from the command queue,
+    // matching the single-in-flight snapshot pattern above.
+    private static TaskCompletionSource? _clearBrowsingDataCompletion;
+    private static IntPtr _clearBrowsingDataBlock;
+
+    // Bounds the wait, so a clear that never calls back is reported as a failure rather than hanging.
+    private static readonly TimeSpan ClearBrowsingDataTimeout = TimeSpan.FromSeconds(30);
+
     // Web views already pinned, so the several resolution points that call RetainNativeWebView take
     // one retain each.
     private static readonly HashSet<IntPtr> _pinnedWebViews = new();
@@ -605,51 +613,92 @@ public static class MacOSWebViewInterop
         return new MacWebViewSnapshot(managedBytes, width, height);
     }
 
-    // takeSnapshotWithConfiguration:completionHandler: calls back through an Objective-C block. We
-    // build a no-capture global block whose invoke pointer is a managed UnmanagedCallersOnly method,
-    // reused across calls.
-    private static unsafe IntPtr EnsureSnapshotBlock()
+    /// <summary>
+    /// Clears the cookies, cached credentials, site data and HTTP cache of the default WKWebsiteDataStore
+    /// through -[WKWebsiteDataStore removeDataOfTypes:modifiedSince:completionHandler:]. Every WKWebView in
+    /// the application shares that store, so the clear reaches all of them, including live views, and takes
+    /// effect immediately. Returns false if WebKit does not expose the store or the clear does not complete
+    /// within the timeout.
+    /// </summary>
+    public static async Task<bool> ClearBrowsingDataAsync()
     {
-        if (_snapshotBlock != IntPtr.Zero)
+        var dataStoreClass = GetClass("WKWebsiteDataStore");
+        if (dataStoreClass == IntPtr.Zero)
         {
-            return _snapshotBlock;
+            return false;
         }
 
-        var descriptor = new BlockDescriptor
+        var dataStore = SendMessage(dataStoreClass, GetSelector("defaultDataStore"));
+
+        // +allWebsiteDataTypes covers cookies along with the caches and every DOM storage kind, which is
+        // exactly the cookies, cached credentials, site data and HTTP cache the action promises.
+        var dataTypes = SendMessage(dataStoreClass, GetSelector("allWebsiteDataTypes"));
+
+        // Clear everything regardless of age.
+        var modifiedSince = SendMessage(GetClass("NSDate"), GetSelector("distantPast"));
+
+        if (dataStore == IntPtr.Zero
+            || dataTypes == IntPtr.Zero
+            || modifiedSince == IntPtr.Zero)
         {
-            Reserved = 0,
-            Size = (nuint)Marshal.SizeOf<BlockLiteral>(),
-        };
-        var descriptorPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockDescriptor>());
-        Marshal.StructureToPtr(descriptor, descriptorPointer, false);
+            return false;
+        }
 
-        var blockIsa = dlsym(RtldDefault, "_NSConcreteGlobalBlock");
-        var invoke = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, void>)&SnapshotCompletionCallback;
+        var completion = new TaskCompletionSource();
+        _clearBrowsingDataCompletion = completion;
 
-        var block = new BlockLiteral
+        var completionBlock = EnsureClearBrowsingDataBlock();
+        var selector = GetSelector("removeDataOfTypes:modifiedSince:completionHandler:");
+        SendMessage(dataStore, selector, dataTypes, modifiedSince, completionBlock);
+
+        var finishedTask = await Task.WhenAny(completion.Task, Task.Delay(ClearBrowsingDataTimeout));
+
+        return finishedTask == completion.Task;
+    }
+
+    // takeSnapshotWithConfiguration:completionHandler: calls back through a two-argument Objective-C block
+    // (NSImage *, NSError *).
+    private static unsafe IntPtr EnsureSnapshotBlock()
+    {
+        if (_snapshotBlock == IntPtr.Zero)
         {
-            Isa = blockIsa,
-            Flags = BlockIsGlobal,
-            Reserved = 0,
-            Invoke = invoke,
-            Descriptor = descriptorPointer,
-        };
-        var blockPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockLiteral>());
-        Marshal.StructureToPtr(block, blockPointer, false);
+            _snapshotBlock = CreateGlobalBlock(
+                (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, void>)&SnapshotCompletionCallback);
+        }
 
-        _snapshotBlock = blockPointer;
-        return blockPointer;
+        return _snapshotBlock;
     }
 
     // findString:withConfiguration:completionHandler: calls back through a one-argument Objective-C block
-    // (WKFindResult *). Built once as a no-capture global block whose invoke pointer is a managed method.
+    // (WKFindResult *).
     private static unsafe IntPtr EnsureFindBlock()
     {
-        if (_findBlock != IntPtr.Zero)
+        if (_findBlock == IntPtr.Zero)
         {
-            return _findBlock;
+            _findBlock = CreateGlobalBlock(
+                (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)&FindCompletionCallback);
         }
 
+        return _findBlock;
+    }
+
+    // removeDataOfTypes:modifiedSince:completionHandler: calls back through an Objective-C block taking no
+    // arguments beyond the block itself.
+    private static unsafe IntPtr EnsureClearBrowsingDataBlock()
+    {
+        if (_clearBrowsingDataBlock == IntPtr.Zero)
+        {
+            _clearBrowsingDataBlock = CreateGlobalBlock(
+                (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, void>)&ClearBrowsingDataCompletionCallback);
+        }
+
+        return _clearBrowsingDataBlock;
+    }
+
+    // Builds a no-capture global block whose invoke pointer is a managed UnmanagedCallersOnly method. A
+    // global block is never copied or freed, so each one is built once and reused across calls.
+    private static IntPtr CreateGlobalBlock(IntPtr invoke)
+    {
         var descriptor = new BlockDescriptor
         {
             Reserved = 0,
@@ -658,12 +707,9 @@ public static class MacOSWebViewInterop
         var descriptorPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockDescriptor>());
         Marshal.StructureToPtr(descriptor, descriptorPointer, false);
 
-        var blockIsa = dlsym(RtldDefault, "_NSConcreteGlobalBlock");
-        var invoke = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)&FindCompletionCallback;
-
         var block = new BlockLiteral
         {
-            Isa = blockIsa,
+            Isa = dlsym(RtldDefault, "_NSConcreteGlobalBlock"),
             Flags = BlockIsGlobal,
             Reserved = 0,
             Invoke = invoke,
@@ -672,7 +718,6 @@ public static class MacOSWebViewInterop
         var blockPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockLiteral>());
         Marshal.StructureToPtr(block, blockPointer, false);
 
-        _findBlock = blockPointer;
         return blockPointer;
     }
 
@@ -710,6 +755,19 @@ public static class MacOSWebViewInterop
         else
         {
             _snapshotCompletion?.TrySetResult(IntPtr.Zero);
+        }
+    }
+
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+    private static void ClearBrowsingDataCompletionCallback(IntPtr block)
+    {
+        try
+        {
+            _clearBrowsingDataCompletion?.TrySetResult();
+        }
+        catch
+        {
+            // Swallow: a throw here would unwind through WebKit and crash the process.
         }
     }
 

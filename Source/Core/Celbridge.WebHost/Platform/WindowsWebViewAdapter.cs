@@ -23,6 +23,9 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
 
     public bool SupportsLiveBrowsingDataClear => true;
 
+    // The profile hangs off a live CoreWebView2, so the clear needs an instance to reach it through.
+    public bool BrowsingDataClearRequiresInstance => true;
+
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
         // The packaged WebView2 initializes without being attached to the visual tree, so detached controls
@@ -30,9 +33,9 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         await webView.EnsureCoreWebView2Async();
     }
 
-    public void CloseWebView(WebView2 webView, Panel container)
+    public void CloseWebView(WebView2 webView, Panel? container)
     {
-        container.Children.Remove(webView);
+        container?.Children.Remove(webView);
         webView.Close();
     }
 
@@ -58,8 +61,10 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Reload();
     }
 
-    public async Task ClearBrowsingDataAsync(CoreWebView2 coreWebView2)
+    public async Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2)
     {
+        Guard.IsNotNull(coreWebView2);
+
         // AllSite covers cookies together with the DOM storage kinds, so the three arguments below are
         // exactly the cookies, cached credentials, site data and HTTP cache the action promises. Browsing
         // and download history and the profile's own settings are deliberately left alone.

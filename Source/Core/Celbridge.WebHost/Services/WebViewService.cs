@@ -42,8 +42,8 @@ public class WebViewService : IWebViewService
         return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval);
     }
 
-    // The live profile clear is the only mechanism implemented so far, so the packaged Windows head is the
-    // only head that can clear.
+    // Clearing goes through the platform's own data store API, which the packaged Windows head and macOS
+    // both expose. The Windows and Linux Skia heads have neither, so they report false.
     public bool CanClearBrowsingData => _webViewAdapter.SupportsLiveBrowsingDataClear;
 
     public WebViewToolSupport GetWebViewToolSupport(ResourceKey resource)

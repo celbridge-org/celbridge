@@ -38,9 +38,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
     public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
 
-    // CoreWebView2.Profile is unimplemented on the Skia heads, so there is no live clear on any of them.
-    // macOS clears through the reload-and-delete fallback instead.
-    public bool SupportsLiveBrowsingDataClear => false;
+    // CoreWebView2.Profile is unimplemented on every Skia head. macOS clears through the native
+    // WKWebsiteDataStore instead; the Windows and Linux Skia heads have no such path.
+    public bool SupportsLiveBrowsingDataClear => OperatingSystem.IsMacOS();
+
+    // The default WKWebsiteDataStore is process-wide, so the clear reaches it with no web view.
+    public bool BrowsingDataClearRequiresInstance => false;
 
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
@@ -138,7 +141,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             applied.Count == 0 ? "none" : string.Join(", ", applied));
     }
 
-    public void CloseWebView(WebView2 webView, Panel container)
+    public void CloseWebView(WebView2 webView, Panel? container)
     {
         // The macOS head leaks the WKWebView with no native destroy, and WebKit relaunches a renderer for the
         // still-alive view if the process is merely killed. Capture the native handle, then call WKWebView's
@@ -156,7 +159,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             _findSessions.Remove(webView.CoreWebView2);
         }
 
-        container.Children.Remove(webView);
+        container?.Children.Remove(webView);
         webView.Close();
 
         if (nativeWebViewHandle != IntPtr.Zero)
@@ -220,9 +223,19 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         await coreWebView2.ExecuteScriptAsync("location.reload()");
     }
 
-    public async Task ClearBrowsingDataAsync(CoreWebView2 coreWebView2)
+    public async Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2)
     {
-        await Task.CompletedTask;
+        if (!OperatingSystem.IsMacOS())
+        {
+            await Task.CompletedTask;
+            return;
+        }
+
+        var cleared = await MacOSWebViewInterop.ClearBrowsingDataAsync();
+        if (!cleared)
+        {
+            throw new InvalidOperationException("The native WKWebsiteDataStore clear did not complete");
+        }
     }
 
     public async Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request)
