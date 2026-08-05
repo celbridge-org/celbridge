@@ -7,11 +7,16 @@ public class WebViewService : IWebViewService
 {
     private readonly IFeatureFlags _featureFlags;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IWebViewAdapter _webViewAdapter;
 
-    public WebViewService(IFeatureFlags featureFlags, IWorkspaceWrapper workspaceWrapper)
+    public WebViewService(
+        IFeatureFlags featureFlags,
+        IWorkspaceWrapper workspaceWrapper,
+        IWebViewAdapter webViewAdapter)
     {
         _featureFlags = featureFlags;
         _workspaceWrapper = workspaceWrapper;
+        _webViewAdapter = webViewAdapter;
     }
 
     public bool IsExternalUrl(string url)
@@ -36,6 +41,10 @@ public class WebViewService : IWebViewService
     {
         return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval);
     }
+
+    // The live profile clear is the only mechanism implemented so far, so the packaged Windows head is the
+    // only head that can clear.
+    public bool CanClearBrowsingData => _webViewAdapter.SupportsLiveBrowsingDataClear;
 
     public WebViewToolSupport GetWebViewToolSupport(ResourceKey resource)
     {

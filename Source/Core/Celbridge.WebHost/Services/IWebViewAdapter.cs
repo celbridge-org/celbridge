@@ -41,6 +41,13 @@ public interface IWebViewAdapter
     bool ProvidesBuiltInFind { get; }
 
     /// <summary>
+    /// True when browsing data can be cleared from a live WebView, taking effect immediately and without
+    /// closing anything. True on the packaged Windows head, whose CoreWebView2.Profile exposes the clear
+    /// API. False on the Skia heads, where that profile is unimplemented.
+    /// </summary>
+    bool SupportsLiveBrowsingDataClear { get; }
+
+    /// <summary>
     /// Brings a detached WebView2's CoreWebView2 to life. On the Skia heads this parents the control in a
     /// hidden, window-rooted host for the duration of initialization, which EnsureCoreWebView2Async requires.
     /// </summary>
@@ -71,6 +78,13 @@ public interface IWebViewAdapter
     /// heads, which reload through the page rather than the unimplemented CoreWebView2.Reload.
     /// </summary>
     Task ReloadAsync(CoreWebView2 coreWebView2, bool clearCache);
+
+    /// <summary>
+    /// Clears the cookies, cached credentials, site data and HTTP cache of the profile every WebView in the
+    /// application shares, so any live instance clears it for all of them. A no-op where
+    /// SupportsLiveBrowsingDataClear is false.
+    /// </summary>
+    Task ClearBrowsingDataAsync(CoreWebView2 coreWebView2);
 
     /// <summary>
     /// Captures the rendered surface to encoded image bytes. Uses the Chrome DevTools Protocol on Windows and

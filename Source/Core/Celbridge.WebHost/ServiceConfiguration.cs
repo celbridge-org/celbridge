@@ -13,6 +13,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IWebViewFocusRegistry, WebViewFocusRegistry>();
         services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
+        services.AddTransient<IClearBrowsingDataCommand, ClearBrowsingDataCommand>();
 
         // The loopback default is registered first, so it is the fallback loader. A module may register a
         // custom loader, which resolves ahead of it (the view picks the last matching loader).

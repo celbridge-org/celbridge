@@ -253,6 +253,17 @@
                                        Style="{StaticResource SupportingTextStyle}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <!-- A pointer rather than a clear action: every WebView in the application
+                                 shares one profile, so clearing is application-wide and belongs in
+                                 Application Settings where it cannot read as per-document. -->
+                            <TextBlock Text="{x:Bind BrowsingDataLabelString}"
+                                       Style="{StaticResource FieldLabelTextStyle}" />
+                            <TextBlock Text="{x:Bind BrowsingDataHintString}"
+                                       Style="{StaticResource SupportingTextStyle}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

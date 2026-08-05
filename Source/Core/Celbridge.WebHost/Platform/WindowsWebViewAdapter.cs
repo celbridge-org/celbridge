@@ -21,6 +21,8 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
     // left to the heads that lack one (the macOS WKWebView). Ctrl+F reaches Chromium's built-in bar directly.
     public bool ProvidesBuiltInFind => true;
 
+    public bool SupportsLiveBrowsingDataClear => true;
+
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
         // The packaged WebView2 initializes without being attached to the visual tree, so detached controls
@@ -54,6 +56,17 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         }
 
         coreWebView2.Reload();
+    }
+
+    public async Task ClearBrowsingDataAsync(CoreWebView2 coreWebView2)
+    {
+        // AllSite covers cookies together with the DOM storage kinds, so the three arguments below are
+        // exactly the cookies, cached credentials, site data and HTTP cache the action promises. Browsing
+        // and download history and the profile's own settings are deliberately left alone.
+        await coreWebView2.Profile.ClearBrowsingDataAsync(
+            CoreWebView2BrowsingDataKinds.AllSite |
+            CoreWebView2BrowsingDataKinds.PasswordAutosave |
+            CoreWebView2BrowsingDataKinds.DiskCache);
     }
 
     public async Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request)

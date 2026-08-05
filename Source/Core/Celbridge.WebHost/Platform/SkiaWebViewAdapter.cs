@@ -38,6 +38,10 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
     public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
 
+    // CoreWebView2.Profile is unimplemented on the Skia heads, so there is no live clear on any of them.
+    // macOS clears through the reload-and-delete fallback instead.
+    public bool SupportsLiveBrowsingDataClear => false;
+
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
         // EnsureCoreWebView2Async never completes for a control that is not parented to a window. Parent the
@@ -214,6 +218,11 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // through the page. clearCache is best-effort here -- location.reload() does not purge the HTTP cache
         // (that would need WKWebsiteDataStore interop).
         await coreWebView2.ExecuteScriptAsync("location.reload()");
+    }
+
+    public async Task ClearBrowsingDataAsync(CoreWebView2 coreWebView2)
+    {
+        await Task.CompletedTask;
     }
 
     public async Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request)

@@ -1,5 +1,6 @@
 using Celbridge.Packages;
 using Celbridge.Settings;
+using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 
@@ -31,7 +32,10 @@ public class WebViewServiceSupportTests
         _documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
         _packageService.GetContributingPackage(Arg.Any<EditorId>()).Returns((Package?)null);
 
-        _webViewService = new WebViewService(Substitute.For<IFeatureFlags>(), _workspaceWrapper);
+        _webViewService = new WebViewService(
+            Substitute.For<IFeatureFlags>(),
+            _workspaceWrapper,
+            Substitute.For<IWebViewAdapter>());
     }
 
     [Test]

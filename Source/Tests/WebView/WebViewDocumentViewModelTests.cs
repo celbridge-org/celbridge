@@ -40,7 +40,7 @@ public class WebViewDocumentViewModelTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _webViewService = new WebViewService(featureFlags, _workspaceWrapper);
+        _webViewService = new WebViewService(featureFlags, _workspaceWrapper, Substitute.For<IWebViewAdapter>());
     }
 
     [Test]

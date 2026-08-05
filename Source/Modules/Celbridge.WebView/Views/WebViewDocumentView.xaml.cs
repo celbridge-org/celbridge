@@ -107,6 +107,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private string NewDocumentTooltipString => _stringLocalizer.GetString("WebView_Settings_NewDocumentTooltip");
     private string ShowUrlBarLabelString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarLabel");
     private string ShowUrlBarHintString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarHint");
+    private string BrowsingDataLabelString => _stringLocalizer.GetString("WebView_Settings_BrowsingDataLabel");
+    private string BrowsingDataHintString => _stringLocalizer.GetString("WebView_Settings_BrowsingDataHint");
 
     public WebViewDocumentView(
         IServiceProvider serviceProvider,

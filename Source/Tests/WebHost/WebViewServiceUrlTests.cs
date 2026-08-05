@@ -1,4 +1,5 @@
 using Celbridge.Settings;
+using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 
@@ -14,7 +15,7 @@ public class WebViewServiceUrlTests
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _webViewService = new WebViewService(featureFlags, workspaceWrapper);
+        _webViewService = new WebViewService(featureFlags, workspaceWrapper, Substitute.For<IWebViewAdapter>());
     }
 
     [TestCase("https://example.com")]

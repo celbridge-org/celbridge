@@ -507,6 +507,39 @@
   <data name="Settings_Workshop_ConnectionUnverified" xml:space="preserve">
     <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
   </data>
+  <data name="Settings_Privacy_SectionHeader" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Settings_Privacy_Description" xml:space="preserve">
+    <value>Every web page shown in Celbridge shares one set of cookies, cached credentials and site data.</value>
+  </data>
+  <data name="Settings_Privacy_ClearBrowsingData" xml:space="preserve">
+    <value>Clear Browsing Data</value>
+  </data>
+  <data name="Settings_Privacy_ClearBrowsingDataHint" xml:space="preserve">
+    <value>Applies to every web page in the application, not just the current document.</value>
+  </data>
+  <data name="Settings_Privacy_ClearDialogTitle" xml:space="preserve">
+    <value>Clear Browsing Data</value>
+  </data>
+  <data name="Settings_Privacy_ClearDialogMessage" xml:space="preserve">
+    <value>Clear the cookies, cached credentials, site data and cache shared by every web page in Celbridge? You will be signed out of any sites you are signed in to. This cannot be undone.</value>
+  </data>
+  <data name="Settings_Privacy_ClearConfirmButton" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Settings_Privacy_Clearing" xml:space="preserve">
+    <value>Clearing browsing data...</value>
+  </data>
+  <data name="Settings_Privacy_Cleared" xml:space="preserve">
+    <value>Browsing data cleared.</value>
+  </data>
+  <data name="Settings_Privacy_ClearFailed" xml:space="preserve">
+    <value>Failed to clear the browsing data.</value>
+  </data>
+  <data name="Settings_Privacy_ClearUnavailable" xml:space="preserve">
+    <value>Clearing browsing data is not available on this platform yet.</value>
+  </data>
   <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">
     <value>Create directory for project</value>
   </data>
@@ -593,6 +626,12 @@
   </data>
   <data name="WebView_Settings_ShowUrlBarHint" xml:space="preserve">
     <value>Right-click the document tab to show the URL bar again.</value>
+  </data>
+  <data name="WebView_Settings_BrowsingDataLabel" xml:space="preserve">
+    <value>Browsing Data</value>
+  </data>
+  <data name="WebView_Settings_BrowsingDataHint" xml:space="preserve">
+    <value>Cookies, cached credentials and site data are shared by every web page in Celbridge. Clear them from Privacy in Application Settings.</value>
   </data>
   <data name="WebView_Settings_CloseTooltip" xml:space="preserve">
     <value>Close Settings</value>
