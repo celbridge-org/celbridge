@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Celbridge.Logging;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
@@ -10,10 +11,11 @@ namespace Celbridge.UserInterface.Platform;
 /// Installs an AppKit local key-down monitor for the keys that act on a focused document on the Skia head,
 /// where a WKWebView is first responder and neither Uno's managed input nor the web content reliably sees the
 /// event. A local monitor sees each key before it is dispatched to any responder. While a document holds focus
-/// it keeps Tab inside the editor (indent, move a cell) instead of letting the AppKit key-view loop advance out
-/// to the surrounding panels, and it routes Command+W and Command+Shift+W to the close-document shortcuts (which
-/// WKWebView otherwise swallows as reserved key equivalents). In every case it swallows the key so it cannot
-/// reach the surrounding app UI. macOS-only.
+/// it keeps Tab inside the document instead of letting the managed focus loop advance out to the surrounding
+/// panels, and it routes Command+W and Command+Shift+W to the close-document shortcuts (which WKWebView
+/// otherwise swallows as reserved key equivalents). Tab is routed through the web-view focus registry, which
+/// knows the focused surface: its edit target acts on the key (indent, move a cell), or the key is delivered
+/// to the page itself so it can move between its own form fields. macOS-only.
 /// </summary>
 internal static class MacOSKeyEventMonitor
 {
@@ -48,10 +50,15 @@ internal static class MacOSKeyEventMonitor
     private static IntPtr _monitor;
     private static IntPtr _monitorBlock;
     private static IFocusService? _focusService;
+    private static IWebViewFocusRegistry? _webViewFocusRegistry;
     private static IMessengerService? _messengerService;
     private static ILogger? _logger;
 
-    public static void Start(IFocusService focusService, IMessengerService messengerService, ILogger logger)
+    public static void Start(
+        IFocusService focusService,
+        IWebViewFocusRegistry webViewFocusRegistry,
+        IMessengerService messengerService,
+        ILogger logger)
     {
         if (!OperatingSystem.IsMacOS())
         {
@@ -65,6 +72,7 @@ internal static class MacOSKeyEventMonitor
 
         _started = true;
         _focusService = focusService;
+        _webViewFocusRegistry = webViewFocusRegistry;
         _messengerService = messengerService;
         _logger = logger;
 
@@ -145,10 +153,17 @@ internal static class MacOSKeyEventMonitor
 
             if (isTab)
             {
-                // Let the focused editor act on Tab (a code editor indents or outdents). Whether or not it does,
-                // the key is swallowed below so focus can never leave the document for the surrounding app UI.
-                _focusService.EditTarget?.TryHandleTabKey(shift);
-                return IntPtr.Zero;
+                // The focus registry owns the focused surface, so it routes Tab: the surface's edit target
+                // acts on it (a code editor indents, the spreadsheet moves the active cell), or the key is
+                // delivered straight to the page so it can move between its own form fields. Swallowed in
+                // both cases, so the managed focus loop cannot walk focus out of the document. With no
+                // hosted surface focused, normal focus navigation proceeds.
+                if (_webViewFocusRegistry?.TryHandleTabKey(shift, nsEvent) == true)
+                {
+                    return IntPtr.Zero;
+                }
+
+                return nsEvent;
             }
 
             // Command+W closes the active document, Command+Shift+W closes its section. WKWebView reserves

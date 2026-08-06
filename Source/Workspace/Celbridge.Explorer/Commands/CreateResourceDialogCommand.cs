@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -124,9 +125,7 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
         validator.ParentFolder = parentFolder;
         validator.ValidateAsFolder = false;
 
-        // Select only the filename part without the extension
-        var extensionIndex = defaultFileName.LastIndexOf('.');
-        var selectionRange = extensionIndex > 0 ? 0..extensionIndex : ..;
+        var selectionRange = ResourceNameHelper.GetNameSelectionRange(defaultFileName);
 
         var showResult = await _dialogService.ShowNewFileDialogAsync(
             defaultFileName,

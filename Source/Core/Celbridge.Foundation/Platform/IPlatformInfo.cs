@@ -103,4 +103,11 @@ public interface IPlatformInfo
     /// built-in tab drag-and-drop is unreliable. True on the Skia desktop head (all operating systems).
     /// </summary>
     bool UsesPointerDrivenTabDrag { get; }
+
+    /// <summary>
+    /// Whether the editing keys the input pipeline diverts away from the native first responder must be
+    /// routed back to it, and the already-handled remainder absorbed before the platform sounds the system
+    /// beep on them. True on macOS.
+    /// </summary>
+    bool RequiresMacOSKeyCommandRouting { get; }
 }

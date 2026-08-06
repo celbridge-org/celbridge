@@ -1,4 +1,4 @@
-using Celbridge.Platform;
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents;
@@ -6,29 +6,55 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
-using Celbridge.Messaging;
+using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.Web.WebView2.Core;
+using Windows.System;
 
 namespace Celbridge.WebView.Views;
 
 /// <summary>
+/// The per-user view state of a .webview document: whether the settings side panel is open and how wide
+/// it is. Persisted through the document editor state, not the .webview file.
+/// </summary>
+internal sealed record WebViewEditorState(bool SettingsPanelOpen, double SettingsPanelWidth);
+
+/// <summary>
 /// Hosts an arbitrary user URL from a .webview document, or a project-served
 /// HTML page from a .html / .htm document. The two roles share a single WebView2
-/// lifecycle and differ only in URL source and navigation policy.
+/// lifecycle and differ only in URL source, navigation policy, and chrome: the
+/// external-URL role presents a browser-style URL bar above the page and a
+/// resizable settings side panel beside it.
 /// </summary>
-public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget, IDocumentChromeOwner
 {
+    // How long the settled download indicator stays visible before fading out.
+    private static readonly TimeSpan DownloadIndicatorDismissDelay = TimeSpan.FromSeconds(10);
+
+    // Sized so the panel's action buttons carry their full labels, with headroom for longer translations.
+    // A URL is too long to fit at any width a side panel can take, so the address is left to scroll.
+    private const double DefaultSettingsPanelWidth = 340;
+    private const double MinSettingsPanelWidth = 260;
+    // The narrowest the page is allowed to become while the settings panel is dragged wider.
+    private const double MinWebViewWidth = 240;
+
+    private static readonly JsonSerializerOptions EditorStateSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<WebViewDocumentView> _logger;
     private readonly ICommandService _commandService;
-    private readonly IMessengerService _messengerService;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
     private readonly IWebViewAdapter _webViewAdapter;
@@ -41,6 +67,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
+
+    private DispatcherTimer? _downloadIndicatorDismissTimer;
+
+    private readonly SplitterHelper _settingsPanelSplitterHelper;
+    private double _settingsPanelWidth = DefaultSettingsPanelWidth;
 
     // Set on successful registration with the bridge. Only populated for the
     // HtmlViewer role. .webview (external URL) documents do not register and the
@@ -61,20 +92,38 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     protected override DocumentViewModel DocumentViewModel => ViewModel;
 
+    private string BackTooltipString => _stringLocalizer.GetString("WebView_UrlBar_BackTooltip");
+    private string ForwardTooltipString => _stringLocalizer.GetString("WebView_UrlBar_ForwardTooltip");
+    private string HomeTooltipString => _stringLocalizer.GetString("WebView_UrlBar_HomeTooltip");
+    private string AddressPlaceholderString => _stringLocalizer.GetString("WebView_UrlBar_AddressPlaceholder");
+    private string OpenInBrowserTooltipString => _stringLocalizer.GetString("WebView_UrlBar_OpenInBrowserTooltip");
+    private string SettingsTooltipString => _stringLocalizer.GetString("WebView_UrlBar_SettingsTooltip");
+    private string SettingsTitleString => _stringLocalizer.GetString("WebView_Settings_Title");
+    private string CloseSettingsTooltipString => _stringLocalizer.GetString("WebView_Settings_CloseTooltip");
+    private string HomeUrlLabelString => _stringLocalizer.GetString("WebView_Settings_HomeUrlLabel");
+    private string InvalidUrlString => _stringLocalizer.GetString("WebView_InvalidUrl");
+    private string SetCurrentPageAsHomeString => _stringLocalizer.GetString("WebView_Settings_SetCurrentPageAsHome");
+    private string NewDocumentString => _stringLocalizer.GetString("WebView_Settings_NewDocument");
+    private string NewDocumentTooltipString => _stringLocalizer.GetString("WebView_Settings_NewDocumentTooltip");
+    private string ShowUrlBarLabelString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarLabel");
+    private string ShowUrlBarHintString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarHint");
+    private string BrowsingDataLabelString => _stringLocalizer.GetString("WebView_Settings_BrowsingDataLabel");
+    private string BrowsingDataHintString => _stringLocalizer.GetString("WebView_Settings_BrowsingDataHint");
+
     public WebViewDocumentView(
         IServiceProvider serviceProvider,
         ILogger<WebViewDocumentView> logger,
         ICommandService commandService,
-        IMessengerService messengerService,
+        IStringLocalizer stringLocalizer,
         IWebViewFactory webViewFactory,
         IWebViewService webViewService)
     {
-        this.InitializeComponent();
-
+        // The localizer and view model back x:Bind paths, so both must exist
+        // before InitializeComponent evaluates the bindings.
         _serviceProvider = serviceProvider;
         _logger = logger;
         _commandService = commandService;
-        _messengerService = messengerService;
+        _stringLocalizer = stringLocalizer;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
@@ -82,15 +131,29 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
+        this.InitializeComponent();
+
         FindBar.Attach(this);
         FindBar.Closed += OnFindBarClosed;
 
-        Loaded += WebViewDocumentView_Loaded;
+        // The panel is docked to the right edge, so a drag towards the page has to widen it.
+        _settingsPanelSplitterHelper = new SplitterHelper(
+            LayoutRoot,
+            GridResizeMode.Columns,
+            index: 2,
+            minSize: MinSettingsPanelWidth,
+            invertDelta: true,
+            maxSizeFunc: () => LayoutRoot.ActualWidth - MinWebViewWidth);
 
-        _messengerService.Register<WebViewNavigateMessage>(this, OnWebViewNavigate);
-        _messengerService.Register<WebViewRefreshMessage>(this, OnWebViewRefresh);
-        _messengerService.Register<WebViewGoBackMessage>(this, OnWebViewGoBack);
-        _messengerService.Register<WebViewGoForwardMessage>(this, OnWebViewGoForward);
+        SettingsPanelSplitter.DragStarted += SettingsPanelSplitter_DragStarted;
+        SettingsPanelSplitter.DragDelta += SettingsPanelSplitter_DragDelta;
+        SettingsPanelSplitter.DragCompleted += SettingsPanelSplitter_DragCompleted;
+        SettingsPanelSplitter.DoubleClicked += SettingsPanelSplitter_DoubleClicked;
+
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        UpdateReloadOrStopTooltip();
+
+        Loaded += WebViewDocumentView_Loaded;
     }
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
@@ -101,117 +164,36 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     private void TryNavigate()
     {
-        if (_webView?.CoreWebView2 is null)
-        {
-            return;
-        }
-
         var navigateUrl = ViewModel.NavigateUrl;
         if (string.IsNullOrEmpty(navigateUrl))
         {
             return;
         }
 
-        _webView.CoreWebView2.Navigate(navigateUrl);
+        Navigate(navigateUrl);
     }
 
-    private async void OnWebViewNavigate(object recipient, WebViewNavigateMessage message)
+    private void Navigate(string url)
     {
-        if (message.DocumentResource != ViewModel.FileResource)
-        {
-            return;
-        }
-
         if (_webView is null)
         {
             return;
         }
 
-        try
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
-            await _webView.EnsureCoreWebView2Async();
-            _webView.CoreWebView2.Navigate(message.Url);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to navigate to URL: {message.Url}");
-        }
-    }
-
-    private async void OnWebViewRefresh(object recipient, WebViewRefreshMessage message)
-    {
-        if (message.DocumentResource != ViewModel.FileResource)
-        {
+            _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
             return;
         }
 
-        if (_webView is null)
-        {
-            return;
-        }
+        // Show the destination straight away rather than waiting for NavigationStarting to report it. A
+        // document restored into a background tab navigates while its view is out of the visual tree, and
+        // the Skia heads raise no navigation event for it at all, not even once the tab is later shown, so
+        // its address bar would otherwise stay empty for the life of the document. Any redirect is picked
+        // up by the navigation events as usual.
+        ViewModel.CurrentUrl = uri.AbsoluteUri;
 
-        try
-        {
-            await _webView.EnsureCoreWebView2Async();
-
-            await _webViewAdapter.ReloadAsync(_webView.CoreWebView2, clearCache: true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to refresh page");
-        }
-    }
-
-    private async void OnWebViewGoBack(object recipient, WebViewGoBackMessage message)
-    {
-        if (message.DocumentResource != ViewModel.FileResource)
-        {
-            return;
-        }
-
-        if (_webView is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await _webView.EnsureCoreWebView2Async();
-            if (_webView.CoreWebView2.CanGoBack)
-            {
-                _webView.CoreWebView2.GoBack();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to navigate back");
-        }
-    }
-
-    private async void OnWebViewGoForward(object recipient, WebViewGoForwardMessage message)
-    {
-        if (message.DocumentResource != ViewModel.FileResource)
-        {
-            return;
-        }
-
-        if (_webView is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await _webView.EnsureCoreWebView2Async();
-            if (_webView.CoreWebView2.CanGoForward)
-            {
-                _webView.CoreWebView2.GoForward();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to navigate forward");
-        }
+        _webView.Source = uri;
     }
 
     private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -502,7 +484,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     private void CoreWebView2_HistoryChanged(object? sender, object e)
     {
-        SendNavigationStateChanged();
+        UpdateNavigationState();
     }
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
@@ -527,7 +509,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             }
         }
 
-        SendNavigationStateChanged();
+        ViewModel.IsNavigating = false;
+        UpdateNavigationState();
     }
 
     private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
@@ -539,31 +522,261 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         {
             _toolBridge?.NotifyContentLoading(FileResource);
         }
+
+        ViewModel.IsNavigating = true;
+        if (!string.IsNullOrEmpty(args.Uri))
+        {
+            ViewModel.CurrentUrl = args.Uri;
+        }
     }
 
-    private void SendNavigationStateChanged()
+    private void UpdateNavigationState()
     {
         if (_webView is null)
         {
             return;
         }
 
-        var coreWebView = _webView.CoreWebView2;
+        ViewModel.CanGoBack = _webView.CanGoBack;
+        ViewModel.CanGoForward = _webView.CanGoForward;
+        ViewModel.CurrentUrl = _webView.Source?.AbsoluteUri ?? string.Empty;
+    }
 
-        var canRefresh = coreWebView is not null &&
-                         !string.IsNullOrEmpty(coreWebView.Source) &&
-                         coreWebView.Source != "about:blank";
+    private void BackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_webView is not null &&
+            _webView.CanGoBack)
+        {
+            _webView.GoBack();
+        }
+    }
 
-        var currentUrl = coreWebView?.Source ?? string.Empty;
+    private void ForwardButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_webView is not null &&
+            _webView.CanGoForward)
+        {
+            _webView.GoForward();
+        }
+    }
 
-        var message = new WebViewNavigationStateChangedMessage(
-            ViewModel.FileResource,
-            coreWebView?.CanGoBack ?? false,
-            coreWebView?.CanGoForward ?? false,
-            canRefresh,
-            currentUrl);
+    private async void ReloadOrStopButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_webView?.CoreWebView2 is not CoreWebView2 coreWebView2)
+        {
+            return;
+        }
 
-        _messengerService.Send(message);
+        try
+        {
+            if (ViewModel.IsNavigating)
+            {
+                // Unlike the other navigation commands, Stop has no equivalent on the WebView2 control, and
+                // the CoreWebView2 member behind it is unimplemented on the Skia heads, so it goes through
+                // the adapter.
+                await _webViewAdapter.StopAsync(coreWebView2);
+            }
+            else
+            {
+                await _webViewAdapter.ReloadAsync(coreWebView2, clearCache: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reload or stop the page");
+        }
+    }
+
+    private void HomeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.TryNormalizeUserUrl(ViewModel.SourceUrl, out var homeUrl))
+        {
+            Navigate(homeUrl);
+        }
+    }
+
+    private void OpenInBrowserButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenBrowser(ViewModel.CurrentUrl);
+    }
+
+    private void AddressTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            if (ViewModel.TryNormalizeUserUrl(AddressTextBox.Text, out var url))
+            {
+                Navigate(url);
+
+                // Hand focus to the page the way the find bar does on close, so the next keystroke reaches
+                // the content the user just navigated to and the panel focus reflects it.
+                GiveFocusToWebContent();
+            }
+
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            // Abandon the edit: restore the address the page is actually showing and return to the content.
+            AddressTextBox.Text = ViewModel.CurrentUrl;
+            GiveFocusToWebContent();
+
+            e.Handled = true;
+        }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleSettingsPanel();
+    }
+
+    private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CloseSettingsPanel();
+    }
+
+    private void SetCurrentPageAsHomeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SetCurrentPageAsHome();
+    }
+
+    private void NewDocumentButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CreateDocumentFromCurrentPage();
+    }
+
+    private void SettingsPanelSplitter_DragStarted(object? sender, EventArgs e)
+    {
+        _settingsPanelSplitterHelper.OnDragStarted();
+    }
+
+    private void SettingsPanelSplitter_DragDelta(object? sender, double delta)
+    {
+        _settingsPanelSplitterHelper.OnDragDelta(delta);
+    }
+
+    private void SettingsPanelSplitter_DragCompleted(object? sender, EventArgs e)
+    {
+        _settingsPanelWidth = SettingsPanelColumn.ActualWidth;
+    }
+
+    private void SettingsPanelSplitter_DoubleClicked(object? sender, EventArgs e)
+    {
+        _settingsPanelWidth = DefaultSettingsPanelWidth;
+        ApplySettingsPanelLayout();
+    }
+
+    // Drives the panel column and its splitter gutter from the view model's open state. The panel border
+    // binds its own visibility, but the column and the splitter are layout, not content.
+    private void ApplySettingsPanelLayout()
+    {
+        if (ViewModel.IsSettingsPanelVisible)
+        {
+            SettingsPanelColumn.Width = new GridLength(_settingsPanelWidth, GridUnitType.Pixel);
+            SettingsPanelSplitter.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            SettingsPanelColumn.Width = new GridLength(0);
+            SettingsPanelSplitter.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void DownloadIndicatorButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.IsDownloadSucceeded)
+        {
+            ViewModel.RevealLastDownload();
+        }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WebViewDocumentViewModel.IsNavigating))
+        {
+            UpdateReloadOrStopTooltip();
+        }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.DownloadStatus))
+        {
+            UpdateDownloadIndicatorTooltip();
+        }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsPanelVisible))
+        {
+            ApplySettingsPanelLayout();
+        }
+    }
+
+    private void UpdateReloadOrStopTooltip()
+    {
+        var key = ViewModel.IsNavigating ? "WebView_UrlBar_StopTooltip" : "WebView_UrlBar_ReloadTooltip";
+        string tooltip = _stringLocalizer.GetString(key);
+        ToolTipService.SetToolTip(ReloadOrStopButton, tooltip);
+    }
+
+    private void UpdateDownloadIndicatorTooltip()
+    {
+        string? key = ViewModel.DownloadStatus switch
+        {
+            WebViewDownloadStatus.InProgress => "WebView_UrlBar_DownloadInProgressTooltip",
+            WebViewDownloadStatus.Succeeded => "WebView_UrlBar_DownloadSucceededTooltip",
+            WebViewDownloadStatus.Failed => "WebView_UrlBar_DownloadFailedTooltip",
+            _ => null,
+        };
+
+        if (key is null)
+        {
+            ToolTipService.SetToolTip(DownloadIndicatorButton, null);
+            return;
+        }
+
+        string tooltip = _stringLocalizer.GetString(key);
+        ToolTipService.SetToolTip(DownloadIndicatorButton, tooltip);
+    }
+
+    // Holds the settled indicator visible briefly, then fades it out.
+    private void ScheduleDownloadIndicatorDismiss()
+    {
+        if (_downloadIndicatorDismissTimer is null)
+        {
+            _downloadIndicatorDismissTimer = new DispatcherTimer
+            {
+                Interval = DownloadIndicatorDismissDelay,
+            };
+            _downloadIndicatorDismissTimer.Tick += DownloadIndicatorDismissTimer_Tick;
+        }
+
+        _downloadIndicatorDismissTimer.Stop();
+        _downloadIndicatorDismissTimer.Start();
+    }
+
+    private void DownloadIndicatorDismissTimer_Tick(object? sender, object e)
+    {
+        _downloadIndicatorDismissTimer?.Stop();
+
+        // A new download may have started during the dismiss delay; leave its
+        // in-progress indicator alone.
+        if (ViewModel.IsDownloadInProgress)
+        {
+            return;
+        }
+
+        var animation = new DoubleAnimation
+        {
+            From = 1.0,
+            To = 0.0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(250)),
+        };
+        Storyboard.SetTarget(animation, DownloadIndicatorButton);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Completed += (_, _) =>
+        {
+            ViewModel.ClearDownloadIndicator();
+            DownloadIndicatorButton.Opacity = 1.0;
+        };
+        storyboard.Begin();
     }
 
     private async void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
@@ -574,6 +787,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         var deferral = args.GetDeferral();
         try
         {
+            // The URL bar's download indicator is the download UI, so suppress
+            // WebView2's own download flyout.
+            args.Handled = true;
+
             var downloadPath = args.ResultFilePath;
             if (string.IsNullOrEmpty(downloadPath))
             {
@@ -646,6 +863,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             var tempPath = resolveTempResult.Value;
             args.ResultFilePath = tempPath;
 
+            ViewModel.BeginDownload();
+
             args.DownloadOperation.StateChanged += async (s, e) =>
             {
                 // Async-void event handler: any escaping exception ends up on the
@@ -669,14 +888,23 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
                         if (importResult.IsFailure)
                         {
-                            // The user-facing toast is raised by CreateResourceCommand.
+                            ViewModel.FailDownload();
                             _logger.LogError(
                                 $"Failed to import downloaded file to '{saveResourceKey}'. {importResult.DiagnosticReport}");
                         }
+                        else
+                        {
+                            ViewModel.CompleteDownload(saveResourceKey);
+                        }
+
+                        ScheduleDownloadIndicatorDismiss();
                     }
                     else if (s.State == CoreWebView2DownloadState.Interrupted)
                     {
                         await ResourceFileSystem.DeleteAsync(downloadResource);
+
+                        ViewModel.FailDownload();
+                        ScheduleDownloadIndicatorDismiss();
                     }
                 }
                 catch (Exception ex)
@@ -780,6 +1008,78 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         return loadResult;
     }
 
+    public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
+
+    public override Result<bool> UpdateSaveTimer(double deltaTime)
+    {
+        return ViewModel.UpdateSaveTimer(deltaTime);
+    }
+
+    protected override async Task<Result> SaveDocumentContentAsync()
+    {
+        return await ViewModel.SaveDocumentContent();
+    }
+
+    public override async Task<string?> TrySaveEditorStateAsync()
+    {
+        await Task.CompletedTask;
+
+        // A view that has not finished initializing would report a default panel state, which the layout
+        // store would then write over good saved state. The HTML viewer has no settings panel at all.
+        if (Options.Role != WebViewDocumentRole.ExternalUrl ||
+            _webView is null)
+        {
+            return null;
+        }
+
+        var editorState = new WebViewEditorState(ViewModel.IsSettingsPanelOpen, _settingsPanelWidth);
+
+        return JsonSerializer.Serialize(editorState, EditorStateSerializerOptions);
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        await Task.CompletedTask;
+
+        if (Options.Role != WebViewDocumentRole.ExternalUrl)
+        {
+            return;
+        }
+
+        WebViewEditorState? editorState;
+        try
+        {
+            editorState = JsonSerializer.Deserialize<WebViewEditorState>(state, EditorStateSerializerOptions);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogDebug(ex, "Failed to restore the WebView document editor state");
+            return;
+        }
+
+        if (editorState is null)
+        {
+            return;
+        }
+
+        _settingsPanelWidth = Math.Max(editorState.SettingsPanelWidth, MinSettingsPanelWidth);
+        ViewModel.IsSettingsPanelOpen = editorState.SettingsPanelOpen;
+
+        // The open state may be unchanged from the default, which raises no property change, so apply the
+        // layout directly rather than relying on the view model notification.
+        ApplySettingsPanelLayout();
+    }
+
+    // The URL bar is the only chrome this view hides, and it carries every control the view owns.
+    public bool CanRestoreChrome => Options.Role == WebViewDocumentRole.ExternalUrl && !ViewModel.ShowUrlBar;
+
+    public string RestoreChromeMenuTextKey => "WebView_ShowUrlBar";
+
+    public void RestoreChrome()
+    {
+        ViewModel.ShowUrlBar = true;
+    }
+
     private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
     {
         args.Handled = true;
@@ -791,14 +1091,24 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    public override void FocusDocument()
+    public override bool FocusDocument()
     {
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
-        if (_webView is not null)
+        return GiveFocusToWebContent();
+    }
+
+    // Hands keyboard focus to the page through the registry, which applies native focus on macOS and reports
+    // the focus so the panel focus follows. Used by every path that finishes with the chrome and returns the
+    // user to the content. False until the WebView is created and registered.
+    private bool GiveFocusToWebContent()
+    {
+        if (_webView is null)
         {
-            _webViewFocusRegistry.GrantFocus(_webView);
+            return false;
         }
+
+        return _webViewFocusRegistry.GrantFocus(_webView);
     }
 
     private void ReleaseFocus()
@@ -824,12 +1134,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
         // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
-        // Routing through the registry grant reports the focus too, so the panel focus reflects the page
-        // again after the find bar closes.
-        if (_webView is not null)
-        {
-            _webViewFocusRegistry.GrantFocus(_webView);
-        }
+        GiveFocusToWebContent();
     }
 
     async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)
@@ -866,7 +1171,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     public override async Task PrepareToClose()
     {
-        _messengerService.UnregisterAll(this);
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        _downloadIndicatorDismissTimer?.Stop();
 
         TeardownWebViewState();
 

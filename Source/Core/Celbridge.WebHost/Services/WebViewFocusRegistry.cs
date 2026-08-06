@@ -16,6 +16,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // before it reaches the registry.
     private readonly Dictionary<CoreWebView2, WebViewFocusRegistration> _registrations = new();
 
+    // The surface whose focus report is current. Cleared when the focus service releases it in favour of
+    // another surface or panel (via the wrapped release callback in Report), and on Unregister.
+    private WebViewFocusRegistration? _focusedRegistration;
+
     public WebViewFocusRegistry(
         IFocusService focusService,
         IWebViewAdapter webViewAdapter,
@@ -59,6 +63,11 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return;
         }
 
+        if (ReferenceEquals(_focusedRegistration, registration))
+        {
+            _focusedRegistration = null;
+        }
+
         registration.WebView.GotFocus -= OnWebViewGotFocus;
         _webViewFocusMonitor.Unregister(coreWebView);
 
@@ -70,13 +79,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    public void GrantFocus(WebView2 webView)
+    public bool GrantFocus(WebView2 webView)
     {
         var coreWebView = webView.CoreWebView2;
         if (coreWebView is null
             || !_registrations.TryGetValue(coreWebView, out var registration))
         {
-            return;
+            return false;
         }
 
         // The adapter gives the web content keyboard focus per platform (native first responder on macOS, where
@@ -87,6 +96,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _ = registration.GrantDomFocus?.Invoke();
 
         Report(registration);
+
+        return true;
     }
 
     private void OnWebViewGotFocus(object sender, RoutedEventArgs e)
@@ -108,9 +119,105 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
+    public void ReassertNativeFocus()
+    {
+        var registration = _focusedRegistration;
+        if (registration is null)
+        {
+            return;
+        }
+
+        // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
+        // (the page's caret is exactly where the user put it and must not move).
+        _webViewAdapter.FocusWebView(registration.WebView);
+    }
+
+    public bool TryForwardKeyEvent(IntPtr nativeKeyEvent)
+    {
+        var registration = _focusedRegistration;
+        if (registration is null
+            || !OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        var coreWebView = registration.WebView.CoreWebView2;
+        if (coreWebView is null)
+        {
+            return false;
+        }
+
+        if (!Platform.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView, out var nativeHandle, out var detail))
+        {
+            _logger.LogWarning("Could not forward a key to the focused web surface: {Detail}", detail);
+            return false;
+        }
+
+        Platform.MacOSWebViewInterop.SendKeyDownToWebView(nativeHandle, nativeKeyEvent);
+
+        return true;
+    }
+
+    public bool TryHandleTabKey(bool shift, IntPtr nativeKeyEvent)
+    {
+        var registration = _focusedRegistration;
+        if (registration is null)
+        {
+            return false;
+        }
+
+        // The surface's own edit target takes the key first. Consulting the registration rather than the
+        // focus service matters: the service preserves the previous edit target across a claim by a surface
+        // that has none, so a .webview focused after a code editor would otherwise indent the hidden editor.
+        if (registration.EditTarget is not null
+            && registration.EditTarget.TryHandleTabKey(shift))
+        {
+            return true;
+        }
+
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        var coreWebView = registration.WebView.CoreWebView2;
+        if (coreWebView is null)
+        {
+            return true;
+        }
+
+        // Deliver the key straight to the page so it applies its own Tab behaviour (moving between form
+        // fields). Reported handled even when the native handle cannot be resolved: a swallowed Tab beats
+        // one the managed focus loop uses to walk focus out of the document.
+        if (Platform.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView, out var nativeHandle, out var detail))
+        {
+            Platform.MacOSWebViewInterop.SendKeyDownToWebView(nativeHandle, nativeKeyEvent);
+        }
+        else
+        {
+            _logger.LogWarning("Could not deliver Tab to the focused web surface: {Detail}", detail);
+        }
+
+        return true;
+    }
+
     private void Report(WebViewFocusRegistration registration)
     {
+        _focusedRegistration = registration;
         registration.OnFocusGained?.Invoke();
-        _focusService.OnFocusReceived(registration.Panel, registration.EditTarget, registration.ReleaseFocus);
+        _focusService.OnFocusReceived(registration.Panel, registration.EditTarget, () => ReleaseSurface(registration));
+    }
+
+    // The release callback handed to the focus service, invoked when another surface or panel claims focus.
+    // Clears the focused-surface tracking (unless a newer report has already replaced it) before running the
+    // surface's own release.
+    private void ReleaseSurface(WebViewFocusRegistration registration)
+    {
+        if (ReferenceEquals(_focusedRegistration, registration))
+        {
+            _focusedRegistration = null;
+        }
+
+        registration.ReleaseFocus();
     }
 }

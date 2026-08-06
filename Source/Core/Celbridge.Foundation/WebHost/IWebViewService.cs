@@ -48,6 +48,13 @@ public interface IWebViewService
     bool IsDevToolsEvalFeatureEnabled();
 
     /// <summary>
+    /// Returns true if the application can clear the browsing data shared by every
+    /// WebView on this platform. False hides the action rather than offering a
+    /// control that would do nothing.
+    /// </summary>
+    bool CanClearBrowsingData { get; }
+
+    /// <summary>
     /// Determines whether the webview_* tools support the specified resource
     /// and, when not, returns a human-readable reason. The check inspects the
     /// open documents list and the package registry.

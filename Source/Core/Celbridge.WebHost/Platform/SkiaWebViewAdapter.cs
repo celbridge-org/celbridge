@@ -12,6 +12,7 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public sealed class SkiaWebViewAdapter : IWebViewAdapter
 {
+    private readonly IManagedFocusSink _managedFocusSink;
     private readonly ILogger<SkiaWebViewAdapter> _logger;
 
     // Hidden, window-rooted host used to initialize WebView2 controls, where EnsureCoreWebView2Async never
@@ -25,8 +26,11 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private sealed record FindSession(string Term, bool CaseSensitive, Action<FindMatchState>? OnMatchStateChanged);
 
-    public SkiaWebViewAdapter(ILogger<SkiaWebViewAdapter> logger)
+    public SkiaWebViewAdapter(
+        IManagedFocusSink managedFocusSink,
+        ILogger<SkiaWebViewAdapter> logger)
     {
+        _managedFocusSink = managedFocusSink;
         _logger = logger;
     }
 
@@ -37,6 +41,13 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // Windows-under-Skia hosts Chromium's WebView2 with its own find bar. The macOS WKWebView and Linux
     // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
     public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
+
+    // CoreWebView2.Profile is unimplemented on every Skia head. macOS clears through the native
+    // WKWebsiteDataStore instead; the Windows and Linux Skia heads have no such path.
+    public bool SupportsLiveBrowsingDataClear => OperatingSystem.IsMacOS();
+
+    // The default WKWebsiteDataStore is process-wide, so the clear reaches it with no web view.
+    public bool BrowsingDataClearRequiresInstance => false;
 
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
@@ -77,11 +88,36 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 {
                     _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
                 }
+
+                // Uno registers its script message handler on every Loaded and never removes it, so the
+                // second load of a control aborts the process inside WebKit. This control sees a second
+                // load as soon as it leaves the init host for its real container, so drop the handler on
+                // every Unloaded and let Uno's next Loaded register it again.
+                webView.Unloaded -= WebView_Unloaded;
+                webView.Unloaded += WebView_Unloaded;
             }
         }
         finally
         {
             host.Children.Remove(webView);
+        }
+    }
+
+    private void WebView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        var webView = sender as WebView2;
+        if (webView?.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
+        {
+            MacOSWebViewInterop.RemoveUnoScriptMessageHandler(nativeWebViewHandle);
+        }
+        else
+        {
+            _logger.LogWarning("Could not remove the WebView script message handler: {Detail}", detail);
         }
     }
 
@@ -109,7 +145,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             applied.Count == 0 ? "none" : string.Join(", ", applied));
     }
 
-    public void CloseWebView(WebView2 webView, Panel container)
+    public void CloseWebView(WebView2 webView, Panel? container)
     {
         // The macOS head leaks the WKWebView with no native destroy, and WebKit relaunches a renderer for the
         // still-alive view if the process is merely killed. Capture the native handle, then call WKWebView's
@@ -127,7 +163,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             _findSessions.Remove(webView.CoreWebView2);
         }
 
-        container.Children.Remove(webView);
+        container?.Children.Remove(webView);
         webView.Close();
 
         if (nativeWebViewHandle != IntPtr.Zero)
@@ -147,7 +183,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
             {
                 MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+
+                // Park first: native focus does not move managed focus, so the control the user last acted on
+                // would keep consuming the keys the input pipeline routes through the managed tree (with an
+                // Explorer row still focused after a double-click open, Enter reopens the resource and
+                // Backspace offers to delete it). Uno resigns the native first responder whenever it applies
+                // managed focus, so the parking has to happen before the web view is made first responder.
+                _managedFocusSink.TakeFocus();
+
                 MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
+
             }
             else
             {
@@ -189,6 +234,40 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // through the page. clearCache is best-effort here -- location.reload() does not purge the HTTP cache
         // (that would need WKWebsiteDataStore interop).
         await coreWebView2.ExecuteScriptAsync("location.reload()");
+    }
+
+    public async Task StopAsync(CoreWebView2 coreWebView2)
+    {
+        // CoreWebView2.Stop() is not implemented on the Skia heads. macOS stops natively, which also cancels a
+        // load that has not yet produced a document.
+        if (OperatingSystem.IsMacOS())
+        {
+            if (MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out var detail))
+            {
+                MacOSWebViewInterop.StopLoading(nativeHandle);
+                return;
+            }
+
+            _logger.LogWarning("Could not stop the page natively: {Detail}", detail);
+        }
+
+        // No native path here, so stop through the page. This only reaches a load that already has a JS context.
+        await coreWebView2.ExecuteScriptAsync("window.stop()");
+    }
+
+    public async Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            await Task.CompletedTask;
+            return;
+        }
+
+        var cleared = await MacOSWebViewInterop.ClearBrowsingDataAsync();
+        if (!cleared)
+        {
+            throw new InvalidOperationException("The native WKWebsiteDataStore clear did not complete");
+        }
     }
 
     public async Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request)

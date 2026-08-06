@@ -35,6 +35,8 @@
 
       <local:WorkshopSettingsView Margin="0,24,0,0"/>
 
+      <local:PrivacySettingsView Margin="0,24,0,0"/>
+
     </StackPanel>
   </ScrollViewer>
 </Page>

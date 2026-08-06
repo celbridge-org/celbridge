@@ -10,11 +10,16 @@ namespace Celbridge.UserInterface.Platform;
 /// detach/reattach cycle clears the masks without invalidating Uno's cached clip path, and a clip update
 /// fails outright while any attached subview has an empty frame, so WebViews can render over the dialog.
 /// Hidden is the state Uno intends for a native view under a modal, so each dialog scope enforces it
-/// directly: it hides every visible native subview when the dialog opens, sweeps for late attaches while
+/// directly: it hides every visible hosted WebView when the dialog opens, sweeps for late attaches while
 /// the dialog is open, and restores the hidden views when the dialog closes.
 /// </summary>
 internal static class MacOSModalOcclusionMonitor
 {
+    // Uno hosts each WebView as a UNOWebView nested inside the Skia canvas, not beside it. The runtime
+    // class is a KVO-swizzled subclass (NSKVONotifying_UNOWebView), so views are matched with
+    // isKindOfClass: rather than by name.
+    private const string HostedWebViewClassName = "UNOWebView";
+
     /// <summary>
     /// Starts WebView occlusion for one modal dialog. Dispose the returned scope when the dialog closes
     /// to restore the hidden views. No-op off macOS.
@@ -56,6 +61,7 @@ internal static class MacOSModalOcclusionMonitor
         private readonly string _dialogName;
         private readonly CancellationTokenSource _cancellationTokenSource = new();
         private readonly List<IntPtr> _hiddenSubviews = [];
+        private bool _reportedMissingWebViewClass;
 
         public DialogScope(string dialogName, ILogger logger)
         {
@@ -77,7 +83,7 @@ internal static class MacOSModalOcclusionMonitor
                 var cancellationToken = _cancellationTokenSource.Token;
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    HideVisibleNativeSubviews();
+                    HideVisibleWebViews();
                     await Task.Delay(SweepInterval, cancellationToken);
                 }
             }
@@ -90,7 +96,7 @@ internal static class MacOSModalOcclusionMonitor
             }
         }
 
-        private void HideVisibleNativeSubviews()
+        private void HideVisibleWebViews()
         {
             var window = MacOSWindowInterop.GetMainWindow();
             if (window == IntPtr.Zero)
@@ -110,23 +116,57 @@ internal static class MacOSModalOcclusionMonitor
                 return;
             }
 
-            // The content view controller's view holds exactly the native elements Uno hosts (WebViews);
-            // the Skia canvas lives elsewhere in the window.
-            var subviewArray = SendMessage(hostView, GetSelector("subviews"));
-            if (subviewArray == IntPtr.Zero)
+            var hostedWebViewClass = GetClass(HostedWebViewClassName);
+            if (hostedWebViewClass == IntPtr.Zero)
             {
+                if (!_reportedMissingWebViewClass)
+                {
+                    _reportedMissingWebViewClass = true;
+                    _logger.LogWarning(
+                        "Uno no longer registers a {ClassName} class, so hosted WebViews cannot be told apart from the Skia canvas and are left visible under modal dialogs",
+                        HostedWebViewClassName);
+                }
+
                 return;
             }
 
-            var subviewCount = SendMessageReturnNint(subviewArray, GetSelector("count"));
-            var hiddenThisSweep = 0;
+            var hiddenThisSweep = HideVisibleWebViewsUnder(hostView, hostedWebViewClass);
 
+            if (hiddenThisSweep > 0)
+            {
+                _logger.LogDebug(
+                    "Hid {Count} hosted WebView(s) while the modal dialog '{DialogName}' is open",
+                    hiddenThisSweep,
+                    _dialogName);
+            }
+        }
+
+        // Walks down to the hosted WebViews and hides them. Only the WebViews are hidden: the Skia canvas
+        // they are nested inside renders the whole application, including the dialog, so hiding it would
+        // blank the window and leave the dialog invisible and unanswerable.
+        private int HideVisibleWebViewsUnder(IntPtr view, IntPtr hostedWebViewClass)
+        {
+            var subviewArray = SendMessage(view, GetSelector("subviews"));
+            if (subviewArray == IntPtr.Zero)
+            {
+                return 0;
+            }
+
+            var subviewCount = SendMessageReturnNint(subviewArray, GetSelector("count"));
             var objectAtIndexSelector = GetSelector("objectAtIndex:");
+            var hiddenCount = 0;
+
             for (nint index = 0; index < subviewCount; index++)
             {
                 var subview = SendMessage(subviewArray, objectAtIndexSelector, index);
                 if (subview == IntPtr.Zero)
                 {
+                    continue;
+                }
+
+                if (!SendMessageReturnBool(subview, GetSelector("isKindOfClass:"), hostedWebViewClass))
+                {
+                    hiddenCount += HideVisibleWebViewsUnder(subview, hostedWebViewClass);
                     continue;
                 }
 
@@ -148,16 +188,10 @@ internal static class MacOSModalOcclusionMonitor
                 SendMessage(subview, GetSelector("retain"));
                 SendMessageVoidBool(subview, GetSelector("setHidden:"), true);
                 _hiddenSubviews.Add(subview);
-                hiddenThisSweep++;
+                hiddenCount++;
             }
 
-            if (hiddenThisSweep > 0)
-            {
-                _logger.LogDebug(
-                    "Hid {Count} native subview(s) while the modal dialog '{DialogName}' is open",
-                    hiddenThisSweep,
-                    _dialogName);
-            }
+            return hiddenCount;
         }
 
         public void Dispose()
@@ -177,7 +211,7 @@ internal static class MacOSModalOcclusionMonitor
             }
 
             _logger.LogDebug(
-                "Restored {Count} hidden native subview(s) after the modal dialog '{DialogName}' closed",
+                "Restored {Count} hidden WebView(s) after the modal dialog '{DialogName}' closed",
                 _hiddenSubviews.Count,
                 _dialogName);
             _hiddenSubviews.Clear();

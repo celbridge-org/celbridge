@@ -45,7 +45,7 @@
             Click="CloseButton_Click">
       <controls:Icon
                 Symbol="Close"
-                FontSize="14" />
+                FontSize="{StaticResource IconSizeMedium}" />
     </Button>
   </Grid>
 </UserControl>

@@ -21,6 +21,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
     // left to the heads that lack one (the macOS WKWebView). Ctrl+F reaches Chromium's built-in bar directly.
     public bool ProvidesBuiltInFind => true;
 
+    public bool SupportsLiveBrowsingDataClear => true;
+
+    // The profile hangs off a live CoreWebView2, so the clear needs an instance to reach it through.
+    public bool BrowsingDataClearRequiresInstance => true;
+
     public async Task EnsureCoreWebView2Async(WebView2 webView)
     {
         // The packaged WebView2 initializes without being attached to the visual tree, so detached controls
@@ -28,9 +33,9 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         await webView.EnsureCoreWebView2Async();
     }
 
-    public void CloseWebView(WebView2 webView, Panel container)
+    public void CloseWebView(WebView2 webView, Panel? container)
     {
-        container.Children.Remove(webView);
+        container?.Children.Remove(webView);
         webView.Close();
     }
 
@@ -54,6 +59,26 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         }
 
         coreWebView2.Reload();
+    }
+
+    public async Task StopAsync(CoreWebView2 coreWebView2)
+    {
+        await Task.CompletedTask;
+
+        coreWebView2.Stop();
+    }
+
+    public async Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2)
+    {
+        Guard.IsNotNull(coreWebView2);
+
+        // AllSite covers cookies together with the DOM storage kinds, so the three arguments below are
+        // exactly the cookies, cached credentials, site data and HTTP cache the action promises. Browsing
+        // and download history and the profile's own settings are deliberately left alone.
+        await coreWebView2.Profile.ClearBrowsingDataAsync(
+            CoreWebView2BrowsingDataKinds.AllSite |
+            CoreWebView2BrowsingDataKinds.PasswordAutosave |
+            CoreWebView2BrowsingDataKinds.DiskCache);
     }
 
     public async Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request)

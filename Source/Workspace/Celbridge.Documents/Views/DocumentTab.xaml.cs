@@ -26,6 +26,7 @@ public enum DocumentTabMenuAction
     SelectFile,
     OpenFileExplorer,
     OpenApplication,
+    RestoreChrome,
     Reopen,
     ReopenWith
 }
@@ -237,6 +238,11 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.OpenApplication);
     }
 
+    private void ContextMenu_RestoreChrome(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.RestoreChrome);
+    }
+
     private void ContextMenu_Reopen(object sender, RoutedEventArgs e)
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.Reopen);
@@ -299,6 +305,19 @@ public partial class DocumentTab : TabViewItem
         OpenSeparator.Visibility = fileActionsVisibility;
         OpenFileExplorerMenuItem.Visibility = fileActionsVisibility;
         OpenApplicationMenuItem.Visibility = fileActionsVisibility;
+
+        // A view that has hidden the chrome carrying its own controls has no way back, so the shared menu
+        // offers one. The view supplies the text, so this menu never names a particular kind of chrome.
+        bool canRestoreChrome = false;
+        if (Content is IDocumentChromeOwner chromeOwner &&
+            chromeOwner.CanRestoreChrome)
+        {
+            canRestoreChrome = true;
+            RestoreChromeMenuItem.Text = _stringLocalizer.GetString(chromeOwner.RestoreChromeMenuTextKey);
+        }
+
+        RestoreChromeSeparator.Visibility = canRestoreChrome ? Visibility.Visible : Visibility.Collapsed;
+        RestoreChromeMenuItem.Visibility = canRestoreChrome ? Visibility.Visible : Visibility.Collapsed;
 
         // A utility tab hosts a docked utility, not a file opened with a chosen editor. Reopening would dock it
         // back into the panel and then open a second, uncontrolled instance, so the reopen options are hidden

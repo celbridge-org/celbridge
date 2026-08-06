@@ -211,20 +211,63 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         if (_resourceDragCoordinator is not null
             && documentToFocus is ResourceKey keyToFocus)
         {
-            FocusDroppedDocument(keyToFocus);
+            FocusActivatedDocument(keyToFocus);
         }
     }
 
-    private void FocusDroppedDocument(ResourceKey fileResource)
+    // Gives the active document keyboard focus where no interaction carries focus to it: a workspace restore
+    // selecting its tab, and a layout-mode change that collapses the panels. Without this the panel that holds
+    // the keyboard keeps it while the document looks focused.
+    public void FocusActiveDocument()
     {
-        // Deferred (Low) so the resulting tab's view is laid out before it is focused, mirroring the
-        // DocumentTab_Tapped focus path.
-        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        var activeDocument = ActiveDocument;
+        if (activeDocument.IsEmpty)
+        {
+            return;
+        }
+
+        FocusActivatedDocument(activeDocument);
+    }
+
+    // Gives an explicitly activated document keyboard focus: tab clicks, drops, and opens all route here,
+    // so keys follow the document the user just acted on rather than staying with the panel the action was
+    // issued from. The first attempt is delayed past the interaction burst that initiated the activation: a
+    // double-click's trailing focus events otherwise re-claim the originating panel milliseconds after the
+    // grant, leaving keys routed to it. Later attempts retry briefly because a freshly opened view's web
+    // surface may still be initializing.
+    private void FocusActivatedDocument(ResourceKey fileResource)
+    {
+        var attemptsRemaining = 10;
+
+        void ScheduleAttempt()
+        {
+            var attemptTimer = DispatcherQueue.CreateTimer();
+            attemptTimer.Interval = TimeSpan.FromMilliseconds(250);
+            attemptTimer.IsRepeating = false;
+            attemptTimer.Tick += (_, _) => TryFocus();
+            attemptTimer.Start();
+        }
+
+        void TryFocus()
         {
             var location = SectionContainer.FindDocumentTab(fileResource);
             var documentView = location?.Tab.Content as IDocumentView;
-            documentView?.FocusDocument();
-        });
+            if (documentView is null)
+            {
+                return;
+            }
+
+            attemptsRemaining--;
+            if (documentView.FocusDocument() ||
+                attemptsRemaining <= 0)
+            {
+                return;
+            }
+
+            ScheduleAttempt();
+        }
+
+        ScheduleAttempt();
     }
 
     private void OnToolbarSectionCountChangeRequested(int requestedCount)
@@ -357,21 +400,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
     }
 
-    private void FocusActiveDocument()
-    {
-        // Defer so focus is set after the panels have collapsed and layout has settled.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            // Route through the registry grant so the active document's web content gets keyboard focus
-            // (native first responder on macOS, managed focus on Windows) and the focus is reported.
-            var webView = VisualTree.FindDescendant<WebView2>(SectionContainer);
-            if (webView is not null)
-            {
-                _webViewFocusRegistry.GrantFocus(webView);
-            }
-        });
-    }
-
     private void UpdateTabStripVisibility(LayoutMode layoutMode)
     {
         // In Presentation mode, hide the tab strip and toolbar to show only the document content.
@@ -500,6 +528,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 await NavigateToLocation(fileResource, effectiveOptions.Location);
             }
 
+            if (effectiveOptions.Activate)
+            {
+                FocusActivatedDocument(fileResource);
+            }
+
             return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
         }
 
@@ -581,6 +614,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         if (!string.IsNullOrEmpty(effectiveOptions.EditorStateJson))
         {
             await documentView.RestoreEditorStateAsync(effectiveOptions.EditorStateJson);
+        }
+
+        if (effectiveOptions.Activate)
+        {
+            FocusActivatedDocument(fileResource);
         }
 
         return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
@@ -1105,6 +1143,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.OpenApplication:
                 OpenApplicationForTab(tab);
                 break;
+            case DocumentTabMenuAction.RestoreChrome:
+                RestoreChromeForTab(tab);
+                break;
             case DocumentTabMenuAction.Reopen:
                 _ = ReopenTab(tab);
                 break;
@@ -1283,6 +1324,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void OpenApplicationForTab(DocumentTab tab)
     {
         ViewModel.OpenApplicationForTab(tab.ViewModel.FileResource);
+    }
+
+    private void RestoreChromeForTab(DocumentTab tab)
+    {
+        if (tab.Content is IDocumentChromeOwner chromeOwner)
+        {
+            chromeOwner.RestoreChrome();
+        }
     }
 
     private Task ReopenTab(DocumentTab tab)

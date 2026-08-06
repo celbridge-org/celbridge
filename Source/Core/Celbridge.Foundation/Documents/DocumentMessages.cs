@@ -39,31 +39,6 @@ public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
 public record DocumentViewFocusedMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent to request a web view document to navigate to a URL.
-/// </summary>
-public record WebViewNavigateMessage(ResourceKey DocumentResource, string Url);
-
-/// <summary>
-/// A message sent to request a web view document to refresh with cache clearing.
-/// </summary>
-public record WebViewRefreshMessage(ResourceKey DocumentResource);
-
-/// <summary>
-/// A message sent to request a web view document to navigate back in history.
-/// </summary>
-public record WebViewGoBackMessage(ResourceKey DocumentResource);
-
-/// <summary>
-/// A message sent to request a web view document to navigate forward in history.
-/// </summary>
-public record WebViewGoForwardMessage(ResourceKey DocumentResource);
-
-/// <summary>
-/// A message sent when the web view document's navigation state changes.
-/// </summary>
-public record WebViewNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh, string CurrentUrl);
-
-/// <summary>
 /// A message sent when a document has been opened and its view created. Paired with
 /// DocumentClosedMessage: both are sent by DocumentTabViewModel, so a listener can own a resource for
 /// exactly as long as its document is open. Docked utilities are presented rather than opened, and take

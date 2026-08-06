@@ -34,6 +34,8 @@
             <MenuFlyoutSeparator x:Name="OpenSeparator" />
             <MenuFlyoutItem x:Name="OpenFileExplorerMenuItem" Click="ContextMenu_OpenFileExplorer" />
             <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
+            <MenuFlyoutSeparator x:Name="RestoreChromeSeparator" />
+            <MenuFlyoutItem x:Name="RestoreChromeMenuItem" Click="ContextMenu_RestoreChrome" />
             <MenuFlyoutSeparator x:Name="ReopenSeparator" />
             <MenuFlyoutItem x:Name="ReopenMenuItem" Click="ContextMenu_Reopen" />
             <MenuFlyoutItem x:Name="ReopenWithMenuItem" Click="ContextMenu_ReopenWith" />

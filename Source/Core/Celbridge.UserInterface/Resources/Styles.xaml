@@ -50,9 +50,11 @@
     <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
   </Style>
 
-  <!--
-    Transparent icon button style. Icon content should use FontSize="14" for consistent sizing.
-  -->
+  <!-- A flat icon button: a transparent hit target that tints on hover and press, and dims when disabled.
+       Carries the same four-pixel corner radius as the app's default-templated buttons, because replacing
+       the control template drops the framework's own rounding. Size its icon content from the IconSize
+       tokens above. Applies to Button only, so a ToggleButton keeps its own chrome and stays legible when
+       checked. -->
   <Style x:Key="TransparentIconButtonStyle" TargetType="Button">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
@@ -60,6 +62,7 @@
     <Setter Property="MinWidth" Value="32"/>
     <Setter Property="MinHeight" Value="32"/>
     <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -69,6 +72,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
                             Content="{TemplateBinding Content}"
                             ContentTemplate="{TemplateBinding ContentTemplate}"
                             Padding="{TemplateBinding Padding}"

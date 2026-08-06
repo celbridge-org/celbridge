@@ -1002,14 +1002,16 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     /// <summary>
     /// Gives the editor's web content keyboard focus and reports it to the focus service.
     /// </summary>
-    public void FocusWebView()
+    public bool FocusWebView()
     {
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
-        if (WebView is not null)
+        if (WebView is null)
         {
-            _webViewFocusRegistry.GrantFocus(WebView);
+            return false;
         }
+
+        return _webViewFocusRegistry.GrantFocus(WebView);
     }
 
     private void ReleaseFocus()

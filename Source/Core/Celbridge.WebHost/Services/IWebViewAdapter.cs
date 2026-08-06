@@ -41,22 +41,39 @@ public interface IWebViewAdapter
     bool ProvidesBuiltInFind { get; }
 
     /// <summary>
+    /// True when browsing data can be cleared while the application runs, taking effect immediately and
+    /// without closing anything. True on the packaged Windows head, through CoreWebView2.Profile, and on the
+    /// macOS Skia head, through the native WKWebsiteDataStore. False on the Windows and Linux Skia heads,
+    /// which have neither.
+    /// </summary>
+    bool SupportsLiveBrowsingDataClear { get; }
+
+    /// <summary>
+    /// True when ClearBrowsingDataAsync needs a live WebView to reach the shared store through. True on the
+    /// packaged Windows head, where the profile hangs off a CoreWebView2. False on macOS, where the default
+    /// WKWebsiteDataStore is process-wide and reachable with no instance.
+    /// </summary>
+    bool BrowsingDataClearRequiresInstance { get; }
+
+    /// <summary>
     /// Brings a detached WebView2's CoreWebView2 to life. On the Skia heads this parents the control in a
     /// hidden, window-rooted host for the duration of initialization, which EnsureCoreWebView2Async requires.
     /// </summary>
     Task EnsureCoreWebView2Async(WebView2 webView);
 
     /// <summary>
-    /// Removes the WebView from its container and closes it. On macOS this also calls the native WKWebView
-    /// teardown SPI, which the managed Close() does not reach on the Skia head.
+    /// Removes the WebView from its container and closes it. Pass a null container for a WebView that was
+    /// never parented, such as one taken straight from the pool. On macOS this also calls the native
+    /// WKWebView teardown SPI, which the managed Close() does not reach on the Skia head.
     /// </summary>
-    void CloseWebView(WebView2 webView, Panel container);
+    void CloseWebView(WebView2 webView, Panel? container);
 
     /// <summary>
     /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.
     /// Managed focus does this on the Windows heads. On the macOS Skia head managed focus routes keys
     /// through the managed pipeline, where they never reach the web content, so the native WKWebView is
-    /// made the window's first responder instead.
+    /// made the window's first responder instead, and managed focus is moved off the control that held it
+    /// so that control stops acting on the keys the pipeline still routes to it.
     /// </summary>
     void FocusWebView(WebView2 webView);
 
@@ -71,6 +88,21 @@ public interface IWebViewAdapter
     /// heads, which reload through the page rather than the unimplemented CoreWebView2.Reload.
     /// </summary>
     Task ReloadAsync(CoreWebView2 coreWebView2, bool clearCache);
+
+    /// <summary>
+    /// Stops the navigation in progress. Uses CoreWebView2.Stop on the packaged Windows head. That member is
+    /// unimplemented on the Skia heads, so macOS stops through the native WKWebView and the remaining heads
+    /// fall back to window.stop(), which cannot stop a load that has not yet produced a document.
+    /// </summary>
+    Task StopAsync(CoreWebView2 coreWebView2);
+
+    /// <summary>
+    /// Clears the cookies, cached credentials, site data and HTTP cache of the store every WebView in the
+    /// application shares, so the clear applies to all of them. Takes a live instance only where
+    /// BrowsingDataClearRequiresInstance says one is needed, and is a no-op where
+    /// SupportsLiveBrowsingDataClear is false. Throws if the clear does not complete.
+    /// </summary>
+    Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2);
 
     /// <summary>
     /// Captures the rendered surface to encoded image bytes. Uses the Chrome DevTools Protocol on Windows and

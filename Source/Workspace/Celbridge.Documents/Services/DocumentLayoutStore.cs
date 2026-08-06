@@ -320,6 +320,10 @@ public class DocumentLayoutStore
         // restores this document when it is still open, and otherwise falls back so that any open
         // documents leave exactly one active document.
         DocumentsPanel.ActiveDocument = activeDocument;
+
+        // Read back rather than reusing the local: the panel falls back to another open document when the
+        // stored one is gone, and it is whatever ended up active that takes the keyboard.
+        DocumentsPanel.FocusActiveDocument();
     }
 
     private async Task OpenDefaultReadmeAsync()

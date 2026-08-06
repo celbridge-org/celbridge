@@ -22,6 +22,20 @@ C:/Program Files/Microsoft Visual Studio/<version>/<edition>/MSBuild/Current/Bin
 
 For example, with VS 2026 Community: `C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe`.
 
+### Building on macOS
+
+The projects target three frameworks: `net10.0` (plain library), `net10.0-windows10.0.22621` (the packaged WinAppSDK head) and `net10.0-desktop` (the Skia head). Only the Skia head ships on macOS, and the packaged Windows target framework cannot be built there at all, so build that framework explicitly rather than the whole project:
+
+```
+dotnet build Source/Celbridge/Celbridge.Application.csproj -f net10.0-desktop
+```
+
+The MSBuild requirement above is specific to the WinUI/WinAppSDK head, which is not in play on macOS.
+
+**A macOS build does not compile Windows-only code.** `WindowsWebViewAdapter.cs` and its DI registration in `PlatformServiceConfiguration.cs` sit inside `#if WINDOWS`, which is defined only for the packaged target framework. Changing a shared interface (`IWebViewAdapter` and the other platform seams) on macOS therefore compiles green while the Windows implementation silently no longer satisfies it. Build the packaged Windows head on a Windows machine before merging cross-platform interface changes.
+
+The Windows Skia head (`net10.0-desktop` on Windows) is a convenience for exercising the Skia code path without a Mac. It is not a deployment target; the deployment targets are the packaged Windows head and the macOS Skia head.
+
 ## Running Tests
 
 The test project does not contain XAML and can be built and run with `dotnet`:
