@@ -295,9 +295,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // outgoing surface. Collapsing that surface below would then relocate managed focus onto
         // unrelated chrome (a document tab), clobbering the web view's just-reported CustomUtility panel.
         // Park managed focus on this utility's host - it carries the CustomUtility panel declaration - so
-        // the collapse has nothing to relocate. Use Pointer state to match the focus the host receives
+        // the collapse has nothing to relocate. Pointer state matches the focus the host receives
         // naturally when switching in from a managed panel, which leaves web-view typing working.
-        // Programmatic focus would instead route keys away from the web content on macOS.
         if (IsCustomUtility(utilityId))
         {
             content.Focus(FocusState.Pointer);

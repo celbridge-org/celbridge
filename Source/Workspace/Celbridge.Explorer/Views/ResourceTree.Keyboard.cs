@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Windows.System;
@@ -238,7 +239,7 @@ public sealed partial class ResourceTree : IEditTarget
 
             if (ResourceListView.ContainerFromItem(item) is ListViewItem container)
             {
-                container.Focus(FocusState.Programmatic);
+                FocusIntent.RestoreFocus(container);
             }
         });
     }
