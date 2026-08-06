@@ -112,8 +112,8 @@ public sealed partial class CustomDocumentView : DocumentView
         await base.PrepareToClose();
     }
 
-    public override void FocusDocument()
+    public override bool FocusDocument()
     {
-        _controller.FocusWebView();
+        return _controller.FocusWebView();
     }
 }

@@ -99,6 +99,15 @@ public class UserInterfaceService : IUserInterfaceService
             }
         }
 
+        if (_platformInfo.RequiresMacOSKeyCommandRouting)
+        {
+            var routerInstalled = Platform.MacOSKeyCommandRouter.Install();
+            if (!routerInstalled)
+            {
+                _logger.LogWarning("Failed to install the editing key command router");
+            }
+        }
+
         _logger.LogDebug("UserInterfaceService initialized successfully");
         return Result.Ok();
     }

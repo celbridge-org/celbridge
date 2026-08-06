@@ -61,9 +61,10 @@ public interface IDocumentView
 
     /// <summary>
     /// Gives this document keyboard focus and reports the focus change so any previously focused surface
-    /// is released. Views with no focusable surface do nothing.
+    /// is released. Returns false when the view's focusable surface is not ready yet, so the caller may
+    /// retry. Views with no focusable surface do nothing and return true.
     /// </summary>
-    void FocusDocument();
+    bool FocusDocument();
 
     /// <summary>
     /// Returns true if the document view can be closed. Returning false cancels the close operation.

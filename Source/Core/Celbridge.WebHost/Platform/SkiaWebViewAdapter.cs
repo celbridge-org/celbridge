@@ -12,6 +12,7 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public sealed class SkiaWebViewAdapter : IWebViewAdapter
 {
+    private readonly IManagedFocusSink _managedFocusSink;
     private readonly ILogger<SkiaWebViewAdapter> _logger;
 
     // Hidden, window-rooted host used to initialize WebView2 controls, where EnsureCoreWebView2Async never
@@ -25,8 +26,11 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private sealed record FindSession(string Term, bool CaseSensitive, Action<FindMatchState>? OnMatchStateChanged);
 
-    public SkiaWebViewAdapter(ILogger<SkiaWebViewAdapter> logger)
+    public SkiaWebViewAdapter(
+        IManagedFocusSink managedFocusSink,
+        ILogger<SkiaWebViewAdapter> logger)
     {
+        _managedFocusSink = managedFocusSink;
         _logger = logger;
     }
 
@@ -179,7 +183,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
             {
                 MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+
+                // Park first: native focus does not move managed focus, so the control the user last acted on
+                // would keep consuming the keys the input pipeline routes through the managed tree (with an
+                // Explorer row still focused after a double-click open, Enter reopens the resource and
+                // Backspace offers to delete it). Uno resigns the native first responder whenever it applies
+                // managed focus, so the parking has to happen before the web view is made first responder.
+                _managedFocusSink.TakeFocus();
+
                 MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
+
             }
             else
             {
@@ -221,6 +234,25 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // through the page. clearCache is best-effort here -- location.reload() does not purge the HTTP cache
         // (that would need WKWebsiteDataStore interop).
         await coreWebView2.ExecuteScriptAsync("location.reload()");
+    }
+
+    public async Task StopAsync(CoreWebView2 coreWebView2)
+    {
+        // CoreWebView2.Stop() is not implemented on the Skia heads. macOS stops natively, which also cancels a
+        // load that has not yet produced a document.
+        if (OperatingSystem.IsMacOS())
+        {
+            if (MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out var detail))
+            {
+                MacOSWebViewInterop.StopLoading(nativeHandle);
+                return;
+            }
+
+            _logger.LogWarning("Could not stop the page natively: {Detail}", detail);
+        }
+
+        // No native path here, so stop through the page. This only reaches a load that already has a JS context.
+        await coreWebView2.ExecuteScriptAsync("window.stop()");
     }
 
     public async Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2)

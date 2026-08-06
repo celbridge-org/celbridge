@@ -61,6 +61,13 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Reload();
     }
 
+    public async Task StopAsync(CoreWebView2 coreWebView2)
+    {
+        await Task.CompletedTask;
+
+        coreWebView2.Stop();
+    }
+
     public async Task ClearBrowsingDataAsync(CoreWebView2? coreWebView2)
     {
         Guard.IsNotNull(coreWebView2);

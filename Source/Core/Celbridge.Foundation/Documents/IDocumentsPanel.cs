@@ -16,6 +16,12 @@ public interface IDocumentsPanel
     ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
+    /// Gives the active document keyboard focus, for the paths that make a document active without an
+    /// interaction that carries focus to it: a workspace restore and a layout-mode change.
+    /// </summary>
+    void FocusActiveDocument();
+
+    /// <summary>
     /// Sets the proportional widths (ratios) of document sections.
     /// Ratios are relative values that sum to 1.0.
     /// </summary>

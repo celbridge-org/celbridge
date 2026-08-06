@@ -339,6 +339,26 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
+    /// Calls -[WKWebView stopLoading], the macOS replacement for the unimplemented CoreWebView2.Stop().
+    /// Unlike a window.stop() fallback this also cancels a navigation that has not yet produced a document.
+    /// </summary>
+    public static void StopLoading(IntPtr webView)
+    {
+        SendMessage(webView, GetSelector("stopLoading"));
+    }
+
+    /// <summary>
+    /// Delivers a native key event straight to the WKWebView's keyDown: handler, bypassing the managed key
+    /// pipeline. Used for keys the managed pipeline would otherwise consume (Tab), so the page can apply
+    /// its own behaviour, such as moving focus between its form fields. A direct method call, not an event
+    /// dispatch, so local event monitors do not observe it again.
+    /// </summary>
+    public static void SendKeyDownToWebView(IntPtr webView, IntPtr keyEvent)
+    {
+        SendMessageVoid(webView, GetSelector("keyDown:"), keyEvent);
+    }
+
+    /// <summary>
     /// Calls -[WKWebView loadHTMLString:baseURL:] directly so the loaded document reports the given
     /// base URL as its origin. This is the macOS replacement for SetVirtualHostNameToFolderMapping,
     /// which is a silent no-op on the Skia head: assets are served from a loopback server and the

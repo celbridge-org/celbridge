@@ -10,6 +10,7 @@ using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.Services.Forms;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.WebHost;
 using Celbridge.UserInterface.ViewModels.Forms;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.UserInterface.Views;
@@ -31,6 +32,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<IManagedFocusSink, ManagedFocusSink>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();

@@ -66,6 +66,8 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool RequiresMacOSTabWheelScroll => OperatingSystem.IsMacOS();
 
+    public bool RequiresMacOSKeyCommandRouting => OperatingSystem.IsMacOS();
+
     public bool UsesPointerDrivenTabDrag
     {
         get

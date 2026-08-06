@@ -72,7 +72,8 @@ public interface IWebViewAdapter
     /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.
     /// Managed focus does this on the Windows heads. On the macOS Skia head managed focus routes keys
     /// through the managed pipeline, where they never reach the web content, so the native WKWebView is
-    /// made the window's first responder instead.
+    /// made the window's first responder instead, and managed focus is moved off the control that held it
+    /// so that control stops acting on the keys the pipeline still routes to it.
     /// </summary>
     void FocusWebView(WebView2 webView);
 
@@ -87,6 +88,13 @@ public interface IWebViewAdapter
     /// heads, which reload through the page rather than the unimplemented CoreWebView2.Reload.
     /// </summary>
     Task ReloadAsync(CoreWebView2 coreWebView2, bool clearCache);
+
+    /// <summary>
+    /// Stops the navigation in progress. Uses CoreWebView2.Stop on the packaged Windows head. That member is
+    /// unimplemented on the Skia heads, so macOS stops through the native WKWebView and the remaining heads
+    /// fall back to window.stop(), which cannot stop a load that has not yet produced a document.
+    /// </summary>
+    Task StopAsync(CoreWebView2 coreWebView2);
 
     /// <summary>
     /// Clears the cookies, cached credentials, site data and HTTP cache of the store every WebView in the

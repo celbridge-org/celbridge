@@ -186,6 +186,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             return;
         }
 
+        // Show the destination straight away rather than waiting for NavigationStarting to report it. A
+        // document restored into a background tab navigates while its view is out of the visual tree, and
+        // the Skia heads raise no navigation event for it at all, not even once the tab is later shown, so
+        // its address bar would otherwise stay empty for the life of the document. Any redirect is picked
+        // up by the navigation events as usual.
+        ViewModel.CurrentUrl = uri.AbsoluteUri;
+
         _webView.Source = uri;
     }
 
@@ -564,9 +571,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         {
             if (ViewModel.IsNavigating)
             {
-                // Unlike the other navigation commands, Stop has no equivalent on the
-                // WebView2 control, so it drops to CoreWebView2.
-                coreWebView2.Stop();
+                // Unlike the other navigation commands, Stop has no equivalent on the WebView2 control, and
+                // the CoreWebView2 member behind it is unimplemented on the Skia heads, so it goes through
+                // the adapter.
+                await _webViewAdapter.StopAsync(coreWebView2);
             }
             else
             {
@@ -600,10 +608,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             {
                 Navigate(url);
 
-                // Move focus away from the text box so the user gets immediate
-                // visual feedback that the Enter press registered.
-                Focus(FocusState.Programmatic);
+                // Hand focus to the page the way the find bar does on close, so the next keystroke reaches
+                // the content the user just navigated to and the panel focus reflects it.
+                GiveFocusToWebContent();
             }
+
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            // Abandon the edit: restore the address the page is actually showing and return to the content.
+            AddressTextBox.Text = ViewModel.CurrentUrl;
+            GiveFocusToWebContent();
 
             e.Handled = true;
         }
@@ -1075,14 +1091,24 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    public override void FocusDocument()
+    public override bool FocusDocument()
     {
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
-        if (_webView is not null)
+        return GiveFocusToWebContent();
+    }
+
+    // Hands keyboard focus to the page through the registry, which applies native focus on macOS and reports
+    // the focus so the panel focus follows. Used by every path that finishes with the chrome and returns the
+    // user to the content. False until the WebView is created and registered.
+    private bool GiveFocusToWebContent()
+    {
+        if (_webView is null)
         {
-            _webViewFocusRegistry.GrantFocus(_webView);
+            return false;
         }
+
+        return _webViewFocusRegistry.GrantFocus(_webView);
     }
 
     private void ReleaseFocus()
@@ -1108,12 +1134,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
         // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
-        // Routing through the registry grant reports the focus too, so the panel focus reflects the page
-        // again after the find bar closes.
-        if (_webView is not null)
-        {
-            _webViewFocusRegistry.GrantFocus(_webView);
-        }
+        GiveFocusToWebContent();
     }
 
     async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)
