@@ -1,22 +1,24 @@
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// Keeps the AppKit first responder aligned with managed-panel focus on the Skia heads. A hosted WebView
-/// stays the window's first responder even after a managed Uno panel (Explorer, Inspector, Search) gains
+/// Reconciles focus on every managed panel-focus change on the macOS Skia head. A hosted WebView stays
+/// the window's first responder even after a managed Uno panel (Explorer, Inspector, Search) gains
 /// focus, so the native Edit-menu shortcuts (cut:/copy:/paste:/undo:/redo:) would route to that stale
-/// WebView instead of the managed panel. When one of those panels gains focus, or focus leaves the
-/// workspace panels entirely, this makes the window content view the first responder, so the shortcuts
-/// disable for the panel and the key equivalents fall through to Uno's own keyboard handling. macOS-only.
+/// WebView instead of the managed panel. Reconciling returns native focus to the window content when no
+/// web surface holds focus, so the shortcuts disable for the panel and the key equivalents fall through
+/// to Uno's own keyboard handling. macOS-only.
 /// </summary>
 internal static class MacOSManagedPanelResponder
 {
     // A stable recipient kept alive for the process lifetime so the subscription survives.
     private static readonly object Recipient = new();
+    private static IFocusReconciler? _focusReconciler;
     private static bool _started;
 
-    public static void Start(IMessengerService messengerService)
+    public static void Start(IMessengerService messengerService, IFocusReconciler focusReconciler)
     {
         if (!OperatingSystem.IsMacOS())
         {
@@ -29,23 +31,16 @@ internal static class MacOSManagedPanelResponder
         }
 
         _started = true;
+        _focusReconciler = focusReconciler;
         messengerService.Register<PanelFocusChangedMessage>(Recipient, OnPanelFocusChanged);
     }
 
     private static void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
     {
-        // Documents and Console host WebViews that should keep first-responder status. The other panels
-        // are managed Uno controls that are not AppKit responders. None means focus left the workspace
-        // panels entirely (e.g. the application toolbar took it), so no hosted WebView should stay the
-        // first responder either.
-        switch (message.FocusedPanel)
-        {
-            case WorkspacePanel.Explorer:
-            case WorkspacePanel.Inspector:
-            case WorkspacePanel.Search:
-            case WorkspacePanel.None:
-                MacOSWindowInterop.MakeContentViewFirstResponder();
-                break;
-        }
+        // The focus service releases the focused web surface before sending the message, so the
+        // reconciler observes the post-release state: a managed panel taking focus derives to the
+        // content view becoming first responder, and a web surface taking focus derives to that
+        // surface keeping it.
+        _focusReconciler?.Reconcile();
     }
 }

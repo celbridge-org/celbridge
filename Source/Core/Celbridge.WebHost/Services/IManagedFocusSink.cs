@@ -9,7 +9,8 @@ public interface IManagedFocusSink
 {
     /// <summary>
     /// Moves managed keyboard focus onto the sink. Returns false when the sink could not take focus, leaving
-    /// focus with the control that currently holds it.
+    /// focus with the control that currently holds it. A no-op on heads where hosted web views participate
+    /// in managed focus.
     /// </summary>
     bool TakeFocus();
 }

@@ -33,6 +33,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<IManagedFocusSink, ManagedFocusSink>();
+        services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
+        services.AddSingleton<IFocusReconciler, FocusReconciler>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();

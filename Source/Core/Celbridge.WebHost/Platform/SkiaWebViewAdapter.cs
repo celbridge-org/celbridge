@@ -12,7 +12,6 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public sealed class SkiaWebViewAdapter : IWebViewAdapter
 {
-    private readonly IManagedFocusSink _managedFocusSink;
     private readonly ILogger<SkiaWebViewAdapter> _logger;
 
     // Hidden, window-rooted host used to initialize WebView2 controls, where EnsureCoreWebView2Async never
@@ -26,11 +25,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private sealed record FindSession(string Term, bool CaseSensitive, Action<FindMatchState>? OnMatchStateChanged);
 
-    public SkiaWebViewAdapter(
-        IManagedFocusSink managedFocusSink,
-        ILogger<SkiaWebViewAdapter> logger)
+    public SkiaWebViewAdapter(ILogger<SkiaWebViewAdapter> logger)
     {
-        _managedFocusSink = managedFocusSink;
         _logger = logger;
     }
 
@@ -176,23 +172,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     {
         // On macOS programmatic managed focus flips the WebView's input routing to the managed pipeline,
         // where keys never reach the web content. Reproduce the responder state a click inside the view
-        // establishes instead: make the native WKWebView the window's first responder.
+        // establishes instead: make the native WKWebView the window's first responder. The reconciler parks
+        // managed focus before this runs, because Uno resigns the native first responder whenever it
+        // applies managed focus.
         if (OperatingSystem.IsMacOS()
             && webView.CoreWebView2 is not null)
         {
             if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
             {
                 MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
-
-                // Park first: native focus does not move managed focus, so the control the user last acted on
-                // would keep consuming the keys the input pipeline routes through the managed tree (with an
-                // Explorer row still focused after a double-click open, Enter reopens the resource and
-                // Backspace offers to delete it). Uno resigns the native first responder whenever it applies
-                // managed focus, so the parking has to happen before the web view is made first responder.
-                _managedFocusSink.TakeFocus();
-
                 MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
-
             }
             else
             {

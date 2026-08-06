@@ -68,6 +68,8 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool RequiresMacOSKeyCommandRouting => OperatingSystem.IsMacOS();
 
+    public bool HostedWebViewFocusIsNative => OperatingSystem.IsMacOS();
+
     public bool UsesPointerDrivenTabDrag
     {
         get

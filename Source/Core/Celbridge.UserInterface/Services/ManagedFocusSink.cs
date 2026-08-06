@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.WebHost;
 
 namespace Celbridge.UserInterface.Services;
@@ -10,6 +11,7 @@ namespace Celbridge.UserInterface.Services;
 public class ManagedFocusSink : IManagedFocusSink
 {
     private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IPlatformInfo _platformInfo;
     private readonly ILogger<ManagedFocusSink> _logger;
 
     private ContentControl? _sink;
@@ -17,14 +19,24 @@ public class ManagedFocusSink : IManagedFocusSink
 
     public ManagedFocusSink(
         IUserInterfaceService userInterfaceService,
+        IPlatformInfo platformInfo,
         ILogger<ManagedFocusSink> logger)
     {
         _userInterfaceService = userInterfaceService;
+        _platformInfo = platformInfo;
         _logger = logger;
     }
 
     public bool TakeFocus()
     {
+        // Parking only means something where a web surface's native focus leaves managed focus behind. On
+        // the other heads focusing the web view is itself a managed focus change, so there is nothing to
+        // park and managed focus must stay free to move to the web view.
+        if (!_platformInfo.HostedWebViewFocusIsNative)
+        {
+            return false;
+        }
+
         var sink = _sink ??= CreateSink();
         if (sink is null)
         {

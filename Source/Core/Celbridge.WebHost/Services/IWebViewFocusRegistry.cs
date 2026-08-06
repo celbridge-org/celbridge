@@ -48,13 +48,17 @@ public interface IWebViewFocusRegistry
     bool GrantFocus(WebView2 webView);
 
     /// <summary>
-    /// Re-establishes the focused surface's keyboard focus after platform housekeeping has displaced it
-    /// without a real focus change. On macOS a programmatic managed-focus re-assert (an Explorer item
-    /// container recycling during a background refresh) makes Uno resign the native first responder, which
-    /// deactivates the focused page: the caret hides and keystrokes beep. A no-op when no hosted surface
-    /// holds focus.
+    /// Whether a hosted web surface's focus report is current. The reconciler derives the desired focus
+    /// state from this.
     /// </summary>
-    void ReassertNativeFocus();
+    bool HasFocusedSurface { get; }
+
+    /// <summary>
+    /// Makes the focused surface's web view the platform keyboard focus target, with no focus report and
+    /// no DOM-side caret change (the page's caret stays exactly where the user put it). The reconciler's
+    /// native apply step; a no-op when no hosted surface holds focus.
+    /// </summary>
+    void FocusFocusedSurface();
 
     /// <summary>
     /// Delivers a native key event to the focused surface's web view, bypassing the managed pipeline.

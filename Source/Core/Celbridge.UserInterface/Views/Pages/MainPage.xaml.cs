@@ -72,7 +72,8 @@ public partial class MainPage : Page
 
         // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
         // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
-        Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
+        var focusReconciler = ServiceLocator.AcquireService<Celbridge.WebHost.IFocusReconciler>();
+        Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService, focusReconciler);
 
         // Deliver document keys the focused WKWebView would otherwise swallow: Tab to the focused web
         // surface (editor indent, or the page's own form-field navigation) instead of letting the managed
@@ -84,7 +85,7 @@ public partial class MainPage : Page
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
-        Celbridge.UserInterface.Platform.MacOSNativeFocusGuard.Start(webViewFocusRegistry, _logger);
+        Celbridge.UserInterface.Platform.MacOSNativeFocusGuard.Start(focusReconciler, _logger);
 
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.

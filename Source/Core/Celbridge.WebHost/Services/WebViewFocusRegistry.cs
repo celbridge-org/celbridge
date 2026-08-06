@@ -20,6 +20,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // another surface or panel (via the wrapped release callback in Report), and on Unregister.
     private WebViewFocusRegistration? _focusedRegistration;
 
+    // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
+    private IFocusReconciler? _focusReconciler;
+
     public WebViewFocusRegistry(
         IFocusService focusService,
         IWebViewAdapter webViewAdapter,
@@ -88,14 +91,17 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return false;
         }
 
-        // The adapter gives the web content keyboard focus per platform (native first responder on macOS, where
-        // managed focus would route keys away from the content); the optional DOM-side focus then places the
-        // caret. Reporting the focus here releases the previously focused surface immediately rather than waiting
-        // for the JS focus round trip, which a surface with no DOM-side grant never produces.
-        _webViewAdapter.FocusWebView(webView);
-        _ = registration.GrantDomFocus?.Invoke();
-
+        // Model first, then reconcile: the reconciler derives the focus to apply from the focused
+        // registration, so the report must land before it runs. Reporting also releases the previously
+        // focused surface immediately rather than waiting for the JS focus round trip, which a surface
+        // with no DOM-side grant never produces.
         Report(registration);
+
+        _focusReconciler ??= ServiceLocator.AcquireService<IFocusReconciler>();
+        _focusReconciler.Reconcile();
+
+        // The optional DOM-side focus places the caret once the surface holds keyboard focus.
+        _ = registration.GrantDomFocus?.Invoke();
 
         return true;
     }
@@ -119,7 +125,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    public void ReassertNativeFocus()
+    public bool HasFocusedSurface => _focusedRegistration is not null;
+
+    public void FocusFocusedSurface()
     {
         var registration = _focusedRegistration;
         if (registration is null)

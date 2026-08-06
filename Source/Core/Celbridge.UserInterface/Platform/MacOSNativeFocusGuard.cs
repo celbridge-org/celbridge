@@ -17,7 +17,7 @@ namespace Celbridge.UserInterface.Platform;
 /// refresh. Such a resign deactivates the focused page: its caret hides and keystrokes beep. A real focus
 /// move always raises FocusManager.GotFocus and a redundant re-assert does not, so the guard watches
 /// makeFirstResponder: on Uno's window class and, when a resign to the content view is followed by no
-/// managed focus change, restores the focused surface's native focus through the focus registry. macOS-only.
+/// managed focus change, reconciles focus, which restores the focused surface's native focus. macOS-only.
 /// </summary>
 internal static class MacOSNativeFocusGuard
 {
@@ -36,14 +36,14 @@ internal static class MacOSNativeFocusGuard
     private delegate bool OriginalMakeFirstResponder(IntPtr self, IntPtr selector, IntPtr responder);
 
     private static IntPtr _originalImplementation;
-    private static IWebViewFocusRegistry? _webViewFocusRegistry;
+    private static IFocusReconciler? _focusReconciler;
     private static Microsoft.UI.Dispatching.DispatcherQueue? _dispatcherQueue;
     private static Logging.ILogger? _logger;
     private static long _lastManagedFocusChangeAt;
     private static long _pendingResignAt;
     private static bool _started;
 
-    public static unsafe void Start(IWebViewFocusRegistry webViewFocusRegistry, Logging.ILogger logger)
+    public static unsafe void Start(IFocusReconciler focusReconciler, Logging.ILogger logger)
     {
         if (!OperatingSystem.IsMacOS())
         {
@@ -70,7 +70,7 @@ internal static class MacOSNativeFocusGuard
         }
 
         _started = true;
-        _webViewFocusRegistry = webViewFocusRegistry;
+        _focusReconciler = focusReconciler;
         _logger = logger;
         _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
@@ -132,7 +132,7 @@ internal static class MacOSNativeFocusGuard
         _dispatcherQueue?.TryEnqueue(() =>
         {
             _logger?.LogDebug("Reasserted native web-surface focus on a housekeeping focus application");
-            _webViewFocusRegistry?.ReassertNativeFocus();
+            _focusReconciler?.Reconcile();
         });
     }
 
@@ -160,10 +160,10 @@ internal static class MacOSNativeFocusGuard
                 return;
             }
 
-            // No focus change followed: the resign was housekeeping. Restore the focused surface's native
-            // focus; a no-op when no web surface holds focus.
+            // No focus change followed: the resign was housekeeping. Reconciling restores the focused
+            // surface's native focus, or re-asserts the content view when no web surface holds focus.
             _logger?.LogDebug("Reasserted native web-surface focus after a housekeeping resign");
-            _webViewFocusRegistry?.ReassertNativeFocus();
+            _focusReconciler?.Reconcile();
         });
 
         if (enqueued != true)
