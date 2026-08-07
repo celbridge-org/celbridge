@@ -23,6 +23,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
     private IFocusReconciler? _focusReconciler;
 
+    // A grant for a surface that had not registered yet, applied when that web view registers. A freshly
+    // opened document is activated before its web view finishes initializing.
+    private WebView2? _pendingGrant;
+
     public WebViewFocusRegistry(
         IFocusService focusService,
         IWebViewAdapter webViewAdapter,
@@ -57,6 +61,11 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // that raise no DOM focus event. The native monitor is the macOS equivalent; a no-op elsewhere.
         registration.WebView.GotFocus += OnWebViewGotFocus;
         _webViewFocusMonitor.Register(coreWebView, () => OnNativeFocusSignal(coreWebView));
+
+        if (ReferenceEquals(_pendingGrant, registration.WebView))
+        {
+            GrantFocus(registration.WebView);
+        }
     }
 
     public void Unregister(CoreWebView2 coreWebView)
@@ -82,28 +91,28 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    public bool GrantFocus(WebView2 webView)
+    public void GrantFocus(WebView2 webView)
     {
         var coreWebView = webView.CoreWebView2;
         if (coreWebView is null
             || !_registrations.TryGetValue(coreWebView, out var registration))
         {
-            return false;
+            // The surface is still initializing, so hold the intent until it registers. A later grant
+            // supersedes this one, so the surface the user last acted on is the one that takes focus.
+            _pendingGrant = webView;
+            _logger.LogDebug("Focus granted to a web surface that has not registered yet; deferred until it does");
+
+            return;
         }
 
-        // Model first, then reconcile: the reconciler derives the focus to apply from the focused
-        // registration, so the report must land before it runs. Reporting also releases the previously
-        // focused surface immediately rather than waiting for the JS focus round trip, which a surface
-        // with no DOM-side grant never produces.
+        _pendingGrant = null;
+
+        // Reporting applies the claim, which also releases the previously focused surface immediately
+        // rather than waiting for the JS focus round trip that a surface with no DOM-side grant never
+        // produces. The optional DOM-side focus then places the caret.
         Report(registration);
 
-        _focusReconciler ??= ServiceLocator.AcquireService<IFocusReconciler>();
-        _focusReconciler.Reconcile();
-
-        // The optional DOM-side focus places the caret once the surface holds keyboard focus.
         _ = registration.GrantDomFocus?.Invoke();
-
-        return true;
     }
 
     private void OnWebViewGotFocus(object sender, RoutedEventArgs e)
@@ -214,6 +223,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _focusedRegistration = registration;
         registration.OnFocusGained?.Invoke();
         _focusService.OnFocusReceived(registration.Panel, registration.EditTarget, () => ReleaseSurface(registration));
+
+        // Applied here rather than only on the grant path so every claim converges, however it arrived: a
+        // click landing inside a native web view reports through the monitor without any managed focus
+        // change, so without this the managed control the user last used keeps consuming keys the page
+        // should receive. The model is updated first because the reconciler derives from it.
+        _focusReconciler ??= ServiceLocator.AcquireService<IFocusReconciler>();
+        _focusReconciler.Reconcile();
     }
 
     // The release callback handed to the focus service, invoked when another surface or panel claims focus.

@@ -3,6 +3,7 @@ using Celbridge.FilePicker;
 using Celbridge.Forms;
 using Celbridge.Localization;
 using Celbridge.Navigation;
+using Celbridge.Platform;
 using Celbridge.UserInterface.Commands;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Platform;
@@ -32,7 +33,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
-        services.AddSingleton<IManagedFocusSink, ManagedFocusSink>();
+        services.AddSingleton<IManagedFocus, ManagedFocus>();
+        services.AddSingleton<IOverlayInputSuppressor, OverlayInputSuppressor>();
         services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
         services.AddSingleton<IFocusReconciler, FocusReconciler>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();

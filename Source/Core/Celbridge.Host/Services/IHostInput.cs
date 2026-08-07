@@ -14,6 +14,9 @@ public static class InputRpcMethods
     // Host to client. Asks the WebView to release its DOM focus.
     public const string ReleaseFocus = "input/releaseFocus";
 
+    // Host to client. Asks the WebView to take DOM focus back.
+    public const string GrantFocus = "input/grantFocus";
+
     // Host to client. Asks the editor to run one of its own edit commands (selectAll, undo, redo).
     public const string PerformEdit = "input/performEdit";
 
@@ -94,6 +97,14 @@ public static class HostInputExtensions
     /// </summary>
     public static Task NotifyReleaseFocusAsync(this CelbridgeHost host)
         => host.Rpc.NotifyAsync(InputRpcMethods.ReleaseFocus);
+
+    /// <summary>
+    /// Asks the WebView to take DOM focus back when this surface regains the keyboard, so typing reaches
+    /// the editor without a click into it. The client handles this generically by restoring focus to the
+    /// element it released.
+    /// </summary>
+    public static Task NotifyGrantFocusAsync(this CelbridgeHost host)
+        => host.Rpc.NotifyAsync(InputRpcMethods.GrantFocus);
 
     /// <summary>
     /// Asks the editor to run one of its own edit commands. The command is the editor command name

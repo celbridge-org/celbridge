@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -8,6 +9,9 @@ public sealed partial class DocumentToolbar : UserControl
 
     private int _currentSectionCount = 1;
     private bool _isUpdatingSelection = false;
+
+    // Held while the flyout is open, so a click on it does not also reach a web view beneath it.
+    private IDisposable? _flyoutInputScope;
 
     // Toolbar tooltip strings
     private string SplitEditorTooltipString => _stringLocalizer.GetString("DocumentToolbar_SplitEditorTooltip");
@@ -29,6 +33,20 @@ public sealed partial class DocumentToolbar : UserControl
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         UpdateMenuItemStates();
+    }
+
+    private void SplitEditorFlyout_Opened(object? sender, object e)
+    {
+        _flyoutInputScope?.Dispose();
+
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        _flyoutInputScope = overlayInputSuppressor.Suppress();
+    }
+
+    private void SplitEditorFlyout_Closed(object? sender, object e)
+    {
+        _flyoutInputScope?.Dispose();
+        _flyoutInputScope = null;
     }
 
     /// <summary>

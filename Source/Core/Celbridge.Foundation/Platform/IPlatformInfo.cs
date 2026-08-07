@@ -113,8 +113,8 @@ public interface IPlatformInfo
 
     /// <summary>
     /// Whether a hosted web view takes keyboard focus in the native responder chain without moving managed
-    /// focus, so managed focus must be parked on a sink while a web surface holds the keyboard. True on
-    /// macOS.
+    /// focus, so the managed world must yield the keyboard onto a placeholder while a web surface holds it.
+    /// True on macOS.
     /// </summary>
     bool HostedWebViewFocusIsNative { get; }
 }

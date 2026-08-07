@@ -48,6 +48,12 @@ public class PanelFocusTracker
             return;
         }
 
+        // A deliberate grant is holding the panel against the tail of the gesture that triggered it.
+        if (FocusIntent.IsPanelClaimSuppressed)
+        {
+            return;
+        }
+
         var mainContentRoot = element.XamlRoot?.Content;
         if (mainContentRoot is null)
         {
@@ -76,7 +82,7 @@ public class PanelFocusTracker
                 else if (FocusTracking.GetPreservePanelFocus(current))
                 {
                     // Focus landed on chrome marked to preserve panel focus. Such an element can hold focus
-                    // transiently (e.g. as the fallback sink during dialog teardown or a tree rebuild)
+                    // transiently (e.g. as the focus placeholder during dialog teardown or a tree rebuild)
                     // without representing a move off the panel, so preserve the current panel by not
                     // reporting.
                     return;

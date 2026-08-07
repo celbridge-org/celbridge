@@ -172,7 +172,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     {
         // On macOS programmatic managed focus flips the WebView's input routing to the managed pipeline,
         // where keys never reach the web content. Reproduce the responder state a click inside the view
-        // establishes instead: make the native WKWebView the window's first responder. The reconciler parks
+        // establishes instead: make the native WKWebView the window's first responder. The reconciler yields
         // managed focus before this runs, because Uno resigns the native first responder whenever it
         // applies managed focus.
         if (OperatingSystem.IsMacOS()

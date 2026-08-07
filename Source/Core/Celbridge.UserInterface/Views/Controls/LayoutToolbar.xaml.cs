@@ -241,9 +241,26 @@ public sealed partial class LayoutToolbar : UserControl
         e.Handled = true;
     }
 
+    // Held while the flyout is open, so a click on it does not also reach a web view beneath it.
+    private IDisposable? _flyoutInputScope;
+
     private void PanelLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         PanelLayoutFlyout.ShowAt(PanelLayoutButton);
+    }
+
+    private void PanelLayoutFlyout_Opened(object? sender, object e)
+    {
+        _flyoutInputScope?.Dispose();
+
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        _flyoutInputScope = overlayInputSuppressor.Suppress();
+    }
+
+    private void PanelLayoutFlyout_Closed(object? sender, object e)
+    {
+        _flyoutInputScope?.Dispose();
+        _flyoutInputScope = null;
     }
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)

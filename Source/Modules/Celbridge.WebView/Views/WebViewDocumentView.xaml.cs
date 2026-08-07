@@ -226,7 +226,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             // The external-URL role injects no script, so on macOS the registry's native click monitor
             // supplies the click-focus signal for content that raises no DOM focus event. This surface
             // hosts no edit target.
-            RegisterWebSurfaceFocus(_webView, editTarget: null, ReleaseFocus);
+            RegisterWebSurfaceFocus(_webView, editTarget: null, ReleaseFocus, GrantDomFocusAsync);
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
@@ -1091,29 +1091,43 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    public override bool FocusDocument()
+    public override void FocusDocument()
     {
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
-        return GiveFocusToWebContent();
+        GiveFocusToWebContent();
     }
 
     // Hands keyboard focus to the page through the registry, which applies native focus on macOS and reports
     // the focus so the panel focus follows. Used by every path that finishes with the chrome and returns the
-    // user to the content. False until the WebView is created and registered.
-    private bool GiveFocusToWebContent()
+    // user to the content.
+    private void GiveFocusToWebContent()
     {
         if (_webView is null)
         {
-            return false;
+            _logger.LogWarning("Cannot focus the page before its WebView is created");
+            return;
         }
 
-        return _webViewFocusRegistry.GrantFocus(_webView);
+        _webViewFocusRegistry.GrantFocus(_webView);
     }
 
     private void ReleaseFocus()
     {
         _ = _host?.NotifyReleaseFocusAsync();
+    }
+
+    // Native focus gives the page the keyboard but leaves no element inside it focused, so a page that was
+    // released when its tab lost focus needs the DOM focus handed back.
+    private async Task GrantDomFocusAsync()
+    {
+        var host = _host;
+        if (host is null)
+        {
+            return;
+        }
+
+        await host.NotifyGrantFocusAsync();
     }
 
     // True when the host find bar can drive this document: the WebView is live and its backend has no find UI

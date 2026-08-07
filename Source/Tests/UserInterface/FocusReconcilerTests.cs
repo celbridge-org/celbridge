@@ -7,7 +7,7 @@ namespace Celbridge.Tests.UserInterface;
 public class FocusReconcilerTests
 {
     private IWebViewFocusRegistry _webViewFocusRegistry = null!;
-    private IManagedFocusSink _managedFocusSink = null!;
+    private IManagedFocus _managedFocus = null!;
     private IHostWindowFocus _hostWindowFocus = null!;
     private FocusReconciler _focusReconciler = null!;
 
@@ -15,23 +15,37 @@ public class FocusReconcilerTests
     public void SetUp()
     {
         _webViewFocusRegistry = Substitute.For<IWebViewFocusRegistry>();
-        _managedFocusSink = Substitute.For<IManagedFocusSink>();
+        _managedFocus = Substitute.For<IManagedFocus>();
         _hostWindowFocus = Substitute.For<IHostWindowFocus>();
-        _focusReconciler = new FocusReconciler(_webViewFocusRegistry, _managedFocusSink, _hostWindowFocus);
+        _focusReconciler = new FocusReconciler(_webViewFocusRegistry, _managedFocus, _hostWindowFocus);
     }
 
     [Test]
-    public void Reconcile_WithFocusedSurface_ParksManagedFocusBeforeFocusingTheSurface()
+    public void Reconcile_WithPopupHoldingFocus_LeavesTheKeyboardWithThePopup()
+    {
+        _webViewFocusRegistry.HasFocusedSurface.Returns(true);
+        _managedFocus.IsPopupHoldingFocus.Returns(true);
+
+        _focusReconciler.Reconcile();
+
+        // Yielding managed focus would pull it out of the open popup, which then stops receiving input
+        // while still on screen.
+        _managedFocus.DidNotReceive().Yield();
+        _webViewFocusRegistry.DidNotReceive().FocusFocusedSurface();
+    }
+
+    [Test]
+    public void Reconcile_WithFocusedSurface_YieldsManagedFocusBeforeFocusingTheSurface()
     {
         _webViewFocusRegistry.HasFocusedSurface.Returns(true);
 
         _focusReconciler.Reconcile();
 
-        // Managed focus must park before the native apply: applying managed focus resigns the native
+        // Managed focus must yield before the native apply: applying managed focus resigns the native
         // first responder, so the reverse order would undo the focus being established.
         Received.InOrder(() =>
         {
-            _managedFocusSink.TakeFocus();
+            _managedFocus.Yield();
             _webViewFocusRegistry.FocusFocusedSurface();
         });
         _hostWindowFocus.DidNotReceive().FocusHostWindow();
@@ -45,7 +59,7 @@ public class FocusReconcilerTests
         _focusReconciler.Reconcile();
 
         _hostWindowFocus.Received(1).FocusHostWindow();
-        _managedFocusSink.DidNotReceive().TakeFocus();
+        _managedFocus.DidNotReceive().Yield();
         _webViewFocusRegistry.DidNotReceive().FocusFocusedSurface();
     }
 
@@ -57,7 +71,7 @@ public class FocusReconcilerTests
         _focusReconciler.Reconcile();
         _focusReconciler.Reconcile();
 
-        _managedFocusSink.Received(2).TakeFocus();
+        _managedFocus.Received(2).Yield();
         _webViewFocusRegistry.Received(2).FocusFocusedSurface();
         _hostWindowFocus.DidNotReceive().FocusHostWindow();
     }

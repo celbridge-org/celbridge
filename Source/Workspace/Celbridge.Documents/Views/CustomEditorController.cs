@@ -512,7 +512,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     // Registers this editor's web surface with the focus registry using the consumer-supplied panel identity
-    // and focus-gained side effect. The controller is the surface's edit target and owns the DOM focus release.
+    // and focus-gained side effect. The controller is the surface's edit target and owns the DOM focus
+    // release and its counterpart grant.
     private void RegisterWebSurfaceFocus()
     {
         Guard.IsNotNull(WebView);
@@ -522,6 +523,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _focusContext.Panel,
             EditTarget: this,
             ReleaseFocus: ReleaseFocus,
+            GrantDomFocus: GrantDomFocusAsync,
             OnFocusGained: _focusContext.OnFocusGained);
 
         _webViewFocusRegistry.Register(registration);
@@ -1002,21 +1004,35 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     /// <summary>
     /// Gives the editor's web content keyboard focus and reports it to the focus service.
     /// </summary>
-    public bool FocusWebView()
+    public void FocusWebView()
     {
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
         if (WebView is null)
         {
-            return false;
+            _logger.LogWarning("Cannot focus the editor's web content before its WebView is created");
+            return;
         }
 
-        return _webViewFocusRegistry.GrantFocus(WebView);
+        _webViewFocusRegistry.GrantFocus(WebView);
     }
 
     private void ReleaseFocus()
     {
         _ = Host?.NotifyReleaseFocusAsync();
+    }
+
+    // Native focus gives the page the keyboard but leaves no element inside it focused, so an editor that
+    // was released when its tab lost focus needs the DOM focus handed back or typing goes nowhere.
+    private async Task GrantDomFocusAsync()
+    {
+        var host = Host;
+        if (host is null)
+        {
+            return;
+        }
+
+        await host.NotifyGrantFocusAsync();
     }
 
     public bool CanPerformEdit(EditIntent intent)

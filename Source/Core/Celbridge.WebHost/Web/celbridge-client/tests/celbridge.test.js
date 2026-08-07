@@ -450,6 +450,49 @@ describe('Celbridge', () => {
 
             expect(body.blur).not.toHaveBeenCalled();
         });
+
+        it('restores focus to the released element when the host sends input/grantFocus', () => {
+            const { simulateNotification } = createTestClient();
+
+            const activeElement = { blur: vi.fn(), focus: vi.fn() };
+            globalThis.document = {
+                body: {},
+                activeElement,
+                contains: () => true
+            };
+
+            simulateNotification('input/releaseFocus', {});
+            simulateNotification('input/grantFocus', {});
+
+            expect(activeElement.focus).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not restore focus to an element that has left the document', () => {
+            const { simulateNotification } = createTestClient();
+
+            const activeElement = { blur: vi.fn(), focus: vi.fn() };
+            globalThis.document = {
+                body: {},
+                activeElement,
+                contains: () => false
+            };
+
+            simulateNotification('input/releaseFocus', {});
+            simulateNotification('input/grantFocus', {});
+
+            expect(activeElement.focus).not.toHaveBeenCalled();
+        });
+
+        it('does nothing on input/grantFocus when no element was released', () => {
+            const { simulateNotification } = createTestClient();
+
+            const body = { focus: vi.fn() };
+            globalThis.document = { body, activeElement: body, contains: () => true };
+
+            simulateNotification('input/grantFocus', {});
+
+            expect(body.focus).not.toHaveBeenCalled();
+        });
     });
 
     describe('open resource / open external notifications', () => {

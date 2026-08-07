@@ -198,6 +198,15 @@ internal static class MacOSWindowInterop
             return;
         }
 
+        // Re-applying this when the content view already holds first responder would resign and
+        // re-establish it, which the native focus guard observes as a fresh resign and reconciles in
+        // response, looping.
+        var firstResponder = SendMessage(window, GetSelector("firstResponder"));
+        if (firstResponder == contentView)
+        {
+            return;
+        }
+
         SendMessageVoid(window, GetSelector("makeFirstResponder:"), contentView);
     }
 

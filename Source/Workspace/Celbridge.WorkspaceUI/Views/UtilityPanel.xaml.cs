@@ -235,7 +235,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     // Selects the surface in the view model (which lights the accent optimistically) and shows its content.
-    private void ShowSurface(EditorId utilityId)
+    private void ShowSurface(EditorId utilityId, bool takeFocus = true)
     {
         if (!_contentControls.TryGetValue(utilityId, out var content))
         {
@@ -243,7 +243,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
 
         ViewModel.SelectUtility(utilityId);
-        ShowContentWithFocus(utilityId, content);
+        ShowContent(utilityId, content, takeFocus);
         NotifyActiveUtilityChanged();
     }
 
@@ -251,7 +251,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // content hosts. Keeping the outgoing content visible until focus has moved onto the incoming surface stops
     // WinUI from relocating focus to another panel when the previously focused element would otherwise be
     // collapsed. Focusing after layout (rather than this tick) lands on a control that is actually focusable.
-    private void ShowContentWithFocus(EditorId utilityId, ContentControl content)
+    private void ShowContent(EditorId utilityId, ContentControl content, bool takeFocus)
     {
         // A surface that is already visible (re-selected while another panel holds focus, e.g. after a
         // docked utility moved focus to a document) is already laid out and setting it visible again may
@@ -264,20 +264,20 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         if (wasAlreadyVisible)
         {
-            FocusShownContent(utilityId, content);
+            FinishShowingContent(utilityId, content, takeFocus);
             return;
         }
 
         void OnLayoutUpdated(object? sender, object args)
         {
             content.LayoutUpdated -= OnLayoutUpdated;
-            FocusShownContent(utilityId, content);
+            FinishShowingContent(utilityId, content, takeFocus);
         }
 
         content.LayoutUpdated += OnLayoutUpdated;
     }
 
-    private void FocusShownContent(EditorId utilityId, ContentControl content)
+    private void FinishShowingContent(EditorId utilityId, ContentControl content, bool takeFocus)
     {
         // Drop a stale attempt when a later selection superseded this one before layout ran.
         if (ViewModel.SelectedUtilityId != utilityId
@@ -286,20 +286,23 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             return;
         }
 
-        if (_focusActions.TryGetValue(utilityId, out var focusContent))
+        if (takeFocus)
         {
-            focusContent();
-        }
+            if (_focusActions.TryGetValue(utilityId, out var focusContent))
+            {
+                focusContent();
+            }
 
-        // A web-view utility's focusContent moves only native focus, so managed focus stays on the
-        // outgoing surface. Collapsing that surface below would then relocate managed focus onto
-        // unrelated chrome (a document tab), clobbering the web view's just-reported CustomUtility panel.
-        // Park managed focus on this utility's host - it carries the CustomUtility panel declaration - so
-        // the collapse has nothing to relocate. Pointer state matches the focus the host receives
-        // naturally when switching in from a managed panel, which leaves web-view typing working.
-        if (IsCustomUtility(utilityId))
-        {
-            content.Focus(FocusState.Pointer);
+            // A web-view utility's focusContent moves only native focus, so managed focus stays on the
+            // outgoing surface. Collapsing that surface below would then relocate managed focus onto
+            // unrelated chrome (a document tab), clobbering the web view's just-reported CustomUtility panel.
+            // Yield managed focus to this utility's host - it carries the CustomUtility panel declaration - so
+            // the collapse has nothing to relocate. Pointer state matches the focus the host receives
+            // naturally when switching in from a managed panel, which leaves web-view typing working.
+            if (IsCustomUtility(utilityId))
+            {
+                content.Focus(FocusState.Pointer);
+            }
         }
 
         ViewModel.ReconcileFocus(_focusService.FocusedPanel);
@@ -435,18 +438,23 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         var tag = _settings.Get(SettingCatalog.Layout.UtilityPanelSelectedUtility);
 
+        // Restoring the previously selected utility shows its surface; it is not the user choosing to work
+        // in that panel, so it claims the keyboard only as a fallback. The restored active document takes
+        // focus first and keeps it, and a workspace with no open document leaves this the sole claimant.
+        var takeFocus = _focusService.FocusedPanel == WorkspacePanel.None;
+
         if (EditorId.TryParse(tag, out var utilityId)
             && _contentControls.ContainsKey(utilityId)
             && !_dockedUtilityResources.ContainsKey(utilityId))
         {
-            ShowSurface(utilityId);
+            ShowSurface(utilityId, takeFocus);
         }
         else
         {
             // The persisted id no longer resolves: an uninstalled or disabled utility, an unexpected value, or a
             // utility that was docked during document restore (its WebView now lives in a document tab, so it
             // cannot be shown as a panel surface). Fall back to Explorer.
-            ShowSurface(BuiltInUtilityIds.Explorer);
+            ShowSurface(BuiltInUtilityIds.Explorer, takeFocus);
         }
 
         _selectionPersistenceEnabled = true;

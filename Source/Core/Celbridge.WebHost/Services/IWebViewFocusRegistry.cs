@@ -42,10 +42,10 @@ public interface IWebViewFocusRegistry
     /// <summary>
     /// Gives the surface keyboard focus (native first responder on macOS, managed focus on Windows), applies its
     /// optional DOM-side focus, and reports the focus. Used by tab clicks, document opens, the console title
-    /// bar, the find bar, and layout-mode changes. Returns false when the surface is not registered yet, so a
-    /// caller granting focus to a freshly created surface can retry.
+    /// bar, the find bar, and layout-mode changes. A surface that has not registered yet takes focus as soon as
+    /// it registers, unless a later grant supersedes it.
     /// </summary>
-    bool GrantFocus(WebView2 webView);
+    void GrantFocus(WebView2 webView);
 
     /// <summary>
     /// Whether a hosted web surface's focus report is current. The reconciler derives the desired focus

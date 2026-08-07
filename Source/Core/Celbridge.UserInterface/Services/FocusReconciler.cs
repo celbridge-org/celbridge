@@ -8,28 +8,30 @@ namespace Celbridge.UserInterface.Services;
 public class FocusReconciler : IFocusReconciler
 {
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
-    private readonly IManagedFocusSink _managedFocusSink;
+    private readonly IManagedFocus _managedFocus;
     private readonly IHostWindowFocus _hostWindowFocus;
 
     public FocusReconciler(
         IWebViewFocusRegistry webViewFocusRegistry,
-        IManagedFocusSink managedFocusSink,
+        IManagedFocus managedFocus,
         IHostWindowFocus hostWindowFocus)
     {
         _webViewFocusRegistry = webViewFocusRegistry;
-        _managedFocusSink = managedFocusSink;
+        _managedFocus = managedFocus;
         _hostWindowFocus = hostWindowFocus;
     }
 
     public void Reconcile()
     {
-        var desiredFocus = FocusDerivation.Derive(_webViewFocusRegistry.HasFocusedSurface);
+        var desiredFocus = FocusDerivation.Derive(
+            _webViewFocusRegistry.HasFocusedSurface,
+            _managedFocus.IsPopupHoldingFocus);
 
-        if (desiredFocus.ParkManagedFocus)
+        if (desiredFocus.YieldManagedFocus)
         {
-            // Managed focus first: applying managed focus resigns the native first responder, so parking
+            // Managed focus first: applying managed focus resigns the native first responder, so yielding
             // after the native step would undo the focus it establishes.
-            _managedFocusSink.TakeFocus();
+            _managedFocus.Yield();
         }
 
         if (desiredFocus.FocusWebSurface)
