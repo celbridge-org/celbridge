@@ -42,17 +42,32 @@ public class FocusServiceTests
     }
 
     [Test]
-    public void OnFocusReceived_SamePanelWithoutCallbacks_DoesNotReleaseOrClear()
+    public void OnFocusReceived_SamePanelFromManagedChrome_ReleasesSurfaceAndKeepsEditTarget()
     {
         var releaseCount = 0;
         var target = Substitute.For<IEditTarget>();
         _focusService.OnFocusReceived(WorkspacePanel.Documents, target, () => releaseCount++);
 
-        // A bubbled report for the same panel carries no target or release callback and must not wipe either.
+        // Only a hosted surface supplies a release callback, so a claim without one is managed chrome in the
+        // same panel (the URL bar, the find bar) taking the keyboard off that surface. The edit context still
+        // follows the surface, so Edit commands keep routing to it.
         _focusService.OnFocusReceived(WorkspacePanel.Documents);
 
-        releaseCount.Should().Be(0);
+        releaseCount.Should().Be(1);
         _focusService.EditTarget.Should().Be(target);
+    }
+
+    [Test]
+    public void OnFocusReceived_SamePanelFromManagedChromeRepeatedly_ReleasesTheSurfaceOnce()
+    {
+        var releaseCount = 0;
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, target, () => releaseCount++);
+
+        _focusService.OnFocusReceived(WorkspacePanel.Documents);
+        _focusService.OnFocusReceived(WorkspacePanel.Documents);
+
+        releaseCount.Should().Be(1);
     }
 
     [Test]

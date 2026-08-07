@@ -1,5 +1,6 @@
 using Celbridge.Search.ViewModels;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.Services;
 using Windows.System;
 
 namespace Celbridge.Search.Views;
@@ -24,6 +25,12 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         // Subscribe to flyout opening events to populate history items
         SearchHistoryFlyout.Opening += OnSearchHistoryFlyoutOpening;
         ReplaceHistoryFlyout.Opening += OnReplaceHistoryFlyoutOpening;
+
+        // A long history list reaches past the panel into the document region, where a hosted web view
+        // would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(SearchHistoryFlyout);
+        overlayInputSuppressor.SuppressWhileOpen(ReplaceHistoryFlyout);
     }
 
     private void OnSearchHistoryFlyoutOpening(object? sender, object e)
@@ -201,9 +208,8 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     public void FocusSearchInput()
     {
-        // Pointer focus state so the central PanelFocusTracker reports the panel (it ignores Programmatic
-        // focus). Used when a deliberate gesture (utility-rail selection, panel title-bar click) should
-        // move keyboard focus into the search box.
+        // A deliberate gesture (utility-rail selection, panel title-bar click) moving keyboard focus
+        // into the search box, so the central PanelFocusTracker reports the panel.
         SearchTextBox.Focus(FocusState.Pointer);
         SearchTextBox.SelectAll();
     }

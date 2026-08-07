@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.Services;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 
@@ -101,6 +102,10 @@ public partial class DocumentTab : TabViewItem
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
+
+        // The context menu opens over the document region, where a hosted web view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(TabContextMenu);
 
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
         CloseOthersMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseOthers");

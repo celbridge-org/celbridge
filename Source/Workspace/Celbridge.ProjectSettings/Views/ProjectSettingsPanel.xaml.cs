@@ -51,16 +51,10 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
         }
     }
 
+    // Focuses the panel so the workspace reports Project Settings as the focused panel and lights its
+    // rail button. Serves the deliberate gestures (rail selection, header and tab clicks) and the focus
+    // service's post-dialog restore, which re-reports the same panel as a no-op.
     public void FocusPanel()
-    {
-        Focus(FocusState.Programmatic);
-    }
-
-    // Focuses the panel in response to a click on its chrome (the header or a section tab) so the workspace
-    // reports Project Settings as the focused panel and lights its rail button. Uses Pointer focus rather
-    // than the Programmatic focus of FocusPanel, which the focus tracker ignores because it is reserved for
-    // restoration.
-    private void FocusPanelFromClick()
     {
         Focus(FocusState.Pointer);
     }
@@ -72,12 +66,12 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
 
     private void PanelHeader_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        FocusPanelFromClick();
+        FocusPanel();
     }
 
     private void NavTab_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        FocusPanelFromClick();
+        FocusPanel();
 
         if (sender is FrameworkElement element
             && element.Tag is string tag

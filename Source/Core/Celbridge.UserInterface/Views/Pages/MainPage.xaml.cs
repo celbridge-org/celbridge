@@ -1,8 +1,10 @@
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.UserInterface.Views.Controls;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Windows.System;
 
@@ -72,29 +74,34 @@ public partial class MainPage : Page
 
         // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
         // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
-        Celbridge.UserInterface.Platform.MacOSManagedPanelResponder.Start(_messengerService);
+        var focusReconciler = ServiceLocator.AcquireService<IFocusReconciler>();
+        MacOSManagedPanelResponder.Start(_messengerService, focusReconciler);
 
         // Deliver document keys the focused WKWebView would otherwise swallow: Tab to the focused web
         // surface (editor indent, or the page's own form-field navigation) instead of letting the managed
         // focus loop move focus out of it, and Command+W / Command+Shift+W to the close-document shortcuts.
         // macOS-only. A no-op elsewhere.
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
-        var webViewFocusRegistry = ServiceLocator.AcquireService<Celbridge.WebHost.IWebViewFocusRegistry>();
-        Celbridge.UserInterface.Platform.MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, _logger);
+        var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
+        MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
-        Celbridge.UserInterface.Platform.MacOSNativeFocusGuard.Start(webViewFocusRegistry, _logger);
+        MacOSFirstResponderMonitor.Start(focusReconciler, _logger);
+
+        // Let overlays take the clicks that land over a hosted web view, which would otherwise act on them
+        // as well as the overlay. macOS-only. A no-op elsewhere.
+        MacOSWebViewInputSuppressor.Start(_logger);
 
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.
-        Celbridge.UserInterface.Platform.MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
+        MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
         // Register the navigation handler
-        var navigationService = _navigationService as Celbridge.UserInterface.Services.NavigationService;
+        var navigationService = _navigationService as NavigationService;
         Guard.IsNotNull(navigationService);
         navigationService.SetNavigateHandler(NavigateToPage);
 
@@ -112,6 +119,14 @@ public partial class MainPage : Page
         rootContent.AddHandler(
             UIElement.KeyDownEvent,
             new Microsoft.UI.Xaml.Input.KeyEventHandler(OnRootContentKeyDown),
+            handledEventsToo: true);
+
+        // Any press ends a grant's hold on the focused panel: what follows is the user's new intent rather
+        // than the tail of the gesture the grant was defending against. Registered on the root with
+        // handledEventsToo so a control that handles the press cannot hide it.
+        rootContent.AddHandler(
+            UIElement.PointerPressedEvent,
+            new Microsoft.UI.Xaml.Input.PointerEventHandler(OnRootContentPointerPressed),
             handledEventsToo: true);
     }
 
@@ -137,15 +152,22 @@ public partial class MainPage : Page
         }
     }
 
+    private void OnRootContentPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        FocusIntent.EndPanelClaimSuppression();
+    }
+
     private void OnRootContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
+        FocusIntent.EndPanelClaimSuppression();
+
         // Uno dispatches Backspace and Enter as managed KeyDown events while a web surface holds focus,
         // unlike the other editing keys, so the router delivers them to the surface from here. A key a
         // managed text control has handled or holds keyboard focus for (the address box, the find bar) is
         // left to that control: forwarding it too would deliver the key twice. See MacOSKeyCommandRouter.
         if (!e.Handled &&
             !IsTextBoxFocused() &&
-            Celbridge.UserInterface.Platform.MacOSKeyCommandRouter.TryForwardManagedEditingKey(e.Key))
+            MacOSKeyCommandRouter.TryForwardManagedEditingKey(e.Key))
         {
             e.Handled = true;
             return;

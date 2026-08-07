@@ -65,9 +65,9 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         return Result.Ok();
     }
 
-    public override bool FocusDocument()
+    public override void FocusDocument()
     {
-        return _controller.FocusWebView();
+        _controller.FocusWebView();
     }
 
     public override async Task PrepareToClose()

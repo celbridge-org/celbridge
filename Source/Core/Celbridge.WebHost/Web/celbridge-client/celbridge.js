@@ -137,6 +137,13 @@ export class Celbridge {
             blurActiveElement();
         });
 
+        // Hand focus back to whatever was released when this surface last lost the keyboard. Without it a
+        // surface that is re-activated has page focus but no focused element, so typing goes nowhere until
+        // the user clicks into it. Editors that focus themselves on load only appear to work.
+        this.#transport.addEventListener('input/grantFocus', () => {
+            restoreBlurredElement();
+        });
+
         // At runtime the host delivers the capability context over the bridge, so it stays empty here until
         // ready() fetches it via host/getContext. A context provided up front via constructor options
         // short-circuits that fetch and is read here — used by tests and embedders.
@@ -416,6 +423,11 @@ function normalizeContext(raw) {
     };
 }
 
+// The element released by the last blurActiveElement call, so focus can be handed back to it when the
+// host says this surface has the keyboard again. Cleared once restored, and ignored if the element has
+// since left the document (an editor rebuilt between the two).
+let lastBlurredElement = null;
+
 /**
  * Blurs the document's active element so an editor's caret stops when focus moves to another panel.
  * No-ops outside a browser (e.g. the test environment) or when nothing is focused.
@@ -426,8 +438,28 @@ function blurActiveElement() {
     }
     const active = document.activeElement;
     if (active && active !== document.body && typeof active.blur === 'function') {
+        lastBlurredElement = active;
         active.blur();
     }
+}
+
+/**
+ * Restores focus to the element blurActiveElement released, so a surface handed the keyboard back has a
+ * focused element again. No-ops when nothing was released or the element has left the document.
+ */
+function restoreBlurredElement() {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    const element = lastBlurredElement;
+    lastBlurredElement = null;
+    if (!element || typeof element.focus !== 'function') {
+        return;
+    }
+    if (typeof document.contains === 'function' && !document.contains(element)) {
+        return;
+    }
+    element.focus();
 }
 
 function readStringMap(source) {

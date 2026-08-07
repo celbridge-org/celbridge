@@ -231,43 +231,32 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     // Gives an explicitly activated document keyboard focus: tab clicks, drops, and opens all route here,
     // so keys follow the document the user just acted on rather than staying with the panel the action was
-    // issued from. The first attempt is delayed past the interaction burst that initiated the activation: a
-    // double-click's trailing focus events otherwise re-claim the originating panel milliseconds after the
-    // grant, leaving keys routed to it. Later attempts retry briefly because a freshly opened view's web
-    // surface may still be initializing.
+    // issued from. A view whose web surface is still initializing takes focus when it registers, and the
+    // trailing focus events of the interaction that activated the document are reconciled away, so neither
+    // needs waiting out here.
     private void FocusActivatedDocument(ResourceKey fileResource)
     {
-        var attemptsRemaining = 10;
-
-        void ScheduleAttempt()
-        {
-            var attemptTimer = DispatcherQueue.CreateTimer();
-            attemptTimer.Interval = TimeSpan.FromMilliseconds(250);
-            attemptTimer.IsRepeating = false;
-            attemptTimer.Tick += (_, _) => TryFocus();
-            attemptTimer.Start();
-        }
-
-        void TryFocus()
-        {
-            var location = SectionContainer.FindDocumentTab(fileResource);
-            var documentView = location?.Tab.Content as IDocumentView;
-            if (documentView is null)
+        // Queued below the gesture that asked for the activation. Opening runs as a command, so it can
+        // complete while the originating gesture's own focus events are still being dispatched: a
+        // double-click in the Explorer finishes claiming the tree after the document has taken focus,
+        // and the keys then go to the tree while the document looks focused.
+        DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
             {
-                return;
-            }
+                var location = SectionContainer.FindDocumentTab(fileResource);
+                var documentView = location?.Tab.Content as IDocumentView;
+                if (documentView is null)
+                {
+                    return;
+                }
 
-            attemptsRemaining--;
-            if (documentView.FocusDocument() ||
-                attemptsRemaining <= 0)
-            {
-                return;
-            }
+                documentView.FocusDocument();
 
-            ScheduleAttempt();
-        }
-
-        ScheduleAttempt();
+                // Hold the panel against the rest of the gesture's focus events, which can still arrive
+                // after the document has taken focus.
+                FocusIntent.SuppressPanelClaimsUntilNextInput();
+            });
     }
 
     private void OnToolbarSectionCountChangeRequested(int requestedCount)

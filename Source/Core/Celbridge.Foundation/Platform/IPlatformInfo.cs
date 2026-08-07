@@ -110,4 +110,11 @@ public interface IPlatformInfo
     /// beep on them. True on macOS.
     /// </summary>
     bool RequiresMacOSKeyCommandRouting { get; }
+
+    /// <summary>
+    /// Whether a hosted web view takes keyboard focus in the native responder chain without moving managed
+    /// focus, so the managed world must yield the keyboard onto a placeholder while a web surface holds it.
+    /// True on macOS.
+    /// </summary>
+    bool HostedWebViewFocusIsNative { get; }
 }

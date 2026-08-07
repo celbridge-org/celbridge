@@ -1,3 +1,4 @@
+using Celbridge.UserInterface.Services;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -27,6 +28,10 @@ public sealed partial class DocumentToolbar : UserControl
         InitializeComponent();
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+
+        // The flyout opens over the document region, where a hosted web view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(SplitEditorFlyout);
 
         UpdateMenuItemStates();
     }

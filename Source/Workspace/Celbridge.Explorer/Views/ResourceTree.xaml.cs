@@ -5,7 +5,9 @@ using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
 using Celbridge.Explorer.ViewModels;
 using Celbridge.Platform;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.ContextMenu;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Windows.Foundation;
@@ -53,6 +55,11 @@ public sealed partial class ResourceTree : UserControl
 
         _listPointerPressedHandler = ResourceListView_PointerPressed;
         ConfigurePointerDrag();
+
+        // A context menu opened near the panel edge reaches into the document region, where a hosted web
+        // view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(ResourceContextMenu);
 
         Loaded += ResourceTree_Loaded;
         Unloaded += ResourceTree_Unloaded;
@@ -169,9 +176,8 @@ public sealed partial class ResourceTree : UserControl
 
     public void FocusTree()
     {
-        // Pointer focus state so the central PanelFocusTracker reports the panel (it ignores Programmatic
-        // focus). Used when a deliberate gesture (utility-rail selection, panel title-bar click) should
-        // move keyboard focus into the tree.
+        // A deliberate gesture (utility-rail selection, panel title-bar click) moving keyboard focus
+        // into the tree, so the central PanelFocusTracker reports the panel.
         ResourceListView.Focus(FocusState.Pointer);
     }
 
@@ -409,7 +415,7 @@ public sealed partial class ResourceTree : UserControl
         }
 
         // Ensure ListView keeps focus for keyboard navigation
-        ResourceListView.Focus(FocusState.Programmatic);
+        FocusIntent.RestoreFocus(ResourceListView);
     }
 
     private IFolderResource ResolveDropTargetFolder(IResource? resource)

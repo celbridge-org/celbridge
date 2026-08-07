@@ -1,5 +1,6 @@
 using Celbridge.Navigation;
 using Celbridge.Platform;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
@@ -22,6 +23,10 @@ public sealed partial class NavigationToolbar : UserControl
         ViewModel = ServiceLocator.AcquireService<NavigationToolbarViewModel>();
 
         this.DataContext = ViewModel;
+
+        // The menu opens over the document region, where a hosted web view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(MainMenuFlyout);
 
         Loaded += OnNavigationToolbar_Loaded;
         Unloaded += OnNavigationToolbar_Unloaded;

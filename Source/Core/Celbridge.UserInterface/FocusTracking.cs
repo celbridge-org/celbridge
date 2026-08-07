@@ -46,6 +46,30 @@ public static class FocusTracking
     }
 
     /// <summary>
+    /// Whether the element is hosted in a popup (a flyout, context menu or content dialog) rather than in
+    /// the window's main content. A popup hosts its content in a tree of its own, so the walk towards the
+    /// root never passes the XamlRoot's content.
+    /// </summary>
+    public static bool IsPopupHosted(UIElement element)
+    {
+        var mainContentRoot = element.XamlRoot?.Content;
+        if (mainContentRoot is null)
+        {
+            return false;
+        }
+
+        foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
+        {
+            if (ReferenceEquals(ancestor, mainContentRoot))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// The edit target that focus reports carry when this element's Panel declaration classifies the
     /// focused element. Set in code by panels that expose an edit target.
     /// </summary>

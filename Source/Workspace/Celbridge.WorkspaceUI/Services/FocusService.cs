@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.UserInterface;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -99,7 +100,24 @@ public class FocusService : IFocusService
         if (onReleaseFocus is not null)
         {
             _releaseFocusedSurface = onReleaseFocus;
+            return;
         }
+
+        // A claim with no release callback comes from a managed control rather than a hosted surface, so
+        // managed chrome has taken the keyboard inside the panel a web surface holds it for: the URL bar
+        // and the find bar both sit in the Documents panel. That is a move off the surface even though the
+        // panel is unchanged, so release it. Without this the surface stays the focused one and focus
+        // reconciliation hands the keyboard straight back, leaving the chrome unfocusable.
+        var releaseFocusedSurface = _releaseFocusedSurface;
+        if (releaseFocusedSurface is null)
+        {
+            return;
+        }
+
+        _releaseFocusedSurface = null;
+        releaseFocusedSurface.Invoke();
+
+        _logger.LogDebug("Released the focused surface in {Panel} to managed chrome", panel);
     }
 
     public void ClearFocus()
@@ -143,5 +161,9 @@ public class FocusService : IFocusService
         // The destination page will take focus; clearing here makes the workspace deterministically show no
         // focused panel on return, rather than depending on whether that page grabs focus.
         ClearFocus();
+
+        // The interaction state the tracker consults is dropped on the same boundary, so a hold or an open
+        // popup left behind by the outgoing workspace cannot suppress focus reporting in the next one.
+        FocusIntent.Reset();
     }
 }

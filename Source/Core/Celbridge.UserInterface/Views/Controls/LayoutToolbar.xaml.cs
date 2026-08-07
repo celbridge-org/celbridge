@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Platform;
 using Celbridge.Settings;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
@@ -36,6 +37,10 @@ public sealed partial class LayoutToolbar : UserControl
         _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
         _featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
+
+        // The flyout opens over the document region, where a hosted web view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(PanelLayoutFlyout);
 
         Loaded += LayoutToolbar_Loaded;
         Unloaded += LayoutToolbar_Unloaded;

@@ -2,6 +2,7 @@ using Celbridge.Inspector.Models;
 using Celbridge.Inspector.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Platform;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using System.Collections.ObjectModel;
@@ -219,7 +220,7 @@ public partial class ComponentListView : UserControl, IInspector
             textBlock.Visibility = Visibility.Collapsed;
             textBox.Visibility = Visibility.Visible;
 
-            textBox.Focus(FocusState.Programmatic);
+            FocusIntent.RestoreFocus(textBox);
         }
 
         var menuButton = parentGrid.Children.OfType<Button>().FirstOrDefault();
@@ -306,7 +307,7 @@ public partial class ComponentListView : UserControl, IInspector
             if (listViewItem is not null)
             {
                 listViewItem.IsSelected = true;
-                listViewItem.Focus(FocusState.Programmatic);
+                FocusIntent.RestoreFocus(listViewItem);
             }
         }
     }

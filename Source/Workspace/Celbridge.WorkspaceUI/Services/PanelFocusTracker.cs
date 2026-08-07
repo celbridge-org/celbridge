@@ -38,15 +38,18 @@ public class PanelFocusTracker
             return;
         }
 
-        // Only user-driven focus (Pointer, Keyboard) reports a panel. Programmatic focus is the app
-        // moving focus for itself, and the caller already knows what it did: intra-panel restoration
-        // (re-focusing a list item after a rename, a dialog auto-focusing its first field) would only
-        // echo the current panel, and programmatically focusing a hosted WebView is the broken managed
-        // routing path we avoid on macOS anyway. Web surfaces report their real focus through the
-        // web-view focus registry instead. Guard on "not Programmatic" rather than "is Pointer or
-        // Keyboard" because real clicks can transition through Unfocused.
-        if (element is Control control &&
-            control.FocusState == FocusState.Programmatic)
+        // Focus the application restores for its own housekeeping (re-focusing a list item after a
+        // tree rebuild, returning focus after an inline edit) must not be reclassified as the user
+        // moving panels. FocusState cannot carry that distinction because Uno reports programmatic
+        // focus back as Pointer, so restoration call sites declare themselves through FocusIntent.
+        // Web surfaces report their real focus through the web-view focus registry, not here.
+        if (FocusIntent.IsRestorationInProgress)
+        {
+            return;
+        }
+
+        // A deliberate grant is holding the panel against the tail of the gesture that triggered it.
+        if (FocusIntent.IsPanelClaimSuppressed)
         {
             return;
         }
@@ -79,7 +82,7 @@ public class PanelFocusTracker
                 else if (FocusTracking.GetPreservePanelFocus(current))
                 {
                     // Focus landed on chrome marked to preserve panel focus. Such an element can hold focus
-                    // transiently (e.g. as the fallback sink during dialog teardown or a tree rebuild)
+                    // transiently (e.g. as the focus placeholder during dialog teardown or a tree rebuild)
                     // without representing a move off the panel, so preserve the current panel by not
                     // reporting.
                     return;
