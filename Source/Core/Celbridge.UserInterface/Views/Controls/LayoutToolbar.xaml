@@ -22,9 +22,7 @@
                 Background="Transparent"
                 BorderThickness="0">
             <Button.Flyout>
-                <Flyout x:Name="PanelLayoutFlyout" Placement="Bottom"
-                        Opened="PanelLayoutFlyout_Opened"
-                        Closed="PanelLayoutFlyout_Closed">
+                <Flyout x:Name="PanelLayoutFlyout" Placement="Bottom">
                     <StackPanel Width="250" Spacing="8">
                         <!-- Window Mode Selection -->
                         <TextBlock x:Name="WindowModeHeader" 

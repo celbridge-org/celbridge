@@ -7,6 +7,7 @@ using Celbridge.Explorer.ViewModels;
 using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.ContextMenu;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Windows.Foundation;
@@ -54,6 +55,11 @@ public sealed partial class ResourceTree : UserControl
 
         _listPointerPressedHandler = ResourceListView_PointerPressed;
         ConfigurePointerDrag();
+
+        // A context menu opened near the panel edge reaches into the document region, where a hosted web
+        // view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(ResourceContextMenu);
 
         Loaded += ResourceTree_Loaded;
         Unloaded += ResourceTree_Unloaded;

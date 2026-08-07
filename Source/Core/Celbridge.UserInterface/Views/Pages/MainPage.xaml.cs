@@ -75,7 +75,7 @@ public partial class MainPage : Page
         // Keep the AppKit first responder aligned with managed-panel focus so the native Edit-menu
         // shortcuts fall through to Uno's keyboard handling. macOS-only. A no-op elsewhere.
         var focusReconciler = ServiceLocator.AcquireService<IFocusReconciler>();
-MacOSManagedPanelResponder.Start(_messengerService, focusReconciler);
+        MacOSManagedPanelResponder.Start(_messengerService, focusReconciler);
 
         // Deliver document keys the focused WKWebView would otherwise swallow: Tab to the focused web
         // surface (editor indent, or the page's own form-field navigation) instead of letting the managed
@@ -83,19 +83,19 @@ MacOSManagedPanelResponder.Start(_messengerService, focusReconciler);
         // macOS-only. A no-op elsewhere.
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
-MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, _logger);
+        MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
-MacOSFirstResponderMonitor.Start(focusReconciler, _logger);
+        MacOSFirstResponderMonitor.Start(focusReconciler, _logger);
 
         // Let overlays take the clicks that land over a hosted web view, which would otherwise act on them
         // as well as the overlay. macOS-only. A no-op elsewhere.
-MacOSWebViewInputSuppressor.Start(_logger);
+        MacOSWebViewInputSuppressor.Start(_logger);
 
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.
-MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
+        MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
@@ -167,7 +167,7 @@ MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
         // left to that control: forwarding it too would deliver the key twice. See MacOSKeyCommandRouter.
         if (!e.Handled &&
             !IsTextBoxFocused() &&
-    MacOSKeyCommandRouter.TryForwardManagedEditingKey(e.Key))
+            MacOSKeyCommandRouter.TryForwardManagedEditingKey(e.Key))
         {
             e.Handled = true;
             return;

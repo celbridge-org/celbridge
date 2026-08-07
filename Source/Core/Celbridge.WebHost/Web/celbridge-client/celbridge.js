@@ -423,15 +423,15 @@ function normalizeContext(raw) {
     };
 }
 
-/**
- * Blurs the document's active element so an editor's caret stops when focus moves to another panel.
- * No-ops outside a browser (e.g. the test environment) or when nothing is focused.
- */
 // The element released by the last blurActiveElement call, so focus can be handed back to it when the
 // host says this surface has the keyboard again. Cleared once restored, and ignored if the element has
 // since left the document (an editor rebuilt between the two).
 let lastBlurredElement = null;
 
+/**
+ * Blurs the document's active element so an editor's caret stops when focus moves to another panel.
+ * No-ops outside a browser (e.g. the test environment) or when nothing is focused.
+ */
 function blurActiveElement() {
     if (typeof document === 'undefined') {
         return;
@@ -443,6 +443,10 @@ function blurActiveElement() {
     }
 }
 
+/**
+ * Restores focus to the element blurActiveElement released, so a surface handed the keyboard back has a
+ * focused element again. No-ops when nothing was released or the element has left the document.
+ */
 function restoreBlurredElement() {
     if (typeof document === 'undefined') {
         return;

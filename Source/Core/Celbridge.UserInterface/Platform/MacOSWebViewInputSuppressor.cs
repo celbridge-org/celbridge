@@ -20,6 +20,9 @@ internal static class MacOSWebViewInputSuppressor
     private static extern IntPtr class_getInstanceMethod(IntPtr classHandle, IntPtr selector);
 
     [DllImport(LibObjC)]
+    private static extern IntPtr method_getImplementation(IntPtr method);
+
+    [DllImport(LibObjC)]
     private static extern IntPtr method_setImplementation(IntPtr method, IntPtr implementation);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -31,7 +34,9 @@ internal static class MacOSWebViewInputSuppressor
 
     private delegate IntPtr OriginalHitTest(IntPtr self, IntPtr selector, CGPoint point);
 
-    private static IntPtr _originalImplementation;
+    // Marshalled once at startup rather than per call: hitTest: runs on every mouse move, for every hosted
+    // web view.
+    private static OriginalHitTest? _originalHitTest;
     private static Logging.ILogger? _logger;
     private static bool _started;
 
@@ -70,8 +75,12 @@ internal static class MacOSWebViewInputSuppressor
         _started = true;
         _logger = logger;
 
+        // Captured before the hook is installed, so the hook can never run without something to call.
+        _originalHitTest = Marshal.GetDelegateForFunctionPointer<OriginalHitTest>(
+            method_getImplementation(method));
+
         var hook = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, CGPoint, IntPtr>)&HitTestHook;
-        _originalImplementation = method_setImplementation(method, hook);
+        method_setImplementation(method, hook);
     }
 
     /// <summary>
@@ -86,21 +95,14 @@ internal static class MacOSWebViewInputSuppressor
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static IntPtr HitTestHook(IntPtr self, IntPtr selector, CGPoint point)
     {
-        // Runs inside AppKit's hit testing, on every mouse move. Never let an exception unwind into native
-        // code, and keep the non-suppressed path to a single volatile read.
-        try
+        // Runs inside AppKit's hit testing, on every mouse move, so the whole hook is a volatile read and a
+        // call through a delegate marshalled at startup. Neither can throw into native code.
+        if (Volatile.Read(ref _suppressionCount) > 0)
         {
-            if (Volatile.Read(ref _suppressionCount) > 0)
-            {
-                return IntPtr.Zero;
-            }
-        }
-        catch
-        {
+            return IntPtr.Zero;
         }
 
-        var original = Marshal.GetDelegateForFunctionPointer<OriginalHitTest>(_originalImplementation);
-        return original(self, selector, point);
+        return _originalHitTest!(self, selector, point);
     }
 
     private sealed class SuppressionScope : IDisposable

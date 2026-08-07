@@ -45,7 +45,7 @@ public static class FocusIntent
     /// </summary>
     public static void Reset()
     {
-        _panelClaimSuppressed = false;
+        EndPanelClaimSuppression();
     }
 
     /// <summary>

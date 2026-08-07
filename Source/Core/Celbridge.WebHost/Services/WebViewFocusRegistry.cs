@@ -24,7 +24,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     private IFocusReconciler? _focusReconciler;
 
     // A grant for a surface that had not registered yet, applied when that web view registers. A freshly
-    // opened document is activated before its web view finishes initializing.
+    // opened document is activated before its web view finishes initializing. Dropped when the user moves
+    // focus elsewhere in the meantime, and when the web view is torn down before it ever registers.
     private WebView2? _pendingGrant;
 
     public WebViewFocusRegistry(
@@ -62,10 +63,24 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         registration.WebView.GotFocus += OnWebViewGotFocus;
         _webViewFocusMonitor.Register(coreWebView, () => OnNativeFocusSignal(coreWebView));
 
-        if (ReferenceEquals(_pendingGrant, registration.WebView))
+        if (!ReferenceEquals(_pendingGrant, registration.WebView))
         {
-            GrantFocus(registration.WebView);
+            return;
         }
+
+        _pendingGrant = null;
+
+        // The grant was issued for a panel the user has since moved away from, so applying it now would
+        // pull the keyboard back off whatever they turned to while the surface was initializing.
+        if (_focusService.FocusedPanel != registration.Panel)
+        {
+            _logger.LogDebug(
+                "Dropped a deferred focus grant: focus moved to {Panel} while the surface was initializing",
+                _focusService.FocusedPanel);
+            return;
+        }
+
+        GrantFocus(registration.WebView);
     }
 
     public void Unregister(CoreWebView2 coreWebView)
@@ -73,6 +88,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         if (!_registrations.Remove(coreWebView, out var registration))
         {
             return;
+        }
+
+        // A web view torn down before a deferred grant reached it must not keep the intent alive: web views
+        // are pooled, so the same instance reacquired for another document would take the stale grant.
+        if (ReferenceEquals(_pendingGrant, registration.WebView))
+        {
+            _pendingGrant = null;
         }
 
         if (ReferenceEquals(_focusedRegistration, registration))

@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Navigation;
 using Celbridge.Platform;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
@@ -28,6 +29,10 @@ public sealed partial class ProjectSwitcher : UserControl
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
 
         this.DataContext = ViewModel;
+
+        // The menu drops down over the document region, where a hosted web view would take the click too.
+        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
+        overlayInputSuppressor.SuppressWhileOpen(RecentProjectsFlyout);
 
         Loaded += OnProjectSwitcher_Loaded;
         Unloaded += OnProjectSwitcher_Unloaded;

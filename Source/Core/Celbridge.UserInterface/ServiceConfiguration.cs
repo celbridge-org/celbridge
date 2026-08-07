@@ -3,7 +3,6 @@ using Celbridge.FilePicker;
 using Celbridge.Forms;
 using Celbridge.Localization;
 using Celbridge.Navigation;
-using Celbridge.Platform;
 using Celbridge.UserInterface.Commands;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Platform;

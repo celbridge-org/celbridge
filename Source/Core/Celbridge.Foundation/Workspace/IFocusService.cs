@@ -24,7 +24,9 @@ public interface IFocusService
     /// <summary>
     /// Handles a panel receiving focus: records it as the focused panel and invokes the previous surface's
     /// release callback. A claim that carries a target replaces the edit target; a target-less claim leaves
-    /// the edit target in place. Both target and onReleaseFocus are optional.
+    /// the edit target in place. Both target and onReleaseFocus are optional. Only a hosted surface supplies
+    /// a release callback, so a claim without one that names the panel a surface already holds is managed
+    /// chrome (a URL bar, a find bar) taking the keyboard off that surface, and releases it.
     /// </summary>
     void OnFocusReceived(WorkspacePanel panel, IEditTarget? target = null, Action? onReleaseFocus = null);
 

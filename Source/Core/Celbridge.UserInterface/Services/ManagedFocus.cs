@@ -37,27 +37,27 @@ public class ManagedFocus : IManagedFocus
         }
     }
 
-    public bool Yield()
+    public void Yield()
     {
         // Yielding only means something where a web surface's native focus leaves managed focus behind. On
         // the other heads focusing the web view is itself a managed focus change, so there is nothing to
         // yield and managed focus must stay free to move to the web view.
         if (!_platformInfo.HostedWebViewFocusIsNative)
         {
-            return false;
+            return;
         }
 
         var placeholder = _placeholder ??= CreatePlaceholder();
         if (placeholder is null)
         {
-            return false;
+            return;
         }
 
         // Re-applying managed focus the placeholder already holds makes Uno resign the web surface's
         // native focus again, which the first responder monitor reconciles by yielding again, looping.
         if (ReferenceEquals(GetFocusedElement(), placeholder))
         {
-            return true;
+            return;
         }
 
         // Focus is refused outright unless the placeholder is a tab stop, so it becomes one only for the
@@ -72,8 +72,6 @@ public class ManagedFocus : IManagedFocus
             _reportedFocusFailure = true;
             _logger.LogWarning("Managed focus could not be yielded, so keys may still reach the previously focused control");
         }
-
-        return focused;
     }
 
     private UIElement? GetFocusedElement()

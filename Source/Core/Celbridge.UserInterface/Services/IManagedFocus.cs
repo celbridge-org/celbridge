@@ -14,8 +14,8 @@ public interface IManagedFocus
 
     /// <summary>
     /// Gives up managed keyboard focus, so the keys the platform routes through the managed tree reach no
-    /// control. Returns false when focus could not be moved, leaving it with the control that holds it. A
-    /// no-op on heads where hosted web views participate in managed focus.
+    /// control. A no-op on heads where hosted web views participate in managed focus, and when managed
+    /// focus has already been given up.
     /// </summary>
-    bool Yield();
+    void Yield();
 }

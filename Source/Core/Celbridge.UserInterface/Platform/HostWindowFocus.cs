@@ -6,11 +6,8 @@ internal sealed class HostWindowFocus : IHostWindowFocus
 {
     public void FocusHostWindow()
     {
-        // Only the macOS head places native focus on hosted WKWebViews; the other heads have nothing
-        // to resign.
-        if (OperatingSystem.IsMacOS())
-        {
-            MacOSWindowInterop.MakeContentViewFirstResponder();
-        }
+        // Only the macOS head places native focus on hosted WKWebViews; the interop is a no-op elsewhere,
+        // where there is nothing to resign.
+        MacOSWindowInterop.MakeContentViewFirstResponder();
     }
 }

@@ -23,11 +23,14 @@ internal static class MacOSFirstResponderMonitor
     private static extern IntPtr class_getInstanceMethod(IntPtr classHandle, IntPtr selector);
 
     [DllImport(LibObjC)]
+    private static extern IntPtr method_getImplementation(IntPtr method);
+
+    [DllImport(LibObjC)]
     private static extern IntPtr method_setImplementation(IntPtr method, IntPtr implementation);
 
     private delegate bool OriginalMakeFirstResponder(IntPtr self, IntPtr selector, IntPtr responder);
 
-    private static IntPtr _originalImplementation;
+    private static OriginalMakeFirstResponder? _originalMakeFirstResponder;
     private static IFocusReconciler? _focusReconciler;
     private static Microsoft.UI.Dispatching.DispatcherQueue? _dispatcherQueue;
     private static Logging.ILogger? _logger;
@@ -64,8 +67,12 @@ internal static class MacOSFirstResponderMonitor
         _logger = logger;
         _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
+        // Captured before the hook is installed, so the hook can never run without something to call.
+        _originalMakeFirstResponder = Marshal.GetDelegateForFunctionPointer<OriginalMakeFirstResponder>(
+            method_getImplementation(method));
+
         var hook = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, byte>)&MakeFirstResponderHook;
-        _originalImplementation = method_setImplementation(method, hook);
+        method_setImplementation(method, hook);
     }
 
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
@@ -85,8 +92,7 @@ internal static class MacOSFirstResponderMonitor
         {
         }
 
-        var original = Marshal.GetDelegateForFunctionPointer<OriginalMakeFirstResponder>(_originalImplementation);
-        return original(self, selector, responder) ? (byte)1 : (byte)0;
+        return _originalMakeFirstResponder!(self, selector, responder) ? (byte)1 : (byte)0;
     }
 
     private static void OnResignedToContentView()
