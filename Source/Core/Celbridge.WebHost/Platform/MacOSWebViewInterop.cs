@@ -348,6 +348,25 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
+    /// Sets the native view's frame, which is what the page reads as its viewport. Uno arranges the frame
+    /// only while the control is in the visual tree, so a surface that loads before it is ever arranged
+    /// (a document restored into a background tab, a utility that runs from project load) would otherwise
+    /// report a zero-sized window to its page.
+    /// </summary>
+    public static void SetViewportSize(IntPtr webView, double width, double height)
+    {
+        var frame = new CGRect
+        {
+            X = 0,
+            Y = 0,
+            Width = width,
+            Height = height
+        };
+
+        SendMessageVoidCGRect(webView, GetSelector("setFrame:"), frame);
+    }
+
+    /// <summary>
     /// Delivers a native key event straight to the WKWebView's keyDown: handler, bypassing the managed key
     /// pipeline. Used for keys the managed pipeline would otherwise consume (Tab), so the page can apply
     /// its own behaviour, such as moving focus between its form fields. A direct method call, not an event

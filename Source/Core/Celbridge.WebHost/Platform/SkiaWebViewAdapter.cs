@@ -79,6 +79,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 {
                     MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
                     CheckBackgroundPageActivityOnce(nativeWebViewHandle);
+                    ApplyInitialViewportSize(nativeWebViewHandle);
                 }
                 else
                 {
@@ -115,6 +116,33 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             _logger.LogWarning("Could not remove the WebView script message handler: {Detail}", detail);
         }
+    }
+
+    // Used until the window can supply a size, and as the floor for a window too small to lay a page out in.
+    // A page that loads at this size is corrected by the arrange that follows when its surface is shown.
+    private const double MinimumViewportWidth = 1024;
+    private const double MinimumViewportHeight = 768;
+
+    // Gives the native view a usable frame before anything loads into it. Uno arranges the frame only while
+    // the control is in the visual tree, so a surface that loads while it is not (a document restored into a
+    // background tab, a utility running from project load) reports a zero-sized window to its page: layout
+    // collapses, and a page that derives geometry from the viewport at startup divides by zero and stays
+    // broken even after the real arrange arrives.
+    private void ApplyInitialViewportSize(IntPtr nativeWebViewHandle)
+    {
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+
+        double width = MinimumViewportWidth;
+        double height = MinimumViewportHeight;
+
+        if (userInterfaceService.MainWindow is Window mainWindow
+            && mainWindow.Content is FrameworkElement windowContent)
+        {
+            width = Math.Max(windowContent.ActualWidth, MinimumViewportWidth);
+            height = Math.Max(windowContent.ActualHeight, MinimumViewportHeight);
+        }
+
+        MacOSWebViewInterop.SetViewportSize(nativeWebViewHandle, width, height);
     }
 
     // WebKit suspends a hidden page's process, which stalls host-to-editor RPC for a background document
