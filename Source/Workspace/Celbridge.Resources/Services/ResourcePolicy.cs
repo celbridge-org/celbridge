@@ -283,7 +283,8 @@ public sealed class ResourcePolicy : IResourcePolicy
             description: "Files under the project metadata folder are reserved by Celbridge.",
             matcher: ResourcePathMatcher.Compile(".celbridge/**")));
 
-        // Legacy visible metadata folder, retained pending entity-service migration.
+        // Legacy visible metadata folder. Still denied so leftover content from
+        // earlier versions stays out of the resource tree.
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: "celbridge",

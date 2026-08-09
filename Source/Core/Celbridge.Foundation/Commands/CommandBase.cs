@@ -8,7 +8,7 @@ public abstract class CommandBase : IExecutableCommand
     /// <summary>
     /// Unique identifier for the command.
     /// </summary>
-    public EntityId CommandId { get; } = EntityId.Create();
+    public CommandId CommandId { get; } = CommandId.Create();
 
     /// <summary>
     /// Flags to configure behaviour when executing the command.

@@ -12,13 +12,10 @@ public static class ServiceConfiguration
         // Configure workspace-scoped services
         //
 
-        Activities.ServiceConfiguration.ConfigureServices(services);
         Console.ServiceConfiguration.ConfigureServices(services);
         Documents.ServiceConfiguration.ConfigureServices(services);
-        Entities.ServiceConfiguration.ConfigureServices(services);
         Explorer.ServiceConfiguration.ConfigureServices(services);
         Packages.ServiceConfiguration.ConfigureServices(services);
-        Inspector.ServiceConfiguration.ConfigureServices(services);
         ProjectSettings.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
         Resources.ServiceConfiguration.ConfigureServices(services);

@@ -29,21 +29,16 @@
   </Folder>
 
   <Folder Name="/Modules/">
-    <Project Path="Source/Modules/Celbridge.Core/Celbridge.Core.csproj" />
     <Project Path="Source/Modules/Celbridge.DocumentEditors/Celbridge.DocumentEditors.csproj" />
-    <Project Path="Source/Modules/Celbridge.Screenplay/Celbridge.Screenplay.csproj" />
     <Project Path="Source/Modules/Celbridge.Spreadsheet/Celbridge.Spreadsheet.csproj" />
     <Project Path="Source/Modules/Celbridge.WebView/Celbridge.WebView.csproj" />
   </Folder>
 
   <Folder Name="/Workspace/">
-    <Project Path="Source/Workspace/Celbridge.Activities/Celbridge.Activities.csproj" />
     <Project Path="Source/Workspace/Celbridge.Console/Celbridge.Console.csproj" />
     <Project Path="Source/Workspace/Celbridge.Documents/Celbridge.Documents.csproj" />
-    <Project Path="Source/Workspace/Celbridge.Entities/Celbridge.Entities.csproj" />
     <Project Path="Source/Workspace/Celbridge.Explorer/Celbridge.Explorer.csproj" />
     <Project Path="Source/Workspace/Celbridge.Packages/Celbridge.Packages.csproj" />
-    <Project Path="Source/Workspace/Celbridge.Inspector/Celbridge.Inspector.csproj" />
     <Project Path="Source/Workspace/Celbridge.ProjectSettings/Celbridge.ProjectSettings.csproj" />
     <Project Path="Source/Workspace/Celbridge.Python/Celbridge.Python.csproj" />
     <Project Path="Source/Workspace/Celbridge.Resources/Celbridge.Resources.csproj" />

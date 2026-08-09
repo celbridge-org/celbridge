@@ -1,5 +1,4 @@
 using Celbridge.DataTransfer;
-using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
@@ -37,9 +36,6 @@ public class ResourceOperationService : IResourceOperationService
         _workspaceWrapper = workspaceWrapper;
         _fileSystem = fileSystem;
     }
-
-    private IEntityService? EntityService =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.EntityService : null;
 
     private IResourceRegistry ResourceRegistry =>
         _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -84,22 +80,6 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
     {
-        var sourcePathResult = ResourceRegistry.ResolveResourcePath(source);
-        if (sourcePathResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
-                .WithErrors(sourcePathResult);
-        }
-        var sourcePath = sourcePathResult.Value;
-
-        var destPathResult = ResourceRegistry.ResolveResourcePath(dest);
-        if (destPathResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
-                .WithErrors(destPathResult);
-        }
-        var destPath = destPathResult.Value;
-
         var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
@@ -107,16 +87,10 @@ public class ResourceOperationService : IResourceOperationService
             return Result.Fail($"Source resource does not exist: '{source}'")
                 .WithErrors(infoResult);
         }
-        bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
-        var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
         var operation = new CopyOperation(
             source,
             dest,
-            isFolder,
-            sourcePath,
-            destPath,
-            entityHelper,
             ResourceFileSystem);
 
         var executeResult = await operation.ExecuteAsync();
@@ -132,22 +106,6 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
     {
-        var sourcePathResult = ResourceRegistry.ResolveResourcePath(source);
-        if (sourcePathResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
-                .WithErrors(sourcePathResult);
-        }
-        var sourcePath = sourcePathResult.Value;
-
-        var destPathResult = ResourceRegistry.ResolveResourcePath(dest);
-        if (destPathResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
-                .WithErrors(destPathResult);
-        }
-        var destPath = destPathResult.Value;
-
         var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
@@ -167,14 +125,9 @@ public class ResourceOperationService : IResourceOperationService
             return Result.Fail(policyGateResult);
         }
 
-        var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
         var operation = new MoveOperation(
             source,
             dest,
-            isFolder,
-            sourcePath,
-            destPath,
-            entityHelper,
             ResourceFileSystem);
 
         var executeResult = await operation.ExecuteAsync();

@@ -1,10 +1,7 @@
-using Celbridge.Activities;
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
-using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Inspector;
 using Celbridge.Search;
 
 namespace Celbridge.Workspace;
@@ -19,8 +16,7 @@ public interface IWorkspaceService
     /// </summary>
     void SetPanels(
         IUtilityPanel utilityPanel,
-        IDocumentsPanel documentsPanel,
-        IInspectorPanel inspectorPanel);
+        IDocumentsPanel documentsPanel);
 
     /// <summary>
     /// Returns the workspace settings service for the current project, which owns
@@ -59,11 +55,6 @@ public interface IWorkspaceService
     IUtilityService UtilityService { get; }
 
     /// <summary>
-    /// Returns the Inspector Service associated with the workspace.
-    /// </summary>
-    IInspectorService InspectorService { get; }
-
-    /// <summary>
     /// Returns the Console Service associated with the workspace.
     /// </summary>
     IConsoleService ConsoleService { get; }
@@ -72,16 +63,6 @@ public interface IWorkspaceService
     /// Gets the search service used to perform text search operations within the workspace.
     /// </summary>
     ISearchService SearchService { get; }
-
-    /// <summary>
-    /// Returns the Entity Service associated with the workspace.
-    /// </summary>
-    IEntityService EntityService { get; }
-
-    /// <summary>
-    /// Returns the Activity Service associated with the workspace.
-    /// </summary>
-    IActivityService ActivityService { get; }
 
     /// <summary>
     /// Returns the Data Transfer Service associated with the workspace.
@@ -102,11 +83,6 @@ public interface IWorkspaceService
     /// Returns the Documents Panel view.
     /// </summary>
     IDocumentsPanel DocumentsPanel { get; }
-
-    /// <summary>
-    /// Returns the Inspector Panel view.
-    /// </summary>
-    IInspectorPanel InspectorPanel { get; }
 
     /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.

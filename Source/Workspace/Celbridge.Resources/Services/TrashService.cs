@@ -1,4 +1,3 @@
-using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
@@ -29,14 +28,6 @@ public sealed class TrashService : ITrashService
 
     private ISidecarService SidecarService =>
         _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
-
-    // Entity service is workspace-scoped and may be unavailable during workspace
-    // teardown. Trash operations are tolerant of a null entity service and skip
-    // the entity-data cascade in that case.
-    private IEntityService? EntityService =>
-        _workspaceWrapper.IsWorkspacePageLoaded
-            ? _workspaceWrapper.WorkspaceService.EntityService
-            : null;
 
     private string TrashFolderPath => Path.Combine(
         ResourceRegistry.ProjectFolderPath,
@@ -130,22 +121,6 @@ public sealed class TrashService : ITrashService
             }
         }
 
-        string? entityDataOriginalPath = null;
-        string? entityDataTrashPath = null;
-        var entityService = EntityService;
-        if (entityService is not null)
-        {
-            var candidatePath = entityService.GetEntityDataPath(resource);
-            var entityInfoResult = await _fileSystem.GetInfoAsync(candidatePath);
-            if (entityInfoResult.IsSuccess
-                && entityInfoResult.Value.Kind == StorageItemKind.File)
-            {
-                entityDataOriginalPath = candidatePath;
-                var entityRelative = entityService.GetEntityDataRelativePath(resource);
-                entityDataTrashPath = Path.Combine(trashBasePath, entityRelative);
-            }
-        }
-
         _ = await _fileSystem.SetAttributesAsync(originalPath, FileSystemAttributes.ReadOnly, set: false);
         var primaryMoveResult = await MoveFileWithDirectoryCreationAsync(originalPath, trashPath);
         if (primaryMoveResult.IsFailure)
@@ -168,23 +143,6 @@ public sealed class TrashService : ITrashService
             }
         }
 
-        if (entityDataOriginalPath is not null
-            && entityDataTrashPath is not null)
-        {
-            _ = await _fileSystem.SetAttributesAsync(entityDataOriginalPath, FileSystemAttributes.ReadOnly, set: false);
-            var entityMoveResult = await MoveFileWithDirectoryCreationAsync(entityDataOriginalPath, entityDataTrashPath);
-            if (entityMoveResult.IsFailure)
-            {
-                _logger.LogError($"Failed to move entity data to trash: '{resource}'. {entityMoveResult.DiagnosticReport}");
-                return Result<TrashEntry>.Fail($"Failed to move entity data to trash: '{resource}'")
-                    .WithErrors(entityMoveResult);
-            }
-        }
-
-        var entityDataFiles = entityDataOriginalPath is not null && entityDataTrashPath is not null
-            ? new List<TrashedEntityDataFile> { new(entityDataOriginalPath, entityDataTrashPath) }
-            : (IReadOnlyList<TrashedEntityDataFile>)Array.Empty<TrashedEntityDataFile>();
-
         var entry = new TrashEntry(
             OriginalResource: resource,
             TrashId: trashId,
@@ -194,7 +152,6 @@ public sealed class TrashService : ITrashService
             TrashPath: trashPath,
             SidecarOriginalPath: sidecarOriginalPath,
             SidecarTrashPath: sidecarTrashPath,
-            EntityDataFiles: entityDataFiles,
             DescendantKeys: Array.Empty<ResourceKey>());
 
         return entry;
@@ -216,18 +173,12 @@ public sealed class TrashService : ITrashService
         bool wasEmpty = topLevelResult.Value.Count == 0;
 
         var descendantKeys = new List<ResourceKey>();
-        var entityDataFiles = new List<TrashedEntityDataFile>();
 
         if (!wasEmpty)
         {
-            // Walk once to gather descendant keys for messaging and entity-data
-            // pairs for trash. Both nested files and nested sub-folders are
-            // first-class resources, so every entry contributes its key to the
-            // fan-out; entity data is keyed per resource and trashed for files.
-            // The trash folder lives outside the registry's reach, so direct
-            // enumeration here is intentional; gateway dispatch would fail
-            // because the trash paths do not resolve to ResourceKeys.
-            var entityService = EntityService;
+            // Gather descendant keys for messaging. Both nested files and nested
+            // sub-folders are first-class resources, so every entry contributes
+            // its key to the fan-out.
             var descendantsResult = await _fileSystem.EnumerateAsync(originalPath, "*", recursive: true);
             if (descendantsResult.IsFailure)
             {
@@ -242,22 +193,6 @@ public sealed class TrashService : ITrashService
                     continue;
                 }
                 descendantKeys.Add(keyResult.Value);
-
-                if (descendant.IsFolder
-                    || entityService is null)
-                {
-                    continue;
-                }
-
-                var entityDataPath = entityService.GetEntityDataPath(keyResult.Value);
-                var entityInfoResult = await _fileSystem.GetInfoAsync(entityDataPath);
-                if (entityInfoResult.IsSuccess
-                    && entityInfoResult.Value.Kind == StorageItemKind.File)
-                {
-                    var entityRelative = entityService.GetEntityDataRelativePath(keyResult.Value);
-                    var entityTrashPath = Path.Combine(trashBasePath, entityRelative);
-                    entityDataFiles.Add(new TrashedEntityDataFile(entityDataPath, entityTrashPath));
-                }
             }
         }
 
@@ -275,17 +210,6 @@ public sealed class TrashService : ITrashService
         }
         else
         {
-            foreach (var entityDataFile in entityDataFiles)
-            {
-                var entityMoveResult = await MoveFileWithDirectoryCreationAsync(entityDataFile.OriginalPath, entityDataFile.TrashPath);
-                if (entityMoveResult.IsFailure)
-                {
-                    _logger.LogError($"Failed to move entity data to trash: '{resource}'. {entityMoveResult.DiagnosticReport}");
-                    return Result<TrashEntry>.Fail($"Failed to move folder to trash: '{resource}'")
-                        .WithErrors(entityMoveResult);
-                }
-            }
-
             var folderMoveResult = await MoveDirectoryWithParentCreationAsync(originalPath, trashPath);
             if (folderMoveResult.IsFailure)
             {
@@ -304,7 +228,6 @@ public sealed class TrashService : ITrashService
             TrashPath: wasEmpty ? string.Empty : trashPath,
             SidecarOriginalPath: null,
             SidecarTrashPath: null,
-            EntityDataFiles: entityDataFiles,
             DescendantKeys: descendantKeys);
 
         return entry;
@@ -337,21 +260,6 @@ public sealed class TrashService : ITrashService
                 {
                     return Result.Fail($"Failed to restore folder from trash: '{entry.OriginalResource}'")
                         .WithErrors(moveResult);
-                }
-
-                foreach (var entityDataFile in entry.EntityDataFiles)
-                {
-                    var trashEntityInfoResult = await _fileSystem.GetInfoAsync(entityDataFile.TrashPath);
-                    if (trashEntityInfoResult.IsSuccess
-                        && trashEntityInfoResult.Value.Kind == StorageItemKind.File)
-                    {
-                        var restoreResult = await MoveFileWithDirectoryCreationAsync(entityDataFile.TrashPath, entityDataFile.OriginalPath);
-                        if (restoreResult.IsFailure)
-                        {
-                            return Result.Fail($"Failed to restore entity data from trash: '{entry.OriginalResource}'")
-                                .WithErrors(restoreResult);
-                        }
-                    }
                 }
 
                 await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
@@ -389,21 +297,6 @@ public sealed class TrashService : ITrashService
                 }
             }
 
-            foreach (var entityDataFile in entry.EntityDataFiles)
-            {
-                var trashEntityInfoResult = await _fileSystem.GetInfoAsync(entityDataFile.TrashPath);
-                if (trashEntityInfoResult.IsSuccess
-                    && trashEntityInfoResult.Value.Kind == StorageItemKind.File)
-                {
-                    var restoreResult = await MoveFileWithDirectoryCreationAsync(entityDataFile.TrashPath, entityDataFile.OriginalPath);
-                    if (restoreResult.IsFailure)
-                    {
-                        return Result.Fail($"Failed to restore entity data from trash: '{entry.OriginalResource}'")
-                            .WithErrors(restoreResult);
-                    }
-                }
-            }
-
             await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
         }
 
@@ -435,12 +328,6 @@ public sealed class TrashService : ITrashService
                         await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
                     }
                 }
-
-                foreach (var entityDataFile in entry.EntityDataFiles)
-                {
-                    await DeleteFileIfExistsAsync(entityDataFile.TrashPath);
-                    await CleanupEmptyParentDirectoriesAsync(entityDataFile.TrashPath);
-                }
             }
             else
             {
@@ -449,11 +336,6 @@ public sealed class TrashService : ITrashService
                 if (entry.SidecarTrashPath is not null)
                 {
                     await DeleteFileIfExistsAsync(entry.SidecarTrashPath);
-                }
-
-                foreach (var entityDataFile in entry.EntityDataFiles)
-                {
-                    await DeleteFileIfExistsAsync(entityDataFile.TrashPath);
                 }
 
                 await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);

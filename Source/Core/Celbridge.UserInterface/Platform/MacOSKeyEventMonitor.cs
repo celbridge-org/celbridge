@@ -141,7 +141,7 @@ internal static class MacOSKeyEventMonitor
                 return nsEvent;
             }
 
-            // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Inspector,
+            // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Search,
             // and so on) everywhere else, and the close shortcuts must not close a hidden document from another
             // panel.
             if (_focusService?.FocusedPanel != WorkspacePanel.Documents)

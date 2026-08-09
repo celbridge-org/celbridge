@@ -18,34 +18,13 @@ public class UndoService : IUndoService
 
     public Result Undo()
     {
-        // If the inspector panel is active, try to undo the entity for the selected resource
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var activePanel = workspaceService.ActivePanel;
-
-            if (activePanel == WorkspacePanel.Inspector)
-            {
-                var inspectorService = workspaceService.InspectorService;
-                var inspectedResource = inspectorService.InspectedResource;
-
-                if (!inspectedResource.IsEmpty)
-                {
-                    var entityService = workspaceService.EntityService;
-                    if (entityService.GetUndoCount(inspectedResource) > 0)
-                    {
-                        entityService.UndoEntity(inspectedResource);
-                        return Result.Ok();
-                    }
-                }
-            }
-
-            // Try file operation undo
             var resourceOpService = workspaceService.ResourceService.Operations;
             if (resourceOpService.CanUndo)
             {
                 _ = UndoFileOperationAsync();
-                return Result.Ok();
             }
         }
 
@@ -60,41 +39,20 @@ public class UndoService : IUndoService
         var result = await resourceOpService.UndoAsync();
         if (result.IsSuccess)
         {
-            // Trigger resource update to refresh the tree view and entity cache
+            // Trigger resource update to refresh the tree view
             _commandService.Execute<IUpdateResourcesCommand>();
         }
     }
 
     public Result Redo()
     {
-        // First try to redo the selected entity if the secondary panel is active
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
-            var activePanel = workspaceService.ActivePanel;
-
-            if (activePanel == WorkspacePanel.Inspector)
-            {
-                var inspectorService = workspaceService.InspectorService;
-                var inspectedResource = inspectorService.InspectedResource;
-
-                if (!inspectedResource.IsEmpty)
-                {
-                    var entityService = workspaceService.EntityService;
-                    if (entityService.GetRedoCount(inspectedResource) > 0)
-                    {
-                        entityService.RedoEntity(inspectedResource);
-                        return Result.Ok();
-                    }
-                }
-            }
-
-            // Try file operation redo
             var resourceOpService = workspaceService.ResourceService.Operations;
             if (resourceOpService.CanRedo)
             {
                 _ = RedoFileOperationAsync();
-                return Result.Ok();
             }
         }
 
@@ -109,7 +67,7 @@ public class UndoService : IUndoService
         var result = await resourceOpService.RedoAsync();
         if (result.IsSuccess)
         {
-            // Trigger resource update to refresh the tree view and entity cache
+            // Trigger resource update to refresh the tree view
             _commandService.Execute<IUpdateResourcesCommand>();
         }
     }

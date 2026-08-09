@@ -1,9 +1,9 @@
 namespace Celbridge.Core;
 
 /// <summary>
-/// A unique numeric identifier for any type of entity.
+/// A unique numeric identifier for a command.
 /// </summary>
-public readonly struct EntityId : IComparable<EntityId>
+public readonly struct CommandId : IComparable<CommandId>
 {
     /// Monoticially increasing integer.
     private static ulong _nextId = 0;
@@ -12,57 +12,57 @@ public readonly struct EntityId : IComparable<EntityId>
 
     public ulong Id => _id;
 
-    public EntityId(ulong id)
+    public CommandId(ulong id)
     {
         _id = id;
     }
 
     /// <summary>
-    /// Factory method to create a new entity id.
+    /// Factory method to create a new command id.
     /// Each call to Create will return a new unique id.
     /// </summary>
-    public static EntityId Create()
+    public static CommandId Create()
     {
         // Thread safe increment
         ulong newId = Interlocked.Increment(ref _nextId);
-        return new EntityId(newId);
+        return new CommandId(newId);
     }
 
     /// <summary>
-    /// An invalid entity id has a value of 0.
+    /// An invalid command id has a value of 0.
     /// </summary>
-    public static EntityId InvalidId { get; } = new EntityId(0);
+    public static CommandId InvalidId { get; } = new CommandId(0);
 
     /// <summary>
-    /// Returns true if the entity id is valid.
+    /// Returns true if the command id is valid.
     /// </summary>
     public bool IsValid => Id != InvalidId.Id;
 
-    public int CompareTo(EntityId other)
+    public int CompareTo(CommandId other)
     {
         return Id.CompareTo(other.Id);
     }
 
-    public static bool operator ==(EntityId lhs, EntityId rhs)
+    public static bool operator ==(CommandId lhs, CommandId rhs)
     {
         return lhs.Equals(rhs);
     }
 
-    public static bool operator !=(EntityId lhs, EntityId rhs)
+    public static bool operator !=(CommandId lhs, CommandId rhs)
     {
         return !lhs.Equals(rhs);
     }
 
     public override bool Equals(object? obj)
     {
-        if (obj is EntityId other)
+        if (obj is CommandId other)
         {
             return Equals(other);
         }
         return false;
     }
 
-    public bool Equals(EntityId other)
+    public bool Equals(CommandId other)
     {
         return Id == other.Id;
     }

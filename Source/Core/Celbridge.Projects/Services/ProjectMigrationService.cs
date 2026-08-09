@@ -190,6 +190,19 @@ public class ProjectMigrationService : IProjectMigrationService
 
             case VersionComparisonState.OlderVersion:
                 {
+                    // Below the supported floor there are no migration steps to run, so an upgrade would
+                    // rewrite the version number and leave the contents untouched. Reject instead, rather
+                    // than report a success the project did not get.
+                    if (IsBelowMinimumSupportedVersion(projectVersion))
+                    {
+                        var errorResult = Result.Fail(
+                            $"This project was created with Celbridge v{projectVersion}, which v{applicationVersion} cannot open. " +
+                            $"Projects from before v{ProjectConstants.MinimumSupportedProjectVersion} are not supported. " +
+                            $"Open it with the version of Celbridge that created it, or start a new project.");
+
+                        return MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
+                    }
+
                     _logger.LogInformation(
                         "Project upgrade required: project version {ProjectVersion}, current version {CurrentVersion}",
                         projectVersion,
@@ -258,7 +271,6 @@ public class ProjectMigrationService : IProjectMigrationService
 
         // Create migration context
         var projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
-        var projectDataFolderPath = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder);
 
         // Local function to write the project file.
         // Line endings are normalized for the current platform.
@@ -281,7 +293,6 @@ public class ProjectMigrationService : IProjectMigrationService
         {
             ProjectFilePath = projectFilePath,
             ProjectFolderPath = projectFolderPath,
-            ProjectDataFolderPath = projectDataFolderPath,
             Configuration = root,
             Logger = _logger,
             OriginalVersion = projectVersion,
@@ -350,6 +361,28 @@ public class ProjectMigrationService : IProjectMigrationService
     /// Compares two version strings in the format "major.minor.patch". The sentinel value
     /// "<application-version>" for projectVersion is treated as "use current version".
     /// </summary>
+    // Only called for a project already known to be older than the application, so the version string has
+    // already parsed once. A parse failure here is still treated as below the floor: an unreadable version
+    // cannot be shown to be supported.
+    private bool IsBelowMinimumSupportedVersion(string projectVersion)
+    {
+        try
+        {
+            var projectVer = new Version(NormalizeVersion(projectVersion));
+            var minimumVer = new Version(NormalizeVersion(ProjectConstants.MinimumSupportedProjectVersion));
+
+            return projectVer < minimumVer;
+        }
+        catch (ArgumentException)
+        {
+            return true;
+        }
+        catch (FormatException)
+        {
+            return true;
+        }
+    }
+
     private VersionComparisonState CompareVersions(string projectVersion, string applicationVersion)
     {
         // Handle the sentinel value "<application-version>" meaning "use current version"

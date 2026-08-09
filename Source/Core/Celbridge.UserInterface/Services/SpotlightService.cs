@@ -95,8 +95,7 @@ public sealed class SpotlightService : ISpotlightService
         ClearSpotlightState();
 
         // Reveal the landmark's layout region, so spotlighting a landmark in a collapsed panel
-        // opens that panel first. This reveal is sticky, matching the behaviour where spotlighting
-        // the Inspector leaves it open.
+        // opens that panel first. The reveal is sticky: the panel stays open afterwards.
         if (_landmarkRegistry.TryGetLandmark(target, out var descriptor) &&
             descriptor!.Region is not null)
         {

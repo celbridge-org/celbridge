@@ -78,8 +78,6 @@ public class ResourceOperationServiceTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        // IsWorkspacePageLoaded = false skips the entity-data cascade so the
-        // tests don't need to wire an IEntityService.
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
         var sidecarService = new SidecarService(_workspaceWrapper);

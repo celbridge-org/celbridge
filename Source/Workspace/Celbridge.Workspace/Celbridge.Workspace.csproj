@@ -23,13 +23,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.Activities\Celbridge.Activities.csproj" />
     <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
     <ProjectReference Include="..\Celbridge.Documents\Celbridge.Documents.csproj" />
-    <ProjectReference Include="..\Celbridge.Entities\Celbridge.Entities.csproj" />
     <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
     <ProjectReference Include="..\Celbridge.Packages\Celbridge.Packages.csproj" />
-    <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
     <ProjectReference Include="..\Celbridge.ProjectSettings\Celbridge.ProjectSettings.csproj" />
     <ProjectReference Include="..\Celbridge.Python\Celbridge.Python.csproj" />
     <ProjectReference Include="..\Celbridge.Resources\Celbridge.Resources.csproj" />

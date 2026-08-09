@@ -1,4 +1,3 @@
-using Celbridge.Activities;
 using Celbridge.Documents;
 
 namespace Celbridge.Modules;
@@ -17,16 +16,6 @@ public interface IModule
     /// Initializes the module during application startup.
     /// </summary>
     Result Initialize();
-
-    /// <summary>
-    /// Returns the names of all activities supported by this module.
-    /// </summary>
-    IReadOnlyList<string> SupportedActivities { get; }
-
-    /// <summary>
-    /// Creates an instance of a supported activity.
-    /// </summary>
-    Result<IActivity> CreateActivity(string activityName);
 
     /// <summary>
     /// Creates document editor factories provided by this module.

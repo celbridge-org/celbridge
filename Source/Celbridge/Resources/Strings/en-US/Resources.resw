@@ -132,9 +132,6 @@
   <data name="NewFolderDialog_FolderName" xml:space="preserve">
     <value>Name</value>
   </data>
-  <data name="InspectorPanel_Title" xml:space="preserve">
-    <value>Inspector</value>
-  </data>
   <data name="LoadProjectFailedAlert_Message" xml:space="preserve">
     <value>Failed to load project file '{0}'. See the project load report for details.</value>
   </data>
@@ -639,18 +636,6 @@
   <data name="WebView_InvalidUrl" xml:space="preserve">
     <value>Enter a valid external URL (https://...).</value>
   </data>
-  <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
-    <value>Add a New Component</value>
-  </data>
-  <data name="EntityInspector_ContextMenu_Add" xml:space="preserve">
-    <value>Add a New Component</value>
-  </data>
-  <data name="EntityInspector_ContextMenu_Delete" xml:space="preserve">
-    <value>Delete the Component</value>
-  </data>
-  <data name="EntityInspector_ContextMenu_Duplicate" xml:space="preserve">
-    <value>Duplicate the Component</value>
-  </data>
   <data name="Documents_OpenDocumentFailedTitle" xml:space="preserve">
     <value>Open Document Failed</value>
   </data>
@@ -685,36 +670,6 @@
     <value>Celbridge does not support '{0}' files.
 
 Open with default application instead?</value>
-  </data>
-  <data name="Screenplay_LoadingScreenplayTitle" xml:space="preserve">
-    <value>Loading Screenplay</value>
-  </data>
-  <data name="Screenplay_SavingScreenplayTitle" xml:space="preserve">
-    <value>Saving Screenplay</value>
-  </data>
-  <data name="Screenplay_SaveFailedTitle" xml:space="preserve">
-    <value>Save Failed</value>
-  </data>
-  <data name="Screenplay_LoadFailedTitle" xml:space="preserve">
-    <value>Load Failed</value>
-  </data>
-  <data name="Screenplay_SaveFailedMessage" xml:space="preserve">
-    <value>An error occurred while saving the screenplay Excel file. See console log for details.</value>
-  </data>
-  <data name="Screenplay_LoadFailedMessage" xml:space="preserve">
-    <value>An error occurred while loading the screenplay Excel file. See console log for details.</value>
-  </data>
-  <data name="Screenplay_AccessErrorMessage" xml:space="preserve">
-    <value>The screenplay Excel file is open in another application. Please close the other application and try again.</value>
-  </data>
-  <data name="Screenplay_ConfirmLoadTitle" xml:space="preserve">
-    <value>Confirm Load</value>
-  </data>
-  <data name="Screenplay_ConfirmLoadMessage" xml:space="preserve">
-    <value>Loading will overwrite modified scene files:
-{0}
-
-Do you wish to continue?</value>
   </data>
   <data name="ResourceTree_Run" xml:space="preserve">
     <value>Run</value>
@@ -822,9 +777,6 @@ Do you wish to continue?</value>
     <value>Select File</value>
   </data>
   <data name="StatusPanel_SelectFileTooltip" xml:space="preserve">
-    <value>Select File</value>
-  </data>
-  <data name="InspectorPanel_SelectFile" xml:space="preserve">
     <value>Select File</value>
   </data>
   <data name="DocumentTab_CopyResourceKey" xml:space="preserve">

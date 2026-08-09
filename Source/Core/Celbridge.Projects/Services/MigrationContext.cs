@@ -19,11 +19,6 @@ public class MigrationContext
     public required string ProjectFolderPath { get; init; }
 
     /// <summary>
-    /// Path to the project's celbridge metadata folder.
-    /// </summary>
-    public required string ProjectDataFolderPath { get; init; }
-
-    /// <summary>
     /// Parsed TOML configuration from the project file.
     /// This property is refreshed after each migration step to reflect the current state.
     /// Migration steps can read from this but should use WriteProjectFileAsync to persist changes.

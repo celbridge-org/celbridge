@@ -85,7 +85,7 @@ internal static class MacOSMainMenu
         // The Edit items are responder-chain Selector items (cut:/copy:/paste:/selectAll:/undo:/redo:).
         // AppKit auto-enables each only when a responder in the chain handles it and routes the action
         // there, so they target whatever native view holds focus: a hosted WKWebView editor or the project
-        // HTML viewer's form fields. Managed Uno panels (Explorer, Inspector) are painted on the Skia
+        // HTML viewer's form fields. Managed Uno panels (Explorer, Search) are painted on the Skia
         // canvas and are not AppKit responders, so the items disable there and the key equivalents fall
         // through to Uno's managed keyboard handling (the same path app-global undo/redo already uses).
         var editMenu = new MacMenu

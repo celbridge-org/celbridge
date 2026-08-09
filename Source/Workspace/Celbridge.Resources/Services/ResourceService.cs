@@ -109,16 +109,6 @@ public class ResourceService : IResourceService, IDisposable
         TryDeleteFolder(celbridgeTrashFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTrashFolder));
 
-        // Discard the legacy <project>/celbridge/trash/ folder. The sibling
-        // <project>/celbridge/cache/ has no live data and retires alongside
-        // the entity service.
-        var legacyTrashFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TrashFolder);
-        TryDeleteFolder(legacyTrashFolder);
-
-        // Discard the legacy <project>/celbridge/temp/ folder.
-        var legacyTempFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TempFolder);
-        TryDeleteFolder(legacyTempFolder);
-
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder));
         rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder));
         rootHandlerRegistry.RegisterRootHandler(new UtilsRootHandler(celbridgeUtilsFolder));

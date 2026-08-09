@@ -90,15 +90,6 @@ public class WorkspaceLoader
         var propertyBag = workspaceSettingsService.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        // Initialize the entity service.
-        var entityService = workspaceService.EntityService;
-        var initEntitiesResult = await entityService.InitializeAsync();
-        if (initEntitiesResult.IsFailure)
-        {
-            return Result.Fail("Failed to initalize entity service")
-                .WithErrors(initEntitiesResult);
-        }
-
         // Populate the resource registry.
         var explorerService = workspaceService.ExplorerService;
         var folderStateService = explorerService.FolderStateService;
@@ -155,15 +146,6 @@ public class WorkspaceLoader
         {
             return Result.Fail($"An exception occurred while populating the resource registry")
                 .WithException(ex);
-        }
-
-        // Initialize the activities service.
-        var activityService = workspaceService.ActivityService;
-        var initActivities = await activityService.Initialize();
-        if (initActivities.IsFailure)
-        {
-            return Result.Fail("Failed to initialize activity service")
-                .WithErrors(initActivities);
         }
 
         // Restore the previous state of the workspace. Any failures that occur here are logged as

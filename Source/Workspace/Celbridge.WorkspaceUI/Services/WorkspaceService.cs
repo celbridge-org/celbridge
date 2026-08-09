@@ -1,10 +1,7 @@
-using Celbridge.Activities;
 using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
-using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
@@ -24,18 +21,14 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
     public IUtilityService UtilityService { get; }
-    public IInspectorService InspectorService { get; }
     public IConsoleService ConsoleService { get; }
     public ISearchService SearchService { get; }
-    public IEntityService EntityService { get; }
-    public IActivityService ActivityService { get; }
     public IDataTransferService DataTransferService { get; }
 
     public WorkspacePanel ActivePanel { get; private set; }
 
     public IUtilityPanel UtilityPanel { get; private set; } = null!;
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
-    public IInspectorPanel InspectorPanel { get; private set; } = null!;
 
     private bool _workspaceStateIsDirty;
 
@@ -57,11 +50,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         UtilityService = serviceProvider.GetRequiredService<IUtilityService>();
-        InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
-        EntityService = serviceProvider.GetRequiredService<IEntityService>();
-        ActivityService = serviceProvider.GetRequiredService<IActivityService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         // Let the workspace settings service know where to find the workspace settings database.
@@ -84,13 +74,11 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public void SetPanels(
         IUtilityPanel utilityPanel,
-        IDocumentsPanel documentsPanel,
-        IInspectorPanel inspectorPanel)
+        IDocumentsPanel documentsPanel)
     {
         // Store panel references
         UtilityPanel = utilityPanel;
         DocumentsPanel = documentsPanel;
-        InspectorPanel = inspectorPanel;
     }
 
     private void OnWorkspaceStateDirtyMessage(object recipient, WorkspaceStateDirtyMessage message)
@@ -125,13 +113,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             }
         }
 
-        var saveEntitiesResult = await EntityService.SaveEntitiesAsync();
-        if (saveEntitiesResult.IsFailure)
-        {
-            failed = true;
-            _logger.LogError($"Failed to save modified entities. {saveEntitiesResult.DiagnosticReport}");
-        }
-
         var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
         if (saveDocumentsResult.IsFailure)
         {
@@ -141,20 +122,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Tick the utilities' save timers alongside the documents (their surfaces persist the same way).
         await UtilityService.SaveModifiedUtilities(deltaTime);
-
-        var activitiesResult = await ActivityService.UpdateAsync();
-        if (activitiesResult.IsFailure)
-        {
-            failed = true;
-            _logger.LogError($"Failed to update activity service. {activitiesResult.DiagnosticReport}");
-        }
-
-        var inspectorResult = await InspectorService.UpdateAsync();
-        if (inspectorResult.IsFailure)
-        {
-            failed = true;
-            _logger.LogError($"Failed to update inspector service. {inspectorResult.DiagnosticReport}");
-        }
 
         // Flush any pending Workspace-scope setting writes (panel sizes, search
         // options, last new-file extension). These are set on the UI thread but
@@ -214,12 +181,9 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ConsoleService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (UtilityService as IDisposable)!.Dispose();
-                (InspectorService as IDisposable)!.Dispose();
                 (ExplorerService as IDisposable)!.Dispose();
                 (SearchService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
-                (EntityService as IDisposable)!.Dispose();
-                (ActivityService as IDisposable)!.Dispose();
             }
 
             _disposed = true;

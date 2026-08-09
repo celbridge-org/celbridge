@@ -293,58 +293,57 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task PerformMigrationUpgradeAsync_RunsApplicableStep_AndUpdatesVersion()
+    public async Task CheckMigrationAsync_BelowMinimumSupportedVersion_ReturnsIncompatibleVersion()
     {
-        // A project a version behind the app runs the matching migration step
-        // during the upgrade. The 0.2.0 step converts a legacy nested
-        // [shortcuts...] table into the [[shortcut]] array format, and the
-        // version is stamped to the application version once steps complete.
-        var appVersion = "0.2.0";
-        var projectVersion = "0.1.6";
+        // A project older than the supported floor has no migration path to the current
+        // version, so it is rejected rather than offered an upgrade that would only
+        // rewrite its version number.
+        var appVersion = "0.3.0";
+        var projectVersion = "0.2.7";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-
-        // Real registry so the upgrade discovers the 0.2.0 step.
-        var registry = new MigrationStepRegistry(_mockRegistryLogger);
-        registry.Initialize();
-
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry, _fileSystem);
-
-        var tempPath = Path.GetTempFileName();
-        var projectPath = Path.ChangeExtension(tempPath, ".celbridge");
-        File.Delete(tempPath);
-
-        var content = """
-            [celbridge]
-            celbridge-version = "0.1.6"
-
-            [project]
-            name = "TestProject"
-
-            [shortcuts.navigation_bar.run_examples]
-            icon = "Play"
-            tooltip = "Run examples"
-            """;
-        File.WriteAllText(projectPath, content);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
 
         try
         {
             // Act
-            var result = await service.PerformMigrationUpgradeAsync(projectPath);
+            var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
-            result.Status.Should().Be(MigrationStatus.Complete);
+            result.Status.Should().Be(MigrationStatus.IncompatibleVersion);
+            result.OperationResult.IsFailure.Should().BeTrue();
+
+            // The file is left untouched so the project still opens in the version that created it.
+            var unchangedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
+            unchangedVersion.Should().Be(projectVersion);
+        }
+        finally
+        {
+            MigrationTestHelper.CleanupTempFile(projectPath);
+        }
+    }
+
+    [Test]
+    public async Task CheckMigrationAsync_AtMinimumSupportedVersion_ReturnsUpgradeRequired()
+    {
+        // The floor is inclusive: a project exactly at the minimum supported version still
+        // upgrades normally.
+        var appVersion = "0.4.0";
+        var projectVersion = ProjectConstants.MinimumSupportedProjectVersion;
+        _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+
+        try
+        {
+            // Act
+            var result = await service.CheckMigrationAsync(projectPath);
+
+            // Assert
+            result.Status.Should().Be(MigrationStatus.UpgradeRequired);
             result.OperationResult.IsSuccess.Should().BeTrue();
             result.OldVersion.Should().Be(projectVersion);
             result.NewVersion.Should().Be(appVersion);
-
-            // The 0.2.0 step rewrote the legacy shortcuts table into the new
-            // [[shortcut]] array format.
-            var migratedContent = File.ReadAllText(projectPath);
-            migratedContent.Should().Contain("[[shortcut]]");
-            migratedContent.Should().NotContain("[shortcuts.navigation_bar");
-
-            var updatedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
-            updatedVersion.Should().Be(appVersion);
         }
         finally
         {

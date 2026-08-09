@@ -126,56 +126,33 @@ internal class CreateOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable copy of a file or folder through the gateway. The entity-data
-/// cascade runs alongside via EntityFileHelper; the bytes-and-sidecar cascade
-/// runs inside the gateway's CopyAsync.
+/// Undoable copy of a file or folder through the gateway. The bytes-and-sidecar
+/// cascade runs inside the gateway's CopyAsync.
 /// </summary>
 internal class CopyOperation : FileOperation
 {
     private readonly ResourceKey _source;
     private readonly ResourceKey _dest;
-    private readonly bool _isFolder;
-    private readonly EntityFileHelper _entityHelper;
     private readonly IResourceFileSystem _resourceFileSystem;
-    private readonly string _sourcePath;
-    private readonly string _destPath;
 
     public CopyResult? LastCopyResult { get; private set; }
 
     public CopyOperation(
         ResourceKey source,
         ResourceKey dest,
-        bool isFolder,
-        string sourcePath,
-        string destPath,
-        EntityFileHelper entityHelper,
         IResourceFileSystem resourceFileSystem)
     {
         _source = source;
         _dest = dest;
-        _isFolder = isFolder;
-        _sourcePath = sourcePath;
-        _destPath = destPath;
-        _entityHelper = entityHelper;
         _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_isFolder)
-        {
-            _entityHelper.CopyEntityDataFile(_sourcePath, _destPath);
-        }
-
         var copyResult = await _resourceFileSystem.CopyAsync(_source, _dest);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
-        }
-
-        if (_isFolder)
-        {
-            _entityHelper.CopyFolderEntityDataFiles(_sourcePath, _destPath);
         }
 
         LastCopyResult = copyResult.Value;
@@ -184,15 +161,6 @@ internal class CopyOperation : FileOperation
 
     public override async Task<Result> UndoAsync()
     {
-        if (_isFolder)
-        {
-            _entityHelper.DeleteFolderEntityDataFiles(_destPath);
-        }
-        else
-        {
-            _entityHelper.DeleteEntityDataFile(_destPath);
-        }
-
         var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
@@ -209,68 +177,25 @@ internal class MoveOperation : FileOperation
 {
     private readonly ResourceKey _source;
     private readonly ResourceKey _dest;
-    private readonly bool _isFolder;
-    private readonly EntityFileHelper _entityHelper;
     private readonly IResourceFileSystem _resourceFileSystem;
-    private readonly string _sourcePath;
-    private readonly string _destPath;
 
     public MoveResult? LastMoveResult { get; private set; }
 
     public MoveOperation(
         ResourceKey source,
         ResourceKey dest,
-        bool isFolder,
-        string sourcePath,
-        string destPath,
-        EntityFileHelper entityHelper,
         IResourceFileSystem resourceFileSystem)
     {
         _source = source;
         _dest = dest;
-        _isFolder = isFolder;
-        _sourcePath = sourcePath;
-        _destPath = destPath;
-        _entityHelper = entityHelper;
         _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        // Entity-data cascade runs while the source still resolves so the
-        // helper can compute keys against the original location.
-        if (_isFolder)
-        {
-            _entityHelper.MoveFolderEntityDataFiles(_sourcePath, _destPath);
-        }
-        else
-        {
-            _entityHelper.MoveEntityDataFile(_sourcePath, _destPath);
-        }
-
         var moveResult = await _resourceFileSystem.MoveAsync(_source, _dest);
         if (moveResult.IsFailure)
         {
-            // Best-effort rollback of the entity-data cascade so the bytes
-            // stay paired with the source on failure. Errors here are swallowed
-            // because the gateway failure is the load-bearing problem; the
-            // entity system is on its way out and the precise post-failure
-            // state is not worth a partial-recovery report.
-            try
-            {
-                if (_isFolder)
-                {
-                    _entityHelper.MoveFolderEntityDataFiles(_destPath, _sourcePath);
-                }
-                else
-                {
-                    _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
-                }
-            }
-            catch
-            {
-            }
-
             return Result.Fail(moveResult);
         }
 
@@ -280,15 +205,6 @@ internal class MoveOperation : FileOperation
 
     public override async Task<Result> UndoAsync()
     {
-        if (_isFolder)
-        {
-            _entityHelper.MoveFolderEntityDataFiles(_destPath, _sourcePath);
-        }
-        else
-        {
-            _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
-        }
-
         var moveResult = await _resourceFileSystem.MoveAsync(_dest, _source);
         return moveResult.IsSuccess
             ? Result.Ok()
@@ -298,8 +214,7 @@ internal class MoveOperation : FileOperation
 
 /// <summary>
 /// Undoable soft-delete through the trash service. The trash service handles
-/// the paired sidecar, entity-data cascade, and read-only attribute clearing
-/// as one atomic batch.
+/// the paired sidecar and read-only attribute clearing as one atomic batch.
 /// </summary>
 internal class DeleteOperation : FileOperation
 {

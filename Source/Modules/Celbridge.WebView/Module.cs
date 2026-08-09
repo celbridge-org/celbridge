@@ -1,4 +1,3 @@
-using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
 using Celbridge.WebHost;
@@ -12,8 +11,6 @@ namespace Celbridge.WebView;
 
 public class Module : IModule
 {
-    public IReadOnlyList<string> SupportedActivities { get; } = new List<string>();
-
     public void ConfigureServices(IModuleServiceCollection services)
     {
         //
@@ -54,10 +51,5 @@ public class Module : IModule
             new WebViewEditorFactory(serviceProvider, stringLocalizer),
             new HtmlViewerEditorFactory(serviceProvider, stringLocalizer),
         ];
-    }
-
-    public Result<IActivity> CreateActivity(string activityName)
-    {
-        return Result<IActivity>.Fail();
     }
 }

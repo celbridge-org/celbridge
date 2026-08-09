@@ -1,6 +1,0 @@
-[package]
-name = "celbridge-scene-viewer"
-title = "SceneViewer_Package_Name"
-
-[contributes]
-editors = ["scene.editor.toml"]

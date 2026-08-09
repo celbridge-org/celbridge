@@ -21,11 +21,6 @@ public interface IProject
     string ProjectFolderPath { get; }
 
     /// <summary>
-    /// Returns the path to the folder containing the project database.
-    /// </summary>
-    string ProjectDataFolderPath { get; }
-
-    /// <summary>
     /// Gets the project configuration.
     /// </summary>
     public ProjectConfig Config { get; }

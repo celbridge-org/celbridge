@@ -37,7 +37,7 @@ public class LogSerializer : ILogSerializer
         options.Converters.Add(new ExecuteCommandStartedMessageJsonConverter(ignoreCommandProperties));
         options.Converters.Add(new TruncatingStringJsonConverter(MaxLoggedStringLength));
         options.Converters.Add(new JsonStringEnumConverter());
-        options.Converters.Add(new EntityIdConverter());
+        options.Converters.Add(new CommandIdConverter());
         options.Converters.Add(new ResourceKeyConverter());
 
         return options;
