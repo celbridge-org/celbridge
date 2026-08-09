@@ -48,7 +48,7 @@
           Background="{ThemeResource ApplicationBackgroundBrush}">
     </Grid>
 
-    <!-- Secondary Panel -->
+    <!-- Secondary Panel, currently empty. -->
     <Grid x:Name="SecondaryPanel"
           Grid.Column="2"
           Grid.Row="0"

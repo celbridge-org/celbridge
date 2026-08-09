@@ -20,9 +20,7 @@ public class ProjectFactory
 
     /// <summary>
     /// Loads a project from the specified file path: parses its config and
-    /// returns a populated Project. The legacy data folder is not created
-    /// here; the entity service creates it on demand when an entity file is
-    /// first written.
+    /// returns a populated Project.
     /// </summary>
     public async Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult)
     {
@@ -41,7 +39,6 @@ public class ProjectFactory
         {
             var projectName = Path.GetFileNameWithoutExtension(projectFilePath);
             var projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
-            var projectDataFolderPath = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder);
 
             bool migrationSucceeded = migrationResult.OperationResult.IsSuccess;
 
@@ -75,7 +72,6 @@ public class ProjectFactory
                 projectFilePath,
                 projectName,
                 projectFolderPath,
-                projectDataFolderPath,
                 config,
                 migrationResult,
                 configIsHealthy);

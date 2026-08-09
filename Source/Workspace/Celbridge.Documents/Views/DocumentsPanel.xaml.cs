@@ -960,8 +960,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     .WithErrors(setResult);
             }
 
-            // Reload the content to ensure the document reflects the current file state
-            // and entity data is properly synchronized after the resource move/rename.
+            // Reload the content so the document reflects the current file state
+            // after the resource move or rename.
             var loadResult = await oldDocumentView.LoadContent();
             if (loadResult.IsFailure)
             {

@@ -8,7 +8,7 @@ public interface IExecutableCommand
     /// <summary>
     /// Unique identifier for the command.
     /// </summary>
-    EntityId CommandId { get; }
+    CommandId CommandId { get; }
 
     /// <summary>
     /// Flags to configure behaviour when executing the command.

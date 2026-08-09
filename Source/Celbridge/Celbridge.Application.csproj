@@ -65,12 +65,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\Workspace\Celbridge.Entities\ComponentConfig\**" Link="ComponentConfig\%(RecursiveDir)%(FileName)%(Extension)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <UnoImage Include="Assets\Images\title_icon.svg" />
   </ItemGroup>
 
@@ -93,9 +87,7 @@
 
   <!-- Modules -->
   <ItemGroup>
-    <ProjectReference Include="..\Modules\Celbridge.Core\Celbridge.Core.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.WebView\Celbridge.WebView.csproj" />
   </ItemGroup>

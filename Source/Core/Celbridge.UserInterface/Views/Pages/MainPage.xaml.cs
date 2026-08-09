@@ -114,7 +114,7 @@ public partial class MainPage : Page
         Guard.IsNotNull(rootContent);
 
         // Register with handledEventsToo so app shortcuts (undo / redo) are received even when the
-        // focused control (the Explorer tree, Inspector, or toolbar) marks the key event handled before
+        // focused control (the Explorer tree, a document, or a toolbar) marks the key event handled before
         // it bubbles to the root. A plain KeyDown += handler is skipped for already-handled events.
         rootContent.AddHandler(
             UIElement.KeyDownEvent,

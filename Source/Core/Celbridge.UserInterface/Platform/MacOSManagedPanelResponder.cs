@@ -5,7 +5,7 @@ namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
 /// Reconciles focus on every managed panel-focus change on the macOS Skia head. A hosted WebView stays
-/// the window's first responder even after a managed Uno panel (Explorer, Inspector, Search) gains
+/// the window's first responder even after a managed Uno panel (Explorer, Search) gains
 /// focus, so the native Edit-menu shortcuts (cut:/copy:/paste:/undo:/redo:) would route to that stale
 /// WebView instead of the managed panel. Reconciling returns native focus to the window content when no
 /// web surface holds focus, so the shortcuts disable for the panel and the key equivalents fall through

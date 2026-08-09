@@ -4,7 +4,7 @@ A loaded project arranges the UI around a central editor area. You can highlight
 
 - **Explorer** (left sidebar) — the project file tree, with toolbar buttons to add a file, add a folder, and open project settings. `explorer_*` tools create, move, rename, and delete resources; `explorer_undo` / `explorer_redo` reverse file system operations only, not document text edits.
 - **Documents** (centre) — the editor area. Files open as tabs across up to three sections (sectionIndex 0, 1, 2 from left to right); a split-editor button on the document toolbar sets the section count. `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content.
-- **Inspector** (right sidebar) — contextual properties for the selected resource.
+- **Inspector** (right sidebar) — currently empty. It can be shown, hidden and resized, but holds no content.
 - **Search** — full-text search, reached from the Utility Panel rail alongside Explorer. From the agent, use `file_grep` for the same purpose.
 - **Console** (bottom) — shows project error and notification banners. Interactive consoles are `.console` documents opened in the Documents panel.
 

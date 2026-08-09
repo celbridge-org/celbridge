@@ -283,21 +283,6 @@ public sealed class ResourcePolicy : IResourcePolicy
             description: "Files under the project metadata folder are reserved by Celbridge.",
             matcher: ResourcePathMatcher.Compile(".celbridge/**")));
 
-        // Legacy visible metadata folder, retained pending entity-service migration.
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemDeny,
-            pattern: "celbridge",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-            description: "The legacy 'celbridge' metadata folder is reserved by Celbridge.",
-            matcher: ResourcePathMatcher.Compile("celbridge")));
-
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemDeny,
-            pattern: "celbridge/**",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-            description: "Files under the legacy 'celbridge' metadata folder are reserved by Celbridge.",
-            matcher: ResourcePathMatcher.Compile("celbridge/**")));
-
         // The Git metadata folder is never listed in a .gitignore, so it is a
         // system-deny rather than a built-in ignore entry.
         rules.Add(new CompiledPolicyRule(

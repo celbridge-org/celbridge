@@ -18,7 +18,6 @@ public sealed class DocumentEditorsBundledPackageProvider : IBundledPackageProvi
         {
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer") },
-            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor") },
             new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "UtilityDemo") },
         };

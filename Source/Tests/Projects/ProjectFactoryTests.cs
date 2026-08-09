@@ -83,31 +83,6 @@ public class ProjectFactoryTests
     }
 
     [Test]
-    public async Task LoadAsync_WithValidFile_DoesNotCreateLegacyDataFolder()
-    {
-        // The legacy 'celbridge/' folder is created on demand when the entity
-        // service first writes a file there; project load alone must not bring
-        // it into existence.
-        var projectPath = CreateValidProjectFile();
-        var migrationResult = CreateSuccessfulMigrationResult();
-        var legacyDataFolder = Path.Combine(
-            Path.GetDirectoryName(projectPath)!,
-            LegacyConstants.MetaDataFolder);
-
-        try
-        {
-            var result = await _factory.LoadAsync(projectPath, migrationResult);
-
-            result.IsSuccess.Should().BeTrue();
-            Directory.Exists(legacyDataFolder).Should().BeFalse();
-        }
-        finally
-        {
-            CleanupProjectFiles(projectPath);
-        }
-    }
-
-    [Test]
     public async Task LoadAsync_WithSuccessfulMigration_InitializesConfigService()
     {
         // Arrange

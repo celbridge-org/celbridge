@@ -1,9 +1,0 @@
-[
-  {
-    "element": "TextBox",
-    "header": "Comment",
-    "text": "/comment",
-    "placeholderText": "Enter a comment",
-    "checkSpelling": false
-  }
-]

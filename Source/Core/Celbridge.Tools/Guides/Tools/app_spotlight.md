@@ -15,7 +15,7 @@ Shell panels:
 - `explorer-panel` — the Explorer panel (left).
 - `documents-panel` — the Documents area (centre).
 - `console-panel` — the Console panel (bottom), which shows project error and notification banners.
-- `inspector-panel` — the Inspector panel (right).
+- `inspector-panel` — the Inspector panel (right), which is currently empty.
 
 Utility Panel rail (the icon strip on the far left that switches the primary panel):
 

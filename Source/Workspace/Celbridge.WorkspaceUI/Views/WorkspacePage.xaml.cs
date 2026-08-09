@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
-using Celbridge.Inspector;
 using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface.DragDrop;
@@ -152,7 +151,6 @@ public sealed partial class WorkspacePage : Page
         // Create panels via DI
         var utilityPanel = ServiceLocator.AcquireService<IUtilityPanel>();
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
-        var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
 
         if (!isConsolePanelEnabled)
         {
@@ -169,12 +167,11 @@ public sealed partial class WorkspacePage : Page
         NotificationBarHost.Children.Add(_notificationBar);
 
         // Register panels with the workspace service
-        workspaceService.SetPanels(utilityPanel, documentsPanel, inspectorPanel);
+        workspaceService.SetPanels(utilityPanel, documentsPanel);
 
         // Add panels to the UI
         PrimaryPanel.Children.Add(utilityPanel as UIElement);
         DocumentsPanel.Children.Add(documentsPanel as UIElement);
-        SecondaryPanel.Children.Add(inspectorPanel as UIElement);
 
         // Enable the pointer-driven resource drag overlay on heads where the built-in drag-and-drop is
         // disabled. The panels register their drop targets with the coordinator as they load.
