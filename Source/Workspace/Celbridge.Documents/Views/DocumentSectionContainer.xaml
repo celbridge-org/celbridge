@@ -10,7 +10,8 @@
   <Grid x:Name="RootGrid"
         Background="{ThemeResource ApplicationBackgroundBrush}">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="*"/>
+      <ColumnDefinition x:Name="MainAreaColumn"
+                        Width="*"/>
       <ColumnDefinition Width="Auto"/>
       <ColumnDefinition x:Name="SideAreaColumn"
                         Width="300"
@@ -18,7 +19,8 @@
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
-      <RowDefinition Height="*"/>
+      <RowDefinition x:Name="MainAreaRow"
+                     Height="*"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition x:Name="BottomAreaRow"
                      Height="350"
@@ -26,7 +28,8 @@
     </Grid.RowDefinitions>
 
     <!-- Each area hosts one or two sections; their columns, rows and split splitters are
-         managed in code-behind. -->
+         managed in code-behind. The Bottom area shares Main's column, so MainAreaColumn
+         sizes both. -->
 
     <Grid x:Name="MainAreaGrid"
           Grid.Row="0"

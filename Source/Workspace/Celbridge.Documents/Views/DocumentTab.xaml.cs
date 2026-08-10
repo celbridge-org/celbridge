@@ -368,7 +368,10 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        // Double-clicking a document tab toggles the Focus layout (side panels hidden)
+        // Focus shows the active document on its own, so make this tab active before toggling rather
+        // than relying on the first tap of the double having already done it.
+        _messengerService.Send(new DocumentViewFocusedMessage(ViewModel.FileResource));
+
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
             command.Transition = LayoutTransition.ToggleFocus;

@@ -1098,7 +1098,7 @@ Open with default application instead?</value>
     <value>The full editor with all panels visible</value>
   </data>
   <data name="LayoutToolbar_FocusModeTooltip" xml:space="preserve">
-    <value>Hide the side panels to focus on the document</value>
+    <value>Hide the panels and other document areas to focus on the current document</value>
   </data>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
     <value>Show only the document content</value>

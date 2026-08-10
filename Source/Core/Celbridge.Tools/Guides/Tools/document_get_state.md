@@ -21,6 +21,8 @@ Main and Bottom split into left and right; Side splits into top and bottom.
 
 A document can stay open in a collapsed area. It appears in `openDocuments` with its own section even though that section is absent from `visibleSections`.
 
+The Focus and Presentation layout modes give the active document's area the whole panel, so `visibleSections` lists only that area's sections while either is active — one section, or two when the area is split. Every other document stays open and keeps its section in `openDocuments`.
+
 ## Returns
 
 A JSON object with these fields:

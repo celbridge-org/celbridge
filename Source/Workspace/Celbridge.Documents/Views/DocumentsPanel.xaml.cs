@@ -96,6 +96,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return;
         }
 
+        // Closing the last document in an isolated area moves the active document to another area, so
+        // the isolation follows it rather than leaving an empty panel on screen.
+        if (SectionContainer.IsolatedArea is not null)
+        {
+            SectionContainer.SetIsolatedArea(SectionContainer.ActiveSection.GetArea());
+        }
+
         ViewModel.OnActiveDocumentChanged(documentResource);
     }
 
@@ -331,7 +338,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for requests to flash a document tab (e.g. when a utility is surfaced or a document reopened)
         _messengerService.Register<FlashDocumentMessage>(this, OnFlashDocumentRequested);
 
-        // Apply initial tab strip visibility based on the current layout mode
+        // Apply the current layout mode. It survives a project switch, so a workspace can load straight
+        // into Focus or Presentation.
+        ApplyIsolatedArea(_windowModeService.LayoutMode);
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
 
         RegisterAsResourceDropTarget();
@@ -420,6 +429,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void OnLayoutModeChanged(object recipient, LayoutModeChangedMessage message)
     {
+        ApplyIsolatedArea(message.LayoutMode);
         UpdateTabStripVisibility(message.LayoutMode);
 
         // Entering a mode that hides the side panels can leave keyboard focus on a now-hidden panel
@@ -431,6 +441,24 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         {
             FocusActiveDocument();
         }
+    }
+
+    // Focus and Presentation give the active document's area the whole panel and hide the other two. The
+    // area keeps its own split, so a split area still shows both documents. Leaving them restores the
+    // areas the user had.
+    private void ApplyIsolatedArea(LayoutMode layoutMode)
+    {
+        bool isolateActiveArea = layoutMode == LayoutMode.Focus ||
+            layoutMode == LayoutMode.Presentation;
+
+        if (isolateActiveArea)
+        {
+            SectionContainer.SetIsolatedArea(SectionContainer.ActiveSection.GetArea());
+            return;
+        }
+
+        SectionContainer.SetIsolatedArea(null);
+        ApplyStoredAreaSizes();
     }
 
     private void UpdateTabStripVisibility(LayoutMode layoutMode)

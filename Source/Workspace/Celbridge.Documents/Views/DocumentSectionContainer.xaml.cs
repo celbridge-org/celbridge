@@ -37,6 +37,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     private double _totalDragDelta = 0;
 
     private DocumentSection _activeSection = DocumentSection.MainLeft;
+    private DocumentArea? _isolatedArea;
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
@@ -146,6 +147,8 @@ public sealed partial class DocumentSectionContainer : UserControl
             RebuildArea(area);
             WatchAreaSize(area);
         }
+
+        ApplyRootGridLayout();
     }
 
     // Reports whether an area is large enough to hold two sections at their minimum size.
@@ -204,18 +207,74 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Whether the section is currently in the visual tree: its area is visible and, for a secondary
+    /// Whether the section is currently in the visual tree: its area is presented and, for a secondary
     /// section, that area is split.
     /// </summary>
     public bool IsSectionMounted(DocumentSection section)
     {
-        var area = section.GetArea();
-        if (!_visibleAreas.Contains(area))
+        return IsAreaPresented(section.GetArea())
+            && IsSectionInAreaLayout(section);
+    }
+
+    // Whether the area's split state lays the section out: a primary section always, a secondary one
+    // only while its area is split.
+    private bool IsSectionInAreaLayout(DocumentSection section)
+    {
+        return !section.IsSecondarySection() || _areaSplit[section.GetArea()];
+    }
+
+    /// <summary>
+    /// The sections a fallback active document can be chosen from: those a visible area lays out,
+    /// ignoring any isolation. Closing the last document in an isolated area moves to a document
+    /// elsewhere rather than reporting that none are left, and the isolation follows it.
+    /// </summary>
+    private IEnumerable<DocumentSection> SelectableSections
+    {
+        get
         {
-            return false;
+            foreach (var section in DocumentLayoutHelper.AllSections)
+            {
+                if (_visibleAreas.Contains(section.GetArea()) &&
+                    IsSectionInAreaLayout(section))
+                {
+                    yield return section;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The area currently shown on its own, or null when the areas are laid out normally.
+    /// </summary>
+    public DocumentArea? IsolatedArea => _isolatedArea;
+
+    /// <summary>
+    /// Shows a single area filling the whole panel, hiding the other two, or restores the normal layout
+    /// when passed null. The isolated area keeps its own split, and every area's visibility, size and
+    /// split state are left untouched underneath, so clearing the isolation restores what the user had.
+    /// </summary>
+    public void SetIsolatedArea(DocumentArea? area)
+    {
+        if (_isolatedArea == area)
+        {
+            return;
         }
 
-        return !section.IsSecondarySection() || _areaSplit[area];
+        _isolatedArea = area;
+
+        ApplyRootGridLayout();
+    }
+
+    // While an area is isolated it is the only one presented. Otherwise the collapsible areas follow the
+    // surface visibility the user chose.
+    private bool IsAreaPresented(DocumentArea area)
+    {
+        if (_isolatedArea is DocumentArea isolatedArea)
+        {
+            return isolatedArea == area;
+        }
+
+        return _visibleAreas.Contains(area);
     }
 
     /// <summary>
@@ -306,29 +365,32 @@ public sealed partial class DocumentSectionContainer : UserControl
             _visibleAreas.Remove(area);
         }
 
-        ApplyAreaVisibility(area);
+        ApplyRootGridLayout();
     }
 
     /// <summary>
-    /// Sets the height of the Bottom area or the width of the Side area.
+    /// Sets the height of the Bottom area or the width of the Side area. Ignored unless the area is
+    /// presented alongside another one, because a sole presented area fills the panel.
     /// </summary>
     public void SetAreaSize(DocumentArea area, double size)
     {
-        if (size <= 0)
+        if (size <= 0 ||
+            !IsAreaPresented(area))
         {
             return;
         }
 
         if (area == DocumentArea.Bottom)
         {
-            if (_visibleAreas.Contains(DocumentArea.Bottom))
+            if (IsAreaPresented(DocumentArea.Main))
             {
                 BottomAreaRow.Height = new GridLength(size);
             }
         }
         else if (area == DocumentArea.Side)
         {
-            if (_visibleAreas.Contains(DocumentArea.Side))
+            if (IsAreaPresented(DocumentArea.Main) ||
+                IsAreaPresented(DocumentArea.Bottom))
             {
                 SideAreaColumn.Width = new GridLength(size);
             }
@@ -489,8 +551,8 @@ public sealed partial class DocumentSectionContainer : UserControl
             }
         }
 
-        // No documents left in the same section, so scan the other mounted sections in reading order.
-        foreach (var section in VisibleSections)
+        // No documents left in the same section, so scan the other selectable sections in reading order.
+        foreach (var section in SelectableSections)
         {
             if (section == closingSection)
             {
@@ -549,13 +611,14 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Returns the selected document tab of the first populated mounted section, scanning in reading
+    /// Returns the selected document tab of the first populated selectable section, scanning in reading
     /// order, or null when no section has a selected tab.
     /// </summary>
     private DocumentTabLocation? FindFallbackActiveDocument()
     {
-        foreach (var sectionView in GetMountedSections())
+        foreach (var section in SelectableSections)
         {
+            var sectionView = _sections[section];
             var selectedResource = sectionView.GetSelectedDocument();
             if (selectedResource.IsEmpty)
             {
@@ -955,31 +1018,57 @@ public sealed partial class DocumentSectionContainer : UserControl
         SideAreaSplitter.DoubleClicked += (s, e) => AreaSizeResetRequested?.Invoke(DocumentArea.Side);
     }
 
-    private void ApplyAreaVisibility(DocumentArea area)
+    // Sizes the root grid for the areas currently presented. Main shares its column with Bottom, so an
+    // area only takes a fixed size while it sits alongside another one; the sole presented area takes
+    // the whole panel.
+    private void ApplyRootGridLayout()
     {
-        bool isVisible = _visibleAreas.Contains(area);
-        var areaGrid = GetAreaGrid(area);
+        bool isMainPresented = IsAreaPresented(DocumentArea.Main);
+        bool isBottomPresented = IsAreaPresented(DocumentArea.Bottom);
+        bool isSidePresented = IsAreaPresented(DocumentArea.Side);
+        bool isMainColumnPresented = isMainPresented || isBottomPresented;
 
-        areaGrid.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        MainAreaGrid.Visibility = isMainPresented ? Visibility.Visible : Visibility.Collapsed;
+        BottomAreaGrid.Visibility = isBottomPresented ? Visibility.Visible : Visibility.Collapsed;
+        SideAreaGrid.Visibility = isSidePresented ? Visibility.Visible : Visibility.Collapsed;
 
-        if (area == DocumentArea.Bottom)
+        // A splitter only earns its place between two presented areas.
+        bool showBottomSplitter = isMainPresented && isBottomPresented;
+        bool showSideSplitter = isSidePresented && isMainColumnPresented;
+        BottomAreaSplitter.Visibility = showBottomSplitter ? Visibility.Visible : Visibility.Collapsed;
+        SideAreaSplitter.Visibility = showSideSplitter ? Visibility.Visible : Visibility.Collapsed;
+
+        // Main's row is only zeroed to hand its column over to the Bottom area. The Side area spans all
+        // three rows, so zeroing them when it is the only presented area would leave it no height. Main's
+        // own minimums stay at zero: they are enforced while dragging, by the splitter helpers.
+        bool mainRowTakesRemainingHeight = isMainPresented || !isBottomPresented;
+        MainAreaRow.Height = mainRowTakesRemainingHeight
+            ? new GridLength(1, GridUnitType.Star)
+            : new GridLength(0);
+
+        if (!isBottomPresented)
         {
-            BottomAreaSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
-            BottomAreaRow.MinHeight = isVisible ? MinBottomAreaHeight : 0;
-            if (!isVisible)
-            {
-                BottomAreaRow.Height = new GridLength(0);
-            }
+            BottomAreaRow.Height = new GridLength(0);
         }
-        else if (area == DocumentArea.Side)
+        else if (!isMainPresented)
         {
-            SideAreaSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
-            SideAreaColumn.MinWidth = isVisible ? MinSideAreaWidth : 0;
-            if (!isVisible)
-            {
-                SideAreaColumn.Width = new GridLength(0);
-            }
+            BottomAreaRow.Height = new GridLength(1, GridUnitType.Star);
         }
+
+        BottomAreaRow.MinHeight = showBottomSplitter ? MinBottomAreaHeight : 0;
+
+        MainAreaColumn.Width = isMainColumnPresented ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+        if (!isSidePresented)
+        {
+            SideAreaColumn.Width = new GridLength(0);
+        }
+        else if (!isMainColumnPresented)
+        {
+            SideAreaColumn.Width = new GridLength(1, GridUnitType.Star);
+        }
+
+        SideAreaColumn.MinWidth = showSideSplitter ? MinSideAreaWidth : 0;
     }
 
     private void Splitter_DragStarted(object? sender, EventArgs e)
