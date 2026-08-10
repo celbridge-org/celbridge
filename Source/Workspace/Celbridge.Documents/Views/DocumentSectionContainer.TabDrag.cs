@@ -6,7 +6,7 @@ namespace Celbridge.Documents.Views;
 /// <summary>
 /// The section and insertion slot a resource drop from the Explorer would land in.
 /// </summary>
-public record ResourceDropLocation(DocumentSection Section, int InsertionSlot);
+public record ResourceDropLocation(DocumentSectionView SectionView, int InsertionSlot);
 
 /// <summary>
 /// Pointer-driven tab drag support for DocumentSectionContainer, used on heads where the built-in
@@ -47,16 +47,16 @@ public sealed partial class DocumentSectionContainer
             return null;
         }
 
-        var section = GetSectionAtWindowPoint(windowPoint);
-        if (section is null)
+        var sectionView = GetSectionAtWindowPoint(windowPoint);
+        if (sectionView is null)
         {
             return null;
         }
 
-        var sectionPoint = WindowToSectionPoint(section, windowPoint);
-        int slot = section.GetInsertionSlot(sectionPoint.X, section);
+        var sectionPoint = WindowToSectionPoint(sectionView, windowPoint);
+        int slot = sectionView.GetInsertionSlot(sectionPoint.X, sectionView);
 
-        return new ResourceDropLocation(section, slot);
+        return new ResourceDropLocation(sectionView, slot);
     }
 
     /// <summary>
@@ -69,8 +69,8 @@ public sealed partial class DocumentSectionContainer
             return;
         }
 
-        _dropPreview.ShowInsertion(location.Section, location.InsertionSlot, draggedTab: null);
-        _dropPreview.ShowHighlight(location.Section);
+        _dropPreview.ShowInsertion(location.SectionView, location.InsertionSlot, draggedTab: null);
+        _dropPreview.ShowHighlight(location.SectionView);
     }
 
     /// <summary>
@@ -81,28 +81,28 @@ public sealed partial class DocumentSectionContainer
         _dropPreview?.Hide();
     }
 
-    private DocumentSection? GetSectionAtWindowPoint(Point windowPoint)
+    private DocumentSectionView? GetSectionAtWindowPoint(Point windowPoint)
     {
-        foreach (var section in GetMountedSections())
+        foreach (var sectionView in GetMountedSections())
         {
-            var local = WindowToSectionPoint(section, windowPoint);
+            var local = WindowToSectionPoint(sectionView, windowPoint);
             if (local.X >= 0 &&
                 local.Y >= 0 &&
-                local.X < section.ActualWidth &&
-                local.Y < section.ActualHeight)
+                local.X < sectionView.ActualWidth &&
+                local.Y < sectionView.ActualHeight)
             {
-                return section;
+                return sectionView;
             }
         }
 
         return null;
     }
 
-    private Point WindowToSectionPoint(DocumentSection section, Point windowPoint)
+    private Point WindowToSectionPoint(DocumentSectionView sectionView, Point windowPoint)
     {
         if (XamlRoot?.Content is UIElement windowContent)
         {
-            return windowContent.TransformToVisual(section).TransformPoint(windowPoint);
+            return windowContent.TransformToVisual(sectionView).TransformPoint(windowPoint);
         }
 
         return windowPoint;
@@ -112,22 +112,22 @@ public sealed partial class DocumentSectionContainer
     /// Commits a completed tab drag: a reorder within the source section, or a move to another
     /// section at the given insertion slot.
     /// </summary>
-    internal void CommitTabDrag(DocumentTab tab, DocumentSection sourceSection, DocumentSection targetSection, int insertionSlot)
+    internal void CommitTabDrag(DocumentTab tab, DocumentSectionView sourceSectionView, DocumentSectionView targetSectionView, int insertionSlot)
     {
-        if (sourceSection == targetSection)
+        if (sourceSectionView == targetSectionView)
         {
-            sourceSection.ReorderTab(tab, insertionSlot);
-            ActivateDocument(tab.ViewModel.FileResource, sourceSection.SectionId);
+            sourceSectionView.ReorderTab(tab, insertionSlot);
+            ActivateDocument(tab.ViewModel.FileResource, sourceSectionView.Section);
             NotifyLayoutChanged();
         }
-        else if (MoveTabToSection(tab, targetSection.SectionId, insertionSlot))
+        else if (MoveTabToSection(tab, targetSectionView.Section, insertionSlot))
         {
             NotifyLayoutChanged();
         }
     }
 
-    private void OnSectionTabPointerPressed(DocumentSection section, DocumentTab tab, PointerRoutedEventArgs e)
+    private void OnSectionTabPointerPressed(DocumentSectionView sectionView, DocumentTab tab, PointerRoutedEventArgs e)
     {
-        _tabDragController?.OnTabPressed(section, tab, e);
+        _tabDragController?.OnTabPressed(sectionView, tab, e);
     }
 }

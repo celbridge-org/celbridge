@@ -2,22 +2,22 @@ using Celbridge.Commands;
 
 namespace Celbridge.WorkspaceUI.Commands;
 
-public class SetRegionVisibilityCommand : CommandBase, ISetRegionVisibilityCommand
+public class SetSurfaceVisibilityCommand : CommandBase, ISetSurfaceVisibilityCommand
 {
     private readonly ILayoutService _layoutService;
 
-    public LayoutRegion Regions { get; set; }
+    public WorkspaceSurface Surfaces { get; set; }
 
     public bool IsVisible { get; set; }
 
-    public SetRegionVisibilityCommand(ILayoutService layoutService)
+    public SetSurfaceVisibilityCommand(ILayoutService layoutService)
     {
         _layoutService = layoutService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        _layoutService.SetRegionVisibility(Regions, IsVisible);
+        _layoutService.SetSurfaceVisibility(Surfaces, IsVisible);
 
         await Task.CompletedTask;
         return Result.Ok();

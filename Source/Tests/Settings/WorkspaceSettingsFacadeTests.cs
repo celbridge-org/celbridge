@@ -11,7 +11,7 @@ namespace Celbridge.Tests.Settings;
 /// <summary>
 /// Covers the Workspace-scoped panel, search, and editor settings: first-open
 /// defaults, per-project independence, the typed WorkspaceSettings facade
-/// round-trip through the JSON store, and that ResetPanelCommand resets the
+/// round-trip through the JSON store, and that ResetSurfaceSizeCommand resets the
 /// current project rather than a global setting.
 /// </summary>
 [TestFixture]
@@ -83,7 +83,7 @@ public class WorkspaceSettingsFacadeTests
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
         var settings = fixture.Settings;
 
-        settings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
+        settings.PreferredSurfaceVisibility.Should().Be(WorkspaceSurface.All);
         settings.UtilityPanelWidth.Should().Be(WorkspaceConstants.UtilityPanelWidth);
         settings.SideAreaWidth.Should().Be(WorkspaceConstants.SideAreaWidth);
         settings.BottomAreaHeight.Should().Be(WorkspaceConstants.BottomAreaHeight);
@@ -147,14 +147,14 @@ public class WorkspaceSettingsFacadeTests
     }
 
     [Test]
-    public async Task ResetPanelCommand_ResetsLayoutForCurrentWorkspace()
+    public async Task ResetSurfaceSizeCommand_ResetsLayoutForCurrentWorkspace()
     {
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
         fixture.Settings.UtilityPanelWidth = 500f;
 
-        var command = new ResetPanelCommand(fixture.WorkspaceWrapper)
+        var command = new ResetSurfaceSizeCommand(fixture.WorkspaceWrapper)
         {
-            Region = LayoutRegion.UtilityPanel,
+            Surface = WorkspaceSurface.UtilityPanel,
         };
 
         var result = await command.ExecuteAsync();

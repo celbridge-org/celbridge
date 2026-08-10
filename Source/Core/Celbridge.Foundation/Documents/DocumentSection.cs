@@ -4,7 +4,7 @@ namespace Celbridge.Documents;
 /// Identifies one of the six document tab strips. Values are persisted and sent to agents by name, not
 /// by number.
 /// </summary>
-public enum DocumentSectionId
+public enum DocumentSection
 {
     /// <summary>
     /// The Main area's primary section. The one section that always exists and is always visible.

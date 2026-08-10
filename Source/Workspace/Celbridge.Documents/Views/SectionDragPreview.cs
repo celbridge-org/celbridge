@@ -51,9 +51,9 @@ internal sealed class SectionDragPreview
     /// to another section is just another call: there is a single Border, so the previous section's
     /// highlight is replaced rather than duplicated.
     /// </summary>
-    public void ShowHighlight(DocumentSection section)
+    public void ShowHighlight(DocumentSectionView sectionView)
     {
-        var sectionBounds = GetElementBounds(section);
+        var sectionBounds = GetElementBounds(sectionView);
         if (sectionBounds.IsEmpty)
         {
             HideHighlight();
@@ -62,7 +62,7 @@ internal sealed class SectionDragPreview
 
         // The ghost tab of a tab drag rides in the strip band, so start the highlight just below the
         // band to avoid tinting it - most visible on an empty section, where the band is otherwise bare.
-        var stripBand = ResolveStripBand(section);
+        var stripBand = ResolveStripBand(sectionView);
         double top = stripBand.IsEmpty ? sectionBounds.Y : stripBand.Bottom;
 
         _highlight.Width = sectionBounds.Width;
@@ -82,7 +82,7 @@ internal sealed class SectionDragPreview
     /// tab being dragged when the drag is a tab reorder within this section, so a drop that would not
     /// move it draws at that tab's own left edge; pass null for resource drags, which have no such tab.
     /// </summary>
-    public void ShowInsertion(DocumentSection targetSection, int slot, DocumentTab? draggedTab)
+    public void ShowInsertion(DocumentSectionView targetSection, int slot, DocumentTab? draggedTab)
     {
         var targetStrip = targetSection.GetTabStripBounds(_overlay);
         if (targetStrip.IsEmpty)
@@ -146,7 +146,7 @@ internal sealed class SectionDragPreview
     /// tabs, otherwise any populated mounted section's strip. Returns Rect.Empty when no section has a
     /// laid-out strip.
     /// </summary>
-    private Rect ResolveStripBand(DocumentSection preferred)
+    private Rect ResolveStripBand(DocumentSectionView preferred)
     {
         if (preferred.TabCount > 0)
         {
@@ -157,14 +157,14 @@ internal sealed class SectionDragPreview
             }
         }
 
-        foreach (var section in _container.GetMountedSections())
+        foreach (var sectionView in _container.GetMountedSections())
         {
-            if (section.TabCount == 0)
+            if (sectionView.TabCount == 0)
             {
                 continue;
             }
 
-            var bounds = section.GetTabStripBounds(_overlay);
+            var bounds = sectionView.GetTabStripBounds(_overlay);
             if (!bounds.IsEmpty)
             {
                 return bounds;

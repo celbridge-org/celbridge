@@ -1,14 +1,14 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages workspace layout region visibility.
+/// Manages workspace layout surface visibility.
 /// </summary>
 public interface ILayoutService
 {
     /// <summary>
-    /// Current region visibility state.
+    /// Current surface visibility state.
     /// </summary>
-    LayoutRegion RegionVisibility { get; }
+    WorkspaceSurface SurfaceVisibility { get; }
 
     /// <summary>
     /// Whether the Utility Panel (left sidebar) is currently visible.
@@ -26,12 +26,12 @@ public interface ILayoutService
     bool IsSideAreaVisible { get; }
 
     /// <summary>
-    /// Sets the visibility of a specific region.
+    /// Sets the visibility of a specific surface.
     /// </summary>
-    void SetRegionVisibility(LayoutRegion region, bool isVisible);
+    void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible);
 
     /// <summary>
-    /// Toggles the visibility of a specific region.
+    /// Toggles the visibility of a specific surface.
     /// </summary>
-    void ToggleRegionVisibility(LayoutRegion region);
+    void ToggleSurfaceVisibility(WorkspaceSurface surface);
 }

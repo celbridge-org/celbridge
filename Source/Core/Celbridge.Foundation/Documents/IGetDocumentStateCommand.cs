@@ -7,7 +7,7 @@ namespace Celbridge.Documents;
 /// </summary>
 public record class DocumentStateSnapshot(
     ResourceKey ActiveDocument,
-    IReadOnlyList<DocumentSectionId> VisibleSections,
+    IReadOnlyList<DocumentSection> VisibleSections,
     IReadOnlyList<OpenDocumentInfo> OpenDocuments);
 
 /// <summary>

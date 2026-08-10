@@ -17,7 +17,7 @@ public partial class DocumentTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        DocumentSectionId? targetSection = null;
+        DocumentSection? targetSection = null;
         if (!string.IsNullOrEmpty(section))
         {
             if (!DocumentLayoutHelper.TryParseSection(section, out var parsedSection))

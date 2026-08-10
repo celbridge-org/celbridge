@@ -10,7 +10,7 @@ namespace Celbridge.Documents.Views;
 /// insertion slot within its tab order (computed from the pointer X whether over the strip or the
 /// body), and whether the pointer is over the section body rather than the tab strip.
 /// </summary>
-internal record TabDropTarget(DocumentSection Section, int InsertionSlot, bool OverSectionBody);
+internal record TabDropTarget(DocumentSectionView SectionView, int InsertionSlot, bool OverSectionBody);
 
 /// <summary>
 /// Pointer-driven drag controller for document tabs, replacing the built-in TabView drag-and-drop
@@ -35,7 +35,7 @@ internal sealed class TabDragController
     private readonly DispatcherQueueTimer _autoScrollTimer;
 
     private DocumentTab? _pressedTab;
-    private DocumentSection? _sourceSection;
+    private DocumentSectionView? _sourceSectionView;
     private Point _pressPosition;
     private Point _lastPointerPosition;
     private bool _isDragging;
@@ -63,7 +63,7 @@ internal sealed class TabDragController
     /// Begins tracking a pointer press on a tab header. The drag itself starts only if the pointer
     /// travels past the drag threshold, so plain clicks are unaffected.
     /// </summary>
-    public void OnTabPressed(DocumentSection section, DocumentTab tab, PointerRoutedEventArgs e)
+    public void OnTabPressed(DocumentSectionView sectionView, DocumentTab tab, PointerRoutedEventArgs e)
     {
         if (_pressedTab is not null)
         {
@@ -84,7 +84,7 @@ internal sealed class TabDragController
         }
 
         _pressedTab = tab;
-        _sourceSection = section;
+        _sourceSectionView = sectionView;
         _pressPosition = e.GetCurrentPoint(_overlay).Position;
 
         // Track the pointer on the container, not the tab: the tab strip's list captures the pointer
@@ -137,7 +137,7 @@ internal sealed class TabDragController
         }
 
         var tab = _pressedTab;
-        var sourceSection = _sourceSection!;
+        var sourceSectionView = _sourceSectionView!;
         var target = _currentTarget;
         bool wasDragging = _isDragging;
 
@@ -153,7 +153,7 @@ internal sealed class TabDragController
 
         if (target is not null)
         {
-            _container.CommitTabDrag(tab, sourceSection, target.Section, target.InsertionSlot);
+            _container.CommitTabDrag(tab, sourceSectionView, target.SectionView, target.InsertionSlot);
         }
     }
 
@@ -226,21 +226,21 @@ internal sealed class TabDragController
     /// </summary>
     private TabDropTarget? ResolveDropTarget(Point position)
     {
-        foreach (var section in _container.GetMountedSections())
+        foreach (var sectionView in _container.GetMountedSections())
         {
-            var stripBounds = section.GetTabStripBounds(_overlay);
+            var stripBounds = sectionView.GetTabStripBounds(_overlay);
             if (!stripBounds.IsEmpty &&
                 stripBounds.Contains(position))
             {
-                int insertionSlot = section.GetInsertionSlot(position.X, _overlay);
-                return new TabDropTarget(section, insertionSlot, OverSectionBody: false);
+                int insertionSlot = sectionView.GetInsertionSlot(position.X, _overlay);
+                return new TabDropTarget(sectionView, insertionSlot, OverSectionBody: false);
             }
 
-            var sectionBounds = GetElementBounds(section);
+            var sectionBounds = GetElementBounds(sectionView);
             if (sectionBounds.Contains(position))
             {
-                int insertionSlot = section.GetInsertionSlot(position.X, _overlay);
-                return new TabDropTarget(section, insertionSlot, OverSectionBody: true);
+                int insertionSlot = sectionView.GetInsertionSlot(position.X, _overlay);
+                return new TabDropTarget(sectionView, insertionSlot, OverSectionBody: true);
             }
         }
 
@@ -251,7 +251,7 @@ internal sealed class TabDragController
     {
         if (_currentTarget is { } target)
         {
-            _dropPreview.ShowInsertion(target.Section, target.InsertionSlot, draggedTab);
+            _dropPreview.ShowInsertion(target.SectionView, target.InsertionSlot, draggedTab);
         }
         else
         {
@@ -263,7 +263,7 @@ internal sealed class TabDragController
     {
         if (_currentTarget is { OverSectionBody: true } target)
         {
-            _dropPreview.ShowHighlight(target.Section);
+            _dropPreview.ShowHighlight(target.SectionView);
         }
         else
         {
@@ -276,7 +276,7 @@ internal sealed class TabDragController
         double delta = 0;
         if (_currentTarget is { OverSectionBody: false } target)
         {
-            var stripBounds = target.Section.GetTabStripBounds(_overlay);
+            var stripBounds = target.SectionView.GetTabStripBounds(_overlay);
             if (position.X < stripBounds.X + AutoScrollEdgeWidth)
             {
                 delta = -AutoScrollStep;
@@ -311,7 +311,7 @@ internal sealed class TabDragController
             return;
         }
 
-        target.Section.ScrollTabStripBy(_autoScrollDelta);
+        target.SectionView.ScrollTabStripBy(_autoScrollDelta);
 
         // Tabs slide under the stationary pointer, so recompute the slot and indicator.
         UpdateDrag(_lastPointerPosition);
@@ -365,7 +365,7 @@ internal sealed class TabDragController
         _dropPreview.Hide();
 
         _pressedTab = null;
-        _sourceSection = null;
+        _sourceSectionView = null;
         _isDragging = false;
         _autoScrollDelta = 0;
         _currentTarget = null;

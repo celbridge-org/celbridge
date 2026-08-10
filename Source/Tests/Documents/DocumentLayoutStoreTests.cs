@@ -164,7 +164,7 @@ public class DocumentLayoutStoreTests
             Arg.Is<OpenDocumentOptions>(options =>
                 options.EditorId == EditorId.Empty
                 && options.Activate == false
-                && options.Address!.Section == DocumentSectionId.MainLeft
+                && options.Address!.Section == DocumentSection.MainLeft
                 && options.Address.TabOrder == 2));
     }
 
@@ -226,7 +226,7 @@ public class DocumentLayoutStoreTests
 
         await _utilityService.Received(1).RestoreDockedUtility(
             utilityResource,
-            Arg.Is<DocumentAddress>(address => address.Section == DocumentSectionId.MainLeft && address.TabOrder == 3));
+            Arg.Is<DocumentAddress>(address => address.Section == DocumentSection.MainLeft && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
 
@@ -267,7 +267,7 @@ public class DocumentLayoutStoreTests
 
         await _documentsPanel.Received(1).OpenDocument(
             Arg.Any<ResourceKey>(),
-            Arg.Is<OpenDocumentOptions>(options => options.Address!.Section == DocumentSectionId.MainLeft));
+            Arg.Is<OpenDocumentOptions>(options => options.Address!.Section == DocumentSection.MainLeft));
     }
 
     [Test]

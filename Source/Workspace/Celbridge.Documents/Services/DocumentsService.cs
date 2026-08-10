@@ -41,7 +41,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     // Builds a fresh list from the panel's split and visibility state on each read, so callers must be
     // on the UI thread.
-    public IReadOnlyList<DocumentSectionId> VisibleSections => DocumentsPanel.VisibleSections;
+    public IReadOnlyList<DocumentSection> VisibleSections => DocumentsPanel.VisibleSections;
 
     public IDocumentEditorRegistry DocumentEditorRegistry => _documentEditorRegistry;
 

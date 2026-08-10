@@ -19,10 +19,10 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         _settings = settings;
     }
 
-    public LayoutRegion PreferredRegionVisibility
+    public WorkspaceSurface PreferredSurfaceVisibility
     {
-        get => Get(SettingCatalog.Layout.PreferredRegionVisibility);
-        set => Set(SettingCatalog.Layout.PreferredRegionVisibility, value);
+        get => Get(SettingCatalog.Layout.PreferredSurfaceVisibility);
+        set => Set(SettingCatalog.Layout.PreferredSurfaceVisibility, value);
     }
 
     public float UtilityPanelWidth

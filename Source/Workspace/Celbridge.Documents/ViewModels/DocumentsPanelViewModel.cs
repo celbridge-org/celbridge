@@ -131,9 +131,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public void ResetAreaSize(DocumentArea area)
     {
-        _commandService.Execute<IResetPanelCommand>(command =>
+        _commandService.Execute<IResetSurfaceSizeCommand>(command =>
         {
-            command.Region = GetRegion(area);
+            command.Surface = GetSurface(area);
         });
     }
 
@@ -144,7 +144,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
             return true;
         }
 
-        return _layoutService.RegionVisibility.HasFlag(GetRegion(area));
+        return _layoutService.SurfaceVisibility.HasFlag(GetSurface(area));
     }
 
     public void SetAreaVisible(DocumentArea area, bool isVisible)
@@ -154,27 +154,27 @@ public partial class DocumentsPanelViewModel : ObservableObject
             return;
         }
 
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = GetRegion(area);
+            command.Surfaces = GetSurface(area);
             command.IsVisible = isVisible;
         });
     }
 
-    // Bottom and Side are also workspace regions, so the Layout toolbar and the layout modes can collapse
-    // them. Main is always visible and has no region.
-    private static LayoutRegion GetRegion(DocumentArea area)
+    // Bottom and Side are also workspace surfaces, so the Layout toolbar and the layout modes can collapse
+    // them. Main is always visible and has no surface.
+    private static WorkspaceSurface GetSurface(DocumentArea area)
     {
         switch (area)
         {
             case DocumentArea.Bottom:
-                return LayoutRegion.BottomArea;
+                return WorkspaceSurface.BottomArea;
 
             case DocumentArea.Side:
-                return LayoutRegion.SideArea;
+                return WorkspaceSurface.SideArea;
 
             default:
-                return LayoutRegion.None;
+                return WorkspaceSurface.None;
         }
     }
 

@@ -69,7 +69,7 @@ public interface IDocumentsService
     /// The document sections that are currently mounted, in reading order.
     /// This is a cached snapshot that is safe to read from any thread.
     /// </summary>
-    IReadOnlyList<DocumentSectionId> VisibleSections { get; }
+    IReadOnlyList<DocumentSection> VisibleSections { get; }
 
     /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.

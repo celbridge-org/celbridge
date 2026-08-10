@@ -6,7 +6,7 @@ namespace Celbridge.Documents.Views;
 /// <summary>
 /// Identifies an open document by its containing section and the tab that hosts its view.
 /// </summary>
-public record DocumentTabLocation(DocumentSection Section, DocumentTab Tab);
+public record DocumentTabLocation(DocumentSectionView SectionView, DocumentTab Tab);
 
 /// <summary>
 /// Container that manages the three document areas, the sections within them, and the splitters that
@@ -23,7 +23,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
     private const double DefaultSplitRatio = 0.5;
 
-    private readonly Dictionary<DocumentSectionId, DocumentSection> _sections = new();
+    private readonly Dictionary<DocumentSection, DocumentSectionView> _sections = new();
     private readonly Dictionary<DocumentArea, bool> _areaSplit = new();
     private readonly Dictionary<DocumentArea, double> _areaSplitRatio = new();
     private readonly Dictionary<DocumentArea, Splitter> _splitSplitters = new();
@@ -36,13 +36,13 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private double _totalDragDelta = 0;
 
-    private DocumentSectionId _activeSectionId = DocumentSectionId.MainLeft;
+    private DocumentSection _activeSection = DocumentSection.MainLeft;
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
     /// Event raised when the selected document changes in any section.
     /// </summary>
-    public event Action<DocumentSection, ResourceKey>? SectionSelectionChanged;
+    public event Action<DocumentSectionView, ResourceKey>? SectionSelectionChanged;
 
     /// <summary>
     /// Event raised when the active document changes.
@@ -53,17 +53,17 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// Event raised when the open documents in any section change.
     /// </summary>
-    public event Action<DocumentSection, List<ResourceKey>>? DocumentsLayoutChanged;
+    public event Action<DocumentSectionView, List<ResourceKey>>? DocumentsLayoutChanged;
 
     /// <summary>
     /// Event raised when a tab close is requested in any section.
     /// </summary>
-    public event Action<DocumentSection, ResourceKey>? CloseRequested;
+    public event Action<DocumentSectionView, ResourceKey>? CloseRequested;
 
     /// <summary>
     /// Event raised when a context menu action is requested on a document tab.
     /// </summary>
-    public event Action<DocumentSection, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
+    public event Action<DocumentSectionView, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
     /// <summary>
     /// Event raised when an area's split state or split position changes.
@@ -89,21 +89,21 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Event raised when resource files are dropped into a section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>, int>? FilesDropped;
+    public event Action<DocumentSectionView, List<IResource>, int>? FilesDropped;
 
     /// <summary>
     /// The sections that are currently mounted, in reading order.
     /// </summary>
-    public IReadOnlyList<DocumentSectionId> VisibleSections
+    public IReadOnlyList<DocumentSection> VisibleSections
     {
         get
         {
-            var visible = new List<DocumentSectionId>();
-            foreach (var sectionId in DocumentLayoutHelper.AllSections)
+            var visible = new List<DocumentSection>();
+            foreach (var section in DocumentLayoutHelper.AllSections)
             {
-                if (IsSectionMounted(sectionId))
+                if (IsSectionMounted(section))
                 {
-                    visible.Add(sectionId);
+                    visible.Add(section);
                 }
             }
 
@@ -119,7 +119,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// Gets the section containing the active document.
     /// </summary>
-    public DocumentSectionId ActiveSectionId => _activeSectionId;
+    public DocumentSection ActiveSection => _activeSection;
 
     public DocumentSectionContainer()
     {
@@ -134,9 +134,9 @@ public sealed partial class DocumentSectionContainer : UserControl
 
         // Every section exists for the lifetime of the container: a collapsed area keeps its tabs while
         // its sections are unmounted from the visual tree.
-        foreach (var sectionId in DocumentLayoutHelper.AllSections)
+        foreach (var section in DocumentLayoutHelper.AllSections)
         {
-            CreateSection(sectionId);
+            CreateSection(section);
         }
 
         InitializeAreaSplitters();
@@ -174,32 +174,32 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Gets the section with the given id.
+    /// Gets the view for the named section.
     /// </summary>
-    public DocumentSection GetSection(DocumentSectionId sectionId)
+    public DocumentSectionView GetSection(DocumentSection section)
     {
-        return _sections[sectionId];
+        return _sections[section];
     }
 
     /// <summary>
     /// Gets every mounted section, in reading order.
     /// </summary>
-    public IEnumerable<DocumentSection> GetMountedSections()
+    public IEnumerable<DocumentSectionView> GetMountedSections()
     {
-        foreach (var sectionId in VisibleSections)
+        foreach (var section in VisibleSections)
         {
-            yield return _sections[sectionId];
+            yield return _sections[section];
         }
     }
 
     /// <summary>
     /// Gets every section, mounted or not, in reading order.
     /// </summary>
-    public IEnumerable<DocumentSection> GetAllSections()
+    public IEnumerable<DocumentSectionView> GetAllSections()
     {
-        foreach (var sectionId in DocumentLayoutHelper.AllSections)
+        foreach (var section in DocumentLayoutHelper.AllSections)
         {
-            yield return _sections[sectionId];
+            yield return _sections[section];
         }
     }
 
@@ -207,15 +207,15 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Whether the section is currently in the visual tree: its area is visible and, for a secondary
     /// section, that area is split.
     /// </summary>
-    public bool IsSectionMounted(DocumentSectionId sectionId)
+    public bool IsSectionMounted(DocumentSection section)
     {
-        var area = sectionId.GetArea();
+        var area = section.GetArea();
         if (!_visibleAreas.Contains(area))
         {
             return false;
         }
 
-        return !sectionId.IsSecondarySection() || _areaSplit[area];
+        return !section.IsSecondarySection() || _areaSplit[area];
     }
 
     /// <summary>
@@ -348,13 +348,13 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// Finds the section containing a specific document, including sections in a collapsed area.
     /// </summary>
-    public DocumentSection? FindSectionContaining(ResourceKey fileResource)
+    public DocumentSectionView? FindSectionContaining(ResourceKey fileResource)
     {
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            if (section.ContainsDocument(fileResource))
+            if (sectionView.ContainsDocument(fileResource))
             {
-                return section;
+                return sectionView;
             }
         }
 
@@ -367,12 +367,12 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public DocumentTabLocation? FindDocumentTab(ResourceKey fileResource)
     {
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            var tab = section.GetDocumentTab(fileResource);
+            var tab = sectionView.GetDocumentTab(fileResource);
             if (tab is not null)
             {
-                return new DocumentTabLocation(section, tab);
+                return new DocumentTabLocation(sectionView, tab);
             }
         }
 
@@ -382,7 +382,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// Makes the specified document the active document.
     /// </summary>
-    public void ActivateDocument(ResourceKey fileResource, DocumentSectionId sectionId)
+    public void ActivateDocument(ResourceKey fileResource, DocumentSection section)
     {
         if (fileResource.IsEmpty)
         {
@@ -390,14 +390,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         // Enforce the invariant: the active document's tab must be the selected tab in its section
-        var section = _sections[sectionId];
-        var tab = section.GetDocumentTab(fileResource);
+        var sectionView = _sections[section];
+        var tab = sectionView.GetDocumentTab(fileResource);
         if (tab is not null)
         {
-            section.SelectTab(tab);
+            sectionView.SelectTab(tab);
         }
 
-        _activeSectionId = sectionId;
+        _activeSection = section;
         _activeDocument = fileResource;
 
         UpdateTabSelectionIndicators();
@@ -409,7 +409,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Called when a document is about to be closed. If it's the active document,
     /// selects the next best document (closest tab in same section, or from other sections).
     /// </summary>
-    public void HandleDocumentClosing(ResourceKey closingResource, DocumentSectionId closingSectionId, int closingTabIndex)
+    public void HandleDocumentClosing(ResourceKey closingResource, DocumentSection closingSection, int closingTabIndex)
     {
         // Only need to select another document if the closing one is the active document
         if (closingResource != _activeDocument)
@@ -417,18 +417,18 @@ public sealed partial class DocumentSectionContainer : UserControl
             return;
         }
 
-        var nextDocument = FindNextDocumentToSelect(closingSectionId, closingTabIndex);
+        var nextDocument = FindNextDocumentToSelect(closingSection, closingTabIndex);
 
         if (nextDocument is not null)
         {
-            _activeSectionId = nextDocument.SectionId;
+            _activeSection = nextDocument.Section;
             _activeDocument = nextDocument.Resource;
 
-            var section = _sections[nextDocument.SectionId];
-            var tab = section.GetDocumentTab(nextDocument.Resource);
+            var sectionView = _sections[nextDocument.Section];
+            var tab = sectionView.GetDocumentTab(nextDocument.Resource);
             if (tab is not null)
             {
-                section.SelectTab(tab);
+                sectionView.SelectTab(tab);
             }
 
             UpdateTabSelectionIndicators();
@@ -438,7 +438,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             // No documents left to select
             _activeDocument = ResourceKey.Empty;
-            _activeSectionId = DocumentSectionId.MainLeft;
+            _activeSection = DocumentSection.MainLeft;
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
         }
@@ -447,18 +447,18 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// The document that takes over as active when the current one closes.
     /// </summary>
-    private record NextDocument(ResourceKey Resource, DocumentSectionId SectionId);
+    private record NextDocument(ResourceKey Resource, DocumentSection Section);
 
     /// <summary>
     /// Finds the next best document to select when a document is closed.
     /// Prefers documents in the same section (closest to the closed tab's position),
     /// then falls back to other mounted sections in reading order.
     /// </summary>
-    private NextDocument? FindNextDocumentToSelect(DocumentSectionId closingSectionId, int closingTabIndex)
+    private NextDocument? FindNextDocumentToSelect(DocumentSection closingSection, int closingTabIndex)
     {
         // First, try to find a document in the same section
-        var sameSection = _sections[closingSectionId];
-        var tabsInSection = sameSection.GetAllTabs().ToList();
+        var sameSectionView = _sections[closingSection];
+        var tabsInSection = sameSectionView.GetAllTabs().ToList();
 
         // Account for the tab that's being closed (it's still in the list)
         int remainingTabs = tabsInSection.Count - 1;
@@ -475,7 +475,7 @@ public sealed partial class DocumentSectionContainer : UserControl
                 var nextTab = tabsInSection[nextIndex];
                 if (nextTab.ViewModel.FileResource != _activeDocument)
                 {
-                    return new NextDocument(nextTab.ViewModel.FileResource, closingSectionId);
+                    return new NextDocument(nextTab.ViewModel.FileResource, closingSection);
                 }
             }
 
@@ -484,23 +484,23 @@ public sealed partial class DocumentSectionContainer : UserControl
             {
                 if (tab.ViewModel.FileResource != _activeDocument)
                 {
-                    return new NextDocument(tab.ViewModel.FileResource, closingSectionId);
+                    return new NextDocument(tab.ViewModel.FileResource, closingSection);
                 }
             }
         }
 
         // No documents left in the same section, so scan the other mounted sections in reading order.
-        foreach (var sectionId in VisibleSections)
+        foreach (var section in VisibleSections)
         {
-            if (sectionId == closingSectionId)
+            if (section == closingSection)
             {
                 continue;
             }
 
-            var firstTab = _sections[sectionId].GetAllTabs().FirstOrDefault();
+            var firstTab = _sections[section].GetAllTabs().FirstOrDefault();
             if (firstTab is not null)
             {
-                return new NextDocument(firstTab.ViewModel.FileResource, sectionId);
+                return new NextDocument(firstTab.ViewModel.FileResource, section);
             }
         }
 
@@ -533,15 +533,15 @@ public sealed partial class DocumentSectionContainer : UserControl
         if (location is not null)
         {
             // Directly update the active document; programmatic selection does not rely on events.
-            location.Section.SelectTab(location.Tab);
-            _activeSectionId = location.Section.SectionId;
+            location.SectionView.SelectTab(location.Tab);
+            _activeSection = location.SectionView.Section;
             _activeDocument = location.Tab.ViewModel.FileResource;
         }
         else
         {
             // No documents are open, so there is no active document.
             _activeDocument = ResourceKey.Empty;
-            _activeSectionId = DocumentSectionId.MainLeft;
+            _activeSection = DocumentSection.MainLeft;
         }
 
         UpdateTabSelectionIndicators();
@@ -554,18 +554,18 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private DocumentTabLocation? FindFallbackActiveDocument()
     {
-        foreach (var section in GetMountedSections())
+        foreach (var sectionView in GetMountedSections())
         {
-            var selectedResource = section.GetSelectedDocument();
+            var selectedResource = sectionView.GetSelectedDocument();
             if (selectedResource.IsEmpty)
             {
                 continue;
             }
 
-            var tab = section.GetDocumentTab(selectedResource);
+            var tab = sectionView.GetDocumentTab(selectedResource);
             if (tab is not null)
             {
-                return new DocumentTabLocation(section, tab);
+                return new DocumentTabLocation(sectionView, tab);
             }
         }
 
@@ -577,9 +577,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void UpdateTabStripVisibility(bool showTabStrip)
     {
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            section.UpdateTabStripVisibility(showTabStrip);
+            sectionView.UpdateTabStripVisibility(showTabStrip);
         }
     }
 
@@ -588,9 +588,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void Shutdown()
     {
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            section.Shutdown();
+            sectionView.Shutdown();
         }
     }
 
@@ -598,7 +598,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Moves a tab from its current section to the target section, appending it to the tab strip or
     /// inserting it at the given insertion slot.
     /// </summary>
-    public bool MoveTabToSection(DocumentTab tab, DocumentSectionId targetSectionId, int? insertionSlot = null)
+    public bool MoveTabToSection(DocumentTab tab, DocumentSection targetSection, int? insertionSlot = null)
     {
         var location = FindDocumentTab(tab.ViewModel.FileResource);
         if (location is null)
@@ -606,40 +606,40 @@ public sealed partial class DocumentSectionContainer : UserControl
             return false;
         }
 
-        var sourceSection = location.Section;
-        var targetSection = _sections[targetSectionId];
-        if (sourceSection == targetSection)
+        var sourceSectionView = location.SectionView;
+        var targetSectionView = _sections[targetSection];
+        if (sourceSectionView == targetSectionView)
         {
             return false; // Already in the target section
         }
 
-        bool wasSelectedInSource = sourceSection.GetSelectedDocument() == tab.ViewModel.FileResource;
-        int sourceTabIndex = sourceSection.GetTabIndex(tab);
+        bool wasSelectedInSource = sourceSectionView.GetSelectedDocument() == tab.ViewModel.FileResource;
+        int sourceTabIndex = sourceSectionView.GetTabIndex(tab);
 
-        sourceSection.RemoveTab(tab);
+        sourceSectionView.RemoveTab(tab);
         if (insertionSlot is int slot)
         {
-            targetSection.InsertTab(tab, slot);
+            targetSectionView.InsertTab(tab, slot);
         }
         else
         {
-            targetSection.AddTab(tab);
+            targetSectionView.AddTab(tab);
         }
-        targetSection.SelectTab(tab);
+        targetSectionView.SelectTab(tab);
 
         // Restore a visible selection in the source section. The Uno Skia TabView does not reliably
         // select a neighbouring tab when its selected tab is removed, which leaves every tab in the
         // strip rendered in the unselected style (the whole row reads as disabled).
         if (wasSelectedInSource &&
-            sourceSection.TabCount > 0)
+            sourceSectionView.TabCount > 0)
         {
-            int neighbourIndex = Math.Clamp(sourceTabIndex, 0, sourceSection.TabCount - 1);
-            var neighbourTab = sourceSection.GetAllTabs().ElementAt(neighbourIndex);
-            sourceSection.SelectTab(neighbourTab);
+            int neighbourIndex = Math.Clamp(sourceTabIndex, 0, sourceSectionView.TabCount - 1);
+            var neighbourTab = sourceSectionView.GetAllTabs().ElementAt(neighbourIndex);
+            sourceSectionView.SelectTab(neighbourTab);
         }
 
         // Always make the moved tab the active document
-        _activeSectionId = targetSectionId;
+        _activeSection = targetSection;
         _activeDocument = tab.ViewModel.FileResource;
         UpdateTabSelectionIndicators();
         ActiveDocumentChanged?.Invoke(_activeDocument);
@@ -677,22 +677,22 @@ public sealed partial class DocumentSectionContainer : UserControl
         await tcs.Task;
     }
 
-    private void CreateSection(DocumentSectionId sectionId)
+    private void CreateSection(DocumentSection section)
     {
-        var section = new DocumentSection
+        var sectionView = new DocumentSectionView
         {
-            SectionId = sectionId
+            Section = section
         };
 
-        section.SelectionChanged += OnSectionSelectionChanged;
-        section.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
-        section.CloseRequested += OnSectionCloseRequested;
-        section.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-        section.TabDroppedInside += OnSectionTabDroppedInside;
-        section.FilesDropped += OnSectionFilesDropped;
-        section.TabPointerPressed += OnSectionTabPointerPressed;
+        sectionView.SelectionChanged += OnSectionSelectionChanged;
+        sectionView.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
+        sectionView.CloseRequested += OnSectionCloseRequested;
+        sectionView.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
+        sectionView.TabDroppedInside += OnSectionTabDroppedInside;
+        sectionView.FilesDropped += OnSectionFilesDropped;
+        sectionView.TabPointerPressed += OnSectionTabPointerPressed;
 
-        _sections[sectionId] = section;
+        _sections[section] = sectionView;
     }
 
     /// <summary>
@@ -701,19 +701,19 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private void MigrateSecondarySection(DocumentArea area)
     {
-        var primarySection = _sections[area.GetPrimarySection()];
-        var secondarySection = _sections[area.GetSecondarySection()];
+        var primarySectionView = _sections[area.GetPrimarySection()];
+        var secondarySectionView = _sections[area.GetSecondarySection()];
 
-        var tabsToMove = secondarySection.GetAllTabs().ToList();
+        var tabsToMove = secondarySectionView.GetAllTabs().ToList();
         foreach (var tab in tabsToMove)
         {
-            secondarySection.RemoveTab(tab);
-            primarySection.AddTab(tab);
+            secondarySectionView.RemoveTab(tab);
+            primarySectionView.AddTab(tab);
         }
 
-        if (_activeSectionId == area.GetSecondarySection())
+        if (_activeSection == area.GetSecondarySection())
         {
-            _activeSectionId = area.GetPrimarySection();
+            _activeSection = area.GetPrimarySection();
         }
 
         // Migrating tabs does not re-select the active document in the target section, so re-apply it.
@@ -722,7 +722,7 @@ public sealed partial class DocumentSectionContainer : UserControl
             var activeLocation = FindDocumentTab(_activeDocument);
             if (activeLocation is not null)
             {
-                activeLocation.Section.SelectTab(activeLocation.Tab);
+                activeLocation.SectionView.SelectTab(activeLocation.Tab);
             }
         }
 
@@ -760,8 +760,8 @@ public sealed partial class DocumentSectionContainer : UserControl
         bool isSplit = _areaSplit[area];
         bool isHorizontal = area.SplitsHorizontally();
 
-        var primarySection = _sections[area.GetPrimarySection()];
-        var secondarySection = _sections[area.GetSecondarySection()];
+        var primarySectionView = _sections[area.GetPrimarySection()];
+        var secondarySectionView = _sections[area.GetSecondarySection()];
 
         if (_splitSplitters.TryGetValue(area, out var existingSplitter))
         {
@@ -775,9 +775,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         if (!isSplit &&
-            areaGrid.Children.Contains(secondarySection))
+            areaGrid.Children.Contains(secondarySectionView))
         {
-            areaGrid.Children.Remove(secondarySection);
+            areaGrid.Children.Remove(secondarySectionView);
         }
 
         areaGrid.ColumnDefinitions.Clear();
@@ -802,10 +802,10 @@ public sealed partial class DocumentSectionContainer : UserControl
             });
         }
 
-        SetSectionPosition(primarySection, isHorizontal, 0);
-        if (!areaGrid.Children.Contains(primarySection))
+        SetSectionPosition(primarySectionView, isHorizontal, 0);
+        if (!areaGrid.Children.Contains(primarySectionView))
         {
-            areaGrid.Children.Add(primarySection);
+            areaGrid.Children.Add(primarySectionView);
         }
 
         if (isSplit)
@@ -834,10 +834,10 @@ public sealed partial class DocumentSectionContainer : UserControl
             areaGrid.Children.Add(splitter);
             _splitSplitters[area] = splitter;
 
-            SetSectionPosition(secondarySection, isHorizontal, 2);
-            if (!areaGrid.Children.Contains(secondarySection))
+            SetSectionPosition(secondarySectionView, isHorizontal, 2);
+            if (!areaGrid.Children.Contains(secondarySectionView))
             {
-                areaGrid.Children.Add(secondarySection);
+                areaGrid.Children.Add(secondarySectionView);
             }
         }
 
@@ -887,13 +887,13 @@ public sealed partial class DocumentSectionContainer : UserControl
             return;
         }
 
-        var primarySection = _sections[area.GetPrimarySection()];
-        var secondarySection = _sections[area.GetSecondarySection()];
+        var primarySectionView = _sections[area.GetPrimarySection()];
+        var secondarySectionView = _sections[area.GetSecondarySection()];
 
         bool toolbarOnSecondary = area.SplitsHorizontally() && _areaSplit[area];
 
-        primarySection.SetTabStripFooter(toolbarOnSecondary ? null : toolbar);
-        secondarySection.SetTabStripFooter(toolbarOnSecondary ? toolbar : null);
+        primarySectionView.SetTabStripFooter(toolbarOnSecondary ? null : toolbar);
+        secondarySectionView.SetTabStripFooter(toolbarOnSecondary ? toolbar : null);
     }
 
     private void UpdateSectionMoveTargets(DocumentArea area)
@@ -1094,11 +1094,11 @@ public sealed partial class DocumentSectionContainer : UserControl
         return primarySize / total;
     }
 
-    private void OnSectionSelectionChanged(DocumentSection section, ResourceKey documentResource)
+    private void OnSectionSelectionChanged(DocumentSectionView sectionView, ResourceKey documentResource)
     {
         // This handles section-level selection (which tab is selected within a section's TabView).
         // This is distinct from the active document, which is updated via ActivateDocument/SetActiveDocument.
-        SectionSelectionChanged?.Invoke(section, documentResource);
+        SectionSelectionChanged?.Invoke(sectionView, documentResource);
     }
 
     /// <summary>
@@ -1106,11 +1106,11 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private void UpdateTabSelectionIndicators()
     {
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            bool isActiveSection = section.SectionId == _activeSectionId;
+            bool isActiveSection = sectionView.Section == _activeSection;
 
-            foreach (var tab in section.GetAllTabs())
+            foreach (var tab in sectionView.GetAllTabs())
             {
                 bool isActiveDocument = isActiveSection &&
                     tab.ViewModel.FileResource == _activeDocument;
@@ -1119,30 +1119,30 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
     }
 
-    private void OnSectionDocumentsLayoutChanged(DocumentSection section, List<ResourceKey> documents)
+    private void OnSectionDocumentsLayoutChanged(DocumentSectionView sectionView, List<ResourceKey> documents)
     {
-        DocumentsLayoutChanged?.Invoke(section, documents);
+        DocumentsLayoutChanged?.Invoke(sectionView, documents);
     }
 
-    private void OnSectionCloseRequested(DocumentSection section, ResourceKey fileResource)
+    private void OnSectionCloseRequested(DocumentSectionView sectionView, ResourceKey fileResource)
     {
-        CloseRequested?.Invoke(section, fileResource);
+        CloseRequested?.Invoke(sectionView, fileResource);
     }
 
-    private void OnSectionContextMenuActionRequested(DocumentSection section, DocumentTab tab, DocumentTabMenuAction action)
+    private void OnSectionContextMenuActionRequested(DocumentSectionView sectionView, DocumentTab tab, DocumentTabMenuAction action)
     {
-        ContextMenuActionRequested?.Invoke(section, tab, action);
+        ContextMenuActionRequested?.Invoke(sectionView, tab, action);
     }
 
-    private void OnSectionTabDroppedInside(DocumentSection targetSection, DocumentTab tab)
+    private void OnSectionTabDroppedInside(DocumentSectionView targetSection, DocumentTab tab)
     {
-        if (MoveTabToSection(tab, targetSection.SectionId))
+        if (MoveTabToSection(tab, targetSection.Section))
         {
             NotifyLayoutChanged();
         }
     }
 
-    private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources, int insertionSlot)
+    private void OnSectionFilesDropped(DocumentSectionView targetSection, List<IResource> resources, int insertionSlot)
     {
         FilesDropped?.Invoke(targetSection, resources, insertionSlot);
     }
@@ -1153,12 +1153,12 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private void EnsureVisibleTabsSelected()
     {
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            if (section.TabCount > 0 && section.GetSelectedDocument().IsEmpty)
+            if (sectionView.TabCount > 0 && sectionView.GetSelectedDocument().IsEmpty)
             {
-                var firstTab = section.GetAllTabs().First();
-                section.SelectTab(firstTab);
+                var firstTab = sectionView.GetAllTabs().First();
+                sectionView.SelectTab(firstTab);
             }
         }
     }
@@ -1166,10 +1166,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     private void NotifyLayoutChanged()
     {
         // Re-fire the layout notification for every section so the stored addresses stay in step.
-        foreach (var section in GetAllSections())
+        foreach (var sectionView in GetAllSections())
         {
-            var documents = section.GetOpenDocuments();
-            DocumentsLayoutChanged?.Invoke(section, documents);
+            var documents = sectionView.GetOpenDocuments();
+            DocumentsLayoutChanged?.Invoke(sectionView, documents);
         }
     }
 }

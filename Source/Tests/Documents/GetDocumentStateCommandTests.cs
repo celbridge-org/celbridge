@@ -17,14 +17,14 @@ public class GetDocumentStateCommandTests
         var otherDocument = new ResourceKey("src/main.cs");
         var openDocuments = new List<OpenDocumentInfo>
         {
-            new(activeDocument, new DocumentAddress(0, DocumentSectionId.MainLeft, 0), EditorId.Empty),
-            new(otherDocument, new DocumentAddress(0, DocumentSectionId.MainRight, 0), EditorId.Empty),
+            new(activeDocument, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty),
+            new(otherDocument, new DocumentAddress(0, DocumentSection.MainRight, 0), EditorId.Empty),
         };
 
-        var visibleSections = new List<DocumentSectionId>
+        var visibleSections = new List<DocumentSection>
         {
-            DocumentSectionId.MainLeft,
-            DocumentSectionId.MainRight
+            DocumentSection.MainLeft,
+            DocumentSection.MainRight
         };
 
         var documentsService = Substitute.For<IDocumentsService>();
@@ -54,7 +54,7 @@ public class GetDocumentStateCommandTests
     {
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.ActiveDocument.Returns(ResourceKey.Empty);
-        documentsService.VisibleSections.Returns(new List<DocumentSectionId> { DocumentSectionId.MainLeft });
+        documentsService.VisibleSections.Returns(new List<DocumentSection> { DocumentSection.MainLeft });
         documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
 
         var workspaceService = Substitute.For<IWorkspaceService>();

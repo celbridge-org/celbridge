@@ -43,15 +43,15 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Panel and region layout state. Workspace-scoped, so each project
+    /// Panel and surface layout state. Workspace-scoped, so each project
     /// remembers its own panel layout.
     /// </summary>
     public static class Layout
     {
-        // The settings store serializes an enum by its integer value, so a change to the LayoutRegion
-        // flags needs a new key name. Reusing one reads stale data into the wrong regions.
-        public static readonly SettingDescriptor<LayoutRegion> PreferredRegionVisibility =
-            new("Layout.VisibleRegions", SettingScope.Workspace, LayoutRegion.All);
+        // The settings store serializes an enum by its integer value, so a change to the WorkspaceSurface
+        // flags needs a new key name. Reusing one reads stale data into the wrong surfaces.
+        public static readonly SettingDescriptor<WorkspaceSurface> PreferredSurfaceVisibility =
+            new("Layout.VisibleSurfaces", SettingScope.Workspace, WorkspaceSurface.All);
 
         public static readonly SettingDescriptor<float> UtilityPanelWidth =
             new("Layout.UtilityPanelWidth", SettingScope.Workspace, WorkspaceConstants.UtilityPanelWidth);

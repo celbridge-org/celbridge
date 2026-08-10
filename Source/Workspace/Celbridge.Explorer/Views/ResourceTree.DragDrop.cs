@@ -17,7 +17,7 @@ public sealed partial class ResourceTree
     // recognised there. Set when an internal drag starts, read during drag-over and drop, and cleared
     // after an internal drop. External drags are identified by the StorageItems format and checked first,
     // so a stale value here never affects them. The DataPackage property is also populated so a
-    // cross-control consumer (DocumentSection) can recognise the drag on Windows, where it round-trips.
+    // cross-control consumer (DocumentSectionView) can recognise the drag on Windows, where it round-trips.
     private List<IResource>? _internalDragResources;
 
     // Forces the post-rebuild focus restore after a built-in-drag move, in case the OS drag loop dropped

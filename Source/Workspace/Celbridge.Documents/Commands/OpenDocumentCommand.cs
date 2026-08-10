@@ -24,7 +24,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public string Location { get; set; } = string.Empty;
 
-    public DocumentSectionId? TargetSection { get; set; }
+    public DocumentSection? TargetSection { get; set; }
 
     public int? TargetTabIndex { get; set; }
 

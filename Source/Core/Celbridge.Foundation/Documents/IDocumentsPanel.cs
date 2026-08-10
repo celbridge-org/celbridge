@@ -9,7 +9,7 @@ public interface IDocumentsPanel
     /// The sections that are currently mounted, in reading order. A section is mounted when its area is
     /// visible and, for a secondary section, that area is split.
     /// </summary>
-    IReadOnlyList<DocumentSectionId> VisibleSections { get; }
+    IReadOnlyList<DocumentSection> VisibleSections { get; }
 
     /// <summary>
     /// Gets or sets the active document that is being inspected.

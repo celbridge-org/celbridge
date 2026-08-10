@@ -261,7 +261,7 @@ public class DocumentLayoutStore
             // MainLeft always exists, so it is the safe landing place.
             if (!DocumentLayoutHelper.TryParseSection(stored.Section, out var storedSection))
             {
-                storedSection = DocumentSectionId.MainLeft;
+                storedSection = DocumentSection.MainLeft;
             }
 
             var targetSection = ResolveRestoreSection(storedSection);
@@ -336,7 +336,7 @@ public class DocumentLayoutStore
     // Folds a stored section into one that currently holds tabs. A secondary section whose area restored
     // unsplit folds into that area's primary section. A section in a collapsed area is kept: the area
     // holds its documents while hidden, and they reappear in place when it is shown again.
-    private DocumentSectionId ResolveRestoreSection(DocumentSectionId storedSection)
+    private DocumentSection ResolveRestoreSection(DocumentSection storedSection)
     {
         var area = storedSection.GetArea();
         if (storedSection.IsSecondarySection()

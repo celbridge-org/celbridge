@@ -32,9 +32,9 @@ public record WorkspacePageDeactivatedMessage();
 public record WorkspaceStateDirtyMessage();
 
 /// <summary>
-/// Message sent when the region visibility changes.
+/// Message sent when the surface visibility changes.
 /// </summary>
-public record RegionVisibilityChangedMessage(LayoutRegion RegionVisibility);
+public record SurfaceVisibilityChangedMessage(WorkspaceSurface SurfaceVisibility);
 
 /// <summary>
 /// Message sent when the focused panel changes.

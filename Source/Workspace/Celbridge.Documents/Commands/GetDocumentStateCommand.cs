@@ -12,7 +12,7 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
     public DocumentStateSnapshot ResultValue { get; private set; }
         = new DocumentStateSnapshot(
             ResourceKey.Empty,
-            new[] { DocumentSectionId.MainLeft },
+            new[] { DocumentSection.MainLeft },
             Array.Empty<OpenDocumentInfo>());
 
     public GetDocumentStateCommand(IWorkspaceWrapper workspaceWrapper)

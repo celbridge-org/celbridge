@@ -8,7 +8,7 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// Workspace layout snapshot reported as part of app_get_state. Reflects which
-/// regions are currently visible.
+/// surfaces are currently visible.
 /// </summary>
 public record class LayoutModeInfo(
     bool UtilityPanelVisible,

@@ -64,7 +64,7 @@ public sealed partial class DocumentsPanel : IResourceDropTarget
             return false;
         }
 
-        _ = HandleDroppedFiles(location.Section, resources.ToList(), location.InsertionSlot);
+        _ = HandleDroppedFiles(location.SectionView, resources.ToList(), location.InsertionSlot);
 
         return true;
     }

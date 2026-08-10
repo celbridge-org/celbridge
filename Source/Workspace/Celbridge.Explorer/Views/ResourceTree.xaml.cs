@@ -56,7 +56,7 @@ public sealed partial class ResourceTree : UserControl
         _listPointerPressedHandler = ResourceListView_PointerPressed;
         ConfigurePointerDrag();
 
-        // A context menu opened near the panel edge reaches into the document region, where a hosted web
+        // A context menu opened near the panel edge reaches into the document area, where a hosted web
         // view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(ResourceContextMenu);

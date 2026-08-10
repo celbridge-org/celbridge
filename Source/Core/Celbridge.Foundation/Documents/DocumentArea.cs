@@ -1,8 +1,8 @@
 namespace Celbridge.Documents;
 
 /// <summary>
-/// A region of the documents panel that hosts document tabs. An area shows one section, or two when it
-/// is split.
+/// A division of the Documents panel that hosts document tabs. An area shows one section, or two when
+/// it is split.
 /// </summary>
 public enum DocumentArea
 {

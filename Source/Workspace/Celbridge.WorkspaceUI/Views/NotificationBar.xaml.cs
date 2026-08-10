@@ -5,7 +5,7 @@ namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
 /// The strip of project-notification banners docked below the workspace document area. It sizes to
-/// its content rather than occupying a layout region, so it takes no space while no banner is showing.
+/// its content rather than occupying layout space, so it takes no space while no banner is showing.
 /// </summary>
 public sealed partial class NotificationBar : UserControl
 {

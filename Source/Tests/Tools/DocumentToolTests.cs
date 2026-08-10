@@ -50,10 +50,10 @@ public class DocumentToolTests
         var activeResource = new ResourceKey("notes/readme.md");
         var snapshot = new DocumentStateSnapshot(
             activeResource,
-            new List<DocumentSectionId> { DocumentSectionId.MainLeft },
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(activeResource, new DocumentAddress(0, DocumentSectionId.MainLeft, 0), EditorId.Empty)
+                new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -78,11 +78,11 @@ public class DocumentToolTests
         var otherResource = new ResourceKey("tests/test_main.py");
         var snapshot = new DocumentStateSnapshot(
             activeResource,
-            new List<DocumentSectionId> { DocumentSectionId.MainLeft, DocumentSectionId.MainRight },
+            new List<DocumentSection> { DocumentSection.MainLeft, DocumentSection.MainRight },
             new List<OpenDocumentInfo>
             {
-                new(activeResource, new DocumentAddress(0, DocumentSectionId.MainLeft, 0), EditorId.Empty),
-                new(otherResource, new DocumentAddress(0, DocumentSectionId.MainRight, 0), EditorId.Empty)
+                new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty),
+                new(otherResource, new DocumentAddress(0, DocumentSection.MainRight, 0), EditorId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -108,10 +108,10 @@ public class DocumentToolTests
         var resource = new ResourceKey("packages/widget/index.html");
         var snapshot = new DocumentStateSnapshot(
             resource,
-            new List<DocumentSectionId> { DocumentSectionId.MainLeft },
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, DocumentSectionId.MainLeft, 0), new EditorId("celbridge.html-viewer"))
+                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html-viewer"))
             });
         StubGetStateSnapshot(snapshot);
 
@@ -128,10 +128,10 @@ public class DocumentToolTests
         var resource = new ResourceKey("notes/readme.md");
         var snapshot = new DocumentStateSnapshot(
             resource,
-            new List<DocumentSectionId> { DocumentSectionId.MainLeft },
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, DocumentSectionId.MainLeft, 0), EditorId.Empty)
+                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -147,7 +147,7 @@ public class DocumentToolTests
     {
         var snapshot = new DocumentStateSnapshot(
             ResourceKey.Empty,
-            new List<DocumentSectionId> { DocumentSectionId.MainLeft },
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>());
         StubGetStateSnapshot(snapshot);
 

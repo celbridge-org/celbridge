@@ -58,7 +58,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _workspaceLoader = workspaceLoader;
 
         // Listen for layout manager state changes via messages
-        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
+        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
 
         // Create the workspace service and notify the user interface service
         _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
@@ -76,7 +76,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         OnPropertyChanged(e);
     }
 
-    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
+    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
     {
         // Notify that panel visibility properties have changed
         OnPropertyChanged(nameof(IsUtilityPanelVisible));
@@ -110,7 +110,7 @@ public partial class WorkspacePageViewModel : ObservableObject
             _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
 
             // Unregister message handlers
-            _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
+            _messengerService.Unregister<SurfaceVisibilityChangedMessage>(this);
 
             // Clear project-level feature flag overrides before disposing the workspace
             _featureFlags.ClearProjectOverrides();

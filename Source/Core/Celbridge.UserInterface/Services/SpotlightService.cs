@@ -11,7 +11,7 @@ public sealed class SpotlightService : ISpotlightService
     private readonly ISpotlightRegistry _landmarkRegistry;
 
     // Reveal providers keyed by landmark id. Only landmarks that need preparation beyond the
-    // default region reveal (for example the ephemeral Explorer toolbar) register one.
+    // default surface reveal (for example the ephemeral Explorer toolbar) register one.
     private readonly Dictionary<string, ISpotlightLandmark> _landmarks = new();
 
     // The single active presenter, or null when none is registered.
@@ -94,12 +94,12 @@ public sealed class SpotlightService : ISpotlightService
         // Clear the previous spotlight (undoing its transient reveal) before preparing the new one.
         ClearSpotlightState();
 
-        // Reveal the landmark's layout region, so spotlighting a landmark in a collapsed panel
+        // Reveal the landmark's layout surface, so spotlighting a landmark in a collapsed panel
         // opens that panel first. The reveal is sticky: the panel stays open afterwards.
         if (_landmarkRegistry.TryGetLandmark(target, out var descriptor) &&
-            descriptor!.Region is not null)
+            descriptor!.Surface is not null)
         {
-            _layoutService.SetRegionVisibility(descriptor.Region.Value, true);
+            _layoutService.SetSurfaceVisibility(descriptor.Surface.Value, true);
         }
 
         // Run the landmark's own reveal, if it has a provider (for example switching to the

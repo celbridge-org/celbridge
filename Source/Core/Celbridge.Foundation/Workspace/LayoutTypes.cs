@@ -37,14 +37,14 @@ public enum WorkspacePanel
 }
 
 /// <summary>
-/// Flags representing which of the collapsible workspace regions should be visible. The Main document
-/// area is always visible and is not a region.
+/// Flags representing which of the collapsible workspace surfaces should be visible. The Main document
+/// area is always visible and is not a surface.
 /// </summary>
 [Flags]
-public enum LayoutRegion
+public enum WorkspaceSurface
 {
     /// <summary>
-    /// No regions visible.
+    /// No surfaces visible.
     /// </summary>
     None = 0,
 
@@ -64,7 +64,7 @@ public enum LayoutRegion
     SideArea = 1 << 2,
 
     /// <summary>
-    /// All regions are visible.
+    /// All surfaces are visible.
     /// </summary>
     All = UtilityPanel | BottomArea | SideArea
 }

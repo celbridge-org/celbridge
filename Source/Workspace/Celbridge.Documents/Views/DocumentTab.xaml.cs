@@ -47,13 +47,13 @@ public partial class DocumentTab : TabViewItem
     public DocumentTabViewModel ViewModel { get; }
 
     /// <summary>
-    /// The section this tab belongs to. Set by DocumentSection when the tab is added.
+    /// The section this tab belongs to. Set by DocumentSectionView when the tab is added.
     /// </summary>
-    public DocumentSectionId SectionId { get; set; }
+    public DocumentSection Section { get; set; }
 
     /// <summary>
     /// Whether this tab's area is currently split, so it has a sibling section to move to. Set by
-    /// DocumentSection.
+    /// DocumentSectionView.
     /// </summary>
     public bool IsAreaSplit { get; set; }
 
@@ -104,7 +104,7 @@ public partial class DocumentTab : TabViewItem
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
-        // The context menu opens over the document region, where a hosted web view would take the click too.
+        // The context menu opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(TabContextMenu);
 
@@ -130,7 +130,7 @@ public partial class DocumentTab : TabViewItem
     // and Bottom, up and down for the vertically split Side area.
     private void ApplyMoveMenuLabels()
     {
-        bool splitsHorizontally = SectionId.GetArea().SplitsHorizontally();
+        bool splitsHorizontally = Section.GetArea().SplitsHorizontally();
 
         string primaryKey = splitsHorizontally ? "DocumentTab_MoveLeft" : "DocumentTab_MoveUp";
         string secondaryKey = splitsHorizontally ? "DocumentTab_MoveRight" : "DocumentTab_MoveDown";
@@ -300,7 +300,7 @@ public partial class DocumentTab : TabViewItem
         // Move options only apply within a split area, and only in the direction that has a sibling
         // section. The labels follow the area's split orientation, so a vertically split Side area
         // offers Move Up and Move Down.
-        bool isSecondarySection = SectionId.IsSecondarySection();
+        bool isSecondarySection = Section.IsSecondarySection();
         bool canMoveToPrimary = IsAreaSplit && isSecondarySection;
         bool canMoveToSecondary = IsAreaSplit && !isSecondarySection;
 

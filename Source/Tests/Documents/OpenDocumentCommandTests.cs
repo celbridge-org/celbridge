@@ -72,7 +72,7 @@ public class OpenDocumentCommandTests
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
-        command.TargetSection = DocumentSectionId.BottomLeft;
+        command.TargetSection = DocumentSection.BottomLeft;
         command.TargetTabIndex = 5;
 
         var result = await command.ExecuteAsync();
@@ -82,7 +82,7 @@ public class OpenDocumentCommandTests
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
                 options.Address != null &&
-                options.Address.Section == DocumentSectionId.BottomLeft &&
+                options.Address.Section == DocumentSection.BottomLeft &&
                 options.Address.TabOrder == 5));
     }
 
@@ -91,7 +91,7 @@ public class OpenDocumentCommandTests
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
-        command.TargetSection = DocumentSectionId.MainRight;
+        command.TargetSection = DocumentSection.MainRight;
 
         var result = await command.ExecuteAsync();
 
@@ -100,7 +100,7 @@ public class OpenDocumentCommandTests
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
                 options.Address != null &&
-                options.Address.Section == DocumentSectionId.MainRight &&
+                options.Address.Section == DocumentSection.MainRight &&
                 options.Address.TabOrder == 0));
     }
 

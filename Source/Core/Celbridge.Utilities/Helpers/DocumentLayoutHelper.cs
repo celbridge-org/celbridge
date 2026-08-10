@@ -20,29 +20,29 @@ public static class DocumentLayoutHelper
     /// <summary>
     /// Every section, grouped by area and ordered primary then secondary within each.
     /// </summary>
-    public static readonly IReadOnlyList<DocumentSectionId> AllSections =
+    public static readonly IReadOnlyList<DocumentSection> AllSections =
     [
-        DocumentSectionId.MainLeft,
-        DocumentSectionId.MainRight,
-        DocumentSectionId.BottomLeft,
-        DocumentSectionId.BottomRight,
-        DocumentSectionId.SideTop,
-        DocumentSectionId.SideBottom
+        DocumentSection.MainLeft,
+        DocumentSection.MainRight,
+        DocumentSection.BottomLeft,
+        DocumentSection.BottomRight,
+        DocumentSection.SideTop,
+        DocumentSection.SideBottom
     ];
 
     /// <summary>
     /// The area that contains the given section.
     /// </summary>
-    public static DocumentArea GetArea(this DocumentSectionId section)
+    public static DocumentArea GetArea(this DocumentSection section)
     {
         switch (section)
         {
-            case DocumentSectionId.MainLeft:
-            case DocumentSectionId.MainRight:
+            case DocumentSection.MainLeft:
+            case DocumentSection.MainRight:
                 return DocumentArea.Main;
 
-            case DocumentSectionId.BottomLeft:
-            case DocumentSectionId.BottomRight:
+            case DocumentSection.BottomLeft:
+            case DocumentSection.BottomRight:
                 return DocumentArea.Bottom;
 
             default:
@@ -53,55 +53,55 @@ public static class DocumentLayoutHelper
     /// <summary>
     /// Whether the section exists only while its area is split.
     /// </summary>
-    public static bool IsSecondarySection(this DocumentSectionId section)
+    public static bool IsSecondarySection(this DocumentSection section)
     {
-        return section == DocumentSectionId.MainRight
-            || section == DocumentSectionId.BottomRight
-            || section == DocumentSectionId.SideBottom;
+        return section == DocumentSection.MainRight
+            || section == DocumentSection.BottomRight
+            || section == DocumentSection.SideBottom;
     }
 
     /// <summary>
     /// The section of the area that is always present, whether or not the area is split.
     /// </summary>
-    public static DocumentSectionId GetPrimarySection(this DocumentArea area)
+    public static DocumentSection GetPrimarySection(this DocumentArea area)
     {
         switch (area)
         {
             case DocumentArea.Main:
-                return DocumentSectionId.MainLeft;
+                return DocumentSection.MainLeft;
 
             case DocumentArea.Bottom:
-                return DocumentSectionId.BottomLeft;
+                return DocumentSection.BottomLeft;
 
             default:
-                return DocumentSectionId.SideTop;
+                return DocumentSection.SideTop;
         }
     }
 
     /// <summary>
     /// The section of the area that is present only while it is split.
     /// </summary>
-    public static DocumentSectionId GetSecondarySection(this DocumentArea area)
+    public static DocumentSection GetSecondarySection(this DocumentArea area)
     {
         switch (area)
         {
             case DocumentArea.Main:
-                return DocumentSectionId.MainRight;
+                return DocumentSection.MainRight;
 
             case DocumentArea.Bottom:
-                return DocumentSectionId.BottomRight;
+                return DocumentSection.BottomRight;
 
             default:
-                return DocumentSectionId.SideBottom;
+                return DocumentSection.SideBottom;
         }
     }
 
     /// <summary>
     /// Both of the area's sections, primary first.
     /// </summary>
-    public static IReadOnlyList<DocumentSectionId> GetSections(this DocumentArea area)
+    public static IReadOnlyList<DocumentSection> GetSections(this DocumentArea area)
     {
-        var sections = new List<DocumentSectionId>
+        var sections = new List<DocumentSection>
         {
             area.GetPrimarySection(),
             area.GetSecondarySection()
@@ -131,7 +131,7 @@ public static class DocumentLayoutHelper
     /// Parses a section name, returning false when the name does not match a section. Used for stored
     /// addresses and for agent tool arguments, both of which carry the name rather than a number.
     /// </summary>
-    public static bool TryParseSection(string? name, out DocumentSectionId section)
+    public static bool TryParseSection(string? name, out DocumentSection section)
     {
         return Enum.TryParse(name, ignoreCase: true, out section)
             && Enum.IsDefined(section);

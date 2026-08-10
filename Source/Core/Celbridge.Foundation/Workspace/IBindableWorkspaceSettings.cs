@@ -9,9 +9,9 @@ namespace Celbridge.Workspace;
 public interface IBindableWorkspaceSettings : INotifyPropertyChanged
 {
     /// <summary>
-    /// Preferred visibility of the workspace panel regions.
+    /// Preferred visibility of the workspace panel surfaces.
     /// </summary>
-    LayoutRegion PreferredRegionVisibility { get; set; }
+    WorkspaceSurface PreferredSurfaceVisibility { get; set; }
 
     /// <summary>
     /// Width of the Utility Panel.

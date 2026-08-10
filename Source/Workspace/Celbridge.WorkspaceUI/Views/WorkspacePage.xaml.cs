@@ -9,7 +9,7 @@ namespace Celbridge.WorkspaceUI.Views;
 
 public sealed partial class WorkspacePage : Page
 {
-    // Minimum width for the documents region when resizing the Utility Panel
+    // Minimum width for the Documents panel when resizing the Utility Panel
     private const double MinDocumentsWidth = 200;
 
     // Minimum width for the Utility Panel
@@ -108,7 +108,7 @@ public sealed partial class WorkspacePage : Page
         var utilityPanel = ServiceLocator.AcquireService<IUtilityPanel>();
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
 
-        // The notification bar is not a layout region, so it is always present. It collapses to zero
+        // The notification bar is not a layout surface, so it is always present. It collapses to zero
         // height when no banners are showing.
         _notificationBar = ServiceLocator.AcquireService<NotificationBar>();
         NotificationBarHost.Children.Add(_notificationBar);
@@ -209,9 +209,9 @@ public sealed partial class WorkspacePage : Page
 
     private void UtilityPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        _commandService.Execute<IResetPanelCommand>(command =>
+        _commandService.Execute<IResetSurfaceSizeCommand>(command =>
         {
-            command.Region = LayoutRegion.UtilityPanel;
+            command.Surface = WorkspaceSurface.UtilityPanel;
         });
     }
 }

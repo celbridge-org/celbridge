@@ -41,7 +41,7 @@
     <Grid x:Name="BottomAreaGrid"
           Grid.Row="2"
           Grid.Column="0"
-          layout:WorkspaceLayout.Region="BottomArea"
+          layout:WorkspaceLayout.Surface="BottomArea"
           AutomationProperties.AutomationId="bottom-area"/>
 
     <controls:Splitter x:Name="SideAreaSplitter"
@@ -54,7 +54,7 @@
           Grid.Row="0"
           Grid.RowSpan="3"
           Grid.Column="2"
-          layout:WorkspaceLayout.Region="SideArea"
+          layout:WorkspaceLayout.Surface="SideArea"
           AutomationProperties.AutomationId="side-area"/>
   </Grid>
 </UserControl>

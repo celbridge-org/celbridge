@@ -351,7 +351,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
             RailItems.Children.Add(railButton);
 
-            _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(landmarkId, LayoutRegion.UtilityPanel));
+            _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(landmarkId, WorkspaceSurface.UtilityPanel));
 
             var contentControl = new ContentControl
             {

@@ -42,7 +42,7 @@ public static class ServiceConfiguration
         services.AddSingleton<MainMenuUtils>();
 
         // LayoutManager is a single implementation that exposes two interfaces:
-        // IWindowModeService (window mode) and ILayoutService (region visibility).
+        // IWindowModeService (window mode) and ILayoutService (surface visibility).
         services.AddSingleton<LayoutManager>();
         services.AddSingleton<IWindowModeService>(sp => sp.GetRequiredService<LayoutManager>());
         services.AddSingleton<ILayoutService>(sp => sp.GetRequiredService<LayoutManager>());

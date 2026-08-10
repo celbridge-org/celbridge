@@ -21,7 +21,7 @@ public interface ISpotlightService
 
     /// <summary>
     /// Registers a reveal provider for a landmark id. The provider runs extra preparation when the
-    /// landmark is spotlighted, on top of the default region reveal, and undoes it on clear.
+    /// landmark is spotlighted, on top of the default surface reveal, and undoes it on clear.
     /// </summary>
     void RegisterLandmark(string landmarkId, ISpotlightLandmark landmark);
 
@@ -31,7 +31,7 @@ public interface ISpotlightService
     void UnregisterLandmark(string landmarkId);
 
     /// <summary>
-    /// Reveals the named landmark (opening its region, running its reveal provider) and shows the
+    /// Reveals the named landmark (opening its surface, running its reveal provider) and shows the
     /// spotlight on it with a label and an optional auto-clear delay in milliseconds (zero to
     /// persist). Returns a failure with a descriptive message when the landmark cannot be made
     /// visible. Replaces any active spotlight.

@@ -34,7 +34,7 @@ public sealed partial class LayoutToolbar : UserControl
         _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
 
-        // The flyout opens over the document region, where a hosted web view would take the click too.
+        // The flyout opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(PanelLayoutFlyout);
 
@@ -54,7 +54,7 @@ public sealed partial class LayoutToolbar : UserControl
         // Register for layout manager state change messages
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
         _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
-        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
+        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
     }
@@ -150,7 +150,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdateFullScreenToggle();
     }
 
-    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
+    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
     {
         UpdatePanelIcons();
     }
@@ -195,20 +195,20 @@ public sealed partial class LayoutToolbar : UserControl
     {
         // Use command to toggle panel visibility
         var isVisible = !_layoutService.IsUtilityPanelVisible;
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = LayoutRegion.UtilityPanel;
+            command.Surfaces = WorkspaceSurface.UtilityPanel;
             command.IsVisible = isVisible;
         });
     }
 
     private void ToggleBottomAreaButton_Click(object sender, RoutedEventArgs e)
     {
-        // Toggle the banners-only console region's visibility.
+        // Toggle the Bottom document area's visibility.
         var isVisible = !_layoutService.IsBottomAreaVisible;
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = LayoutRegion.BottomArea;
+            command.Surfaces = WorkspaceSurface.BottomArea;
             command.IsVisible = isVisible;
         });
     }
@@ -217,9 +217,9 @@ public sealed partial class LayoutToolbar : UserControl
     {
         // Use command to toggle panel visibility
         var isVisible = !_layoutService.IsSideAreaVisible;
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = LayoutRegion.SideArea;
+            command.Surfaces = WorkspaceSurface.SideArea;
             command.IsVisible = isVisible;
         });
     }
