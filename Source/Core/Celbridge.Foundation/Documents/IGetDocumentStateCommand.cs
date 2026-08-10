@@ -7,12 +7,12 @@ namespace Celbridge.Documents;
 /// </summary>
 public record class DocumentStateSnapshot(
     ResourceKey ActiveDocument,
-    int SectionCount,
+    IReadOnlyList<DocumentSectionId> VisibleSections,
     IReadOnlyList<OpenDocumentInfo> OpenDocuments);
 
 /// <summary>
 /// Read-only query that captures the current documents panel state (active document,
-/// section count, open documents) in a snapshot. Routed through the command queue so
+/// visible sections, open documents) in a snapshot. Routed through the command queue so
 /// callers observe state that is consistent with all previously enqueued commands.
 /// </summary>
 public interface IGetDocumentStateCommand : IExecutableCommand<DocumentStateSnapshot>

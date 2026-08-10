@@ -27,29 +27,13 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
-    public float PrimaryPanelWidth
+    public float UtilityPanelWidth
     {
-        get => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth;
-        set => _workspaceService.BindableWorkspaceSettings.PrimaryPanelWidth = value;
+        get => _workspaceService.BindableWorkspaceSettings.UtilityPanelWidth;
+        set => _workspaceService.BindableWorkspaceSettings.UtilityPanelWidth = value;
     }
 
-    public float SecondaryPanelWidth
-    {
-        get => _workspaceService.BindableWorkspaceSettings.SecondaryPanelWidth;
-        set => _workspaceService.BindableWorkspaceSettings.SecondaryPanelWidth = value;
-    }
-
-    public float ConsolePanelHeight
-    {
-        get => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight;
-        set => _workspaceService.BindableWorkspaceSettings.ConsolePanelHeight = value;
-    }
-
-    public bool IsPrimaryPanelVisible => _layoutService.IsContextPanelVisible;
-
-    public bool IsSecondaryPanelVisible => _layoutService.IsInspectorPanelVisible;
-
-    public bool IsConsolePanelVisible => _layoutService.IsConsolePanelVisible;
+    public bool IsUtilityPanelVisible => _layoutService.IsUtilityPanelVisible;
 
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
@@ -95,9 +79,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
     {
         // Notify that panel visibility properties have changed
-        OnPropertyChanged(nameof(IsPrimaryPanelVisible));
-        OnPropertyChanged(nameof(IsSecondaryPanelVisible));
-        OnPropertyChanged(nameof(IsConsolePanelVisible));
+        OnPropertyChanged(nameof(IsUtilityPanelVisible));
     }
 
     public async Task OnWorkspacePageUnloadedAsync()

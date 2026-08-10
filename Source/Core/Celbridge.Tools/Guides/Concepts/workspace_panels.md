@@ -3,12 +3,11 @@
 A loaded project arranges the UI around a central editor area. You can highlight any named part of this UI for the user with `app_spotlight` (which lists the landmark names); prefer that over describing locations in prose when onboarding or answering "where is X?".
 
 - **Explorer** (left sidebar) — the project file tree, with toolbar buttons to add a file, add a folder, and open project settings. `explorer_*` tools create, move, rename, and delete resources; `explorer_undo` / `explorer_redo` reverse file system operations only, not document text edits.
-- **Documents** (centre) — the editor area. Files open as tabs across up to three sections (sectionIndex 0, 1, 2 from left to right); a split-editor button on the document toolbar sets the section count. `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content.
-- **Inspector** (right sidebar) — currently empty. It can be shown, hidden and resized, but holds no content.
+- **Documents** — the editor area, filling the workspace to the right of the Utility Panel. It is divided into three areas: **Main** (centre, always visible), **Bottom** (below Main, collapsible) and **Side** (right, full height, collapsible). Each area shows one tab strip, or two when the user splits it with the button in its top-right corner, so a document can live in any of six sections. Documents drag between any two of them. `document_*` tools open, close, activate, and inspect tabs; `file_*` tools edit content. See `document_get_state` for the section names.
 - **Search** — full-text search, reached from the Utility Panel rail alongside Explorer. From the agent, use `file_grep` for the same purpose.
-- **Console** (bottom) — shows project error and notification banners. Interactive consoles are `.console` documents opened in the Documents panel.
+- **Notification bar** (below the editor area) — shows project error and notification banners. It sizes to its content, so it takes no space when nothing is showing. Interactive consoles are `.console` documents opened like any other document.
 
-The left sidebar is the **Utility Panel**: an icon rail switches its content between Explorer, Search, and any utilities the project's packages contribute. The sidebars and console are shown or hidden from the title-bar toggle buttons. `app_get_state` reports which panels are currently visible and focused, and `activeUtility` names the rail surface currently shown.
+The left sidebar is the **Utility Panel**: an icon rail switches its content between Explorer, Search, and any utilities the project's packages contribute. The Utility Panel and the two collapsible document areas are shown or hidden from the title-bar toggle buttons, and each collapsible area also has a close button beside its split button. Collapsing an area leaves its documents open, and they reappear in place when it is shown again. `app_get_state` reports which panels are currently visible and focused, and `activeUtility` names the rail surface currently shown.
 
 ## Utilities
 

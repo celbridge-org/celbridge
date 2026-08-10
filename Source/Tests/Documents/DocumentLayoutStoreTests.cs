@@ -49,7 +49,6 @@ public class DocumentLayoutStoreTests
 
         _documentsPanel.OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
             .Returns(Task.FromResult(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened)));
-        _documentsPanel.SectionCount.Returns(1);
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -153,7 +152,7 @@ public class DocumentLayoutStoreTests
         // empty editor id (sidecar wins at restore) and the saved address.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", WindowIndex: 0, SectionIndex: 0, TabOrder: 2),
+            new("notes/readme.md", WindowIndex: 0, Section: "MainLeft", TabOrder: 2),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -165,7 +164,7 @@ public class DocumentLayoutStoreTests
             Arg.Is<OpenDocumentOptions>(options =>
                 options.EditorId == EditorId.Empty
                 && options.Activate == false
-                && options.Address!.SectionIndex == 0
+                && options.Address!.Section == DocumentSectionId.MainLeft
                 && options.Address.TabOrder == 2));
     }
 
@@ -176,8 +175,8 @@ public class DocumentLayoutStoreTests
         // must not abort the rest of the restore.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("///invalid///", 0, 0, 0),
-            new("notes/readme.md", 0, 0, 1),
+            new("///invalid///", 0, "MainLeft", 0),
+            new("notes/readme.md", 0, "MainLeft", 1),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -199,7 +198,7 @@ public class DocumentLayoutStoreTests
             .Returns(Result<IResource>.Fail("missing"));
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, 0, 0),
+            new("notes/readme.md", 0, "MainLeft", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -218,7 +217,7 @@ public class DocumentLayoutStoreTests
         var utilityResource = new ResourceKey("utils:settings._notepad");
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new(utilityResource.ToString(), WindowIndex: 0, SectionIndex: 0, TabOrder: 3),
+            new(utilityResource.ToString(), WindowIndex: 0, Section: "MainLeft", TabOrder: 3),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -227,7 +226,7 @@ public class DocumentLayoutStoreTests
 
         await _utilityService.Received(1).RestoreDockedUtility(
             utilityResource,
-            Arg.Is<DocumentAddress>(address => address.SectionIndex == 0 && address.TabOrder == 3));
+            Arg.Is<DocumentAddress>(address => address.Section == DocumentSectionId.MainLeft && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
 
@@ -241,7 +240,7 @@ public class DocumentLayoutStoreTests
             .Returns(Result<string>.Ok(missingPath));
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, 0, 0),
+            new("notes/readme.md", 0, "MainLeft", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -252,15 +251,14 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_SectionIndexLargerThanCount_ClampsToLastSection()
+    public async Task RestorePanelStateAsync_SecondarySectionOfUnsplitArea_FoldsIntoPrimarySection()
     {
-        // A previously-saved 3-section layout opened today with a 1-section
-        // window should merge the over-flowing tabs into the only available
-        // section rather than dropping them.
-        _documentsPanel.SectionCount.Returns(1);
+        // A tab saved in an area's secondary section, restored while that area is not split, merges
+        // into the primary section rather than being dropped.
+        _documentsPanel.IsAreaSplit(DocumentArea.Main).Returns(false);
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", WindowIndex: 0, SectionIndex: 2, TabOrder: 0),
+            new("notes/readme.md", WindowIndex: 0, Section: "MainRight", TabOrder: 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -269,7 +267,7 @@ public class DocumentLayoutStoreTests
 
         await _documentsPanel.Received(1).OpenDocument(
             Arg.Any<ResourceKey>(),
-            Arg.Is<OpenDocumentOptions>(options => options.Address!.SectionIndex == 0));
+            Arg.Is<OpenDocumentOptions>(options => options.Address!.Section == DocumentSectionId.MainLeft));
     }
 
     [Test]
@@ -280,7 +278,7 @@ public class DocumentLayoutStoreTests
         // matches each opened tab.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, 0, 0),
+            new("notes/readme.md", 0, "MainLeft", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -303,7 +301,7 @@ public class DocumentLayoutStoreTests
     {
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, 0, 0),
+            new("notes/readme.md", 0, "MainLeft", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -322,7 +320,7 @@ public class DocumentLayoutStoreTests
         // can enforce the one-active-document invariant.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, 0, 0),
+            new("notes/readme.md", 0, "MainLeft", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -335,18 +333,21 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_AppliesSectionRatiosWhenValid()
+    public async Task RestorePanelStateAsync_AppliesStoredAreaLayout()
     {
-        var ratios = new List<double> { 0.3, 0.7 };
-        _propertyBag.GetPropertyAsync<List<double>>("SectionRatios")
-            .Returns(Task.FromResult<List<double>?>(ratios));
+        var areaLayout = new Dictionary<string, DocumentLayoutStore.StoredAreaLayout>
+        {
+            ["Main"] = new DocumentLayoutStore.StoredAreaLayout(IsSplit: true, SplitRatio: 0.3),
+        };
+        _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>("AreaLayout")
+            .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>?>(areaLayout));
         _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
             .Returns(Result<ResourceKey>.Fail("not found"));
 
         await _store.RestorePanelStateAsync();
 
-        _documentsPanel.Received().SectionCount = 2;
-        _documentsPanel.Received(1).SetSectionRatios(ratios);
+        _documentsPanel.Received(1).SetAreaSplitRatio(DocumentArea.Main, 0.3);
+        _documentsPanel.Received(1).SetAreaSplit(DocumentArea.Main, true);
     }
 
     [Test]
@@ -366,13 +367,19 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task StoreSectionRatiosAsync_WritesRatiosList()
+    public async Task StoreAreaLayoutAsync_WritesSplitStatePerArea()
     {
-        var ratios = new List<double> { 0.5, 0.5 };
+        _documentsPanel.IsAreaSplit(DocumentArea.Main).Returns(true);
+        _documentsPanel.GetAreaSplitRatio(DocumentArea.Main).Returns(0.4);
 
-        await _store.StoreSectionRatiosAsync(ratios);
+        await _store.StoreAreaLayoutAsync();
 
-        await _propertyBag.Received(1).SetPropertyAsync("SectionRatios", ratios);
+        await _propertyBag.Received(1).SetPropertyAsync(
+            "AreaLayout",
+            Arg.Is<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>(layout =>
+                layout["Main"].IsSplit
+                && layout["Main"].SplitRatio == 0.4
+                && !layout["Bottom"].IsSplit));
     }
 
     [Test]

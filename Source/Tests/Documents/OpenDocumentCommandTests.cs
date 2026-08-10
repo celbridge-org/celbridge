@@ -68,11 +68,11 @@ public class OpenDocumentCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_WithTargetSectionIndex_BuildsDocumentAddress()
+    public async Task ExecuteAsync_WithTargetSection_BuildsDocumentAddress()
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
-        command.TargetSectionIndex = 2;
+        command.TargetSection = DocumentSectionId.BottomLeft;
         command.TargetTabIndex = 5;
 
         var result = await command.ExecuteAsync();
@@ -82,7 +82,7 @@ public class OpenDocumentCommandTests
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
                 options.Address != null &&
-                options.Address.SectionIndex == 2 &&
+                options.Address.Section == DocumentSectionId.BottomLeft &&
                 options.Address.TabOrder == 5));
     }
 
@@ -91,7 +91,7 @@ public class OpenDocumentCommandTests
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
-        command.TargetSectionIndex = 1;
+        command.TargetSection = DocumentSectionId.MainRight;
 
         var result = await command.ExecuteAsync();
 
@@ -100,7 +100,7 @@ public class OpenDocumentCommandTests
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
                 options.Address != null &&
-                options.Address.SectionIndex == 1 &&
+                options.Address.Section == DocumentSectionId.MainRight &&
                 options.Address.TabOrder == 0));
     }
 

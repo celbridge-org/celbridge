@@ -1,5 +1,5 @@
 ﻿<UserControl
-    x:Class="Celbridge.UserInterface.Views.PanelIcons.SecondaryPanelIcon"
+    x:Class="Celbridge.UserInterface.Views.PanelIcons.SideAreaIcon"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     

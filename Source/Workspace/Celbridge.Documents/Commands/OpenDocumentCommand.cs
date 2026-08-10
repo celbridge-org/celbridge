@@ -24,7 +24,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public string Location { get; set; } = string.Empty;
 
-    public int? TargetSectionIndex { get; set; }
+    public DocumentSectionId? TargetSection { get; set; }
 
     public int? TargetTabIndex { get; set; }
 
@@ -80,8 +80,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return Result.Fail($"This file format is not supported: '{FileResource}'");
         }
 
-        DocumentAddress? address = TargetSectionIndex.HasValue
-            ? new DocumentAddress(WindowIndex: 0, SectionIndex: TargetSectionIndex.Value, TabOrder: TargetTabIndex ?? 0)
+        DocumentAddress? address = TargetSection.HasValue
+            ? new DocumentAddress(WindowIndex: 0, Section: TargetSection.Value, TabOrder: TargetTabIndex ?? 0)
             : null;
 
         var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorStateJson);

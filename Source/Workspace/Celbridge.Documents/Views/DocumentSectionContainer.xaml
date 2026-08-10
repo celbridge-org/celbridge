@@ -1,12 +1,60 @@
-﻿<UserControl
+<UserControl
     x:Class="Celbridge.Documents.Views.DocumentSectionContainer"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:layout="using:Celbridge.WorkspaceUI"
     xmlns:local="using:Celbridge.Documents.Views">
-  
+
   <Grid x:Name="RootGrid"
         Background="{ThemeResource ApplicationBackgroundBrush}">
-    <!-- Columns and splitters are dynamically managed in code-behind -->
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*"/>
+      <ColumnDefinition Width="Auto"/>
+      <ColumnDefinition x:Name="SideAreaColumn"
+                        Width="300"
+                        MinWidth="200"/>
+    </Grid.ColumnDefinitions>
+
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition x:Name="BottomAreaRow"
+                     Height="350"
+                     MinHeight="150"/>
+    </Grid.RowDefinitions>
+
+    <!-- Each area hosts one or two sections; their columns, rows and split splitters are
+         managed in code-behind. -->
+
+    <Grid x:Name="MainAreaGrid"
+          Grid.Row="0"
+          Grid.Column="0"
+          AutomationProperties.AutomationId="main-area"/>
+
+    <controls:Splitter x:Name="BottomAreaSplitter"
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       Orientation="Horizontal"/>
+
+    <Grid x:Name="BottomAreaGrid"
+          Grid.Row="2"
+          Grid.Column="0"
+          layout:WorkspaceLayout.Region="BottomArea"
+          AutomationProperties.AutomationId="bottom-area"/>
+
+    <controls:Splitter x:Name="SideAreaSplitter"
+                       Grid.Row="0"
+                       Grid.RowSpan="3"
+                       Grid.Column="1"
+                       Orientation="Vertical"/>
+
+    <Grid x:Name="SideAreaGrid"
+          Grid.Row="0"
+          Grid.RowSpan="3"
+          Grid.Column="2"
+          layout:WorkspaceLayout.Region="SideArea"
+          AutomationProperties.AutomationId="side-area"/>
   </Grid>
 </UserControl>

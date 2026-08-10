@@ -13,7 +13,7 @@ public class DocumentLayoutStore
 {
     private const string DocumentLayoutKey = "DocumentLayout";
     private const string ActiveDocumentKey = "ActiveDocument";
-    private const string SectionRatiosKey = "SectionRatios";
+    private const string AreaLayoutKey = "AreaLayout";
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -35,7 +35,13 @@ public class DocumentLayoutStore
     /// <summary>
     /// Serialization DTO for a single open document tab.
     /// </summary>
-    public record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder);
+    public record StoredDocumentAddress(string Resource, int WindowIndex, string Section, int TabOrder);
+
+    /// <summary>
+    /// Serialization DTO for one area's split state. The ratio is the share taken by the primary section
+    /// and is meaningful only while the area is split.
+    /// </summary>
+    public record StoredAreaLayout(bool IsSplit, double SplitRatio);
 
     public async Task StoreDocumentLayoutAsync()
     {
@@ -46,10 +52,10 @@ public class DocumentLayoutStore
             .Select(document => new StoredDocumentAddress(
                 document.FileResource.ToString(),
                 document.Address.WindowIndex,
-                document.Address.SectionIndex,
+                document.Address.Section.ToString(),
                 document.Address.TabOrder))
             .OrderBy(address => address.WindowIndex)
-            .ThenBy(address => address.SectionIndex)
+            .ThenBy(address => address.Section)
             .ThenBy(address => address.TabOrder)
             .ToList();
 
@@ -67,12 +73,19 @@ public class DocumentLayoutStore
         await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
     }
 
-    public async Task StoreSectionRatiosAsync(List<double> ratios)
+    public async Task StoreAreaLayoutAsync()
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        await propertyBag.SetPropertyAsync(SectionRatiosKey, ratios);
+        var areaLayout = new Dictionary<string, StoredAreaLayout>();
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            bool isSplit = DocumentsPanel.IsAreaSplit(area);
+            areaLayout[area.ToString()] = new StoredAreaLayout(isSplit, DocumentsPanel.GetAreaSplitRatio(area));
+        }
+
+        await propertyBag.SetPropertyAsync(AreaLayoutKey, areaLayout);
     }
 
     public async Task StoreDocumentEditorStatesAsync()
@@ -157,12 +170,20 @@ public class DocumentLayoutStore
     {
         var storedLayout = await LoadStoredLayoutAsync();
 
-        if (storedLayout.SectionRatios is not null
-            && storedLayout.SectionRatios.Count >= 1
-            && storedLayout.SectionRatios.Count <= 3)
+        // Split state is applied before any tabs are opened, so ResolveRestoreSection below sees the
+        // restored layout rather than the default one.
+        if (storedLayout.AreaLayout is not null)
         {
-            DocumentsPanel.SectionCount = storedLayout.SectionRatios.Count;
-            DocumentsPanel.SetSectionRatios(storedLayout.SectionRatios);
+            foreach (var area in DocumentLayoutHelper.AllAreas)
+            {
+                if (!storedLayout.AreaLayout.TryGetValue(area.ToString(), out var areaLayout))
+                {
+                    continue;
+                }
+
+                DocumentsPanel.SetAreaSplitRatio(area, areaLayout.SplitRatio);
+                DocumentsPanel.SetAreaSplit(area, areaLayout.IsSplit);
+            }
         }
 
         if (storedLayout.Addresses is null
@@ -177,7 +198,7 @@ public class DocumentLayoutStore
     }
 
     private record StoredLayout(
-        List<double>? SectionRatios,
+        Dictionary<string, StoredAreaLayout>? AreaLayout,
         List<StoredDocumentAddress>? Addresses,
         Dictionary<string, string>? EditorStates);
 
@@ -186,7 +207,15 @@ public class DocumentLayoutStore
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        var sectionRatios = await propertyBag.GetPropertyAsync<List<double>>(SectionRatiosKey);
+        Dictionary<string, StoredAreaLayout>? areaLayout = null;
+        try
+        {
+            areaLayout = await propertyBag.GetPropertyAsync<Dictionary<string, StoredAreaLayout>>(AreaLayoutKey);
+        }
+        catch
+        {
+            _logger.LogDebug("Could not load the area layout - starting fresh");
+        }
 
         // Try to load document addresses - if format is incompatible, just start fresh
         List<StoredDocumentAddress>? storedAddresses = null;
@@ -211,7 +240,7 @@ public class DocumentLayoutStore
             _logger.LogDebug("Could not load editor states - starting fresh");
         }
 
-        return new StoredLayout(sectionRatios, storedAddresses, editorStates);
+        return new StoredLayout(areaLayout, storedAddresses, editorStates);
     }
 
     private async Task RestoreDocumentsAsync(
@@ -219,7 +248,6 @@ public class DocumentLayoutStore
         IReadOnlyDictionary<string, string>? editorStates)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        int currentSectionCount = DocumentsPanel.SectionCount;
 
         foreach (var stored in storedAddresses)
         {
@@ -228,6 +256,15 @@ public class DocumentLayoutStore
                 _logger.LogWarning($"Invalid resource key '{stored.Resource}' found in previously open documents");
                 continue;
             }
+
+            // An unrecognised section name comes from layout data written by a different section set.
+            // MainLeft always exists, so it is the safe landing place.
+            if (!DocumentLayoutHelper.TryParseSection(stored.Section, out var storedSection))
+            {
+                storedSection = DocumentSectionId.MainLeft;
+            }
+
+            var targetSection = ResolveRestoreSection(storedSection);
 
             // Project resources use the registry fast path. Virtual-root keys (utils:, temp:, logs:) are
             // never in the registry, so the ResolveResourcePath and GetInfoAsync checks below validate
@@ -254,8 +291,7 @@ public class DocumentLayoutStore
             // instead of creating a second view.
             if (fileResource.Root == ProjectConstants.UtilsFolder)
             {
-                int utilitySection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
-                var utilityAddress = new DocumentAddress(stored.WindowIndex, utilitySection, stored.TabOrder);
+                var utilityAddress = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
                 var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
                 var restoreResult = await utilityService.RestoreDockedUtility(fileResource, utilityAddress);
@@ -275,8 +311,6 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            // Handle mismatch: if saved section doesn't exist, merge into last section
-            int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
             // An empty editor id makes the factory resolve the editor from the sidecar (or the
@@ -297,6 +331,21 @@ public class DocumentLayoutStore
                 await StoreDocumentEditorStateAsync(fileResource, null);
             }
         }
+    }
+
+    // Folds a stored section into one that currently holds tabs. A secondary section whose area restored
+    // unsplit folds into that area's primary section. A section in a collapsed area is kept: the area
+    // holds its documents while hidden, and they reappear in place when it is shown again.
+    private DocumentSectionId ResolveRestoreSection(DocumentSectionId storedSection)
+    {
+        var area = storedSection.GetArea();
+        if (storedSection.IsSecondarySection()
+            && !DocumentsPanel.IsAreaSplit(area))
+        {
+            return area.GetPrimarySection();
+        }
+
+        return storedSection;
     }
 
     private async Task RestoreActiveDocumentAsync()

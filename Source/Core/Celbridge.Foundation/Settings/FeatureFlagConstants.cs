@@ -8,11 +8,6 @@ namespace Celbridge.Settings;
 public static class FeatureFlagConstants
 {
     /// <summary>
-    /// Console panel that shows project error and notification banners.
-    /// </summary>
-    public const string ConsolePanel = "console-panel";
-
-    /// <summary>
     /// MCP tool system and cel Python API. When disabled, the MCP server does not start
     /// and the Python terminal launches without the cel proxy.
     /// </summary>

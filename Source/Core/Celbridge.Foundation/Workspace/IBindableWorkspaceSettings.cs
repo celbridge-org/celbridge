@@ -14,24 +14,19 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     LayoutRegion PreferredRegionVisibility { get; set; }
 
     /// <summary>
-    /// Width of the Primary panel.
+    /// Width of the Utility Panel.
     /// </summary>
-    float PrimaryPanelWidth { get; set; }
+    float UtilityPanelWidth { get; set; }
 
     /// <summary>
-    /// Width of the Secondary panel.
+    /// Width of the Side document area.
     /// </summary>
-    float SecondaryPanelWidth { get; set; }
+    float SideAreaWidth { get; set; }
 
     /// <summary>
-    /// Height of the Console panel.
+    /// Height of the Bottom document area.
     /// </summary>
-    float ConsolePanelHeight { get; set; }
-
-    /// <summary>
-    /// Height of the Detail panel.
-    /// </summary>
-    float DetailPanelHeight { get; set; }
+    float BottomAreaHeight { get; set; }
 
     /// <summary>
     /// Match case option for the search panel.

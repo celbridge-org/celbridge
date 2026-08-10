@@ -142,9 +142,9 @@ internal sealed class SectionDragPreview
     }
 
     /// <summary>
-    /// Finds a full-height tab strip band to anchor the divider and highlight: the section's own strip
-    /// when it has tabs, otherwise any populated section's strip. Sections sit side by side, so they
-    /// share the strip's top edge and height. Returns Rect.Empty when no section has a laid-out strip.
+    /// Finds a tab strip band to anchor the divider and highlight: the section's own strip when it has
+    /// tabs, otherwise any populated mounted section's strip. Returns Rect.Empty when no section has a
+    /// laid-out strip.
     /// </summary>
     private Rect ResolveStripBand(DocumentSection preferred)
     {
@@ -157,7 +157,7 @@ internal sealed class SectionDragPreview
             }
         }
 
-        foreach (var section in _container.Sections)
+        foreach (var section in _container.GetMountedSections())
         {
             if (section.TabCount == 0)
             {

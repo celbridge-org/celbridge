@@ -24,8 +24,8 @@
             <MenuFlyoutItem x:Name="CloseToTheLeftMenuItem" Click="ContextMenu_CloseToTheLeft" />
             <MenuFlyoutItem x:Name="CloseAllMenuItem" Click="ContextMenu_CloseAll" />
             <MenuFlyoutSeparator x:Name="MoveSeparator" />
-            <MenuFlyoutItem x:Name="MoveLeftMenuItem" Click="ContextMenu_MoveLeft" />
-            <MenuFlyoutItem x:Name="MoveRightMenuItem" Click="ContextMenu_MoveRight" />
+            <MenuFlyoutItem x:Name="MoveToPrimarySectionMenuItem" Click="ContextMenu_MoveToPrimarySection" />
+            <MenuFlyoutItem x:Name="MoveToSecondarySectionMenuItem" Click="ContextMenu_MoveToSecondarySection" />
             <MenuFlyoutSeparator x:Name="SelectFileSeparator" />
             <MenuFlyoutItem x:Name="SelectFileMenuItem" Click="ContextMenu_SelectFile" />
             <MenuFlyoutSeparator x:Name="CopySeparator" />

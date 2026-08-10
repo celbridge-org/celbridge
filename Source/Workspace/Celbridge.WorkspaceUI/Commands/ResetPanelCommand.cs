@@ -19,16 +19,16 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
 
         switch (Region)
         {
-            case LayoutRegion.Primary:
-                workspaceSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
+            case LayoutRegion.UtilityPanel:
+                workspaceSettings.UtilityPanelWidth = WorkspaceConstants.UtilityPanelWidth;
                 break;
 
-            case LayoutRegion.Secondary:
-                workspaceSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
+            case LayoutRegion.SideArea:
+                workspaceSettings.SideAreaWidth = WorkspaceConstants.SideAreaWidth;
                 break;
 
-            case LayoutRegion.Console:
-                workspaceSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+            case LayoutRegion.BottomArea:
+                workspaceSettings.BottomAreaHeight = WorkspaceConstants.BottomAreaHeight;
                 break;
 
             default:

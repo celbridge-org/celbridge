@@ -11,7 +11,7 @@ The `document` namespace controls the documents panel: which files are open as t
 
 ## Tools
 
-- `document_open` — open a file as an editor tab. Optional `sectionIndex`, `forceReload`, `activate`.
+- `document_open` — open a file as an editor tab. Optional `section`, `forceReload`, `activate`.
 - `document_activate` — bring an already-open tab to the foreground.
 - `document_close` — close one or more tabs (single resource key or JSON array of keys). `forceClose` skips the editor's can-close check.
-- `document_get_state` — snapshot of editor state: active document, section count, every open tab with its position and bound editor id.
+- `document_get_state` — snapshot of editor state: active document, visible sections, every open tab with its position and bound editor id.

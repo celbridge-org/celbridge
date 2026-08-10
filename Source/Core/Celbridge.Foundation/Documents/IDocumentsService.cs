@@ -66,10 +66,10 @@ public interface IDocumentsService
     ResourceKey ActiveDocument { get; }
 
     /// <summary>
-    /// The number of visible document sections in the documents panel.
+    /// The document sections that are currently mounted, in reading order.
     /// This is a cached snapshot that is safe to read from any thread.
     /// </summary>
-    int SectionCount { get; }
+    IReadOnlyList<DocumentSectionId> VisibleSections { get; }
 
     /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.

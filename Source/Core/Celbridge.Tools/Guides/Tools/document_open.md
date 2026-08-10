@@ -6,14 +6,13 @@ You do not need to open a document to edit its file. The `file_*` tools work on 
 
 ## Parameters
 
-### sectionIndex
+### section
 
-- `0` — left section.
-- `1` — center section.
-- `2` — right section.
-- `-1` (default) — open in the currently active section.
+The tab strip to open the document in, as one of `MainLeft`, `MainRight`, `BottomLeft`, `BottomRight`, `SideTop`, `SideBottom`. Matching is case-insensitive; any other value is rejected. See `document_get_state` for what each section is and when it exists.
 
-Any other value is rejected.
+Empty (the default) opens in the currently active section.
+
+Naming a secondary section (`MainRight`, `BottomRight`, `SideBottom`) while its area is not split opens in that area's primary section instead. Naming a section in a collapsed area opens there without expanding the area, so the user does not see the document until they show it again — prefer `MainLeft` or the default when you want the document on screen.
 
 ### forceReload
 

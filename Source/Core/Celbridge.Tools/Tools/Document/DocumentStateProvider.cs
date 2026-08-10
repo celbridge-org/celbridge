@@ -8,7 +8,7 @@ namespace Celbridge.Tools;
 /// </summary>
 public record class DocumentStateResult(
     string ActiveDocument,
-    int SectionCount,
+    List<string> VisibleSections,
     List<OpenDocumentEntry> OpenDocuments);
 
 /// <summary>
@@ -16,7 +16,7 @@ public record class DocumentStateResult(
 /// </summary>
 public record class OpenDocumentEntry(
     string Resource,
-    int SectionIndex,
+    string Section,
     int TabOrder,
     bool IsActive,
     string EditorId);
@@ -57,11 +57,15 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
         {
             documents.Add(new OpenDocumentEntry(
                 document.FileResource.ToString(),
-                document.Address.SectionIndex,
+                document.Address.Section.ToString(),
                 document.Address.TabOrder,
                 document.FileResource == activeDocument,
                 document.EditorId.ToString()));
         }
+
+        var visibleSections = snapshot.VisibleSections
+            .Select(section => section.ToString())
+            .ToList();
 
         // An empty active document key (no document open) serialises as the
         // empty string rather than the canonical "project:" form, so the
@@ -70,7 +74,7 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
 
         return new DocumentStateResult(
             activeDocumentString,
-            snapshot.SectionCount,
+            visibleSections,
             documents);
     }
 }

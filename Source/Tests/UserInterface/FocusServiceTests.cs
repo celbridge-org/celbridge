@@ -75,7 +75,7 @@ public class FocusServiceTests
     {
         var firstTarget = Substitute.For<IEditTarget>();
         var secondTarget = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanel.Console, firstTarget);
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, firstTarget);
 
         _focusService.OnFocusReceived(WorkspacePanel.Explorer, secondTarget);
 
@@ -101,7 +101,7 @@ public class FocusServiceTests
     {
         var released = false;
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanel.Console, target, () => released = true);
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, target, () => released = true);
 
         // A chrome interaction (e.g. a toolbar click) clears panel focus and releases the caret, but the edit
         // context must survive so the Edit menu still routes to the console after the toolbar takes focus.
@@ -117,7 +117,7 @@ public class FocusServiceTests
     {
         var releaseCount = 0;
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanel.Console, target, () => releaseCount++);
+        _focusService.OnFocusReceived(WorkspacePanel.Documents, target, () => releaseCount++);
 
         _focusService.ClearFocus();
         _focusService.ClearFocus();

@@ -83,9 +83,8 @@ public sealed partial class DocumentSectionContainer
 
     private DocumentSection? GetSectionAtWindowPoint(Point windowPoint)
     {
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        foreach (var section in GetMountedSections())
         {
-            var section = _sections[i];
             var local = WindowToSectionPoint(section, windowPoint);
             if (local.X >= 0 &&
                 local.Y >= 0 &&
@@ -118,10 +117,10 @@ public sealed partial class DocumentSectionContainer
         if (sourceSection == targetSection)
         {
             sourceSection.ReorderTab(tab, insertionSlot);
-            ActivateDocument(tab.ViewModel.FileResource, sourceSection.SectionIndex);
+            ActivateDocument(tab.ViewModel.FileResource, sourceSection.SectionId);
             NotifyLayoutChanged();
         }
-        else if (MoveTabToSection(tab, targetSection.SectionIndex, insertionSlot))
+        else if (MoveTabToSection(tab, targetSection.SectionId, insertionSlot))
         {
             NotifyLayoutChanged();
         }

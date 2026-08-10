@@ -725,14 +725,11 @@ Open with default application instead?</value>
   <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
     <value>Split Editor</value>
   </data>
-  <data name="DocumentToolbar_OneSection" xml:space="preserve">
-    <value>Single Editor</value>
+  <data name="DocumentToolbar_UnsplitEditorTooltip" xml:space="preserve">
+    <value>Unsplit Editor</value>
   </data>
-  <data name="DocumentToolbar_TwoSections" xml:space="preserve">
-    <value>Two Editors</value>
-  </data>
-  <data name="DocumentToolbar_ThreeSections" xml:space="preserve">
-    <value>Three Editors</value>
+  <data name="DocumentToolbar_CloseAreaTooltip" xml:space="preserve">
+    <value>Close Area</value>
   </data>
   <data name="DocumentSection_DropFilesPrompt" xml:space="preserve">
     <value>Drop files here to open them</value>
@@ -772,6 +769,12 @@ Open with default application instead?</value>
   </data>
   <data name="DocumentTab_MoveRight" xml:space="preserve">
     <value>Move Right</value>
+  </data>
+  <data name="DocumentTab_MoveUp" xml:space="preserve">
+    <value>Move Up</value>
+  </data>
+  <data name="DocumentTab_MoveDown" xml:space="preserve">
+    <value>Move Down</value>
   </data>
   <data name="DocumentTab_SelectFile" xml:space="preserve">
     <value>Select File</value>
@@ -856,12 +859,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_FeatureFlagState_DefaultFormat" xml:space="preserve">
     <value>Default ({0})</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_ConsolePanel_Title" xml:space="preserve">
-    <value>Console Panel</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_ConsolePanel_Description" xml:space="preserve">
-    <value>Console panel region at the bottom of the workspace.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
     <value>MCP Tools</value>
@@ -1046,14 +1043,14 @@ Open with default application instead?</value>
   <data name="ResourceTree_CopyPath" xml:space="preserve">
     <value>Copy Path</value>
   </data>
-  <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleUtilityPanelTooltip" xml:space="preserve">
     <value>Toggle Left Panel</value>
   </data>
-  <data name="LayoutToolbar_ToggleConsoleTooltip" xml:space="preserve">
-    <value>Toggle Console Panel</value>
+  <data name="LayoutToolbar_ToggleBottomAreaTooltip" xml:space="preserve">
+    <value>Toggle Bottom Area</value>
   </data>
-  <data name="LayoutToolbar_ToggleSecondaryTooltip" xml:space="preserve">
-    <value>Toggle Right Panel</value>
+  <data name="LayoutToolbar_ToggleSideAreaTooltip" xml:space="preserve">
+    <value>Toggle Side Area</value>
   </data>
   <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
     <value>Customize Layout</value>

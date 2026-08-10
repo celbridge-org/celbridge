@@ -225,10 +225,10 @@ public class AgentResponseFilterTests
             SpotlightLandmarks: new List<string>());
         _documentStateProvider.Result = new DocumentStateResult(
             ActiveDocument: "/Notes/README.md",
-            SectionCount: 1,
+            VisibleSections: new List<string> { "MainLeft" },
             OpenDocuments: new List<OpenDocumentEntry>
             {
-                new OpenDocumentEntry("/Notes/README.md", 0, 0, true, "markdown"),
+                new OpenDocumentEntry("/Notes/README.md", "MainLeft", 0, true, "markdown"),
             });
 
         var session = new AgentSessionState("session-1");
@@ -607,7 +607,7 @@ public class AgentResponseFilterTests
     private sealed class FakeDocumentStateProvider : IDocumentStateProvider
     {
         public Result<DocumentStateResult> Result { get; set; } =
-            new DocumentStateResult("", 1, new List<OpenDocumentEntry>());
+            new DocumentStateResult("", new List<string> { "MainLeft" }, new List<OpenDocumentEntry>());
 
         public Task<Result<DocumentStateResult>> GetStateAsync() => Task.FromResult(Result);
     }

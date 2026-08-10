@@ -37,9 +37,9 @@ public sealed partial class DocumentSection : UserControl
     private string NoDocumentsOpenString => _stringLocalizer.GetString("DocumentSection_DropFilesPrompt");
 
     /// <summary>
-    /// The section index (0, 1, or 2) identifying this section's position.
+    /// Identifies which of the six tab strips this section is.
     /// </summary>
-    public int SectionIndex { get; set; }
+    public DocumentSectionId SectionId { get; set; }
 
     /// <summary>
     /// Event raised when the selected document changes in this section.
@@ -234,35 +234,34 @@ public sealed partial class DocumentSection : UserControl
     }
 
     /// <summary>
-    /// Gets or sets the number of currently visible sections. Used to determine which move options to show.
+    /// Whether this section's area is currently split. Used to determine which move options to show.
     /// </summary>
-    public int VisibleSectionCount
+    public bool IsAreaSplit
     {
-        get => _visibleSectionCount;
+        get => _isAreaSplit;
         set
         {
-            _visibleSectionCount = value;
-            // Update all tabs with the new count
+            _isAreaSplit = value;
             foreach (var tabItem in TabView.TabItems)
             {
                 if (tabItem is DocumentTab tab)
                 {
-                    tab.VisibleSectionCount = value;
+                    tab.IsAreaSplit = value;
                 }
             }
         }
     }
 
-    private int _visibleSectionCount = 1;
+    private bool _isAreaSplit = false;
 
     /// <summary>
     /// Adds a document tab to this section.
     /// </summary>
     public void AddTab(DocumentTab tab)
     {
-        tab.SectionIndex = SectionIndex;
-        // Set from cached value - stays in sync via VisibleSectionCount property setter
-        tab.VisibleSectionCount = VisibleSectionCount;
+        tab.SectionId = SectionId;
+        // Set from cached value - stays in sync via the IsAreaSplit property setter
+        tab.IsAreaSplit = IsAreaSplit;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);
@@ -832,8 +831,8 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public void InsertTab(DocumentTab tab, int index)
     {
-        tab.SectionIndex = SectionIndex;
-        tab.VisibleSectionCount = VisibleSectionCount;
+        tab.SectionId = SectionId;
+        tab.IsAreaSplit = IsAreaSplit;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);

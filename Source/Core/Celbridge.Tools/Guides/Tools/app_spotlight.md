@@ -14,8 +14,9 @@ Shell panels:
 
 - `explorer-panel` — the Explorer panel (left).
 - `documents-panel` — the Documents area (centre).
-- `console-panel` — the Console panel (bottom), which shows project error and notification banners.
-- `inspector-panel` — the Inspector panel (right), which is currently empty.
+- `main-area` — the Main document area (centre), which is always visible.
+- `bottom-area` — the Bottom document area, below Main.
+- `side-area` — the Side document area, on the right.
 
 Utility Panel rail (the icon strip on the far left that switches the primary panel):
 
@@ -49,7 +50,11 @@ Search panel (all switch to the Search tab first; the replace ones also enable r
 Documents:
 
 - `document-tab-strip` — the open-document tab strip (only resolves with a document open).
-- `split-editor-button` — the split-editor button on the document toolbar.
+- `main-area-split-button` — the button that splits and unsplits the Main document area.
+- `bottom-area-split-button` — the button that splits and unsplits the Bottom document area.
+- `bottom-area-close-button` — the button that collapses the Bottom document area.
+- `side-area-split-button` — the button that splits and unsplits the Side document area.
+- `side-area-close-button` — the button that collapses the Side document area.
 
 Title bar:
 
@@ -59,8 +64,8 @@ Title bar:
 - `panel-layout-button` — the layout-mode selector (Default, Focus, Presentation).
 - `settings-button` — the app Settings button.
 - `explorer-toggle-button` — the button that shows or hides the Explorer panel.
-- `console-toggle-button` — the button that shows or hides the Console panel.
-- `inspector-toggle-button` — the button that shows or hides the Inspector panel.
+- `bottom-area-toggle-button` — the button that shows or hides the Bottom document area.
+- `side-area-toggle-button` — the button that shows or hides the Side document area.
 
 A `target` outside this list returns an error that lists the valid names; see `troubleshoot_spotlight_target`.
 
@@ -72,7 +77,7 @@ A `target` outside this list returns an error that lists the valid names; see `t
 
 ## Gotchas
 
-- A landmark in a collapsed panel is revealed first. Spotlighting `inspector-panel` opens the Inspector if it is hidden.
+- A landmark in a collapsed panel is revealed first. Spotlighting `side-area` opens the Side area if it is hidden.
 - Only one spotlight is visible at a time; a new call moves the existing callout to the new target.
 - A catalogued landmark that still cannot be shown (its panel is not instantiated) is not an error: the call succeeds, no callout appears, and a warning is logged. Open or reveal the relevant area first, then spotlight it.
 - Call `app_get_state` to see which panels are visible and which one has focus before deciding what to spotlight.

@@ -1,4 +1,4 @@
-﻿<Page
+<Page
   x:Class="Celbridge.WorkspaceUI.Views.WorkspacePage"
   x:Name="WorkspacePageName"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -15,95 +15,56 @@
         VerticalAlignment="Stretch">
 
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="PrimaryPanelColumn"
+      <ColumnDefinition x:Name="UtilityPanelColumn"
                         Width="300"
                         MinWidth="200"/>
       <ColumnDefinition Width="*"/>
-      <ColumnDefinition x:Name="SecondaryPanelColumn"
-                        Width="300"
-                        MinWidth="200"/>
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
       <RowDefinition Height="*"/>
-      <RowDefinition x:Name="ConsolePanelRow"
-                     Height="200"
-                     MinHeight="150"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Primary Panel -->
-    <Grid x:Name="PrimaryPanel"
-          Grid.RowSpan="3"
+    <!-- Utility Panel -->
+    <Grid x:Name="UtilityPanelHost"
+          Grid.RowSpan="2"
           MinWidth="200"
-          layout:WorkspaceLayout.Region="Primary"
+          layout:WorkspaceLayout.Region="UtilityPanel"
           AutomationProperties.AutomationId="explorer-panel"
           Background="{ThemeResource PanelBackgroundABrush}">
     </Grid>
 
-    <!-- Documents Panel -->
-    <Grid x:Name="DocumentsPanel"
+    <!-- Documents Panel. Hosts the Main, Bottom and Side document areas and the splitters
+         between them. -->
+    <Grid x:Name="DocumentsPanelHost"
           Grid.Column="1"
+          Grid.Row="0"
           AutomationProperties.AutomationId="documents-panel"
           Background="{ThemeResource ApplicationBackgroundBrush}">
     </Grid>
 
-    <!-- Secondary Panel, currently empty. -->
-    <Grid x:Name="SecondaryPanel"
-          Grid.Column="2"
-          Grid.Row="0"
-          Grid.RowSpan="2"
-          MinWidth="200"
-          layout:WorkspaceLayout.Region="Secondary"
-          AutomationProperties.AutomationId="inspector-panel"
-          Background="{ThemeResource PanelBackgroundABrush}">
-    </Grid>
-
-    <!-- Console Panel, currently empty. Gated by the console panel feature flag. -->
-    <Grid x:Name="ConsolePanelHost"
-          Grid.Column="1"
-          Grid.Row="1"
-          layout:WorkspaceLayout.Region="Console"
-          AutomationProperties.AutomationId="console-panel"
-          Background="{ThemeResource PanelBackgroundBBrush}">
-    </Grid>
-
-    <!-- Notification Bar. Spans the workspace to the right of the Primary Panel and sizes to its
+    <!-- Notification Bar. Spans the workspace to the right of the Utility Panel and sizes to its
          content, so it takes no space when no banners are showing. -->
     <Grid x:Name="NotificationBarHost"
           Grid.Column="1"
-          Grid.ColumnSpan="2"
-          Grid.Row="2"
+          Grid.Row="1"
           AutomationProperties.AutomationId="notification-bar">
     </Grid>
 
-    <!-- Grid splitters -->
-
-    <controls:Splitter x:Name="PrimaryPanelSplitter"
+    <controls:Splitter x:Name="UtilityPanelSplitter"
                        Grid.Column="0"
-                       Grid.RowSpan="3"
+                       Grid.RowSpan="2"
                        HorizontalAlignment="Right"
                        Orientation="Vertical"/>
-
-    <controls:Splitter x:Name="SecondaryPanelSplitter"
-                       Grid.Column="2"
-                       Grid.RowSpan="2"
-                       HorizontalAlignment="Left"
-                       Orientation="Vertical"/>
-
-    <controls:Splitter x:Name="ConsolePanelSplitter"
-                       Grid.Column="1"
-                       Grid.Row="1"
-                       VerticalAlignment="Top"
-                       Orientation="Horizontal"/>
 
     <!-- Topmost display-only overlay for pointer-driven resource drag visuals (the ghost),
          spanning every panel so the ghost is visible across the whole workspace. -->
     <Canvas x:Name="ResourceDragOverlay"
             Grid.Row="0"
             Grid.Column="0"
-            Grid.RowSpan="3"
-            Grid.ColumnSpan="3"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="2"
             IsHitTestVisible="False"/>
   </Grid>
 </Page>

@@ -34,7 +34,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
         {
             _commandService.Execute<ISetRegionVisibilityCommand>(command =>
             {
-                command.Regions = LayoutRegion.Primary;
+                command.Regions = LayoutRegion.UtilityPanel;
                 command.IsVisible = true;
             });
 

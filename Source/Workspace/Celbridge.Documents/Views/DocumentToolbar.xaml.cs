@@ -1,90 +1,83 @@
-using Celbridge.UserInterface.Services;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
 
+/// <summary>
+/// The toolbar hosted in a document area's tab strip footer: a button that splits and unsplits the area,
+/// and for the collapsible areas a button that closes them.
+/// </summary>
 public sealed partial class DocumentToolbar : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    private int _currentSectionCount = 1;
-    private bool _isUpdatingSelection = false;
+    private readonly DocumentArea _area;
 
-    // Toolbar tooltip strings
-    private string SplitEditorTooltipString => _stringLocalizer.GetString("DocumentToolbar_SplitEditorTooltip");
-
-    // Flyout menu strings
-    private string OneSectionString => _stringLocalizer.GetString("DocumentToolbar_OneSection");
-    private string TwoSectionsString => _stringLocalizer.GetString("DocumentToolbar_TwoSections");
-    private string ThreeSectionsString => _stringLocalizer.GetString("DocumentToolbar_ThreeSections");
+    private bool _isAreaSplit = false;
 
     /// <summary>
-    /// Event raised when the user requests a change in the number of sections.
+    /// Event raised when the user asks to split or unsplit this area.
     /// </summary>
-    public event Action<int>? SectionCountChangeRequested;
+    public event Action<DocumentArea, bool>? SplitChangeRequested;
 
-    public DocumentToolbar()
+    /// <summary>
+    /// Event raised when the user asks to collapse this area.
+    /// </summary>
+    public event Action<DocumentArea>? CloseAreaRequested;
+
+    public DocumentToolbar(DocumentArea area)
     {
         InitializeComponent();
 
+        _area = area;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        // The flyout opens over the document region, where a hosted web view would take the click too.
-        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
-        overlayInputSuppressor.SuppressWhileOpen(SplitEditorFlyout);
+        ButtonIcon.SplitsHorizontally = area.SplitsHorizontally();
 
-        UpdateMenuItemStates();
+        var areaId = area.ToString().ToLowerInvariant();
+        AutomationProperties.SetAutomationId(SplitEditorButton, $"{areaId}-area-split-button");
+        AutomationProperties.SetAutomationId(CloseAreaButton, $"{areaId}-area-close-button");
+
+        if (area.IsCollapsible())
+        {
+            CloseAreaButton.Visibility = Visibility.Visible;
+            ToolTipService.SetToolTip(CloseAreaButton, _stringLocalizer.GetString("DocumentToolbar_CloseAreaTooltip"));
+        }
+
+        UpdateSplitState(isAreaSplit: false);
     }
 
     /// <summary>
-    /// Updates the toolbar to reflect the current section count.
+    /// Updates the toolbar to reflect whether its area is currently split. The icon and tooltip describe
+    /// what the button does next rather than the current state.
     /// </summary>
-    public void UpdateSectionCount(int sectionCount)
+    public void UpdateSplitState(bool isAreaSplit)
     {
-        _currentSectionCount = sectionCount;
-        UpdateMenuItemStates();
+        _isAreaSplit = isAreaSplit;
+
+        ButtonIcon.ShowsTwoSections = !isAreaSplit;
+
+        string tooltipKey = isAreaSplit
+            ? "DocumentToolbar_UnsplitEditorTooltip"
+            : "DocumentToolbar_SplitEditorTooltip";
+        ToolTipService.SetToolTip(SplitEditorButton, _stringLocalizer.GetString(tooltipKey));
     }
 
-    private void UpdateMenuItemStates()
+    /// <summary>
+    /// Enables or disables the split button. The area is too small to hold two sections when disabled.
+    /// </summary>
+    public void UpdateSplitAvailable(bool canSplit)
     {
-        _isUpdatingSelection = true;
-        try
-        {
-            // Update radio button selection
-            OneSection.IsChecked = _currentSectionCount == 1;
-            TwoSections.IsChecked = _currentSectionCount == 2;
-            ThreeSections.IsChecked = _currentSectionCount == 3;
-        }
-        finally
-        {
-            _isUpdatingSelection = false;
-        }
+        // An area that is already split can always be unsplit, whatever its size.
+        SplitEditorButton.IsEnabled = _isAreaSplit || canSplit;
     }
 
-    private void OneSection_Checked(object sender, RoutedEventArgs e)
+    private void SplitEditorButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!_isUpdatingSelection)
-        {
-            SectionCountChangeRequested?.Invoke(1);
-            SplitEditorFlyout.Hide();
-        }
+        SplitChangeRequested?.Invoke(_area, !_isAreaSplit);
     }
 
-    private void TwoSections_Checked(object sender, RoutedEventArgs e)
+    private void CloseAreaButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!_isUpdatingSelection)
-        {
-            SectionCountChangeRequested?.Invoke(2);
-            SplitEditorFlyout.Hide();
-        }
-    }
-
-    private void ThreeSections_Checked(object sender, RoutedEventArgs e)
-    {
-        if (!_isUpdatingSelection)
-        {
-            SectionCountChangeRequested?.Invoke(3);
-            SplitEditorFlyout.Hide();
-        }
+        CloseAreaRequested?.Invoke(_area);
     }
 }

@@ -104,9 +104,9 @@ public class AppToolTests
         root.GetProperty("focusedPanel").GetString().Should().Be("Documents");
 
         var layoutMode = root.GetProperty("layoutMode");
-        layoutMode.GetProperty("contextPanelVisible").GetBoolean().Should().BeTrue();
-        layoutMode.GetProperty("inspectorPanelVisible").GetBoolean().Should().BeFalse();
-        layoutMode.GetProperty("consolePanelVisible").GetBoolean().Should().BeTrue();
+        layoutMode.GetProperty("utilityPanelVisible").GetBoolean().Should().BeTrue();
+        layoutMode.GetProperty("sideAreaVisible").GetBoolean().Should().BeFalse();
+        layoutMode.GetProperty("bottomAreaVisible").GetBoolean().Should().BeTrue();
     }
 
     [Test]
@@ -128,8 +128,6 @@ public class AppToolTests
         flagsElement.ValueKind.Should().Be(JsonValueKind.Object);
 
         // Every public string constant on FeatureFlagConstants must be present.
-        flagsElement.TryGetProperty(FeatureFlagConstants.ConsolePanel, out var consolePanel).Should().BeTrue();
-        consolePanel.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.McpTools, out var mcpTools).Should().BeTrue();
         mcpTools.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.WebViewDevTools, out var webViewDevTools).Should().BeTrue();
@@ -156,9 +154,9 @@ public class AppToolTests
         focusService.FocusedPanel.Returns(focusedPanel);
 
         var layoutService = Substitute.For<ILayoutService>();
-        layoutService.IsContextPanelVisible.Returns(contextVisible);
-        layoutService.IsInspectorPanelVisible.Returns(inspectorVisible);
-        layoutService.IsConsolePanelVisible.Returns(consoleVisible);
+        layoutService.IsUtilityPanelVisible.Returns(contextVisible);
+        layoutService.IsSideAreaVisible.Returns(inspectorVisible);
+        layoutService.IsBottomAreaVisible.Returns(consoleVisible);
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
         _services.GetRequiredService<IAppEnvironment>().Returns(environmentService);

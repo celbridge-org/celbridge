@@ -1,26 +1,41 @@
 namespace Celbridge.Documents.Views.Controls;
 
 /// <summary>
-/// An icon representing an editor split layout, drawn as a box divided into 1, 2, or 3
-/// editor sections with hinted lines of text. Set the SectionCount property to control
-/// how many sections are displayed.
+/// An icon representing an editor split layout, drawn as a box that is either whole or divided in two
+/// with hinted lines of text. The divider follows the split orientation of the area the icon stands for.
 /// </summary>
 public sealed partial class SplitEditorIcon : UserControl
 {
-    public static readonly DependencyProperty SectionCountProperty =
+    public static readonly DependencyProperty ShowsTwoSectionsProperty =
         DependencyProperty.Register(
-            nameof(SectionCount),
-            typeof(int),
+            nameof(ShowsTwoSections),
+            typeof(bool),
             typeof(SplitEditorIcon),
-            new PropertyMetadata(1, OnSectionCountChanged));
+            new PropertyMetadata(false, OnLayoutChanged));
+
+    public static readonly DependencyProperty SplitsHorizontallyProperty =
+        DependencyProperty.Register(
+            nameof(SplitsHorizontally),
+            typeof(bool),
+            typeof(SplitEditorIcon),
+            new PropertyMetadata(true, OnLayoutChanged));
 
     /// <summary>
-    /// Gets or sets the number of sections to display (1, 2, or 3).
+    /// Gets or sets whether the icon shows a divided box rather than a whole one.
     /// </summary>
-    public int SectionCount
+    public bool ShowsTwoSections
     {
-        get => (int)GetValue(SectionCountProperty);
-        set => SetValue(SectionCountProperty, value);
+        get => (bool)GetValue(ShowsTwoSectionsProperty);
+        set => SetValue(ShowsTwoSectionsProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets whether a divided box is split by a vertical divider rather than a horizontal one.
+    /// </summary>
+    public bool SplitsHorizontally
+    {
+        get => (bool)GetValue(SplitsHorizontallyProperty);
+        set => SetValue(SplitsHorizontallyProperty, value);
     }
 
     public SplitEditorIcon()
@@ -29,7 +44,7 @@ public sealed partial class SplitEditorIcon : UserControl
         UpdateSections();
     }
 
-    private static void OnSectionCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnLayoutChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is SplitEditorIcon icon)
         {
@@ -39,10 +54,11 @@ public sealed partial class SplitEditorIcon : UserControl
 
     private void UpdateSections()
     {
-        var count = Math.Clamp(SectionCount, 1, 3);
+        bool showsHorizontalSplit = ShowsTwoSections && SplitsHorizontally;
+        bool showsVerticalSplit = ShowsTwoSections && !SplitsHorizontally;
 
-        OneSectionContent.Visibility = count == 1 ? Visibility.Visible : Visibility.Collapsed;
-        TwoSectionContent.Visibility = count == 2 ? Visibility.Visible : Visibility.Collapsed;
-        ThreeSectionContent.Visibility = count == 3 ? Visibility.Visible : Visibility.Collapsed;
+        OneSectionContent.Visibility = ShowsTwoSections ? Visibility.Collapsed : Visibility.Visible;
+        TwoSectionsHorizontalContent.Visibility = showsHorizontalSplit ? Visibility.Visible : Visibility.Collapsed;
+        TwoSectionsVerticalContent.Visibility = showsVerticalSplit ? Visibility.Visible : Visibility.Collapsed;
     }
 }

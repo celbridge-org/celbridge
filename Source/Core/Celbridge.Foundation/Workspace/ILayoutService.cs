@@ -11,19 +11,19 @@ public interface ILayoutService
     LayoutRegion RegionVisibility { get; }
 
     /// <summary>
-    /// Whether the Context panel (left sidebar) is currently visible.
+    /// Whether the Utility Panel (left sidebar) is currently visible.
     /// </summary>
-    bool IsContextPanelVisible { get; }
+    bool IsUtilityPanelVisible { get; }
 
     /// <summary>
-    /// Whether the Inspector panel (right sidebar) is currently visible.
+    /// Whether the Bottom document area is currently visible.
     /// </summary>
-    bool IsInspectorPanelVisible { get; }
+    bool IsBottomAreaVisible { get; }
 
     /// <summary>
-    /// Whether the Console panel (bottom panel) is currently visible.
+    /// Whether the Side document area is currently visible.
     /// </summary>
-    bool IsConsolePanelVisible { get; }
+    bool IsSideAreaVisible { get; }
 
     /// <summary>
     /// Sets the visibility of a specific region.

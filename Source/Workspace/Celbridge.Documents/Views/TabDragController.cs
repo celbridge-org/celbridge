@@ -226,10 +226,8 @@ internal sealed class TabDragController
     /// </summary>
     private TabDropTarget? ResolveDropTarget(Point position)
     {
-        for (int i = 0; i < _container.SectionCount; i++)
+        foreach (var section in _container.GetMountedSections())
         {
-            var section = _container.GetSection(i);
-
             var stripBounds = section.GetTabStripBounds(_overlay);
             if (!stripBounds.IsEmpty &&
                 stripBounds.Contains(position))

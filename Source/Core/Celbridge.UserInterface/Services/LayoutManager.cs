@@ -14,7 +14,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFeatureFlags _featureFlags;
 
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
@@ -24,20 +23,17 @@ public class LayoutManager : IWindowModeService, ILayoutService
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
         ISettingsService settingsService,
-        IWorkspaceWrapper workspaceWrapper,
-        IFeatureFlags featureFlags)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
-        _featureFlags = featureFlags;
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
-        _messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
     }
 
     // The typed workspace settings facade, or null when no workspace is loaded.
@@ -115,11 +111,11 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
-    public bool IsContextPanelVisible => RegionVisibility.HasFlag(LayoutRegion.Primary);
+    public bool IsUtilityPanelVisible => RegionVisibility.HasFlag(LayoutRegion.UtilityPanel);
 
-    public bool IsInspectorPanelVisible => RegionVisibility.HasFlag(LayoutRegion.Secondary);
+    public bool IsBottomAreaVisible => RegionVisibility.HasFlag(LayoutRegion.BottomArea);
 
-    public bool IsConsolePanelVisible => RegionVisibility.HasFlag(LayoutRegion.Console);
+    public bool IsSideAreaVisible => RegionVisibility.HasFlag(LayoutRegion.SideArea);
 
     public void SetRegionVisibility(LayoutRegion region, bool isVisible)
     {
@@ -147,17 +143,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
     {
         var isCurrentlyVisible = RegionVisibility.HasFlag(region);
         SetRegionVisibility(region, !isCurrentlyVisible);
-    }
-
-    private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
-    {
-        // Re-evaluate console visibility based on updated feature flags
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        if (!isConsolePanelEnabled &&
-            RegionVisibility.HasFlag(LayoutRegion.Console))
-        {
-            UpdateRegionVisibility(RegionVisibility & ~LayoutRegion.Console, shouldPersist: true);
-        }
     }
 
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
@@ -215,13 +200,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private Result HandleResetLayout()
     {
-        // Reset panel sizes
+        // Reset panel and area sizes
         var workspaceSettings = WorkspaceSettings;
         if (workspaceSettings is not null)
         {
-            workspaceSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
-            workspaceSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
-            workspaceSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+            workspaceSettings.UtilityPanelWidth = WorkspaceConstants.UtilityPanelWidth;
+            workspaceSettings.SideAreaWidth = WorkspaceConstants.SideAreaWidth;
+            workspaceSettings.BottomAreaHeight = WorkspaceConstants.BottomAreaHeight;
         }
 
         // Reset preferred window geometry
@@ -232,14 +217,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _settingsService.Set(SettingCatalog.Window.PreferredHeight, 0);
         _settingsService.Set(SettingCatalog.Window.IsMaximized, false);
 
-        // Reset preferred visibility to all regions, but exclude Console if feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        var targetVisibility = isConsolePanelEnabled
-            ? LayoutRegion.All
-            : (LayoutRegion.Primary | LayoutRegion.Secondary);
-
-        UpdateRegionVisibility(targetVisibility, shouldPersist: true);
-        PersistPreferredRegionVisibility(targetVisibility);
+        UpdateRegionVisibility(LayoutRegion.All, shouldPersist: true);
+        PersistPreferredRegionVisibility(LayoutRegion.All);
 
         // Return to the Default layout and exit fullscreen.
         if (_layoutMode != LayoutMode.Default)

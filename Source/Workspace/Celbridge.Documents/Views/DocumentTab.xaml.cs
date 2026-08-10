@@ -20,8 +20,8 @@ public enum DocumentTabMenuAction
     CloseOthersRight,
     CloseOthersLeft,
     CloseAll,
-    MoveLeft,
-    MoveRight,
+    MoveToPrimarySection,
+    MoveToSecondarySection,
     CopyResourceKey,
     CopyFilePath,
     SelectFile,
@@ -47,14 +47,15 @@ public partial class DocumentTab : TabViewItem
     public DocumentTabViewModel ViewModel { get; }
 
     /// <summary>
-    /// The section index (0, 1, or 2) this tab belongs to. Set by DocumentSection when the tab is added.
+    /// The section this tab belongs to. Set by DocumentSection when the tab is added.
     /// </summary>
-    public int SectionIndex { get; set; }
+    public DocumentSectionId SectionId { get; set; }
 
     /// <summary>
-    /// The number of sections currently visible. Set by DocumentSection.
+    /// Whether this tab's area is currently split, so it has a sibling section to move to. Set by
+    /// DocumentSection.
     /// </summary>
-    public int VisibleSectionCount { get; set; } = 1;
+    public bool IsAreaSplit { get; set; }
 
     /// <summary>
     /// Gets whether this tab is the active document.
@@ -112,8 +113,7 @@ public partial class DocumentTab : TabViewItem
         CloseToTheRightMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseRight");
         CloseToTheLeftMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseLeft");
         CloseAllMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseAll");
-        MoveLeftMenuItem.Text = _stringLocalizer.GetString("DocumentTab_MoveLeft");
-        MoveRightMenuItem.Text = _stringLocalizer.GetString("DocumentTab_MoveRight");
+        ApplyMoveMenuLabels();
         CopyResourceKeyMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyResourceKey");
         CopyFilePathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyFilePath");
         SelectFileMenuItem.Text = _stringLocalizer.GetString("DocumentTab_SelectFile");
@@ -124,6 +124,19 @@ public partial class DocumentTab : TabViewItem
         ReopenWithMenuItem.Text = _stringLocalizer.GetString("DocumentTab_ReopenWith");
 
         ApplyCloseShortcutHints();
+    }
+
+    // Labels the two move options for the split orientation of this tab's area: left and right for Main
+    // and Bottom, up and down for the vertically split Side area.
+    private void ApplyMoveMenuLabels()
+    {
+        bool splitsHorizontally = SectionId.GetArea().SplitsHorizontally();
+
+        string primaryKey = splitsHorizontally ? "DocumentTab_MoveLeft" : "DocumentTab_MoveUp";
+        string secondaryKey = splitsHorizontally ? "DocumentTab_MoveRight" : "DocumentTab_MoveDown";
+
+        MoveToPrimarySectionMenuItem.Text = _stringLocalizer.GetString(primaryKey);
+        MoveToSecondarySectionMenuItem.Text = _stringLocalizer.GetString(secondaryKey);
     }
 
     // Displays the close shortcut hints next to the Close and Close All menu items. These are display-only
@@ -208,14 +221,14 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CloseAll);
     }
 
-    private void ContextMenu_MoveLeft(object sender, RoutedEventArgs e)
+    private void ContextMenu_MoveToPrimarySection(object sender, RoutedEventArgs e)
     {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.MoveLeft);
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.MoveToPrimarySection);
     }
 
-    private void ContextMenu_MoveRight(object sender, RoutedEventArgs e)
+    private void ContextMenu_MoveToSecondarySection(object sender, RoutedEventArgs e)
     {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.MoveRight);
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.MoveToSecondarySection);
     }
 
     private void ContextMenu_SelectFile(object sender, RoutedEventArgs e)
@@ -284,19 +297,20 @@ public partial class DocumentTab : TabViewItem
         bool hasTabsToLeft = tabIndex > 0;
         CloseToTheLeftMenuItem.Visibility = hasTabsToLeft ? Visibility.Visible : Visibility.Collapsed;
 
-        // Show move options only when there are multiple sections
-        bool hasMultipleSections = VisibleSectionCount > 1;
+        // Move options only apply within a split area, and only in the direction that has a sibling
+        // section. The labels follow the area's split orientation, so a vertically split Side area
+        // offers Move Up and Move Down.
+        bool isSecondarySection = SectionId.IsSecondarySection();
+        bool canMoveToPrimary = IsAreaSplit && isSecondarySection;
+        bool canMoveToSecondary = IsAreaSplit && !isSecondarySection;
 
-        // Show "Move Left" only if there's a section to the left
-        bool canMoveLeft = hasMultipleSections && SectionIndex > 0;
-        MoveLeftMenuItem.Visibility = canMoveLeft ? Visibility.Visible : Visibility.Collapsed;
+        ApplyMoveMenuLabels();
 
-        // Show "Move Right" only if there's a section to the right
-        bool canMoveRight = hasMultipleSections && SectionIndex < VisibleSectionCount - 1;
-        MoveRightMenuItem.Visibility = canMoveRight ? Visibility.Visible : Visibility.Collapsed;
+        MoveToPrimarySectionMenuItem.Visibility = canMoveToPrimary ? Visibility.Visible : Visibility.Collapsed;
+        MoveToSecondarySectionMenuItem.Visibility = canMoveToSecondary ? Visibility.Visible : Visibility.Collapsed;
 
         // Show the separator only if at least one move option is visible
-        MoveSeparator.Visibility = (canMoveLeft || canMoveRight) ? Visibility.Visible : Visibility.Collapsed;
+        MoveSeparator.Visibility = (canMoveToPrimary || canMoveToSecondary) ? Visibility.Visible : Visibility.Collapsed;
 
         // A utility tab presents a docked utility, not a file, so hide the options that reveal or act on its
         // backing file. The close and move options remain.

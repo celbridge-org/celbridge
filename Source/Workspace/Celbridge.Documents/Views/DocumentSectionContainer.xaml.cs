@@ -9,23 +9,34 @@ namespace Celbridge.Documents.Views;
 public record DocumentTabLocation(DocumentSection Section, DocumentTab Tab);
 
 /// <summary>
-/// Container that manages 1-3 document sections with resizable splitters between them.
+/// Container that manages the three document areas, the sections within them, and the splitters that
+/// size both.
 /// </summary>
 public sealed partial class DocumentSectionContainer : UserControl
 {
     private const double MinSectionWidth = 200;
+    private const double MinSectionHeight = 120;
+    private const double MinBottomAreaHeight = 150;
+    private const double MinSideAreaWidth = 200;
+    private const double MinMainAreaWidth = 200;
+    private const double MinMainAreaHeight = 150;
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
+    private const double DefaultSplitRatio = 0.5;
 
-    private readonly List<DocumentSection> _sections = new();
-    private readonly List<Splitter> _splitters = new();
-    private readonly Dictionary<int, SplitterHelper> _splitterHelpers = new();
+    private readonly Dictionary<DocumentSectionId, DocumentSection> _sections = new();
+    private readonly Dictionary<DocumentArea, bool> _areaSplit = new();
+    private readonly Dictionary<DocumentArea, double> _areaSplitRatio = new();
+    private readonly Dictionary<DocumentArea, Splitter> _splitSplitters = new();
+    private readonly Dictionary<DocumentArea, SplitterHelper> _splitHelpers = new();
+    private readonly Dictionary<DocumentArea, UIElement> _areaToolbars = new();
+    private readonly HashSet<DocumentArea> _visibleAreas = new();
 
-    private UIElement? _documentToolbar;
+    private SplitterHelper? _bottomAreaSplitterHelper;
+    private SplitterHelper? _sideAreaSplitterHelper;
 
     private double _totalDragDelta = 0;
 
-    private int _sectionCount = 1;
-    private int _activeSectionIndex = 0;
+    private DocumentSectionId _activeSectionId = DocumentSectionId.MainLeft;
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
@@ -55,14 +66,24 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<DocumentSection, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
     /// <summary>
-    /// Event raised when the section count changes.
+    /// Event raised when an area's split state or split position changes.
     /// </summary>
-    public event Action<int>? SectionCountChanged;
+    public event Action<DocumentArea, bool, double>? AreaLayoutChanged;
 
     /// <summary>
-    /// Event raised when section ratios change (after splitter drag).
+    /// Event raised when a collapsible area is resized, carrying its new height (Bottom) or width (Side).
     /// </summary>
-    public event Action<List<double>>? SectionRatiosChanged;
+    public event Action<DocumentArea, double>? AreaSizeChanged;
+
+    /// <summary>
+    /// Event raised when an area splitter is double-clicked, asking for that area's default size.
+    /// </summary>
+    public event Action<DocumentArea>? AreaSizeResetRequested;
+
+    /// <summary>
+    /// Event raised when an area grows past or shrinks below the size needed to hold two sections.
+    /// </summary>
+    public event Action<DocumentArea, bool>? AreaSplitAvailabilityChanged;
 
     /// <summary>
     /// Event raised when resource files are dropped into a section from the ResourceTree, with the
@@ -71,9 +92,24 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<DocumentSection, List<IResource>, int>? FilesDropped;
 
     /// <summary>
-    /// Gets the current number of sections.
+    /// The sections that are currently mounted, in reading order.
     /// </summary>
-    public int SectionCount => _sectionCount;
+    public IReadOnlyList<DocumentSectionId> VisibleSections
+    {
+        get
+        {
+            var visible = new List<DocumentSectionId>();
+            foreach (var sectionId in DocumentLayoutHelper.AllSections)
+            {
+                if (IsSectionMounted(sectionId))
+                {
+                    visible.Add(sectionId);
+                }
+            }
+
+            return visible;
+        }
+    }
 
     /// <summary>
     /// Gets the active document - the document being inspected and where new documents open.
@@ -81,218 +117,291 @@ public sealed partial class DocumentSectionContainer : UserControl
     public ResourceKey ActiveDocument => _activeDocument;
 
     /// <summary>
-    /// Gets the index of the active section (the section containing the active document).
+    /// Gets the section containing the active document.
     /// </summary>
-    public int ActiveSectionIndex => _activeSectionIndex;
+    public DocumentSectionId ActiveSectionId => _activeSectionId;
 
     public DocumentSectionContainer()
     {
         InitializeComponent();
 
-        // Initialize with one section
-        CreateSection(0);
-        RebuildGrid();
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            _areaSplit[area] = false;
+            _areaSplitRatio[area] = DefaultSplitRatio;
+            _visibleAreas.Add(area);
+        }
+
+        // Every section exists for the lifetime of the container: a collapsed area keeps its tabs while
+        // its sections are unmounted from the visual tree.
+        foreach (var sectionId in DocumentLayoutHelper.AllSections)
+        {
+            CreateSection(sectionId);
+        }
+
+        InitializeAreaSplitters();
+
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            RebuildArea(area);
+            WatchAreaSize(area);
+        }
+    }
+
+    // Reports whether an area is large enough to hold two sections at their minimum size.
+    private void WatchAreaSize(DocumentArea area)
+    {
+        var areaGrid = GetAreaGrid(area);
+        areaGrid.SizeChanged += (s, e) =>
+        {
+            AreaSplitAvailabilityChanged?.Invoke(area, CanSplitArea(area));
+        };
     }
 
     /// <summary>
-    /// Gets all sections.
+    /// Whether the area currently has room for two sections at their minimum size.
     /// </summary>
-    public IReadOnlyList<DocumentSection> Sections => _sections;
-
-    /// <summary>
-    /// Gets the section at the specified index.
-    /// </summary>
-    public DocumentSection GetSection(int index)
+    public bool CanSplitArea(DocumentArea area)
     {
-        if (index < 0 || index >= _sections.Count)
+        var areaGrid = GetAreaGrid(area);
+
+        if (area.SplitsHorizontally())
         {
-            throw new ArgumentOutOfRangeException(nameof(index));
+            return areaGrid.ActualWidth >= MinSectionWidth * 2;
         }
-        return _sections[index];
+
+        return areaGrid.ActualHeight >= MinSectionHeight * 2;
     }
 
     /// <summary>
-    /// Sets the number of visible sections (1, 2, or 3).
+    /// Gets the section with the given id.
     /// </summary>
-    public void SetSectionCount(int count)
+    public DocumentSection GetSection(DocumentSectionId sectionId)
     {
-        if (count < 1 || count > 3)
+        return _sections[sectionId];
+    }
+
+    /// <summary>
+    /// Gets every mounted section, in reading order.
+    /// </summary>
+    public IEnumerable<DocumentSection> GetMountedSections()
+    {
+        foreach (var sectionId in VisibleSections)
         {
-            throw new ArgumentOutOfRangeException(nameof(count), "Section count must be 1, 2, or 3");
+            yield return _sections[sectionId];
+        }
+    }
+
+    /// <summary>
+    /// Gets every section, mounted or not, in reading order.
+    /// </summary>
+    public IEnumerable<DocumentSection> GetAllSections()
+    {
+        foreach (var sectionId in DocumentLayoutHelper.AllSections)
+        {
+            yield return _sections[sectionId];
+        }
+    }
+
+    /// <summary>
+    /// Whether the section is currently in the visual tree: its area is visible and, for a secondary
+    /// section, that area is split.
+    /// </summary>
+    public bool IsSectionMounted(DocumentSectionId sectionId)
+    {
+        var area = sectionId.GetArea();
+        if (!_visibleAreas.Contains(area))
+        {
+            return false;
         }
 
-        if (count == _sectionCount)
+        return !sectionId.IsSecondarySection() || _areaSplit[area];
+    }
+
+    /// <summary>
+    /// Whether the area is currently showing both of its sections.
+    /// </summary>
+    public bool IsAreaSplit(DocumentArea area)
+    {
+        return _areaSplit[area];
+    }
+
+    /// <summary>
+    /// Whether the area is currently visible. Main is always visible.
+    /// </summary>
+    public bool IsAreaVisible(DocumentArea area)
+    {
+        return _visibleAreas.Contains(area);
+    }
+
+    /// <summary>
+    /// Gets the share of a split area taken by its primary section.
+    /// </summary>
+    public double GetAreaSplitRatio(DocumentArea area)
+    {
+        return _areaSplitRatio[area];
+    }
+
+    /// <summary>
+    /// Splits the area into two sections, or folds its secondary section back into the primary one.
+    /// Folding migrates the secondary section's tabs rather than closing them.
+    /// </summary>
+    public void SetAreaSplit(DocumentArea area, bool isSplit)
+    {
+        if (_areaSplit[area] == isSplit)
         {
             return;
         }
 
-        var oldCount = _sectionCount;
-        _sectionCount = count;
+        _areaSplit[area] = isSplit;
 
-        // Create any new sections needed
-        while (_sections.Count < count)
+        if (!isSplit)
         {
-            CreateSection(_sections.Count);
+            MigrateSecondarySection(area);
         }
 
-        // If reducing sections, migrate documents to the left
-        if (count < oldCount)
-        {
-            MigrateDocumentsLeft(count);
-        }
+        RebuildArea(area);
 
-        RebuildGrid();
-        SectionCountChanged?.Invoke(count);
-
-        // Fire ratios changed so the new layout is persisted
-        // Use dispatcher to ensure layout has completed before capturing ratios
-        _ = DispatcherQueue.TryEnqueue(() =>
-        {
-            SectionRatiosChanged?.Invoke(GetSectionRatios());
-        });
+        AreaLayoutChanged?.Invoke(area, isSplit, _areaSplitRatio[area]);
     }
 
     /// <summary>
-    /// Sets the footer content for the rightmost visible section's tab strip.
+    /// Sets the share of a split area taken by its primary section.
     /// </summary>
-    public void SetTabStripFooter(UIElement? content)
+    public void SetAreaSplitRatio(DocumentArea area, double ratio)
     {
-        // Clear footer from all sections first
-        foreach (var section in _sections)
-        {
-            section.SetTabStripFooter(null);
-        }
-
-        // Set footer on the last visible section
-        if (_sectionCount > 0 && _sections.Count >= _sectionCount)
-        {
-            _sections[_sectionCount - 1].SetTabStripFooter(content);
-        }
-    }
-
-    /// <summary>
-    /// Sets the split-editor toolbar hosted in the rightmost section's tab strip footer. The toolbar
-    /// is re-placed on the current rightmost section whenever the section layout is rebuilt.
-    /// </summary>
-    public void SetDocumentToolbar(UIElement toolbar)
-    {
-        _documentToolbar = toolbar;
-        SetTabStripFooter(_documentToolbar);
-    }
-
-    /// <summary>
-    /// Gets the current proportional widths (ratios) of all visible sections.
-    /// </summary>
-    public List<double> GetSectionRatios()
-    {
-        var ratios = new List<double>();
-        double totalWidth = 0;
-
-        // Calculate total width of all sections
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
-        {
-            totalWidth += _sections[i].ActualWidth;
-        }
-
-        if (totalWidth <= 0)
-        {
-            // Default to equal ratios if no layout yet
-            for (int i = 0; i < _sectionCount; i++)
-            {
-                ratios.Add(1.0);
-            }
-            return ratios;
-        }
-
-        // Calculate ratio for each section
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
-        {
-            ratios.Add(_sections[i].ActualWidth / totalWidth);
-        }
-
-        return ratios;
-    }
-
-    /// <summary>
-    /// Sets the proportional widths (ratios) of visible sections.
-    /// </summary>
-    public void SetSectionRatios(List<double> ratios)
-    {
-        if (ratios == null || ratios.Count != _sectionCount)
+        if (double.IsNaN(ratio)
+            || double.IsInfinity(ratio)
+            || ratio <= 0
+            || ratio >= 1)
         {
             return;
         }
 
-        // Validate that all ratios are finite positive numbers
-        foreach (var ratio in ratios)
+        _areaSplitRatio[area] = ratio;
+
+        if (_areaSplit[area])
         {
-            if (double.IsNaN(ratio) || double.IsInfinity(ratio) || ratio <= 0)
-            {
-                return;
-            }
+            ApplySplitRatio(area);
+        }
+    }
+
+    /// <summary>
+    /// Shows or hides an area. Hiding leaves its sections and their tabs intact, so the documents in a
+    /// collapsed area stay open and reappear where they were. Main is always visible.
+    /// </summary>
+    public void SetAreaVisible(DocumentArea area, bool isVisible)
+    {
+        if (!area.IsCollapsible())
+        {
+            return;
         }
 
-        // Apply ratios as Star values to columns
-        int ratioIndex = 0;
-        for (int i = 0; i < RootGrid.ColumnDefinitions.Count && ratioIndex < ratios.Count; i++)
+        if (isVisible)
         {
-            var columnDefinition = RootGrid.ColumnDefinitions[i];
-            // Skip splitter columns (odd indices)
-            if (i % 2 == 0)
+            _visibleAreas.Add(area);
+        }
+        else
+        {
+            _visibleAreas.Remove(area);
+        }
+
+        ApplyAreaVisibility(area);
+    }
+
+    /// <summary>
+    /// Sets the height of the Bottom area or the width of the Side area.
+    /// </summary>
+    public void SetAreaSize(DocumentArea area, double size)
+    {
+        if (size <= 0)
+        {
+            return;
+        }
+
+        if (area == DocumentArea.Bottom)
+        {
+            if (_visibleAreas.Contains(DocumentArea.Bottom))
             {
-                columnDefinition.Width = new GridLength(ratios[ratioIndex], GridUnitType.Star);
-                ratioIndex++;
+                BottomAreaRow.Height = new GridLength(size);
+            }
+        }
+        else if (area == DocumentArea.Side)
+        {
+            if (_visibleAreas.Contains(DocumentArea.Side))
+            {
+                SideAreaColumn.Width = new GridLength(size);
             }
         }
     }
 
     /// <summary>
-    /// Finds the section containing a specific document.
+    /// Sets the toolbar hosted in an area's tab strip footer. The toolbar is re-placed on the section
+    /// nearest the area's top-right corner whenever that area is rebuilt.
+    /// </summary>
+    public void SetAreaToolbar(DocumentArea area, UIElement toolbar)
+    {
+        _areaToolbars[area] = toolbar;
+        PlaceAreaToolbar(area);
+    }
+
+    /// <summary>
+    /// Finds the section containing a specific document, including sections in a collapsed area.
     /// </summary>
     public DocumentSection? FindSectionContaining(ResourceKey fileResource)
     {
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        foreach (var section in GetAllSections())
         {
-            if (_sections[i].ContainsDocument(fileResource))
+            if (section.ContainsDocument(fileResource))
             {
-                return _sections[i];
+                return section;
             }
         }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Locates the open document tab for the given resource and the section that contains it.
+    /// Returns null when no tab is currently open for the resource.
+    /// </summary>
+    public DocumentTabLocation? FindDocumentTab(ResourceKey fileResource)
+    {
+        foreach (var section in GetAllSections())
+        {
+            var tab = section.GetDocumentTab(fileResource);
+            if (tab is not null)
+            {
+                return new DocumentTabLocation(section, tab);
+            }
+        }
+
         return null;
     }
 
     /// <summary>
     /// Makes the specified document the active document.
     /// </summary>
-    public void ActivateDocument(ResourceKey fileResource, int sectionIndex)
+    public void ActivateDocument(ResourceKey fileResource, DocumentSectionId sectionId)
     {
         if (fileResource.IsEmpty)
         {
             return;
         }
 
-        // Validate section index
-        if (sectionIndex < 0 || sectionIndex >= _sectionCount)
-        {
-            return;
-        }
-
         // Enforce the invariant: the active document's tab must be the selected tab in its section
-        var section = _sections[sectionIndex];
+        var section = _sections[sectionId];
         var tab = section.GetDocumentTab(fileResource);
         if (tab is not null)
         {
             section.SelectTab(tab);
         }
 
-        // Update the active document directly
-        _activeSectionIndex = sectionIndex;
+        _activeSectionId = sectionId;
         _activeDocument = fileResource;
 
-        // Update visual indicators across all sections
         UpdateTabSelectionIndicators();
 
-        // Notify listeners of the active document change
         ActiveDocumentChanged?.Invoke(_activeDocument);
     }
 
@@ -300,7 +409,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Called when a document is about to be closed. If it's the active document,
     /// selects the next best document (closest tab in same section, or from other sections).
     /// </summary>
-    public void HandleDocumentClosing(ResourceKey closingResource, int closingSectionIndex, int closingTabIndex)
+    public void HandleDocumentClosing(ResourceKey closingResource, DocumentSectionId closingSectionId, int closingTabIndex)
     {
         // Only need to select another document if the closing one is the active document
         if (closingResource != _activeDocument)
@@ -308,19 +417,16 @@ public sealed partial class DocumentSectionContainer : UserControl
             return;
         }
 
-        // Find the next best document to select
-        var nextDocument = FindNextDocumentToSelect(closingSectionIndex, closingTabIndex);
+        var nextDocument = FindNextDocumentToSelect(closingSectionId, closingTabIndex);
 
-        if (nextDocument.HasValue)
+        if (nextDocument is not null)
         {
-            // Select the next document
-            _activeSectionIndex = nextDocument.Value.SectionIndex;
-            _activeDocument = nextDocument.Value.Resource;
+            _activeSectionId = nextDocument.SectionId;
+            _activeDocument = nextDocument.Resource;
 
-            // Select the tab in its section
-            var section = _sections[nextDocument.Value.SectionIndex];
-            var tab = section.GetDocumentTab(nextDocument.Value.Resource);
-            if (tab != null)
+            var section = _sections[nextDocument.SectionId];
+            var tab = section.GetDocumentTab(nextDocument.Resource);
+            if (tab is not null)
             {
                 section.SelectTab(tab);
             }
@@ -332,88 +438,72 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             // No documents left to select
             _activeDocument = ResourceKey.Empty;
-            _activeSectionIndex = 0;
+            _activeSectionId = DocumentSectionId.MainLeft;
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
         }
     }
 
     /// <summary>
+    /// The document that takes over as active when the current one closes.
+    /// </summary>
+    private record NextDocument(ResourceKey Resource, DocumentSectionId SectionId);
+
+    /// <summary>
     /// Finds the next best document to select when a document is closed.
     /// Prefers documents in the same section (closest to the closed tab's position),
-    /// then falls back to other sections.
+    /// then falls back to other mounted sections in reading order.
     /// </summary>
-    private (ResourceKey Resource, int SectionIndex)? FindNextDocumentToSelect(int closingSectionIndex, int closingTabIndex)
+    private NextDocument? FindNextDocumentToSelect(DocumentSectionId closingSectionId, int closingTabIndex)
     {
         // First, try to find a document in the same section
-        if (closingSectionIndex >= 0 && closingSectionIndex < _sectionCount)
+        var sameSection = _sections[closingSectionId];
+        var tabsInSection = sameSection.GetAllTabs().ToList();
+
+        // Account for the tab that's being closed (it's still in the list)
+        int remainingTabs = tabsInSection.Count - 1;
+
+        if (remainingTabs > 0)
         {
-            var sameSection = _sections[closingSectionIndex];
-            var tabsInSection = sameSection.GetAllTabs().ToList();
+            // If there's a tab to the right, select it; otherwise select the one to the left
+            int nextIndex = closingTabIndex < remainingTabs
+                ? closingTabIndex + 1
+                : closingTabIndex - 1;
 
-            // Account for the tab that's being closed (it's still in the list)
-            // After closing, the tab count will be tabsInSection.Count - 1
-            int remainingTabs = tabsInSection.Count - 1;
-
-            if (remainingTabs > 0)
+            if (nextIndex >= 0 && nextIndex < tabsInSection.Count)
             {
-                // Find the closest tab to the closing position
-                // If there's a tab to the right, select it; otherwise select the one to the left
-                int nextIndex = closingTabIndex < remainingTabs
-                    ? closingTabIndex + 1 // There's a tab to the right (which will shift into this position)
-                    : closingTabIndex - 1; // Select the tab to the left
-
-                if (nextIndex >= 0 && nextIndex < tabsInSection.Count)
+                var nextTab = tabsInSection[nextIndex];
+                if (nextTab.ViewModel.FileResource != _activeDocument)
                 {
-                    var nextTab = tabsInSection[nextIndex];
-                    // Make sure we don't select the tab that's being closed
-                    if (nextTab.ViewModel.FileResource != _activeDocument)
-                    {
-                        return (nextTab.ViewModel.FileResource, closingSectionIndex);
-                    }
+                    return new NextDocument(nextTab.ViewModel.FileResource, closingSectionId);
                 }
+            }
 
-                // If the calculated index didn't work, try any other tab in the section
-                foreach (var tab in tabsInSection)
+            // If the calculated index didn't work, try any other tab in the section
+            foreach (var tab in tabsInSection)
+            {
+                if (tab.ViewModel.FileResource != _activeDocument)
                 {
-                    if (tab.ViewModel.FileResource != _activeDocument)
-                    {
-                        return (tab.ViewModel.FileResource, closingSectionIndex);
-                    }
+                    return new NextDocument(tab.ViewModel.FileResource, closingSectionId);
                 }
             }
         }
 
-        // No documents in the same section, try other sections
-        // Start from the closest section and work outward
-        for (int distance = 1; distance < _sectionCount; distance++)
+        // No documents left in the same section, so scan the other mounted sections in reading order.
+        foreach (var sectionId in VisibleSections)
         {
-            // Try section to the right
-            int rightIndex = closingSectionIndex + distance;
-            if (rightIndex < _sectionCount && rightIndex >= 0)
+            if (sectionId == closingSectionId)
             {
-                var rightSection = _sections[rightIndex];
-                var firstTab = rightSection.GetAllTabs().FirstOrDefault();
-                if (firstTab != null)
-                {
-                    return (firstTab.ViewModel.FileResource, rightIndex);
-                }
+                continue;
             }
 
-            // Try section to the left
-            int leftIndex = closingSectionIndex - distance;
-            if (leftIndex >= 0 && leftIndex < _sectionCount)
+            var firstTab = _sections[sectionId].GetAllTabs().FirstOrDefault();
+            if (firstTab is not null)
             {
-                var leftSection = _sections[leftIndex];
-                var firstTab = leftSection.GetAllTabs().FirstOrDefault();
-                if (firstTab != null)
-                {
-                    return (firstTab.ViewModel.FileResource, leftIndex);
-                }
+                return new NextDocument(firstTab.ViewModel.FileResource, sectionId);
             }
         }
 
-        // No documents found in any section
         return null;
     }
 
@@ -434,7 +524,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
         // The requested document can be empty (never saved) or point to a document that failed to
         // restore (e.g. its file was deleted between sessions). Fall back to the selected tab of
-        // the first populated section, scanning sections in index order.
+        // the first populated section, scanning sections in reading order.
         if (location is null)
         {
             location = FindFallbackActiveDocument();
@@ -444,14 +534,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             // Directly update the active document; programmatic selection does not rely on events.
             location.Section.SelectTab(location.Tab);
-            _activeSectionIndex = location.Section.SectionIndex;
+            _activeSectionId = location.Section.SectionId;
             _activeDocument = location.Tab.ViewModel.FileResource;
         }
         else
         {
             // No documents are open, so there is no active document.
             _activeDocument = ResourceKey.Empty;
-            _activeSectionIndex = 0;
+            _activeSectionId = DocumentSectionId.MainLeft;
         }
 
         UpdateTabSelectionIndicators();
@@ -459,31 +549,13 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Locates the open document tab for the given resource and the section that contains it.
-    /// Returns null when no tab is currently open for the resource.
-    /// </summary>
-    public DocumentTabLocation? FindDocumentTab(ResourceKey fileResource)
-    {
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
-        {
-            var tab = _sections[i].GetDocumentTab(fileResource);
-            if (tab != null)
-            {
-                return new DocumentTabLocation(_sections[i], tab);
-            }
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Returns the selected document tab of the first populated section, scanning sections in index
+    /// Returns the selected document tab of the first populated mounted section, scanning in reading
     /// order, or null when no section has a selected tab.
     /// </summary>
     private DocumentTabLocation? FindFallbackActiveDocument()
     {
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        foreach (var section in GetMountedSections())
         {
-            var section = _sections[i];
             var selectedResource = section.GetSelectedDocument();
             if (selectedResource.IsEmpty)
             {
@@ -496,6 +568,7 @@ public sealed partial class DocumentSectionContainer : UserControl
                 return new DocumentTabLocation(section, tab);
             }
         }
+
         return null;
     }
 
@@ -504,7 +577,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void UpdateTabStripVisibility(bool showTabStrip)
     {
-        foreach (var section in _sections)
+        foreach (var section in GetAllSections())
         {
             section.UpdateTabStripVisibility(showTabStrip);
         }
@@ -515,7 +588,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void Shutdown()
     {
-        foreach (var section in _sections)
+        foreach (var section in GetAllSections())
         {
             section.Shutdown();
         }
@@ -525,14 +598,8 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Moves a tab from its current section to the target section, appending it to the tab strip or
     /// inserting it at the given insertion slot.
     /// </summary>
-    public bool MoveTabToSection(DocumentTab tab, int targetSectionIndex, int? insertionSlot = null)
+    public bool MoveTabToSection(DocumentTab tab, DocumentSectionId targetSectionId, int? insertionSlot = null)
     {
-        if (targetSectionIndex < 0 || targetSectionIndex >= _sectionCount)
-        {
-            return false;
-        }
-
-        // Find the source section
         var location = FindDocumentTab(tab.ViewModel.FileResource);
         if (location is null)
         {
@@ -540,7 +607,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         var sourceSection = location.Section;
-        var targetSection = _sections[targetSectionIndex];
+        var targetSection = _sections[targetSectionId];
         if (sourceSection == targetSection)
         {
             return false; // Already in the target section
@@ -549,7 +616,6 @@ public sealed partial class DocumentSectionContainer : UserControl
         bool wasSelectedInSource = sourceSection.GetSelectedDocument() == tab.ViewModel.FileResource;
         int sourceTabIndex = sourceSection.GetTabIndex(tab);
 
-        // Move the tab
         sourceSection.RemoveTab(tab);
         if (insertionSlot is int slot)
         {
@@ -573,7 +639,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         // Always make the moved tab the active document
-        _activeSectionIndex = targetSectionIndex;
+        _activeSectionId = targetSectionId;
         _activeDocument = tab.ViewModel.FileResource;
         UpdateTabSelectionIndicators();
         ActiveDocumentChanged?.Invoke(_activeDocument);
@@ -584,11 +650,38 @@ public sealed partial class DocumentSectionContainer : UserControl
         return true;
     }
 
-    private void CreateSection(int index)
+    /// <summary>
+    /// Folds every area back to a single section and restores equal split positions.
+    /// </summary>
+    public async Task ResetAreaLayoutAsync()
+    {
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            _areaSplitRatio[area] = DefaultSplitRatio;
+            SetAreaSplit(area, false);
+        }
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        // Wait for layout to complete so callers that persist the result read settled state.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            foreach (var area in DocumentLayoutHelper.AllAreas)
+            {
+                AreaLayoutChanged?.Invoke(area, false, DefaultSplitRatio);
+            }
+
+            tcs.SetResult(true);
+        });
+
+        await tcs.Task;
+    }
+
+    private void CreateSection(DocumentSectionId sectionId)
     {
         var section = new DocumentSection
         {
-            SectionIndex = index
+            SectionId = sectionId
         };
 
         section.SelectionChanged += OnSectionSelectionChanged;
@@ -599,39 +692,31 @@ public sealed partial class DocumentSectionContainer : UserControl
         section.FilesDropped += OnSectionFilesDropped;
         section.TabPointerPressed += OnSectionTabPointerPressed;
 
-        _sections.Add(section);
+        _sections[sectionId] = section;
     }
 
-    private void MigrateDocumentsLeft(int newSectionCount)
+    /// <summary>
+    /// Moves every tab in an area's secondary section into its primary one, ahead of the secondary
+    /// section being unmounted.
+    /// </summary>
+    private void MigrateSecondarySection(DocumentArea area)
     {
-        // Move documents from sections that will be hidden to the rightmost visible section
-        var targetSection = _sections[newSectionCount - 1];
-        var targetSectionIndex = newSectionCount - 1;
+        var primarySection = _sections[area.GetPrimarySection()];
+        var secondarySection = _sections[area.GetSecondarySection()];
 
-        var movedTabs = new List<DocumentTab>();
-
-        for (int i = newSectionCount; i < _sections.Count; i++)
+        var tabsToMove = secondarySection.GetAllTabs().ToList();
+        foreach (var tab in tabsToMove)
         {
-            var sourceSection = _sections[i];
-            var tabsToMove = sourceSection.GetAllTabs().ToList();
-
-            foreach (var tab in tabsToMove)
-            {
-                sourceSection.RemoveTab(tab);
-                targetSection.AddTab(tab);
-                movedTabs.Add(tab);
-            }
+            secondarySection.RemoveTab(tab);
+            primarySection.AddTab(tab);
         }
 
-        // Update active section if it was in a hidden section
-        if (_activeSectionIndex >= newSectionCount)
+        if (_activeSectionId == area.GetSecondarySection())
         {
-            _activeSectionIndex = targetSectionIndex;
+            _activeSectionId = area.GetPrimarySection();
         }
 
-        // Enforce the invariant: the active document's tab must be the selected tab in its section.
-        // Migrating tabs doesn't automatically re-select the active document in the target section,
-        // so re-apply the selection here.
+        // Migrating tabs does not re-select the active document in the target section, so re-apply it.
         if (!_activeDocument.IsEmpty)
         {
             var activeLocation = FindDocumentTab(_activeDocument);
@@ -643,92 +728,144 @@ public sealed partial class DocumentSectionContainer : UserControl
 
         UpdateTabSelectionIndicators();
 
-        FlashMovedTabs(movedTabs);
-    }
-
-    // Flashes each tab that migrated into a surviving section so its new location stands out.
-    private void FlashMovedTabs(List<DocumentTab> movedTabs)
-    {
-        foreach (var tab in movedTabs)
+        foreach (var tab in tabsToMove)
         {
             tab.FlashAttentionDeferred();
         }
     }
 
-    private void RebuildGrid()
+    private Grid GetAreaGrid(DocumentArea area)
     {
-        // Remove the existing splitters. They hold no content and are recreated for the new layout.
-        foreach (var splitter in _splitters)
+        switch (area)
         {
-            splitter.DragStarted -= Splitter_DragStarted;
-            splitter.DragDelta -= Splitter_DragDelta;
-            splitter.DragCompleted -= Splitter_DragCompleted;
-            splitter.DoubleClicked -= Splitter_DoubleClicked;
-            RootGrid.Children.Remove(splitter);
+            case DocumentArea.Main:
+                return MainAreaGrid;
+
+            case DocumentArea.Bottom:
+                return BottomAreaGrid;
+
+            default:
+                return SideAreaGrid;
         }
-        _splitters.Clear();
-
-        // Detach sections that are no longer visible. Sections that stay visible are left attached:
-        // reparenting a section resets its TabView measurement and leaves the tab strip stuck in an
-        // overflow-scroll state (clipping tabs and reserving phantom trailing space) until the next
-        // real resize. Clearing ColumnDefinitions below does not detach children, so it is safe.
-        for (int i = _sectionCount; i < _sections.Count; i++)
-        {
-            var hiddenSection = _sections[i];
-            if (RootGrid.Children.Contains(hiddenSection))
-            {
-                RootGrid.Children.Remove(hiddenSection);
-            }
-        }
-
-        RootGrid.ColumnDefinitions.Clear();
-
-        // Update VisibleSectionCount on all sections
-        foreach (var section in _sections)
-        {
-            section.VisibleSectionCount = _sectionCount;
-        }
-
-        for (int i = 0; i < _sectionCount; i++)
-        {
-            // Add section column with Star sizing for proportional layout
-            // All sections use Star sizing so they resize proportionally with the window
-            RootGrid.ColumnDefinitions.Add(new ColumnDefinition
-            {
-                Width = new GridLength(1, GridUnitType.Star),
-                MinWidth = MinSectionWidth
-            });
-
-            var section = _sections[i];
-            Grid.SetColumn(section, i * 2);
-            if (!RootGrid.Children.Contains(section))
-            {
-                RootGrid.Children.Add(section);
-            }
-
-            // Add splitter after each section except the last
-            if (i < _sectionCount - 1)
-            {
-                RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                var splitter = CreateSplitter(i);
-                Grid.SetColumn(splitter, i * 2 + 1);
-                RootGrid.Children.Add(splitter);
-                _splitters.Add(splitter);
-            }
-        }
-
-        // The split-editor toolbar lives in the rightmost visible section's footer, so re-place it
-        // whenever the section layout changes.
-        SetTabStripFooter(_documentToolbar);
     }
 
-    private Splitter CreateSplitter(int index)
+    /// <summary>
+    /// Rebuilds an area's internal grid for its current split state. Sections that stay mounted are left
+    /// attached: reparenting a section resets its TabView measurement and leaves the tab strip stuck in
+    /// an overflow-scroll state until the next real resize.
+    /// </summary>
+    private void RebuildArea(DocumentArea area)
+    {
+        var areaGrid = GetAreaGrid(area);
+        bool isSplit = _areaSplit[area];
+        bool isHorizontal = area.SplitsHorizontally();
+
+        var primarySection = _sections[area.GetPrimarySection()];
+        var secondarySection = _sections[area.GetSecondarySection()];
+
+        if (_splitSplitters.TryGetValue(area, out var existingSplitter))
+        {
+            existingSplitter.DragStarted -= Splitter_DragStarted;
+            existingSplitter.DragDelta -= Splitter_DragDelta;
+            existingSplitter.DragCompleted -= Splitter_DragCompleted;
+            existingSplitter.DoubleClicked -= Splitter_DoubleClicked;
+            areaGrid.Children.Remove(existingSplitter);
+            _splitSplitters.Remove(area);
+            _splitHelpers.Remove(area);
+        }
+
+        if (!isSplit &&
+            areaGrid.Children.Contains(secondarySection))
+        {
+            areaGrid.Children.Remove(secondarySection);
+        }
+
+        areaGrid.ColumnDefinitions.Clear();
+        areaGrid.RowDefinitions.Clear();
+
+        double ratio = _areaSplitRatio[area];
+
+        if (isHorizontal)
+        {
+            areaGrid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(isSplit ? ratio : 1, GridUnitType.Star),
+                MinWidth = MinSectionWidth
+            });
+        }
+        else
+        {
+            areaGrid.RowDefinitions.Add(new RowDefinition
+            {
+                Height = new GridLength(isSplit ? ratio : 1, GridUnitType.Star),
+                MinHeight = MinSectionHeight
+            });
+        }
+
+        SetSectionPosition(primarySection, isHorizontal, 0);
+        if (!areaGrid.Children.Contains(primarySection))
+        {
+            areaGrid.Children.Add(primarySection);
+        }
+
+        if (isSplit)
+        {
+            if (isHorizontal)
+            {
+                areaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                areaGrid.ColumnDefinitions.Add(new ColumnDefinition
+                {
+                    Width = new GridLength(1 - ratio, GridUnitType.Star),
+                    MinWidth = MinSectionWidth
+                });
+            }
+            else
+            {
+                areaGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                areaGrid.RowDefinitions.Add(new RowDefinition
+                {
+                    Height = new GridLength(1 - ratio, GridUnitType.Star),
+                    MinHeight = MinSectionHeight
+                });
+            }
+
+            var splitter = CreateSplitSplitter(area, isHorizontal);
+            SetSectionPosition(splitter, isHorizontal, 1);
+            areaGrid.Children.Add(splitter);
+            _splitSplitters[area] = splitter;
+
+            SetSectionPosition(secondarySection, isHorizontal, 2);
+            if (!areaGrid.Children.Contains(secondarySection))
+            {
+                areaGrid.Children.Add(secondarySection);
+            }
+        }
+
+        UpdateSectionMoveTargets(area);
+        PlaceAreaToolbar(area);
+    }
+
+    private static void SetSectionPosition(FrameworkElement element, bool isHorizontal, int index)
+    {
+        if (isHorizontal)
+        {
+            Grid.SetColumn(element, index);
+            Grid.SetRow(element, 0);
+        }
+        else
+        {
+            Grid.SetRow(element, index);
+            Grid.SetColumn(element, 0);
+        }
+    }
+
+    private Splitter CreateSplitSplitter(DocumentArea area, bool isHorizontal)
     {
         var splitter = new Splitter
         {
-            Orientation = Orientation.Vertical,
-            Tag = index
+            // A horizontally split area is divided by a vertical splitter, and the reverse.
+            Orientation = isHorizontal ? Orientation.Vertical : Orientation.Horizontal,
+            Tag = area
         };
 
         splitter.DragStarted += Splitter_DragStarted;
@@ -739,36 +876,143 @@ public sealed partial class DocumentSectionContainer : UserControl
         return splitter;
     }
 
+    /// <summary>
+    /// Places an area's toolbar on the section nearest that area's top-right corner: the right-hand
+    /// section of a horizontally split area, and the top section of the Side area.
+    /// </summary>
+    private void PlaceAreaToolbar(DocumentArea area)
+    {
+        if (!_areaToolbars.TryGetValue(area, out var toolbar))
+        {
+            return;
+        }
+
+        var primarySection = _sections[area.GetPrimarySection()];
+        var secondarySection = _sections[area.GetSecondarySection()];
+
+        bool toolbarOnSecondary = area.SplitsHorizontally() && _areaSplit[area];
+
+        primarySection.SetTabStripFooter(toolbarOnSecondary ? null : toolbar);
+        secondarySection.SetTabStripFooter(toolbarOnSecondary ? toolbar : null);
+    }
+
+    private void UpdateSectionMoveTargets(DocumentArea area)
+    {
+        bool isSplit = _areaSplit[area];
+        _sections[area.GetPrimarySection()].IsAreaSplit = isSplit;
+        _sections[area.GetSecondarySection()].IsAreaSplit = isSplit;
+    }
+
+    private void ApplySplitRatio(DocumentArea area)
+    {
+        var areaGrid = GetAreaGrid(area);
+        double ratio = _areaSplitRatio[area];
+
+        if (area.SplitsHorizontally())
+        {
+            if (areaGrid.ColumnDefinitions.Count == 3)
+            {
+                areaGrid.ColumnDefinitions[0].Width = new GridLength(ratio, GridUnitType.Star);
+                areaGrid.ColumnDefinitions[2].Width = new GridLength(1 - ratio, GridUnitType.Star);
+            }
+        }
+        else
+        {
+            if (areaGrid.RowDefinitions.Count == 3)
+            {
+                areaGrid.RowDefinitions[0].Height = new GridLength(ratio, GridUnitType.Star);
+                areaGrid.RowDefinitions[2].Height = new GridLength(1 - ratio, GridUnitType.Star);
+            }
+        }
+    }
+
+    private void InitializeAreaSplitters()
+    {
+        _bottomAreaSplitterHelper = new SplitterHelper(
+            RootGrid,
+            GridResizeMode.Rows,
+            2,
+            minSize: MinBottomAreaHeight,
+            invertDelta: true,
+            maxSizeFunc: () => RootGrid.ActualHeight - MinMainAreaHeight);
+
+        _sideAreaSplitterHelper = new SplitterHelper(
+            RootGrid,
+            GridResizeMode.Columns,
+            2,
+            minSize: MinSideAreaWidth,
+            invertDelta: true,
+            maxSizeFunc: () => RootGrid.ActualWidth - MinMainAreaWidth);
+
+        BottomAreaSplitter.DragStarted += (s, e) => _bottomAreaSplitterHelper?.OnDragStarted();
+        BottomAreaSplitter.DragDelta += (s, delta) => _bottomAreaSplitterHelper?.OnDragDelta(delta);
+        BottomAreaSplitter.DragCompleted += (s, e) => AreaSizeChanged?.Invoke(DocumentArea.Bottom, BottomAreaRow.ActualHeight);
+        BottomAreaSplitter.DoubleClicked += (s, e) => AreaSizeResetRequested?.Invoke(DocumentArea.Bottom);
+
+        SideAreaSplitter.DragStarted += (s, e) => _sideAreaSplitterHelper?.OnDragStarted();
+        SideAreaSplitter.DragDelta += (s, delta) => _sideAreaSplitterHelper?.OnDragDelta(delta);
+        SideAreaSplitter.DragCompleted += (s, e) => AreaSizeChanged?.Invoke(DocumentArea.Side, SideAreaColumn.ActualWidth);
+        SideAreaSplitter.DoubleClicked += (s, e) => AreaSizeResetRequested?.Invoke(DocumentArea.Side);
+    }
+
+    private void ApplyAreaVisibility(DocumentArea area)
+    {
+        bool isVisible = _visibleAreas.Contains(area);
+        var areaGrid = GetAreaGrid(area);
+
+        areaGrid.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        if (area == DocumentArea.Bottom)
+        {
+            BottomAreaSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            BottomAreaRow.MinHeight = isVisible ? MinBottomAreaHeight : 0;
+            if (!isVisible)
+            {
+                BottomAreaRow.Height = new GridLength(0);
+            }
+        }
+        else if (area == DocumentArea.Side)
+        {
+            SideAreaSplitter.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            SideAreaColumn.MinWidth = isVisible ? MinSideAreaWidth : 0;
+            if (!isVisible)
+            {
+                SideAreaColumn.Width = new GridLength(0);
+            }
+        }
+    }
+
     private void Splitter_DragStarted(object? sender, EventArgs e)
     {
-        if (sender is Splitter splitter && splitter.Tag is int index)
+        if (sender is not Splitter splitter || splitter.Tag is not DocumentArea area)
         {
-            _totalDragDelta = 0;
-
-            var leftColumnIndex = index * 2;
-            var rightColumnIndex = leftColumnIndex + 2;
-
-            // Create or get the SplitterHelper for this splitter
-            if (!_splitterHelpers.TryGetValue(index, out var helper))
-            {
-                helper = new SplitterHelper(RootGrid, GridResizeMode.Columns, leftColumnIndex, rightColumnIndex, minSize: MinSectionWidth);
-                _splitterHelpers[index] = helper;
-            }
-
-            helper.OnDragStarted();
+            return;
         }
+
+        _totalDragDelta = 0;
+
+        if (!_splitHelpers.TryGetValue(area, out var helper))
+        {
+            var areaGrid = GetAreaGrid(area);
+            var mode = area.SplitsHorizontally() ? GridResizeMode.Columns : GridResizeMode.Rows;
+            double minSize = area.SplitsHorizontally() ? MinSectionWidth : MinSectionHeight;
+            helper = new SplitterHelper(areaGrid, mode, 0, 2, minSize: minSize);
+            _splitHelpers[area] = helper;
+        }
+
+        helper.OnDragStarted();
     }
 
     private void Splitter_DragDelta(object? sender, double delta)
     {
-        if (sender is not Splitter splitter || splitter.Tag is not int index)
+        if (sender is not Splitter splitter || splitter.Tag is not DocumentArea area)
         {
             return;
         }
 
         _totalDragDelta += Math.Abs(delta);
 
-        if (_splitterHelpers.TryGetValue(index, out var helper))
+        if (_splitHelpers.TryGetValue(area, out var helper))
         {
             helper.OnDragDelta(delta);
         }
@@ -776,106 +1020,84 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void Splitter_DragCompleted(object? sender, EventArgs e)
     {
+        if (sender is not Splitter splitter || splitter.Tag is not DocumentArea area)
+        {
+            return;
+        }
+
         // Skip if no significant drag occurred (e.g., just a click without dragging)
         if (_totalDragDelta < MinDragDistance)
         {
             return;
         }
 
-        // Convert all section columns to proportional Star sizing
-        ConvertAllColumnsToStar();
-
-        // Notify about ratio changes
-        SectionRatiosChanged?.Invoke(GetSectionRatios());
-    }
-
-    /// <summary>
-    /// Converts all section columns from pixel widths back to proportional Star sizing.
-    /// This ensures consistent proportions are maintained across all sections.
-    /// </summary>
-    private void ConvertAllColumnsToStar()
-    {
-        // Calculate total width of all sections
-        double totalWidth = 0;
-        var sectionWidths = new List<double>();
-
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        double ratio = MeasureSplitRatio(area);
+        if (ratio > 0 && ratio < 1)
         {
-            var columnIndex = i * 2; // Section columns are at even indices
-            if (columnIndex < RootGrid.ColumnDefinitions.Count)
-            {
-                var width = RootGrid.ColumnDefinitions[columnIndex].ActualWidth;
-                sectionWidths.Add(width);
-                totalWidth += width;
-            }
-        }
+            _areaSplitRatio[area] = ratio;
 
-        if (totalWidth <= 0)
-        {
-            return;
-        }
+            // Convert back to proportional Star sizing so the split holds its share as the area resizes.
+            ApplySplitRatio(area);
 
-        // Set each section column to its proportional Star value
-        for (int i = 0; i < sectionWidths.Count; i++)
-        {
-            var columnIndex = i * 2;
-            if (columnIndex < RootGrid.ColumnDefinitions.Count)
-            {
-                var ratio = sectionWidths[i] / totalWidth;
-                RootGrid.ColumnDefinitions[columnIndex].Width = new GridLength(ratio, GridUnitType.Star);
-            }
+            AreaLayoutChanged?.Invoke(area, true, ratio);
         }
     }
 
     private void Splitter_DoubleClicked(object? sender, EventArgs e)
     {
-        // Reset all sections to equal ratios
-        _ = ResetSectionRatiosAsync();
+        if (sender is not Splitter splitter || splitter.Tag is not DocumentArea area)
+        {
+            return;
+        }
+
+        _areaSplitRatio[area] = DefaultSplitRatio;
+        ApplySplitRatio(area);
+
+        AreaLayoutChanged?.Invoke(area, true, DefaultSplitRatio);
     }
 
     /// <summary>
-    /// Resets all visible sections to equal widths asynchronously.
+    /// The share of the area currently taken by its primary section, measured from the settled grid.
     /// </summary>
-    public async Task ResetSectionRatiosAsync()
+    private double MeasureSplitRatio(DocumentArea area)
     {
-        var tcs = new TaskCompletionSource<bool>();
+        var areaGrid = GetAreaGrid(area);
 
-        // Set all section columns to equal star values
-        for (int i = 0; i < RootGrid.ColumnDefinitions.Count; i++)
+        double primarySize;
+        double secondarySize;
+
+        if (area.SplitsHorizontally())
         {
-            var columnDefinition = RootGrid.ColumnDefinitions[i];
-            // Section columns are at even indices (0, 2, 4)
-            // Splitter columns are at odd indices (1, 3)
-            if (i % 2 == 0)
+            if (areaGrid.ColumnDefinitions.Count != 3)
             {
-                columnDefinition.Width = new GridLength(1, GridUnitType.Star);
+                return 0;
             }
+            primarySize = areaGrid.ColumnDefinitions[0].ActualWidth;
+            secondarySize = areaGrid.ColumnDefinitions[2].ActualWidth;
+        }
+        else
+        {
+            if (areaGrid.RowDefinitions.Count != 3)
+            {
+                return 0;
+            }
+            primarySize = areaGrid.RowDefinitions[0].ActualHeight;
+            secondarySize = areaGrid.RowDefinitions[2].ActualHeight;
         }
 
-        // Create equal ratios based on the current section count
-        // Don't use GetSectionRatios() which reads ActualWidth - that may not be settled yet
-        var equalRatios = new List<double>();
-        var equalRatio = 1.0 / _sectionCount;
-        for (int i = 0; i < _sectionCount; i++)
+        double total = primarySize + secondarySize;
+        if (total <= 0)
         {
-            equalRatios.Add(equalRatio);
+            return 0;
         }
 
-        // Wait for layout to complete, then notify with the known equal ratios
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            SectionRatiosChanged?.Invoke(equalRatios);
-            tcs.SetResult(true);
-        });
-
-        await tcs.Task;
+        return primarySize / total;
     }
 
     private void OnSectionSelectionChanged(DocumentSection section, ResourceKey documentResource)
     {
         // This handles section-level selection (which tab is selected within a section's TabView).
-        // This is distinct from the active document, which is updated via HandleTabClicked/SetActiveDocument.
-        // Forward the event for any listeners that need to track section-level selection.
+        // This is distinct from the active document, which is updated via ActivateDocument/SetActiveDocument.
         SectionSelectionChanged?.Invoke(section, documentResource);
     }
 
@@ -884,10 +1106,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private void UpdateTabSelectionIndicators()
     {
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        foreach (var section in GetAllSections())
         {
-            var section = _sections[i];
-            bool isActiveSection = i == _activeSectionIndex;
+            bool isActiveSection = section.SectionId == _activeSectionId;
 
             foreach (var tab in section.GetAllTabs())
             {
@@ -915,8 +1136,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void OnSectionTabDroppedInside(DocumentSection targetSection, DocumentTab tab)
     {
-        // Move the tab to the target section
-        if (MoveTabToSection(tab, targetSection.SectionIndex))
+        if (MoveTabToSection(tab, targetSection.SectionId))
         {
             NotifyLayoutChanged();
         }
@@ -933,9 +1153,8 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private void EnsureVisibleTabsSelected()
     {
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        foreach (var section in GetAllSections())
         {
-            var section = _sections[i];
             if (section.TabCount > 0 && section.GetSelectedDocument().IsEmpty)
             {
                 var firstTab = section.GetAllTabs().First();
@@ -946,10 +1165,9 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private void NotifyLayoutChanged()
     {
-        // Re-fire OpenDocumentsChanged for all visible sections to ensure the layout is persisted
-        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        // Re-fire the layout notification for every section so the stored addresses stay in step.
+        foreach (var section in GetAllSections())
         {
-            var section = _sections[i];
             var documents = section.GetOpenDocuments();
             DocumentsLayoutChanged?.Invoke(section, documents);
         }

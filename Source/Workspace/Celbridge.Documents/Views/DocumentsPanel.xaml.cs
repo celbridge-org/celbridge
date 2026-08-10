@@ -30,17 +30,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IFocusService _focusService;
-    private readonly DocumentToolbar _documentToolbar = new();
+    private readonly Dictionary<DocumentArea, DocumentToolbar> _areaToolbars = new();
 
     private bool _isShuttingDown = false;
 
     public DocumentsPanelViewModel ViewModel { get; }
 
-    public int SectionCount
-    {
-        get => SectionContainer.SectionCount;
-        set => SectionContainer.SetSectionCount(value);
-    }
+    public IReadOnlyList<DocumentSectionId> VisibleSections => SectionContainer.VisibleSections;
 
     public ResourceKey ActiveDocument
     {
@@ -78,18 +74,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
         SectionContainer.CloseRequested += OnSectionCloseRequested;
         SectionContainer.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-        SectionContainer.SectionCountChanged += OnSectionCountChanged;
-        SectionContainer.SectionRatiosChanged += OnSectionRatiosChanged;
+        SectionContainer.AreaLayoutChanged += OnAreaLayoutChanged;
+        SectionContainer.AreaSizeChanged += OnAreaSizeChanged;
+        SectionContainer.AreaSizeResetRequested += OnAreaSizeResetRequested;
+        SectionContainer.AreaSplitAvailabilityChanged += OnAreaSplitAvailabilityChanged;
         SectionContainer.FilesDropped += OnSectionFilesDropped;
 
         SectionContainer.InitializeTabDrag(TabDragOverlay);
         ConfigureResourceDropTarget();
 
-        // Host the split-editor toolbar in the rightmost section's tab strip footer.
-        SectionContainer.SetDocumentToolbar(_documentToolbar);
-
-        // Wire up toolbar events
-        _documentToolbar.SectionCountChangeRequested += OnToolbarSectionCountChangeRequested;
+        CreateAreaToolbars();
 
         Loaded += DocumentsPanel_Loaded;
         Unloaded += DocumentsPanel_Unloaded;
@@ -126,15 +120,67 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         OnDocumentTabContextMenuAction(tab, action);
     }
 
-    private void OnSectionCountChanged(int newCount)
+    // Builds the per-area toolbar hosted in each area's tab strip footer. Main gets a split button only;
+    // the collapsible areas also get a close button.
+    private void CreateAreaToolbars()
     {
-        _documentToolbar.UpdateSectionCount(newCount);
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            var toolbar = new DocumentToolbar(area);
+            toolbar.SplitChangeRequested += OnToolbarSplitChangeRequested;
+            toolbar.CloseAreaRequested += OnToolbarCloseAreaRequested;
+
+            _areaToolbars[area] = toolbar;
+            SectionContainer.SetAreaToolbar(area, toolbar);
+        }
     }
 
-    private void OnSectionRatiosChanged(List<double> ratios)
+    private void OnAreaLayoutChanged(DocumentArea area, bool isSplit, double splitRatio)
     {
-        // The section count is inferred from the ratios list length.
-        ViewModel.OnSectionRatiosChanged(ratios);
+        if (_areaToolbars.TryGetValue(area, out var toolbar))
+        {
+            toolbar.UpdateSplitState(isSplit);
+        }
+
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        ViewModel.OnAreaLayoutChanged(area, isSplit, splitRatio);
+    }
+
+    private void OnAreaSizeChanged(DocumentArea area, double size)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        ViewModel.StoreAreaSize(area, (float)size);
+    }
+
+    private void OnAreaSizeResetRequested(DocumentArea area)
+    {
+        ViewModel.ResetAreaSize(area);
+    }
+
+    private void OnAreaSplitAvailabilityChanged(DocumentArea area, bool canSplit)
+    {
+        if (_areaToolbars.TryGetValue(area, out var toolbar))
+        {
+            toolbar.UpdateSplitAvailable(canSplit);
+        }
+    }
+
+    private void OnToolbarSplitChangeRequested(DocumentArea area, bool isSplit)
+    {
+        SectionContainer.SetAreaSplit(area, isSplit);
+    }
+
+    private void OnToolbarCloseAreaRequested(DocumentArea area)
+    {
+        ViewModel.SetAreaVisible(area, false);
     }
 
     private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources, int insertionSlot)
@@ -154,7 +200,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return;
         }
 
-        var targetSectionIndex = targetSection.SectionIndex;
+        var targetSectionId = targetSection.SectionId;
         int droppedFileOffset = 0;
         ResourceKey? documentToFocus = null;
 
@@ -179,15 +225,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 var existingTab = existingLocation.Tab;
 
                 // Already open - move to the target section, otherwise reorder within it, then select it
-                if (existingSection.SectionIndex != targetSectionIndex)
+                if (existingSection.SectionId != targetSectionId)
                 {
-                    SectionContainer.MoveTabToSection(existingTab, targetSectionIndex, slot);
+                    SectionContainer.MoveTabToSection(existingTab, targetSectionId, slot);
                 }
                 else
                 {
                     existingSection.ReorderTab(existingTab, slot);
                     existingSection.SelectTab(existingTab);
-                    SectionContainer.ActivateDocument(fileResourceKey, targetSectionIndex);
+                    SectionContainer.ActivateDocument(fileResourceKey, targetSectionId);
                 }
             }
             else
@@ -196,7 +242,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 await _commandService.ExecuteAsync<IOpenDocumentCommand>(command =>
                 {
                     command.FileResource = fileResourceKey;
-                    command.TargetSectionIndex = targetSectionIndex;
+                    command.TargetSection = targetSectionId;
                     command.TargetTabIndex = slot;
                 });
             }
@@ -259,15 +305,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             });
     }
 
-    private void OnToolbarSectionCountChangeRequested(int requestedCount)
-    {
-        SectionContainer.SetSectionCount(requestedCount);
-    }
-
     private void DocumentsPanel_Loaded(object sender, RoutedEventArgs e)
     {
         // Listen for layout mode changes to show/hide the tab strip in Presentation mode
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
+
+        // The collapsible areas follow the workspace region visibility.
+        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
+
+        // Area sizes are restored and reset through the workspace settings facade.
+        ViewModel.AreaSizeChanged += OnStoredAreaSizeChanged;
+        ApplyStoredAreaSizes();
+        ApplyAreaVisibility();
 
         // Listen for document view focus to update active document
         _messengerService.Register<DocumentViewFocusedMessage>(this, OnDocumentViewFocused);
@@ -346,7 +395,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var location = SectionContainer.FindDocumentTab(message.DocumentResource);
         if (location is not null)
         {
-            SectionContainer.ActivateDocument(message.DocumentResource, location.Section.SectionIndex);
+            SectionContainer.ActivateDocument(message.DocumentResource, location.Section.SectionId);
         }
     }
 
@@ -357,19 +406,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return;
         }
 
-        // Reset to single section
-        if (SectionCount > 1)
-        {
-            SectionContainer.SetSectionCount(1);
-        }
-
-        // Reset section ratios
-        _ = SectionContainer.ResetSectionRatiosAsync();
+        // Fold every area back to a single section at its default split position
+        _ = SectionContainer.ResetAreaLayoutAsync();
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         UnregisterAsResourceDropTarget();
+        ViewModel.AreaSizeChanged -= OnStoredAreaSizeChanged;
         ViewModel.OnViewUnloaded();
         _messengerService.UnregisterAll(this);
     }
@@ -395,32 +439,97 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // In all other modes, show the tab strip and toolbar.
         bool showTabStrip = layoutMode != LayoutMode.Presentation;
         SectionContainer.UpdateTabStripVisibility(showTabStrip);
-        _documentToolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var toolbar in _areaToolbars.Values)
+        {
+            toolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
-    public void SetSectionRatios(List<double> ratios)
+    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
     {
-        SectionContainer.SetSectionRatios(ratios);
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        ApplyAreaVisibility();
     }
 
-    public async Task ResetSectionRatiosAsync()
+    // Shows or hides the collapsible areas to match the workspace region visibility. Hiding an area
+    // leaves its tabs in place, so the documents reappear where they were when it is shown again.
+    private void ApplyAreaVisibility()
     {
-        await SectionContainer.ResetSectionRatiosAsync();
+        SectionContainer.SetAreaVisible(DocumentArea.Bottom, ViewModel.IsAreaVisible(DocumentArea.Bottom));
+        SectionContainer.SetAreaVisible(DocumentArea.Side, ViewModel.IsAreaVisible(DocumentArea.Side));
+
+        ApplyStoredAreaSizes();
+    }
+
+    private void ApplyStoredAreaSizes()
+    {
+        SectionContainer.SetAreaSize(DocumentArea.Bottom, ViewModel.GetAreaSize(DocumentArea.Bottom));
+        SectionContainer.SetAreaSize(DocumentArea.Side, ViewModel.GetAreaSize(DocumentArea.Side));
+    }
+
+    private void OnStoredAreaSizeChanged(DocumentArea area)
+    {
+        SectionContainer.SetAreaSize(area, ViewModel.GetAreaSize(area));
+    }
+
+    // Resolves a requested section to one that currently holds tabs. A secondary section whose area is
+    // not split folds into that area's primary section. A section in a collapsed area is left alone: the
+    // area keeps its tabs while hidden.
+    private DocumentSectionId ResolveMountedSection(DocumentSectionId sectionId)
+    {
+        var area = sectionId.GetArea();
+        if (sectionId.IsSecondarySection()
+            && !SectionContainer.IsAreaSplit(area))
+        {
+            return area.GetPrimarySection();
+        }
+
+        return sectionId;
+    }
+
+    public bool IsAreaSplit(DocumentArea area)
+    {
+        return SectionContainer.IsAreaSplit(area);
+    }
+
+    public void SetAreaSplit(DocumentArea area, bool isSplit)
+    {
+        SectionContainer.SetAreaSplit(area, isSplit);
+    }
+
+    public double GetAreaSplitRatio(DocumentArea area)
+    {
+        return SectionContainer.GetAreaSplitRatio(area);
+    }
+
+    public void SetAreaSplitRatio(DocumentArea area, double ratio)
+    {
+        SectionContainer.SetAreaSplitRatio(area, ratio);
+    }
+
+    public async Task ResetAreaLayoutAsync()
+    {
+        await SectionContainer.ResetAreaLayoutAsync();
     }
 
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments()
     {
         var documents = new List<OpenDocumentInfo>();
 
-        for (int sectionIndex = 0; sectionIndex < SectionContainer.SectionCount; sectionIndex++)
+        // Includes sections in a collapsed area, which keep their documents open.
+        foreach (var section in SectionContainer.GetAllSections())
         {
-            var section = SectionContainer.GetSection(sectionIndex);
             int tabOrder = 0;
             foreach (var tab in section.GetAllTabs())
             {
                 var address = new DocumentAddress(
                     WindowIndex: 0,
-                    SectionIndex: sectionIndex,
+                    Section: section.SectionId,
                     TabOrder: tabOrder++);
 
                 documents.Add(new OpenDocumentInfo(
@@ -437,13 +546,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         var effectiveOptions = options ?? new OpenDocumentOptions();
 
-        // Resolve the target section from the address, defaulting to the active section
+        // Resolve the target section from the address, defaulting to the active section. An address
+        // naming a section whose area is not split folds into that area's primary section.
         var address = effectiveOptions.Address;
-        int sectionIndex = address is not null ? address.SectionIndex : SectionContainer.ActiveSectionIndex;
-        if (sectionIndex < 0 || sectionIndex >= SectionContainer.SectionCount)
-        {
-            sectionIndex = 0;
-        }
+        var sectionId = address is not null ? ResolveMountedSection(address.Section) : SectionContainer.ActiveSectionId;
 
         // Check if the file is already opened in any section
         var existingLocation = SectionContainer.FindDocumentTab(fileResource);
@@ -476,7 +582,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 NotifyLayoutChanged();
 
                 var tabOrder = effectiveOptions.Address?.TabOrder ?? 0;
-                var reopenAddress = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: tabOrder);
+                var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: sectionId, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
                 return await OpenDocument(fileResource, reopenOptions);
             }
@@ -486,20 +592,20 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // would yank it from under the user.
             if (address is null)
             {
-                sectionIndex = existingSection.SectionIndex;
+                sectionId = existingSection.SectionId;
             }
 
             // If a different section was explicitly requested, move it there.
-            if (existingSection.SectionIndex != sectionIndex)
+            if (existingSection.SectionId != sectionId)
             {
-                SectionContainer.MoveTabToSection(existingTab, sectionIndex);
+                SectionContainer.MoveTabToSection(existingTab, sectionId);
             }
 
             if (effectiveOptions.Activate)
             {
-                var targetSection = SectionContainer.GetSection(sectionIndex);
+                var targetSection = SectionContainer.GetSection(sectionId);
                 targetSection.SelectTab(existingTab);
-                SectionContainer.ActivateDocument(fileResource, sectionIndex);
+                SectionContainer.ActivateDocument(fileResource, sectionId);
             }
 
             if (effectiveOptions.ForceReload)
@@ -535,7 +641,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var filePath = resolveResult.Value;
 
         // Open in the specified section
-        var targetSectionForNew = SectionContainer.GetSection(sectionIndex);
+        var targetSectionForNew = SectionContainer.GetSection(sectionId);
 
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = fileResource;
@@ -592,7 +698,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         if (effectiveOptions.Activate)
         {
-            SectionContainer.ActivateDocument(fileResource, sectionIndex);
+            SectionContainer.ActivateDocument(fileResource, sectionId);
         }
 
         if (!string.IsNullOrEmpty(effectiveOptions.Location))
@@ -658,7 +764,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 int tabIndex = section.GetTabIndex(documentTab);
 
                 // Handle selection of next document before removing the tab
-                SectionContainer.HandleDocumentClosing(fileResource, section.SectionIndex, tabIndex);
+                SectionContainer.HandleDocumentClosing(fileResource, section.SectionId, tabIndex);
 
                 section.RemoveTab(documentTab);
 
@@ -694,13 +800,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var filePath = resolveResult.Value;
 
         var address = placement.Address;
-        int sectionIndex = address is not null ? address.SectionIndex : SectionContainer.ActiveSectionIndex;
-        if (sectionIndex < 0
-            || sectionIndex >= SectionContainer.SectionCount)
-        {
-            sectionIndex = 0;
-        }
-        var section = SectionContainer.GetSection(sectionIndex);
+        var sectionId = address is not null ? ResolveMountedSection(address.Section) : SectionContainer.ActiveSectionId;
+        var section = SectionContainer.GetSection(sectionId);
 
         var documentTab = new DocumentTab();
         documentTab.ViewModel.FileResource = resource;
@@ -736,7 +837,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         if (placement.Activate)
         {
-            SectionContainer.ActivateDocument(resource, sectionIndex);
+            SectionContainer.ActivateDocument(resource, sectionId);
         }
 
         return Result.Ok();
@@ -750,7 +851,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var location = SectionContainer.FindDocumentTab(resource);
         if (location is not null)
         {
-            SectionContainer.ActivateDocument(resource, location.Section.SectionIndex);
+            SectionContainer.ActivateDocument(resource, location.Section.SectionId);
         }
     }
 
@@ -790,7 +891,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var documentTab = location.Tab;
 
         int tabIndex = section.GetTabIndex(documentTab);
-        SectionContainer.HandleDocumentClosing(resource, section.SectionIndex, tabIndex);
+        SectionContainer.HandleDocumentClosing(resource, section.SectionId, tabIndex);
 
         _ = documentTab.ViewModel.DocumentView?.PrepareToClose();
         section.RemoveTab(documentTab);
@@ -827,9 +928,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         List<ResourceKey> failedSaves = new();
         bool updateResourcesRequired = false;
 
-        for (int i = 0; i < SectionContainer.SectionCount; i++)
+        foreach (var section in SectionContainer.GetAllSections())
         {
-            var section = SectionContainer.GetSection(i);
             foreach (var documentTab in section.GetAllTabs())
             {
                 var documentView = documentTab.Content as IDocumentView;
@@ -924,7 +1024,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Section.SelectTab alone does not update the container's active-section
         // / active-document tracking, so the new tab would be selected within
         // its section but not surfaced as the workspace's active document.
-        SectionContainer.ActivateDocument(fileResource, location.Section.SectionIndex);
+        SectionContainer.ActivateDocument(fileResource, location.Section.SectionId);
         return Result.Ok();
     }
 
@@ -1037,9 +1137,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Collect all tabs from all sections. Utility tabs keep their manifest title, so they are
         // excluded from filename-based disambiguation.
         var allTabs = new List<DocumentTab>();
-        for (int i = 0; i < SectionContainer.SectionCount; i++)
+        foreach (var section in SectionContainer.GetAllSections())
         {
-            var section = SectionContainer.GetSection(i);
             allTabs.AddRange(section.GetAllTabs().Where(tab => !tab.ViewModel.IsUtility));
         }
 
@@ -1111,11 +1210,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.CloseAll:
                 CloseAllTabs(tab);
                 break;
-            case DocumentTabMenuAction.MoveLeft:
-                MoveTabLeft(tab);
+            case DocumentTabMenuAction.MoveToPrimarySection:
+                MoveTabWithinArea(tab, toSecondarySection: false);
                 break;
-            case DocumentTabMenuAction.MoveRight:
-                MoveTabRight(tab);
+            case DocumentTabMenuAction.MoveToSecondarySection:
+                MoveTabWithinArea(tab, toSecondarySection: true);
                 break;
             case DocumentTabMenuAction.CopyResourceKey:
                 CopyResourceKeyForTab(tab);
@@ -1150,21 +1249,21 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
-    private void MoveTabLeft(DocumentTab tab)
+    // Moves a tab between the two sections of its own area. Moving between areas is a drag.
+    private void MoveTabWithinArea(DocumentTab tab, bool toSecondarySection)
     {
-        if (tab.SectionIndex > 0)
+        var area = tab.SectionId.GetArea();
+        if (!SectionContainer.IsAreaSplit(area))
         {
-            SectionContainer.MoveTabToSection(tab, tab.SectionIndex - 1);
-            UpdateAllTabDisplayNames();
-            NotifyLayoutChanged();
+            return;
         }
-    }
 
-    private void MoveTabRight(DocumentTab tab)
-    {
-        if (tab.SectionIndex < SectionContainer.SectionCount - 1)
+        var targetSection = toSecondarySection
+            ? area.GetSecondarySection()
+            : area.GetPrimarySection();
+
+        if (SectionContainer.MoveTabToSection(tab, targetSection))
         {
-            SectionContainer.MoveTabToSection(tab, tab.SectionIndex + 1);
             UpdateAllTabDisplayNames();
             NotifyLayoutChanged();
         }
@@ -1362,7 +1461,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var fileResource = tab.ViewModel.FileResource;
 
         // Capture state before closing so we can restore it after reopening
-        var sectionIndex = tab.SectionIndex;
+        var sectionId = tab.SectionId;
         var currentLocation = SectionContainer.FindDocumentTab(fileResource);
         var tabIndex = currentLocation?.Section.GetTabIndex(tab) ?? 0;
 
@@ -1388,7 +1487,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             command.FileResource = fileResource;
             command.EditorId = editorId;
             command.EditorStateJson = editorState;
-            command.TargetSectionIndex = sectionIndex;
+            command.TargetSection = sectionId;
             command.TargetTabIndex = tabIndex;
         });
     }

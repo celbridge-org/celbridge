@@ -11,9 +11,9 @@ namespace Celbridge.Tools;
 /// regions are currently visible.
 /// </summary>
 public record class LayoutModeInfo(
-    bool ContextPanelVisible,
-    bool InspectorPanelVisible,
-    bool ConsolePanelVisible);
+    bool UtilityPanelVisible,
+    bool BottomAreaVisible,
+    bool SideAreaVisible);
 
 /// <summary>
 /// Result returned by app_get_state, describing the current app and workspace state.
@@ -99,9 +99,9 @@ internal sealed class AppStateProvider : IAppStateProvider
         var activeUtility = isLoaded ? _activeUtilityId : string.Empty;
 
         var layoutMode = new LayoutModeInfo(
-            ContextPanelVisible: _layoutService.IsContextPanelVisible,
-            InspectorPanelVisible: _layoutService.IsInspectorPanelVisible,
-            ConsolePanelVisible: _layoutService.IsConsolePanelVisible);
+            UtilityPanelVisible: _layoutService.IsUtilityPanelVisible,
+            BottomAreaVisible: _layoutService.IsBottomAreaVisible,
+            SideAreaVisible: _layoutService.IsSideAreaVisible);
 
         var spotlightLandmarks = _spotlightRegistry.GetLandmarks()
             .Select(landmark => landmark.Id)

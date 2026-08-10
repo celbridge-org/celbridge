@@ -1,12 +1,12 @@
 namespace Celbridge.UserInterface.Views.PanelIcons;
 
-public sealed partial class ConsolePanelIcon : UserControl
+public sealed partial class SideAreaIcon : UserControl
 {
     public static readonly DependencyProperty IsActivePanelProperty =
         DependencyProperty.Register(
             nameof(IsActivePanel),
             typeof(bool),
-            typeof(ConsolePanelIcon),
+            typeof(SideAreaIcon),
             new PropertyMetadata(false, OnIsActivePanelChanged));
 
     public bool IsActivePanel
@@ -15,7 +15,7 @@ public sealed partial class ConsolePanelIcon : UserControl
         set => SetValue(IsActivePanelProperty, value);
     }
 
-    public ConsolePanelIcon()
+    public SideAreaIcon()
     {
         InitializeComponent();
         Loaded += OnLoaded;
@@ -30,7 +30,7 @@ public sealed partial class ConsolePanelIcon : UserControl
 
     private static void OnIsActivePanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var icon = (ConsolePanelIcon)d;
+        var icon = (SideAreaIcon)d;
         var isActive = (bool)e.NewValue;
         icon.UpdateVisibility(isActive);
     }

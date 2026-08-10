@@ -5,6 +5,7 @@ using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -14,20 +15,40 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IDocumentsService _documentsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILayoutService _layoutService;
 
     public DocumentsPanelViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
+        ILayoutService layoutService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _layoutService = layoutService;
         _workspaceWrapper = workspaceWrapper;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+
+        // The Reset Layout command and the splitter double-click both write the area size through the
+        // settings facade, so the live layout follows the stored value.
+        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PropertyChanged += OnWorkspaceSettingsChanged;
+    }
+
+    private void OnWorkspaceSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(IBindableWorkspaceSettings.BottomAreaHeight))
+        {
+            AreaSizeChanged?.Invoke(DocumentArea.Bottom);
+        }
+        else if (e.PropertyName == nameof(IBindableWorkspaceSettings.SideAreaWidth))
+        {
+            AreaSizeChanged?.Invoke(DocumentArea.Side);
+        }
     }
 
     public void OnViewUnloaded()
     {
+        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettingsChanged;
         _messengerService.UnregisterAll(this);
     }
 
@@ -73,11 +94,88 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public void OnSectionRatiosChanged(List<double> ratios)
+    /// <summary>
+    /// Raised when a stored area size changes, so the view can re-apply it to the live layout.
+    /// </summary>
+    public event Action<DocumentArea>? AreaSizeChanged;
+
+    public void OnAreaLayoutChanged(DocumentArea area, bool isSplit, double splitRatio)
     {
-        // Notify the DocumentsService about the section ratios change.
-        var message = new SectionRatiosChangedMessage(ratios);
+        // Notify the DocumentsService about the area split change.
+        var message = new AreaLayoutChangedMessage(area, isSplit, splitRatio);
         _messengerService.Send(message);
+    }
+
+    public float GetAreaSize(DocumentArea area)
+    {
+        var settings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
+
+        return area == DocumentArea.Bottom
+            ? settings.BottomAreaHeight
+            : settings.SideAreaWidth;
+    }
+
+    public void StoreAreaSize(DocumentArea area, float size)
+    {
+        var settings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
+
+        if (area == DocumentArea.Bottom)
+        {
+            settings.BottomAreaHeight = size;
+        }
+        else if (area == DocumentArea.Side)
+        {
+            settings.SideAreaWidth = size;
+        }
+    }
+
+    public void ResetAreaSize(DocumentArea area)
+    {
+        _commandService.Execute<IResetPanelCommand>(command =>
+        {
+            command.Region = GetRegion(area);
+        });
+    }
+
+    public bool IsAreaVisible(DocumentArea area)
+    {
+        if (!area.IsCollapsible())
+        {
+            return true;
+        }
+
+        return _layoutService.RegionVisibility.HasFlag(GetRegion(area));
+    }
+
+    public void SetAreaVisible(DocumentArea area, bool isVisible)
+    {
+        if (!area.IsCollapsible())
+        {
+            return;
+        }
+
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        {
+            command.Regions = GetRegion(area);
+            command.IsVisible = isVisible;
+        });
+    }
+
+    // Bottom and Side are also workspace regions, so the Layout toolbar and the layout modes can collapse
+    // them. Main is always visible and has no region.
+    private static LayoutRegion GetRegion(DocumentArea area)
+    {
+        switch (area)
+        {
+            case DocumentArea.Bottom:
+                return LayoutRegion.BottomArea;
+
+            case DocumentArea.Side:
+                return LayoutRegion.SideArea;
+
+            default:
+                return LayoutRegion.None;
+        }
     }
 
     public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)
