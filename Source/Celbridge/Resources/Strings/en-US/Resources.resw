@@ -358,7 +358,7 @@
     <value>Reload Project</value>
   </data>
   <data name="PanelHeader_CloseTooltip" xml:space="preserve">
-    <value>Close panel</value>
+    <value>Close Panel</value>
   </data>
   <data name="NotificationBar_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
@@ -729,7 +729,7 @@ Open with default application instead?</value>
     <value>Unsplit Editor</value>
   </data>
   <data name="DocumentToolbar_CloseAreaTooltip" xml:space="preserve">
-    <value>Close Area</value>
+    <value>Close Panel</value>
   </data>
   <data name="DocumentSection_DropFilesPrompt" xml:space="preserve">
     <value>Drop files here to open them</value>
@@ -1047,10 +1047,10 @@ Open with default application instead?</value>
     <value>Toggle Left Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleBottomAreaTooltip" xml:space="preserve">
-    <value>Toggle Bottom Area</value>
+    <value>Toggle Bottom Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleSideAreaTooltip" xml:space="preserve">
-    <value>Toggle Side Area</value>
+    <value>Toggle Right Panel</value>
   </data>
   <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
     <value>Customize Layout</value>
@@ -1098,7 +1098,7 @@ Open with default application instead?</value>
     <value>The full editor with all panels visible</value>
   </data>
   <data name="LayoutToolbar_FocusModeTooltip" xml:space="preserve">
-    <value>Hide the panels and other document areas to focus on the current document</value>
+    <value>Hide the other panels to focus on the current document</value>
   </data>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
     <value>Show only the document content</value>
