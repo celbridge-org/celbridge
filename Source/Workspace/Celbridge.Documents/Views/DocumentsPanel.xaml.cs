@@ -77,7 +77,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.AreaLayoutChanged += OnAreaLayoutChanged;
         SectionContainer.AreaSizeChanged += OnAreaSizeChanged;
         SectionContainer.AreaSizeResetRequested += OnAreaSizeResetRequested;
-        SectionContainer.AreaSplitAvailabilityChanged += OnAreaSplitAvailabilityChanged;
         SectionContainer.FilesDropped += OnSectionFilesDropped;
 
         SectionContainer.InitializeTabDrag(TabDragOverlay);
@@ -127,14 +126,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         OnDocumentTabContextMenuAction(tab, action);
     }
 
-    // Builds the per-area toolbar hosted in each area's tab strip footer. Main gets a split button only;
-    // the collapsible areas also get a close button.
+    // Builds the per-area toolbar hosted in each area's tab strip footer. It carries the close button, so
+    // only the collapsible areas get one; splitting is driven from the document tab context menu.
     private void CreateAreaToolbars()
     {
         foreach (var area in DocumentLayoutHelper.AllAreas)
         {
+            if (!area.IsCollapsible())
+            {
+                continue;
+            }
+
             var toolbar = new DocumentToolbar(area);
-            toolbar.SplitChangeRequested += OnToolbarSplitChangeRequested;
             toolbar.CloseAreaRequested += OnToolbarCloseAreaRequested;
 
             _areaToolbars[area] = toolbar;
@@ -144,11 +147,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void OnAreaLayoutChanged(DocumentArea area, bool isSplit, double splitRatio)
     {
-        if (_areaToolbars.TryGetValue(area, out var toolbar))
-        {
-            toolbar.UpdateSplitState(isSplit);
-        }
-
         if (_isShuttingDown)
         {
             return;
@@ -170,19 +168,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private void OnAreaSizeResetRequested(DocumentArea area)
     {
         ViewModel.ResetAreaSize(area);
-    }
-
-    private void OnAreaSplitAvailabilityChanged(DocumentArea area, bool canSplit)
-    {
-        if (_areaToolbars.TryGetValue(area, out var toolbar))
-        {
-            toolbar.UpdateSplitAvailable(canSplit);
-        }
-    }
-
-    private void OnToolbarSplitChangeRequested(DocumentArea area, bool isSplit)
-    {
-        SectionContainer.SetAreaSplit(area, isSplit);
     }
 
     private void OnToolbarCloseAreaRequested(DocumentArea area)
@@ -505,16 +490,16 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.SetAreaSize(area, ViewModel.GetAreaSize(area));
     }
 
-    // Resolves a requested section to one that currently holds tabs. A secondary section whose area is
-    // not split folds into that area's primary section. A section in a collapsed area is left alone: the
-    // area keeps its tabs while hidden.
-    private DocumentSection ResolveMountedSection(DocumentSection section)
+    // Mounts the section a document is about to open into. Naming an unsplit area's secondary section
+    // splits it, so the request can be satisfied where it asked for. A section in a collapsed area is left
+    // alone: the area keeps its tabs while hidden.
+    private DocumentSection EnsureSectionMounted(DocumentSection section)
     {
         var area = section.GetArea();
         if (section.IsSecondarySection()
             && !SectionContainer.IsAreaSplit(area))
         {
-            return area.GetPrimarySection();
+            SectionContainer.SetAreaSplit(area, true);
         }
 
         return section;
@@ -528,6 +513,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public void SetAreaSplit(DocumentArea area, bool isSplit)
     {
         SectionContainer.SetAreaSplit(area, isSplit);
+    }
+
+    public void ReconcileAreaSplit(DocumentArea area)
+    {
+        SectionContainer.ReconcileAreaSplit(area);
     }
 
     public double GetAreaSplitRatio(DocumentArea area)
@@ -577,7 +567,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Resolve the target section from the address, defaulting to the active section. An address
         // naming a section whose area is not split folds into that area's primary section.
         var address = effectiveOptions.Address;
-        var section = address is not null ? ResolveMountedSection(address.Section) : SectionContainer.ActiveSection;
+        var section = address is not null ? EnsureSectionMounted(address.Section) : SectionContainer.ActiveSection;
 
         // Check if the file is already opened in any section
         var existingLocation = SectionContainer.FindDocumentTab(fileResource);
@@ -701,7 +691,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var createResult = await ViewModel.CreateDocumentView(fileResource, effectiveOptions.EditorId);
         if (createResult.IsFailure)
         {
-            targetSectionForNew.RemoveTab(documentTab);
+            RemoveTabFromSection(targetSectionForNew, documentTab);
             return Result<OpenDocumentOutcome>.Fail($"Failed to create document view for file resource: '{fileResource}'")
                 .WithErrors(createResult);
         }
@@ -794,7 +784,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 // Handle selection of next document before removing the tab
                 SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
 
-                sectionView.RemoveTab(documentTab);
+                RemoveTabFromSection(sectionView, documentTab);
 
                 // Update all tab names since closing a tab may resolve filename ambiguity
                 UpdateAllTabDisplayNames();
@@ -828,7 +818,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var filePath = resolveResult.Value;
 
         var address = placement.Address;
-        var section = address is not null ? ResolveMountedSection(address.Section) : SectionContainer.ActiveSection;
+        var section = address is not null ? EnsureSectionMounted(address.Section) : SectionContainer.ActiveSection;
         var sectionView = SectionContainer.GetSection(section);
 
         var documentTab = new DocumentTab();
@@ -922,9 +912,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.HandleDocumentClosing(resource, sectionView.Section, tabIndex);
 
         _ = documentTab.ViewModel.DocumentView?.PrepareToClose();
-        sectionView.RemoveTab(documentTab);
+        RemoveTabFromSection(sectionView, documentTab);
 
         UpdateAllTabDisplayNames();
+    }
+
+    // Removes a tab, folding its area back when that leaves one of a split area's sections empty.
+    private void RemoveTabFromSection(DocumentSectionView sectionView, DocumentTab documentTab)
+    {
+        var area = sectionView.Section.GetArea();
+
+        sectionView.RemoveTab(documentTab);
+        SectionContainer.ReconcileAreaSplit(area);
     }
 
     /// <summary>
@@ -1244,6 +1243,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.MoveToSecondarySection:
                 MoveTabWithinArea(tab, toSecondarySection: true);
                 break;
+            case DocumentTabMenuAction.UnsplitArea:
+                UnsplitArea(tab);
+                break;
             case DocumentTabMenuAction.CopyResourceKey:
                 CopyResourceKeyForTab(tab);
                 break;
@@ -1277,13 +1279,23 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OnCloseDocumentRequested(fileResource);
     }
 
-    // Moves a tab between the two sections of its own area. Moving between areas is a drag.
+    // Moves a tab between the two sections of its own area, splitting the area first when it is not split
+    // yet. Moving between areas is a drag.
     private void MoveTabWithinArea(DocumentTab tab, bool toSecondarySection)
     {
         var area = tab.Section.GetArea();
+
         if (!SectionContainer.IsAreaSplit(area))
         {
-            return;
+            // Only the split direction is on offer while unsplit, and only while the area has a document
+            // to leave behind.
+            if (!toSecondarySection ||
+                !SectionContainer.CanStartAreaSplit(area))
+            {
+                return;
+            }
+
+            SectionContainer.SetAreaSplit(area, true);
         }
 
         var targetSection = toSecondarySection
@@ -1295,6 +1307,21 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             UpdateAllTabDisplayNames();
             NotifyLayoutChanged();
         }
+    }
+
+    // Folds a split area back, merging both sections into the primary one.
+    private void UnsplitArea(DocumentTab tab)
+    {
+        var area = tab.Section.GetArea();
+        if (!SectionContainer.IsAreaSplit(area))
+        {
+            return;
+        }
+
+        SectionContainer.SetAreaSplit(area, false);
+
+        UpdateAllTabDisplayNames();
+        NotifyLayoutChanged();
     }
 
     private void NotifyLayoutChanged()

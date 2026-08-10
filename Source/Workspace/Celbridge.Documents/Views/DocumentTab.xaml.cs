@@ -22,6 +22,7 @@ public enum DocumentTabMenuAction
     CloseAll,
     MoveToPrimarySection,
     MoveToSecondarySection,
+    UnsplitArea,
     CopyResourceKey,
     CopyFilePath,
     SelectFile,
@@ -56,6 +57,11 @@ public partial class DocumentTab : TabViewItem
     /// DocumentSectionView.
     /// </summary>
     public bool IsAreaSplit { get; set; }
+
+    /// <summary>
+    /// Whether this tab's area has room to be split. Set by DocumentSectionView.
+    /// </summary>
+    public bool CanSplitArea { get; set; }
 
     /// <summary>
     /// Gets whether this tab is the active document.
@@ -126,17 +132,28 @@ public partial class DocumentTab : TabViewItem
         ApplyCloseShortcutHints();
     }
 
-    // Labels the two move options for the split orientation of this tab's area: left and right for Main
-    // and Bottom, up and down for the vertically split Side area.
+    // Labels the split options for the orientation of this tab's area - left and right for Main and
+    // Bottom, up and down for the vertically split Side area - and for its split state, since moving into
+    // the other section reads as a split while the area still has only one.
     private void ApplyMoveMenuLabels()
     {
         bool splitsHorizontally = Section.GetArea().SplitsHorizontally();
 
         string primaryKey = splitsHorizontally ? "DocumentTab_MoveLeft" : "DocumentTab_MoveUp";
-        string secondaryKey = splitsHorizontally ? "DocumentTab_MoveRight" : "DocumentTab_MoveDown";
+
+        string secondaryKey;
+        if (IsAreaSplit)
+        {
+            secondaryKey = splitsHorizontally ? "DocumentTab_MoveRight" : "DocumentTab_MoveDown";
+        }
+        else
+        {
+            secondaryKey = splitsHorizontally ? "DocumentTab_SplitRight" : "DocumentTab_SplitDown";
+        }
 
         MoveToPrimarySectionMenuItem.Text = _stringLocalizer.GetString(primaryKey);
         MoveToSecondarySectionMenuItem.Text = _stringLocalizer.GetString(secondaryKey);
+        UnsplitAreaMenuItem.Text = _stringLocalizer.GetString("DocumentTab_UnsplitAll");
     }
 
     // Displays the close shortcut hints next to the Close and Close All menu items. These are display-only
@@ -231,6 +248,11 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.MoveToSecondarySection);
     }
 
+    private void ContextMenu_UnsplitArea(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.UnsplitArea);
+    }
+
     private void ContextMenu_SelectFile(object sender, RoutedEventArgs e)
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.SelectFile);
@@ -297,20 +319,24 @@ public partial class DocumentTab : TabViewItem
         bool hasTabsToLeft = tabIndex > 0;
         CloseToTheLeftMenuItem.Visibility = hasTabsToLeft ? Visibility.Visible : Visibility.Collapsed;
 
-        // Move options only apply within a split area, and only in the direction that has a sibling
-        // section. The labels follow the area's split orientation, so a vertically split Side area
-        // offers Move Up and Move Down.
+        // Moving a document into the other section is one action: while the area is unsplit it creates the
+        // split, and it is offered only with a document left behind, since a split section is never empty.
+        // The labels follow the area's split state and orientation, so an unsplit Side area offers Split
+        // Down and a split one offers Move Up and Move Down.
         bool isSecondarySection = Section.IsSecondarySection();
+        bool canStartSplit = !IsAreaSplit && CanSplitArea && tabCount > 1;
         bool canMoveToPrimary = IsAreaSplit && isSecondarySection;
         bool canMoveToSecondary = IsAreaSplit && !isSecondarySection;
 
         ApplyMoveMenuLabels();
 
         MoveToPrimarySectionMenuItem.Visibility = canMoveToPrimary ? Visibility.Visible : Visibility.Collapsed;
-        MoveToSecondarySectionMenuItem.Visibility = canMoveToSecondary ? Visibility.Visible : Visibility.Collapsed;
+        MoveToSecondarySectionMenuItem.Visibility = (canStartSplit || canMoveToSecondary) ? Visibility.Visible : Visibility.Collapsed;
+        UnsplitAreaMenuItem.Visibility = IsAreaSplit ? Visibility.Visible : Visibility.Collapsed;
 
-        // Show the separator only if at least one move option is visible
-        MoveSeparator.Visibility = (canMoveToPrimary || canMoveToSecondary) ? Visibility.Visible : Visibility.Collapsed;
+        // A split area always offers a move and an unsplit, so the separator only needs the other case.
+        bool hasSplitOptions = canStartSplit || IsAreaSplit;
+        MoveSeparator.Visibility = hasSplitOptions ? Visibility.Visible : Visibility.Collapsed;
 
         // A utility tab presents a docked utility, not a file, so hide the options that reveal or act on its
         // backing file. The close and move options remain.

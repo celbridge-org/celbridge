@@ -722,12 +722,6 @@ Open with default application instead?</value>
   <data name="NotificationBar_ProjectConfigEntryErrorMessage" xml:space="preserve">
     <value>Some entries in {0} were skipped or degraded. See log for details.</value>
   </data>
-  <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
-    <value>Split Editor</value>
-  </data>
-  <data name="DocumentToolbar_UnsplitEditorTooltip" xml:space="preserve">
-    <value>Unsplit Editor</value>
-  </data>
   <data name="DocumentToolbar_CloseAreaTooltip" xml:space="preserve">
     <value>Close Panel</value>
   </data>
@@ -775,6 +769,15 @@ Open with default application instead?</value>
   </data>
   <data name="DocumentTab_MoveDown" xml:space="preserve">
     <value>Move Down</value>
+  </data>
+  <data name="DocumentTab_SplitRight" xml:space="preserve">
+    <value>Split Right</value>
+  </data>
+  <data name="DocumentTab_SplitDown" xml:space="preserve">
+    <value>Split Down</value>
+  </data>
+  <data name="DocumentTab_UnsplitAll" xml:space="preserve">
+    <value>Unsplit All</value>
   </data>
   <data name="DocumentTab_SelectFile" xml:space="preserve">
     <value>Select File</value>

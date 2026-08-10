@@ -50,11 +50,10 @@ Search panel (all switch to the Search tab first; the replace ones also enable r
 Documents:
 
 - `document-tab-strip` — the open-document tab strip (only resolves with a document open).
-- `main-area-split-button` — the button that splits and unsplits the Main document area.
-- `bottom-area-split-button` — the button that splits and unsplits the Bottom document area.
 - `bottom-area-close-button` — the button that collapses the Bottom document area.
-- `side-area-split-button` — the button that splits and unsplits the Side document area.
 - `side-area-close-button` — the button that collapses the Side document area.
+
+Splitting has no landmark: it is driven from the document tab context menu rather than a button.
 
 Title bar:
 

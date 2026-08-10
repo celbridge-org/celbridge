@@ -26,6 +26,7 @@
             <MenuFlyoutSeparator x:Name="MoveSeparator" />
             <MenuFlyoutItem x:Name="MoveToPrimarySectionMenuItem" Click="ContextMenu_MoveToPrimarySection" />
             <MenuFlyoutItem x:Name="MoveToSecondarySectionMenuItem" Click="ContextMenu_MoveToSecondarySection" />
+            <MenuFlyoutItem x:Name="UnsplitAreaMenuItem" Click="ContextMenu_UnsplitArea" />
             <MenuFlyoutSeparator x:Name="SelectFileSeparator" />
             <MenuFlyoutItem x:Name="SelectFileMenuItem" Click="ContextMenu_SelectFile" />
             <MenuFlyoutSeparator x:Name="CopySeparator" />

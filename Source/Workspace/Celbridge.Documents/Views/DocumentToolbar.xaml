@@ -3,7 +3,6 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:Celbridge.Documents.Views.Controls"
     HorizontalAlignment="Right">
 
   <StackPanel x:Name="ToolbarPanel"
@@ -11,17 +10,6 @@
               Spacing="0"
               VerticalAlignment="Center"
               Margin="0, 0, 4, 0">
-    <Button x:Name="SplitEditorButton"
-            Style="{StaticResource TransparentIconButtonStyle}"
-            Width="24"
-            Height="24"
-            ToolTipService.Placement="Bottom"
-            Padding="4"
-            VerticalAlignment="Center"
-            Click="SplitEditorButton_Click">
-      <controls:SplitEditorIcon x:Name="ButtonIcon"/>
-    </Button>
-
     <Button x:Name="CloseAreaButton"
             Style="{StaticResource TransparentIconButtonStyle}"
             Width="24"
@@ -29,7 +17,6 @@
             ToolTipService.Placement="Bottom"
             Padding="4"
             VerticalAlignment="Center"
-            Visibility="Collapsed"
             Click="CloseAreaButton_Click">
       <FontIcon Glyph="&#xE8BB;"
                 FontSize="{StaticResource IconSizeMedium}"/>

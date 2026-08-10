@@ -82,11 +82,6 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<DocumentArea>? AreaSizeResetRequested;
 
     /// <summary>
-    /// Event raised when an area grows past or shrinks below the size needed to hold two sections.
-    /// </summary>
-    public event Action<DocumentArea, bool>? AreaSplitAvailabilityChanged;
-
-    /// <summary>
     /// Event raised when resource files are dropped into a section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
@@ -151,13 +146,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         ApplyRootGridLayout();
     }
 
-    // Reports whether an area is large enough to hold two sections at their minimum size.
+    // An area that shrinks below the room for two sections can no longer be split, which the tab context
+    // menu reflects.
     private void WatchAreaSize(DocumentArea area)
     {
         var areaGrid = GetAreaGrid(area);
         areaGrid.SizeChanged += (s, e) =>
         {
-            AreaSplitAvailabilityChanged?.Invoke(area, CanSplitArea(area));
+            UpdateSectionMoveTargets(area);
         };
     }
 
@@ -322,6 +318,46 @@ public sealed partial class DocumentSectionContainer : UserControl
         RebuildArea(area);
 
         AreaLayoutChanged?.Invoke(area, isSplit, _areaSplitRatio[area]);
+    }
+
+    /// <summary>
+    /// Whether a document in the area can be moved into a new split: the area must be unsplit, have room
+    /// for two sections, and hold more than one document so the split does not empty its primary section.
+    /// </summary>
+    public bool CanStartAreaSplit(DocumentArea area)
+    {
+        if (_areaSplit[area] ||
+            !CanSplitArea(area))
+        {
+            return false;
+        }
+
+        return _sections[area.GetPrimarySection()].TabCount > 1;
+    }
+
+    /// <summary>
+    /// Folds a split area back when either of its sections has run out of documents, so a split section is
+    /// never left empty. The surviving documents always end up in the primary section.
+    /// </summary>
+    public void ReconcileAreaSplit(DocumentArea area)
+    {
+        if (!_areaSplit[area])
+        {
+            return;
+        }
+
+        var primarySectionView = _sections[area.GetPrimarySection()];
+        var secondarySectionView = _sections[area.GetSecondarySection()];
+
+        if (primarySectionView.TabCount > 0 &&
+            secondarySectionView.TabCount > 0)
+        {
+            return;
+        }
+
+        // Unsplitting migrates the secondary section's tabs into the primary one, which covers both
+        // cases: an empty secondary migrates nothing, an empty primary receives everything.
+        SetAreaSplit(area, false);
     }
 
     /// <summary>
@@ -704,6 +740,12 @@ public sealed partial class DocumentSectionContainer : UserControl
         // Always make the moved tab the active document
         _activeSection = targetSection;
         _activeDocument = tab.ViewModel.FileResource;
+
+        // Emptying the source section folds its area back, which can migrate the moved tab straight back
+        // out of the target section. Reconcile before reporting the active document, so the fold's own
+        // correction to the active section is the one that is broadcast.
+        ReconcileAreaSplit(sourceSectionView.Section.GetArea());
+
         UpdateTabSelectionIndicators();
         ActiveDocumentChanged?.Invoke(_activeDocument);
 
@@ -959,11 +1001,19 @@ public sealed partial class DocumentSectionContainer : UserControl
         secondarySectionView.SetTabStripFooter(toolbarOnSecondary ? toolbar : null);
     }
 
+    // Pushes the area state the tab context menu needs down onto its tabs: whether the area is split, and
+    // whether it has room to be.
     private void UpdateSectionMoveTargets(DocumentArea area)
     {
         bool isSplit = _areaSplit[area];
-        _sections[area.GetPrimarySection()].IsAreaSplit = isSplit;
-        _sections[area.GetSecondarySection()].IsAreaSplit = isSplit;
+        bool canSplit = CanSplitArea(area);
+
+        foreach (var section in area.GetSections())
+        {
+            var sectionView = _sections[section];
+            sectionView.IsAreaSplit = isSplit;
+            sectionView.CanSplitArea = canSplit;
+        }
     }
 
     private void ApplySplitRatio(DocumentArea area)

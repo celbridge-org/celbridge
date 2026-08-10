@@ -251,10 +251,10 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_SecondarySectionOfUnsplitArea_FoldsIntoPrimarySection()
+    public async Task RestorePanelStateAsync_SecondarySectionOfUnsplitArea_SplitsTheArea()
     {
-        // A tab saved in an area's secondary section, restored while that area is not split, merges
-        // into the primary section rather than being dropped.
+        // A tab saved in an area's secondary section splits that area on restore, so it lands where it
+        // was left rather than folding into the primary section.
         _documentsPanel.IsAreaSplit(DocumentArea.Main).Returns(false);
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
@@ -265,9 +265,31 @@ public class DocumentLayoutStoreTests
 
         await _store.RestorePanelStateAsync();
 
+        _documentsPanel.Received(1).SetAreaSplit(DocumentArea.Main, true);
+
         await _documentsPanel.Received(1).OpenDocument(
             Arg.Any<ResourceKey>(),
-            Arg.Is<OpenDocumentOptions>(options => options.Address!.Section == DocumentSection.MainLeft));
+            Arg.Is<OpenDocumentOptions>(options => options.Address!.Section == DocumentSection.MainRight));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_ReconcilesEveryAreaAfterRestoring()
+    {
+        // A document whose file has gone leaves the section it was restoring into empty, so the restore
+        // folds away any split that ended up with nothing in it.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", WindowIndex: 0, Section: "MainLeft", TabOrder: 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            _documentsPanel.Received(1).ReconcileAreaSplit(area);
+        }
     }
 
     [Test]
@@ -333,11 +355,11 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_AppliesStoredAreaLayout()
+    public async Task RestorePanelStateAsync_AppliesStoredSplitRatio()
     {
         var areaLayout = new Dictionary<string, DocumentLayoutStore.StoredAreaLayout>
         {
-            ["Main"] = new DocumentLayoutStore.StoredAreaLayout(IsSplit: true, SplitRatio: 0.3),
+            ["Main"] = new DocumentLayoutStore.StoredAreaLayout(SplitRatio: 0.3),
         };
         _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>("AreaLayout")
             .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>?>(areaLayout));
@@ -347,7 +369,10 @@ public class DocumentLayoutStoreTests
         await _store.RestorePanelStateAsync();
 
         _documentsPanel.Received(1).SetAreaSplitRatio(DocumentArea.Main, 0.3);
-        _documentsPanel.Received(1).SetAreaSplit(DocumentArea.Main, true);
+
+        // Split state is not restored from settings: it follows the documents that restore into each
+        // section, so an area only splits when a document lands in its secondary one.
+        _documentsPanel.DidNotReceive().SetAreaSplit(DocumentArea.Main, true);
     }
 
     [Test]
@@ -367,19 +392,18 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task StoreAreaLayoutAsync_WritesSplitStatePerArea()
+    public async Task StoreAreaLayoutAsync_WritesSplitRatioPerArea()
     {
-        _documentsPanel.IsAreaSplit(DocumentArea.Main).Returns(true);
         _documentsPanel.GetAreaSplitRatio(DocumentArea.Main).Returns(0.4);
+        _documentsPanel.GetAreaSplitRatio(DocumentArea.Bottom).Returns(0.5);
 
         await _store.StoreAreaLayoutAsync();
 
         await _propertyBag.Received(1).SetPropertyAsync(
             "AreaLayout",
             Arg.Is<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>(layout =>
-                layout["Main"].IsSplit
-                && layout["Main"].SplitRatio == 0.4
-                && !layout["Bottom"].IsSplit));
+                layout["Main"].SplitRatio == 0.4
+                && layout["Bottom"].SplitRatio == 0.5));
     }
 
     [Test]

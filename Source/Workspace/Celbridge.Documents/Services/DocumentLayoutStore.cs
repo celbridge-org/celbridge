@@ -38,10 +38,11 @@ public class DocumentLayoutStore
     public record StoredDocumentAddress(string Resource, int WindowIndex, string Section, int TabOrder);
 
     /// <summary>
-    /// Serialization DTO for one area's split state. The ratio is the share taken by the primary section
-    /// and is meaningful only while the area is split.
+    /// Serialization DTO for one area's split position: the share taken by its primary section. Whether
+    /// the area is split is not stored, because it follows from whether any document restores into its
+    /// secondary section.
     /// </summary>
-    public record StoredAreaLayout(bool IsSplit, double SplitRatio);
+    public record StoredAreaLayout(double SplitRatio);
 
     public async Task StoreDocumentLayoutAsync()
     {
@@ -81,8 +82,7 @@ public class DocumentLayoutStore
         var areaLayout = new Dictionary<string, StoredAreaLayout>();
         foreach (var area in DocumentLayoutHelper.AllAreas)
         {
-            bool isSplit = DocumentsPanel.IsAreaSplit(area);
-            areaLayout[area.ToString()] = new StoredAreaLayout(isSplit, DocumentsPanel.GetAreaSplitRatio(area));
+            areaLayout[area.ToString()] = new StoredAreaLayout(DocumentsPanel.GetAreaSplitRatio(area));
         }
 
         await propertyBag.SetPropertyAsync(AreaLayoutKey, areaLayout);
@@ -170,8 +170,8 @@ public class DocumentLayoutStore
     {
         var storedLayout = await LoadStoredLayoutAsync();
 
-        // Split state is applied before any tabs are opened, so ResolveRestoreSection below sees the
-        // restored layout rather than the default one.
+        // The split position is applied before any tabs are opened, so an area that splits while restoring
+        // opens at the position the user left it at.
         if (storedLayout.AreaLayout is not null)
         {
             foreach (var area in DocumentLayoutHelper.AllAreas)
@@ -182,7 +182,6 @@ public class DocumentLayoutStore
                 }
 
                 DocumentsPanel.SetAreaSplitRatio(area, areaLayout.SplitRatio);
-                DocumentsPanel.SetAreaSplit(area, areaLayout.IsSplit);
             }
         }
 
@@ -194,6 +193,14 @@ public class DocumentLayoutStore
         }
 
         await RestoreDocumentsAsync(storedLayout.Addresses, storedLayout.EditorStates);
+
+        // A document whose file has gone since the last session leaves the section it was restoring into
+        // empty, so fold away any split that ended up with nothing in it.
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            DocumentsPanel.ReconcileAreaSplit(area);
+        }
+
         await RestoreActiveDocumentAsync();
     }
 
@@ -336,13 +343,15 @@ public class DocumentLayoutStore
     // Folds a stored section into one that currently holds tabs. A secondary section whose area restored
     // unsplit folds into that area's primary section. A section in a collapsed area is kept: the area
     // holds its documents while hidden, and they reappear in place when it is shown again.
+    // Splits an area when a document restores into its secondary section, so the split follows the
+    // restored documents rather than a separately stored flag that could disagree with them.
     private DocumentSection ResolveRestoreSection(DocumentSection storedSection)
     {
         var area = storedSection.GetArea();
         if (storedSection.IsSecondarySection()
             && !DocumentsPanel.IsAreaSplit(area))
         {
-            return area.GetPrimarySection();
+            DocumentsPanel.SetAreaSplit(area, true);
         }
 
         return storedSection;

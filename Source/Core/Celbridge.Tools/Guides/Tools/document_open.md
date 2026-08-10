@@ -12,7 +12,7 @@ The tab strip to open the document in, as one of `MainLeft`, `MainRight`, `Botto
 
 Empty (the default) opens in the currently active section.
 
-Naming a secondary section (`MainRight`, `BottomRight`, `SideBottom`) while its area is not split opens in that area's primary section instead. Naming a section in a collapsed area opens there without expanding the area, so the user does not see the document until they show it again — prefer `MainLeft` or the default when you want the document on screen.
+Naming a secondary section (`MainRight`, `BottomRight`, `SideBottom`) while its area is not split splits the area so the document opens where it was asked for. If that leaves the area's primary section empty — the area held nothing beforehand — the split folds straight back and the document ends up in the primary section, because a split section is never left empty. Naming a section in a collapsed area opens there without expanding the area, so the user does not see the document until they show it again — prefer `MainLeft` or the default when you want the document on screen.
 
 ### forceReload
 

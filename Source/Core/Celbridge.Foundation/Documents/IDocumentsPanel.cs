@@ -34,6 +34,12 @@ public interface IDocumentsPanel
     void SetAreaSplit(DocumentArea area, bool isSplit);
 
     /// <summary>
+    /// Folds a split area back when either of its sections has run out of documents, so a split section is
+    /// never left empty. The surviving documents always end up in the primary section.
+    /// </summary>
+    void ReconcileAreaSplit(DocumentArea area);
+
+    /// <summary>
     /// The share of a split area taken by its primary section, as a value between 0 and 1.
     /// </summary>
     double GetAreaSplitRatio(DocumentArea area);

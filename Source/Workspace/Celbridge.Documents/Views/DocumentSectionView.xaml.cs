@@ -252,7 +252,28 @@ public sealed partial class DocumentSectionView : UserControl
         }
     }
 
+    /// <summary>
+    /// Whether this section's area has room for two sections. Used to determine whether the tab context
+    /// menu offers to start a split.
+    /// </summary>
+    public bool CanSplitArea
+    {
+        get => _canSplitArea;
+        set
+        {
+            _canSplitArea = value;
+            foreach (var tabItem in TabView.TabItems)
+            {
+                if (tabItem is DocumentTab tab)
+                {
+                    tab.CanSplitArea = value;
+                }
+            }
+        }
+    }
+
     private bool _isAreaSplit = false;
+    private bool _canSplitArea = false;
 
     /// <summary>
     /// Adds a document tab to this section.
@@ -262,6 +283,7 @@ public sealed partial class DocumentSectionView : UserControl
         tab.Section = Section;
         // Set from cached value - stays in sync via the IsAreaSplit property setter
         tab.IsAreaSplit = IsAreaSplit;
+        tab.CanSplitArea = CanSplitArea;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);
@@ -833,6 +855,7 @@ public sealed partial class DocumentSectionView : UserControl
     {
         tab.Section = Section;
         tab.IsAreaSplit = IsAreaSplit;
+        tab.CanSplitArea = CanSplitArea;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);
