@@ -324,15 +324,22 @@ public partial class DocumentTab : TabViewItem
         // The labels follow the area's split state and orientation, so an unsplit Side area offers Split
         // Down and a split one offers Move Up and Move Down.
         bool isSecondarySection = Section.IsSecondarySection();
-        bool canStartSplit = !IsAreaSplit && CanSplitArea && tabCount > 1;
+        bool isLastInSection = tabCount == 1;
+        bool canStartSplit = !IsAreaSplit && CanSplitArea && !isLastInSection;
+
+        // Moving this section's last document folds the area back, and the two sections read differently
+        // when it does. From the secondary section the fold is what the move already says it does, so the
+        // identical Unsplit All is dropped. From the primary section the fold migrates the other documents
+        // back the other way, which the move label does not describe, so Unsplit All is offered instead.
         bool canMoveToPrimary = IsAreaSplit && isSecondarySection;
-        bool canMoveToSecondary = IsAreaSplit && !isSecondarySection;
+        bool canMoveToSecondary = IsAreaSplit && !isSecondarySection && !isLastInSection;
+        bool canUnsplit = IsAreaSplit && !(isSecondarySection && isLastInSection);
 
         ApplyMoveMenuLabels();
 
         MoveToPrimarySectionMenuItem.Visibility = canMoveToPrimary ? Visibility.Visible : Visibility.Collapsed;
         MoveToSecondarySectionMenuItem.Visibility = (canStartSplit || canMoveToSecondary) ? Visibility.Visible : Visibility.Collapsed;
-        UnsplitAreaMenuItem.Visibility = IsAreaSplit ? Visibility.Visible : Visibility.Collapsed;
+        UnsplitAreaMenuItem.Visibility = canUnsplit ? Visibility.Visible : Visibility.Collapsed;
 
         // A split area always offers a move and an unsplit, so the separator only needs the other case.
         bool hasSplitOptions = canStartSplit || IsAreaSplit;
