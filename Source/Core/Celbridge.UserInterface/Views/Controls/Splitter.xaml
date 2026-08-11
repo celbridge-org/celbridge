@@ -33,10 +33,10 @@
     </Storyboard>
   </UserControl.Resources>
 
-  <!-- Grab area, filled with BandBrush and holding the accent line that appears on hover and drag. The band
-       is never null, so the whole area stays hit testable whether it is filled or transparent. A filled band
-       edges its leading side so it reads apart from whatever sits against it, which for a document splitter
-       can be arbitrary web content. -->
+  <!-- Grab area, filled with GrabAreaBrush and holding the accent line that appears on hover and drag. The
+       background is never null, so the area stays hit testable whether it is filled or transparent. A filled
+       grab area edges its leading side so it reads apart from whatever sits against it, which for a document
+       splitter can be arbitrary web content. -->
   <Border x:Name="SplitterBorder"
           Background="Transparent"
           BorderBrush="{ThemeResource PanelEdgeBrush}">

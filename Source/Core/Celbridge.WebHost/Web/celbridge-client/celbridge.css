@@ -344,8 +344,8 @@ hr {
 
    The band takes chrome rather than the gutter tone: a gutter separates two workspace panels, and this
    separates two panes of one document, so the difference in tone is what tells them apart. It edges its
-   leading side, which faces the main pane whose content the host does not control; the trailing side faces
-   a panel of ours that the band already reads against, and edging both makes it read as a doubled border. */
+   leading side, which faces the main pane whose content the host does not control. The trailing side faces
+   a panel of ours that the band already reads against. */
 .cel-splitter {
     flex: 0 0 var(--cel-splitter-width, 8px);
     position: relative;

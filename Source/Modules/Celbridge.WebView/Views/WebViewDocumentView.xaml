@@ -149,7 +149,7 @@
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch" />
 
-        <!-- The splitter fills its own gutter column so its grab band never overlaps the WebView, where a
+        <!-- The splitter fills its own gutter column so its grab area never overlaps the WebView, where a
              drag would be unreliable on macOS. It spans both content rows so the panel edge is grabbable
              along its whole length. -->
         <!-- Divides two panes inside one document rather than two workspace panels, so there is no gutter
@@ -160,7 +160,7 @@
                            Grid.RowSpan="2"
                            Grid.Column="1"
                            Orientation="Vertical"
-                           BandBrush="{ThemeResource ChromeBackgroundBrush}"
+                           GrabAreaBrush="{ThemeResource ChromeBackgroundBrush}"
                            GrabAreaSize="8"
                            Visibility="Collapsed" />
 

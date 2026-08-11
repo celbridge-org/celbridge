@@ -123,7 +123,7 @@ function applyDataTheme(theme) {
 
 // The web engine renders at its own rasterization scale, which on Windows folds in the accessibility text
 // scale, so a CSS pixel here is larger than a device-independent pixel in the native chrome. devicePixelRatio
-// carries the host's scale and the engine's extra factor together; dividing out the host's scale leaves the
+// carries the host's scale and the engine's extra factor together. Dividing out the host's scale leaves the
 // factor the native-mirroring dimensions divide by (see celbridge-tokens.css).
 
 // Outside this range the derived factor is not a plausible scale, so dimensions keep their declared sizes
@@ -178,7 +178,7 @@ function derivePageZoom() {
 
 // devicePixelRatio changes when the text scale changes or the window moves to a monitor at another scale, and
 // has no change event of its own. A resolution query re-armed at each new ratio stands in for one. A monitor
-// move also changes the host's scale, so this can fire on a stale one; the snapshot that follows corrects it.
+// move also changes the host's scale, so this can fire on a stale one. The snapshot that follows corrects it.
 function watchResolution() {
     if (typeof window === 'undefined' || !window.matchMedia) {
         return;
