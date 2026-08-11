@@ -36,7 +36,7 @@ public class LayoutManagerTests
 
         // Default to all panels visible. Set the value (rather than stubbing the
         // getter) so writes by the layout manager are reflected on subsequent reads.
-        _workspaceSettings.PreferredRegionVisibility = LayoutRegion.All;
+        _workspaceSettings.PreferredSurfaceVisibility = WorkspaceSurface.All;
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -45,12 +45,8 @@ public class LayoutManagerTests
         workspaceService.BindableWorkspaceSettings.Returns(_workspaceSettings);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
-        var featureFlags = Substitute.For<IFeatureFlags>();
 
-        // Default to console panel feature enabled for tests
-        featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel).Returns(true);
-
-        _layoutManager = new LayoutManager(logger, _messengerService, _settingsService, workspaceWrapper, featureFlags);
+        _layoutManager = new LayoutManager(logger, _messengerService, _settingsService, workspaceWrapper);
     }
 
     [TearDown]
@@ -72,17 +68,17 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void InitialState_RegionVisibilityIsAllByDefault()
+    public void InitialState_SurfaceVisibilityIsAllByDefault()
     {
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
     }
 
     [Test]
     public void InitialState_AllPanelsAreVisible()
     {
-        _layoutManager.IsContextPanelVisible.Should().BeTrue();
-        _layoutManager.IsInspectorPanelVisible.Should().BeTrue();
-        _layoutManager.IsConsolePanelVisible.Should().BeTrue();
+        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
+        _layoutManager.IsSideAreaVisible.Should().BeTrue();
+        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
     }
 
     [Test]
@@ -92,7 +88,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.None);
 
         // Fullscreen is independent of the layout mode.
         _layoutManager.IsFullScreen.Should().BeFalse();
@@ -105,12 +101,12 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Presentation);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.None);
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]
-    public void TransitionToDefault_FromFocus_RestoresPreferredRegionVisibility()
+    public void TransitionToDefault_FromFocus_RestoresPreferredSurfaceVisibility()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
@@ -118,7 +114,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
     }
 
     [Test]
@@ -139,7 +135,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.None);
     }
 
     [Test]
@@ -210,59 +206,59 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SetRegionVisibility_HideSinglePanel_UpdatesVisibility()
+    public void SetSurfaceVisibility_HideSinglePanel_UpdatesVisibility()
     {
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
 
-        _layoutManager.IsContextPanelVisible.Should().BeFalse();
-        _layoutManager.IsInspectorPanelVisible.Should().BeTrue();
-        _layoutManager.IsConsolePanelVisible.Should().BeTrue();
+        _layoutManager.IsUtilityPanelVisible.Should().BeFalse();
+        _layoutManager.IsSideAreaVisible.Should().BeTrue();
+        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
     }
 
     [Test]
-    public void SetRegionVisibility_ShowHiddenPanel_UpdatesVisibility()
+    public void SetSurfaceVisibility_ShowHiddenPanel_UpdatesVisibility()
     {
-        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Console, true);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, true);
 
-        _layoutManager.IsConsolePanelVisible.Should().BeTrue();
+        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
     }
 
     [Test]
-    public void ToggleRegionVisibility_TogglesPanel()
+    public void ToggleSurfaceVisibility_TogglesPanel()
     {
-        _layoutManager.IsContextPanelVisible.Should().BeTrue();
+        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
 
-        _layoutManager.ToggleRegionVisibility(LayoutRegion.Primary);
+        _layoutManager.ToggleSurfaceVisibility(WorkspaceSurface.UtilityPanel);
 
-        _layoutManager.IsContextPanelVisible.Should().BeFalse();
+        _layoutManager.IsUtilityPanelVisible.Should().BeFalse();
 
-        _layoutManager.ToggleRegionVisibility(LayoutRegion.Primary);
+        _layoutManager.ToggleSurfaceVisibility(WorkspaceSurface.UtilityPanel);
 
-        _layoutManager.IsContextPanelVisible.Should().BeTrue();
+        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
     }
 
     [Test]
-    public void SetRegionVisibility_InFocusMode_ReturnsToDefault()
+    public void SetSurfaceVisibility_InFocusMode_ReturnsToDefault()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         // Manually showing a panel means the user is customizing the layout, so the mode returns to
         // Default rather than staying in Focus with a panel visible.
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, true);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
 
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
-        _layoutManager.IsContextPanelVisible.Should().BeTrue();
+        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
     }
 
     [Test]
-    public void SetRegionVisibility_SameState_NoChange()
+    public void SetSurfaceVisibility_SameState_NoChange()
     {
         bool messageReceived = false;
         var recipient = new object();
-        _messengerService.Register<RegionVisibilityChangedMessage>(recipient, (r, m) => messageReceived = true);
+        _messengerService.Register<SurfaceVisibilityChangedMessage>(recipient, (r, m) => messageReceived = true);
 
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, true);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
 
         messageReceived.Should().BeFalse();
     }
@@ -270,13 +266,13 @@ public class LayoutManagerTests
     [Test]
     public void ResetLayout_RestoresAllPanelsVisible()
     {
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
 
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
     }
 
     [Test]
@@ -307,17 +303,17 @@ public class LayoutManagerTests
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
-        _workspaceSettings.Received(1).PrimaryPanelWidth = 300f;
-        _workspaceSettings.Received(1).SecondaryPanelWidth = 300f;
-        _workspaceSettings.Received(1).ConsolePanelHeight = 350f;
+        _workspaceSettings.Received(1).UtilityPanelWidth = 300f;
+        _workspaceSettings.Received(1).SideAreaWidth = 300f;
+        _workspaceSettings.Received(1).BottomAreaHeight = 350f;
     }
 
     [Test]
-    public void ResetLayout_ResetsPreferredRegionVisibilityInWorkspaceSettings()
+    public void ResetLayout_ResetsPreferredSurfaceVisibilityInWorkspaceSettings()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
-        _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.All;
+        _workspaceSettings.Received().PreferredSurfaceVisibility = WorkspaceSurface.All;
     }
 
     [Test]
@@ -347,53 +343,53 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void RegionVisibilityChange_SendsRegionVisibilityChangedMessage()
+    public void SurfaceVisibilityChange_SendsSurfaceVisibilityChangedMessage()
     {
-        RegionVisibilityChangedMessage? receivedMessage = null;
+        SurfaceVisibilityChangedMessage? receivedMessage = null;
         var recipient = new object();
-        _messengerService.Register<RegionVisibilityChangedMessage>(recipient, (r, m) => receivedMessage = m);
+        _messengerService.Register<SurfaceVisibilityChangedMessage>(recipient, (r, m) => receivedMessage = m);
 
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
 
         receivedMessage.Should().NotBeNull();
-        receivedMessage!.RegionVisibility.Should().Be(LayoutRegion.Secondary | LayoutRegion.Console);
+        receivedMessage!.SurfaceVisibility.Should().Be(WorkspaceSurface.SideArea | WorkspaceSurface.BottomArea);
     }
 
     [Test]
-    public void SetRegionVisibility_InDefaultMode_UpdatesPreferredRegionVisibility()
+    public void SetSurfaceVisibility_InDefaultMode_UpdatesPreferredSurfaceVisibility()
     {
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
 
-        var expectedVisibility = LayoutRegion.Secondary | LayoutRegion.Console;
-        _workspaceSettings.Received().PreferredRegionVisibility = expectedVisibility;
+        var expectedVisibility = WorkspaceSurface.SideArea | WorkspaceSurface.BottomArea;
+        _workspaceSettings.Received().PreferredSurfaceVisibility = expectedVisibility;
     }
 
     [Test]
-    public void SetRegionVisibility_WhileFullScreen_UpdatesPreferredRegionVisibility()
+    public void SetSurfaceVisibility_WhileFullScreen_UpdatesPreferredSurfaceVisibility()
     {
         // Fullscreen does not change the layout mode, so panel changes still persist as preferred.
         _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
         _workspaceSettings.ClearReceivedCalls();
 
-        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
 
-        var expectedVisibility = LayoutRegion.Primary | LayoutRegion.Console;
-        _workspaceSettings.Received().PreferredRegionVisibility = expectedVisibility;
+        var expectedVisibility = WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea;
+        _workspaceSettings.Received().PreferredSurfaceVisibility = expectedVisibility;
     }
 
     [Test]
-    public void SetRegionVisibility_ToNone_UpdatesPreferredRegionVisibility()
+    public void SetSurfaceVisibility_ToNone_UpdatesPreferredSurfaceVisibility()
     {
         // Hide all panels one by one in the Default layout.
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
         _workspaceSettings.ClearReceivedCalls();
 
         // The last panel being hidden persists None as the preference, because the user explicitly
         // chose to hide all panels.
-        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, false);
 
-        _workspaceSettings.Received().PreferredRegionVisibility = LayoutRegion.None;
+        _workspaceSettings.Received().PreferredSurfaceVisibility = WorkspaceSurface.None;
     }
 
     [Test]
@@ -404,18 +400,18 @@ public class LayoutManagerTests
         _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
 
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
     }
 
     [Test]
-    public void LayoutRegion_CombinationsWorkCorrectly()
+    public void WorkspaceSurface_CombinationsWorkCorrectly()
     {
-        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
-        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
 
-        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.Console);
-        _layoutManager.IsContextPanelVisible.Should().BeFalse();
-        _layoutManager.IsInspectorPanelVisible.Should().BeFalse();
-        _layoutManager.IsConsolePanelVisible.Should().BeTrue();
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.BottomArea);
+        _layoutManager.IsUtilityPanelVisible.Should().BeFalse();
+        _layoutManager.IsSideAreaVisible.Should().BeFalse();
+        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
     }
 }

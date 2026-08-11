@@ -25,10 +25,10 @@ public class ShowSearchCommand : CommandBase, IShowSearchCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        // Ensure the primary region (which contains search) is visible
-        if (!_layoutService.IsContextPanelVisible)
+        // Ensure the Utility Panel (which contains Search) is visible
+        if (!_layoutService.IsUtilityPanelVisible)
         {
-            _layoutService.SetRegionVisibility(LayoutRegion.Primary, true);
+            _layoutService.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
         }
 
         var searchPanel = ServiceLocator.AcquireService<ISearchPanel>();

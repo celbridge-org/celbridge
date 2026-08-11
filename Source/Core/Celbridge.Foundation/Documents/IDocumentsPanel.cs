@@ -6,9 +6,10 @@ namespace Celbridge.Documents;
 public interface IDocumentsPanel
 {
     /// <summary>
-    /// Gets or sets the number of document sections.
+    /// The sections that are currently mounted, in reading order. A section is mounted when its area is
+    /// visible and, for a secondary section, that area is split.
     /// </summary>
-    int SectionCount { get; set; }
+    IReadOnlyList<DocumentSection> VisibleSections { get; }
 
     /// <summary>
     /// Gets or sets the active document that is being inspected.
@@ -22,15 +23,36 @@ public interface IDocumentsPanel
     void FocusActiveDocument();
 
     /// <summary>
-    /// Sets the proportional widths (ratios) of document sections.
-    /// Ratios are relative values that sum to 1.0.
+    /// Whether the area is currently showing both of its sections.
     /// </summary>
-    void SetSectionRatios(List<double> ratios);
+    bool IsAreaSplit(DocumentArea area);
 
     /// <summary>
-    /// Resets all document sections to equal widths.
+    /// Splits the area into two sections, or folds its secondary section back into the primary one.
+    /// Folding migrates any tabs in the secondary section rather than closing them.
     /// </summary>
-    Task ResetSectionRatiosAsync();
+    void SetAreaSplit(DocumentArea area, bool isSplit);
+
+    /// <summary>
+    /// Folds a split area back when either of its sections has run out of documents, so a split section is
+    /// never left empty. The surviving documents always end up in the primary section.
+    /// </summary>
+    void ReconcileAreaSplit(DocumentArea area);
+
+    /// <summary>
+    /// The share of a split area taken by its primary section, as a value between 0 and 1.
+    /// </summary>
+    double GetAreaSplitRatio(DocumentArea area);
+
+    /// <summary>
+    /// Sets the share of a split area taken by its primary section, as a value between 0 and 1.
+    /// </summary>
+    void SetAreaSplitRatio(DocumentArea area, double ratio);
+
+    /// <summary>
+    /// Folds every area back to a single section and restores equal split positions.
+    /// </summary>
+    Task ResetAreaLayoutAsync();
 
     /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.

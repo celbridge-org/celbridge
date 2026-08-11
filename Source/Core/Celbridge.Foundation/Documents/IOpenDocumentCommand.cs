@@ -23,10 +23,10 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
     string Location { get; set; }
 
     /// <summary>
-    /// Optional target section index (0, 1, or 2) to open the document in.
+    /// Optional target section to open the document in.
     /// If null, the document opens in the active section.
     /// </summary>
-    int? TargetSectionIndex { get; set; }
+    DocumentSection? TargetSection { get; set; }
 
     /// <summary>
     /// Optional tab position within the section.

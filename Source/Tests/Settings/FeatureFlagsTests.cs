@@ -21,7 +21,7 @@ public class FeatureFlagsTests
     {
         var configData = new Dictionary<string, string?>
         {
-            ["FeatureFlags:console-panel"] = "true",
+            ["FeatureFlags:mcp-tools"] = "true",
             ["FeatureFlags:note-editor"] = "false"
         };
 
@@ -42,7 +42,7 @@ public class FeatureFlagsTests
     [Test]
     public void IsEnabled_EnabledInConfig_ReturnsTrue()
     {
-        var result = _featureFlags.IsEnabled("console-panel");
+        var result = _featureFlags.IsEnabled("mcp-tools");
 
         result.Should().BeTrue();
     }
@@ -85,12 +85,12 @@ public class FeatureFlagsTests
     {
         var overrides = new Dictionary<string, bool>
         {
-            ["console-panel"] = false
+            ["mcp-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("console-panel").Should().BeFalse("project override should disable the feature");
+        _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project override should disable the feature");
     }
 
     [Test]
@@ -103,7 +103,7 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("console-panel").Should().BeTrue("non-overridden features should use app-level config");
+        _featureFlags.IsEnabled("mcp-tools").Should().BeTrue("non-overridden features should use app-level config");
     }
 
     [Test]
@@ -112,14 +112,14 @@ public class FeatureFlagsTests
         var overrides = new Dictionary<string, bool>
         {
             ["note-editor"] = true,
-            ["console-panel"] = false
+            ["mcp-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
         _featureFlags.ClearProjectOverrides();
 
         _featureFlags.IsEnabled("note-editor").Should().BeFalse("should revert to app-level after clearing");
-        _featureFlags.IsEnabled("console-panel").Should().BeTrue("should revert to app-level after clearing");
+        _featureFlags.IsEnabled("mcp-tools").Should().BeTrue("should revert to app-level after clearing");
     }
 
     #endregion
@@ -160,13 +160,13 @@ public class FeatureFlagsTests
         var overrides = new Dictionary<string, bool>
         {
             ["note-editor"] = true,
-            ["console-panel"] = false
+            ["mcp-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
         _featureFlags.IsEnabled("note-editor").Should().BeTrue("project enables note-editor");
-        _featureFlags.IsEnabled("console-panel").Should().BeFalse("project disables console-panel");
+        _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project disables mcp-tools");
         _featureFlags.IsEnabled("unknown-feature").Should().BeTrue("defaults to enabled for unconfigured features");
     }
 

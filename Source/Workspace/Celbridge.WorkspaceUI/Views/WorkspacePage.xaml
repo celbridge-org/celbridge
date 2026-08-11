@@ -10,92 +10,67 @@
   NavigationCacheMode="Required"
   DataContext="{x:Bind ViewModel}">
 
+  <!-- The workspace is a recessed field that the panels sit in, so every boundary between two of them
+       shows as a gutter. The edges where a panel meets the application border are left flush: the window
+       is its own boundary and does not need pixels spent on one. -->
   <Grid x:Name="LayoutRoot"
         HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch">
+        VerticalAlignment="Stretch"
+        Background="{ThemeResource GutterBrush}">
 
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="PrimaryPanelColumn"
+      <ColumnDefinition x:Name="UtilityPanelColumn"
                         Width="300"
                         MinWidth="200"/>
+      <!-- Sized by the splitter that sits in it, and collapses with it when the Utility Panel is hidden. -->
+      <ColumnDefinition Width="Auto"/>
       <ColumnDefinition Width="*"/>
-      <ColumnDefinition x:Name="SecondaryPanelColumn"
-                        Width="300"
-                        MinWidth="200"/>
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
+      <!-- Separates the panels from the title bar. The only gutter with no splitter in it, so it carries
+           its own copy of the gutter width that Splitter.GrabAreaSize defaults to. -->
+      <RowDefinition Height="7"/>
       <RowDefinition Height="*"/>
-      <RowDefinition x:Name="ConsolePanelRow"
-                     Height="200"
-                     MinHeight="150"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Primary Panel -->
-    <Grid x:Name="PrimaryPanel"
-          Grid.RowSpan="3"
-          MinWidth="200"
-          layout:WorkspaceLayout.Region="Primary"
-          AutomationProperties.AutomationId="explorer-panel"
-          Background="{ThemeResource PanelBackgroundABrush}">
-    </Grid>
-
-    <!-- Documents Panel -->
-    <Grid x:Name="DocumentsPanel"
-          Grid.Column="1"
-          AutomationProperties.AutomationId="documents-panel"
-          Background="{ThemeResource ApplicationBackgroundBrush}">
-    </Grid>
-
-    <!-- Secondary Panel, currently empty. -->
-    <Grid x:Name="SecondaryPanel"
-          Grid.Column="2"
-          Grid.Row="0"
+    <!-- Utility Panel -->
+    <Grid x:Name="UtilityPanelHost"
+          Grid.Row="1"
           Grid.RowSpan="2"
           MinWidth="200"
-          layout:WorkspaceLayout.Region="Secondary"
-          AutomationProperties.AutomationId="inspector-panel"
-          Background="{ThemeResource PanelBackgroundABrush}">
+          layout:WorkspaceLayout.Surface="UtilityPanel"
+          AutomationProperties.AutomationId="explorer-panel"
+          Background="{ThemeResource PanelBackgroundABrush}"
+          BorderBrush="{ThemeResource DividerBrush}"
+          BorderThickness="0,1,1,0">
     </Grid>
 
-    <!-- Console Panel, currently empty. Gated by the console panel feature flag. -->
-    <Grid x:Name="ConsolePanelHost"
-          Grid.Column="1"
+    <!-- Documents Panel. Hosts the Main, Bottom and Side document areas and the splitters
+         between them. -->
+    <Grid x:Name="DocumentsPanelHost"
+          Grid.Column="2"
           Grid.Row="1"
-          layout:WorkspaceLayout.Region="Console"
-          AutomationProperties.AutomationId="console-panel"
-          Background="{ThemeResource PanelBackgroundBBrush}">
+          AutomationProperties.AutomationId="documents-panel"
+          Background="{ThemeResource GutterBrush}">
     </Grid>
 
-    <!-- Notification Bar. Spans the workspace to the right of the Primary Panel and sizes to its
+    <!-- Notification Bar. Spans the workspace to the right of the Utility Panel and sizes to its
          content, so it takes no space when no banners are showing. -->
     <Grid x:Name="NotificationBarHost"
-          Grid.Column="1"
-          Grid.ColumnSpan="2"
+          Grid.Column="2"
           Grid.Row="2"
           AutomationProperties.AutomationId="notification-bar">
     </Grid>
 
-    <!-- Grid splitters -->
-
-    <controls:Splitter x:Name="PrimaryPanelSplitter"
-                       Grid.Column="0"
-                       Grid.RowSpan="3"
-                       HorizontalAlignment="Right"
-                       Orientation="Vertical"/>
-
-    <controls:Splitter x:Name="SecondaryPanelSplitter"
-                       Grid.Column="2"
-                       Grid.RowSpan="2"
-                       HorizontalAlignment="Left"
-                       Orientation="Vertical"/>
-
-    <controls:Splitter x:Name="ConsolePanelSplitter"
+    <!-- Sits in its own gutter column rather than docked inside the Utility Panel, so the boundary reads
+         the same as the ones between document areas. It draws nothing at rest. -->
+    <controls:Splitter x:Name="UtilityPanelSplitter"
                        Grid.Column="1"
                        Grid.Row="1"
-                       VerticalAlignment="Top"
-                       Orientation="Horizontal"/>
+                       Grid.RowSpan="2"
+                       Orientation="Vertical"/>
 
     <!-- Topmost display-only overlay for pointer-driven resource drag visuals (the ghost),
          spanning every panel so the ghost is visible across the whole workspace. -->

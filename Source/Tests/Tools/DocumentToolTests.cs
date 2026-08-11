@@ -50,10 +50,10 @@ public class DocumentToolTests
         var activeResource = new ResourceKey("notes/readme.md");
         var snapshot = new DocumentStateSnapshot(
             activeResource,
-            1,
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(activeResource, new DocumentAddress(0, 0, 0), EditorId.Empty)
+                new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -61,7 +61,7 @@ public class DocumentToolTests
         var root = ParseResult(await tools.GetState());
 
         root.GetProperty("activeDocument").GetString().Should().Be("project:notes/readme.md");
-        root.GetProperty("sectionCount").GetInt32().Should().Be(1);
+        root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("MainLeft");
 
         var openDocuments = root.GetProperty("openDocuments");
         openDocuments.GetArrayLength().Should().Be(1);
@@ -78,28 +78,28 @@ public class DocumentToolTests
         var otherResource = new ResourceKey("tests/test_main.py");
         var snapshot = new DocumentStateSnapshot(
             activeResource,
-            2,
+            new List<DocumentSection> { DocumentSection.MainLeft, DocumentSection.MainRight },
             new List<OpenDocumentInfo>
             {
-                new(activeResource, new DocumentAddress(0, 0, 0), EditorId.Empty),
-                new(otherResource, new DocumentAddress(0, 1, 0), EditorId.Empty)
+                new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty),
+                new(otherResource, new DocumentAddress(0, DocumentSection.MainRight, 0), EditorId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
         var root = ParseResult(await tools.GetState());
 
-        root.GetProperty("sectionCount").GetInt32().Should().Be(2);
+        root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("MainLeft", "MainRight");
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(2);
 
         var documents = root.GetProperty("openDocuments");
         var activeDoc = documents.EnumerateArray().First(d => d.GetProperty("isActive").GetBoolean());
         activeDoc.GetProperty("resource").GetString().Should().Be("project:src/main.py");
-        activeDoc.GetProperty("sectionIndex").GetInt32().Should().Be(0);
+        activeDoc.GetProperty("section").GetString().Should().Be("MainLeft");
 
         var inactiveDoc = documents.EnumerateArray().First(d => !d.GetProperty("isActive").GetBoolean());
         inactiveDoc.GetProperty("resource").GetString().Should().Be("project:tests/test_main.py");
-        inactiveDoc.GetProperty("sectionIndex").GetInt32().Should().Be(1);
+        inactiveDoc.GetProperty("section").GetString().Should().Be("MainRight");
     }
 
     [Test]
@@ -108,10 +108,10 @@ public class DocumentToolTests
         var resource = new ResourceKey("packages/widget/index.html");
         var snapshot = new DocumentStateSnapshot(
             resource,
-            1,
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, 0, 0), new EditorId("celbridge.html-viewer"))
+                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html-viewer"))
             });
         StubGetStateSnapshot(snapshot);
 
@@ -128,10 +128,10 @@ public class DocumentToolTests
         var resource = new ResourceKey("notes/readme.md");
         var snapshot = new DocumentStateSnapshot(
             resource,
-            1,
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, 0, 0), EditorId.Empty)
+                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             });
         StubGetStateSnapshot(snapshot);
 
@@ -147,7 +147,7 @@ public class DocumentToolTests
     {
         var snapshot = new DocumentStateSnapshot(
             ResourceKey.Empty,
-            1,
+            new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>());
         StubGetStateSnapshot(snapshot);
 

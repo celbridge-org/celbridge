@@ -10,7 +10,10 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     public DocumentStateSnapshot ResultValue { get; private set; }
-        = new DocumentStateSnapshot(ResourceKey.Empty, 1, Array.Empty<OpenDocumentInfo>());
+        = new DocumentStateSnapshot(
+            ResourceKey.Empty,
+            new[] { DocumentSection.MainLeft },
+            Array.Empty<OpenDocumentInfo>());
 
     public GetDocumentStateCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -24,10 +27,10 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
         var activeDocument = documentsService.ActiveDocument;
-        var sectionCount = documentsService.SectionCount;
+        var visibleSections = documentsService.VisibleSections;
         var openDocuments = documentsService.GetOpenDocuments();
 
-        ResultValue = new DocumentStateSnapshot(activeDocument, sectionCount, openDocuments);
+        ResultValue = new DocumentStateSnapshot(activeDocument, visibleSections, openDocuments);
 
         return Result.Ok();
     }

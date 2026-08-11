@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Platform;
-using Celbridge.Settings;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
@@ -10,17 +9,11 @@ namespace Celbridge.WorkspaceUI.Views;
 
 public sealed partial class WorkspacePage : Page
 {
-    // Minimum height for the documents area when resizing the console panel
-    private const double MinDocumentsHeight = 150;
-
-    // Minimum width for the documents area when resizing side panels
+    // Minimum width for the Documents panel when resizing the Utility Panel
     private const double MinDocumentsWidth = 200;
 
-    // Minimum width for side panels
-    private const double MinSidePanelWidth = 200;
-
-    // Minimum height for the console panel
-    private const double MinConsolePanelHeight = 150;
+    // Minimum width for the Utility Panel
+    private const double MinUtilityPanelWidth = 200;
 
     private readonly ICommandService _commandService;
     private readonly Logging.ILogger<WorkspacePage> _logger;
@@ -30,11 +23,8 @@ public sealed partial class WorkspacePage : Page
     public WorkspacePageViewModel ViewModel { get; }
 
     private bool _initialized = false;
-    private readonly IFeatureFlags _featureFlags;
 
-    private SplitterHelper? _primaryPanelSplitterHelper;
-    private SplitterHelper? _secondaryPanelSplitterHelper;
-    private SplitterHelper? _consolePanelSplitterHelper;
+    private SplitterHelper? _utilityPanelSplitterHelper;
 
     // The project-notification banner strip, kept so its messenger subscriptions can be torn down on
     // page unload.
@@ -48,7 +38,6 @@ public sealed partial class WorkspacePage : Page
 
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _logger = ServiceLocator.AcquireService<Logging.ILogger<WorkspacePage>>();
-        _featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _resourceDragCoordinator = ServiceLocator.AcquireService<IResourceDragCoordinator>();
 
@@ -91,53 +80,27 @@ public sealed partial class WorkspacePage : Page
 
     private void InitializeWorkspace()
     {
-        var primaryPanelWidth = ViewModel.PrimaryPanelWidth;
-        var secondaryPanelWidth = ViewModel.SecondaryPanelWidth;
-        var bottomPanelHeight = ViewModel.ConsolePanelHeight;
+        var utilityPanelWidth = ViewModel.UtilityPanelWidth;
+        if (utilityPanelWidth > 0)
+        {
+            UtilityPanelColumn.Width = new GridLength(utilityPanelWidth);
+        }
 
-        if (primaryPanelWidth > 0)
-        {
-            PrimaryPanelColumn.Width = new GridLength(primaryPanelWidth);
-        }
-        if (secondaryPanelWidth > 0)
-        {
-            SecondaryPanelColumn.Width = new GridLength(secondaryPanelWidth);
-        }
-        if (bottomPanelHeight > 0)
-        {
-            ConsolePanelRow.Height = new GridLength(bottomPanelHeight);
-        }
+        // The top-right is the Utility Panel's only corner that meets two gutters. The other three sit on
+        // the application border, which is its own boundary and is left square.
+        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        UtilityPanelHost.CornerRadius = new CornerRadius(0, panelCornerRadius, 0, 0);
 
         UpdatePanels();
 
-        PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
-        SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
+        UtilityPanelHost.SizeChanged += (s, e) => ViewModel.UtilityPanelWidth = (float)e.NewSize.Width;
 
-        ConsolePanelHost.SizeChanged += (s, e) =>
-        {
-            ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
-        };
+        _utilityPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: MinUtilityPanelWidth,
+            maxSizeFunc: () => LayoutRoot.ActualWidth - MinDocumentsWidth);
 
-        // Initialize splitter helpers
-        _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: MinSidePanelWidth,
-            maxSizeFunc: () => LayoutRoot.ActualWidth - SecondaryPanelColumn.ActualWidth - MinDocumentsWidth);
-        _secondaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 2, minSize: MinSidePanelWidth, invertDelta: true,
-            maxSizeFunc: () => LayoutRoot.ActualWidth - PrimaryPanelColumn.ActualWidth - MinDocumentsWidth);
-        _consolePanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Rows, 1, minSize: MinConsolePanelHeight, invertDelta: true,
-            maxSizeFunc: () => LayoutRoot.ActualHeight - NotificationBarHost.ActualHeight - MinDocumentsHeight);
-
-        // Set up splitter event handlers
-        PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
-        PrimaryPanelSplitter.DragDelta += PrimaryPanelSplitter_DragDelta;
-        PrimaryPanelSplitter.DoubleClicked += PrimaryPanelSplitter_DoubleClicked;
-
-        SecondaryPanelSplitter.DragStarted += SecondaryPanelSplitter_DragStarted;
-        SecondaryPanelSplitter.DragDelta += SecondaryPanelSplitter_DragDelta;
-        SecondaryPanelSplitter.DoubleClicked += SecondaryPanelSplitter_DoubleClicked;
-
-        ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
-        ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
-        ConsolePanelSplitter.DoubleClicked += ConsolePanelSplitter_DoubleClicked;
+        UtilityPanelSplitter.DragStarted += UtilityPanelSplitter_DragStarted;
+        UtilityPanelSplitter.DragDelta += UtilityPanelSplitter_DragDelta;
+        UtilityPanelSplitter.DoubleClicked += UtilityPanelSplitter_DoubleClicked;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -146,23 +109,12 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-
         // Create panels via DI
         var utilityPanel = ServiceLocator.AcquireService<IUtilityPanel>();
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
 
-        if (!isConsolePanelEnabled)
-        {
-            // Hide console panel row and splitter completely when feature is disabled
-            ConsolePanelRow.Height = new GridLength(0);
-            ConsolePanelRow.MinHeight = 0;
-            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
-            ConsolePanelHost.Visibility = Visibility.Collapsed;
-        }
-
-        // The notification bar is not a layout region, so it is always present and is not gated on
-        // the console panel feature flag. It collapses to zero height when no banners are showing.
+        // The notification bar is not a layout surface, so it is always present. It collapses to zero
+        // height when no banners are showing.
         _notificationBar = ServiceLocator.AcquireService<NotificationBar>();
         NotificationBarHost.Children.Add(_notificationBar);
 
@@ -170,8 +122,8 @@ public sealed partial class WorkspacePage : Page
         workspaceService.SetPanels(utilityPanel, documentsPanel);
 
         // Add panels to the UI
-        PrimaryPanel.Children.Add(utilityPanel as UIElement);
-        DocumentsPanel.Children.Add(documentsPanel as UIElement);
+        UtilityPanelHost.Children.Add(utilityPanel as UIElement);
+        DocumentsPanelHost.Children.Add(documentsPanel as UIElement);
 
         // Enable the pointer-driven resource drag overlay on heads where the built-in drag-and-drop is
         // disabled. The panels register their drop targets with the coordinator as they load.
@@ -179,11 +131,6 @@ public sealed partial class WorkspacePage : Page
         {
             _resourceDragCoordinator.Initialize(ResourceDragOverlay, LayoutRoot);
         }
-
-        // Listen for workspace loaded message and feature flag changes to update console visibility
-        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
 
         _ = ViewModel.LoadWorkspaceAsync();
     }
@@ -219,48 +166,19 @@ public sealed partial class WorkspacePage : Page
         _initialized = false;
     }
 
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
-    {
-        // Update console panel visibility now that workspace has loaded with potentially different feature flag settings
-        UpdatePanels();
-    }
-
-    private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
-    {
-        UpdatePanels();
-    }
-
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
-            case nameof(ViewModel.IsPrimaryPanelVisible):
-            case nameof(ViewModel.IsSecondaryPanelVisible):
-            case nameof(ViewModel.IsConsolePanelVisible):
+            case nameof(ViewModel.IsUtilityPanelVisible):
                 UpdatePanels();
                 break;
 
-            case nameof(ViewModel.PrimaryPanelWidth):
-                if (ViewModel.IsPrimaryPanelVisible && 
-                    ViewModel.PrimaryPanelWidth > 0)
+            case nameof(ViewModel.UtilityPanelWidth):
+                if (ViewModel.IsUtilityPanelVisible &&
+                    ViewModel.UtilityPanelWidth > 0)
                 {
-                    PrimaryPanelColumn.Width = new GridLength(ViewModel.PrimaryPanelWidth);
-                }
-                break;
-
-            case nameof(ViewModel.SecondaryPanelWidth):
-                if (ViewModel.IsSecondaryPanelVisible && 
-                    ViewModel.SecondaryPanelWidth > 0)
-                {
-                    SecondaryPanelColumn.Width = new GridLength(ViewModel.SecondaryPanelWidth);
-                }
-                break;
-
-            case nameof(ViewModel.ConsolePanelHeight):
-                if (ViewModel.IsConsolePanelVisible &&
-                    ViewModel.ConsolePanelHeight > 0)
-                {
-                    ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
+                    UtilityPanelColumn.Width = new GridLength(ViewModel.UtilityPanelWidth);
                 }
                 break;
         }
@@ -268,107 +186,37 @@ public sealed partial class WorkspacePage : Page
 
     private void UpdatePanels()
     {
-        // Update panel and splitter visibility based on the panel visibility state
-        if (ViewModel.IsPrimaryPanelVisible)
+        if (ViewModel.IsUtilityPanelVisible)
         {
-            PrimaryPanelSplitter.Visibility = Visibility.Visible;
-            PrimaryPanel.Visibility = Visibility.Visible;
-            PrimaryPanelColumn.MinWidth = MinSidePanelWidth;
-            PrimaryPanelColumn.Width = new GridLength(ViewModel.PrimaryPanelWidth);
+            UtilityPanelSplitter.Visibility = Visibility.Visible;
+            UtilityPanelHost.Visibility = Visibility.Visible;
+            UtilityPanelColumn.MinWidth = MinUtilityPanelWidth;
+            UtilityPanelColumn.Width = new GridLength(ViewModel.UtilityPanelWidth);
         }
         else
         {
-            PrimaryPanelSplitter.Visibility = Visibility.Collapsed;
-            PrimaryPanel.Visibility = Visibility.Collapsed;
-            PrimaryPanelColumn.MinWidth = 0;
-            PrimaryPanelColumn.Width = new GridLength(0);
-        }
-
-        if (ViewModel.IsSecondaryPanelVisible)
-        {
-            SecondaryPanelSplitter.Visibility = Visibility.Visible;
-            SecondaryPanel.Visibility = Visibility.Visible;
-            SecondaryPanelColumn.MinWidth = MinSidePanelWidth;
-            SecondaryPanelColumn.Width = new GridLength(ViewModel.SecondaryPanelWidth);
-        }
-        else
-        {
-            SecondaryPanelSplitter.Visibility = Visibility.Collapsed;
-            SecondaryPanel.Visibility = Visibility.Collapsed;
-            SecondaryPanelColumn.MinWidth = 0;
-            SecondaryPanelColumn.Width = new GridLength(0);
-        }
-
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-
-        if (isConsolePanelEnabled && ViewModel.IsConsolePanelVisible)
-        {
-            ConsolePanelSplitter.Visibility = Visibility.Visible;
-            ConsolePanelHost.Visibility = Visibility.Visible;
-            ConsolePanelRow.MinHeight = MinConsolePanelHeight;
-            ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
-        }
-        else
-        {
-            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
-            ConsolePanelHost.Visibility = Visibility.Collapsed;
-            ConsolePanelRow.MinHeight = 0;
-            ConsolePanelRow.Height = new GridLength(0);
+            UtilityPanelSplitter.Visibility = Visibility.Collapsed;
+            UtilityPanelHost.Visibility = Visibility.Collapsed;
+            UtilityPanelColumn.MinWidth = 0;
+            UtilityPanelColumn.Width = new GridLength(0);
         }
     }
 
-    // Splitter event handlers for panel resizing
-    private void PrimaryPanelSplitter_DragStarted(object? sender, EventArgs e)
+    private void UtilityPanelSplitter_DragStarted(object? sender, EventArgs e)
     {
-        _primaryPanelSplitterHelper?.OnDragStarted();
+        _utilityPanelSplitterHelper?.OnDragStarted();
     }
 
-    private void PrimaryPanelSplitter_DragDelta(object? sender, double delta)
+    private void UtilityPanelSplitter_DragDelta(object? sender, double delta)
     {
-        _primaryPanelSplitterHelper?.OnDragDelta(delta);
+        _utilityPanelSplitterHelper?.OnDragDelta(delta);
     }
 
-    private void SecondaryPanelSplitter_DragStarted(object? sender, EventArgs e)
+    private void UtilityPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        _secondaryPanelSplitterHelper?.OnDragStarted();
-    }
-
-    private void SecondaryPanelSplitter_DragDelta(object? sender, double delta)
-    {
-        _secondaryPanelSplitterHelper?.OnDragDelta(delta);
-    }
-
-    private void ConsolePanelSplitter_DragStarted(object? sender, EventArgs e)
-    {
-        _consolePanelSplitterHelper?.OnDragStarted();
-    }
-
-    private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
-    {
-        _consolePanelSplitterHelper?.OnDragDelta(delta);
-    }
-
-    private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
-    {
-        _commandService.Execute<IResetPanelCommand>(command =>
+        _commandService.Execute<IResetSurfaceSizeCommand>(command =>
         {
-            command.Region = LayoutRegion.Primary;
-        });
-    }
-
-    private void SecondaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
-    {
-        _commandService.Execute<IResetPanelCommand>(command =>
-        {
-            command.Region = LayoutRegion.Secondary;
-        });
-    }
-
-    private void ConsolePanelSplitter_DoubleClicked(object? sender, EventArgs e)
-    {
-        _commandService.Execute<IResetPanelCommand>(command =>
-        {
-            command.Region = LayoutRegion.Console;
+            command.Surface = WorkspaceSurface.UtilityPanel;
         });
     }
 }

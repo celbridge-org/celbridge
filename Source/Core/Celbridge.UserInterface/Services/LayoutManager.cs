@@ -14,30 +14,26 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFeatureFlags _featureFlags;
 
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
-    private LayoutRegion _regionVisibility = LayoutRegion.All;
+    private WorkspaceSurface _surfaceVisibility = WorkspaceSurface.All;
 
     public LayoutManager(
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
         ISettingsService settingsService,
-        IWorkspaceWrapper workspaceWrapper,
-        IFeatureFlags featureFlags)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
-        _featureFlags = featureFlags;
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
-        _messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
     }
 
     // The typed workspace settings facade, or null when no workspace is loaded.
@@ -47,27 +43,27 @@ public class LayoutManager : IWindowModeService, ILayoutService
             ? _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings
             : null;
 
-    // The project's preferred region visibility, falling back to all regions
+    // The project's preferred surface visibility, falling back to all surfaces
     // when no workspace is loaded.
-    private LayoutRegion PreferredRegionVisibility =>
-        WorkspaceSettings?.PreferredRegionVisibility ?? LayoutRegion.All;
+    private WorkspaceSurface PreferredSurfaceVisibility =>
+        WorkspaceSettings?.PreferredSurfaceVisibility ?? WorkspaceSurface.All;
 
-    // Persists the preferred region visibility for the current project. A no-op
+    // Persists the preferred surface visibility for the current project. A no-op
     // when no workspace is loaded.
-    private void PersistPreferredRegionVisibility(LayoutRegion visibility)
+    private void PersistPreferredSurfaceVisibility(WorkspaceSurface visibility)
     {
         var workspaceSettings = WorkspaceSettings;
         if (workspaceSettings is not null)
         {
-            workspaceSettings.PreferredRegionVisibility = visibility;
+            workspaceSettings.PreferredSurfaceVisibility = visibility;
         }
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         // The workspace settings are now loaded, so apply this project's preferred
-        // region visibility. No need to persist, we are restoring the saved state.
-        UpdateRegionVisibility(PreferredRegionVisibility, shouldPersist: false);
+        // surface visibility. No need to persist, we are restoring the saved state.
+        UpdateSurfaceVisibility(PreferredSurfaceVisibility, shouldPersist: false);
     }
 
     public LayoutMode LayoutMode => _layoutMode;
@@ -103,37 +99,37 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
-    public LayoutRegion RegionVisibility
+    public WorkspaceSurface SurfaceVisibility
     {
-        get => _regionVisibility;
+        get => _surfaceVisibility;
         private set
         {
-            if (_regionVisibility != value)
+            if (_surfaceVisibility != value)
             {
-                _regionVisibility = value;
+                _surfaceVisibility = value;
             }
         }
     }
 
-    public bool IsContextPanelVisible => RegionVisibility.HasFlag(LayoutRegion.Primary);
+    public bool IsUtilityPanelVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
 
-    public bool IsInspectorPanelVisible => RegionVisibility.HasFlag(LayoutRegion.Secondary);
+    public bool IsBottomAreaVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.BottomArea);
 
-    public bool IsConsolePanelVisible => RegionVisibility.HasFlag(LayoutRegion.Console);
+    public bool IsSideAreaVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.SideArea);
 
-    public void SetRegionVisibility(LayoutRegion region, bool isVisible)
+    public void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible)
     {
         var newVisibility = isVisible
-            ? RegionVisibility | region
-            : RegionVisibility & ~region;
+            ? SurfaceVisibility | surface
+            : SurfaceVisibility & ~surface;
 
-        if (newVisibility == RegionVisibility)
+        if (newVisibility == SurfaceVisibility)
         {
             return;
         }
 
         // This is a user-initiated change, so it should persist
-        UpdateRegionVisibility(newVisibility, shouldPersist: true);
+        UpdateSurfaceVisibility(newVisibility, shouldPersist: true);
 
         // Manually changing panel visibility means the user is customizing the layout, so leave any
         // Focus/Presentation mode and return to the Default layout.
@@ -143,21 +139,10 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
-    public void ToggleRegionVisibility(LayoutRegion region)
+    public void ToggleSurfaceVisibility(WorkspaceSurface surface)
     {
-        var isCurrentlyVisible = RegionVisibility.HasFlag(region);
-        SetRegionVisibility(region, !isCurrentlyVisible);
-    }
-
-    private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
-    {
-        // Re-evaluate console visibility based on updated feature flags
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        if (!isConsolePanelEnabled &&
-            RegionVisibility.HasFlag(LayoutRegion.Console))
-        {
-            UpdateRegionVisibility(RegionVisibility & ~LayoutRegion.Console, shouldPersist: true);
-        }
+        var isCurrentlyVisible = SurfaceVisibility.HasFlag(surface);
+        SetSurfaceVisibility(surface, !isCurrentlyVisible);
     }
 
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
@@ -181,18 +166,18 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // Default restores the user's preferred panels. Focus and Presentation both hide every side
         // panel. They differ only in the toolbar and document tabs, which the views hide based on the
         // layout mode.
-        LayoutRegion targetVisibility;
+        WorkspaceSurface targetVisibility;
         if (mode == LayoutMode.Default)
         {
-            targetVisibility = PreferredRegionVisibility;
+            targetVisibility = PreferredSurfaceVisibility;
         }
         else
         {
-            targetVisibility = LayoutRegion.None;
+            targetVisibility = WorkspaceSurface.None;
         }
 
         // Mode-driven visibility is transient, so it is not persisted as the preferred configuration.
-        UpdateRegionVisibility(targetVisibility, shouldPersist: false);
+        UpdateSurfaceVisibility(targetVisibility, shouldPersist: false);
         SetLayoutModeInternal(mode);
 
         return Result.Ok();
@@ -215,13 +200,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private Result HandleResetLayout()
     {
-        // Reset panel sizes
+        // Reset panel and area sizes
         var workspaceSettings = WorkspaceSettings;
         if (workspaceSettings is not null)
         {
-            workspaceSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
-            workspaceSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
-            workspaceSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+            workspaceSettings.UtilityPanelWidth = WorkspaceConstants.UtilityPanelWidth;
+            workspaceSettings.SideAreaWidth = WorkspaceConstants.SideAreaWidth;
+            workspaceSettings.BottomAreaHeight = WorkspaceConstants.BottomAreaHeight;
         }
 
         // Reset preferred window geometry
@@ -232,14 +217,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _settingsService.Set(SettingCatalog.Window.PreferredHeight, 0);
         _settingsService.Set(SettingCatalog.Window.IsMaximized, false);
 
-        // Reset preferred visibility to all regions, but exclude Console if feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        var targetVisibility = isConsolePanelEnabled
-            ? LayoutRegion.All
-            : (LayoutRegion.Primary | LayoutRegion.Secondary);
-
-        UpdateRegionVisibility(targetVisibility, shouldPersist: true);
-        PersistPreferredRegionVisibility(targetVisibility);
+        UpdateSurfaceVisibility(WorkspaceSurface.All, shouldPersist: true);
+        PersistPreferredSurfaceVisibility(WorkspaceSurface.All);
 
         // Return to the Default layout and exit fullscreen.
         if (_layoutMode != LayoutMode.Default)
@@ -262,26 +241,26 @@ public class LayoutManager : IWindowModeService, ILayoutService
         return Result.Ok();
     }
 
-    private void UpdateRegionVisibility(LayoutRegion newVisibility, bool shouldPersist)
+    private void UpdateSurfaceVisibility(WorkspaceSurface newVisibility, bool shouldPersist)
     {
-        if (RegionVisibility == newVisibility)
+        if (SurfaceVisibility == newVisibility)
         {
             return;
         }
 
-        var oldVisibility = RegionVisibility;
-        RegionVisibility = newVisibility;
+        var oldVisibility = SurfaceVisibility;
+        SurfaceVisibility = newVisibility;
 
         // Only persist if explicitly requested (user-initiated changes)
         // and not in Presentation mode (temporary presentation state)
         if (shouldPersist &&
             _layoutMode != LayoutMode.Presentation)
         {
-            PersistPreferredRegionVisibility(newVisibility);
+            PersistPreferredSurfaceVisibility(newVisibility);
         }
 
         // Broadcast the change
-        var message = new RegionVisibilityChangedMessage(newVisibility);
+        var message = new SurfaceVisibilityChangedMessage(newVisibility);
         _messengerService.Send(message);
 
         _logger.LogDebug($"Panel visibility changed: {oldVisibility} -> {newVisibility} (persist: {shouldPersist})");

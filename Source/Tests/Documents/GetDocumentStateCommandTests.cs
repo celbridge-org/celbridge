@@ -4,26 +4,32 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Covers GetDocumentStateCommand's snapshot building: the active document, the section
-/// count, and the list of open documents.
+/// Covers GetDocumentStateCommand's snapshot building: the active document, the visible
+/// sections, and the list of open documents.
 /// </summary>
 [TestFixture]
 public class GetDocumentStateCommandTests
 {
     [Test]
-    public async Task Execute_CapturesActiveDocumentSectionCountAndOpenList()
+    public async Task Execute_CapturesActiveDocumentVisibleSectionsAndOpenList()
     {
         var activeDocument = new ResourceKey("notes/readme.md");
         var otherDocument = new ResourceKey("src/main.cs");
         var openDocuments = new List<OpenDocumentInfo>
         {
-            new(activeDocument, new DocumentAddress(0, 0, 0), EditorId.Empty),
-            new(otherDocument, new DocumentAddress(0, 1, 0), EditorId.Empty),
+            new(activeDocument, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty),
+            new(otherDocument, new DocumentAddress(0, DocumentSection.MainRight, 0), EditorId.Empty),
+        };
+
+        var visibleSections = new List<DocumentSection>
+        {
+            DocumentSection.MainLeft,
+            DocumentSection.MainRight
         };
 
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.ActiveDocument.Returns(activeDocument);
-        documentsService.SectionCount.Returns(2);
+        documentsService.VisibleSections.Returns(visibleSections);
         documentsService.GetOpenDocuments().Returns(openDocuments);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -39,7 +45,7 @@ public class GetDocumentStateCommandTests
         result.IsSuccess.Should().BeTrue();
         var snapshot = command.ResultValue;
         snapshot.ActiveDocument.Should().Be(activeDocument);
-        snapshot.SectionCount.Should().Be(2);
+        snapshot.VisibleSections.Should().Equal(visibleSections);
         snapshot.OpenDocuments.Should().BeEquivalentTo(openDocuments);
     }
 
@@ -48,7 +54,7 @@ public class GetDocumentStateCommandTests
     {
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.ActiveDocument.Returns(ResourceKey.Empty);
-        documentsService.SectionCount.Returns(1);
+        documentsService.VisibleSections.Returns(new List<DocumentSection> { DocumentSection.MainLeft });
         documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
 
         var workspaceService = Substitute.For<IWorkspaceService>();

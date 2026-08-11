@@ -1,7 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Console;
 using Celbridge.Platform;
-using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
@@ -14,7 +12,6 @@ public sealed partial class LayoutToolbar : UserControl
     private readonly ICommandService _commandService;
     private readonly IWindowModeService _windowModeService;
     private readonly ILayoutService _layoutService;
-    private readonly IFeatureFlags _featureFlags;
 
     private bool _isUpdatingUI = false;
     private bool _isOnWorkspacePage = false;
@@ -36,9 +33,8 @@ public sealed partial class LayoutToolbar : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
-        _featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
 
-        // The flyout opens over the document region, where a hosted web view would take the click too.
+        // The flyout opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(PanelLayoutFlyout);
 
@@ -58,10 +54,9 @@ public sealed partial class LayoutToolbar : UserControl
         // Register for layout manager state change messages
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
         _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
-        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
+        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
     }
 
     private void LayoutToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -85,12 +80,6 @@ public sealed partial class LayoutToolbar : UserControl
         DefaultModeRadio.Visibility = visibility;
         FocusModeRadio.Visibility = visibility;
         PresentationModeRadio.Visibility = visibility;
-
-        // Hide console panel toggle button if console-panel feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
-        ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
     }
 
     private void ApplyTooltips()
@@ -99,17 +88,17 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(PanelLayoutButton, layoutTooltip);
         ToolTipService.SetPlacement(PanelLayoutButton, PlacementMode.Bottom);
 
-        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_TogglePrimaryTooltip");
-        ToolTipService.SetToolTip(TogglePrimaryPanelButton, primaryTooltip);
-        ToolTipService.SetPlacement(TogglePrimaryPanelButton, PlacementMode.Bottom);
+        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleUtilityPanelTooltip");
+        ToolTipService.SetToolTip(ToggleUtilityPanelButton, primaryTooltip);
+        ToolTipService.SetPlacement(ToggleUtilityPanelButton, PlacementMode.Bottom);
 
-        var consoleTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleConsoleTooltip");
-        ToolTipService.SetToolTip(ToggleConsolePanelButton, consoleTooltip);
-        ToolTipService.SetPlacement(ToggleConsolePanelButton, PlacementMode.Bottom);
+        var consoleTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleBottomAreaTooltip");
+        ToolTipService.SetToolTip(ToggleBottomAreaButton, consoleTooltip);
+        ToolTipService.SetPlacement(ToggleBottomAreaButton, PlacementMode.Bottom);
 
-        var secondaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleSecondaryTooltip");
-        ToolTipService.SetToolTip(ToggleSecondaryPanelButton, secondaryTooltip);
-        ToolTipService.SetPlacement(ToggleSecondaryPanelButton, PlacementMode.Bottom);
+        var secondaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleSideAreaTooltip");
+        ToolTipService.SetToolTip(ToggleSideAreaButton, secondaryTooltip);
+        ToolTipService.SetPlacement(ToggleSideAreaButton, PlacementMode.Bottom);
 
         var defaultModeTooltip = _stringLocalizer.GetString("LayoutToolbar_DefaultModeTooltip");
         ToolTipService.SetToolTip(DefaultModeRadio, defaultModeTooltip);
@@ -147,12 +136,6 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        // Update button visibility when workspace loads (feature flags may have changed)
-        UpdateWorkspaceControlsVisibility();
-    }
-
-    private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
-    {
         UpdateWorkspaceControlsVisibility();
     }
 
@@ -167,7 +150,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdateFullScreenToggle();
     }
 
-    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
+    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
     {
         UpdatePanelIcons();
     }
@@ -203,40 +186,40 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdatePanelIcons()
     {
-        PrimaryPanelIcon.IsActivePanel = _layoutService.IsContextPanelVisible;
-        ConsolePanelIcon.IsActivePanel = _layoutService.IsConsolePanelVisible;
-        SecondaryPanelIcon.IsActivePanel = _layoutService.IsInspectorPanelVisible;
+        UtilityPanelIcon.IsActivePanel = _layoutService.IsUtilityPanelVisible;
+        BottomAreaIcon.IsActivePanel = _layoutService.IsBottomAreaVisible;
+        SideAreaIcon.IsActivePanel = _layoutService.IsSideAreaVisible;
     }
 
-    private void TogglePrimaryPanelButton_Click(object sender, RoutedEventArgs e)
+    private void ToggleUtilityPanelButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
-        var isVisible = !_layoutService.IsContextPanelVisible;
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsUtilityPanelVisible;
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = LayoutRegion.Primary;
+            command.Surfaces = WorkspaceSurface.UtilityPanel;
             command.IsVisible = isVisible;
         });
     }
 
-    private void ToggleConsolePanelButton_Click(object sender, RoutedEventArgs e)
+    private void ToggleBottomAreaButton_Click(object sender, RoutedEventArgs e)
     {
-        // Toggle the banners-only console region's visibility.
-        var isVisible = !_layoutService.IsConsolePanelVisible;
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        // Toggle the Bottom document area's visibility.
+        var isVisible = !_layoutService.IsBottomAreaVisible;
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = LayoutRegion.Console;
+            command.Surfaces = WorkspaceSurface.BottomArea;
             command.IsVisible = isVisible;
         });
     }
 
-    private void ToggleSecondaryPanelButton_Click(object sender, RoutedEventArgs e)
+    private void ToggleSideAreaButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
-        var isVisible = !_layoutService.IsInspectorPanelVisible;
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsSideAreaVisible;
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = LayoutRegion.Secondary;
+            command.Surfaces = WorkspaceSurface.SideArea;
             command.IsVisible = isVisible;
         });
     }

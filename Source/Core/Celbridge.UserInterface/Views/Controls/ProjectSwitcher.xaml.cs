@@ -30,7 +30,7 @@ public sealed partial class ProjectSwitcher : UserControl
 
         this.DataContext = ViewModel;
 
-        // The menu drops down over the document region, where a hosted web view would take the click too.
+        // The menu drops down over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(RecentProjectsFlyout);
 

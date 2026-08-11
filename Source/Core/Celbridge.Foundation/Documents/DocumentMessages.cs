@@ -17,10 +17,10 @@ public record DocumentLayoutChangedMessage();
 public record ActiveDocumentChangedMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent when the document section proportions change.
-/// Contains ratios (relative values that sum to 1.0).
+/// A message sent when an area's split state or split position changes. The ratio is the share of the
+/// area taken by its primary section, and is meaningful only while the area is split.
 /// </summary>
-public record SectionRatiosChangedMessage(List<double> SectionRatios);
+public record AreaLayoutChangedMessage(DocumentArea Area, bool IsSplit, double SplitRatio);
 
 /// <summary>
 /// A message sent when an open document's resource has been renamed or moved.

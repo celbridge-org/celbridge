@@ -26,7 +26,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         SearchHistoryFlyout.Opening += OnSearchHistoryFlyoutOpening;
         ReplaceHistoryFlyout.Opening += OnReplaceHistoryFlyoutOpening;
 
-        // A long history list reaches past the panel into the document region, where a hosted web view
+        // A long history list reaches past the panel into the document area, where a hosted web view
         // would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(SearchHistoryFlyout);

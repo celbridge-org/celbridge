@@ -2,10 +2,10 @@ namespace Celbridge.Workspace;
 
 /// <summary>
 /// A spotlightable UI landmark. Id matches the AutomationProperties.AutomationId set on the
-/// control and is the resolution key; Region is the layout region to reveal before showing it,
-/// or null when the landmark does not gate on a region.
+/// control and is the resolution key; Surface is the layout surface to reveal before showing it,
+/// or null when the landmark does not gate on a surface.
 /// </summary>
-public partial record class LandmarkDescriptor(string Id, LayoutRegion? Region);
+public partial record class LandmarkDescriptor(string Id, WorkspaceSurface? Surface);
 
 /// <summary>
 /// The runtime vocabulary of spotlightable UI landmarks. Built-in landmarks are registered at

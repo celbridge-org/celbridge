@@ -11,7 +11,7 @@ namespace Celbridge.Tests.Settings;
 /// <summary>
 /// Covers the Workspace-scoped panel, search, and editor settings: first-open
 /// defaults, per-project independence, the typed WorkspaceSettings facade
-/// round-trip through the JSON store, and that ResetPanelCommand resets the
+/// round-trip through the JSON store, and that ResetSurfaceSizeCommand resets the
 /// current project rather than a global setting.
 /// </summary>
 [TestFixture]
@@ -83,11 +83,10 @@ public class WorkspaceSettingsFacadeTests
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
         var settings = fixture.Settings;
 
-        settings.PreferredRegionVisibility.Should().Be(LayoutRegion.All);
-        settings.PrimaryPanelWidth.Should().Be(WorkspaceConstants.PrimaryPanelWidth);
-        settings.SecondaryPanelWidth.Should().Be(WorkspaceConstants.SecondaryPanelWidth);
-        settings.ConsolePanelHeight.Should().Be(WorkspaceConstants.ConsolePanelHeight);
-        settings.DetailPanelHeight.Should().Be(WorkspaceConstants.DetailPanelHeight);
+        settings.PreferredSurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        settings.UtilityPanelWidth.Should().Be(WorkspaceConstants.UtilityPanelWidth);
+        settings.SideAreaWidth.Should().Be(WorkspaceConstants.SideAreaWidth);
+        settings.BottomAreaHeight.Should().Be(WorkspaceConstants.BottomAreaHeight);
         settings.SearchMatchCase.Should().BeFalse();
         settings.SearchWholeWord.Should().BeFalse();
         settings.ReplaceMode.Should().BeFalse();
@@ -100,7 +99,7 @@ public class WorkspaceSettingsFacadeTests
         var folderPath = Path.Combine(_rootFolderPath, "projectA");
 
         var fixture = await LoadWorkspaceAsync(folderPath);
-        fixture.Settings.PrimaryPanelWidth = 480f;
+        fixture.Settings.UtilityPanelWidth = 480f;
         fixture.Settings.SearchMatchCase = true;
         fixture.Settings.PreviousNewFileExtension = ".md";
 
@@ -109,7 +108,7 @@ public class WorkspaceSettingsFacadeTests
         fixture.WorkspaceSettingsService.UnloadWorkspaceSettings();
 
         var reloaded = await LoadWorkspaceAsync(folderPath);
-        reloaded.Settings.PrimaryPanelWidth.Should().Be(480f);
+        reloaded.Settings.UtilityPanelWidth.Should().Be(480f);
         reloaded.Settings.SearchMatchCase.Should().BeTrue();
         reloaded.Settings.PreviousNewFileExtension.Should().Be(".md");
     }
@@ -118,11 +117,11 @@ public class WorkspaceSettingsFacadeTests
     public async Task SeparateWorkspaces_DoNotShareLayout()
     {
         var workspaceA = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
-        workspaceA.Settings.PrimaryPanelWidth = 512f;
+        workspaceA.Settings.UtilityPanelWidth = 512f;
         await workspaceA.WorkspaceSettingsService.WorkspaceSettingsStore!.FlushAsync();
 
         var workspaceB = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectB"));
-        workspaceB.Settings.PrimaryPanelWidth.Should().Be(WorkspaceConstants.PrimaryPanelWidth);
+        workspaceB.Settings.UtilityPanelWidth.Should().Be(WorkspaceConstants.UtilityPanelWidth);
     }
 
     [Test]
@@ -141,26 +140,26 @@ public class WorkspaceSettingsFacadeTests
 
         var facade = new BindableWorkspaceSettings(settingsService);
 
-        Action write = () => facade.ConsolePanelHeight = 999f;
+        Action write = () => facade.BottomAreaHeight = 999f;
 
         write.Should().NotThrow();
-        facade.ConsolePanelHeight.Should().Be(WorkspaceConstants.ConsolePanelHeight);
+        facade.BottomAreaHeight.Should().Be(WorkspaceConstants.BottomAreaHeight);
     }
 
     [Test]
-    public async Task ResetPanelCommand_ResetsLayoutForCurrentWorkspace()
+    public async Task ResetSurfaceSizeCommand_ResetsLayoutForCurrentWorkspace()
     {
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
-        fixture.Settings.PrimaryPanelWidth = 500f;
+        fixture.Settings.UtilityPanelWidth = 500f;
 
-        var command = new ResetPanelCommand(fixture.WorkspaceWrapper)
+        var command = new ResetSurfaceSizeCommand(fixture.WorkspaceWrapper)
         {
-            Region = LayoutRegion.Primary,
+            Surface = WorkspaceSurface.UtilityPanel,
         };
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        fixture.Settings.PrimaryPanelWidth.Should().Be(WorkspaceConstants.PrimaryPanelWidth);
+        fixture.Settings.UtilityPanelWidth.Should().Be(WorkspaceConstants.UtilityPanelWidth);
     }
 }

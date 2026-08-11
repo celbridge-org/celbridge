@@ -39,8 +39,9 @@ public class DocumentsService : IDocumentsService, IDisposable
     // Reads TabView-backed state, so callers must be on the UI thread.
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
-    // Reads an int, which is atomic in .NET, so SectionCount is safe to call from any thread.
-    public int SectionCount => DocumentsPanel.SectionCount;
+    // Builds a fresh list from the panel's split and visibility state on each read, so callers must be
+    // on the UI thread.
+    public IReadOnlyList<DocumentSection> VisibleSections => DocumentsPanel.VisibleSections;
 
     public IDocumentEditorRegistry DocumentEditorRegistry => _documentEditorRegistry;
 
@@ -247,7 +248,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
-        _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
+        _messengerService.Register<AreaLayoutChangedMessage>(this, OnAreaLayoutChangedMessage);
     }
 
     private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)
@@ -260,9 +261,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         _ = StoreDocumentLayout();
     }
 
-    private void OnSectionRatiosChangedMessage(object recipient, SectionRatiosChangedMessage message)
+    private void OnAreaLayoutChangedMessage(object recipient, AreaLayoutChangedMessage message)
     {
-        _ = _layoutStore.StoreSectionRatiosAsync(message.SectionRatios);
+        _ = _layoutStore.StoreAreaLayoutAsync();
     }
 
     public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default)

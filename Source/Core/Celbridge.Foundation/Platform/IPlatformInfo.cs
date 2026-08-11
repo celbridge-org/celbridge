@@ -117,4 +117,11 @@ public interface IPlatformInfo
     /// True on macOS.
     /// </summary>
     bool HostedWebViewFocusIsNative { get; }
+
+    /// <summary>
+    /// Whether a hosted web view is clipped by an ancestor's corner radius, so a panel can round the corners
+    /// its editor content fills rather than only the ones its own chrome covers. True on the packaged Windows
+    /// head only.
+    /// </summary>
+    bool ClipsHostedWebViewToCorners { get; }
 }

@@ -10,24 +10,29 @@ public partial class DocumentTools
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
     [RelatedGuides("resource_keys", "workspace_panels")]
-    public async partial Task<CallToolResult> Open(string fileResource, int sectionIndex = -1, bool forceReload = false, bool activate = false)
+    public async partial Task<CallToolResult> Open(string fileResource, string section = "", bool forceReload = false, bool activate = false)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        if (sectionIndex != -1 && sectionIndex is < 0 or > 2)
+        DocumentSection? targetSection = null;
+        if (!string.IsNullOrEmpty(section))
         {
-            return ToolResponse.Error($"Invalid sectionIndex '{sectionIndex}': must be 0, 1, 2, or -1 for the active section.");
-        }
+            if (!DocumentLayoutHelper.TryParseSection(section, out var parsedSection))
+            {
+                var sectionNames = string.Join(", ", DocumentLayoutHelper.AllSections);
+                return ToolResponse.Error($"Invalid section '{section}': must be one of {sectionNames}, or empty for the active section.");
+            }
 
-        int? targetSectionIndex = sectionIndex == -1 ? null : sectionIndex;
+            targetSection = parsedSection;
+        }
 
         var openResult = await ExecuteCommandAsync<IOpenDocumentCommand, OpenDocumentOutcome>(command =>
         {
             command.FileResource = fileResourceKey;
-            command.TargetSectionIndex = targetSectionIndex;
+            command.TargetSection = targetSection;
             command.ForceReload = forceReload;
             command.Activate = activate;
         });

@@ -17,7 +17,6 @@ internal static class FeatureFlagCatalog
 {
     public static readonly IReadOnlyList<FeatureFlagDescriptor> Descriptors = new List<FeatureFlagDescriptor>
     {
-        new(FeatureFlagConstants.ConsolePanel, "ProjectSettings_FeatureFlag_ConsolePanel_Title", "ProjectSettings_FeatureFlag_ConsolePanel_Description"),
         new(FeatureFlagConstants.McpTools, "ProjectSettings_FeatureFlag_McpTools_Title", "ProjectSettings_FeatureFlag_McpTools_Description"),
         new(FeatureFlagConstants.WebAccessTools, "ProjectSettings_FeatureFlag_WebAccessTools_Title", "ProjectSettings_FeatureFlag_WebAccessTools_Description"),
         new(FeatureFlagConstants.WebViewDevTools, "ProjectSettings_FeatureFlag_WebViewDevTools_Title", "ProjectSettings_FeatureFlag_WebViewDevTools_Description"),

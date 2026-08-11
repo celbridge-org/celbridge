@@ -24,7 +24,7 @@ public sealed partial class NavigationToolbar : UserControl
 
         this.DataContext = ViewModel;
 
-        // The menu opens over the document region, where a hosted web view would take the click too.
+        // The menu opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(MainMenuFlyout);
 

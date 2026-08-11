@@ -18,7 +18,7 @@ public class ResetSectionsCommand : CommandBase, IResetSectionsCommand
     {
         var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
-        await documentsPanel.ResetSectionRatiosAsync();
+        await documentsPanel.ResetAreaLayoutAsync();
 
         return Result.Ok();
     }

@@ -26,7 +26,9 @@ public sealed partial class Splitter : UserControl
             new PropertyMetadata(Orientation.Vertical, OnOrientationChanged));
 
     /// <summary>
-    /// The thickness of the visible splitter line.
+    /// The thickness of the line the splitter draws at rest. Zero by default, because a splitter between two
+    /// panels leaves the boundary to the edges those panels draw. A divider with no such panels either side
+    /// of it sets a thickness to draw the boundary itself.
     /// </summary>
     public double LineThickness
     {
@@ -39,7 +41,7 @@ public sealed partial class Splitter : UserControl
             nameof(LineThickness),
             typeof(double),
             typeof(Splitter),
-            new PropertyMetadata(1.0, OnLineThicknessChanged));
+            new PropertyMetadata(0.0, OnLineThicknessChanged));
 
     /// <summary>
     /// The thickness of the splitter line while dragging.
@@ -58,7 +60,8 @@ public sealed partial class Splitter : UserControl
             new PropertyMetadata(4.0));
 
     /// <summary>
-    /// The width of the interactive (grabbable) area in pixels.
+    /// The width of the interactive (grabbable) area in pixels. This is also the visible width of the
+    /// gutter between two panels, since the grab band is what holds that gap open.
     /// </summary>
     public double GrabAreaSize
     {
@@ -71,7 +74,7 @@ public sealed partial class Splitter : UserControl
             nameof(GrabAreaSize),
             typeof(double),
             typeof(Splitter),
-            new PropertyMetadata(8.0, OnGrabAreaSizeChanged));
+            new PropertyMetadata(7.0, OnGrabAreaSizeChanged));
 
     /// <summary>
     /// Event raised when a drag operation starts.
@@ -165,64 +168,29 @@ public sealed partial class Splitter : UserControl
         }
     }
 
+    // A splitter fills the gutter it sits in, so its lines run down the middle of that gutter.
     private void UpdateOrientation()
     {
         if (Orientation == Orientation.Vertical)
         {
             // Vertical splitter (resizes columns left/right).
-            var lineAlignment = ResolveVerticalLineAlignment();
-            SplitterLine.HorizontalAlignment = lineAlignment;
+            SplitterLine.HorizontalAlignment = HorizontalAlignment.Center;
             SplitterLine.VerticalAlignment = VerticalAlignment.Stretch;
-            HoverLine.HorizontalAlignment = lineAlignment;
+            HoverLine.HorizontalAlignment = HorizontalAlignment.Center;
             HoverLine.VerticalAlignment = VerticalAlignment.Stretch;
         }
         else
         {
             // Horizontal splitter (resizes rows top/bottom).
-            var lineAlignment = ResolveHorizontalLineAlignment();
             SplitterLine.HorizontalAlignment = HorizontalAlignment.Stretch;
-            SplitterLine.VerticalAlignment = lineAlignment;
+            SplitterLine.VerticalAlignment = VerticalAlignment.Center;
             HoverLine.HorizontalAlignment = HorizontalAlignment.Stretch;
-            HoverLine.VerticalAlignment = lineAlignment;
+            HoverLine.VerticalAlignment = VerticalAlignment.Center;
         }
 
         UpdateLineThickness();
         UpdateGrabAreaSize();
         ApplyManagedCursor();
-    }
-
-    // The visible line is drawn on the boundary edge the splitter is docked against, so the grab band extends
-    // from the line into the panel the splitter lives in and stays clear of the adjacent editor. A splitter
-    // with no docked edge sits in its own gutter (a document-section splitter between two editors), so its
-    // line stays centred in the gutter.
-    private HorizontalAlignment ResolveVerticalLineAlignment()
-    {
-        if (HorizontalAlignment == HorizontalAlignment.Left)
-        {
-            return HorizontalAlignment.Left;
-        }
-
-        if (HorizontalAlignment == HorizontalAlignment.Right)
-        {
-            return HorizontalAlignment.Right;
-        }
-
-        return HorizontalAlignment.Center;
-    }
-
-    private VerticalAlignment ResolveHorizontalLineAlignment()
-    {
-        if (VerticalAlignment == VerticalAlignment.Top)
-        {
-            return VerticalAlignment.Top;
-        }
-
-        if (VerticalAlignment == VerticalAlignment.Bottom)
-        {
-            return VerticalAlignment.Bottom;
-        }
-
-        return VerticalAlignment.Center;
     }
 
     private void UpdateLineThickness()

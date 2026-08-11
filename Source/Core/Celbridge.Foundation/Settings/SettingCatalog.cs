@@ -43,25 +43,24 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Panel and region layout state. Workspace-scoped, so each project
+    /// Panel and surface layout state. Workspace-scoped, so each project
     /// remembers its own panel layout.
     /// </summary>
     public static class Layout
     {
-        public static readonly SettingDescriptor<LayoutRegion> PreferredRegionVisibility =
-            new("Layout.PreferredRegionVisibility", SettingScope.Workspace, LayoutRegion.All);
+        // The settings store serializes an enum by its integer value, so a change to the WorkspaceSurface
+        // flags needs a new key name. Reusing one reads stale data into the wrong surfaces.
+        public static readonly SettingDescriptor<WorkspaceSurface> PreferredSurfaceVisibility =
+            new("Layout.VisibleSurfaces", SettingScope.Workspace, WorkspaceSurface.All);
 
-        public static readonly SettingDescriptor<float> PrimaryPanelWidth =
-            new("Layout.PrimaryPanelWidth", SettingScope.Workspace, WorkspaceConstants.PrimaryPanelWidth);
+        public static readonly SettingDescriptor<float> UtilityPanelWidth =
+            new("Layout.UtilityPanelWidth", SettingScope.Workspace, WorkspaceConstants.UtilityPanelWidth);
 
-        public static readonly SettingDescriptor<float> SecondaryPanelWidth =
-            new("Layout.SecondaryPanelWidth", SettingScope.Workspace, WorkspaceConstants.SecondaryPanelWidth);
+        public static readonly SettingDescriptor<float> SideAreaWidth =
+            new("Layout.SideAreaWidth", SettingScope.Workspace, WorkspaceConstants.SideAreaWidth);
 
-        public static readonly SettingDescriptor<float> ConsolePanelHeight =
-            new("Layout.ConsolePanelHeight", SettingScope.Workspace, WorkspaceConstants.ConsolePanelHeight);
-
-        public static readonly SettingDescriptor<float> DetailPanelHeight =
-            new("Layout.DetailPanelHeight", SettingScope.Workspace, WorkspaceConstants.DetailPanelHeight);
+        public static readonly SettingDescriptor<float> BottomAreaHeight =
+            new("Layout.BottomAreaHeight", SettingScope.Workspace, WorkspaceConstants.BottomAreaHeight);
 
         // The utility id of the active rail surface (e.g. "celbridge.explorer" or a custom id). Restored on
         // load, falling back to Explorer when the persisted id no longer resolves to a rail item.

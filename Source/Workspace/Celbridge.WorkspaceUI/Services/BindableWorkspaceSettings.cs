@@ -19,34 +19,28 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         _settings = settings;
     }
 
-    public LayoutRegion PreferredRegionVisibility
+    public WorkspaceSurface PreferredSurfaceVisibility
     {
-        get => Get(SettingCatalog.Layout.PreferredRegionVisibility);
-        set => Set(SettingCatalog.Layout.PreferredRegionVisibility, value);
+        get => Get(SettingCatalog.Layout.PreferredSurfaceVisibility);
+        set => Set(SettingCatalog.Layout.PreferredSurfaceVisibility, value);
     }
 
-    public float PrimaryPanelWidth
+    public float UtilityPanelWidth
     {
-        get => Get(SettingCatalog.Layout.PrimaryPanelWidth);
-        set => Set(SettingCatalog.Layout.PrimaryPanelWidth, value);
+        get => Get(SettingCatalog.Layout.UtilityPanelWidth);
+        set => Set(SettingCatalog.Layout.UtilityPanelWidth, value);
     }
 
-    public float SecondaryPanelWidth
+    public float SideAreaWidth
     {
-        get => Get(SettingCatalog.Layout.SecondaryPanelWidth);
-        set => Set(SettingCatalog.Layout.SecondaryPanelWidth, value);
+        get => Get(SettingCatalog.Layout.SideAreaWidth);
+        set => Set(SettingCatalog.Layout.SideAreaWidth, value);
     }
 
-    public float ConsolePanelHeight
+    public float BottomAreaHeight
     {
-        get => Get(SettingCatalog.Layout.ConsolePanelHeight);
-        set => Set(SettingCatalog.Layout.ConsolePanelHeight, value);
-    }
-
-    public float DetailPanelHeight
-    {
-        get => Get(SettingCatalog.Layout.DetailPanelHeight);
-        set => Set(SettingCatalog.Layout.DetailPanelHeight, value);
+        get => Get(SettingCatalog.Layout.BottomAreaHeight);
+        set => Set(SettingCatalog.Layout.BottomAreaHeight, value);
     }
 
     public bool SearchMatchCase

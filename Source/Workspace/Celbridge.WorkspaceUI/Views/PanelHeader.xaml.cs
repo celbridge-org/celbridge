@@ -122,32 +122,32 @@ public sealed partial class PanelHeader : UserControl
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        // The region is derived from the container the header currently sits in.
-        var region = WorkspaceLayout.FindRegion(this);
-        if (region == LayoutRegion.None)
+        // The surface is derived from the container the header currently sits in.
+        var surface = WorkspaceLayout.FindSurface(this);
+        if (surface == WorkspaceSurface.None)
         {
             return;
         }
 
-        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Regions = region;
+            command.Surfaces = surface;
             command.IsVisible = false;
         });
     }
 
     private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        var region = WorkspaceLayout.FindRegion(this);
-        if (region == LayoutRegion.None)
+        var surface = WorkspaceLayout.FindSurface(this);
+        if (surface == WorkspaceSurface.None)
         {
             return;
         }
 
         // Double-clicking the title bar resets the panel to its default size
-        _commandService.Execute<IResetPanelCommand>(command =>
+        _commandService.Execute<IResetSurfaceSizeCommand>(command =>
         {
-            command.Region = region;
+            command.Surface = surface;
         });
     }
 }

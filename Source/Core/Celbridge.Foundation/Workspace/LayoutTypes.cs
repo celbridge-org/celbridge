@@ -21,19 +21,9 @@ public enum WorkspacePanel
     Search,
 
     /// <summary>
-    /// The Documents panel.
+    /// The Documents panel, covering all three document areas.
     /// </summary>
     Documents,
-
-    /// <summary>
-    /// The Inspector panel.
-    /// </summary>
-    Inspector,
-
-    /// <summary>
-    /// The Console panel.
-    /// </summary>
-    Console,
 
     /// <summary>
     /// The custom-utility surface in the Utility Panel (Explorer and Search have their own values).
@@ -47,34 +37,34 @@ public enum WorkspacePanel
 }
 
 /// <summary>
-/// Flags representing which layout regions should be visible.
-/// Multiple panels can share a region.
+/// Flags representing which of the collapsible workspace surfaces should be visible. The Main document
+/// area is always visible and is not a surface.
 /// </summary>
 [Flags]
-public enum LayoutRegion
+public enum WorkspaceSurface
 {
     /// <summary>
-    /// No regions visible.
+    /// No surfaces visible.
     /// </summary>
     None = 0,
 
     /// <summary>
-    /// Primary region (left sidebar containing Explorer and Search).
+    /// The Utility Panel (left sidebar hosting Explorer, Search and Project Settings).
     /// </summary>
-    Primary = 1 << 0,
+    UtilityPanel = 1 << 0,
 
     /// <summary>
-    /// Secondary region (right sidebar containing Inspector).
+    /// The Bottom document area.
     /// </summary>
-    Secondary = 1 << 1,
+    BottomArea = 1 << 1,
 
     /// <summary>
-    /// Console region (bottom panel).
+    /// The Side document area.
     /// </summary>
-    Console = 1 << 2,
+    SideArea = 1 << 2,
 
     /// <summary>
-    /// All regions are visible.
+    /// All surfaces are visible.
     /// </summary>
-    All = Primary | Secondary | Console
+    All = UtilityPanel | BottomArea | SideArea
 }

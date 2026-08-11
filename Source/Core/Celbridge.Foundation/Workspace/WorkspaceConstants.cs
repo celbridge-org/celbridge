@@ -3,22 +3,17 @@ namespace Celbridge.Workspace;
 public static class WorkspaceConstants
 {
     /// <summary>
-    /// Default width of the primary panel.
+    /// Default width of the Utility Panel.
     /// </summary>
-    public const float PrimaryPanelWidth = 300f;
+    public const float UtilityPanelWidth = 300f;
 
     /// <summary>
-    /// Default width of the secondary panel.
+    /// Default width of the Side document area.
     /// </summary>
-    public const float SecondaryPanelWidth = 300f;
+    public const float SideAreaWidth = 300f;
 
     /// <summary>
-    /// Default height of the console panel.
+    /// Default height of the Bottom document area.
     /// </summary>
-    public const float ConsolePanelHeight = 350f;
-
-    /// <summary>
-    /// Default height of the detail panel.
-    /// </summary>
-    public const float DetailPanelHeight = 250f;
+    public const float BottomAreaHeight = 350f;
 }

@@ -3,44 +3,44 @@ using Celbridge.UserInterface.Helpers;
 namespace Celbridge.WorkspaceUI;
 
 /// <summary>
-/// An attached property that declares which layout region a container hosts. A panel derives the region it
-/// sits in by walking to the nearest ancestor carrying this property, so a panel's region follows where the
+/// An attached property that declares which layout surface a container hosts. A panel derives the surface it
+/// sits in by walking to the nearest ancestor carrying this property, so a panel's surface follows where the
 /// layout mounts it rather than being hard-coded on the panel.
 /// </summary>
 public static class WorkspaceLayout
 {
-    public static readonly DependencyProperty RegionProperty =
+    public static readonly DependencyProperty SurfaceProperty =
         DependencyProperty.RegisterAttached(
-            "Region",
-            typeof(LayoutRegion),
+            "Surface",
+            typeof(WorkspaceSurface),
             typeof(WorkspaceLayout),
-            new PropertyMetadata(LayoutRegion.None));
+            new PropertyMetadata(WorkspaceSurface.None));
 
-    public static LayoutRegion GetRegion(DependencyObject element)
+    public static WorkspaceSurface GetSurface(DependencyObject element)
     {
-        return (LayoutRegion)element.GetValue(RegionProperty);
+        return (WorkspaceSurface)element.GetValue(SurfaceProperty);
     }
 
-    public static void SetRegion(DependencyObject element, LayoutRegion value)
+    public static void SetSurface(DependencyObject element, WorkspaceSurface value)
     {
-        element.SetValue(RegionProperty, value);
+        element.SetValue(SurfaceProperty, value);
     }
 
     /// <summary>
-    /// Walks from the element towards the visual root and returns the nearest ancestor's Region declaration,
-    /// or None when no ancestor is a region container.
+    /// Walks from the element towards the visual root and returns the nearest ancestor's Surface declaration,
+    /// or None when no ancestor is a surface container.
     /// </summary>
-    public static LayoutRegion FindRegion(DependencyObject element)
+    public static WorkspaceSurface FindSurface(DependencyObject element)
     {
         foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
         {
-            var region = GetRegion(ancestor);
-            if (region != LayoutRegion.None)
+            var surface = GetSurface(ancestor);
+            if (surface != WorkspaceSurface.None)
             {
-                return region;
+                return surface;
             }
         }
 
-        return LayoutRegion.None;
+        return WorkspaceSurface.None;
     }
 }

@@ -1,11 +1,16 @@
 ﻿<UserControl
-  x:Class="Celbridge.Documents.Views.DocumentSection"
+  x:Class="Celbridge.Documents.Views.DocumentSectionView"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
 
+  <!-- A section is one of the rectangles the workspace is divided into, so it carries its own background and
+       the edges that face a gutter. The thicknesses and corners depend on what sits beside it, so they are
+       set by the container. -->
   <Grid x:Name="RootGrid"
+        Background="{ThemeResource ApplicationBackgroundBrush}"
+        BorderBrush="{ThemeResource DividerBrush}"
         AllowDrop="True"
         DragOver="RootGrid_DragOver"
         Drop="RootGrid_Drop">

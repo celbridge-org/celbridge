@@ -8,15 +8,15 @@ using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
 
-using IDocumentSectionLogger = ILogger<DocumentSection>;
+using IDocumentSectionViewLogger = ILogger<DocumentSectionView>;
 
 /// <summary>
 /// A document section containing a TabView for managing document tabs.
 /// Multiple sections can be displayed side-by-side in the DocumentSectionContainer.
 /// </summary>
-public sealed partial class DocumentSection : UserControl
+public sealed partial class DocumentSectionView : UserControl
 {
-    private readonly IDocumentSectionLogger _logger;
+    private readonly IDocumentSectionViewLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
     private readonly PointerEventHandler _tabStripWheelHandler;
@@ -31,52 +31,52 @@ public sealed partial class DocumentSection : UserControl
     /// <summary>
     /// Static field to track which section the dragged tab came from.
     /// </summary>
-    private static DocumentSection? _dragSourceSection;
+    private static DocumentSectionView? _dragSourceSectionView;
 
     // Localized strings
     private string NoDocumentsOpenString => _stringLocalizer.GetString("DocumentSection_DropFilesPrompt");
 
     /// <summary>
-    /// The section index (0, 1, or 2) identifying this section's position.
+    /// Identifies which of the six tab strips this section is.
     /// </summary>
-    public int SectionIndex { get; set; }
+    public DocumentSection Section { get; set; }
 
     /// <summary>
     /// Event raised when the selected document changes in this section.
     /// </summary>
-    public event Action<DocumentSection, ResourceKey>? SelectionChanged;
+    public event Action<DocumentSectionView, ResourceKey>? SelectionChanged;
 
     /// <summary>
     /// Event raised when the open documents in this section change.
     /// </summary>
-    public event Action<DocumentSection, List<ResourceKey>>? DocumentsLayoutChanged;
+    public event Action<DocumentSectionView, List<ResourceKey>>? DocumentsLayoutChanged;
 
     /// <summary>
     /// Event raised when a tab close is requested.
     /// </summary>
-    public event Action<DocumentSection, ResourceKey>? CloseRequested;
+    public event Action<DocumentSectionView, ResourceKey>? CloseRequested;
 
     /// <summary>
     /// Event raised when a context menu action is requested on a document tab.
     /// </summary>
-    public event Action<DocumentSection, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
+    public event Action<DocumentSectionView, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
     /// <summary>
     /// Event raised when a tab from another section is dropped into this section.
     /// </summary>
-    public event Action<DocumentSection, DocumentTab>? TabDroppedInside;
+    public event Action<DocumentSectionView, DocumentTab>? TabDroppedInside;
 
     /// <summary>
     /// Event raised when resource files are dropped into this section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
-    public event Action<DocumentSection, List<IResource>, int>? FilesDropped;
+    public event Action<DocumentSectionView, List<IResource>, int>? FilesDropped;
 
-    public DocumentSection()
+    public DocumentSectionView()
     {
         InitializeComponent();
 
-        _logger = ServiceLocator.AcquireService<IDocumentSectionLogger>();
+        _logger = ServiceLocator.AcquireService<IDocumentSectionViewLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _tabPointerPressedHandler = OnTabPointerPressed;
@@ -126,7 +126,7 @@ public sealed partial class DocumentSection : UserControl
         if (!DispatcherQueue.HasThreadAccess)
         {
             throw new InvalidOperationException(
-                "DocumentSection must be accessed on the UI thread. " +
+                "DocumentSectionView must be accessed on the UI thread. " +
                 "Worker-thread reads should go through the cached snapshot on DocumentsService.");
         }
     }
@@ -151,6 +151,20 @@ public sealed partial class DocumentSection : UserControl
     public void SetTabStripFooter(UIElement? content)
     {
         FooterPresenter.Content = content;
+    }
+
+    /// <summary>
+    /// Sets the edges the section draws against the gutters around it, and the corners where two of those
+    /// edges meet.
+    /// </summary>
+    public void SetGutterChrome(Thickness edges, CornerRadius corners)
+    {
+        RootGrid.BorderThickness = edges;
+        RootGrid.CornerRadius = corners;
+
+        // The placeholder fills the section, so it has to repeat the rounding or it squares the corners off
+        // again while the section is empty.
+        EmptyPlaceholder.CornerRadius = corners;
     }
 
     /// <summary>
@@ -234,35 +248,56 @@ public sealed partial class DocumentSection : UserControl
     }
 
     /// <summary>
-    /// Gets or sets the number of currently visible sections. Used to determine which move options to show.
+    /// Whether this section's area is currently split. Used to determine which move options to show.
     /// </summary>
-    public int VisibleSectionCount
+    public bool IsAreaSplit
     {
-        get => _visibleSectionCount;
+        get => _isAreaSplit;
         set
         {
-            _visibleSectionCount = value;
-            // Update all tabs with the new count
+            _isAreaSplit = value;
             foreach (var tabItem in TabView.TabItems)
             {
                 if (tabItem is DocumentTab tab)
                 {
-                    tab.VisibleSectionCount = value;
+                    tab.IsAreaSplit = value;
                 }
             }
         }
     }
 
-    private int _visibleSectionCount = 1;
+    /// <summary>
+    /// Whether this section's area has room for two sections. Used to determine whether the tab context
+    /// menu offers to start a split.
+    /// </summary>
+    public bool CanSplitArea
+    {
+        get => _canSplitArea;
+        set
+        {
+            _canSplitArea = value;
+            foreach (var tabItem in TabView.TabItems)
+            {
+                if (tabItem is DocumentTab tab)
+                {
+                    tab.CanSplitArea = value;
+                }
+            }
+        }
+    }
+
+    private bool _isAreaSplit = false;
+    private bool _canSplitArea = false;
 
     /// <summary>
     /// Adds a document tab to this section.
     /// </summary>
     public void AddTab(DocumentTab tab)
     {
-        tab.SectionIndex = SectionIndex;
-        // Set from cached value - stays in sync via VisibleSectionCount property setter
-        tab.VisibleSectionCount = VisibleSectionCount;
+        tab.Section = Section;
+        // Set from cached value - stays in sync via the IsAreaSplit property setter
+        tab.IsAreaSplit = IsAreaSplit;
+        tab.CanSplitArea = CanSplitArea;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);
@@ -646,7 +681,7 @@ public sealed partial class DocumentSection : UserControl
     {
         // Set the static drag state when a tab starts being dragged
         _draggedTab = tab;
-        _dragSourceSection = this;
+        _dragSourceSectionView = this;
     }
 
     private void UpdateEmptyPlaceholderVisibility()
@@ -687,7 +722,7 @@ public sealed partial class DocumentSection : UserControl
     private void RootGrid_DragOver(object sender, DragEventArgs e)
     {
         // Accept drags from other sections (for dropping on empty sections or anywhere in the section)
-        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
         {
             e.AcceptedOperation = DataPackageOperation.Move;
             e.DragUIOverride.IsCaptionVisible = false;
@@ -715,7 +750,7 @@ public sealed partial class DocumentSection : UserControl
         }
 
         // Handle drop from other sections
-        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
         {
             var tab = _draggedTab;
 
@@ -740,7 +775,7 @@ public sealed partial class DocumentSection : UserControl
     private void TabView_DragOver(object sender, DragEventArgs e)
     {
         // Accept drags from other sections
-        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
         {
             e.AcceptedOperation = DataPackageOperation.Move;
             e.DragUIOverride.IsCaptionVisible = false;
@@ -768,7 +803,7 @@ public sealed partial class DocumentSection : UserControl
         }
 
         // Handle drop from other sections
-        if (_draggedTab != null && _dragSourceSection != null && _dragSourceSection != this)
+        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
         {
             var tab = _draggedTab;
 
@@ -824,7 +859,7 @@ public sealed partial class DocumentSection : UserControl
     public static void ClearDragState()
     {
         _draggedTab = null;
-        _dragSourceSection = null;
+        _dragSourceSectionView = null;
     }
 
     /// <summary>
@@ -832,8 +867,9 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public void InsertTab(DocumentTab tab, int index)
     {
-        tab.SectionIndex = SectionIndex;
-        tab.VisibleSectionCount = VisibleSectionCount;
+        tab.Section = Section;
+        tab.IsAreaSplit = IsAreaSplit;
+        tab.CanSplitArea = CanSplitArea;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);

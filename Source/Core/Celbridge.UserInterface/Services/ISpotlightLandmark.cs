@@ -2,7 +2,7 @@ namespace Celbridge.UserInterface.Services;
 
 /// <summary>
 /// A per-landmark reveal seam owned by the component that hosts the landmark. It runs any
-/// preparation a spotlight on this landmark needs beyond the default region reveal - for example
+/// preparation a spotlight on this landmark needs beyond the default surface reveal - for example
 /// fading in a hover-only toolbar - and undoes the transient part when the spotlight clears.
 /// </summary>
 public interface ISpotlightLandmark

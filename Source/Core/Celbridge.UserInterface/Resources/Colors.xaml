@@ -10,6 +10,8 @@
       <Color x:Key="TitleBarInactiveColor">#E5E5E5</Color>
       <Color x:Key="PanelBackgroundAColor">#F3F3F3</Color>
       <Color x:Key="PanelBackgroundBColor">#F7F8FA</Color>
+      <!-- Darker than both panel tones, so the channel between two document areas reads as a groove. -->
+      <Color x:Key="GutterColor">#E1E2E4</Color>
       <Color x:Key="DividerColor">#D0D0D0</Color>
       <Color x:Key="ErrorTextColor">#D32F2F</Color>
       <Color x:Key="WarningTextColor">#FFA000</Color>
@@ -24,6 +26,7 @@
       <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
       <Color x:Key="PanelBackgroundAColor">#2B2D30</Color>
       <Color x:Key="PanelBackgroundBColor">#1E1F22</Color>
+      <Color x:Key="GutterColor">#1A1B1D</Color>
       <!-- Lighter than both panel backgrounds so a divider reads against either surface. -->
       <Color x:Key="DividerColor">#393B40</Color>
       <Color x:Key="ErrorTextColor">#FF5252</Color>
@@ -42,6 +45,9 @@
 
   <SolidColorBrush x:Key="PanelBackgroundBBrush"
                      Color="{ThemeResource PanelBackgroundBColor}" />
+
+  <SolidColorBrush x:Key="GutterBrush"
+                     Color="{ThemeResource GutterColor}" />
 
   <SolidColorBrush x:Key="DividerBrush"
                      Color="{ThemeResource DividerColor}" />

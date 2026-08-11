@@ -12,13 +12,15 @@ public enum LayoutMode
     Default,
 
     /// <summary>
-    /// The side panels are hidden. The application toolbar and document tabs remain visible.
+    /// The active document's area fills the workspace, with the Utility Panel and the other two
+    /// document areas hidden. The area keeps its split, so a split one still shows both of its
+    /// documents. The application toolbar and document tabs remain visible.
     /// </summary>
     Focus,
 
     /// <summary>
-    /// Only the selected document content is visible. Side panels, the toolbar, and document tabs
-    /// are all hidden.
+    /// As Focus, with the application toolbar and document tabs hidden as well, leaving only the
+    /// document content.
     /// </summary>
     Presentation
 }
@@ -35,12 +37,12 @@ public enum LayoutTransition
     Default,
 
     /// <summary>
-    /// Switch to the Focus layout (side panels hidden).
+    /// Switch to the Focus layout (the active document's area alone).
     /// </summary>
     Focus,
 
     /// <summary>
-    /// Switch to the Presentation layout (content only).
+    /// Switch to the Presentation layout (document content only).
     /// </summary>
     Presentation,
 

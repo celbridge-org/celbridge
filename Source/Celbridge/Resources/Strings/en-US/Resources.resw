@@ -358,7 +358,7 @@
     <value>Reload Project</value>
   </data>
   <data name="PanelHeader_CloseTooltip" xml:space="preserve">
-    <value>Close panel</value>
+    <value>Close Panel</value>
   </data>
   <data name="NotificationBar_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
@@ -722,17 +722,8 @@ Open with default application instead?</value>
   <data name="NotificationBar_ProjectConfigEntryErrorMessage" xml:space="preserve">
     <value>Some entries in {0} were skipped or degraded. See log for details.</value>
   </data>
-  <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
-    <value>Split Editor</value>
-  </data>
-  <data name="DocumentToolbar_OneSection" xml:space="preserve">
-    <value>Single Editor</value>
-  </data>
-  <data name="DocumentToolbar_TwoSections" xml:space="preserve">
-    <value>Two Editors</value>
-  </data>
-  <data name="DocumentToolbar_ThreeSections" xml:space="preserve">
-    <value>Three Editors</value>
+  <data name="DocumentToolbar_CloseAreaTooltip" xml:space="preserve">
+    <value>Close Panel</value>
   </data>
   <data name="DocumentSection_DropFilesPrompt" xml:space="preserve">
     <value>Drop files here to open them</value>
@@ -772,6 +763,21 @@ Open with default application instead?</value>
   </data>
   <data name="DocumentTab_MoveRight" xml:space="preserve">
     <value>Move Right</value>
+  </data>
+  <data name="DocumentTab_MoveUp" xml:space="preserve">
+    <value>Move Up</value>
+  </data>
+  <data name="DocumentTab_MoveDown" xml:space="preserve">
+    <value>Move Down</value>
+  </data>
+  <data name="DocumentTab_SplitRight" xml:space="preserve">
+    <value>Split Right</value>
+  </data>
+  <data name="DocumentTab_SplitDown" xml:space="preserve">
+    <value>Split Down</value>
+  </data>
+  <data name="DocumentTab_UnsplitAll" xml:space="preserve">
+    <value>Unsplit All</value>
   </data>
   <data name="DocumentTab_SelectFile" xml:space="preserve">
     <value>Select File</value>
@@ -856,12 +862,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_FeatureFlagState_DefaultFormat" xml:space="preserve">
     <value>Default ({0})</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_ConsolePanel_Title" xml:space="preserve">
-    <value>Console Panel</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_ConsolePanel_Description" xml:space="preserve">
-    <value>Console panel region at the bottom of the workspace.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
     <value>MCP Tools</value>
@@ -1046,13 +1046,13 @@ Open with default application instead?</value>
   <data name="ResourceTree_CopyPath" xml:space="preserve">
     <value>Copy Path</value>
   </data>
-  <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleUtilityPanelTooltip" xml:space="preserve">
     <value>Toggle Left Panel</value>
   </data>
-  <data name="LayoutToolbar_ToggleConsoleTooltip" xml:space="preserve">
-    <value>Toggle Console Panel</value>
+  <data name="LayoutToolbar_ToggleBottomAreaTooltip" xml:space="preserve">
+    <value>Toggle Bottom Panel</value>
   </data>
-  <data name="LayoutToolbar_ToggleSecondaryTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleSideAreaTooltip" xml:space="preserve">
     <value>Toggle Right Panel</value>
   </data>
   <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
@@ -1101,7 +1101,7 @@ Open with default application instead?</value>
     <value>The full editor with all panels visible</value>
   </data>
   <data name="LayoutToolbar_FocusModeTooltip" xml:space="preserve">
-    <value>Hide the side panels to focus on the document</value>
+    <value>Hide the other panels to focus on the current document</value>
   </data>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
     <value>Show only the document content</value>

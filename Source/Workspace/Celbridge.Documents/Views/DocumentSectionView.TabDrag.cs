@@ -9,11 +9,11 @@ namespace Celbridge.Documents.Views;
 public record TabHeaderBounds(DocumentTab Tab, Rect Bounds);
 
 /// <summary>
-/// Pointer-driven tab drag support for DocumentSection, used on heads where the built-in TabView
+/// Pointer-driven tab drag support for DocumentSectionView, used on heads where the built-in TabView
 /// drag-and-drop is disabled (see TabDragController). Kept in its own partial so the desktop-only
 /// drag surface stays discoverable and separate from the core tab management.
 /// </summary>
-public sealed partial class DocumentSection
+public sealed partial class DocumentSectionView
 {
     private readonly PointerEventHandler _tabPointerPressedHandler;
 
@@ -21,7 +21,7 @@ public sealed partial class DocumentSection
     /// Event raised when a pointer is pressed on a document tab header. Feeds the pointer-driven
     /// tab drag controller on heads where the built-in tab drag-and-drop is disabled.
     /// </summary>
-    public event Action<DocumentSection, DocumentTab, PointerRoutedEventArgs>? TabPointerPressed;
+    public event Action<DocumentSectionView, DocumentTab, PointerRoutedEventArgs>? TabPointerPressed;
 
     /// <summary>
     /// Disables the built-in TabView drag-and-drop on heads that use the pointer-driven controller,

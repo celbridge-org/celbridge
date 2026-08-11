@@ -32,13 +32,13 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
         if (ShowExplorerPanel)
         {
-            _commandService.Execute<ISetRegionVisibilityCommand>(command =>
+            _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
             {
-                command.Regions = LayoutRegion.Primary;
+                command.Surfaces = WorkspaceSurface.UtilityPanel;
                 command.IsVisible = true;
             });
 
-            // Switch the Utility Panel to the Explorer tab. Making the Primary region visible is not
+            // Switch the Utility Panel to the Explorer tab. Making the Utility Panel visible is not
             // enough on its own: the Explorer content stays collapsed while another utility (such as
             // Search) is the active tab, so the selected resource would not be shown.
             var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
