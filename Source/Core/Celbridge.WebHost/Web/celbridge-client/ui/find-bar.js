@@ -36,7 +36,7 @@ const STYLES = `
     padding: 6px 8px;
     font-size: 13px;
     font-family: var(--cel-font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif);
-    background-color: var(--cel-panel-bg-alt, #f6f8fa);
+    background-color: var(--cel-chrome-bg, #f6f8fa);
     color: var(--cel-text-primary, #24292f);
     border: 1px solid var(--cel-divider, #d0d7de);
     border-top: none;
@@ -51,7 +51,7 @@ const STYLES = `
     font-size: 14px;
     border: 1px solid var(--cel-divider, #d0d7de);
     border-radius: 4px;
-    background-color: var(--cel-app-bg, #ffffff);
+    background-color: var(--cel-content-bg, #ffffff);
     color: var(--cel-text-primary, #24292f);
     outline: none;
 }
@@ -81,12 +81,12 @@ const STYLES = `
 .celbridge-find-toggle[aria-pressed="true"] { background-color: var(--cel-accent, #0969da); color: var(--cel-accent-text, #ffffff); }
 
 html[data-theme="dark"] .celbridge-find-bar {
-    background-color: var(--cel-panel-bg-alt, #282828);
+    background-color: var(--cel-chrome-bg, #282828);
     color: var(--cel-text-primary, #d4d4d4);
     border-color: var(--cel-divider, #444);
 }
 html[data-theme="dark"] .celbridge-find-input {
-    background-color: var(--cel-app-bg, #1e1e1e);
+    background-color: var(--cel-content-bg, #1e1e1e);
     color: var(--cel-text-primary, #d4d4d4);
     border-color: var(--cel-divider, #444);
 }

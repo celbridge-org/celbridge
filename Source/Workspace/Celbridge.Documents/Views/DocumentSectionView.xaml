@@ -9,14 +9,14 @@
        the edges that face a gutter. The thicknesses and corners depend on what sits beside it, so they are
        set by the container. -->
   <Grid x:Name="RootGrid"
-        Background="{ThemeResource ApplicationBackgroundBrush}"
-        BorderBrush="{ThemeResource DividerBrush}"
+        Background="{ThemeResource ChromeBackgroundBrush}"
+        BorderBrush="{ThemeResource PanelEdgeBrush}"
         AllowDrop="True"
         DragOver="RootGrid_DragOver"
         Drop="RootGrid_Drop">
     <!-- Empty section placeholder (shown when no tabs) -->
     <Border x:Name="EmptyPlaceholder"
-            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            Background="{ThemeResource ContentBackgroundBrush}"
             Visibility="Collapsed"
             AllowDrop="True"
             DragOver="RootGrid_DragOver"

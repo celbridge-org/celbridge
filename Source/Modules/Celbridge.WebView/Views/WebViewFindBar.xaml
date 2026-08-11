@@ -7,7 +7,7 @@
     Visibility="Collapsed">
 
     <Border Padding="8,4"
-            Background="{ThemeResource PanelBackgroundABrush}"
+            Background="{ThemeResource ChromeBackgroundBrush}"
             BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,0,0,1">
         <StackPanel Orientation="Horizontal"

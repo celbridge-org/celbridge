@@ -33,12 +33,15 @@
     </Storyboard>
   </UserControl.Resources>
 
-  <!-- Transparent grab area with centered visible line. The band stays transparent so the whole area is hit
-       testable and the recessed field it sits in shows through as the gutter. -->
+  <!-- Grab area, filled with BandBrush and holding the accent line that appears on hover and drag. The band
+       is never null, so the whole area stays hit testable whether it is filled or transparent. A filled band
+       edges its leading side so it reads apart from whatever sits against it, which for a document splitter
+       can be arbitrary web content. -->
   <Border x:Name="SplitterBorder"
-          Background="Transparent">
+          Background="Transparent"
+          BorderBrush="{ThemeResource PanelEdgeBrush}">
     <Grid>
-      <!-- Base thin visible line -->
+      <!-- Hidden at rest, thickened to the accent while dragging -->
       <Rectangle x:Name="SplitterLine"
                  Fill="{ThemeResource DividerBrush}"/>
       <!-- Accent hover line - fades in on hover -->

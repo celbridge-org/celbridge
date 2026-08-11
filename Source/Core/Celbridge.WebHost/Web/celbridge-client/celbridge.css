@@ -22,7 +22,8 @@ body {
     font-family: var(--cel-font-ui);
     font-size: var(--cel-font-size-base);
     color: var(--cel-text-primary);
-    background: var(--cel-app-bg);
+    /* An editor is a document surface, so its page takes the content role. */
+    background: var(--cel-content-bg);
 }
 
 /* Common form controls, approximating the native Fluent look so a utility's inputs and buttons read as part
@@ -336,30 +337,23 @@ hr {
     }
 }
 
-/* Splitter: a draggable divider between two flex panes, matching the native WinUI Splitter — a thin base
-   line at rest that fades in a 4px accent on hover and thickens to a solid accent line while dragging. Place
-   a `.cel-splitter` between two flex children and drive the resize with attachSplitter() from
-   ui/splitter.js (which toggles the `dragging` class used below). */
+/* Splitter: a draggable divider between two flex panes, matching the native WinUI Splitter — a filled band
+   at rest that fades in a 4px accent on hover and holds it solid while dragging. Place a `.cel-splitter`
+   between two flex children and drive the resize with attachSplitter() from ui/splitter.js (which toggles
+   the `dragging` class used below).
+
+   The band takes chrome rather than the gutter tone: a gutter separates two workspace panels, and this
+   separates two panes of one document, so the difference in tone is what tells them apart. It edges its
+   leading side, which faces the main pane whose content the host does not control; the trailing side faces
+   a panel of ours that the band already reads against, and edging both makes it read as a doubled border. */
 .cel-splitter {
-    flex: 0 0 8px;
+    flex: 0 0 var(--cel-splitter-width, 8px);
     position: relative;
     cursor: col-resize;
     user-select: none;
     touch-action: none;
-    background: transparent;
-}
-
-/* Persistent thin base line, centered in the 8px grab area. */
-.cel-splitter::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 1px;
-    transform: translateX(-50%);
-    background: var(--cel-divider-subtle);
-    pointer-events: none;
+    background: var(--cel-chrome-bg);
+    border-left: 1px solid var(--cel-panel-edge);
 }
 
 /* Accent overlay: fades in on hover (matching the Splitter's 200ms fade), held solid while dragging. */
@@ -384,12 +378,6 @@ hr {
 
 .cel-splitter.dragging::after {
     transition: opacity 0ms;
-}
-
-/* While dragging, thicken the base line into a 4px accent line, matching the Splitter's drag thickness. */
-.cel-splitter.dragging::before {
-    width: 4px;
-    background: var(--cel-accent);
 }
 
 /* Navigation tab strip for a panel whose content divides into sections, mirroring the native settings panels
@@ -509,7 +497,7 @@ hr {
     display: flex;
     flex-direction: column;
     width: var(--cel-rail-width);
-    background: var(--cel-panel-bg);
+    background: var(--cel-chrome-bg);
     border-right: 1px solid var(--cel-divider-subtle);
 }
 

@@ -165,24 +165,23 @@ html, body {
 }
 
 /* The panel title, mirroring the native PanelHeader above the settings panels' tab strip (40px tall, over
-   the panel background, at the panel title type). The left inset is pulled in 4px to 8px like
-   .settings-scroll so it lines up with the content below. */
+   the chrome background, at the panel title type). */
 .settings-title {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     height: 40px;
-    padding: 0 12px 0 8px;
+    padding: 0 12px;
     font-size: var(--cel-font-size-small);
     font-weight: var(--cel-font-weight-strong);
     color: var(--cel-text-secondary);
-    background: var(--cel-panel-bg);
+    background: var(--cel-chrome-bg);
 }
 
 /* The shared tab strip stays fixed above the scrolling section, so the section name and any config error
    can't be scrolled out of view. Its left inset matches the content below (see .settings-scroll). */
 #settings-view .cel-nav-tabs {
-    padding-left: 8px;
+    padding-left: 12px;
 }
 
 /* Only the active section scrolls; the title and tab strip above and the footer below stay pinned. */
@@ -191,10 +190,9 @@ html, body {
     min-height: 0;
     overflow: auto;
     /* Content inset matches the native settings panels (ScrollViewer Padding="12" in
-       PackagesSectionView.xaml): 12px on every side, except the left is pulled in 4px to 8px because the
-       .cel-splitter's line is centered in its 8px grab area and so sits 4px inside this pane (8px + that 4px
-       = a 12px divider-to-content gap, lining up with the XAML panels beside it). */
-    padding: 12px 12px 12px 8px;
+       PackagesSectionView.xaml). The .cel-splitter fills its whole 8px band, so the divider ends at this
+       pane's edge and a plain 12px inset gives the same divider-to-content gap the XAML panels have. */
+    padding: 12px;
 }
 
 /* Pinned in the tab strip below the section header (hidden until a parse error), so a validation error stays

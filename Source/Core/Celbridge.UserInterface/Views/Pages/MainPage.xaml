@@ -8,6 +8,6 @@
     <Grid x:Name="LayoutRoot" RowDefinitions="Auto, *">
         <Frame x:Name="ContentFrame"
                Grid.Row="1"
-               Background="{ThemeResource ApplicationBackgroundBrush}" />
+               Background="{ThemeResource ChromeBackgroundBrush}" />
     </Grid>
 </Page>

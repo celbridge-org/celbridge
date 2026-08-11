@@ -287,7 +287,7 @@ function setSettingsVisible(visible) {
 
 // The sidebar and the terminal each keep a reasonable minimum width, so dragging the splitter can never
 // shrink either below these (a narrow window is handled by flex-shrink in console.css). SPLITTER_WIDTH
-// mirrors .cel-splitter in celbridge.css.
+// mirrors --cel-splitter-width in celbridge-tokens.css.
 const SIDEBAR_MIN_WIDTH = 240;
 const TERMINAL_MIN_WIDTH = 360;
 const SPLITTER_WIDTH = 8;

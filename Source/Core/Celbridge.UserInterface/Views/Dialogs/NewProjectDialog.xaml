@@ -68,7 +68,7 @@
 
     <!-- Separator -->
     <Rectangle Height="1" 
-               Fill="{ThemeResource DividerStrokeColorDefaultBrush}" 
+               Fill="{ThemeResource DividerBrush}"
                Margin="0,8,0,12"/>
 
     <!-- Project name text box -->

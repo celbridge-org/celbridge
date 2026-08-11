@@ -26,22 +26,22 @@ public sealed partial class Splitter : UserControl
             new PropertyMetadata(Orientation.Vertical, OnOrientationChanged));
 
     /// <summary>
-    /// The thickness of the line the splitter draws at rest. Zero by default, because a splitter between two
-    /// panels leaves the boundary to the edges those panels draw. A divider with no such panels either side
-    /// of it sets a thickness to draw the boundary itself.
+    /// The brush filling the splitter's grab band at rest. Null by default, because a splitter between two
+    /// panels sits in a gutter whose own fill carries the boundary. A splitter dividing two panes of one
+    /// document has no gutter behind it and takes the chrome brush, so its band carries the boundary itself.
     /// </summary>
-    public double LineThickness
+    public Brush? BandBrush
     {
-        get => (double)GetValue(LineThicknessProperty);
-        set => SetValue(LineThicknessProperty, value);
+        get => (Brush?)GetValue(BandBrushProperty);
+        set => SetValue(BandBrushProperty, value);
     }
 
-    public static readonly DependencyProperty LineThicknessProperty =
+    public static readonly DependencyProperty BandBrushProperty =
         DependencyProperty.Register(
-            nameof(LineThickness),
-            typeof(double),
+            nameof(BandBrush),
+            typeof(Brush),
             typeof(Splitter),
-            new PropertyMetadata(0.0, OnLineThicknessChanged));
+            new PropertyMetadata(null, OnBandBrushChanged));
 
     /// <summary>
     /// The thickness of the splitter line while dragging.
@@ -99,6 +99,9 @@ public sealed partial class Splitter : UserControl
     private const int NormalZIndex = 100;
     private const int DraggingZIndex = 200;
     private const int DoubleClickDebounceMs = 500;
+    private const double BandEdgeThickness = 1.0;
+
+    private readonly SolidColorBrush _transparentBandBrush = new(Colors.Transparent);
 
     private bool _isDragging;
     private double _dragStartPosition;
@@ -137,6 +140,7 @@ public sealed partial class Splitter : UserControl
         UpdateOrientation();
         UpdateLineThickness();
         UpdateGrabAreaSize();
+        UpdateBand();
 
         // Defensive reset: cancel any fade-in that a transient pointer enter raised during
         // construction so the hover line starts hidden rather than stuck on.
@@ -152,11 +156,11 @@ public sealed partial class Splitter : UserControl
         }
     }
 
-    private static void OnLineThicknessChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnBandBrushChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is Splitter splitter)
         {
-            splitter.UpdateLineThickness();
+            splitter.UpdateBand();
         }
     }
 
@@ -190,14 +194,17 @@ public sealed partial class Splitter : UserControl
 
         UpdateLineThickness();
         UpdateGrabAreaSize();
+        UpdateBand();
         ApplyManagedCursor();
     }
 
+    // The line is hidden at rest and only appears under the pointer or a drag: the fill either side of the
+    // splitter carries the boundary, whether that is the gutter it sits in or the band it fills.
     private void UpdateLineThickness()
     {
         if (Orientation == Orientation.Vertical)
         {
-            SplitterLine.Width = LineThickness;
+            SplitterLine.Width = 0;
             SplitterLine.Height = double.NaN; // Stretch
             HoverLine.Width = DraggingLineThickness;
             HoverLine.Height = double.NaN; // Stretch
@@ -205,10 +212,35 @@ public sealed partial class Splitter : UserControl
         else
         {
             SplitterLine.Width = double.NaN; // Stretch
-            SplitterLine.Height = LineThickness;
+            SplitterLine.Height = 0;
             HoverLine.Width = double.NaN; // Stretch
             HoverLine.Height = DraggingLineThickness;
         }
+    }
+
+    private void UpdateBand()
+    {
+        if (BandBrush is null)
+        {
+            // Transparent rather than null, so an unfilled band is still hit testable for the drag. It sits
+            // in a gutter, and the panels either side of it draw the edges, so it draws none of its own.
+            SplitterBorder.Background = _transparentBandBrush;
+            SplitterBorder.BorderThickness = new Thickness(0);
+            return;
+        }
+
+        SplitterBorder.Background = BandBrush;
+
+        // One edge, on the leading side. That is the side facing the document's main pane, whose content the
+        // host does not control; the trailing side faces a panel of ours that the band already reads against.
+        // Edging both sides makes the band read as a doubled border rather than as one divide.
+        if (Orientation == Orientation.Vertical)
+        {
+            SplitterBorder.BorderThickness = new Thickness(BandEdgeThickness, 0, 0, 0);
+            return;
+        }
+
+        SplitterBorder.BorderThickness = new Thickness(0, BandEdgeThickness, 0, 0);
     }
 
     private void UpdateGrabAreaSize()

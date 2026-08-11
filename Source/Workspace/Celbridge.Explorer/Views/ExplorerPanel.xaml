@@ -29,8 +29,8 @@
 
     <!-- Persistent Toolbar: shares the header background (one chrome band) and is divided from the tree -->
     <Border Grid.Row="1"
-            Background="{ThemeResource PanelBackgroundABrush}"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            Background="{ThemeResource ChromeBackgroundBrush}"
+            BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,0,0,1"
             Padding="6,2,6,2">
       <local:ExplorerToolbar x:Name="ExplorerToolbar"

@@ -8,7 +8,7 @@
   xmlns:converters="using:Celbridge.UserInterface.Converters"
   xmlns:services="using:Celbridge.UserInterface.Services"
   DataContext="{x:Bind ViewModel}"
-  Background="{ThemeResource ApplicationBackgroundBrush}">
+  Background="{ThemeResource ContentBackgroundBrush}">
 
   <UserControl.Resources>
     <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>

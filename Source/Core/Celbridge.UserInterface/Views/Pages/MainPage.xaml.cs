@@ -37,7 +37,7 @@ public partial class MainPage : Page
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
 
         _contentArea = new Grid()
-            .Background(ThemeResource.Get<Brush>("ApplicationBackgroundBrush"))
+            .Background(ThemeResource.Get<Brush>("ChromeBackgroundBrush"))
             .Name("ContentArea");
 
         // Host the spotlight callout in the app shell so it can point at any landmark, including

@@ -10,9 +10,10 @@
   NavigationCacheMode="Required"
   DataContext="{x:Bind ViewModel}">
 
-  <!-- The workspace is a recessed field that the panels sit in, so every boundary between two of them
-       shows as a gutter. The edges where a panel meets the application border are left flush: the window
-       is its own boundary and does not need pixels spent on one. -->
+  <!-- The workspace is a field that the panels sit in, so every boundary between two of them shows as a
+       gutter, and every panel draws an edge against the gutters it faces. The edges where a panel meets the
+       application border are left flush: the window is its own boundary and does not need pixels spent on
+       one. -->
   <Grid x:Name="LayoutRoot"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
@@ -42,8 +43,8 @@
           MinWidth="200"
           layout:WorkspaceLayout.Surface="UtilityPanel"
           AutomationProperties.AutomationId="explorer-panel"
-          Background="{ThemeResource PanelBackgroundABrush}"
-          BorderBrush="{ThemeResource DividerBrush}"
+          Background="{ThemeResource ChromeBackgroundBrush}"
+          BorderBrush="{ThemeResource PanelEdgeBrush}"
           BorderThickness="0,1,1,0">
     </Grid>
 
