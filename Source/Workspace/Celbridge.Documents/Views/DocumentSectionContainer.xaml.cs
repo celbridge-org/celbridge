@@ -1,3 +1,5 @@
+using Celbridge.Documents.Helpers;
+using Celbridge.Documents.Services;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
@@ -21,17 +23,14 @@ public sealed partial class DocumentSectionContainer : UserControl
     private const double MinSideAreaWidth = 200;
     private const double MinMainAreaWidth = 200;
     private const double MinMainAreaHeight = 150;
-    private const double EdgeThickness = 1.0;
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
-    private const double DefaultSplitRatio = 0.5;
 
+    private readonly AreaLayoutState _layoutState = new();
+    private readonly SectionChromeCalculator _chromeCalculator;
     private readonly Dictionary<DocumentSection, DocumentSectionView> _sections = new();
-    private readonly Dictionary<DocumentArea, bool> _areaSplit = new();
-    private readonly Dictionary<DocumentArea, double> _areaSplitRatio = new();
     private readonly Dictionary<DocumentArea, Splitter> _splitSplitters = new();
     private readonly Dictionary<DocumentArea, SplitterHelper> _splitHelpers = new();
     private readonly Dictionary<DocumentArea, UIElement> _areaToolbars = new();
-    private readonly HashSet<DocumentArea> _visibleAreas = new();
     private readonly IPlatformInfo _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
     private SplitterHelper? _bottomAreaSplitterHelper;
@@ -40,8 +39,6 @@ public sealed partial class DocumentSectionContainer : UserControl
     private double _totalDragDelta = 0;
 
     private DocumentSection _activeSection = DocumentSection.MainLeft;
-    private DocumentArea? _isolatedArea;
-    private bool _isUtilityPanelPresented = true;
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
@@ -94,22 +91,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// <summary>
     /// The sections that are currently mounted, in reading order.
     /// </summary>
-    public IReadOnlyList<DocumentSection> VisibleSections
-    {
-        get
-        {
-            var visible = new List<DocumentSection>();
-            foreach (var section in DocumentLayoutHelper.AllSections)
-            {
-                if (IsSectionMounted(section))
-                {
-                    visible.Add(section);
-                }
-            }
-
-            return visible;
-        }
-    }
+    public IReadOnlyList<DocumentSection> VisibleSections => _layoutState.VisibleSections;
 
     /// <summary>
     /// Gets the active document - the document being inspected and where new documents open.
@@ -125,12 +107,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         InitializeComponent();
 
-        foreach (var area in DocumentLayoutHelper.AllAreas)
-        {
-            _areaSplit[area] = false;
-            _areaSplitRatio[area] = DefaultSplitRatio;
-            _visibleAreas.Add(area);
-        }
+        _chromeCalculator = new SectionChromeCalculator(_layoutState, _platformInfo.ClipsHostedWebViewToCorners);
 
         // Every section exists for the lifetime of the container: a collapsed area keeps its tabs while
         // its sections are unmounted from the visual tree.
@@ -212,41 +189,13 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public bool IsSectionMounted(DocumentSection section)
     {
-        return IsAreaPresented(section.GetArea())
-            && IsSectionInAreaLayout(section);
-    }
-
-    // Whether the area's split state lays the section out: a primary section always, a secondary one
-    // only while its area is split.
-    private bool IsSectionInAreaLayout(DocumentSection section)
-    {
-        return !section.IsSecondarySection() || _areaSplit[section.GetArea()];
-    }
-
-    /// <summary>
-    /// The sections a fallback active document can be chosen from: those a visible area lays out,
-    /// ignoring any isolation. Closing the last document in an isolated area moves to a document
-    /// elsewhere rather than reporting that none are left, and the isolation follows it.
-    /// </summary>
-    private IEnumerable<DocumentSection> SelectableSections
-    {
-        get
-        {
-            foreach (var section in DocumentLayoutHelper.AllSections)
-            {
-                if (_visibleAreas.Contains(section.GetArea()) &&
-                    IsSectionInAreaLayout(section))
-                {
-                    yield return section;
-                }
-            }
-        }
+        return _layoutState.IsSectionMounted(section);
     }
 
     /// <summary>
     /// The area currently shown on its own, or null when the areas are laid out normally.
     /// </summary>
-    public DocumentArea? IsolatedArea => _isolatedArea;
+    public DocumentArea? IsolatedArea => _layoutState.IsolatedArea;
 
     /// <summary>
     /// Shows a single area filling the whole panel, hiding the other two, or restores the normal layout
@@ -255,14 +204,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetIsolatedArea(DocumentArea? area)
     {
-        if (_isolatedArea == area)
+        if (_layoutState.SetIsolatedArea(area))
         {
-            return;
+            ApplyRootGridLayout();
         }
-
-        _isolatedArea = area;
-
-        ApplyRootGridLayout();
     }
 
     /// <summary>
@@ -271,26 +216,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetUtilityPanelPresented(bool isPresented)
     {
-        if (_isUtilityPanelPresented == isPresented)
+        if (_layoutState.SetUtilityPanelPresented(isPresented))
         {
-            return;
+            ApplyRootGridLayout();
         }
-
-        _isUtilityPanelPresented = isPresented;
-
-        ApplyRootGridLayout();
-    }
-
-    // While an area is isolated it is the only one presented. Otherwise the collapsible areas follow the
-    // surface visibility the user chose.
-    private bool IsAreaPresented(DocumentArea area)
-    {
-        if (_isolatedArea is DocumentArea isolatedArea)
-        {
-            return isolatedArea == area;
-        }
-
-        return _visibleAreas.Contains(area);
     }
 
     /// <summary>
@@ -298,7 +227,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public bool IsAreaSplit(DocumentArea area)
     {
-        return _areaSplit[area];
+        return _layoutState.IsAreaSplit(area);
     }
 
     /// <summary>
@@ -306,7 +235,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public bool IsAreaVisible(DocumentArea area)
     {
-        return _visibleAreas.Contains(area);
+        return _layoutState.IsAreaVisible(area);
     }
 
     /// <summary>
@@ -314,7 +243,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public double GetAreaSplitRatio(DocumentArea area)
     {
-        return _areaSplitRatio[area];
+        return _layoutState.GetAreaSplitRatio(area);
     }
 
     /// <summary>
@@ -323,12 +252,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetAreaSplit(DocumentArea area, bool isSplit)
     {
-        if (_areaSplit[area] == isSplit)
+        if (!_layoutState.SetAreaSplit(area, isSplit))
         {
             return;
         }
-
-        _areaSplit[area] = isSplit;
 
         if (!isSplit)
         {
@@ -337,7 +264,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
         RebuildArea(area);
 
-        AreaLayoutChanged?.Invoke(area, isSplit, _areaSplitRatio[area]);
+        AreaLayoutChanged?.Invoke(area, isSplit, _layoutState.GetAreaSplitRatio(area));
     }
 
     /// <summary>
@@ -346,13 +273,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public bool CanStartAreaSplit(DocumentArea area)
     {
-        if (_areaSplit[area] ||
-            !CanSplitArea(area))
-        {
-            return false;
-        }
+        int primaryTabCount = _sections[area.GetPrimarySection()].TabCount;
 
-        return _sections[area.GetPrimarySection()].TabCount > 1;
+        return _layoutState.CanStartSplit(area, CanSplitArea(area), primaryTabCount);
     }
 
     /// <summary>
@@ -361,23 +284,15 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void ReconcileAreaSplit(DocumentArea area)
     {
-        if (!_areaSplit[area])
-        {
-            return;
-        }
-
-        var primarySectionView = _sections[area.GetPrimarySection()];
-        var secondarySectionView = _sections[area.GetSecondarySection()];
-
-        if (primarySectionView.TabCount > 0 &&
-            secondarySectionView.TabCount > 0)
-        {
-            return;
-        }
+        int primaryTabCount = _sections[area.GetPrimarySection()].TabCount;
+        int secondaryTabCount = _sections[area.GetSecondarySection()].TabCount;
 
         // Unsplitting migrates the secondary section's tabs into the primary one, which covers both
         // cases: an empty secondary migrates nothing, an empty primary receives everything.
-        SetAreaSplit(area, false);
+        if (_layoutState.ShouldFoldSplit(area, primaryTabCount, secondaryTabCount))
+        {
+            SetAreaSplit(area, false);
+        }
     }
 
     /// <summary>
@@ -385,17 +300,12 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetAreaSplitRatio(DocumentArea area, double ratio)
     {
-        if (double.IsNaN(ratio)
-            || double.IsInfinity(ratio)
-            || ratio <= 0
-            || ratio >= 1)
+        if (!_layoutState.SetAreaSplitRatio(area, ratio))
         {
             return;
         }
 
-        _areaSplitRatio[area] = ratio;
-
-        if (_areaSplit[area])
+        if (_layoutState.IsAreaSplit(area))
         {
             ApplySplitRatio(area);
         }
@@ -407,21 +317,10 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetAreaVisible(DocumentArea area, bool isVisible)
     {
-        if (!area.IsCollapsible())
+        if (_layoutState.SetAreaVisible(area, isVisible))
         {
-            return;
+            ApplyRootGridLayout();
         }
-
-        if (isVisible)
-        {
-            _visibleAreas.Add(area);
-        }
-        else
-        {
-            _visibleAreas.Remove(area);
-        }
-
-        ApplyRootGridLayout();
     }
 
     /// <summary>
@@ -431,22 +330,22 @@ public sealed partial class DocumentSectionContainer : UserControl
     public void SetAreaSize(DocumentArea area, double size)
     {
         if (size <= 0 ||
-            !IsAreaPresented(area))
+            !_layoutState.IsAreaPresented(area))
         {
             return;
         }
 
         if (area == DocumentArea.Bottom)
         {
-            if (IsAreaPresented(DocumentArea.Main))
+            if (_layoutState.IsAreaPresented(DocumentArea.Main))
             {
                 BottomAreaRow.Height = new GridLength(size);
             }
         }
         else if (area == DocumentArea.Side)
         {
-            if (IsAreaPresented(DocumentArea.Main) ||
-                IsAreaPresented(DocumentArea.Bottom))
+            if (_layoutState.IsAreaPresented(DocumentArea.Main) ||
+                _layoutState.IsAreaPresented(DocumentArea.Bottom))
             {
                 SideAreaColumn.Width = new GridLength(size);
             }
@@ -608,7 +507,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         // No documents left in the same section, so scan the other selectable sections in reading order.
-        foreach (var section in SelectableSections)
+        foreach (var section in _layoutState.SelectableSections)
         {
             if (section == closingSection)
             {
@@ -672,7 +571,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     private DocumentTabLocation? FindFallbackActiveDocument()
     {
-        foreach (var section in SelectableSections)
+        foreach (var section in _layoutState.SelectableSections)
         {
             var sectionView = _sections[section];
             var selectedResource = sectionView.GetSelectedDocument();
@@ -782,7 +681,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         foreach (var area in DocumentLayoutHelper.AllAreas)
         {
-            _areaSplitRatio[area] = DefaultSplitRatio;
+            _layoutState.SetAreaSplitRatio(area, AreaLayoutState.DefaultSplitRatio);
             SetAreaSplit(area, false);
         }
 
@@ -793,7 +692,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             foreach (var area in DocumentLayoutHelper.AllAreas)
             {
-                AreaLayoutChanged?.Invoke(area, false, DefaultSplitRatio);
+                AreaLayoutChanged?.Invoke(area, false, AreaLayoutState.DefaultSplitRatio);
             }
 
             tcs.SetResult(true);
@@ -882,7 +781,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     private void RebuildArea(DocumentArea area)
     {
         var areaGrid = GetAreaGrid(area);
-        bool isSplit = _areaSplit[area];
+        bool isSplit = _layoutState.IsAreaSplit(area);
         bool isHorizontal = area.SplitsHorizontally();
 
         var primarySectionView = _sections[area.GetPrimarySection()];
@@ -908,7 +807,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         areaGrid.ColumnDefinitions.Clear();
         areaGrid.RowDefinitions.Clear();
 
-        double ratio = _areaSplitRatio[area];
+        double ratio = _layoutState.GetAreaSplitRatio(area);
 
         if (isHorizontal)
         {
@@ -1016,7 +915,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         var primarySectionView = _sections[area.GetPrimarySection()];
         var secondarySectionView = _sections[area.GetSecondarySection()];
 
-        bool toolbarOnSecondary = area.SplitsHorizontally() && _areaSplit[area];
+        bool toolbarOnSecondary = area.SplitsHorizontally() && _layoutState.IsAreaSplit(area);
 
         primarySectionView.SetTabStripFooter(toolbarOnSecondary ? null : toolbar);
         secondarySectionView.SetTabStripFooter(toolbarOnSecondary ? toolbar : null);
@@ -1026,7 +925,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     // whether it has room to be.
     private void UpdateSectionMoveTargets(DocumentArea area)
     {
-        bool isSplit = _areaSplit[area];
+        bool isSplit = _layoutState.IsAreaSplit(area);
         bool canSplit = CanSplitArea(area);
 
         foreach (var section in area.GetSections())
@@ -1040,7 +939,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     private void ApplySplitRatio(DocumentArea area)
     {
         var areaGrid = GetAreaGrid(area);
-        double ratio = _areaSplitRatio[area];
+        double ratio = _layoutState.GetAreaSplitRatio(area);
 
         if (area.SplitsHorizontally())
         {
@@ -1097,9 +996,9 @@ public sealed partial class DocumentSectionContainer : UserControl
     // the whole panel.
     private void ApplyRootGridLayout()
     {
-        bool isMainPresented = IsAreaPresented(DocumentArea.Main);
-        bool isBottomPresented = IsAreaPresented(DocumentArea.Bottom);
-        bool isSidePresented = IsAreaPresented(DocumentArea.Side);
+        bool isMainPresented = _layoutState.IsAreaPresented(DocumentArea.Main);
+        bool isBottomPresented = _layoutState.IsAreaPresented(DocumentArea.Bottom);
+        bool isSidePresented = _layoutState.IsAreaPresented(DocumentArea.Side);
         bool isMainColumnPresented = isMainPresented || isBottomPresented;
 
         MainAreaGrid.Visibility = isMainPresented ? Visibility.Visible : Visibility.Collapsed;
@@ -1158,125 +1057,21 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
     }
 
-    // An area draws the edges that face another panel and leaves bare the edges that meet the application
-    // border, which is its own boundary. The top edge always faces the title bar gutter.
-    private Thickness ResolveAreaEdges(DocumentArea area)
-    {
-        double facingUtilityPanel = ResolveEdge(_isUtilityPanelPresented);
-
-        if (area == DocumentArea.Side)
-        {
-            // The Side area's left edge faces the main column, or the Utility Panel when no other area is
-            // presented alongside it.
-            bool isMainColumnPresented = IsAreaPresented(DocumentArea.Main) || IsAreaPresented(DocumentArea.Bottom);
-            double sideLeft = ResolveEdge(isMainColumnPresented || _isUtilityPanelPresented);
-
-            return new Thickness(sideLeft, EdgeThickness, 0, 0);
-        }
-
-        double facingSide = ResolveEdge(IsAreaPresented(DocumentArea.Side));
-
-        if (area == DocumentArea.Bottom)
-        {
-            return new Thickness(facingUtilityPanel, EdgeThickness, facingSide, 0);
-        }
-
-        double facingBottom = ResolveEdge(IsAreaPresented(DocumentArea.Bottom));
-
-        return new Thickness(facingUtilityPanel, EdgeThickness, facingSide, facingBottom);
-    }
-
-    // Divides an area's outer edges between its sections. An unsplit area has one section that takes them
-    // all; a split one gives each section the outer edges on its own side plus an inner edge facing the
-    // split gutter. Splitting an area moves that inner edge onto a section that did not have one, so this
-    // runs on every rebuild rather than only when the root grid layout changes.
+    // Splitting an area moves an inner edge onto a section that did not have one, so this runs on every
+    // rebuild rather than only when the root grid layout changes.
     private void ApplyAreaSectionChrome(DocumentArea area)
     {
-        var areaEdges = ResolveAreaEdges(area);
+        double cornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        var areaChrome = _chromeCalculator.CalculateAreaChrome(area, cornerRadius);
 
         var primarySectionView = _sections[area.GetPrimarySection()];
-        var secondarySectionView = _sections[area.GetSecondarySection()];
+        primarySectionView.SetGutterChrome(areaChrome.Primary.Edges, areaChrome.Primary.Corners);
 
-        if (!_areaSplit[area])
+        if (areaChrome.Secondary is SectionChrome secondaryChrome)
         {
-            // Nothing is internal to an unsplit area, so every edge it draws also shapes its corners.
-            ApplySectionEdges(primarySectionView, areaEdges, areaEdges);
-            return;
+            var secondarySectionView = _sections[area.GetSecondarySection()];
+            secondarySectionView.SetGutterChrome(secondaryChrome.Edges, secondaryChrome.Corners);
         }
-
-        if (area.SplitsHorizontally())
-        {
-            var leftEdges = new Thickness(areaEdges.Left, areaEdges.Top, EdgeThickness, areaEdges.Bottom);
-            var rightEdges = new Thickness(EdgeThickness, areaEdges.Top, areaEdges.Right, areaEdges.Bottom);
-
-            var leftOuterEdges = new Thickness(areaEdges.Left, areaEdges.Top, 0, areaEdges.Bottom);
-            var rightOuterEdges = new Thickness(0, areaEdges.Top, areaEdges.Right, areaEdges.Bottom);
-
-            ApplySectionEdges(primarySectionView, leftEdges, leftOuterEdges);
-            ApplySectionEdges(secondarySectionView, rightEdges, rightOuterEdges);
-
-            return;
-        }
-
-        var topEdges = new Thickness(areaEdges.Left, areaEdges.Top, areaEdges.Right, EdgeThickness);
-        var bottomEdges = new Thickness(areaEdges.Left, EdgeThickness, areaEdges.Right, areaEdges.Bottom);
-
-        var topOuterEdges = new Thickness(areaEdges.Left, areaEdges.Top, areaEdges.Right, 0);
-        var bottomOuterEdges = new Thickness(areaEdges.Left, 0, areaEdges.Right, areaEdges.Bottom);
-
-        ApplySectionEdges(primarySectionView, topEdges, topOuterEdges);
-        ApplySectionEdges(secondarySectionView, bottomEdges, bottomOuterEdges);
-    }
-
-    // A section draws every edge that faces a gutter, but only the edges on the outside of its area shape its
-    // corners. The two sections of a split area therefore share one rounded perimeter with a square cut down
-    // the middle, which is what marks them as belonging to the same area.
-    private void ApplySectionEdges(DocumentSectionView sectionView, Thickness drawnEdges, Thickness outerEdges)
-    {
-        sectionView.SetGutterChrome(drawnEdges, ResolveCorners(outerEdges));
-    }
-
-    private static double ResolveEdge(bool facesNeighbour)
-    {
-        if (facesNeighbour)
-        {
-            return EdgeThickness;
-        }
-
-        return 0;
-    }
-
-    // A corner is rounded where both of the edges meeting there face a gutter outside the area, so a corner
-    // sitting on the application border or on an area's internal split stays square. The bottom corners are
-    // filled by the document view rather than by the section's own chrome, so they only round on a head that
-    // clips a hosted web view to the rounding.
-    private CornerRadius ResolveCorners(Thickness edges)
-    {
-        double radius = (double)Application.Current.Resources["PanelCornerRadius"];
-
-        double bottomRadius = 0;
-        if (_platformInfo.ClipsHostedWebViewToCorners)
-        {
-            bottomRadius = radius;
-        }
-
-        double topLeft = ResolveCorner(edges.Left, edges.Top, radius);
-        double topRight = ResolveCorner(edges.Top, edges.Right, radius);
-        double bottomRight = ResolveCorner(edges.Right, edges.Bottom, bottomRadius);
-        double bottomLeft = ResolveCorner(edges.Bottom, edges.Left, bottomRadius);
-
-        return new CornerRadius(topLeft, topRight, bottomRight, bottomLeft);
-    }
-
-    private static double ResolveCorner(double firstEdge, double secondEdge, double radius)
-    {
-        if (firstEdge > 0 &&
-            secondEdge > 0)
-        {
-            return radius;
-        }
-
-        return 0;
     }
 
     private void Splitter_DragStarted(object? sender, EventArgs e)
@@ -1311,8 +1106,8 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         if (area == DocumentArea.Side)
         {
-            if (!IsAreaPresented(DocumentArea.Main) ||
-                !IsAreaPresented(DocumentArea.Bottom))
+            if (!_layoutState.IsAreaPresented(DocumentArea.Main) ||
+                !_layoutState.IsAreaPresented(DocumentArea.Bottom))
             {
                 return Array.Empty<double>();
             }
@@ -1325,8 +1120,8 @@ public sealed partial class DocumentSectionContainer : UserControl
 
         var partnerArea = area == DocumentArea.Main ? DocumentArea.Bottom : DocumentArea.Main;
 
-        if (!IsAreaPresented(partnerArea) ||
-            !_areaSplit[partnerArea])
+        if (!_layoutState.IsAreaPresented(partnerArea) ||
+            !_layoutState.IsAreaSplit(partnerArea))
         {
             return Array.Empty<double>();
         }
@@ -1349,8 +1144,8 @@ public sealed partial class DocumentSectionContainer : UserControl
     // from the base, so the target is the height left over once the Side area's primary section is taken off.
     private IReadOnlyList<double> ResolveBottomAreaSnapTargets()
     {
-        if (!IsAreaPresented(DocumentArea.Side) ||
-            !_areaSplit[DocumentArea.Side])
+        if (!_layoutState.IsAreaPresented(DocumentArea.Side) ||
+            !_layoutState.IsAreaSplit(DocumentArea.Side))
         {
             return Array.Empty<double>();
         }
@@ -1402,7 +1197,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         double ratio = MeasureSplitRatio(area);
         if (ratio > 0 && ratio < 1)
         {
-            _areaSplitRatio[area] = ratio;
+            _layoutState.SetAreaSplitRatio(area, ratio);
 
             // Convert back to proportional Star sizing so the split holds its share as the area resizes.
             ApplySplitRatio(area);
@@ -1418,10 +1213,10 @@ public sealed partial class DocumentSectionContainer : UserControl
             return;
         }
 
-        _areaSplitRatio[area] = DefaultSplitRatio;
+        _layoutState.SetAreaSplitRatio(area, AreaLayoutState.DefaultSplitRatio);
         ApplySplitRatio(area);
 
-        AreaLayoutChanged?.Invoke(area, true, DefaultSplitRatio);
+        AreaLayoutChanged?.Invoke(area, true, AreaLayoutState.DefaultSplitRatio);
     }
 
     /// <summary>
