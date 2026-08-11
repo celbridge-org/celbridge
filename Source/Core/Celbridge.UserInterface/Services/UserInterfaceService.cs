@@ -1,3 +1,4 @@
+using System.Globalization;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
@@ -7,6 +8,9 @@ namespace Celbridge.UserInterface.Services;
 
 public class UserInterfaceService : IUserInterfaceService
 {
+    // Below this the rasterization scale has not meaningfully moved, so the published value stands.
+    private const double RasterizationScaleTolerance = 0.0001;
+
     private readonly ILogger<UserInterfaceService> _logger;
     private IMessengerService _messengerService;
     private ISettingsService _settingsService;
@@ -19,6 +23,7 @@ public class UserInterfaceService : IUserInterfaceService
     private ApplicationPage _activePage = ApplicationPage.None;
     private ThemeHelper? _themeHelper;
     private Helpers.WindowStateHelper? _windowStateHelper;
+    private double _publishedRasterizationScale;
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
@@ -88,6 +93,9 @@ public class UserInterfaceService : IUserInterfaceService
 
         ApplyCurrentTheme();
 
+        PublishRasterizationScale();
+        _xamlRoot.Changed += XamlRoot_Changed;
+
         // The macOS Skia head ships only a minimal default app menu, so populate the native menubar with
         // the standard App/File/Edit/Window/Help menus. No-op on platforms without a native menu bar.
         if (_platformInfo.UsesNativeMenuBar)
@@ -137,6 +145,38 @@ public class UserInterfaceService : IUserInterfaceService
                     break;
             }
         }
+    }
+
+    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
+    {
+        PublishRasterizationScale();
+    }
+
+    // A hosted web view renders at a rasterization scale that folds in the Windows accessibility text scale,
+    // so a CSS pixel there is larger than a device-independent pixel. Publishing the host's own scale lets a
+    // client derive the difference and divide it out of the dimensions that mirror native chrome
+    // (see core/state-store.js). XamlRoot.Changed also fires for size and visibility, so only a new value is
+    // broadcast, keeping a window resize off the state channel.
+    private void PublishRasterizationScale()
+    {
+        Guard.IsNotNull(_xamlRoot);
+
+        var rasterizationScale = _xamlRoot.RasterizationScale;
+        if (double.IsNaN(rasterizationScale) ||
+            rasterizationScale <= 0)
+        {
+            return;
+        }
+
+        if (Math.Abs(rasterizationScale - _publishedRasterizationScale) < RasterizationScaleTolerance)
+        {
+            return;
+        }
+
+        _publishedRasterizationScale = rasterizationScale;
+        _webViewStateService.AppState.SetValue(
+            "rasterizationScale",
+            rasterizationScale.ToString(CultureInfo.InvariantCulture));
     }
 
     private void OnSystemThemeChanged(UserInterfaceTheme newTheme)

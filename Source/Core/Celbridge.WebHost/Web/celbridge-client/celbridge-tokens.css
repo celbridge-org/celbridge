@@ -30,23 +30,42 @@
     --cel-radius-control: 4px;
     --cel-radius-card: 8px;
 
+    /* The scale the web engine applied on top of the host's own rasterization scale, mirrored from the host
+       on every state snapshot (see core/state-store.js). On Windows it carries the accessibility text scale,
+       which the engine folds into its rasterization scale rather than treating as a text setting, so a CSS
+       pixel here is larger than a device-independent pixel in the native chrome. 1 where the two agree,
+       which is every platform without that setting.
+
+       A dimension that has to line up with the native chrome divides by it, so that declaring it smaller and
+       rendering it at engine scale lands on the native value. The type sizes deliberately do not: text
+       already matches, because both stacks grow it by the same factor. */
+    --cel-page-zoom: 1;
+
     /* Icon and control sizing, mirroring the standardized values in
        Celbridge.UserInterface/Resources/Styles.xaml; keep the two in sync when either changes. */
-    --cel-icon-size-small: 16px;
-    --cel-icon-size-medium: 18px;
-    --cel-icon-size-large: 22px;
-    --cel-icon-button-size: 32px;
+    --cel-icon-size-small: calc(16px / var(--cel-page-zoom));
+    --cel-icon-size-medium: calc(18px / var(--cel-page-zoom));
+    --cel-icon-size-large: calc(22px / var(--cel-page-zoom));
+    --cel-icon-button-size: calc(32px / var(--cel-page-zoom));
 
     /* Vertical icon rail sizing, mirroring the workspace utility rail (UtilityPanel.xaml's 50px column and
        UtilityButton.xaml's 48px cell); keep the three in sync when either changes. */
-    --cel-rail-width: 50px;
-    --cel-rail-item-size: 48px;
+    --cel-rail-width: calc(50px / var(--cel-page-zoom));
+    --cel-rail-item-size: calc(48px / var(--cel-page-zoom));
+
+    /* Title strip above a panel's content, mirroring the native PanelHeader (PanelHeader.xaml); keep the two
+       in sync when either changes. */
+    --cel-panel-header-height: calc(40px / var(--cel-page-zoom));
+
+    /* Inset from a panel's edge to its content, mirroring the ScrollViewer padding the native settings
+       panels use (PackagesSectionView.xaml); keep the two in sync when either changes. */
+    --cel-panel-inset: calc(12px / var(--cel-page-zoom));
 
     /* Grab band of a splitter dividing two panes of one document, mirroring the GrabAreaSize set on the
        native Splitter where it does the same job (WebViewDocumentView.xaml). Console.js carries a third
        copy for its drag arithmetic; keep the three in sync when any changes. Wider than the 7px workspace
        gutter because a band inside a document has no field behind it to widen the target. */
-    --cel-splitter-width: 8px;
+    --cel-splitter-width: calc(8px / var(--cel-page-zoom));
 
     color-scheme: light;
 
