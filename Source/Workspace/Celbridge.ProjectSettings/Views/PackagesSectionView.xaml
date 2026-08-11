@@ -12,8 +12,8 @@
     <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
 
     <Style x:Key="ContributionCardStyle" TargetType="Border">
-      <Setter Property="Background" Value="{ThemeResource PanelBackgroundABrush}"/>
-      <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+      <Setter Property="Background" Value="{ThemeResource ContentBackgroundBrush}"/>
+      <Setter Property="BorderBrush" Value="{ThemeResource DividerBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="4"/>
       <Setter Property="Padding" Value="8"/>

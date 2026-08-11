@@ -43,7 +43,7 @@ html, body {
     font-size: var(--cel-font-size-small);
     font-weight: var(--cel-font-weight-strong);
     color: var(--cel-text-secondary);
-    background: var(--cel-panel-bg);
+    background: var(--cel-chrome-bg);
 }
 
 #inspector-scroll {
@@ -89,7 +89,7 @@ html, body {
     flex: 0 0 auto;
     width: 45%;
     min-width: 80px;
-    background: var(--cel-panel-bg-alt);
+    background: var(--cel-chrome-bg);
 }
 
 .demo-pane-right {

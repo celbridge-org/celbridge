@@ -26,22 +26,23 @@ public sealed partial class Splitter : UserControl
             new PropertyMetadata(Orientation.Vertical, OnOrientationChanged));
 
     /// <summary>
-    /// The thickness of the line the splitter draws at rest. Zero by default, because a splitter between two
-    /// panels leaves the boundary to the edges those panels draw. A divider with no such panels either side
-    /// of it sets a thickness to draw the boundary itself.
+    /// The brush filling the grab area at rest, which also gives it a leading edge. Null by default, because
+    /// a splitter between two panels sits in a gutter whose own fill carries the boundary. A splitter
+    /// dividing two panes of one document has no gutter behind it and takes the chrome brush, so its grab
+    /// area carries the boundary itself.
     /// </summary>
-    public double LineThickness
+    public Brush? GrabAreaBrush
     {
-        get => (double)GetValue(LineThicknessProperty);
-        set => SetValue(LineThicknessProperty, value);
+        get => (Brush?)GetValue(GrabAreaBrushProperty);
+        set => SetValue(GrabAreaBrushProperty, value);
     }
 
-    public static readonly DependencyProperty LineThicknessProperty =
+    public static readonly DependencyProperty GrabAreaBrushProperty =
         DependencyProperty.Register(
-            nameof(LineThickness),
-            typeof(double),
+            nameof(GrabAreaBrush),
+            typeof(Brush),
             typeof(Splitter),
-            new PropertyMetadata(0.0, OnLineThicknessChanged));
+            new PropertyMetadata(null, OnGrabAreaBrushChanged));
 
     /// <summary>
     /// The thickness of the splitter line while dragging.
@@ -61,7 +62,7 @@ public sealed partial class Splitter : UserControl
 
     /// <summary>
     /// The width of the interactive (grabbable) area in pixels. This is also the visible width of the
-    /// gutter between two panels, since the grab band is what holds that gap open.
+    /// gutter between two panels, since the grab area is what holds that gap open.
     /// </summary>
     public double GrabAreaSize
     {
@@ -99,6 +100,9 @@ public sealed partial class Splitter : UserControl
     private const int NormalZIndex = 100;
     private const int DraggingZIndex = 200;
     private const int DoubleClickDebounceMs = 500;
+    private const double GrabAreaEdgeThickness = 1.0;
+
+    private readonly SolidColorBrush _transparentGrabAreaBrush = new(Colors.Transparent);
 
     private bool _isDragging;
     private double _dragStartPosition;
@@ -111,7 +115,7 @@ public sealed partial class Splitter : UserControl
     {
         InitializeComponent();
 
-        // Ensure the splitter renders above the adjacent panel content its grab band overlaps.
+        // Ensure the splitter renders above the adjacent panel content its grab area overlaps.
         Canvas.SetZIndex(this, NormalZIndex);
 
         // Set up pointer event handlers
@@ -137,6 +141,7 @@ public sealed partial class Splitter : UserControl
         UpdateOrientation();
         UpdateLineThickness();
         UpdateGrabAreaSize();
+        UpdateGrabAreaBrush();
 
         // Defensive reset: cancel any fade-in that a transient pointer enter raised during
         // construction so the hover line starts hidden rather than stuck on.
@@ -152,11 +157,11 @@ public sealed partial class Splitter : UserControl
         }
     }
 
-    private static void OnLineThicknessChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnGrabAreaBrushChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is Splitter splitter)
         {
-            splitter.UpdateLineThickness();
+            splitter.UpdateGrabAreaBrush();
         }
     }
 
@@ -190,14 +195,17 @@ public sealed partial class Splitter : UserControl
 
         UpdateLineThickness();
         UpdateGrabAreaSize();
+        UpdateGrabAreaBrush();
         ApplyManagedCursor();
     }
 
+    // The line is hidden at rest and only appears under the pointer or a drag: the fill either side of the
+    // splitter carries the boundary, whether that is the gutter it sits in or its own grab area.
     private void UpdateLineThickness()
     {
         if (Orientation == Orientation.Vertical)
         {
-            SplitterLine.Width = LineThickness;
+            SplitterLine.Width = 0;
             SplitterLine.Height = double.NaN; // Stretch
             HoverLine.Width = DraggingLineThickness;
             HoverLine.Height = double.NaN; // Stretch
@@ -205,16 +213,40 @@ public sealed partial class Splitter : UserControl
         else
         {
             SplitterLine.Width = double.NaN; // Stretch
-            SplitterLine.Height = LineThickness;
+            SplitterLine.Height = 0;
             HoverLine.Width = double.NaN; // Stretch
             HoverLine.Height = DraggingLineThickness;
         }
     }
 
+    private void UpdateGrabAreaBrush()
+    {
+        if (GrabAreaBrush is null)
+        {
+            // Transparent rather than null, so an unfilled grab area is still hit testable for the drag. It
+            // sits in a gutter, and the panels either side of it draw the edges, so it draws none of its own.
+            SplitterBorder.Background = _transparentGrabAreaBrush;
+            SplitterBorder.BorderThickness = new Thickness(0);
+            return;
+        }
+
+        SplitterBorder.Background = GrabAreaBrush;
+
+        // One edge, on the leading side. That side faces the document's main pane, whose content the host
+        // does not control. The trailing side faces a panel of ours that the fill already reads against.
+        if (Orientation == Orientation.Vertical)
+        {
+            SplitterBorder.BorderThickness = new Thickness(GrabAreaEdgeThickness, 0, 0, 0);
+            return;
+        }
+
+        SplitterBorder.BorderThickness = new Thickness(0, GrabAreaEdgeThickness, 0, 0);
+    }
+
     private void UpdateGrabAreaSize()
     {
         // The control is docked to the boundary by its alignment (or fills its own gutter column), so a zero
-        // margin keeps the whole grab band inside its own panel, clear of the adjacent editor.
+        // margin keeps the whole grab area inside its own panel, clear of the adjacent editor.
         if (Orientation == Orientation.Vertical)
         {
             Width = GrabAreaSize;

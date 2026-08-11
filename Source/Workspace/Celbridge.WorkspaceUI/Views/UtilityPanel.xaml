@@ -13,11 +13,11 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Utility rail: a custom, non-focusable icon strip, deliberately not a NavigationView. -->
+        <!-- Utility rail: a custom, non-focusable icon strip, deliberately not a NavigationView. It draws no
+             edge against the panel body: the rail is chrome and the body is content, so the step in tone
+             already carries the boundary. -->
         <Grid Grid.Column="0"
-              Background="{ThemeResource PanelBackgroundABrush}"
-              BorderBrush="{ThemeResource DividerBrush}"
-              BorderThickness="0,0,1,0">
+              Background="{ThemeResource ChromeBackgroundBrush}">
 
             <StackPanel Orientation="Vertical"
                         ui:FocusTracking.PreservePanelFocus="True">
@@ -31,7 +31,7 @@
                      discoverability, rather than pinned to the far bottom of the rail. -->
                 <Border Height="1"
                         Margin="8,4"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                        Background="{ThemeResource DividerBrush}"/>
 
                 <rail:UtilityButton x:Name="ProjectSettingsButton" />
             </StackPanel>
@@ -40,7 +40,7 @@
         <!-- Content area for the selected panel -->
         <Grid x:Name="ContentArea"
               Grid.Column="1"
-              Background="{ThemeResource PanelBackgroundABrush}">
+              Background="{ThemeResource ContentBackgroundBrush}">
             <!-- The panel host controls sit above the hosted panel's FocusTracking.Panel declaration. A tree
                  rebuild destroys the focused row and the platform bounces focus up onto the host, which has no
                  panel ancestor and would otherwise clear panel focus to None. PreservePanelFocus keeps the

@@ -30,32 +30,67 @@
     --cel-radius-control: 4px;
     --cel-radius-card: 8px;
 
+    /* The scale the web engine applied on top of the host's own rasterization scale, mirrored from the host
+       on every state snapshot (see core/state-store.js). On Windows it carries the accessibility text scale,
+       which the engine folds into its rasterization scale rather than treating as a text setting, so a CSS
+       pixel here is larger than a device-independent pixel in the native chrome. 1 where the two agree,
+       which is every platform without that setting.
+
+       A dimension that has to line up with the native chrome divides by it, so that declaring it smaller and
+       rendering it at engine scale lands on the native value. The type sizes deliberately do not: text
+       already matches, because both stacks grow it by the same factor. */
+    --cel-page-zoom: 1;
+
     /* Icon and control sizing, mirroring the standardized values in
        Celbridge.UserInterface/Resources/Styles.xaml; keep the two in sync when either changes. */
-    --cel-icon-size-small: 16px;
-    --cel-icon-size-medium: 18px;
-    --cel-icon-size-large: 22px;
-    --cel-icon-button-size: 32px;
+    --cel-icon-size-small: calc(16px / var(--cel-page-zoom));
+    --cel-icon-size-medium: calc(18px / var(--cel-page-zoom));
+    --cel-icon-size-large: calc(22px / var(--cel-page-zoom));
+    --cel-icon-button-size: calc(32px / var(--cel-page-zoom));
 
     /* Vertical icon rail sizing, mirroring the workspace utility rail (UtilityPanel.xaml's 50px column and
        UtilityButton.xaml's 48px cell); keep the three in sync when either changes. */
-    --cel-rail-width: 50px;
-    --cel-rail-item-size: 48px;
+    --cel-rail-width: calc(50px / var(--cel-page-zoom));
+    --cel-rail-item-size: calc(48px / var(--cel-page-zoom));
+
+    /* Title strip above a panel's content, mirroring the native PanelHeader (PanelHeader.xaml); keep the two
+       in sync when either changes. */
+    --cel-panel-header-height: calc(40px / var(--cel-page-zoom));
+
+    /* Inset from a panel's edge to its content, mirroring the ScrollViewer padding the native settings
+       panels use (PackagesSectionView.xaml); keep the two in sync when either changes. */
+    --cel-panel-inset: calc(12px / var(--cel-page-zoom));
+
+    /* Grab band of a splitter dividing two panes of one document, mirroring the GrabAreaSize set on the
+       native Splitter where it does the same job (WebViewDocumentView.xaml). Console.js carries a third
+       copy for its drag arithmetic; keep the three in sync when any changes. Wider than the 7px workspace
+       gutter because a band inside a document has no field behind it to widen the target. */
+    --cel-splitter-width: calc(8px / var(--cel-page-zoom));
 
     color-scheme: light;
 
-    --cel-app-bg: #F3F3F3;
-    --cel-panel-bg: #F3F3F3;
-    --cel-panel-bg-alt: #F7F8FA;
-    /* Darker than both panel tones, so a channel between two panes reads as a groove. */
+    /* Every background surface takes one of three roles. Content is where a document, tree, list or editor
+       canvas lives and sits at the extreme end of the value range. Chrome carries tab strips, panel headers,
+       toolbars and rails, and sits toward the middle. The gutter is the channel between two panels and sits
+       beyond chrome, on the far side from content. Panel-edge is the hairline a surface presents to a gutter,
+       one step beyond it again. The ramp runs content, chrome, gutter, edge in even steps, and the rule is
+       the same in both themes, so it runs upward in dark mode and downward in light.
+
+       Panel-edge is distinct from divider, which is a hairline within a surface and stays subtle against
+       the surface carrying it. */
+    --cel-content-bg: #FFFFFF;
+    --cel-chrome-bg: #F3F3F3;
     --cel-gutter: #E1E2E4;
+    --cel-panel-edge: #D0D0D0;
     --cel-divider: #D0D0D0;
-    /* The subtle translucent divider (WinUI DividerBrush), used for splitter base lines and hairline rules. */
+    /* The subtle translucent divider (WinUI DividerBrush), used for hairline rules within a surface. */
     --cel-divider-subtle: rgba(0, 0, 0, 0.08);
     --cel-accent: #0078D4;
     --cel-accent-text: #FFFFFF;
     --cel-text-primary: #1F1F1F;
-    --cel-text-secondary: rgba(0, 0, 0, 0.6);
+    /* Mirrors WinUI TextFillColorSecondary (#9E000000 light, #C5FFFFFF dark), so a web panel's secondary
+       text matches the native panels beside it. */
+    --cel-text-secondary: rgba(0, 0, 0, 0.62);
     --cel-error-text: #D32F2F;
     --cel-warning-text: #FFA000;
     /* Attention pip fill (WinUI SystemFillColorCaution), matching the pips on the native rail and tab strip. */
@@ -81,28 +116,32 @@
 :root[data-theme="dark"] {
     color-scheme: dark;
 
-    --cel-app-bg: #2B2D30;
-    --cel-panel-bg: #2B2D30;
-    --cel-panel-bg-alt: #1E1F22;
-    --cel-gutter: #1A1B1D;
+    /* Content sits within four units of the Monaco and terminal canvases, so a document's own chrome meets
+       its canvas without a visible seam. */
+    --cel-content-bg: #1E1F22;
+    --cel-chrome-bg: #2B2D30;
+    --cel-gutter: #3D3F43;
+    --cel-panel-edge: #4F5155;
     --cel-divider: #393B40;
     --cel-divider-subtle: rgba(255, 255, 255, 0.08);
     --cel-accent: #60CDFF;
     --cel-accent-text: #000000;
     --cel-text-primary: #FFFFFF;
-    --cel-text-secondary: rgba(255, 255, 255, 0.6);
+    --cel-text-secondary: rgba(255, 255, 255, 0.773);
     --cel-error-text: #FF5252;
     --cel-warning-text: #FFCA28;
     --cel-caution: #FCE100;
     --cel-search-highlight: #FFD966;
     --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
 
-    --cel-control-bg: #383A3E;
-    --cel-control-hover-bg: #43464A;
-    --cel-control-border: #3F4143;
+    /* Stepped off the content background, which an editor's body takes, so a control has no more contrast
+       against a content surface than the same control has against chrome. */
+    --cel-control-bg: #2B2C30;
+    --cel-control-hover-bg: #36383C;
+    --cel-control-border: #323335;
 
-    --cel-expander-header-bg: #36383B;
-    --cel-expander-content-bg: #26282B;
-    --cel-card-border: #3F4143;
-    --cel-card-border-strong: #4A4D51;
+    --cel-expander-header-bg: #292A2D;
+    --cel-expander-content-bg: #191A1D;
+    --cel-card-border: #323335;
+    --cel-card-border-strong: #3D3F43;
 }

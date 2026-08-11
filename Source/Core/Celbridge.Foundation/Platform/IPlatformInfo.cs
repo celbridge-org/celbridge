@@ -120,8 +120,8 @@ public interface IPlatformInfo
 
     /// <summary>
     /// Whether a hosted web view is clipped by an ancestor's corner radius, so a panel can round the corners
-    /// its editor content fills rather than only the ones its own chrome covers. True on the packaged Windows
-    /// head only.
+    /// its editor content fills rather than only the ones its own chrome covers. True on Windows (both the
+    /// packaged and Skia heads).
     /// </summary>
     bool ClipsHostedWebViewToCorners { get; }
 }

@@ -6,7 +6,7 @@
   xmlns:local="using:Celbridge.WorkspaceUI.Views">
 
   <Grid Height="40"
-        Background="{ThemeResource PanelBackgroundABrush}"
+        Background="{ThemeResource ChromeBackgroundBrush}"
         DoubleTapped="TitleBar_DoubleTapped">
 
     <Grid.ColumnDefinitions>

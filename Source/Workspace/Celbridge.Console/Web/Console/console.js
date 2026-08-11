@@ -287,7 +287,7 @@ function setSettingsVisible(visible) {
 
 // The sidebar and the terminal each keep a reasonable minimum width, so dragging the splitter can never
 // shrink either below these (a narrow window is handled by flex-shrink in console.css). SPLITTER_WIDTH
-// mirrors .cel-splitter in celbridge.css.
+// mirrors --cel-splitter-width in celbridge-tokens.css.
 const SIDEBAR_MIN_WIDTH = 240;
 const TERMINAL_MIN_WIDTH = 360;
 const SPLITTER_WIDTH = 8;
@@ -296,8 +296,22 @@ const SPLITTER_WIDTH = 8;
 const DEFAULT_SIDEBAR_WIDTH = 460;
 let sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
 
+// The token divides its declared width by the engine's page zoom, so the band is SPLITTER_WIDTH CSS pixels
+// wide only where the engine and the host render at the same scale. This arithmetic is all in CSS pixels.
+function splitterWidth() {
+    const pageZoom = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--cel-page-zoom'));
+
+    if (!Number.isFinite(pageZoom) ||
+        pageZoom <= 0) {
+        return SPLITTER_WIDTH;
+    }
+
+    return SPLITTER_WIDTH / pageZoom;
+}
+
 function clampSidebarWidth(width) {
-    const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, window.innerWidth - TERMINAL_MIN_WIDTH - SPLITTER_WIDTH);
+    const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, window.innerWidth - TERMINAL_MIN_WIDTH - splitterWidth());
     return Math.max(SIDEBAR_MIN_WIDTH, Math.min(width, maxWidth));
 }
 

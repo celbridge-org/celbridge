@@ -7,8 +7,8 @@
     xmlns:layout="using:Celbridge.WorkspaceUI"
     xmlns:local="using:Celbridge.Documents.Views">
 
-  <!-- The panel is a recessed field that the areas sit in. Every gap between two areas is one of the
-       splitter grab bands, so the field shows through as the gutter and costs no extra space. -->
+  <!-- The panel is a field that the areas sit in. Every gap between two areas is one of the splitter grab
+       bands, so the field shows through as the gutter and costs no extra space. -->
   <Grid x:Name="RootGrid"
         Background="{ThemeResource GutterBrush}">
     <Grid.ColumnDefinitions>

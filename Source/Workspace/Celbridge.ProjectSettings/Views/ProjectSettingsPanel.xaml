@@ -41,7 +41,7 @@
          icon) carrying its label. The accent underline sits in a fixed-height slot that is always present,
          so selecting a tab shows the bar without shifting the icons. -->
     <Border Grid.Row="1"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,0,0,1"
             Padding="12,6,12,8">
       <StackPanel Spacing="6">
@@ -161,8 +161,8 @@
 
     <!-- The button takes the accent style while an edit is waiting on a reload, applied in code-behind. -->
     <Border Grid.Row="3"
-            Background="{ThemeResource PanelBackgroundABrush}"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            Background="{ThemeResource ContentBackgroundBrush}"
+            BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,1,0,0"
             Padding="12,8">
       <StackPanel Spacing="6">

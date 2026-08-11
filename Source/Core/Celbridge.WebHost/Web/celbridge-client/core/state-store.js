@@ -96,7 +96,10 @@ export class Store {
  * @returns {Store}
  */
 export function createAppStateStore(transport) {
-    return new Store(transport, 'appState/changed', (snapshot) => applyDataTheme(snapshot.theme));
+    return new Store(transport, 'appState/changed', (snapshot) => {
+        applyDataTheme(snapshot.theme);
+        applyPageZoom(snapshot.rasterizationScale);
+    });
 }
 
 /**
@@ -116,4 +119,80 @@ function applyDataTheme(theme) {
     if ((theme === 'Dark' || theme === 'Light') && typeof document !== 'undefined' && document.documentElement) {
         document.documentElement.dataset.theme = theme === 'Dark' ? 'dark' : 'light';
     }
+}
+
+// The web engine renders at its own rasterization scale, which on Windows folds in the accessibility text
+// scale, so a CSS pixel here is larger than a device-independent pixel in the native chrome. devicePixelRatio
+// carries the host's scale and the engine's extra factor together. Dividing out the host's scale leaves the
+// factor the native-mirroring dimensions divide by (see celbridge-tokens.css).
+
+// Outside this range the derived factor is not a plausible scale, so dimensions keep their declared sizes
+// rather than trust it.
+const MIN_PAGE_ZOOM = 0.5;
+const MAX_PAGE_ZOOM = 4;
+
+/** @type {number} */
+let hostRasterizationScale = 0;
+
+/** @type {MediaQueryList|null} */
+let resolutionQuery = null;
+
+/**
+ * Mirrors the derived page zoom onto the root element as --cel-page-zoom.
+ * @param {string|undefined} rasterizationScale - The host's own rasterization scale, from the snapshot.
+ */
+function applyPageZoom(rasterizationScale) {
+    const scale = Number.parseFloat(rasterizationScale ?? '');
+    if (Number.isFinite(scale) && scale > 0) {
+        hostRasterizationScale = scale;
+    }
+
+    updatePageZoom();
+    watchResolution();
+}
+
+function updatePageZoom() {
+    if (typeof document === 'undefined' || !document.documentElement) {
+        return;
+    }
+
+    document.documentElement.style.setProperty('--cel-page-zoom', String(derivePageZoom()));
+}
+
+/**
+ * @returns {number} The factor the engine applied on top of the host's rasterization scale, or 1 when it
+ *   cannot be derived.
+ */
+function derivePageZoom() {
+    if (hostRasterizationScale <= 0 || typeof window === 'undefined') {
+        return 1;
+    }
+
+    const pageZoom = window.devicePixelRatio / hostRasterizationScale;
+    if (!Number.isFinite(pageZoom) || pageZoom < MIN_PAGE_ZOOM || pageZoom > MAX_PAGE_ZOOM) {
+        return 1;
+    }
+
+    return pageZoom;
+}
+
+// devicePixelRatio changes when the text scale changes or the window moves to a monitor at another scale, and
+// has no change event of its own. A resolution query re-armed at each new ratio stands in for one. A monitor
+// move also changes the host's scale, so this can fire on a stale one. The snapshot that follows corrects it.
+function watchResolution() {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+        return;
+    }
+
+    if (resolutionQuery) {
+        resolutionQuery.removeEventListener('change', onResolutionChanged);
+    }
+
+    resolutionQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    resolutionQuery.addEventListener('change', onResolutionChanged);
+}
+
+function onResolutionChanged() {
+    updatePageZoom();
+    watchResolution();
 }

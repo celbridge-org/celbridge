@@ -30,7 +30,7 @@
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
                 Padding="8,4"
-                Background="{ThemeResource PanelBackgroundABrush}"
+                Background="{ThemeResource ChromeBackgroundBrush}"
                 BorderBrush="{ThemeResource DividerBrush}"
                 BorderThickness="0,0,0,1"
                 Visibility="{x:Bind ViewModel.IsUrlBarVisible, Mode=OneWay}">
@@ -149,23 +149,25 @@
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch" />
 
-        <!-- The splitter fills its own gutter column so its grab band never overlaps the WebView, where a
+        <!-- The splitter fills its own gutter column so its grab area never overlaps the WebView, where a
              drag would be unreliable on macOS. It spans both content rows so the panel edge is grabbable
              along its whole length. -->
-        <!-- Divides two panes inside one document rather than two workspace panels, so there are no panel
-             edges to draw the boundary and the splitter draws its own line. -->
+        <!-- Divides two panes inside one document rather than two workspace panels, so there is no gutter
+             behind it and it fills its own band. Chrome rather than the gutter tone, which is what marks
+             the divide as internal to one document. -->
         <controls:Splitter x:Name="SettingsPanelSplitter"
                            Grid.Row="1"
                            Grid.RowSpan="2"
                            Grid.Column="1"
                            Orientation="Vertical"
-                           LineThickness="1"
+                           GrabAreaBrush="{ThemeResource ChromeBackgroundBrush}"
+                           GrabAreaSize="8"
                            Visibility="Collapsed" />
 
         <Border Grid.Row="1"
                 Grid.RowSpan="2"
                 Grid.Column="2"
-                Background="{ThemeResource PanelBackgroundABrush}"
+                Background="{ThemeResource ContentBackgroundBrush}"
                 Visibility="{x:Bind ViewModel.IsSettingsPanelVisible, Mode=OneWay}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -173,9 +175,12 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <!-- Fixed rather than scrolling: the close button is the panel's only way out once the
-                     URL bar carrying the settings toggle is hidden. -->
-                <Grid Grid.Row="0" Height="40">
+                <!-- A panel header is chrome over the panel's content, matching PanelHeader and the settings
+                     panels in the web editors. Fixed rather than scrolling: the close button is the panel's
+                     only way out once the URL bar carrying the settings toggle is hidden. -->
+                <Grid Grid.Row="0"
+                      Height="40"
+                      Background="{ThemeResource ChromeBackgroundBrush}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />

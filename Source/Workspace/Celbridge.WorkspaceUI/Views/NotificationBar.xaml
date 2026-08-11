@@ -6,7 +6,7 @@
 
   <Border BorderThickness="0,1,0,0"
           BorderBrush="{ThemeResource DividerBrush}"
-          Background="{ThemeResource PanelBackgroundBBrush}"
+          Background="{ThemeResource ChromeBackgroundBrush}"
           Visibility="{x:Bind ViewModel.IsAnyBannerVisible, Mode=OneWay}">
 
     <!-- Several banners can be raised by a single project load, so the stack scrolls
