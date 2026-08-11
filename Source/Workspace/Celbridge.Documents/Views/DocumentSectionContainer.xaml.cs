@@ -1068,7 +1068,10 @@ public sealed partial class DocumentSectionContainer : UserControl
             2,
             minSize: MinBottomAreaHeight,
             invertDelta: true,
-            maxSizeFunc: () => RootGrid.ActualHeight - MinMainAreaHeight);
+            maxSizeFunc: () => RootGrid.ActualHeight - MinMainAreaHeight)
+        {
+            SnapTargets = ResolveBottomAreaSnapTargets
+        };
 
         _sideAreaSplitterHelper = new SplitterHelper(
             RootGrid,
@@ -1290,11 +1293,82 @@ public sealed partial class DocumentSectionContainer : UserControl
             var areaGrid = GetAreaGrid(area);
             var mode = area.SplitsHorizontally() ? GridResizeMode.Columns : GridResizeMode.Rows;
             double minSize = area.SplitsHorizontally() ? MinSectionWidth : MinSectionHeight;
-            helper = new SplitterHelper(areaGrid, mode, 0, 2, minSize: minSize);
+            helper = new SplitterHelper(areaGrid, mode, 0, 2, minSize: minSize)
+            {
+                SnapTargets = () => ResolveSplitSnapTargets(area)
+            };
             _splitHelpers[area] = helper;
         }
 
         helper.OnDragStarted();
+    }
+
+    // The size an area's primary section takes when its split divider lines up with the one it pairs with.
+    // Main and Bottom share a grid column, so their dividers align when their primary sections are the same
+    // width. The Side area spans every root row, so its divider is measured from the same origin as the
+    // Main/Bottom boundary and aligns when its primary section matches the Main row.
+    private IReadOnlyList<double> ResolveSplitSnapTargets(DocumentArea area)
+    {
+        if (area == DocumentArea.Side)
+        {
+            if (!IsAreaPresented(DocumentArea.Main) ||
+                !IsAreaPresented(DocumentArea.Bottom))
+            {
+                return Array.Empty<double>();
+            }
+
+            return new[]
+            {
+                MainAreaRow.ActualHeight
+            };
+        }
+
+        var partnerArea = area == DocumentArea.Main ? DocumentArea.Bottom : DocumentArea.Main;
+
+        if (!IsAreaPresented(partnerArea) ||
+            !_areaSplit[partnerArea])
+        {
+            return Array.Empty<double>();
+        }
+
+        var partnerGrid = GetAreaGrid(partnerArea);
+
+        if (partnerGrid.ColumnDefinitions.Count == 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        return new[]
+        {
+            partnerGrid.ColumnDefinitions[0].ActualWidth
+        };
+    }
+
+    // The Bottom area height that puts the Main/Bottom boundary level with the Side area's split divider.
+    // That divider is measured down from the top of the panel while this splitter sizes the Bottom area up
+    // from the base, so the target is the height left over once the Side area's primary section is taken off.
+    private IReadOnlyList<double> ResolveBottomAreaSnapTargets()
+    {
+        if (!IsAreaPresented(DocumentArea.Side) ||
+            !_areaSplit[DocumentArea.Side])
+        {
+            return Array.Empty<double>();
+        }
+
+        var sideAreaGrid = GetAreaGrid(DocumentArea.Side);
+
+        if (sideAreaGrid.RowDefinitions.Count == 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        double sidePrimaryHeight = sideAreaGrid.RowDefinitions[0].ActualHeight;
+        double alignedBottomHeight = RootGrid.ActualHeight - BottomAreaSplitter.ActualHeight - sidePrimaryHeight;
+
+        return new[]
+        {
+            alignedBottomHeight
+        };
     }
 
     private void Splitter_DragDelta(object? sender, double delta)

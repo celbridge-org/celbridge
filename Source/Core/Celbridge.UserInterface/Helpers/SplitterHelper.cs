@@ -13,8 +13,16 @@ public class SplitterHelper
     private readonly Func<double>? _maxSizeFunc;
     private readonly SplitterResizeMode _resizeMode;
 
+    private const double SnapThreshold = 8.0;
+
     private double _firstStartSize;
     private double _secondStartSize;
+
+    /// <summary>
+    /// Supplies the sizes the resized track should snap to, letting a splitter line up exactly with another
+    /// one without either of them moving the other. Return nothing when there is no partner to align with.
+    /// </summary>
+    public Func<IReadOnlyList<double>>? SnapTargets { get; set; }
 
     /// <summary>
     /// Creates a new SplitterHelper for managing splitter drag operations with paired resizing.
@@ -94,7 +102,7 @@ public class SplitterHelper
         {
             // Single panel resize mode
             var adjustedDelta = _secondIndex == -1 ? -delta : delta; // Invert if secondIndex == -1
-            var newSize = _firstStartSize + adjustedDelta;
+            var newSize = ApplySnap(_firstStartSize + adjustedDelta);
 
             if (newSize < _minSize)
             {
@@ -127,9 +135,11 @@ public class SplitterHelper
         }
         else // Paired resize mode
         {
-            // Calculate new sizes
-            var newFirstSize = _firstStartSize + delta;
-            var newSecondSize = _secondStartSize - delta;
+            // Calculate new sizes. The second track takes whatever the first leaves, so the pair still adds
+            // up to what it started at when the first has been pulled onto a snap target.
+            var totalSize = _firstStartSize + _secondStartSize;
+            var newFirstSize = ApplySnap(_firstStartSize + delta);
+            var newSecondSize = totalSize - newFirstSize;
 
             // Enforce minimum sizes
             if (newFirstSize < _minSize || newSecondSize < _minSize)
@@ -155,6 +165,28 @@ public class SplitterHelper
                 }
             }
         }
+    }
+
+    // Pulls a size onto a nearby snap target. Beyond the threshold the dragged size wins again, which is what
+    // lets a drag that keeps going pull free of a snap it passed through.
+    private double ApplySnap(double size)
+    {
+        if (SnapTargets is null)
+        {
+            return size;
+        }
+
+        var targets = SnapTargets();
+
+        foreach (var target in targets)
+        {
+            if (Math.Abs(size - target) <= SnapThreshold)
+            {
+                return target;
+            }
+        }
+
+        return size;
     }
 }
 
