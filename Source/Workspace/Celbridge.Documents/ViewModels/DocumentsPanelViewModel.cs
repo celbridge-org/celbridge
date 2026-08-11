@@ -137,6 +137,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         });
     }
 
+    public bool IsUtilityPanelVisible => _layoutService.IsUtilityPanelVisible;
+
     public bool IsAreaVisible(DocumentArea area)
     {
         if (!area.IsCollapsible())

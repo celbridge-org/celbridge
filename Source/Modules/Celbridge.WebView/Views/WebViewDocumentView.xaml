@@ -152,11 +152,14 @@
         <!-- The splitter fills its own gutter column so its grab band never overlaps the WebView, where a
              drag would be unreliable on macOS. It spans both content rows so the panel edge is grabbable
              along its whole length. -->
+        <!-- Divides two panes inside one document rather than two workspace panels, so there are no panel
+             edges to draw the boundary and the splitter draws its own line. -->
         <controls:Splitter x:Name="SettingsPanelSplitter"
                            Grid.Row="1"
                            Grid.RowSpan="2"
                            Grid.Column="1"
                            Orientation="Vertical"
+                           LineThickness="1"
                            Visibility="Collapsed" />
 
         <Border Grid.Row="1"

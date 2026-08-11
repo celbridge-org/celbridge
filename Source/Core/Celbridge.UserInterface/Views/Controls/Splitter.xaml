@@ -33,7 +33,8 @@
     </Storyboard>
   </UserControl.Resources>
 
-  <!-- Transparent grab area with centered visible line. -->
+  <!-- Transparent grab area with centered visible line. The band stays transparent so the whole area is hit
+       testable and the recessed field it sits in shows through as the gutter. -->
   <Border x:Name="SplitterBorder"
           Background="Transparent">
     <Grid>

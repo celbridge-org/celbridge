@@ -476,6 +476,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         SectionContainer.SetAreaVisible(DocumentArea.Bottom, ViewModel.IsAreaVisible(DocumentArea.Bottom));
         SectionContainer.SetAreaVisible(DocumentArea.Side, ViewModel.IsAreaVisible(DocumentArea.Side));
 
+        // The areas draw a left edge only while the Utility Panel is there to face. Hiding it, whether from
+        // the toolbar or by entering Focus, leaves that edge on the application border instead.
+        SectionContainer.SetUtilityPanelPresented(ViewModel.IsUtilityPanelVisible);
+
         ApplyStoredAreaSizes();
     }
 

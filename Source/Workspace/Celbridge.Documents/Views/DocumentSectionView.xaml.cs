@@ -154,6 +154,20 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
+    /// Sets the edges the section draws against the gutters around it, and the corners where two of those
+    /// edges meet.
+    /// </summary>
+    public void SetGutterChrome(Thickness edges, CornerRadius corners)
+    {
+        RootGrid.BorderThickness = edges;
+        RootGrid.CornerRadius = corners;
+
+        // The placeholder fills the section, so it has to repeat the rounding or it squares the corners off
+        // again while the section is empty.
+        EmptyPlaceholder.CornerRadius = corners;
+    }
+
+    /// <summary>
     /// Gets the list of open documents in this section.
     /// </summary>
     public List<ResourceKey> GetOpenDocuments()

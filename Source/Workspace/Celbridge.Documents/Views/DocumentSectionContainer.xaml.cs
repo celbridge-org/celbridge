@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
 
@@ -20,6 +21,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     private const double MinSideAreaWidth = 200;
     private const double MinMainAreaWidth = 200;
     private const double MinMainAreaHeight = 150;
+    private const double EdgeThickness = 1.0;
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
     private const double DefaultSplitRatio = 0.5;
 
@@ -30,6 +32,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     private readonly Dictionary<DocumentArea, SplitterHelper> _splitHelpers = new();
     private readonly Dictionary<DocumentArea, UIElement> _areaToolbars = new();
     private readonly HashSet<DocumentArea> _visibleAreas = new();
+    private readonly IPlatformInfo _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
     private SplitterHelper? _bottomAreaSplitterHelper;
     private SplitterHelper? _sideAreaSplitterHelper;
@@ -38,6 +41,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private DocumentSection _activeSection = DocumentSection.MainLeft;
     private DocumentArea? _isolatedArea;
+    private bool _isUtilityPanelPresented = true;
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
@@ -257,6 +261,22 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         _isolatedArea = area;
+
+        ApplyRootGridLayout();
+    }
+
+    /// <summary>
+    /// Sets whether the Utility Panel is showing alongside the document areas, which decides whether the
+    /// areas draw their left edge or leave it flush against the application border.
+    /// </summary>
+    public void SetUtilityPanelPresented(bool isPresented)
+    {
+        if (_isUtilityPanelPresented == isPresented)
+        {
+            return;
+        }
+
+        _isUtilityPanelPresented = isPresented;
 
         ApplyRootGridLayout();
     }
@@ -948,6 +968,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
         UpdateSectionMoveTargets(area);
         PlaceAreaToolbar(area);
+        ApplyAreaSectionChrome(area);
     }
 
     private static void SetSectionPosition(FrameworkElement element, bool isHorizontal, int index)
@@ -1119,6 +1140,140 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         SideAreaColumn.MinWidth = showSideSplitter ? MinSideAreaWidth : 0;
+
+        ApplySectionChrome();
+    }
+
+    // A section is the rectangle a document actually sits in, so the chrome is drawn per section rather than
+    // per area: the gutter splitting one area into two divides two such rectangles, exactly as the gutter
+    // between two areas does.
+    private void ApplySectionChrome()
+    {
+        foreach (var area in DocumentLayoutHelper.AllAreas)
+        {
+            ApplyAreaSectionChrome(area);
+        }
+    }
+
+    // An area draws the edges that face another panel and leaves bare the edges that meet the application
+    // border, which is its own boundary. The top edge always faces the title bar gutter.
+    private Thickness ResolveAreaEdges(DocumentArea area)
+    {
+        double facingUtilityPanel = ResolveEdge(_isUtilityPanelPresented);
+
+        if (area == DocumentArea.Side)
+        {
+            // The Side area's left edge faces the main column, or the Utility Panel when no other area is
+            // presented alongside it.
+            bool isMainColumnPresented = IsAreaPresented(DocumentArea.Main) || IsAreaPresented(DocumentArea.Bottom);
+            double sideLeft = ResolveEdge(isMainColumnPresented || _isUtilityPanelPresented);
+
+            return new Thickness(sideLeft, EdgeThickness, 0, 0);
+        }
+
+        double facingSide = ResolveEdge(IsAreaPresented(DocumentArea.Side));
+
+        if (area == DocumentArea.Bottom)
+        {
+            return new Thickness(facingUtilityPanel, EdgeThickness, facingSide, 0);
+        }
+
+        double facingBottom = ResolveEdge(IsAreaPresented(DocumentArea.Bottom));
+
+        return new Thickness(facingUtilityPanel, EdgeThickness, facingSide, facingBottom);
+    }
+
+    // Divides an area's outer edges between its sections. An unsplit area has one section that takes them
+    // all; a split one gives each section the outer edges on its own side plus an inner edge facing the
+    // split gutter. Splitting an area moves that inner edge onto a section that did not have one, so this
+    // runs on every rebuild rather than only when the root grid layout changes.
+    private void ApplyAreaSectionChrome(DocumentArea area)
+    {
+        var areaEdges = ResolveAreaEdges(area);
+
+        var primarySectionView = _sections[area.GetPrimarySection()];
+        var secondarySectionView = _sections[area.GetSecondarySection()];
+
+        if (!_areaSplit[area])
+        {
+            // Nothing is internal to an unsplit area, so every edge it draws also shapes its corners.
+            ApplySectionEdges(primarySectionView, areaEdges, areaEdges);
+            return;
+        }
+
+        if (area.SplitsHorizontally())
+        {
+            var leftEdges = new Thickness(areaEdges.Left, areaEdges.Top, EdgeThickness, areaEdges.Bottom);
+            var rightEdges = new Thickness(EdgeThickness, areaEdges.Top, areaEdges.Right, areaEdges.Bottom);
+
+            var leftOuterEdges = new Thickness(areaEdges.Left, areaEdges.Top, 0, areaEdges.Bottom);
+            var rightOuterEdges = new Thickness(0, areaEdges.Top, areaEdges.Right, areaEdges.Bottom);
+
+            ApplySectionEdges(primarySectionView, leftEdges, leftOuterEdges);
+            ApplySectionEdges(secondarySectionView, rightEdges, rightOuterEdges);
+
+            return;
+        }
+
+        var topEdges = new Thickness(areaEdges.Left, areaEdges.Top, areaEdges.Right, EdgeThickness);
+        var bottomEdges = new Thickness(areaEdges.Left, EdgeThickness, areaEdges.Right, areaEdges.Bottom);
+
+        var topOuterEdges = new Thickness(areaEdges.Left, areaEdges.Top, areaEdges.Right, 0);
+        var bottomOuterEdges = new Thickness(areaEdges.Left, 0, areaEdges.Right, areaEdges.Bottom);
+
+        ApplySectionEdges(primarySectionView, topEdges, topOuterEdges);
+        ApplySectionEdges(secondarySectionView, bottomEdges, bottomOuterEdges);
+    }
+
+    // A section draws every edge that faces a gutter, but only the edges on the outside of its area shape its
+    // corners. The two sections of a split area therefore share one rounded perimeter with a square cut down
+    // the middle, which is what marks them as belonging to the same area.
+    private void ApplySectionEdges(DocumentSectionView sectionView, Thickness drawnEdges, Thickness outerEdges)
+    {
+        sectionView.SetGutterChrome(drawnEdges, ResolveCorners(outerEdges));
+    }
+
+    private static double ResolveEdge(bool facesNeighbour)
+    {
+        if (facesNeighbour)
+        {
+            return EdgeThickness;
+        }
+
+        return 0;
+    }
+
+    // A corner is rounded where both of the edges meeting there face a gutter outside the area, so a corner
+    // sitting on the application border or on an area's internal split stays square. The bottom corners are
+    // filled by the document view rather than by the section's own chrome, so they only round on a head that
+    // clips a hosted web view to the rounding.
+    private CornerRadius ResolveCorners(Thickness edges)
+    {
+        double radius = (double)Application.Current.Resources["PanelCornerRadius"];
+
+        double bottomRadius = 0;
+        if (_platformInfo.ClipsHostedWebViewToCorners)
+        {
+            bottomRadius = radius;
+        }
+
+        double topLeft = ResolveCorner(edges.Left, edges.Top, radius);
+        double topRight = ResolveCorner(edges.Top, edges.Right, radius);
+        double bottomRight = ResolveCorner(edges.Right, edges.Bottom, bottomRadius);
+        double bottomLeft = ResolveCorner(edges.Bottom, edges.Left, bottomRadius);
+
+        return new CornerRadius(topLeft, topRight, bottomRight, bottomLeft);
+    }
+
+    private static double ResolveCorner(double firstEdge, double secondEdge, double radius)
+    {
+        if (firstEdge > 0 &&
+            secondEdge > 0)
+        {
+            return radius;
+        }
+
+        return 0;
     }
 
     private void Splitter_DragStarted(object? sender, EventArgs e)

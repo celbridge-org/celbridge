@@ -7,8 +7,10 @@
     xmlns:layout="using:Celbridge.WorkspaceUI"
     xmlns:local="using:Celbridge.Documents.Views">
 
+  <!-- The panel is a recessed field that the areas sit in. Every gap between two areas is one of the
+       splitter grab bands, so the field shows through as the gutter and costs no extra space. -->
   <Grid x:Name="RootGrid"
-        Background="{ThemeResource ApplicationBackgroundBrush}">
+        Background="{ThemeResource GutterBrush}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="MainAreaColumn"
                         Width="*"/>
@@ -29,13 +31,17 @@
 
     <!-- Each area hosts one or two sections; their columns, rows and split splitters are
          managed in code-behind. The Bottom area shares Main's column, so MainAreaColumn
-         sizes both. -->
+         sizes both. The areas themselves are bare containers: the sections inside them carry
+         the background and the gutter-facing edges, so a split area reads as two rectangles
+         divided the same way two areas are. -->
 
     <Grid x:Name="MainAreaGrid"
           Grid.Row="0"
           Grid.Column="0"
           AutomationProperties.AutomationId="main-area"/>
 
+    <!-- The splitters draw nothing at rest. They only sit in the gutter to resize it, and light up with the
+         accent line on hover and drag. -->
     <controls:Splitter x:Name="BottomAreaSplitter"
                        Grid.Row="1"
                        Grid.Column="0"

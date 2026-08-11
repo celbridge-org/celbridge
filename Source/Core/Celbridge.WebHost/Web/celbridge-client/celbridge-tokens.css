@@ -47,6 +47,8 @@
     --cel-app-bg: #F3F3F3;
     --cel-panel-bg: #F3F3F3;
     --cel-panel-bg-alt: #F7F8FA;
+    /* Darker than both panel tones, so a channel between two panes reads as a groove. */
+    --cel-gutter: #E1E2E4;
     --cel-divider: #D0D0D0;
     /* The subtle translucent divider (WinUI DividerBrush), used for splitter base lines and hairline rules. */
     --cel-divider-subtle: rgba(0, 0, 0, 0.08);
@@ -82,6 +84,7 @@
     --cel-app-bg: #2B2D30;
     --cel-panel-bg: #2B2D30;
     --cel-panel-bg-alt: #1E1F22;
+    --cel-gutter: #1A1B1D;
     --cel-divider: #393B40;
     --cel-divider-subtle: rgba(255, 255, 255, 0.08);
     --cel-accent: #60CDFF;
