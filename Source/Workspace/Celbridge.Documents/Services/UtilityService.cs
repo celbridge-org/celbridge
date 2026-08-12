@@ -259,7 +259,10 @@ public class UtilityService : IUtilityService, IDisposable
         var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
         utilityPanel.SetUtilityDockLocation(panelView.UtilityId, DockLocation.UtilityPanel, ResourceKey.Empty);
 
-        // Flash the freed rail button so its now-available home is obvious.
+        // Present the utility at its destination, mirroring the dock as a document, which activates the tab.
+        utilityPanel.ShowUtility(panelView.UtilityId);
+
+        // Flash the rail button so the move is obvious.
         utilityPanel.FlashUtility(panelView.UtilityId);
 
         return Result.Ok();
