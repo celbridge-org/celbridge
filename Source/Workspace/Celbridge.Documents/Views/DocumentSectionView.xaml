@@ -5,11 +5,11 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
 
-  <!-- A section is one of the rectangles the workspace is divided into, so it carries its own background and
-       the edges that face a gutter. The thicknesses and corners depend on what sits beside it, so they are
-       set by the container. -->
+  <!-- A section is carved out of the chrome field, so it takes the content background across its whole
+       area, tab strip included, and draws the edges that face a channel. The thicknesses and corners depend
+       on what sits beside it, so they are set by the container. -->
   <Grid x:Name="RootGrid"
-        Background="{ThemeResource ChromeBackgroundBrush}"
+        Background="{ThemeResource ContentBackgroundBrush}"
         BorderBrush="{ThemeResource PanelEdgeBrush}"
         AllowDrop="True"
         DragOver="RootGrid_DragOver"

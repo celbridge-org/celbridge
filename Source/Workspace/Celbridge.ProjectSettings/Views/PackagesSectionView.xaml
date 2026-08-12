@@ -13,7 +13,7 @@
 
     <Style x:Key="ContributionCardStyle" TargetType="Border">
       <Setter Property="Background" Value="{ThemeResource ContentBackgroundBrush}"/>
-      <Setter Property="BorderBrush" Value="{ThemeResource DividerBrush}"/>
+      <Setter Property="BorderBrush" Value="{ThemeResource PanelEdgeBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="4"/>
       <Setter Property="Padding" Value="8"/>

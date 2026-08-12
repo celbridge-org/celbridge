@@ -54,6 +54,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         this.InitializeComponent();
 
+        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        ContentArea.CornerRadius = new CornerRadius(panelCornerRadius, panelCornerRadius, 0, 0);
+
+        double gutterSize = (double)Application.Current.Resources["GutterSize"];
+        ContentArea.Margin = new Thickness(gutterSize, gutterSize, 0, 0);
+
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();
         _settings = ServiceLocator.AcquireService<ISettingsService>();

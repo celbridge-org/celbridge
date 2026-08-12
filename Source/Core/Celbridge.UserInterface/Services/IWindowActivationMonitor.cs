@@ -1,7 +1,7 @@
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Watches the main window's activation state and broadcasts activation changes.
+/// Watches the main window and broadcasts a message when it is activated.
 /// </summary>
 public interface IWindowActivationMonitor
 {

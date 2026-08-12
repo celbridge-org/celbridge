@@ -11,7 +11,6 @@ namespace Celbridge.UserInterface.Views;
 /// </summary>
 public sealed partial class ApplicationToolbar : UserControl
 {
-    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private DispatcherQueueTimer? _layoutChangedTimer;
 
@@ -36,7 +35,6 @@ public sealed partial class ApplicationToolbar : UserControl
             CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(144);
         }
 
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<TitleBarViewModel>();
 
@@ -51,9 +49,6 @@ public sealed partial class ApplicationToolbar : UserControl
         ViewModel.OnLoaded();
 
         ApplyTooltips();
-
-        _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivated);
-        _messengerService.Register<MainWindowDeactivatedMessage>(this, OnMainWindowDeactivated);
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -86,8 +81,6 @@ public sealed partial class ApplicationToolbar : UserControl
 
         Loaded -= OnApplicationToolbar_Loaded;
         Unloaded -= OnApplicationToolbar_Unloaded;
-
-        _messengerService.UnregisterAll(this);
     }
 
     /// <summary>
@@ -130,16 +123,6 @@ public sealed partial class ApplicationToolbar : UserControl
         {
             RaiseInteractiveLayoutChanged();
         }
-    }
-
-    private void OnMainWindowActivated(object recipient, MainWindowActivatedMessage message)
-    {
-        VisualStateManager.GoToState(this, "Active", false);
-    }
-
-    private void OnMainWindowDeactivated(object recipient, MainWindowDeactivatedMessage message)
-    {
-        VisualStateManager.GoToState(this, "Inactive", false);
     }
 
     private void OnInteractiveElement_SizeChanged(object sender, SizeChangedEventArgs e)

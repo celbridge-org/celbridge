@@ -10,14 +10,12 @@
   NavigationCacheMode="Required"
   DataContext="{x:Bind ViewModel}">
 
-  <!-- The workspace is a field that the panels sit in, so every boundary between two of them shows as a
-       gutter, and every panel draws an edge against the gutters it faces. The edges where a panel meets the
-       application border are left flush: the window is its own boundary and does not need pixels spent on
-       one. -->
+  <!-- The panels sit in a field of chrome that runs up into the title bar. A gap marks a boundary that can
+       move, so the utility panel runs to the top while the documents panel keeps a channel above it. -->
   <Grid x:Name="LayoutRoot"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        Background="{ThemeResource GutterBrush}">
+        Background="{ThemeResource ChromeBackgroundBrush}">
 
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="UtilityPanelColumn"
@@ -29,23 +27,21 @@
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
-      <!-- Separates the panels from the title bar. The only gutter with no splitter in it, so it carries
-           its own copy of the gutter width that Splitter.GrabAreaSize defaults to. -->
-      <RowDefinition Height="7"/>
+      <!-- Sets the documents panel down from the title bar so its top corners read. Sized from GutterSize in
+           code-behind to match the channels between areas. -->
+      <RowDefinition x:Name="DocumentsPanelGutterRow"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Utility Panel -->
     <Grid x:Name="UtilityPanelHost"
-          Grid.Row="1"
-          Grid.RowSpan="2"
+          Grid.Row="0"
+          Grid.RowSpan="3"
           MinWidth="200"
           layout:WorkspaceLayout.Surface="UtilityPanel"
           AutomationProperties.AutomationId="explorer-panel"
-          Background="{ThemeResource ChromeBackgroundBrush}"
-          BorderBrush="{ThemeResource PanelEdgeBrush}"
-          BorderThickness="0,1,1,0">
+          Background="{ThemeResource ChromeBackgroundBrush}">
     </Grid>
 
     <!-- Documents Panel. Hosts the Main, Bottom and Side document areas and the splitters
@@ -54,7 +50,7 @@
           Grid.Column="2"
           Grid.Row="1"
           AutomationProperties.AutomationId="documents-panel"
-          Background="{ThemeResource GutterBrush}">
+          Background="{ThemeResource ChromeBackgroundBrush}">
     </Grid>
 
     <!-- Notification Bar. Spans the workspace to the right of the Utility Panel and sizes to its

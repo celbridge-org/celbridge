@@ -44,8 +44,8 @@ public static class PlatformServiceConfiguration
         services.AddSingleton<IWindowSizeConstraints, SkiaWindowSizeConstraints>();
 #endif
 
-        // Window activation tinting is only meaningful on the head that draws the custom title bar. The
-        // Skia heads draw a native title bar that the OS tints, so they use the no-op monitor.
+        // Both heads broadcast window activation identically, but the state enum on the activation event
+        // args differs: WindowActivationState on the packaged head, CoreWindowActivationState on Skia.
 #if WINDOWS
         services.AddSingleton<IWindowActivationMonitor, WindowActivationMonitor>();
 #else

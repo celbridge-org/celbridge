@@ -62,7 +62,8 @@ public sealed partial class Splitter : UserControl
 
     /// <summary>
     /// The width of the interactive (grabbable) area in pixels. This is also the visible width of the
-    /// gutter between two panels, since the grab area is what holds that gap open.
+    /// gutter between two panels, since the grab area is what holds that gap open. Resolved from the
+    /// GutterSize resource when the splitter loads unless a caller sets it explicitly.
     /// </summary>
     public double GrabAreaSize
     {
@@ -75,7 +76,7 @@ public sealed partial class Splitter : UserControl
             nameof(GrabAreaSize),
             typeof(double),
             typeof(Splitter),
-            new PropertyMetadata(7.0, OnGrabAreaSizeChanged));
+            new PropertyMetadata(0.0, OnGrabAreaSizeChanged));
 
     /// <summary>
     /// Event raised when a drag operation starts.
@@ -136,6 +137,12 @@ public sealed partial class Splitter : UserControl
 
         _normalBrush = (Brush)Application.Current.Resources["DividerBrush"];
         _draggingBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+
+        // The grab area is the gutter, so it takes the shared size unless this splitter was given one.
+        if (ReadLocalValue(GrabAreaSizeProperty) == DependencyProperty.UnsetValue)
+        {
+            GrabAreaSize = (double)Application.Current.Resources["GutterSize"];
+        }
 
         // Apply initial orientation
         UpdateOrientation();

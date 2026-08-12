@@ -103,7 +103,7 @@ public class ThemeHelper
     }
 
     /// <summary>
-    /// Reads the TitleBarActiveColor from the theme resources defined in Colors.xaml.
+    /// Reads the ChromeBackgroundColor from the theme resources defined in Colors.xaml.
     /// </summary>
     private static Windows.UI.Color GetTitleBarColor(UserInterfaceTheme theme)
     {
@@ -112,7 +112,7 @@ public class ThemeHelper
 
         if (themeDictionaries.TryGetValue(themeKey, out var dict) &&
             dict is ResourceDictionary themeDict &&
-            themeDict.TryGetValue("TitleBarActiveColor", out var colorObj) &&
+            themeDict.TryGetValue("ChromeBackgroundColor", out var colorObj) &&
             colorObj is Windows.UI.Color color)
         {
             return color;

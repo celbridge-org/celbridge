@@ -15,23 +15,7 @@
     <Grid x:Name="MainGrid"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Top"
-          Background="{ThemeResource TitleBarActiveColor}"
-          BorderBrush="{ThemeResource DividerBrush}"
-          BorderThickness="0 0 0 1">
-
-        <!-- The toolbar tints to a lighter color when the application loses focus (Windows only; on the
-             Skia desktop heads the native title bar handles focus tinting) -->
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup x:Name="BackgroundStates">
-                <VisualState x:Name="Active">
-                </VisualState>
-                <VisualState x:Name="Inactive">
-                    <VisualState.Setters>
-                        <Setter Target="MainGrid.Background" Value="{ThemeResource TitleBarInactiveColor}"/>
-                    </VisualState.Setters>
-                </VisualState>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
+          Background="{ThemeResource ChromeBackgroundBrush}">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="48"/>

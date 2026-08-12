@@ -7,6 +7,10 @@
   <x:Double x:Key="IconSizeMedium">18</x:Double>
   <x:Double x:Key="IconSizeLarge">22</x:Double>
 
+  <!-- The channel between two panels. A splitter's grab area takes this size, which is what holds the gap
+       open, so any layout that reserves a matching gap reads the same value rather than repeating it. -->
+  <x:Double x:Key="GutterSize">7</x:Double>
+
   <!-- Rounding on a panel corner where two gutters meet on the outside of its area, so a corner sitting on
        the application border or on an area's internal split stays square. The bottom corners round only on a
        head that clips a hosted web view to the rounding, because the document view fills the panel below the

@@ -13,9 +13,8 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Utility rail: a custom, non-focusable icon strip, deliberately not a NavigationView. It draws no
-             edge against the panel body: the rail is chrome and the body is content, so the step in tone
-             already carries the boundary. -->
+        <!-- Utility rail: a custom, non-focusable icon strip, deliberately not a NavigationView. It stays on
+             the chrome field, so the panel beside it reads as carved out. -->
         <Grid Grid.Column="0"
               Background="{ThemeResource ChromeBackgroundBrush}">
 
@@ -27,20 +26,22 @@
                     <rail:UtilityButton x:Name="SearchButton" />
                 </StackPanel>
 
-                <!-- Project Settings sits just below the utilities, separated but grouped with them for
-                     discoverability, rather than pinned to the far bottom of the rail. -->
-                <Border Height="1"
-                        Margin="8,4"
-                        Background="{ThemeResource DividerBrush}"/>
-
-                <rail:UtilityButton x:Name="ProjectSettingsButton" />
+                <!-- Project Settings sits just below the utilities, set apart by a gap but still grouped with
+                     them for discoverability, rather than pinned to the far bottom of the rail. -->
+                <rail:UtilityButton x:Name="ProjectSettingsButton"
+                                    Margin="0,16,0,0" />
             </StackPanel>
         </Grid>
 
-        <!-- Content area for the selected panel -->
+        <!-- Content area for the selected panel. Carved out of the field like a document section, so a custom
+             utility looks the same docked into a document tab. The splitter supplies the channel on the
+             right. The bottom meets the application border and is left flush. Margin and corners are set in
+             code-behind from GutterSize and PanelCornerRadius. -->
         <Grid x:Name="ContentArea"
               Grid.Column="1"
-              Background="{ThemeResource ContentBackgroundBrush}">
+              Background="{ThemeResource ContentBackgroundBrush}"
+              BorderBrush="{ThemeResource PanelEdgeBrush}"
+              BorderThickness="1,1,1,0">
             <!-- The panel host controls sit above the hosted panel's FocusTracking.Panel declaration. A tree
                  rebuild destroys the focused row and the platform bounces focus up onto the host, which has no
                  panel ancestor and would otherwise clear panel focus to None. PreservePanelFocus keeps the
