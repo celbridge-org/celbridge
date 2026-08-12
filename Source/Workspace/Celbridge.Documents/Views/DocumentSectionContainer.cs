@@ -13,7 +13,7 @@ namespace Celbridge.Documents.Views;
 public record DocumentTabLocation(DocumentSectionView SectionView, DocumentTab Tab);
 
 /// <summary>
-/// Manages the document sections inside the area hosts the workspace surface container provides: which
+/// Manages the document sections inside the area grids the workspace surface container provides: which
 /// sections are mounted, per-area splits, section chrome, and the active document. Surface geometry
 /// (visibility, sizes, the Bottom area's alignment spans) is pushed to the surface container as a
 /// presentation snapshot rather than applied here.
@@ -728,7 +728,7 @@ public sealed partial class DocumentSectionContainer
 
     private Grid GetAreaGrid(DocumentArea area)
     {
-        return _surfaceContainer.GetAreaHost(area);
+        return _surfaceContainer.GetAreaGrid(area);
     }
 
     /// <summary>

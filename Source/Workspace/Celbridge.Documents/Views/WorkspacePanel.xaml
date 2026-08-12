@@ -7,8 +7,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
   <Grid>
     <!-- The surface container owns the workspace geometry and hosts the Utility Panel; the document
-         sections inside its area hosts are managed by the DocumentSectionContainer coordinator, wired
-         up in code-behind. The Documents focus-tracking identity is declared per area host inside the
+         sections inside its area grids are managed by the DocumentSectionContainer coordinator, wired
+         up in code-behind. The Documents focus-tracking identity is declared per area grid inside the
          surface container, because the Utility Panel shares that tree and keeps its own. -->
     <workspace:WorkspaceSurfaceContainer x:Name="SurfaceContainer"/>
     <!-- Topmost display-only layer for tab drag visuals (ghost and insertion indicator) -->

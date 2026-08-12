@@ -17,9 +17,9 @@ public record WorkspaceSurfacePresentation(
     bool BottomAreaSpansSideArea);
 
 /// <summary>
-/// Lays out the workspace surfaces: the Utility Panel it hosts, the three document-area host grids, and
-/// the splitters that size them. This control owns surface geometry only; the presentation is pushed in
-/// as a snapshot, and the sections inside the area hosts are managed by the documents panel.
+/// Lays out the workspace surfaces: the Utility Panel it hosts, the three document-area grids, and the
+/// splitters that size them. This control owns surface geometry only; the presentation is pushed in as a
+/// snapshot, and the sections inside the area grids are managed by the documents panel.
 /// </summary>
 public sealed partial class WorkspaceSurfaceContainer : UserControl
 {
@@ -66,7 +66,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
 
     /// <summary>
     /// Snap targets for the Bottom area splitter, supplied by the documents panel because they derive
-    /// from the sections inside the area hosts. Null means no snapping.
+    /// from the sections inside the area grids. Null means no snapping.
     /// </summary>
     public Func<IReadOnlyList<double>>? BottomAreaSplitterSnapTargets { get; set; }
 
@@ -92,20 +92,20 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
     }
 
     /// <summary>
-    /// Gets the host grid a document area's sections are laid out in.
+    /// Gets the grid a document area's sections are laid out in.
     /// </summary>
-    public Grid GetAreaHost(DocumentArea area)
+    public Grid GetAreaGrid(DocumentArea area)
     {
         switch (area)
         {
             case DocumentArea.Main:
-                return MainAreaHost;
+                return MainAreaGrid;
 
             case DocumentArea.Bottom:
-                return BottomAreaHost;
+                return BottomAreaGrid;
 
             default:
-                return SideAreaHost;
+                return SideAreaGrid;
         }
     }
 
@@ -126,9 +126,9 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
 
         ApplyBottomAreaSpans(presentation);
 
-        MainAreaHost.Visibility = isMainPresented ? Visibility.Visible : Visibility.Collapsed;
-        BottomAreaHost.Visibility = isBottomPresented ? Visibility.Visible : Visibility.Collapsed;
-        SideAreaHost.Visibility = isSidePresented ? Visibility.Visible : Visibility.Collapsed;
+        MainAreaGrid.Visibility = isMainPresented ? Visibility.Visible : Visibility.Collapsed;
+        BottomAreaGrid.Visibility = isBottomPresented ? Visibility.Visible : Visibility.Collapsed;
+        SideAreaGrid.Visibility = isSidePresented ? Visibility.Visible : Visibility.Collapsed;
         UtilityPanelHost.Visibility = isUtilityPanelPresented ? Visibility.Visible : Visibility.Collapsed;
 
         // A splitter only earns its place between two presented surfaces.
@@ -238,15 +238,15 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             bottomColumnSpan += 2;
         }
 
-        Grid.SetColumn(BottomAreaHost, bottomColumn);
-        Grid.SetColumnSpan(BottomAreaHost, bottomColumnSpan);
+        Grid.SetColumn(BottomAreaGrid, bottomColumn);
+        Grid.SetColumnSpan(BottomAreaGrid, bottomColumnSpan);
         Grid.SetColumn(BottomAreaSplitter, bottomColumn);
         Grid.SetColumnSpan(BottomAreaSplitter, bottomColumnSpan);
 
         Grid.SetRowSpan(UtilityPanelHost, spansUtilityPanel ? 2 : UtilityPanelHostRowSpan);
         Grid.SetRowSpan(UtilityPanelSplitter, spansUtilityPanel ? 1 : UtilityPanelSplitterRowSpan);
 
-        Grid.SetRowSpan(SideAreaHost, spansSideArea ? 1 : SideAreaRowSpan);
+        Grid.SetRowSpan(SideAreaGrid, spansSideArea ? 1 : SideAreaRowSpan);
         Grid.SetRowSpan(SideAreaSplitter, spansSideArea ? 1 : SideAreaRowSpan);
 
         // The panel meets the application border until the Bottom area runs under it, which puts a

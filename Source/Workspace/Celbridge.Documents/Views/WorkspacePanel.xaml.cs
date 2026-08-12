@@ -29,7 +29,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     public WorkspacePanelViewModel ViewModel { get; }
 
-    // Manages the document sections inside the surface container's area hosts.
+    // Manages the document sections inside the surface container's area grids.
     private DocumentSectionContainer SectionContainer { get; }
 
     public IReadOnlyList<DocumentSection> VisibleSections => SectionContainer.VisibleSections;
