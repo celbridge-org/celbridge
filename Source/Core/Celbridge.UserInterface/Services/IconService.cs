@@ -50,6 +50,7 @@ public class IconService : IIconService
         { IconSymbol.Home, "bs-house" },
         { IconSymbol.Refresh, "bs-arrow-clockwise" },
         { IconSymbol.Reveal, "bs-box-arrow-up-right" },
+        { IconSymbol.OpenAsDocument, "bs-box-arrow-in-up-right" },
         { IconSymbol.Delete, "bs-trash" },
         { IconSymbol.Error, "bs-exclamation-circle-fill" },
         { IconSymbol.Warning, "bs-exclamation-triangle-fill" },

@@ -202,7 +202,7 @@ public class UtilityService : IUtilityService, IDisposable
         return Result.Fail($"Cannot dock utility '{utilityId}': unknown dock location '{location}'");
     }
 
-    // Docks a utility into a document tab in the active document's section, reusing its live WebView. Activates
+    // Docks a utility into a document tab in Main's primary section, reusing its live WebView. Activates
     // the tab if the utility is already there.
     private Result DockUtilityAsDocument(CustomUtilityView panelView)
     {
@@ -215,7 +215,7 @@ public class UtilityService : IUtilityService, IDisposable
             return Result.Ok();
         }
 
-        // A null address docks into the active document's section and activates the tab.
+        // A null address docks into Main's primary section and activates the tab.
         var placement = new DockUtilityPlacement(Address: null, Activate: true);
         var dockResult = documentsPanel.DockUtility(panelView, placement);
         if (dockResult.IsFailure)

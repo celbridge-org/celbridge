@@ -19,6 +19,7 @@ public enum IconSymbol
     Home,
     Refresh,
     Reveal,
+    OpenAsDocument,
     Delete,
     Error,
     Warning,

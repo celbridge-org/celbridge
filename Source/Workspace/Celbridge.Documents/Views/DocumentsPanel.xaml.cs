@@ -561,10 +561,19 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     {
         var effectiveOptions = options ?? new OpenDocumentOptions();
 
-        // Resolve the target section from the address, defaulting to the active section. An address
-        // naming a section whose area is not split folds into that area's primary section.
+        // Resolve the target section from the address, defaulting to the section unaddressed opens land
+        // in. An address naming a section whose area is not split folds into that area's primary section.
         var address = effectiveOptions.Address;
-        var section = address is not null ? EnsureSectionMounted(address.Section) : SectionContainer.ActiveSection;
+
+        DocumentSection section;
+        if (address is not null)
+        {
+            section = EnsureSectionMounted(address.Section);
+        }
+        else
+        {
+            section = DocumentLayoutHelper.DefaultOpenSection;
+        }
 
         // Check if the file is already opened in any section
         var existingLocation = SectionContainer.FindDocumentTab(fileResource);
@@ -596,15 +605,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 existingSectionView.RemoveTab(existingTab);
                 NotifyLayoutChanged();
 
+                // Without an explicit address the document reopens in the section it was already in.
+                var reopenSection = address is not null ? section : existingSectionView.Section;
                 var tabOrder = effectiveOptions.Address?.TabOrder ?? 0;
-                var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: section, TabOrder: tabOrder);
+                var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: reopenSection, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
                 return await OpenDocument(fileResource, reopenOptions);
             }
 
             // Without an explicit address the existing tab stays in its own
-            // section. Moving it to wherever the active section happens to be
-            // would yank it from under the user.
+            // section. Pulling it into the Main area would yank it from under
+            // the user.
             if (address is null)
             {
                 section = existingSectionView.Section;

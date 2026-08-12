@@ -48,7 +48,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     /// <summary>
     /// Event raised when the active document changes.
-    /// This is the document that should be inspected and determines where new documents open.
+    /// This is the document that should be inspected.
     /// </summary>
     public event Action<ResourceKey>? ActiveDocumentChanged;
 
@@ -94,7 +94,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     public IReadOnlyList<DocumentSection> VisibleSections => _layoutState.VisibleSections;
 
     /// <summary>
-    /// Gets the active document - the document being inspected and where new documents open.
+    /// Gets the active document - the document being inspected.
     /// </summary>
     public ResourceKey ActiveDocument => _activeDocument;
 
