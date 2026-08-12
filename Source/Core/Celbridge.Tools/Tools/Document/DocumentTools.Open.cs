@@ -23,7 +23,7 @@ public partial class DocumentTools
             if (!DocumentLayoutHelper.TryParseSection(section, out var parsedSection))
             {
                 var sectionNames = string.Join(", ", DocumentLayoutHelper.AllSections);
-                return ToolResponse.Error($"Invalid section '{section}': must be one of {sectionNames}, or empty for the active section.");
+                return ToolResponse.Error($"Invalid section '{section}': must be one of {sectionNames}, or empty to open in {DocumentLayoutHelper.DefaultOpenSection}.");
             }
 
             targetSection = parsedSection;

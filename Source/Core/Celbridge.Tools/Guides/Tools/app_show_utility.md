@@ -14,7 +14,7 @@ Call `app_list_utilities` first to discover the valid ids, each utility's curren
 ## Behaviour
 
 - With no `location`, the tool reveals the utility where it already lives: a utility in the **panel** has its rail tab selected (revealing the panel if another tab was showing); a utility docked as a **document** has its tab activated and brought to the front. A custom utility's backing file is seeded on first reveal.
-- With `location`, the utility is first moved to that dock location — reparenting its single live WebView, keeping all its state — and then revealed there. Moving to `"document"` docks it into the active document's section; moving to `"panel"` returns it to the rail.
+- With `location`, the utility is first moved to that dock location — reparenting its single live WebView, keeping all its state — and then revealed there. Moving to `"document"` docks it into `MainLeft`; moving to `"panel"` returns it to the rail.
 
 ## Gotchas
 

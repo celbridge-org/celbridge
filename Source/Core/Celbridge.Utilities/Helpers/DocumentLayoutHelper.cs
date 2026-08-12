@@ -31,6 +31,12 @@ public static class DocumentLayoutHelper
     ];
 
     /// <summary>
+    /// The section that a document opens in when the caller gives no address. Main's primary section is
+    /// the one section that is always present, so an unaddressed open always has somewhere to land.
+    /// </summary>
+    public static readonly DocumentSection DefaultOpenSection = DocumentSection.MainLeft;
+
+    /// <summary>
     /// The area that contains the given section.
     /// </summary>
     public static DocumentArea GetArea(this DocumentSection section)

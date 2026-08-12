@@ -39,7 +39,7 @@ public interface IUtilityService
 
     /// <summary>
     /// Docks a utility at the given location, reparenting its single persistent WebView to that location's
-    /// container (the Utility Panel rail or a document tab in the active document's section). Reveals or
+    /// container (the Utility Panel rail or a document tab in Main's primary section). Reveals or
     /// activates the utility at the destination. A no-op when it is already there.
     /// </summary>
     Task<Result> DockUtilityAsync(EditorId utilityId, DockLocation location);

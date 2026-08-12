@@ -24,7 +24,7 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
 
     /// <summary>
     /// Optional target section to open the document in.
-    /// If null, the document opens in the active section.
+    /// If null, a new document opens in Main's primary section and an already open document stays where it is.
     /// </summary>
     DocumentSection? TargetSection { get; set; }
 

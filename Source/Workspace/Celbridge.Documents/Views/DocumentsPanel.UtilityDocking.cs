@@ -1,9 +1,9 @@
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Where to place a utility when docking it into a document tab. A null Address docks into the active
-/// document's section and appends the tab. A non-null Address targets a specific section and tab order.
-/// Activate selects the docked tab and makes it the active document.
+/// Where to place a utility when docking it into a document tab. A null Address docks into Main's primary
+/// section and appends the tab. A non-null Address targets a specific section and tab order. Activate
+/// selects the docked tab and makes it the active document.
 /// </summary>
 public record DockUtilityPlacement(DocumentAddress? Address, bool Activate);
 
@@ -32,7 +32,17 @@ public sealed partial class DocumentsPanel
         var filePath = resolveResult.Value;
 
         var address = placement.Address;
-        var section = address is not null ? EnsureSectionMounted(address.Section) : SectionContainer.ActiveSection;
+
+        DocumentSection section;
+        if (address is not null)
+        {
+            section = EnsureSectionMounted(address.Section);
+        }
+        else
+        {
+            section = DocumentLayoutHelper.DefaultOpenSection;
+        }
+
         var sectionView = SectionContainer.GetSection(section);
 
         var documentTab = new DocumentTab();
