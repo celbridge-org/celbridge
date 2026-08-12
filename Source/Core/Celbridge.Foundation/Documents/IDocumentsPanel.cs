@@ -1,7 +1,8 @@
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Interface for interacting with the DocumentsPanel view.
+/// Document hosting operations on the workspace panel: opening, closing and addressing documents in
+/// the three document areas.
 /// </summary>
 public interface IDocumentsPanel
 {

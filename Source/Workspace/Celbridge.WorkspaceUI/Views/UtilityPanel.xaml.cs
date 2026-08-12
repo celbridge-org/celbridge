@@ -50,12 +50,23 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public EditorId ActiveUtilityId => ViewModel.SelectedUtilityId;
 
+    // Whether the panel draws a bottom edge and rounded bottom corners: it does when the Bottom document
+    // area runs underneath it, and meets the application border flush otherwise. Driven by the surface
+    // container, which owns the panel's placement.
+    internal void SetBottomEdgePresented(bool isPresented)
+    {
+        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        double bottomRadius = isPresented ? panelCornerRadius : 0;
+
+        ContentArea.BorderThickness = new Thickness(1, 1, 1, isPresented ? 1 : 0);
+        ContentArea.CornerRadius = new CornerRadius(panelCornerRadius, panelCornerRadius, bottomRadius, bottomRadius);
+    }
+
     public UtilityPanel()
     {
         this.InitializeComponent();
 
-        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
-        ContentArea.CornerRadius = new CornerRadius(panelCornerRadius, panelCornerRadius, 0, 0);
+        SetBottomEdgePresented(false);
 
         double gutterSize = (double)Application.Current.Resources["GutterSize"];
         ContentArea.Margin = new Thickness(gutterSize, gutterSize, 0, 0);
@@ -90,8 +101,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Tooltips are applied later in ApplyTooltips, once the localizer strings are read.
     private void InitializeBuiltInButtons()
     {
-        var explorerItem = ViewModel.AddItem(BuiltInUtilityIds.Explorer, WorkspacePanel.Explorer);
-        var searchItem = ViewModel.AddItem(BuiltInUtilityIds.Search, WorkspacePanel.Search);
+        var explorerItem = ViewModel.AddItem(BuiltInUtilityIds.Explorer, WorkspacePanelId.Explorer);
+        var searchItem = ViewModel.AddItem(BuiltInUtilityIds.Search, WorkspacePanelId.Search);
 
         ExplorerButton.SetIcon(IconSymbol.Folder);
         ExplorerButton.SetAutomationId(ExplorerLandmarkId);
@@ -103,7 +114,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         BindButton(SearchButton, searchItem);
         SearchButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Search);
 
-        var projectSettingsItem = ViewModel.AddItem(BuiltInUtilityIds.ProjectSettings, WorkspacePanel.ProjectSettings);
+        var projectSettingsItem = ViewModel.AddItem(BuiltInUtilityIds.ProjectSettings, WorkspacePanelId.ProjectSettings);
 
         ProjectSettingsButton.SetIcon(IconSymbol.Sliders);
         ProjectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
@@ -150,9 +161,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         // Register how the hosted panels take keyboard focus, so the focus service can return focus to
         // whichever is focused after a modal dialog closes or the resource tree rebuilds.
-        _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, ExplorerPanel.FocusPanel);
-        _focusService.SetPanelFocusHandler(WorkspacePanel.Search, SearchPanel.FocusSearchInput);
-        _focusService.SetPanelFocusHandler(WorkspacePanel.ProjectSettings, ProjectSettingsPanel.FocusPanel);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, ExplorerPanel.FocusPanel);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, SearchPanel.FocusSearchInput);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.ProjectSettings, ProjectSettingsPanel.FocusPanel);
 
         // The utility panels drop their own header focus indicator and show focus on the selected rail button
         // instead, so feed panel focus changes into the view model to colour the indicator accordingly.
@@ -169,9 +180,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         _messengerService.Unregister<PanelFocusChangedMessage>(this);
         _messengerService.Unregister<PackagesInitializedMessage>(this);
-        _focusService.SetPanelFocusHandler(WorkspacePanel.Explorer, null);
-        _focusService.SetPanelFocusHandler(WorkspacePanel.Search, null);
-        _focusService.SetPanelFocusHandler(WorkspacePanel.ProjectSettings, null);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, null);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, null);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.ProjectSettings, null);
     }
 
     private void OnPackagesInitialized(object recipient, PackagesInitializedMessage message)
@@ -341,7 +352,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         foreach (var utility in utilities)
         {
-            var item = ViewModel.AddItem(utility.UtilityId, WorkspacePanel.CustomUtility);
+            var item = ViewModel.AddItem(utility.UtilityId, WorkspacePanelId.CustomUtility);
 
             var railButton = new UtilityButton();
             railButton.SetIcon(utility.IconName);
@@ -371,7 +382,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             // the hosted web view lands managed focus on this ContentControl, and the focus tracker
             // classifies by walking towards the root, so without a declaration here the walk passes the
             // view's own declaration and reports None - clearing the rail button's focus highlight.
-            FocusTracking.SetPanel(contentControl, WorkspacePanel.CustomUtility);
+            FocusTracking.SetPanel(contentControl, WorkspacePanelId.CustomUtility);
 
             ContentArea.Children.Add(contentControl);
 
@@ -447,7 +458,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // Restoring the previously selected utility shows its surface; it is not the user choosing to work
         // in that panel, so it claims the keyboard only as a fallback. The restored active document takes
         // focus first and keeps it, and a workspace with no open document leaves this the sole claimant.
-        var takeFocus = _focusService.FocusedPanel == WorkspacePanel.None;
+        var takeFocus = _focusService.FocusedPanel == WorkspacePanelId.None;
 
         if (EditorId.TryParse(tag, out var utilityId)
             && _contentControls.ContainsKey(utilityId)

@@ -3,7 +3,7 @@ namespace Celbridge.Workspace;
 /// <summary>
 /// Identifies individual panels in the workspace for focus tracking.
 /// </summary>
-public enum WorkspacePanel
+public enum WorkspacePanelId
 {
     /// <summary>
     /// No panel.
@@ -67,4 +67,33 @@ public enum WorkspaceSurface
     /// All surfaces are visible.
     /// </summary>
     All = UtilityPanel | BottomArea | SideArea
+}
+
+/// <summary>
+/// How far the Bottom document area spans across the workspace. The area always sits below the Main area;
+/// the alignment decides whether it also runs under the Utility Panel, the Side area, or both, and the
+/// panels it runs under stop above it.
+/// </summary>
+public enum BottomAreaAlignment
+{
+    /// <summary>
+    /// The Bottom area spans the Main area only, leaving the Utility Panel and Side area full height.
+    /// </summary>
+    Center,
+
+    /// <summary>
+    /// The Bottom area spans the Utility Panel and the Main area, leaving the Side area full height.
+    /// </summary>
+    Left,
+
+    /// <summary>
+    /// The Bottom area spans the Main area and the Side area, leaving the Utility Panel full height.
+    /// </summary>
+    Right,
+
+    /// <summary>
+    /// The Bottom area spans the whole workspace, so neither the Utility Panel nor the Side area runs
+    /// past it.
+    /// </summary>
+    Justify
 }

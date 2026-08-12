@@ -1106,6 +1106,21 @@ Open with default application instead?</value>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
     <value>Show only the document content</value>
   </data>
+  <data name="LayoutToolbar_BottomPanelLabel" xml:space="preserve">
+    <value>Bottom Panel</value>
+  </data>
+  <data name="LayoutToolbar_AlignBottomPanelLeftTooltip" xml:space="preserve">
+    <value>Extend the bottom panel under the left panel</value>
+  </data>
+  <data name="LayoutToolbar_AlignBottomPanelCenterTooltip" xml:space="preserve">
+    <value>Fit the bottom panel between the side panels</value>
+  </data>
+  <data name="LayoutToolbar_AlignBottomPanelRightTooltip" xml:space="preserve">
+    <value>Extend the bottom panel under the right panel</value>
+  </data>
+  <data name="LayoutToolbar_AlignBottomPanelJustifyTooltip" xml:space="preserve">
+    <value>Extend the bottom panel across the full width</value>
+  </data>
   <data name="FullScreenToolbar_ExitPresentation" xml:space="preserve">
     <value>Exit Presentation</value>
   </data>

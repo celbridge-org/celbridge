@@ -24,16 +24,10 @@ public class SectionChromeCalculator
     private const double EdgeThickness = 1.0;
 
     private readonly AreaLayoutState _layoutState;
-    private readonly bool _roundsBottomCorners;
 
-    /// <summary>
-    /// The bottom corners are filled by the document view rather than by the section's own chrome, so
-    /// roundsBottomCorners is true only on a head that clips a hosted web view to the rounding.
-    /// </summary>
-    public SectionChromeCalculator(AreaLayoutState layoutState, bool roundsBottomCorners)
+    public SectionChromeCalculator(AreaLayoutState layoutState)
     {
         _layoutState = layoutState;
-        _roundsBottomCorners = roundsBottomCorners;
     }
 
     /// <summary>
@@ -78,7 +72,9 @@ public class SectionChromeCalculator
     }
 
     // An area draws the edges that face another panel and leaves bare the edges that meet the application
-    // border. The top edge always faces the title bar gutter.
+    // border. The top edge always faces the title bar gutter. Where the Bottom area's alignment takes it
+    // across a neighbour, the two stop facing each other: the Bottom area reaches the border on that side
+    // and the neighbour it ran under gains a bottom edge instead.
     private Thickness ResolveAreaEdges(DocumentArea area)
     {
         double facingUtilityPanel = ResolveEdge(_layoutState.IsUtilityPanelPresented);
@@ -90,15 +86,21 @@ public class SectionChromeCalculator
             bool isMainColumnPresented = _layoutState.IsAreaPresented(DocumentArea.Main) ||
                 _layoutState.IsAreaPresented(DocumentArea.Bottom);
             double sideLeft = ResolveEdge(isMainColumnPresented || _layoutState.IsUtilityPanelPresented);
+            double sideBottom = ResolveEdge(_layoutState.BottomAreaSpansSideArea);
 
-            return new Thickness(sideLeft, EdgeThickness, 0, 0);
+            return new Thickness(sideLeft, EdgeThickness, 0, sideBottom);
         }
 
         double facingSide = ResolveEdge(_layoutState.IsAreaPresented(DocumentArea.Side));
 
         if (area == DocumentArea.Bottom)
         {
-            return new Thickness(facingUtilityPanel, EdgeThickness, facingSide, 0);
+            double bottomLeft = ResolveEdge(_layoutState.IsUtilityPanelPresented &&
+                !_layoutState.BottomAreaSpansUtilityPanel);
+            double bottomRight = ResolveEdge(_layoutState.IsAreaPresented(DocumentArea.Side) &&
+                !_layoutState.BottomAreaSpansSideArea);
+
+            return new Thickness(bottomLeft, EdgeThickness, bottomRight, 0);
         }
 
         double facingBottom = ResolveEdge(_layoutState.IsAreaPresented(DocumentArea.Bottom));
@@ -118,18 +120,12 @@ public class SectionChromeCalculator
 
     // A corner is rounded where both of the edges meeting there face a gutter outside the area, so a corner
     // sitting on the application border or on an area's internal split stays square.
-    private CornerRadius ResolveCorners(Thickness outerEdges, double cornerRadius)
+    private static CornerRadius ResolveCorners(Thickness outerEdges, double cornerRadius)
     {
-        double bottomRadius = 0;
-        if (_roundsBottomCorners)
-        {
-            bottomRadius = cornerRadius;
-        }
-
         double topLeft = ResolveCorner(outerEdges.Left, outerEdges.Top, cornerRadius);
         double topRight = ResolveCorner(outerEdges.Top, outerEdges.Right, cornerRadius);
-        double bottomRight = ResolveCorner(outerEdges.Right, outerEdges.Bottom, bottomRadius);
-        double bottomLeft = ResolveCorner(outerEdges.Bottom, outerEdges.Left, bottomRadius);
+        double bottomRight = ResolveCorner(outerEdges.Right, outerEdges.Bottom, cornerRadius);
+        double bottomLeft = ResolveCorner(outerEdges.Bottom, outerEdges.Left, cornerRadius);
 
         return new CornerRadius(topLeft, topRight, bottomRight, bottomLeft);
     }

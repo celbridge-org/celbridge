@@ -34,7 +34,7 @@ public sealed partial class CustomDocumentView : DocumentView
         this.InitializeComponent();
 
         var focusContext = new CustomEditorFocusContext(
-            WorkspacePanel.Documents,
+            WorkspacePanelId.Documents,
             () => _messengerService.Send(new DocumentViewFocusedMessage(_viewModel.FileResource)));
 
         _controller = new CustomEditorController(

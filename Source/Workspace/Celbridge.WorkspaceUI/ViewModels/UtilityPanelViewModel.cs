@@ -13,7 +13,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     private readonly List<UtilityItemViewModel> _items = new();
 
     private EditorId _selectedUtilityId = EditorId.Empty;
-    private WorkspacePanel _focusedPanel = WorkspacePanel.None;
+    private WorkspacePanelId _focusedPanel = WorkspacePanelId.None;
 
     // True from a selection until focus lands on the selected surface. While it is true the accent is shown
     // optimistically and focus reports for other panels are ignored, which suppresses the transient bounce as
@@ -32,9 +32,9 @@ public partial class UtilityPanelViewModel : ObservableObject
 
     /// <summary>
     /// Appends a rail item and returns its view model. focusIdentity is the workspace panel this surface
-    /// reports focus as (WorkspacePanel.CustomUtility for every custom utility).
+    /// reports focus as (WorkspacePanelId.CustomUtility for every custom utility).
     /// </summary>
-    public UtilityItemViewModel AddItem(EditorId id, WorkspacePanel focusIdentity)
+    public UtilityItemViewModel AddItem(EditorId id, WorkspacePanelId focusIdentity)
     {
         var item = new UtilityItemViewModel(id, focusIdentity);
         _items.Add(item);
@@ -73,7 +73,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     /// selection's focus, a report for a different panel is ignored (the transient switch bounce). A report for
     /// the selected surface settles the wait.
     /// </summary>
-    public void ReconcileFocus(WorkspacePanel focusedPanel)
+    public void ReconcileFocus(WorkspacePanelId focusedPanel)
     {
         _focusedPanel = focusedPanel;
 
@@ -111,12 +111,12 @@ public partial class UtilityPanelViewModel : ObservableObject
         return null;
     }
 
-    private WorkspacePanel SelectedFocusIdentity
+    private WorkspacePanelId SelectedFocusIdentity
     {
         get
         {
             var selectedItem = FindItem(_selectedUtilityId);
-            return selectedItem?.FocusIdentity ?? WorkspacePanel.None;
+            return selectedItem?.FocusIdentity ?? WorkspacePanelId.None;
         }
     }
 
@@ -132,7 +132,7 @@ public partial class UtilityPanelViewModel : ObservableObject
             }
 
             var selectedFocusIdentity = SelectedFocusIdentity;
-            return selectedFocusIdentity != WorkspacePanel.None
+            return selectedFocusIdentity != WorkspacePanelId.None
                 && _focusedPanel == selectedFocusIdentity;
         }
     }

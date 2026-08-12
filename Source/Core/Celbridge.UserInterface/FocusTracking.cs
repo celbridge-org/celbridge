@@ -12,16 +12,16 @@ public static class FocusTracking
     public static readonly DependencyProperty PanelProperty =
         DependencyProperty.RegisterAttached(
             "Panel",
-            typeof(WorkspacePanel),
+            typeof(WorkspacePanelId),
             typeof(FocusTracking),
-            new PropertyMetadata(WorkspacePanel.None));
+            new PropertyMetadata(WorkspacePanelId.None));
 
-    public static WorkspacePanel GetPanel(DependencyObject element)
+    public static WorkspacePanelId GetPanel(DependencyObject element)
     {
-        return (WorkspacePanel)element.GetValue(PanelProperty);
+        return (WorkspacePanelId)element.GetValue(PanelProperty);
     }
 
-    public static void SetPanel(DependencyObject element, WorkspacePanel value)
+    public static void SetPanel(DependencyObject element, WorkspacePanelId value)
     {
         element.SetValue(PanelProperty, value);
     }
@@ -31,18 +31,18 @@ public static class FocusTracking
     /// or None when no ancestor declares one. This is the same nearest-mapped-ancestor rule the focus tracker
     /// classifies a focused element by, so a subtree carries a single panel identity from its root.
     /// </summary>
-    public static WorkspacePanel FindPanel(DependencyObject element)
+    public static WorkspacePanelId FindPanel(DependencyObject element)
     {
         foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
         {
             var panel = GetPanel(ancestor);
-            if (panel != WorkspacePanel.None)
+            if (panel != WorkspacePanelId.None)
             {
                 return panel;
             }
         }
 
-        return WorkspacePanel.None;
+        return WorkspacePanelId.None;
     }
 
     /// <summary>

@@ -53,6 +53,7 @@ public static class ServiceConfiguration
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         services.AddTransient<ISetSurfaceVisibilityCommand, SetSurfaceVisibilityCommand>();
         services.AddTransient<IResetSurfaceSizeCommand, ResetSurfaceSizeCommand>();
+        services.AddTransient<ISetBottomAreaAlignmentCommand, SetBottomAreaAlignmentCommand>();
         services.AddTransient<IPerformEditCommand, PerformEditCommand>();
     }
 

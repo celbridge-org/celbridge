@@ -79,6 +79,49 @@
                             </StackPanel>
                         </ToggleButton>
 
+                        <!-- Bottom Panel Alignment. The options are mutually exclusive and each one is
+                             described in its tooltip, so they read as a row of glyphs rather than four
+                             labelled rows. The flyout deliberately stays open on a click, so the user can
+                             step through them and watch the layout change behind it. -->
+                        <TextBlock x:Name="BottomAreaAlignmentHeader"
+                                   Margin="0,4,0,0"/>
+
+                        <StackPanel x:Name="BottomAreaAlignmentButtons"
+                                    Orientation="Horizontal"
+                                    Spacing="4">
+                            <ToggleButton x:Name="AlignBottomAreaLeftButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Left"/>
+                            </ToggleButton>
+
+                            <ToggleButton x:Name="AlignBottomAreaCenterButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Center"/>
+                            </ToggleButton>
+
+                            <ToggleButton x:Name="AlignBottomAreaRightButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Right"/>
+                            </ToggleButton>
+
+                            <ToggleButton x:Name="AlignBottomAreaJustifyButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Justify"/>
+                            </ToggleButton>
+                        </StackPanel>
+
                         <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
 
                         <!-- Reset Layout Button -->
