@@ -86,10 +86,8 @@ public sealed partial class WorkspacePage : Page
             UtilityPanelColumn.Width = new GridLength(utilityPanelWidth);
         }
 
-        // The top-right is the Utility Panel's only corner that meets two gutters. The other three sit on
-        // the application border, which is its own boundary and is left square.
-        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
-        UtilityPanelHost.CornerRadius = new CornerRadius(0, panelCornerRadius, 0, 0);
+        double gutterSize = (double)Application.Current.Resources["GutterSize"];
+        DocumentsPanelGutterRow.Height = new GridLength(gutterSize);
 
         UpdatePanels();
 

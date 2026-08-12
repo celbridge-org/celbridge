@@ -3,25 +3,23 @@
 
   <ResourceDictionary.ThemeDictionaries>
 
-    <!-- Every background surface takes one of three roles. Content is where a document, tree, list or editor
-         canvas lives and sits at the extreme end of the value range. Chrome carries tab strips, panel headers,
-         toolbars, the rail and the title bar, and sits toward the middle. The gutter is the channel between
-         two panels and sits beyond chrome, on the far side from content. PanelEdge is the hairline a surface
-         presents to a gutter, one step beyond it again. The ramp runs content, chrome, gutter, edge in even
-         steps, and the rule is the same in both themes, so it runs upward in dark mode and downward in light.
+    <!-- Two background roles. Content is a canvas a document is edited or viewed in; chrome is the surface
+         everything else sits on, including the channels between panels.
 
-         PanelEdge is distinct from Divider, which is a hairline within a surface (a panel header underline,
-         a toolbar's bottom edge) and stays subtle against the surface carrying it. -->
+         PanelEdge draws every line that bounds something: a carved region, a card, a splitter band. Divider
+         draws a rule between two bands inside one of those. Both are chosen for legibility against the
+         surface behind them rather than to rank one above the other. -->
 
     <!-- Light Theme -->
     <ResourceDictionary x:Key="Light">
       <Color x:Key="ContentBackgroundColor">#FFFFFF</Color>
       <Color x:Key="ChromeBackgroundColor">#F3F3F3</Color>
-      <Color x:Key="GutterColor">#E1E2E4</Color>
-      <Color x:Key="PanelEdgeColor">#D0D0D0</Color>
-      <Color x:Key="TitleBarActiveColor">#F3F3F3</Color>
-      <Color x:Key="TitleBarInactiveColor">#E5E5E5</Color>
-      <Color x:Key="DividerColor">#D0D0D0</Color>
+      <Color x:Key="PanelEdgeColor">#C0C2C4</Color>
+      <!-- A fraction lighter than the edge. On a light surface the edge tone reads heavy for an internal
+           rule. On a dark one it does not, so the two match there. -->
+      <Color x:Key="DividerColor">#C9CBCD</Color>
+      <Color x:Key="CardHeaderBackgroundColor">#FBFBFB</Color>
+      <Color x:Key="CardContentBackgroundColor">#EDEDED</Color>
       <Color x:Key="ErrorTextColor">#D32F2F</Color>
       <Color x:Key="WarningTextColor">#FFA000</Color>
       <Color x:Key="SearchMatchHighlightColor">#C66300</Color>
@@ -34,12 +32,10 @@
            meets its canvas without a visible seam. -->
       <Color x:Key="ContentBackgroundColor">#1E1F22</Color>
       <Color x:Key="ChromeBackgroundColor">#2B2D30</Color>
-      <Color x:Key="GutterColor">#3D3F43</Color>
-      <Color x:Key="PanelEdgeColor">#4F5155</Color>
-      <Color x:Key="TitleBarActiveColor">#2B2D30</Color>
-      <Color x:Key="TitleBarInactiveColor">#3B3E40</Color>
-      <!-- Lighter than both surface tones so a divider reads against either. -->
-      <Color x:Key="DividerColor">#393B40</Color>
+      <Color x:Key="PanelEdgeColor">#45474B</Color>
+      <Color x:Key="DividerColor">#45474B</Color>
+      <Color x:Key="CardHeaderBackgroundColor">#292A2D</Color>
+      <Color x:Key="CardContentBackgroundColor">#191A1D</Color>
       <Color x:Key="ErrorTextColor">#FF5252</Color>
       <Color x:Key="WarningTextColor">#FFCA28</Color>
       <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>
@@ -54,14 +50,45 @@
   <SolidColorBrush x:Key="ChromeBackgroundBrush"
                      Color="{ThemeResource ChromeBackgroundColor}" />
 
-  <SolidColorBrush x:Key="GutterBrush"
-                     Color="{ThemeResource GutterColor}" />
-
   <SolidColorBrush x:Key="PanelEdgeBrush"
                      Color="{ThemeResource PanelEdgeColor}" />
 
   <SolidColorBrush x:Key="DividerBrush"
                      Color="{ThemeResource DividerColor}" />
+
+  <!-- WinUI paints a card with translucent white overlays and borders close enough to those fills to be
+       invisible, so a card's appearance depends on whatever sits behind it and cannot match the web cards.
+       Every fill and edge is overridden with an opaque value instead. The pointer-over and pressed brushes go
+       with them, or the outline drops out from under the pointer. Mirrors cel-expander in celbridge.css. -->
+  <SolidColorBrush x:Key="ExpanderHeaderBackground"
+                     Color="{ThemeResource CardHeaderBackgroundColor}" />
+
+  <SolidColorBrush x:Key="ExpanderBackground"
+                     Color="{ThemeResource CardHeaderBackgroundColor}" />
+
+  <SolidColorBrush x:Key="ExpanderContentBackground"
+                     Color="{ThemeResource CardContentBackgroundColor}" />
+
+  <SolidColorBrush x:Key="ExpanderBorderBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
+  <SolidColorBrush x:Key="ExpanderBorderPointerOverBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
+  <SolidColorBrush x:Key="ExpanderBorderPressedBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
+  <SolidColorBrush x:Key="ExpanderHeaderBorderBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
+  <SolidColorBrush x:Key="ExpanderHeaderBorderPointerOverBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
+  <SolidColorBrush x:Key="ExpanderHeaderBorderPressedBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
+  <SolidColorBrush x:Key="ExpanderContentBorderBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
 
   <SolidColorBrush x:Key="ErrorTextBrush"
                      Color="{ThemeResource ErrorTextColor}" />

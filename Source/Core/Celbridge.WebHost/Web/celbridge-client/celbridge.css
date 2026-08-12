@@ -168,7 +168,7 @@ hr {
      </details>
    Add the `open` attribute to start expanded. */
 .cel-expander {
-    border: 1px solid var(--cel-card-border);
+    border: 1px solid var(--cel-panel-edge);
     border-radius: var(--cel-radius-control);
     overflow: hidden;
 }
@@ -208,10 +208,6 @@ hr {
     transform: translateY(1px) rotate(-135deg);
 }
 
-/* An open card takes the stronger outline, since its body puts the bottom edge far from the header. */
-.cel-expander[open] {
-    border-color: var(--cel-card-border-strong);
-}
 
 /* The header and body fills are close enough that the change alone does not read as a boundary. */
 .cel-expander[open] > summary {

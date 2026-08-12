@@ -69,20 +69,16 @@
 
     color-scheme: light;
 
-    /* Every background surface takes one of three roles. Content is where a document, tree, list or editor
-       canvas lives and sits at the extreme end of the value range. Chrome carries tab strips, panel headers,
-       toolbars and rails, and sits toward the middle. The gutter is the channel between two panels and sits
-       beyond chrome, on the far side from content. Panel-edge is the hairline a surface presents to a gutter,
-       one step beyond it again. The ramp runs content, chrome, gutter, edge in even steps, and the rule is
-       the same in both themes, so it runs upward in dark mode and downward in light.
-
-       Panel-edge is distinct from divider, which is a hairline within a surface and stays subtle against
-       the surface carrying it. */
+    /* Two background roles. Content is a canvas a document is edited or viewed in; chrome is the surface
+       everything else sits on, including the channels between panels. A region painted with content is
+       carved out of the chrome surface and outlined with panel-edge. Divider is the subtler hairline used
+       within a surface. */
     --cel-content-bg: #FFFFFF;
     --cel-chrome-bg: #F3F3F3;
-    --cel-gutter: #E1E2E4;
-    --cel-panel-edge: #D0D0D0;
-    --cel-divider: #D0D0D0;
+    --cel-panel-edge: #C0C2C4;
+    /* A fraction lighter than the edge. On a light surface the edge tone reads heavy for an internal rule.
+       On a dark one it does not, so the two match there. */
+    --cel-divider: #C9CBCD;
     /* The subtle translucent divider (WinUI DividerBrush), used for hairline rules within a surface. */
     --cel-divider-subtle: rgba(0, 0, 0, 0.08);
     --cel-accent: #0078D4;
@@ -109,8 +105,6 @@
        expanded card near-invisible. The strong border is for an open card. */
     --cel-expander-header-bg: #FBFBFB;
     --cel-expander-content-bg: #EDEDED;
-    --cel-card-border: #E5E5E5;
-    --cel-card-border-strong: #D0D0D0;
 }
 
 :root[data-theme="dark"] {
@@ -120,9 +114,8 @@
        its canvas without a visible seam. */
     --cel-content-bg: #1E1F22;
     --cel-chrome-bg: #2B2D30;
-    --cel-gutter: #3D3F43;
-    --cel-panel-edge: #4F5155;
-    --cel-divider: #393B40;
+    --cel-panel-edge: #45474B;
+    --cel-divider: #45474B;
     --cel-divider-subtle: rgba(255, 255, 255, 0.08);
     --cel-accent: #60CDFF;
     --cel-accent-text: #000000;
@@ -142,6 +135,4 @@
 
     --cel-expander-header-bg: #292A2D;
     --cel-expander-content-bg: #191A1D;
-    --cel-card-border: #323335;
-    --cel-card-border-strong: #3D3F43;
 }

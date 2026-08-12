@@ -121,10 +121,10 @@ Core tokens:
 | `--cel-font-mono` | Code and monospace text. The bundled Cascadia Mono, consistent across platforms. |
 | `--cel-font-size-small`, `--cel-font-size-base`, `--cel-font-size-heading` | The type scale. Small for panel titles, field labels and supporting prose; base for input, button and body text; heading for a section heading. |
 | `--cel-font-weight-regular`, `--cel-font-weight-strong` | Weight, which is what separates a label from prose at the same size. |
-| `--cel-content-bg`, `--cel-chrome-bg`, `--cel-gutter` | The three background roles. Content is where a document, tree or list lives; chrome is tab strips, headers, toolbars and rails; the gutter is the channel between two panels. An editor is a document surface, so its page takes `--cel-content-bg`. |
+| `--cel-content-bg`, `--cel-chrome-bg` | The two background roles. Content is a canvas a document is edited or viewed in; chrome is the surface everything else sits on, including the channels between panels. An editor is a document surface, so its page takes `--cel-content-bg`. |
 | `--cel-text-primary`, `--cel-text-secondary` | Primary and muted foreground text. |
 | `--cel-divider` | Separator and control-border color, for a hairline within a surface. |
-| `--cel-panel-edge` | The hairline a surface presents to a gutter. One step beyond the gutter, so it reads where a divider would not. |
+| `--cel-panel-edge` | The outline of a region carved out of the chrome surface. Stronger than a divider, so the carve reads as an object. |
 | `--cel-accent` | Accent color (hardcoded per theme; the CSS `AccentColor` keyword renders transparent in WebView2). |
 | `--cel-error-text`, `--cel-warning-text`, `--cel-search-highlight` | Semantic status colors. |
 | `--cel-radius-control`, `--cel-radius-card` | Corner radii for controls and larger cards. |

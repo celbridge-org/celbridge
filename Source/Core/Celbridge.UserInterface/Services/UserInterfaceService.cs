@@ -86,9 +86,6 @@ public class UserInterfaceService : IUserInterfaceService
             _logger.LogWarning("Failed to initialize window state management: {Error}", windowStateResult.DiagnosticReport);
         }
 
-        // Broadcast a message whenever the main window acquires or loses focus, driving the custom title
-        // bar's active/inactive tint. The monitor is a no-op on heads that draw a native title bar the OS
-        // tints itself.
         _windowActivationMonitor.Start(_mainWindow);
 
         ApplyCurrentTheme();

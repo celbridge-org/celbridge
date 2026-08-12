@@ -4,8 +4,8 @@ using Celbridge.UserInterface.Services;
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// Broadcasts window activation changes on the packaged WinUI head, driving the custom title bar's
-/// active/inactive tint.
+/// Broadcasts window activation on the packaged WinUI head, so services can refresh state that may have
+/// changed while the application was in the background.
 /// </summary>
 internal sealed class WindowActivationMonitor : IWindowActivationMonitor
 {
@@ -27,12 +27,7 @@ internal sealed class WindowActivationMonitor : IWindowActivationMonitor
     {
         var activationState = e.WindowActivationState;
 
-        if (activationState == WindowActivationState.Deactivated)
-        {
-            var message = new MainWindowDeactivatedMessage();
-            _messengerService.Send(message);
-        }
-        else if (activationState == WindowActivationState.PointerActivated
+        if (activationState == WindowActivationState.PointerActivated
             || activationState == WindowActivationState.CodeActivated)
         {
             var message = new MainWindowActivatedMessage();

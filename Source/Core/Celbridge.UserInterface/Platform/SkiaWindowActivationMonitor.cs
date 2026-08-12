@@ -1,15 +1,38 @@
+#if !WINDOWS
 using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// No-op window activation monitor for the Skia desktop heads, which draw a native title bar that the OS
-/// tints on activation changes.
+/// Broadcasts window activation on the Skia desktop heads, so services can refresh state that may have
+/// changed while the application was in the background.
 /// </summary>
 internal sealed class SkiaWindowActivationMonitor : IWindowActivationMonitor
 {
+    private readonly IMessengerService _messengerService;
+
+    public SkiaWindowActivationMonitor(IMessengerService messengerService)
+    {
+        _messengerService = messengerService;
+    }
+
     public void Start(Window window)
     {
-        // The native title bar is tinted by the OS, so there is nothing to monitor here.
+        // No matching unsubscribe: this is an app-lifetime singleton bound to the main window, which lives
+        // as long as the process, so the handler never needs detaching.
+        window.Activated += OnWindowActivated;
+    }
+
+    private void OnWindowActivated(object sender, WindowActivatedEventArgs e)
+    {
+        var activationState = e.WindowActivationState;
+
+        if (activationState == Windows.UI.Core.CoreWindowActivationState.PointerActivated
+            || activationState == Windows.UI.Core.CoreWindowActivationState.CodeActivated)
+        {
+            var message = new MainWindowActivatedMessage();
+            _messengerService.Send(message);
+        }
     }
 }
+#endif

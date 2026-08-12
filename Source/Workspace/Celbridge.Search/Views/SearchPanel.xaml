@@ -176,8 +176,11 @@
     </Grid>
 
     <!-- Search Options -->
-    <StackPanel Grid.Row="2"
-                Orientation="Horizontal"
+    <!-- Divided from the results below, matching the band the other utility panels put under their controls. -->
+    <Border Grid.Row="2"
+            BorderBrush="{ThemeResource DividerBrush}"
+            BorderThickness="0,0,0,1">
+    <StackPanel Orientation="Horizontal"
                 Padding="12,4,12,8"
                 Spacing="4"
                 HorizontalAlignment="Center">
@@ -214,6 +217,7 @@
         <controls:Icon Symbol="Collapse" FontSize="14"/>
       </Button>
     </StackPanel>
+    </Border>
 
     <!-- Results Section -->
     <Grid Grid.Row="3">

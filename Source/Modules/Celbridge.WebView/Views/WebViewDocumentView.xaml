@@ -154,7 +154,8 @@
              along its whole length. -->
         <!-- Divides two panes inside one document rather than two workspace panels, so there is no gutter
              behind it and it fills its own band. Chrome rather than the gutter tone, which is what marks
-             the divide as internal to one document. -->
+             the divide as internal to one document. A band drawing an edge on each side needs a pixel more
+             than the shared GutterSize to read at the same width. -->
         <controls:Splitter x:Name="SettingsPanelSplitter"
                            Grid.Row="1"
                            Grid.RowSpan="2"

@@ -8,9 +8,9 @@
     xmlns:local="using:Celbridge.Documents.Views">
 
   <!-- The panel is a field that the areas sit in. Every gap between two areas is one of the splitter grab
-       bands, so the field shows through as the gutter and costs no extra space. -->
+       bands, so the field shows through as the channel between them and costs no extra space. -->
   <Grid x:Name="RootGrid"
-        Background="{ThemeResource GutterBrush}">
+        Background="{ThemeResource ChromeBackgroundBrush}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="MainAreaColumn"
                         Width="*"/>
