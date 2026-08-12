@@ -1,60 +1,11 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <ResourceDictionary.ThemeDictionaries>
-
-    <!-- Two background roles. Content is a canvas a document is edited or viewed in; chrome is the surface
-         everything else sits on, including the channels between panels.
-
-         PanelEdge draws every line that bounds something: a carved region, a card, a splitter band. Divider
-         draws a rule between two bands inside one of those. Both are chosen for legibility against the
-         surface behind them rather than to rank one above the other. -->
-
-    <!-- Light Theme -->
-    <ResourceDictionary x:Key="Light">
-      <Color x:Key="ContentBackgroundColor">#FFFFFF</Color>
-      <Color x:Key="ChromeBackgroundColor">#F3F3F3</Color>
-      <Color x:Key="PanelEdgeColor">#C0C2C4</Color>
-      <!-- A fraction lighter than the edge. On a light surface the edge tone reads heavy for an internal
-           rule. On a dark one it does not, so the two match there. -->
-      <Color x:Key="DividerColor">#C9CBCD</Color>
-      <Color x:Key="CardHeaderBackgroundColor">#FBFBFB</Color>
-      <Color x:Key="CardContentBackgroundColor">#EDEDED</Color>
-      <Color x:Key="ErrorTextColor">#D32F2F</Color>
-      <Color x:Key="WarningTextColor">#FFA000</Color>
-      <Color x:Key="SearchMatchHighlightColor">#C66300</Color>
-      <Color x:Key="ListItemSelectedBackgroundColor">#3C0078D4</Color>
-    </ResourceDictionary>
-
-    <!-- Dark Theme -->
-    <ResourceDictionary x:Key="Dark">
-      <!-- Content sits within four units of the Monaco and terminal canvases, so a document's own chrome
-           meets its canvas without a visible seam. -->
-      <Color x:Key="ContentBackgroundColor">#1E1F22</Color>
-      <Color x:Key="ChromeBackgroundColor">#2B2D30</Color>
-      <Color x:Key="PanelEdgeColor">#45474B</Color>
-      <Color x:Key="DividerColor">#45474B</Color>
-      <Color x:Key="CardHeaderBackgroundColor">#292A2D</Color>
-      <Color x:Key="CardContentBackgroundColor">#191A1D</Color>
-      <Color x:Key="ErrorTextColor">#FF5252</Color>
-      <Color x:Key="WarningTextColor">#FFCA28</Color>
-      <Color x:Key="SearchMatchHighlightColor">#FFD966</Color>
-      <Color x:Key="ListItemSelectedBackgroundColor">#3C0078D4</Color>
-    </ResourceDictionary>
-
-  </ResourceDictionary.ThemeDictionaries>
-
-  <SolidColorBrush x:Key="ContentBackgroundBrush"
-                     Color="{ThemeResource ContentBackgroundColor}" />
-
-  <SolidColorBrush x:Key="ChromeBackgroundBrush"
-                     Color="{ThemeResource ChromeBackgroundColor}" />
-
-  <SolidColorBrush x:Key="PanelEdgeBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="DividerBrush"
-                     Color="{ThemeResource DividerColor}" />
+  <!-- The colours themselves, and the brushes declared straight over them, are generated into
+       ColorTokens.xaml from Source/Core/Celbridge.DesignTokens/DesignTokens.json, which also generates the token sheet
+       served to WebView content. What stays here is the redirection of WinUI's own control keys onto that
+       palette: which native key takes which colour is a decision about the control, not a value in the
+       palette. App.xaml.cs merges both dictionaries. -->
 
   <!-- WinUI paints a card with translucent white overlays and borders close enough to those fills to be
        invisible, so a card's appearance depends on whatever sits behind it and cannot match the web cards.
@@ -89,15 +40,6 @@
 
   <SolidColorBrush x:Key="ExpanderContentBorderBrush"
                      Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ErrorTextBrush"
-                     Color="{ThemeResource ErrorTextColor}" />
-
-  <SolidColorBrush x:Key="SearchMatchHighlightBrush"
-                     Color="{ThemeResource SearchMatchHighlightColor}" />
-
-  <SolidColorBrush x:Key="ListItemSelectedBackgroundBrush"
-                     Color="{ThemeResource ListItemSelectedBackgroundColor}" />
 
   <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
   <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>

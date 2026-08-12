@@ -6,10 +6,10 @@ html, body {
 
 /* Theme via [data-theme] attribute (WebView2 doesn't reliably re-evaluate prefers-color-scheme). The accent,
    toolbar-foreground and toolbar-surface colors derive from the shared tokens (celbridge-tokens.css, linked
-   before this file), so they are single-sourced from Colors.xaml and need no per-theme override here. The
-   toolbar takes the chrome role, so it reads as one band with the native tab strip above it and steps off
-   the Monaco canvas below. The remaining tokens are the editor's own translucent divider and button-overlay
-   colors, which have no shared equivalent and stay defined per theme below. */
+   before this file), so they are single-sourced with the native palette and need no per-theme override
+   here. The toolbar takes the chrome role, so it reads as one band with the native tab strip above it and
+   steps off the Monaco canvas below. The remaining tokens are the editor's own translucent divider and
+   button-overlay colors, which have no shared equivalent and stay defined per theme below. */
 :root {
     --accent-color: var(--cel-accent);
     --toolbar-btn-fg: var(--cel-text-primary);

@@ -148,21 +148,21 @@
                     <!-- Selected state - full row accent background -->
                     <VisualState x:Name="Selected">
                       <VisualState.Setters>
-                        <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
+                        <Setter Target="ContentGrid.Background" Value="{ThemeResource SelectionBackgroundBrush}"/>
                       </VisualState.Setters>
                     </VisualState>
                     
                     <!-- Selected + PointerOver state -->
                     <VisualState x:Name="SelectedPointerOver">
                       <VisualState.Setters>
-                        <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
+                        <Setter Target="ContentGrid.Background" Value="{ThemeResource SelectionBackgroundBrush}"/>
                       </VisualState.Setters>
                     </VisualState>
                     
                     <!-- Selected + Pressed state -->
                     <VisualState x:Name="SelectedPressed">
                       <VisualState.Setters>
-                        <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
+                        <Setter Target="ContentGrid.Background" Value="{ThemeResource SelectionBackgroundBrush}"/>
                       </VisualState.Setters>
                     </VisualState>
                   </VisualStateGroup>

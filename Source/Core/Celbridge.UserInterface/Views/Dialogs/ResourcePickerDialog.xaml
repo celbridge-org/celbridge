@@ -93,19 +93,19 @@
 
                       <VisualState x:Name="Selected">
                         <VisualState.Setters>
-                          <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
+                          <Setter Target="ContentGrid.Background" Value="{ThemeResource SelectionBackgroundBrush}"/>
                         </VisualState.Setters>
                       </VisualState>
 
                       <VisualState x:Name="SelectedPointerOver">
                         <VisualState.Setters>
-                          <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
+                          <Setter Target="ContentGrid.Background" Value="{ThemeResource SelectionBackgroundBrush}"/>
                         </VisualState.Setters>
                       </VisualState>
 
                       <VisualState x:Name="SelectedPressed">
                         <VisualState.Setters>
-                          <Setter Target="ContentGrid.Background" Value="{ThemeResource ListItemSelectedBackgroundBrush}"/>
+                          <Setter Target="ContentGrid.Background" Value="{ThemeResource SelectionBackgroundBrush}"/>
                         </VisualState.Setters>
                       </VisualState>
                     </VisualStateGroup>

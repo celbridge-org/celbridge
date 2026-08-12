@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
+    <IsPackable>false</IsPackable>
+
+    <!-- A build-time tool rather than product code, so it reads and writes files with System.IO directly
+         instead of the ILocalFileSystem gateway. Opts the project out of the analyzer that forbids that. -->
+    <IsBuildTimeTool>true</IsBuildTimeTool>
+
+    <TokenSourcePath>$(MSBuildThisFileDirectory)DesignTokens.json</TokenSourcePath>
+    <GeneratedXamlPath>$(MSBuildThisFileDirectory)..\Celbridge.UserInterface\Resources\ColorTokens.xaml</GeneratedXamlPath>
+    <GeneratedCssPath>$(MSBuildThisFileDirectory)..\Celbridge.WebHost\Web\celbridge-client\celbridge-tokens.css</GeneratedCssPath>
+  </PropertyGroup>
+
+  <!--
+    Emits the colour dictionary consumed by Celbridge.UserInterface and the token sheet served by
+    Celbridge.WebHost. Both projects reference this one so MSBuild builds it first, and both declare
+    their generated file as an explicit item so it resolves on a clean checkout where the file does
+    not yet exist.
+
+    Inputs/Outputs gives the target MSBuild's incremental behaviour: the generator only runs when the
+    token source or the generator assembly is newer than the files it produced. TargetPath stands in
+    for the generator sources, since a change to any of them rebuilds it.
+  -->
+  <Target Name="GenerateDesignTokens"
+          AfterTargets="Build"
+          Inputs="$(TokenSourcePath);$(TargetPath)"
+          Outputs="$(GeneratedXamlPath);$(GeneratedCssPath)">
+    <Exec Command="dotnet &quot;$(TargetPath)&quot; --source &quot;$(TokenSourcePath)&quot; --xaml &quot;$(GeneratedXamlPath)&quot; --css &quot;$(GeneratedCssPath)&quot;" />
+  </Target>
+
+  <Target Name="CleanDesignTokens" AfterTargets="Clean">
+    <Delete Files="$(GeneratedXamlPath);$(GeneratedCssPath)" />
+  </Target>
+
+</Project>

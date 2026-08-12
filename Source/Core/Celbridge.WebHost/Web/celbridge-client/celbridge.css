@@ -152,7 +152,7 @@ samp {
 }
 
 ::selection {
-    background: var(--cel-list-selected-bg);
+    background: var(--cel-selection-bg);
 }
 
 hr {

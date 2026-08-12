@@ -103,7 +103,7 @@ public class ThemeHelper
     }
 
     /// <summary>
-    /// Reads the ChromeBackgroundColor from the theme resources defined in Colors.xaml.
+    /// Reads the ChromeBackgroundColor from the theme resources defined in ColorTokens.xaml.
     /// </summary>
     private static Windows.UI.Color GetTitleBarColor(UserInterfaceTheme theme)
     {
