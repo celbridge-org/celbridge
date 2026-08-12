@@ -11,4 +11,7 @@
     <!-- Converts a boolean value to an accent color brush (true = accent, false = transparent) -->
     <converters:BoolToAccentColorConverter x:Key="BoolToAccentColorConverter"/>
 
+    <!-- Shortens an absolute path for display, replacing the user's home folder with a tilde -->
+    <converters:AbbreviatedPathConverter x:Key="AbbreviatedPathConverter"/>
+
 </ResourceDictionary>

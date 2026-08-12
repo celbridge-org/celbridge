@@ -1,0 +1,16 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.ProjectAvatar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- The initials, the fill and the tile geometry are set in code-behind: they derive from the project name
+       and from Size, so there is nothing for a binding to resolve here. -->
+  <Border x:Name="AvatarTile">
+    <TextBlock x:Name="InitialsText"
+               FontWeight="SemiBold"
+               Foreground="White"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"/>
+  </Border>
+
+</UserControl>
