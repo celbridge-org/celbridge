@@ -83,8 +83,7 @@ public sealed partial class DocumentSectionView : UserControl
         _tabStripWheelHandler = OnTabStripPointerWheelChanged;
         DisableBuiltInTabDrag();
 
-        // Disable tab add/remove animations so tabs snap into place immediately
-        TabView.Loaded += (s, e) => DisableTabViewAnimations();
+        TabView.Loaded += OnTabViewLoaded;
 
         // On macOS the strip does not re-reveal the selected tab when it gets narrower, so a window resize
         // or a change in the number of sections can leave the active tab clipped off-screen. Re-scroll it
@@ -101,6 +100,18 @@ public sealed partial class DocumentSectionView : UserControl
         {
             TabView.AddHandler(PointerWheelChangedEvent, _tabStripWheelHandler, handledEventsToo: true);
         }
+    }
+
+    private void OnTabViewLoaded(object sender, RoutedEventArgs e)
+    {
+        // Disable tab add/remove animations so tabs snap into place immediately
+        DisableTabViewAnimations();
+
+        // The border lines come from the strip's template, and the pair inside the tab list only appears
+        // once that list has laid out, so a section that starts empty is covered by applying now and again
+        // on the next dispatcher cycle.
+        UpdateTabStripBorderLines();
+        _ = DispatcherQueue.TryEnqueue(UpdateTabStripBorderLines);
     }
 
     private void OnTabViewSizeChanged(object sender, SizeChangedEventArgs e)
@@ -302,7 +313,7 @@ public sealed partial class DocumentSectionView : UserControl
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);
         TabView.TabItems.Add(tab);
-        UpdateEmptyPlaceholderVisibility();
+        UpdateEmptySectionVisuals();
     }
 
     /// <summary>
@@ -315,7 +326,7 @@ public sealed partial class DocumentSectionView : UserControl
         RemoveTabPointerPressedHandler(tab);
         TabView.TabItems.Remove(tab);
         DetachStrandedContainer(tab);
-        UpdateEmptyPlaceholderVisibility();
+        UpdateEmptySectionVisuals();
     }
 
     /// <summary>
@@ -594,7 +605,7 @@ public sealed partial class DocumentSectionView : UserControl
         DocumentsLayoutChanged?.Invoke(this, documentResources);
 
         ToolTipService.SetToolTip(TabView, null);
-        UpdateEmptyPlaceholderVisibility();
+        UpdateEmptySectionVisuals();
 
         // Removing tabs can leave the strip scrolled past the end of its shrunken content, clipping
         // tabs at the leading edge while showing a blank gap at the trailing edge. Re-clamp once
@@ -684,12 +695,46 @@ public sealed partial class DocumentSectionView : UserControl
         _dragSourceSectionView = this;
     }
 
-    private void UpdateEmptyPlaceholderVisibility()
+    private void UpdateEmptySectionVisuals()
     {
         // Keep the TabView visible even when the section has no tabs, so its tab strip footer (which
         // hosts the split-editor toolbar on the rightmost section) stays accessible. The empty
         // placeholder renders behind the empty strip.
         EmptyPlaceholder.Visibility = TabView.TabItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdateTabStripBorderLines();
+    }
+
+    /// <summary>
+    /// Hides the bottom border of the tab strip while the section has no tabs, so an empty section reads as
+    /// one empty rectangle instead of showing a line that divides nothing.
+    /// </summary>
+    private void UpdateTabStripBorderLines()
+    {
+        var tabStripContainer = VisualTree.FindDescendantByName(TabView, "TabContainerGrid");
+        if (tabStripContainer is null)
+        {
+            return;
+        }
+
+        // The stock TabView spreads this border over four elements: a pair in its own template flanking the
+        // tab list, and a 4px pair inside the list's items presenter. Opacity rather than Visibility, which
+        // the template drives on these same elements from its own visual states.
+        double borderOpacity = 1.0;
+        if (TabView.TabItems.Count == 0)
+        {
+            borderOpacity = 0.0;
+        }
+
+        foreach (var borderLine in VisualTree.FindDescendantsByName(tabStripContainer, "LeftBottomBorderLine"))
+        {
+            borderLine.Opacity = borderOpacity;
+        }
+
+        foreach (var borderLine in VisualTree.FindDescendantsByName(tabStripContainer, "RightBottomBorderLine"))
+        {
+            borderLine.Opacity = borderOpacity;
+        }
     }
 
     private void TabView_TabDroppedOutside(TabView sender, TabViewTabDroppedOutsideEventArgs args)
@@ -883,6 +928,6 @@ public sealed partial class DocumentSectionView : UserControl
             TabView.TabItems.Insert(index, tab);
         }
 
-        UpdateEmptyPlaceholderVisibility();
+        UpdateEmptySectionVisuals();
     }
 }
