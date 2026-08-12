@@ -134,8 +134,8 @@
     --cel-search-highlight: #FFD966;
     --cel-list-selected-bg: rgba(0, 120, 212, 0.235);
 
-    /* Stepped off the content background, which an editor's body takes, so a control has no more contrast
-       against a content surface than the same control has against chrome. */
+    /* Stepped off the content background, which an editor's body takes, by the same amount a control used to
+       step off chrome, so a control on a content surface reads no more inflated than it did before. */
     --cel-control-bg: #2B2C30;
     --cel-control-hover-bg: #36383C;
     --cel-control-border: #323335;
