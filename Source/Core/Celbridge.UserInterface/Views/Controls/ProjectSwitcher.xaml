@@ -9,41 +9,6 @@
 
     <UserControl.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-
-        <!-- No hover or click states: this row is a header, not a command. The margin, padding, name offset and
-             path style are the WinUI MenuFlyoutItem values, so the name and path line up with the menu items
-             below. Vertical padding is dropped because the action buttons already set the row height. -->
-        <ControlTemplate x:Key="CurrentProjectMenuItemTemplate" TargetType="controls:CurrentProjectMenuItem">
-          <Grid Background="Transparent"
-                MinHeight="32"
-                Margin="4,2,4,2"
-                Padding="11,0,11,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0"
-                        Orientation="Horizontal"
-                        Spacing="4"
-                        Margin="28,0,0,0"
-                        VerticalAlignment="Center">
-              <TextBlock Text="{TemplateBinding Text}"
-                         VerticalAlignment="Center"/>
-              <ContentPresenter Content="{TemplateBinding Actions}"
-                                VerticalAlignment="Center"/>
-            </StackPanel>
-
-            <TextBlock Grid.Column="1"
-                       Text="{TemplateBinding KeyboardAcceleratorTextOverride}"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Margin="24,0,0,0"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-          </Grid>
-        </ControlTemplate>
     </UserControl.Resources>
 
   <!-- A custom button styled as a prominent, distinct control rather than a nav tab. Clicking it navigates to
@@ -61,33 +26,54 @@
           VerticalContentAlignment="Stretch"
           Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
 
-    <!-- Attached to the whole button (not the chevron) so it drops down aligned to the button's left edge. -->
+    <!-- Attached to the whole button (not the chevron) so it drops down aligned to the button's left edge.
+         Every item after the recent projects header is rebuilt each time the menu opens. -->
     <FlyoutBase.AttachedFlyout>
-      <MenuFlyout x:Name="RecentProjectsFlyout"
+      <MenuFlyout x:Name="ProjectMenuFlyout"
                   Placement="BottomEdgeAlignedLeft">
 
-        <controls:CurrentProjectMenuItem x:Name="CurrentProjectItem"
-                                         Template="{StaticResource CurrentProjectMenuItemTemplate}">
-          <controls:CurrentProjectMenuItem.Actions>
-            <StackPanel Orientation="Horizontal"
-                        VerticalAlignment="Center">
-              <Button x:Name="ReloadProjectButton"
-                      Style="{StaticResource TransparentIconButtonStyle}"
-                      Click="ReloadCurrentProject">
-                <controls:Icon Symbol="Refresh"
-                               FontSize="{StaticResource IconSizeMedium}"/>
-              </Button>
-              <Button x:Name="ShowProjectButton"
-                      Style="{StaticResource TransparentIconButtonStyle}"
-                      Click="ShowCurrentProject">
-                <controls:Icon Symbol="FolderOpen"
-                               FontSize="{StaticResource IconSizeMedium}"/>
-              </Button>
-            </StackPanel>
-          </controls:CurrentProjectMenuItem.Actions>
-        </controls:CurrentProjectMenuItem>
+        <MenuFlyoutItem Text="{x:Bind NewProjectString}"
+                        Click="NewProject">
+          <MenuFlyoutItem.Icon>
+            <controls:Icon Symbol="FolderAdd"/>
+          </MenuFlyoutItem.Icon>
+        </MenuFlyoutItem>
+
+        <MenuFlyoutItem Text="{x:Bind OpenProjectString}"
+                        Click="OpenProject">
+          <MenuFlyoutItem.Icon>
+            <controls:Icon Symbol="FolderOpen"/>
+          </MenuFlyoutItem.Icon>
+        </MenuFlyoutItem>
+
+        <MenuFlyoutItem Text="{x:Bind ReloadProjectString}"
+                        Click="ReloadProject">
+          <MenuFlyoutItem.Icon>
+            <controls:Icon Symbol="Refresh"/>
+          </MenuFlyoutItem.Icon>
+        </MenuFlyoutItem>
+
+        <MenuFlyoutItem Text="{x:Bind CloseProjectString}"
+                        Click="CloseProject">
+          <MenuFlyoutItem.Icon>
+            <controls:Icon Symbol="Close"/>
+          </MenuFlyoutItem.Icon>
+        </MenuFlyoutItem>
 
         <MenuFlyoutSeparator x:Name="CurrentProjectSeparator"/>
+
+        <controls:MenuSectionHeaderItem x:Name="CurrentProjectHeader"
+                                        Text="{x:Bind CurrentProjectHeaderString}"
+                                        Style="{StaticResource MenuSectionHeaderItemStyle}"/>
+
+        <controls:ProjectMenuItem x:Name="CurrentProjectItem"
+                                  Style="{StaticResource ProjectMenuItemStyle}"
+                                  Click="ReturnToCurrentProject"/>
+
+        <MenuFlyoutSeparator/>
+
+        <controls:MenuSectionHeaderItem Text="{x:Bind RecentProjectsHeaderString}"
+                                        Style="{StaticResource MenuSectionHeaderItemStyle}"/>
       </MenuFlyout>
     </FlyoutBase.AttachedFlyout>
 
@@ -97,28 +83,30 @@
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
-      <!-- Folder glyph and project name. Clicking this area navigates to the workspace. -->
+      <!-- Project avatar and name, so the button carries the same identity as the menu rows. Clicking this
+           area navigates to the workspace. -->
       <StackPanel Grid.Column="0"
                   Orientation="Horizontal"
-                  Spacing="6"
+                  Spacing="8"
                   VerticalAlignment="Center">
-        <controls:Icon Symbol="Folder"
-                       FontSize="{StaticResource IconSizeMedium}"/>
+        <controls:ProjectAvatar ProjectName="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
+                                Size="20"
+                                VerticalAlignment="Center"/>
         <TextBlock Text="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
                    VerticalAlignment="Center"/>
       </StackPanel>
 
-      <!-- Recent-projects chevron. Fills the right of the button (full height, out to the right edge)
-           so the whole right side is an easy target for opening the switcher. Its Tapped is handled so
+      <!-- Project menu chevron. Fills the right of the button (full height, out to the right edge)
+           so the whole right side is an easy target for opening the menu. Its Tapped is handled so
            it never triggers the button's navigation. -->
-      <Button x:Name="RecentProjectsButton"
+      <Button x:Name="ProjectMenuButton"
               Grid.Column="1"
-              AutomationProperties.AutomationId="recent-projects-button"
+              AutomationProperties.AutomationId="project-menu-button"
               Background="Transparent"
               BorderThickness="0"
               Padding="6,0,8,0"
               VerticalAlignment="Stretch"
-              Tapped="RecentProjectsButton_Tapped">
+              Tapped="ProjectMenuButton_Tapped">
         <controls:Icon Symbol="ChevronDown"
                        FontSize="12"
                        VerticalAlignment="Center"/>

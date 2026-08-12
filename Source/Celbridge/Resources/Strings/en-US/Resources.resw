@@ -1124,8 +1124,11 @@ Open with default application instead?</value>
   <data name="TitleBar_RecentProjectsHeader" xml:space="preserve">
     <value>Recent Projects</value>
   </data>
-  <data name="TitleBar_ShowProjectInFileManager" xml:space="preserve">
-    <value>Show Project in {0}</value>
+  <data name="TitleBar_CurrentProjectHeader" xml:space="preserve">
+    <value>Current Project</value>
+  </data>
+  <data name="TitleBar_ProjectMenuTooltip" xml:space="preserve">
+    <value>Project menu</value>
   </data>
   <data name="MainMenu_CloseProject" xml:space="preserve">
     <value>Close Project</value>

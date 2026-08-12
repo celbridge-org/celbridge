@@ -10,9 +10,9 @@ namespace Celbridge.UserInterface.Helpers;
 public static class RecentProjectsMenu
 {
     /// <summary>
-    /// Populates the target collection with one item per recent project (the name plus a right-aligned path
-    /// column) followed by a separator and a Clear Recent Projects item. Call only when there is at least one
-    /// recent project. onOpenProject receives the clicked project's file path; onClearRecent clears the list.
+    /// Populates the target collection with one row per recent project (the project name above its folder)
+    /// followed by a separator and a Clear Recent Projects item. Call only when there is at least one recent
+    /// project. onOpenProject receives the clicked project's file path; onClearRecent clears the list.
     /// </summary>
     public static void Populate(
         IList<MenuFlyoutItemBase> items,
@@ -21,16 +21,19 @@ public static class RecentProjectsMenu
         string clearRecentLabel,
         Action onClearRecent)
     {
+        var projectItemStyle = Application.Current.Resources["ProjectMenuItemStyle"] as Style;
+        Guard.IsNotNull(projectItemStyle);
+
         foreach (var recentProject in recentProjects)
         {
             var projectFilePath = recentProject.ProjectFilePath;
+            var folderPath = DisplayPathFormatter.AbbreviateHomeFolder(recentProject.ProjectFolderPath);
 
-            var projectItem = new MenuFlyoutItem
+            var projectItem = new ProjectMenuItem
             {
                 Text = recentProject.ProjectName,
-                // Display-only secondary text (it registers no keyboard accelerator), reused as a right-aligned
-                // path column so the list scans by name with the on-disk location shown at a glance.
-                KeyboardAcceleratorTextOverride = projectFilePath
+                SecondaryText = folderPath,
+                Style = projectItemStyle
             };
             ToolTipService.SetToolTip(projectItem, projectFilePath);
             projectItem.Click += (sender, e) => onOpenProject(projectFilePath);

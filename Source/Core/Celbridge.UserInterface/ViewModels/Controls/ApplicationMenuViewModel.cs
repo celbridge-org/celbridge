@@ -83,11 +83,6 @@ public partial class ApplicationMenuViewModel : ObservableObject
         _commandService.Execute<IReloadProjectCommand>();
     }
 
-    public void ShowProject()
-    {
-        _commandService.Execute<IShowProjectCommand>();
-    }
-
     public void ShowLogs()
     {
         _commandService.Execute<IShowLogsCommand>();

@@ -79,9 +79,13 @@
 
             <StackPanel Orientation="Horizontal">
 
+              <controls:ProjectAvatar ProjectName="{Binding ProjectName}"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center"/>
+
               <Grid MinWidth="100">
                 <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
-                                 Click="RecentProjectButton_Click"                                 
+                                 Click="RecentProjectButton_Click"
                                  ToolTipService.ToolTip="{Binding ProjectFilePath}"
                                  ToolTipService.Placement="Bottom">
                     <TextBlock Margin="8 0 0 0"
@@ -91,7 +95,7 @@
 
               <TextBlock VerticalAlignment="Center"
                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                         Text="{Binding ProjectFolderPath}"/>              
+                         Text="{Binding ProjectFolderPath, Converter={StaticResource AbbreviatedPathConverter}}"/>
             </StackPanel>
             
           </DataTemplate>
