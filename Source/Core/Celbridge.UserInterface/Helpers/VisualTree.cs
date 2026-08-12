@@ -56,6 +56,30 @@ public static class VisualTree
     }
 
     /// <summary>
+    /// Enumerates every descendant with the specified name in the visual tree. Lazy, so a caller that stops
+    /// at the first match does not walk the rest of the subtree.
+    /// </summary>
+    public static IEnumerable<FrameworkElement> FindDescendantsByName(DependencyObject parent, string name)
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(parent);
+
+        for (int i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is FrameworkElement element &&
+                element.Name == name)
+            {
+                yield return element;
+            }
+
+            foreach (var descendant in FindDescendantsByName(child, name))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    /// <summary>
     /// Finds the first descendant whose AutomationProperties.AutomationId matches
     /// the specified id in the visual tree. Reads the managed attached property
     /// directly, so it works regardless of whether native automation mapping is
