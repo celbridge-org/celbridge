@@ -23,7 +23,7 @@
                 <Button x:Name="OpenAsDocumentButton"
                         Style="{StaticResource TransparentIconButtonStyle}"
                         Click="OpenAsDocumentButton_Click">
-                    <icons:Icon Symbol="OpenAsDocument"
+                    <icons:Icon Symbol="Dock"
                                 FontSize="{StaticResource IconSizeMedium}"/>
                 </Button>
             </controls:PanelHeader.ToolbarContent>
