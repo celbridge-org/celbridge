@@ -66,6 +66,22 @@ public sealed partial class LayoutToolbar : UserControl
         Unloaded -= LayoutToolbar_Unloaded;
     }
 
+    /// <summary>
+    /// The controls in this toolbar that a user can click.
+    /// </summary>
+    internal IReadOnlyList<FrameworkElement> GetInteractiveElements()
+    {
+        var elements = new List<FrameworkElement>
+        {
+            PanelLayoutButton,
+            ToggleUtilityPanelButton,
+            ToggleBottomAreaButton,
+            ToggleSideAreaButton
+        };
+
+        return elements;
+    }
+
     private void UpdateWorkspaceControlsVisibility()
     {
         // Panel toggles, layout-mode radios, and the reset button only make sense on the Workspace page.

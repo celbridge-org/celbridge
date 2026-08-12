@@ -85,26 +85,25 @@ public sealed partial class ApplicationToolbar : UserControl
 
     /// <summary>
     /// The toolbar elements that should pass pointer input through to the application rather than the
-    /// window-drag chrome. The set depends on whether a workspace is active.
+    /// window-drag chrome.
     /// </summary>
     internal IReadOnlyList<FrameworkElement> GetPassthroughElements()
     {
+        var candidates = new List<FrameworkElement>();
+
+        candidates.AddRange(NavigationToolbar.GetInteractiveElements());
+        candidates.AddRange(LayoutToolbar.GetInteractiveElements());
+        candidates.Add(SettingsButton);
+
         var elements = new List<FrameworkElement>();
-
-        if (NavigationToolbar.ActualWidth > 0)
+        foreach (var candidate in candidates)
         {
-            elements.Add(NavigationToolbar);
-        }
-
-        if (ViewModel.IsWorkspaceActive
-            && LayoutToolbar.ActualWidth > 0)
-        {
-            elements.Add(LayoutToolbar);
-        }
-
-        if (SettingsButton.ActualWidth > 0)
-        {
-            elements.Add(SettingsButton);
+            // A collapsed control, or one that has not been laid out yet, has no region to carve out.
+            if (candidate.ActualWidth > 0
+                && candidate.ActualHeight > 0)
+            {
+                elements.Add(candidate);
+            }
         }
 
         return elements;
