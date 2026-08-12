@@ -432,6 +432,10 @@ solution-config.props
 # Generated template zip files (built from templates/ source)
 Source/Core/Celbridge.Projects/Assets/Templates/*.zip
 
+# Generated design token files (built from Source/Core/Celbridge.DesignTokens/DesignTokens.json)
+Source/Core/Celbridge.UserInterface/Resources/ColorTokens.xaml
+Source/Core/Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css
+
 # UV binary (downloaded during build from GitHub releases)
 Source/Workspace/Celbridge.Python/Assets/UV/*.zip
 Source/Workspace/Celbridge.Python/Assets/UV/*.tar.gz

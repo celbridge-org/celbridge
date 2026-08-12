@@ -109,7 +109,7 @@ Link the shared stylesheet to inherit the host's fonts and colors, so a WebView 
 <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
 ```
 
-It defines design tokens as CSS custom properties whose color values mirror the native app's theme (`Celbridge.UserInterface/Resources/Colors.xaml`). Theme switching is automatic: the client mirrors the host theme onto `html[data-theme]` on every state snapshot, so tokens re-resolve with no editor JS — do not subscribe to `appState.theme` to swap a stylesheet or toggle a class. Build surfaces from the tokens, or key your own rules on `[data-theme="dark"]` for anything a token does not cover.
+It defines design tokens as CSS custom properties. Both it and the native app's theme dictionaries are generated from one source (`Source/Core/Celbridge.DesignTokens/DesignTokens.json`), so a token holds the same value on either side. Theme switching is automatic: the client mirrors the host theme onto `html[data-theme]` on every state snapshot, so tokens re-resolve with no editor JS — do not subscribe to `appState.theme` to swap a stylesheet or toggle a class. Build surfaces from the tokens, or key your own rules on `[data-theme="dark"]` for anything a token does not cover.
 
 An editor that hand-styles its own chrome (the CodeEditor is the precedent) can link `/assets/celbridge-client/celbridge-tokens.css` instead — the same tokens with none of the bare-element control rules — so it gets the host palette without the generic button/input styling leaking into its surface.
 

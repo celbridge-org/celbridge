@@ -27,6 +27,22 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
+    <!-- Generates Resources/ColorTokens.xaml. UndefineProperties stops a global TargetFramework
+         (e.g. dotnet build -f net10.0-desktop) from forcing that framework onto the net10.0 generator. -->
+    <ProjectReference Include="..\..\Core\Celbridge.DesignTokens\Celbridge.DesignTokens.csproj"
+                      ReferenceOutputAssembly="false"
+                      UndefineProperties="TargetFramework" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- ColorTokens.xaml is generated during the build, so it does not exist when the SDK evaluates its
+         default XAML glob on a clean checkout. Exclude it from that glob and declare it explicitly below,
+         which holds the item from evaluation onwards whether or not the file is there yet. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Resources\ColorTokens.xaml</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Page Include="Resources\ColorTokens.xaml" />
   </ItemGroup>
 
   <ItemGroup>

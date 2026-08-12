@@ -13,6 +13,7 @@
   <Folder Name="/Core/">
     <Project Path="Source/Core/Celbridge.Server/Celbridge.Server.csproj" />
     <Project Path="Source/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
+    <Project Path="Source/Core/Celbridge.DesignTokens/Celbridge.DesignTokens.csproj" />
     <Project Path="Source/Core/Celbridge.FileSystem/Celbridge.FileSystem.csproj" />
     <Project Path="Source/Core/Celbridge.FileSystem.Analyzers/Celbridge.FileSystem.Analyzers.csproj" />
     <Project Path="Source/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />

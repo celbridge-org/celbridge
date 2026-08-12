@@ -14,7 +14,7 @@
   <UserControl.Resources>
     <converters:ExpanderGlyphConverter x:Key="ExpandCollapseGlyphConverter"/>
     <converters:BoolToBrushConverter x:Key="SelectionBackgroundConverter"
-                                     TrueBrush="{ThemeResource ListItemSelectedBackgroundBrush}"
+                                     TrueBrush="{ThemeResource SelectionBackgroundBrush}"
                                      FalseBrush="Transparent"/>
     <converters:CountToBoolConverter x:Key="CountToBoolConverter"/>
   </UserControl.Resources>

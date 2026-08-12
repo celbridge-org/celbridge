@@ -60,6 +60,17 @@ pip install -e "packages/celbridge[dev]"
 python run_tests.py
 ```
 
+## Design Tokens
+
+Colours and the shared UI dimensions are held once in `Source/Core/Celbridge.DesignTokens/DesignTokens.json` and generated at build time into two files, so the native and web sides cannot disagree about a value:
+
+- `Celbridge.UserInterface/Resources/ColorTokens.xaml` — the theme dictionaries and the brushes declared straight over them
+- `Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css` — the `--cel-*` custom properties served to WebView content
+
+Both are gitignored. Never edit them: change the token source and rebuild. `Celbridge.UserInterface` and `Celbridge.WebHost` each reference `Celbridge.DesignTokens` so the generator runs first, and each declares its generated file as an explicit build item so a clean checkout resolves.
+
+`Colors.xaml` stays hand written and holds only the overrides that redirect WinUI control keys (the `Expander*` family, `WindowCaption*`) onto the generated palette. A token marked `published` is part of the contribution contract that packages outside this repository are written against, so renaming or removing one also means updating the snapshot in `DesignTokenCoverageTests`. Those tests also fail on a token nothing consumes, which is how a token stops outliving the tone it names: give it a consumer, drop the target that has none, or record the exception in `TokensWithoutHostConsumer` with the reason.
+
 ## Git
 
 - Never commit automatically; the user reviews all changes in GitHub Desktop before committing

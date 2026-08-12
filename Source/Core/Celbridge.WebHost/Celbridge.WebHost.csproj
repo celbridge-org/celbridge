@@ -30,6 +30,12 @@
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Host\Celbridge.Host.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <!-- Generates Web/celbridge-client/celbridge-tokens.css. UndefineProperties stops a global
+         TargetFramework (e.g. dotnet build -f net10.0-desktop) from forcing that framework onto the
+         net10.0 generator. -->
+    <ProjectReference Include="..\..\Core\Celbridge.DesignTokens\Celbridge.DesignTokens.csproj"
+                      ReferenceOutputAssembly="false"
+                      UndefineProperties="TargetFramework" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,7 +43,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Web\**" Exclude="Web\**\node_modules\**" />
+    <!-- The token sheet is declared on its own rather than left to the wildcard, which would miss it on a
+         clean checkout where the generator has not run yet. -->
+    <Content Include="Web\**" Exclude="Web\**\node_modules\**;Web\celbridge-client\celbridge-tokens.css" />
+    <Content Include="Web\celbridge-client\celbridge-tokens.css" />
   </ItemGroup>
 
   <ItemGroup>
