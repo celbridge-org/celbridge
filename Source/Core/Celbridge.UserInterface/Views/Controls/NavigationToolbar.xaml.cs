@@ -60,6 +60,22 @@ public sealed partial class NavigationToolbar : UserControl
         _messengerService.UnregisterAll(this);
     }
 
+    /// <summary>
+    /// The controls in this toolbar that a user can click.
+    /// </summary>
+    internal IReadOnlyList<FrameworkElement> GetInteractiveElements()
+    {
+        var elements = new List<FrameworkElement>
+        {
+            MainMenuButton,
+            HomeNavItem,
+            CommunityNavItem,
+            ProjectSwitcher
+        };
+
+        return elements;
+    }
+
     private void ApplyTooltips()
     {
         var mainMenuTooltip = _stringLocalizer.GetString("TitleBar_MainMenuTooltip");
