@@ -29,7 +29,6 @@ public static class ServiceConfiguration
         services.AddTransient<ILoadProjectCommand, LoadProjectCommand>();
         services.AddTransient<IUnloadProjectCommand, UnloadProjectCommand>();
         services.AddTransient<IReloadProjectCommand, ReloadProjectCommand>();
-        services.AddTransient<IShowProjectCommand, ShowProjectCommand>();
         services.AddTransient<IWriteProjectConfigCommand, WriteProjectConfigCommand>();
     }
 }

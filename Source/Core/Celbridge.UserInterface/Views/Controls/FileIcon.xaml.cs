@@ -147,26 +147,7 @@ public sealed partial class FileIcon : UserControl
         var darkBackground = ActualTheme == ElementTheme.Dark;
         var legibleHex = IconColorLegibility.Normalize(iconDefinition.FontColor, darkBackground);
 
-        IconElement.Foreground = new SolidColorBrush(HexToColor(legibleHex));
-    }
-
-    private static Windows.UI.Color HexToColor(string colorHex)
-    {
-        var digits = colorHex.TrimStart('#');
-
-        byte alpha = 255;
-        var offset = 0;
-        if (digits.Length == 8)
-        {
-            alpha = byte.Parse(digits.AsSpan(0, 2), System.Globalization.NumberStyles.HexNumber);
-            offset = 2;
-        }
-
-        var red = byte.Parse(digits.AsSpan(offset, 2), System.Globalization.NumberStyles.HexNumber);
-        var green = byte.Parse(digits.AsSpan(offset + 2, 2), System.Globalization.NumberStyles.HexNumber);
-        var blue = byte.Parse(digits.AsSpan(offset + 4, 2), System.Globalization.NumberStyles.HexNumber);
-
-        return Windows.UI.Color.FromArgb(alpha, red, green, blue);
+        IconElement.Foreground = new SolidColorBrush(HexColor.Parse(legibleHex));
     }
 
     private void UpdateIconDefinitionFromSource()

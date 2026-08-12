@@ -10,29 +10,40 @@ namespace Celbridge.UserInterface.Views;
 
 public sealed partial class ProjectSwitcher : UserControl
 {
-    // The current-project row and its separator are declared in XAML and kept across rebuilds; every item
-    // after them is a recent project and is rebuilt each time the flyout opens.
-    private const int StaticFlyoutItemCount = 2;
-
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+
+    // The items declared in XAML: the project actions, the current-project section and the recent-projects
+    // header. They are kept across rebuilds, and every item added after them is rebuilt on each open.
+    private readonly int _staticFlyoutItemCount;
+
     private ApplicationMenuViewModel? _applicationMenuViewModel;
 
     public ProjectSwitcherViewModel ViewModel { get; }
 
+    private string NewProjectString => _stringLocalizer.GetString("MainMenu_NewProject");
+    private string OpenProjectString => _stringLocalizer.GetString("MainMenu_OpenProject");
+    private string ReloadProjectString => _stringLocalizer.GetString("MainMenu_ReloadProject");
+    private string CloseProjectString => _stringLocalizer.GetString("MainMenu_CloseProject");
+    private string CurrentProjectHeaderString => _stringLocalizer.GetString("TitleBar_CurrentProjectHeader");
+    private string RecentProjectsHeaderString => _stringLocalizer.GetString("TitleBar_RecentProjectsHeader");
+
     public ProjectSwitcher()
     {
-        this.InitializeComponent();
-
+        // The menu's labels are bound one-time, so the localizer has to be in place before the XAML loads.
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
+
+        this.InitializeComponent();
+
+        _staticFlyoutItemCount = ProjectMenuFlyout.Items.Count;
 
         this.DataContext = ViewModel;
 
         // The menu drops down over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
-        overlayInputSuppressor.SuppressWhileOpen(RecentProjectsFlyout);
+        overlayInputSuppressor.SuppressWhileOpen(ProjectMenuFlyout);
 
         Loaded += OnProjectSwitcher_Loaded;
         Unloaded += OnProjectSwitcher_Unloaded;
@@ -43,7 +54,7 @@ public sealed partial class ProjectSwitcher : UserControl
         ViewModel.OnLoaded();
 
         _applicationMenuViewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
-        RecentProjectsFlyout.Opening += OnRecentProjectsFlyoutOpening;
+        ProjectMenuFlyout.Opening += OnProjectMenuFlyoutOpening;
 
         ApplyTooltips();
 
@@ -55,7 +66,7 @@ public sealed partial class ProjectSwitcher : UserControl
     {
         ViewModel.OnUnloaded();
 
-        RecentProjectsFlyout.Opening -= OnRecentProjectsFlyoutOpening;
+        ProjectMenuFlyout.Opening -= OnProjectMenuFlyoutOpening;
 
         Loaded -= OnProjectSwitcher_Loaded;
         Unloaded -= OnProjectSwitcher_Unloaded;
@@ -63,11 +74,11 @@ public sealed partial class ProjectSwitcher : UserControl
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnRecentProjectsFlyoutOpening(object? sender, object e)
+    private void OnProjectMenuFlyoutOpening(object? sender, object e)
     {
-        while (RecentProjectsFlyout.Items.Count > StaticFlyoutItemCount)
+        while (ProjectMenuFlyout.Items.Count > _staticFlyoutItemCount)
         {
-            RecentProjectsFlyout.Items.RemoveAt(StaticFlyoutItemCount);
+            ProjectMenuFlyout.Items.RemoveAt(_staticFlyoutItemCount);
         }
 
         var viewModel = _applicationMenuViewModel;
@@ -80,13 +91,17 @@ public sealed partial class ProjectSwitcher : UserControl
         var currentProject = viewModel.GetCurrentProject();
         if (currentProject is null)
         {
+            CurrentProjectHeader.Visibility = Visibility.Collapsed;
             CurrentProjectItem.Visibility = Visibility.Collapsed;
             CurrentProjectSeparator.Visibility = Visibility.Collapsed;
         }
         else
         {
             CurrentProjectItem.Text = currentProject.ProjectName;
-            CurrentProjectItem.KeyboardAcceleratorTextOverride = currentProject.ProjectFilePath;
+            CurrentProjectItem.SecondaryText = DisplayPathFormatter.AbbreviateHomeFolder(currentProject.ProjectFolderPath);
+            ToolTipService.SetToolTip(CurrentProjectItem, currentProject.ProjectFilePath);
+
+            CurrentProjectHeader.Visibility = Visibility.Visible;
             CurrentProjectItem.Visibility = Visibility.Visible;
             CurrentProjectSeparator.Visibility = Visibility.Visible;
         }
@@ -99,43 +114,66 @@ public sealed partial class ProjectSwitcher : UserControl
                 Text = _stringLocalizer.GetString("Menu_NoRecentProjects"),
                 IsEnabled = false
             };
-            RecentProjectsFlyout.Items.Add(emptyItem);
+            ProjectMenuFlyout.Items.Add(emptyItem);
             return;
         }
 
-        // The switcher is opened from a bare chevron, so a disabled header names the list for anyone who opens
-        // it without reading the tooltip. The main menu's Open Recent submenu is already labelled, so it has none.
-        var headerItem = new MenuFlyoutItem
-        {
-            Text = _stringLocalizer.GetString("TitleBar_RecentProjectsHeader"),
-            IsEnabled = false
-        };
-        RecentProjectsFlyout.Items.Add(headerItem);
-
         RecentProjectsMenu.Populate(
-            RecentProjectsFlyout.Items,
+            ProjectMenuFlyout.Items,
             recentProjects,
             OpenRecentProjectFromSwitcher,
             _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
             viewModel.ClearRecentProjects);
     }
 
-    private void ReloadCurrentProject(object sender, RoutedEventArgs e)
+    private void NewProject(object sender, RoutedEventArgs e)
     {
-        // The button handles the pointer, so the row's own click never runs and the flyout stays open.
-        RecentProjectsFlyout.Hide();
+        _applicationMenuViewModel?.NewProject();
+    }
+
+    private void OpenProject(object sender, RoutedEventArgs e)
+    {
+        _applicationMenuViewModel?.OpenProject();
+    }
+
+    private void ReloadProject(object sender, RoutedEventArgs e)
+    {
         _applicationMenuViewModel?.ReloadProject();
     }
 
-    private void ShowCurrentProject(object sender, RoutedEventArgs e)
+    private void CloseProject(object sender, RoutedEventArgs e)
     {
-        RecentProjectsFlyout.Hide();
-        _applicationMenuViewModel?.ShowProject();
+        if (_applicationMenuViewModel is null)
+        {
+            return;
+        }
+
+        _ = _applicationMenuViewModel.CloseProjectAsync();
     }
 
-    private void RecentProjectsButton_Tapped(object sender, TappedRoutedEventArgs e)
+    private void ReturnToCurrentProject(object sender, RoutedEventArgs e)
     {
-        // Open the switcher (anchored to the whole button so it aligns to the button's left edge) and mark the
+        // The row names the open project rather than commanding anything, so clicking it just dismisses the
+        // menu and hands focus back to the document the user came from.
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        var activeDocument = workspaceWrapper.WorkspaceService.DocumentsService.ActiveDocument;
+        if (activeDocument.IsEmpty)
+        {
+            return;
+        }
+
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        commandService.Execute<IActivateDocumentCommand>(command => command.FileResource = activeDocument);
+    }
+
+    private void ProjectMenuButton_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        // Open the menu (anchored to the whole button so it aligns to the button's left edge) and mark the
         // tap handled so it does not reach the button's own click. Opening it must never also navigate.
         FlyoutBase.ShowAttachedFlyout(WorkspaceButton);
         e.Handled = true;
@@ -163,21 +201,11 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void ApplyTooltips()
     {
-        // The switcher chevron carries only an icon, so give it a tooltip and an accessible name.
-        var recentProjectsTooltip = _stringLocalizer.GetString("MainMenu_OpenRecent");
-        ToolTipService.SetToolTip(RecentProjectsButton, recentProjectsTooltip);
-        ToolTipService.SetPlacement(RecentProjectsButton, PlacementMode.Bottom);
-        AutomationProperties.SetName(RecentProjectsButton, recentProjectsTooltip);
-
-        var reloadProjectTooltip = _stringLocalizer.GetString("MainMenu_ReloadProject");
-        ToolTipService.SetToolTip(ReloadProjectButton, reloadProjectTooltip);
-        AutomationProperties.SetName(ReloadProjectButton, reloadProjectTooltip);
-
-        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-        var fileManagerName = _stringLocalizer.GetString(platformInfo.FileManagerNameStringKey);
-        var showProjectTooltip = _stringLocalizer.GetString("TitleBar_ShowProjectInFileManager", fileManagerName);
-        ToolTipService.SetToolTip(ShowProjectButton, showProjectTooltip);
-        AutomationProperties.SetName(ShowProjectButton, showProjectTooltip);
+        // The menu chevron carries only an icon, so give it a tooltip and an accessible name.
+        var projectMenuTooltip = _stringLocalizer.GetString("TitleBar_ProjectMenuTooltip");
+        ToolTipService.SetToolTip(ProjectMenuButton, projectMenuTooltip);
+        ToolTipService.SetPlacement(ProjectMenuButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(ProjectMenuButton, projectMenuTooltip);
 
         UpdateWorkspaceTooltip();
     }
