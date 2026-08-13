@@ -20,6 +20,7 @@ namespace Celbridge.UserInterface.Platform;
 /// 6.5.36 to 6.6.29: the 6.5 native library contains none of that text-input machinery. Remove this once
 /// Uno delivers editing keys to the native first responder itself. macOS-only.
 /// </summary>
+// UNO-BUG: Uno 6.6 diverts editing keys away from the native first responder.
 internal static class MacOSKeyCommandRouter
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";

@@ -13,6 +13,7 @@ namespace Celbridge.UserInterface.Platform;
 /// directly: it hides every visible hosted WebView when the dialog opens, sweeps for late attaches while
 /// the dialog is open, and restores the hidden views when the dialog closes.
 /// </summary>
+// UNO-BUG: modal occlusion of hosted native views desyncs, so WebViews render over the dialog.
 internal static class MacOSModalOcclusionMonitor
 {
     // Uno hosts each WebView as a UNOWebView nested inside the Skia canvas, not beside it. The runtime
