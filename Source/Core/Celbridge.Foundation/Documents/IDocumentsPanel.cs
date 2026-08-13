@@ -1,7 +1,8 @@
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Interface for interacting with the DocumentsPanel view.
+/// Document hosting operations on the workspace panel: opening, closing and addressing documents in
+/// the three document areas.
 /// </summary>
 public interface IDocumentsPanel
 {
@@ -17,14 +18,14 @@ public interface IDocumentsPanel
     ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
-    /// The smallest width the panel can be laid out at, composed from the areas it is currently presenting
-    /// and the gutters between them.
+    /// The smallest width the panel can be laid out at, composed from the surfaces it is currently
+    /// presenting and the channels between them.
     /// </summary>
     double MinimumWidth { get; }
 
     /// <summary>
-    /// The smallest height the panel can be laid out at, composed from the areas it is currently presenting
-    /// and the gutters between them.
+    /// The smallest height the panel can be laid out at, composed from the surfaces it is currently
+    /// presenting and the channels between them.
     /// </summary>
     double MinimumHeight { get; }
 

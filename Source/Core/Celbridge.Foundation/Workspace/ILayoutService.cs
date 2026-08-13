@@ -26,9 +26,19 @@ public interface ILayoutService
     bool IsSideAreaVisible { get; }
 
     /// <summary>
+    /// How far the Bottom document area spans across the workspace.
+    /// </summary>
+    BottomAreaAlignment BottomAreaAlignment { get; }
+
+    /// <summary>
     /// Sets the visibility of a specific surface.
     /// </summary>
     void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible);
+
+    /// <summary>
+    /// Sets how far the Bottom document area spans across the workspace.
+    /// </summary>
+    void SetBottomAreaAlignment(BottomAreaAlignment alignment);
 
     /// <summary>
     /// Toggles the visibility of a specific surface.

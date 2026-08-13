@@ -62,6 +62,9 @@ public static class SettingCatalog
         public static readonly SettingDescriptor<float> BottomAreaHeight =
             new("Layout.BottomAreaHeight", SettingScope.Workspace, WorkspaceConstants.BottomAreaHeight);
 
+        public static readonly SettingDescriptor<BottomAreaAlignment> BottomAreaAlignment =
+            new("Layout.BottomAreaAlignment", SettingScope.Workspace, WorkspaceConstants.BottomAreaAlignment);
+
         // The utility id of the active rail surface (e.g. "celbridge.explorer" or a custom id). Restored on
         // load, falling back to Explorer when the persisted id no longer resolves to a rail item.
         public static readonly SettingDescriptor<string> UtilityPanelSelectedUtility =

@@ -90,7 +90,7 @@ public class AppToolTests
     public void GetState_IncludesFocusedPanelAndLayoutMode()
     {
         WireAppStateDependencies(
-            focusedPanel: WorkspacePanel.Documents,
+            focusedPanel: WorkspacePanelId.Documents,
             contextVisible: true,
             inspectorVisible: false,
             consoleVisible: true);
@@ -137,7 +137,7 @@ public class AppToolTests
     }
 
     private IFeatureFlags WireAppStateDependencies(
-        WorkspacePanel focusedPanel = WorkspacePanel.None,
+        WorkspacePanelId focusedPanel = WorkspacePanelId.None,
         bool contextVisible = false,
         bool inspectorVisible = false,
         bool consoleVisible = false,

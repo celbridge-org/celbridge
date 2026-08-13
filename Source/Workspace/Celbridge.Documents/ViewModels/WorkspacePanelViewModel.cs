@@ -9,7 +9,7 @@ using System.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class DocumentsPanelViewModel : ObservableObject
+public partial class WorkspacePanelViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
@@ -17,7 +17,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILayoutService _layoutService;
 
-    public DocumentsPanelViewModel(
+    public WorkspacePanelViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
         ILayoutService layoutService,
@@ -36,13 +36,17 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     private void OnWorkspaceSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(IBindableWorkspaceSettings.BottomAreaHeight))
+        if (e.PropertyName == nameof(IBindableWorkspaceSettings.UtilityPanelWidth))
         {
-            AreaSizeChanged?.Invoke(DocumentArea.Bottom);
+            SurfaceSizeChanged?.Invoke(WorkspaceSurface.UtilityPanel);
+        }
+        else if (e.PropertyName == nameof(IBindableWorkspaceSettings.BottomAreaHeight))
+        {
+            SurfaceSizeChanged?.Invoke(WorkspaceSurface.BottomArea);
         }
         else if (e.PropertyName == nameof(IBindableWorkspaceSettings.SideAreaWidth))
         {
-            AreaSizeChanged?.Invoke(DocumentArea.Side);
+            SurfaceSizeChanged?.Invoke(WorkspaceSurface.SideArea);
         }
     }
 
@@ -95,9 +99,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Raised when a stored area size changes, so the view can re-apply it to the live layout.
+    /// Raised when a stored surface size changes, so the view can re-apply it to the live layout.
     /// </summary>
-    public event Action<DocumentArea>? AreaSizeChanged;
+    public event Action<WorkspaceSurface>? SurfaceSizeChanged;
 
     public void OnAreaLayoutChanged(DocumentArea area, bool isSplit, double splitRatio)
     {
@@ -106,38 +110,57 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public float GetAreaSize(DocumentArea area)
+    public float GetSurfaceSize(WorkspaceSurface surface)
     {
         var settings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
-        return area == DocumentArea.Bottom
-            ? settings.BottomAreaHeight
-            : settings.SideAreaWidth;
+        switch (surface)
+        {
+            case WorkspaceSurface.UtilityPanel:
+                return settings.UtilityPanelWidth;
+
+            case WorkspaceSurface.BottomArea:
+                return settings.BottomAreaHeight;
+
+            case WorkspaceSurface.SideArea:
+                return settings.SideAreaWidth;
+
+            default:
+                return 0;
+        }
     }
 
-    public void StoreAreaSize(DocumentArea area, float size)
+    public void StoreSurfaceSize(WorkspaceSurface surface, float size)
     {
         var settings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
-        if (area == DocumentArea.Bottom)
+        switch (surface)
         {
-            settings.BottomAreaHeight = size;
-        }
-        else if (area == DocumentArea.Side)
-        {
-            settings.SideAreaWidth = size;
+            case WorkspaceSurface.UtilityPanel:
+                settings.UtilityPanelWidth = size;
+                break;
+
+            case WorkspaceSurface.BottomArea:
+                settings.BottomAreaHeight = size;
+                break;
+
+            case WorkspaceSurface.SideArea:
+                settings.SideAreaWidth = size;
+                break;
         }
     }
 
-    public void ResetAreaSize(DocumentArea area)
+    public void ResetSurfaceSize(WorkspaceSurface surface)
     {
         _commandService.Execute<IResetSurfaceSizeCommand>(command =>
         {
-            command.Surface = GetSurface(area);
+            command.Surface = surface;
         });
     }
 
     public bool IsUtilityPanelVisible => _layoutService.IsUtilityPanelVisible;
+
+    public BottomAreaAlignment BottomAreaAlignment => _layoutService.BottomAreaAlignment;
 
     public bool IsAreaVisible(DocumentArea area)
     {

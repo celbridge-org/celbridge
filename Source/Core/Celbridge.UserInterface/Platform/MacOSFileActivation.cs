@@ -13,6 +13,7 @@ namespace Celbridge.UserInterface.Platform;
 /// once dependency injection exists (SetCallback). Paths that arrive before the callback is set are buffered
 /// and flushed to it. macOS-only.
 /// </summary>
+// UNO-BUG: Uno's macOS application delegate does not implement application:openURLs:.
 public static class MacOSFileActivation
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";

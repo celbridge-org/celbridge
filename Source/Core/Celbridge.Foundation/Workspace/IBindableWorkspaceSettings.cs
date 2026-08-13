@@ -29,6 +29,11 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     float BottomAreaHeight { get; set; }
 
     /// <summary>
+    /// How far the Bottom document area spans across the workspace.
+    /// </summary>
+    BottomAreaAlignment BottomAreaAlignment { get; set; }
+
+    /// <summary>
     /// Match case option for the search panel.
     /// </summary>
     bool SearchMatchCase { get; set; }

@@ -86,6 +86,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                     _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
                 }
 
+                // UNO-BUG: the script message handler is registered on every Loaded and never removed.
                 // Uno registers its script message handler on every Loaded and never removes it, so the
                 // second load of a control aborts the process inside WebKit. This control sees a second
                 // load as soon as it leaves the init host for its real container, so drop the handler on
@@ -123,6 +124,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private const double MinimumViewportWidth = 1024;
     private const double MinimumViewportHeight = 768;
 
+    // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
     // Gives the native view a usable frame before anything loads into it. Uno arranges the frame only while
     // the control is in the visual tree, so a surface that loads while it is not (a document restored into a
     // background tab, a utility running from project load) reports a zero-sized window to its page: layout
@@ -321,6 +323,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public void PostMessageToWeb(CoreWebView2 coreWebView2, string json)
     {
+        // UNO-BUG: PostWebMessageAsString is unimplemented on the Skia WebView2.
         // PostWebMessageAsString does not deliver on the Uno Skia WebView2 (the C#->JS half of web messaging is
         // unimplemented). Push the message by invoking a JS dispatch function via ExecuteScriptAsync, which the
         // client transport registers. The JS->C# direction (chrome.webview.postMessage -> WebMessageReceived)

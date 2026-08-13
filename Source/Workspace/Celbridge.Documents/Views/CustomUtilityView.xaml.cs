@@ -42,7 +42,7 @@ public sealed partial class CustomUtilityView : UserControl
         // A utility in the panel is not a document, so it does not mark itself the active document on focus.
         // The registry still reports its Utility focus identity from the registration.
         _panelFocusContext = new CustomEditorFocusContext(
-            WorkspacePanel.CustomUtility,
+            WorkspacePanelId.CustomUtility,
             () => { });
 
         _controller = new CustomEditorController(

@@ -30,7 +30,7 @@ class TestDocument:
         ctx = document.get_state()
         assert "activeDocument" in ctx
         assert "openDocuments" in ctx
-        assert "sectionCount" in ctx
+        assert "visibleSections" in ctx
         # Tool responses emit resource keys in canonical "root:path" form.
         resources = [d["resource"] for d in ctx["openDocuments"]]
         assert "project:TestDocument/hello.txt" in resources
@@ -59,9 +59,9 @@ class TestDocument:
         with pytest.raises(CelError):
             document.open("\\invalid")
 
-    def test_open_invalid_section_index(self, document):
+    def test_open_invalid_section(self, document):
         with pytest.raises(CelError):
-            document.open("TestDocument/hello.txt", section_index=5)
+            document.open("TestDocument/hello.txt", section="NotASection")
 
     def test_activate_invalid_resource_key(self, document):
         with pytest.raises(CelError):

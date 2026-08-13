@@ -393,6 +393,79 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void InitialState_BottomAreaAlignmentIsCenter()
+    {
+        _layoutManager.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Center);
+    }
+
+    [Test]
+    public void SetBottomAreaAlignment_UpdatesAlignmentAndPersistsIt()
+    {
+        _layoutManager.SetBottomAreaAlignment(BottomAreaAlignment.Justify);
+
+        _layoutManager.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Justify);
+        _workspaceSettings.Received().BottomAreaAlignment = BottomAreaAlignment.Justify;
+    }
+
+    [Test]
+    public void SetBottomAreaAlignment_SendsBottomAreaAlignmentChangedMessage()
+    {
+        BottomAreaAlignmentChangedMessage? receivedMessage = null;
+        var recipient = new object();
+        _messengerService.Register<BottomAreaAlignmentChangedMessage>(recipient, (r, m) => receivedMessage = m);
+
+        _layoutManager.SetBottomAreaAlignment(BottomAreaAlignment.Left);
+
+        receivedMessage.Should().NotBeNull();
+        receivedMessage!.Alignment.Should().Be(BottomAreaAlignment.Left);
+    }
+
+    [Test]
+    public void SetBottomAreaAlignment_SameAlignment_NoChange()
+    {
+        bool messageReceived = false;
+        var recipient = new object();
+        _messengerService.Register<BottomAreaAlignmentChangedMessage>(recipient, (r, m) => messageReceived = true);
+
+        _layoutManager.SetBottomAreaAlignment(BottomAreaAlignment.Center);
+
+        messageReceived.Should().BeFalse();
+    }
+
+    [Test]
+    public void SetBottomAreaAlignment_InPresentationMode_StillPersists()
+    {
+        // Alignment is a layout preference rather than a mode, so unlike surface visibility it is not
+        // treated as transient presentation state.
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.SetBottomAreaAlignment(BottomAreaAlignment.Right);
+
+        _workspaceSettings.Received().BottomAreaAlignment = BottomAreaAlignment.Right;
+    }
+
+    [Test]
+    public void WorkspaceLoaded_RestoresStoredBottomAreaAlignment()
+    {
+        _workspaceSettings.BottomAreaAlignment = BottomAreaAlignment.Right;
+
+        _messengerService.Send(new WorkspaceLoadedMessage());
+
+        _layoutManager.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Right);
+    }
+
+    [Test]
+    public void ResetLayout_RestoresCenterBottomAreaAlignment()
+    {
+        _layoutManager.SetBottomAreaAlignment(BottomAreaAlignment.Justify);
+
+        var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
+
+        result.IsSuccess.Should().BeTrue();
+        _layoutManager.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Center);
+    }
+
+    [Test]
     public void MultipleQuickTransitions_MaintainsConsistentState()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);

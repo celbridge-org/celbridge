@@ -1,4 +1,4 @@
-﻿<Page
+<Page
   x:Class="Celbridge.WorkspaceUI.Views.WorkspacePage"
   x:Name="WorkspacePageName"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -10,71 +10,34 @@
   NavigationCacheMode="Required"
   DataContext="{x:Bind ViewModel}">
 
-  <!-- The panels sit in a field of chrome that runs up into the title bar. A gap marks a boundary that can
-       move, so the utility panel runs to the top while the documents panel keeps a channel above it. -->
+  <!-- The workspace surfaces and the splitters between them are laid out by the workspace panel, which
+       holds them in one grid so the Bottom area can span across the Utility Panel. -->
   <Grid x:Name="LayoutRoot"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         Background="{ThemeResource ChromeBackgroundBrush}">
 
-    <Grid.ColumnDefinitions>
-      <!-- Sized and floored from code-behind: the default width comes from WorkspaceConstants and the
-           minimum is the one the Utility Panel reports. -->
-      <ColumnDefinition x:Name="UtilityPanelColumn"/>
-      <!-- Sized by the splitter that sits in it, and collapses with it when the Utility Panel is hidden. -->
-      <ColumnDefinition Width="Auto"/>
-      <ColumnDefinition Width="*"/>
-    </Grid.ColumnDefinitions>
-
     <Grid.RowDefinitions>
-      <!-- Sets the documents panel down from the title bar so its top corners read. Sized from GutterSize in
-           code-behind to match the channels between areas. -->
-      <RowDefinition x:Name="DocumentsPanelGutterRow"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Utility Panel -->
-    <Grid x:Name="UtilityPanelHost"
+    <Grid x:Name="WorkspacePanelHost"
           Grid.Row="0"
-          Grid.RowSpan="3"
-          layout:WorkspaceLayout.Surface="UtilityPanel"
-          AutomationProperties.AutomationId="explorer-panel"
-          Background="{ThemeResource ChromeBackgroundBrush}">
-    </Grid>
-
-    <!-- Documents Panel. Hosts the Main, Bottom and Side document areas and the splitters
-         between them. -->
-    <Grid x:Name="DocumentsPanelHost"
-          Grid.Column="2"
-          Grid.Row="1"
           AutomationProperties.AutomationId="documents-panel"
-          Background="{ThemeResource ChromeBackgroundBrush}">
-    </Grid>
+          Background="{ThemeResource ChromeBackgroundBrush}"/>
 
-    <!-- Notification Bar. Spans the workspace to the right of the Utility Panel and sizes to its
-         content, so it takes no space when no banners are showing. -->
+    <!-- Notification Bar. Always spans the full width of the workspace, below every surface, and sizes
+         to its content so it takes no space when no banners are showing. -->
     <Grid x:Name="NotificationBarHost"
-          Grid.Column="2"
-          Grid.Row="2"
-          AutomationProperties.AutomationId="notification-bar">
-    </Grid>
-
-    <!-- Sits in its own gutter column rather than docked inside the Utility Panel, so the boundary reads
-         the same as the ones between document areas. It draws nothing at rest. -->
-    <controls:Splitter x:Name="UtilityPanelSplitter"
-                       Grid.Column="1"
-                       Grid.Row="1"
-                       Grid.RowSpan="2"
-                       Orientation="Vertical"/>
+          Grid.Row="1"
+          AutomationProperties.AutomationId="notification-bar"/>
 
     <!-- Topmost display-only overlay for pointer-driven resource drag visuals (the ghost),
          spanning every panel so the ghost is visible across the whole workspace. -->
     <Canvas x:Name="ResourceDragOverlay"
             Grid.Row="0"
-            Grid.Column="0"
-            Grid.RowSpan="3"
-            Grid.ColumnSpan="3"
+            Grid.RowSpan="2"
             IsHitTestVisible="False"/>
   </Grid>
 </Page>

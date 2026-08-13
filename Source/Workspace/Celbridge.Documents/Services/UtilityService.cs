@@ -150,7 +150,7 @@ public class UtilityService : IUtilityService, IDisposable
         // Restore into the saved section and tab position without activating, because the active document is
         // restored separately. No flash and no rail navigation either, both of which belong to the interactive
         // dock only.
-        var documentsPanel = (DocumentsPanel)DocumentsPanel;
+        var documentsPanel = (WorkspacePanel)DocumentsPanel;
         var placement = new DockUtilityPlacement(address, Activate: false);
         var dockResult = documentsPanel.DockUtility(panelView, placement);
         if (dockResult.IsFailure)
@@ -206,7 +206,7 @@ public class UtilityService : IUtilityService, IDisposable
     // the tab if the utility is already there.
     private Result DockUtilityAsDocument(CustomUtilityView panelView)
     {
-        var documentsPanel = (DocumentsPanel)DocumentsPanel;
+        var documentsPanel = (WorkspacePanel)DocumentsPanel;
 
         if (panelView.Location == DockLocation.Document)
         {
@@ -253,7 +253,7 @@ public class UtilityService : IUtilityService, IDisposable
         panelView.Controller.Redock(panelView.PanelContainer, panelView.PanelFocusContext);
         panelView.Location = DockLocation.UtilityPanel;
 
-        var documentsPanel = (DocumentsPanel)DocumentsPanel;
+        var documentsPanel = (WorkspacePanel)DocumentsPanel;
         documentsPanel.RemoveUtilityTab(panelView.FileResource);
 
         var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;

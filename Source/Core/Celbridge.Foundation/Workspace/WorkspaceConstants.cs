@@ -28,4 +28,9 @@ public static class WorkspaceConstants
     /// Default height of the Bottom document area.
     /// </summary>
     public const float BottomAreaHeight = 350f;
+
+    /// <summary>
+    /// Default alignment of the Bottom document area.
+    /// </summary>
+    public const BottomAreaAlignment BottomAreaAlignment = Celbridge.Workspace.BottomAreaAlignment.Center;
 }

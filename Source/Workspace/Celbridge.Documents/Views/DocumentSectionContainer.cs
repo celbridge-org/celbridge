@@ -1,9 +1,9 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Documents.Services;
-using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
+using Celbridge.WorkspaceUI.Views;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
@@ -14,23 +14,22 @@ namespace Celbridge.Documents.Views;
 public record DocumentTabLocation(DocumentSectionView SectionView, DocumentTab Tab);
 
 /// <summary>
-/// Container that manages the three document areas, the sections within them, and the splitters that
-/// size both.
+/// Manages the document sections inside the area grids the workspace surface container provides: which
+/// sections are mounted, per-area splits, section chrome, and the active document. Surface geometry
+/// (visibility, sizes, the Bottom area's alignment spans) is pushed to the surface container as a
+/// presentation snapshot rather than applied here.
 /// </summary>
-public sealed partial class DocumentSectionContainer : UserControl
+public sealed partial class DocumentSectionContainer
 {
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
 
+    private readonly WorkspaceSurfaceContainer _surfaceContainer;
     private readonly AreaLayoutState _layoutState = new();
     private readonly SectionChromeCalculator _chromeCalculator;
     private readonly Dictionary<DocumentSection, DocumentSectionView> _sections = new();
     private readonly Dictionary<DocumentArea, Splitter> _splitSplitters = new();
     private readonly Dictionary<DocumentArea, SplitterHelper> _splitHelpers = new();
     private readonly Dictionary<DocumentArea, UIElement> _areaToolbars = new();
-    private readonly IPlatformInfo _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-
-    private SplitterHelper? _bottomAreaSplitterHelper;
-    private SplitterHelper? _sideAreaSplitterHelper;
 
     private double _totalDragDelta = 0;
 
@@ -69,16 +68,6 @@ public sealed partial class DocumentSectionContainer : UserControl
     public event Action<DocumentArea, bool, double>? AreaLayoutChanged;
 
     /// <summary>
-    /// Event raised when a collapsible area is resized, carrying its new height (Bottom) or width (Side).
-    /// </summary>
-    public event Action<DocumentArea, double>? AreaSizeChanged;
-
-    /// <summary>
-    /// Event raised when an area splitter is double-clicked, asking for that area's default size.
-    /// </summary>
-    public event Action<DocumentArea>? AreaSizeResetRequested;
-
-    /// <summary>
     /// Event raised when resource files are dropped into a section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
@@ -99,11 +88,16 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public DocumentSection ActiveSection => _activeSection;
 
-    public DocumentSectionContainer()
+    public DocumentSectionContainer(WorkspaceSurfaceContainer surfaceContainer)
     {
-        InitializeComponent();
+        _surfaceContainer = surfaceContainer;
+        _surfaceContainer.BottomAreaSplitterSnapTargets = ResolveBottomAreaSnapTargets;
 
-        _chromeCalculator = new SectionChromeCalculator(_layoutState, _platformInfo.ClipsHostedWebViewToCorners);
+        // An area's minimum derives from the sections inside its grid, which this container owns, so the
+        // surface container asks for it rather than naming a size of its own.
+        _surfaceContainer.AreaMinimumSizes = GetAreaMinimumSize;
+
+        _chromeCalculator = new SectionChromeCalculator(_layoutState);
 
         // Every section exists for the lifetime of the container: a collapsed area keeps its tabs while
         // its sections are unmounted from the visual tree.
@@ -112,40 +106,33 @@ public sealed partial class DocumentSectionContainer : UserControl
             CreateSection(section);
         }
 
-        // The stored sizes arrive with the workspace settings, so the collapsible areas open at their
-        // defaults until then.
-        SideAreaColumn.Width = new GridLength(WorkspaceConstants.SideAreaWidth);
-        BottomAreaRow.Height = new GridLength(WorkspaceConstants.BottomAreaHeight);
-
-        InitializeAreaSplitters();
-
         foreach (var area in DocumentLayoutHelper.AllAreas)
         {
             RebuildArea(area);
             WatchAreaSize(area);
         }
 
-        ApplyRootGridLayout();
+        ApplyWorkspaceLayout();
 
         _sections[DocumentArea.Main.GetPrimarySection()].Loaded += OnPrimarySectionLoaded;
     }
 
     // The section chrome is measured from the tab strip the section template builds, which has no size until
-    // the section has laid out, so every minimum composed above stands on the unmeasured strip. Re-applies
-    // them on the cycle after the load, by which point the strip has been measured.
+    // the section has laid out, so every minimum composed above stands on an unmeasured strip. Re-applies them
+    // on the cycle after the load, by which point the strip has been measured.
     private void OnPrimarySectionLoaded(object sender, RoutedEventArgs e)
     {
         var primarySectionView = _sections[DocumentArea.Main.GetPrimarySection()];
         primarySectionView.Loaded -= OnPrimarySectionLoaded;
 
-        _ = DispatcherQueue.TryEnqueue(() =>
+        _ = primarySectionView.DispatcherQueue.TryEnqueue(() =>
         {
             foreach (var area in DocumentLayoutHelper.AllAreas)
             {
                 ApplySectionTrackMinimums(area);
             }
 
-            ApplyRootGridLayout();
+            ApplyWorkspaceLayout();
         });
     }
 
@@ -181,31 +168,6 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// The smallest size the panel can be laid out at: the main column beside the Side area, and the Main
-    /// area above the Bottom one, with a gutter between each pair that is presented.
-    /// </summary>
-    public Size MinimumSize
-    {
-        get
-        {
-            double gutterSize = GutterSize;
-
-            var mainMinimum = GetAreaMinimumSize(DocumentArea.Main);
-            var bottomMinimum = GetAreaMinimumSize(DocumentArea.Bottom);
-            var sideMinimum = GetAreaMinimumSize(DocumentArea.Side);
-
-            double width = WorkspaceMinimumSize.ComposeAdjacent(MainColumnMinimumWidth, sideMinimum.Width, gutterSize);
-
-            double mainColumnHeight = WorkspaceMinimumSize.ComposeAdjacent(mainMinimum.Height, bottomMinimum.Height, gutterSize);
-
-            // The Side area spans every row, so the panel is as tall as the taller of it and the main column.
-            double height = Math.Max(mainColumnHeight, sideMinimum.Height);
-
-            return new Size(width, height);
-        }
-    }
-
-    /// <summary>
     /// The smallest size the area can be laid out at, or zero while it is not presented. A split area holds
     /// two sections along its split axis, with a gutter between them.
     /// </summary>
@@ -226,11 +188,6 @@ public sealed partial class DocumentSectionContainer : UserControl
     // Every section is built from the same template, so the Main area's primary section, the one section that
     // is always mounted, measures the chrome on behalf of all of them.
     private Size SectionMinimumSize => _sections[DocumentArea.Main.GetPrimarySection()].MinimumSize;
-
-    // The Main and Bottom areas share the panel's first column, so the column holds the wider of the two.
-    private double MainColumnMinimumWidth => Math.Max(
-        GetAreaMinimumSize(DocumentArea.Main).Width,
-        GetAreaMinimumSize(DocumentArea.Bottom).Width);
 
     // The channel between two surfaces. The splitter in it takes this size, which is what holds the gap open.
     private static double GutterSize => (double)Application.Current.Resources["GutterSize"];
@@ -299,7 +256,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         if (_layoutState.SetIsolatedArea(area))
         {
-            ApplyRootGridLayout();
+            ApplyWorkspaceLayout();
         }
     }
 
@@ -311,7 +268,19 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         if (_layoutState.SetUtilityPanelPresented(isPresented))
         {
-            ApplyRootGridLayout();
+            ApplyWorkspaceLayout();
+        }
+    }
+
+    /// <summary>
+    /// Sets how far the Bottom area spans across the workspace: the Main area only, or across the Utility
+    /// Panel, the Side area, or both. The surfaces it runs across stop above it.
+    /// </summary>
+    public void SetBottomAreaAlignment(BottomAreaAlignment alignment)
+    {
+        if (_layoutState.SetBottomAreaAlignment(alignment))
+        {
+            ApplyWorkspaceLayout();
         }
     }
 
@@ -412,36 +381,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     {
         if (_layoutState.SetAreaVisible(area, isVisible))
         {
-            ApplyRootGridLayout();
-        }
-    }
-
-    /// <summary>
-    /// Sets the height of the Bottom area or the width of the Side area. Ignored unless the area is
-    /// presented alongside another one, because a sole presented area fills the panel.
-    /// </summary>
-    public void SetAreaSize(DocumentArea area, double size)
-    {
-        if (size <= 0 ||
-            !_layoutState.IsAreaPresented(area))
-        {
-            return;
-        }
-
-        if (area == DocumentArea.Bottom)
-        {
-            if (_layoutState.IsAreaPresented(DocumentArea.Main))
-            {
-                BottomAreaRow.Height = new GridLength(size);
-            }
-        }
-        else if (area == DocumentArea.Side)
-        {
-            if (_layoutState.IsAreaPresented(DocumentArea.Main) ||
-                _layoutState.IsAreaPresented(DocumentArea.Bottom))
-            {
-                SideAreaColumn.Width = new GridLength(size);
-            }
+            ApplyWorkspaceLayout();
         }
     }
 
@@ -781,7 +721,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         var tcs = new TaskCompletionSource<bool>();
 
         // Wait for layout to complete so callers that persist the result read settled state.
-        DispatcherQueue.TryEnqueue(() =>
+        GetAreaGrid(DocumentArea.Main).DispatcherQueue.TryEnqueue(() =>
         {
             foreach (var area in DocumentLayoutHelper.AllAreas)
             {
@@ -853,17 +793,7 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     private Grid GetAreaGrid(DocumentArea area)
     {
-        switch (area)
-        {
-            case DocumentArea.Main:
-                return MainAreaGrid;
-
-            case DocumentArea.Bottom:
-                return BottomAreaGrid;
-
-            default:
-                return SideAreaGrid;
-        }
+        return _surfaceContainer.GetAreaGrid(area);
     }
 
     /// <summary>
@@ -1078,105 +1008,19 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
     }
 
-    private void InitializeAreaSplitters()
+    // Pushes the current presentation to the surface container, then re-applies the section chrome,
+    // which depends on which surfaces the sections now face.
+    private void ApplyWorkspaceLayout()
     {
-        _bottomAreaSplitterHelper = new SplitterHelper(
-            RootGrid,
-            GridResizeMode.Rows,
-            2,
-            minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Bottom).Height,
-            invertDelta: true,
-            maxSizeFunc: () => WorkspaceMinimumSize.SpaceBeside(
-                RootGrid.ActualHeight,
-                GetAreaMinimumSize(DocumentArea.Main).Height,
-                GutterSize))
-        {
-            SnapTargets = ResolveBottomAreaSnapTargets
-        };
+        var presentation = new WorkspaceSurfacePresentation(
+            IsMainAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Main),
+            IsBottomAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Bottom),
+            IsSideAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Side),
+            IsUtilityPanelPresented: _layoutState.IsUtilityPanelPresented,
+            BottomAreaSpansUtilityPanel: _layoutState.BottomAreaSpansUtilityPanel,
+            BottomAreaSpansSideArea: _layoutState.BottomAreaSpansSideArea);
 
-        _sideAreaSplitterHelper = new SplitterHelper(
-            RootGrid,
-            GridResizeMode.Columns,
-            2,
-            minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Side).Width,
-            invertDelta: true,
-            maxSizeFunc: () => WorkspaceMinimumSize.SpaceBeside(
-                RootGrid.ActualWidth,
-                MainColumnMinimumWidth,
-                GutterSize));
-
-        BottomAreaSplitter.DragStarted += (s, e) => _bottomAreaSplitterHelper?.OnDragStarted();
-        BottomAreaSplitter.DragDelta += (s, delta) => _bottomAreaSplitterHelper?.OnDragDelta(delta);
-        BottomAreaSplitter.DragCompleted += (s, e) => AreaSizeChanged?.Invoke(DocumentArea.Bottom, BottomAreaRow.ActualHeight);
-        BottomAreaSplitter.DoubleClicked += (s, e) => AreaSizeResetRequested?.Invoke(DocumentArea.Bottom);
-
-        SideAreaSplitter.DragStarted += (s, e) => _sideAreaSplitterHelper?.OnDragStarted();
-        SideAreaSplitter.DragDelta += (s, delta) => _sideAreaSplitterHelper?.OnDragDelta(delta);
-        SideAreaSplitter.DragCompleted += (s, e) => AreaSizeChanged?.Invoke(DocumentArea.Side, SideAreaColumn.ActualWidth);
-        SideAreaSplitter.DoubleClicked += (s, e) => AreaSizeResetRequested?.Invoke(DocumentArea.Side);
-    }
-
-    // Sizes the root grid for the areas currently presented. Main shares its column with Bottom, so an
-    // area only takes a fixed size while it sits alongside another one; the sole presented area takes
-    // the whole panel.
-    private void ApplyRootGridLayout()
-    {
-        bool isMainPresented = _layoutState.IsAreaPresented(DocumentArea.Main);
-        bool isBottomPresented = _layoutState.IsAreaPresented(DocumentArea.Bottom);
-        bool isSidePresented = _layoutState.IsAreaPresented(DocumentArea.Side);
-        bool isMainColumnPresented = isMainPresented || isBottomPresented;
-
-        MainAreaGrid.Visibility = isMainPresented ? Visibility.Visible : Visibility.Collapsed;
-        BottomAreaGrid.Visibility = isBottomPresented ? Visibility.Visible : Visibility.Collapsed;
-        SideAreaGrid.Visibility = isSidePresented ? Visibility.Visible : Visibility.Collapsed;
-
-        // A splitter only earns its place between two presented areas.
-        bool showBottomSplitter = isMainPresented && isBottomPresented;
-        bool showSideSplitter = isSidePresented && isMainColumnPresented;
-        BottomAreaSplitter.Visibility = showBottomSplitter ? Visibility.Visible : Visibility.Collapsed;
-        SideAreaSplitter.Visibility = showSideSplitter ? Visibility.Visible : Visibility.Collapsed;
-
-        // Main's row is only zeroed to hand its column over to the Bottom area. The Side area spans all
-        // three rows, so zeroing them when it is the only presented area would leave it no height. Main's
-        // own minimums stay at zero: they are enforced while dragging, by the splitter helpers.
-        bool mainRowTakesRemainingHeight = isMainPresented || !isBottomPresented;
-        MainAreaRow.Height = mainRowTakesRemainingHeight
-            ? new GridLength(1, GridUnitType.Star)
-            : new GridLength(0);
-
-        if (!isBottomPresented)
-        {
-            BottomAreaRow.Height = new GridLength(0);
-        }
-        else if (!isMainPresented)
-        {
-            BottomAreaRow.Height = new GridLength(1, GridUnitType.Star);
-        }
-
-        double bottomMinimumHeight = 0;
-        if (showBottomSplitter)
-        {
-            bottomMinimumHeight = GetAreaMinimumSize(DocumentArea.Bottom).Height;
-        }
-        BottomAreaRow.MinHeight = bottomMinimumHeight;
-
-        MainAreaColumn.Width = isMainColumnPresented ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-
-        if (!isSidePresented)
-        {
-            SideAreaColumn.Width = new GridLength(0);
-        }
-        else if (!isMainColumnPresented)
-        {
-            SideAreaColumn.Width = new GridLength(1, GridUnitType.Star);
-        }
-
-        double sideMinimumWidth = 0;
-        if (showSideSplitter)
-        {
-            sideMinimumWidth = GetAreaMinimumSize(DocumentArea.Side).Width;
-        }
-        SideAreaColumn.MinWidth = sideMinimumWidth;
+        _surfaceContainer.ApplyPresentation(presentation);
 
         ApplySectionChrome();
     }
@@ -1234,21 +1078,24 @@ public sealed partial class DocumentSectionContainer : UserControl
 
     // The size an area's primary section takes when its split divider lines up with the one it pairs with.
     // Main and Bottom share a grid column, so their dividers align when their primary sections are the same
-    // width. The Side area spans every root row, so its divider is measured from the same origin as the
-    // Main/Bottom boundary and aligns when its primary section matches the Main row.
+    // width. The Side area starts at the same row as Main, so its divider is measured from the same origin
+    // as the Main/Bottom boundary and aligns when its primary section matches the Main area's height. An
+    // alignment that runs the Bottom area under the Side area leaves nothing to line up with, so it has no
+    // target.
     private IReadOnlyList<double> ResolveSplitSnapTargets(DocumentArea area)
     {
         if (area == DocumentArea.Side)
         {
             if (!_layoutState.IsAreaPresented(DocumentArea.Main) ||
-                !_layoutState.IsAreaPresented(DocumentArea.Bottom))
+                !_layoutState.IsAreaPresented(DocumentArea.Bottom) ||
+                _layoutState.BottomAreaSpansSideArea)
             {
                 return Array.Empty<double>();
             }
 
             return new[]
             {
-                MainAreaRow.ActualHeight
+                GetAreaGrid(DocumentArea.Main).ActualHeight
             };
         }
 
@@ -1274,12 +1121,15 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     // The Bottom area height that puts the Main/Bottom boundary level with the Side area's split divider.
-    // That divider is measured down from the top of the panel while this splitter sizes the Bottom area up
-    // from the base, so the target is the height left over once the Side area's primary section is taken off.
+    // That divider is measured down from the top of the Main area while the Bottom splitter sizes the
+    // Bottom area up from the base, so the target is the two areas' height less the Side area's primary
+    // section. An alignment that runs the Bottom area under the Side area leaves nothing to line up with.
+    // Supplied to the surface container, whose splitter owns the snapping.
     private IReadOnlyList<double> ResolveBottomAreaSnapTargets()
     {
         if (!_layoutState.IsAreaPresented(DocumentArea.Side) ||
-            !_layoutState.IsAreaSplit(DocumentArea.Side))
+            !_layoutState.IsAreaSplit(DocumentArea.Side) ||
+            _layoutState.BottomAreaSpansSideArea)
         {
             return Array.Empty<double>();
         }
@@ -1292,7 +1142,9 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         double sidePrimaryHeight = sideAreaGrid.RowDefinitions[0].ActualHeight;
-        double alignedBottomHeight = RootGrid.ActualHeight - BottomAreaSplitter.ActualHeight - sidePrimaryHeight;
+        double documentRowsHeight = GetAreaGrid(DocumentArea.Main).ActualHeight +
+            GetAreaGrid(DocumentArea.Bottom).ActualHeight;
+        double alignedBottomHeight = documentRowsHeight - sidePrimaryHeight;
 
         return new[]
         {

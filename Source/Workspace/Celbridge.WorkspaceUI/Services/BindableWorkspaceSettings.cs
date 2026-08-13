@@ -43,6 +43,12 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         set => Set(SettingCatalog.Layout.BottomAreaHeight, value);
     }
 
+    public BottomAreaAlignment BottomAreaAlignment
+    {
+        get => Get(SettingCatalog.Layout.BottomAreaAlignment);
+        set => Set(SettingCatalog.Layout.BottomAreaAlignment, value);
+    }
+
     public bool SearchMatchCase
     {
         get => Get(SettingCatalog.Search.MatchCase);

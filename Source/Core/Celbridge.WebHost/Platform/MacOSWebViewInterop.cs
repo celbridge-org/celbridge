@@ -169,6 +169,7 @@ public static class MacOSWebViewInterop
     /// crashes on the freed view. Pinning the view turns those touches into calls on a live object. The
     /// WebContent renderer is still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
     /// </summary>
+    // UNO-BUG: MacOSNativeElement disposes the native view on Unloaded while the handle stays in use.
     public static void RetainNativeWebView(IntPtr webView)
     {
         if (webView == IntPtr.Zero)
@@ -353,6 +354,7 @@ public static class MacOSWebViewInterop
     /// (a document restored into a background tab, a utility that runs from project load) would otherwise
     /// report a zero-sized window to its page.
     /// </summary>
+    // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
     public static void SetViewportSize(IntPtr webView, double width, double height)
     {
         var frame = new CGRect

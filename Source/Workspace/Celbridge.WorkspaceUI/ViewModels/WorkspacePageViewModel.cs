@@ -27,14 +27,6 @@ public partial class WorkspacePageViewModel : ObservableObject
 
     public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
 
-    public float UtilityPanelWidth
-    {
-        get => _workspaceService.BindableWorkspaceSettings.UtilityPanelWidth;
-        set => _workspaceService.BindableWorkspaceSettings.UtilityPanelWidth = value;
-    }
-
-    public bool IsUtilityPanelVisible => _layoutService.IsUtilityPanelVisible;
-
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
@@ -57,29 +49,10 @@ public partial class WorkspacePageViewModel : ObservableObject
         _projectService = projectService;
         _workspaceLoader = workspaceLoader;
 
-        // Listen for layout manager state changes via messages
-        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
-
         // Create the workspace service and notify the user interface service
         _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
         var message = new WorkspaceServiceCreatedMessage(_workspaceService);
         _messengerService.Send(message);
-
-        // Forward panel-size change notifications from the workspace settings so the
-        // bound panel columns update when the layout is reset or restored.
-        _workspaceService.BindableWorkspaceSettings.PropertyChanged += OnWorkspaceSettings_PropertyChanged;
-    }
-
-    private void OnWorkspaceSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // Forward property change notifications from the workspace settings facade
-        OnPropertyChanged(e);
-    }
-
-    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
-    {
-        // Notify that panel visibility properties have changed
-        OnPropertyChanged(nameof(IsUtilityPanelVisible));
     }
 
     public async Task OnWorkspacePageUnloadedAsync()
@@ -107,11 +80,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Tear down and dispose the workspace. Guarded so the unload notification is still sent on failure.
         try
         {
-            _workspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettings_PropertyChanged;
-
-            // Unregister message handlers
-            _messengerService.Unregister<SurfaceVisibilityChangedMessage>(this);
-
             // Clear project-level feature flag overrides before disposing the workspace
             _featureFlags.ClearProjectOverrides();
 
