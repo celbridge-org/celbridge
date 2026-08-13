@@ -66,6 +66,24 @@ public static class WorkspaceMinimumSize
     }
 
     /// <summary>
+    /// The largest a surface can be laid out at without pushing a peer below its floor: its own minimum, plus
+    /// whatever the container has beyond the minimum it needs for everything it is presenting. Returns the
+    /// surface's own minimum once the container is below that minimum, which is the point where space runs out
+    /// for every surface at once and the excess is clipped instead.
+    /// </summary>
+    public static double SpaceForSurface(double containerExtent, double containerMinimum, double surfaceMinimum)
+    {
+        double slack = containerExtent - containerMinimum;
+
+        if (slack <= 0)
+        {
+            return surfaceMinimum;
+        }
+
+        return surfaceMinimum + slack;
+    }
+
+    /// <summary>
     /// The extent a surface can take beside a peer that is holding its minimum: everything the container has,
     /// less that minimum and the gutter between the two.
     /// </summary>

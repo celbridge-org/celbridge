@@ -174,14 +174,8 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             double gutterSize = GutterSize;
             double sideMinimumHeight = GetAreaMinimumSize(DocumentArea.Side).Height;
 
-            double mainRowHeight = GetAreaMinimumSize(DocumentArea.Main).Height;
-            if (_presentation.BottomAreaSpansSideArea)
-            {
-                mainRowHeight = Math.Max(mainRowHeight, sideMinimumHeight);
-            }
-
             double height = WorkspaceMinimumSize.ComposeAdjacent(
-                mainRowHeight,
+                MainRowMinimumHeight,
                 GetAreaMinimumSize(DocumentArea.Bottom).Height,
                 gutterSize);
 
@@ -191,6 +185,23 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             }
 
             return Math.Max(height, sideMinimumHeight);
+        }
+    }
+
+    // The height of the row the Main area sits in. A Bottom area whose alignment spans the Side area stops it
+    // above itself, which moves the Side area into this row alongside the Main area.
+    private double MainRowMinimumHeight
+    {
+        get
+        {
+            double mainMinimumHeight = GetAreaMinimumSize(DocumentArea.Main).Height;
+
+            if (!_presentation.BottomAreaSpansSideArea)
+            {
+                return mainMinimumHeight;
+            }
+
+            return Math.Max(mainMinimumHeight, GetAreaMinimumSize(DocumentArea.Side).Height);
         }
     }
 
@@ -296,8 +307,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
 
         // Main's row is only zeroed to hand its column over to the Bottom area. The Side area can span
         // all three document rows, so zeroing them when it is the only presented area would leave it no
-        // height. Main's own minimums stay at zero: they are enforced while dragging, by the splitter
-        // helpers.
+        // height.
         bool mainRowTakesRemainingHeight = isMainPresented || !isBottomPresented;
         MainAreaRow.Height = mainRowTakesRemainingHeight
             ? new GridLength(1, GridUnitType.Star)
@@ -312,13 +322,6 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             BottomAreaRow.Height = new GridLength(1, GridUnitType.Star);
         }
 
-        double bottomMinimumHeight = 0;
-        if (showBottomSplitter)
-        {
-            bottomMinimumHeight = GetAreaMinimumSize(DocumentArea.Bottom).Height;
-        }
-        BottomAreaRow.MinHeight = bottomMinimumHeight;
-
         MainAreaColumn.Width = isMainColumnPresented ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
         if (!isSidePresented)
@@ -330,18 +333,22 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             SideAreaColumn.Width = new GridLength(1, GridUnitType.Star);
         }
 
-        double sideMinimumWidth = 0;
-        if (showSideSplitter)
-        {
-            sideMinimumWidth = GetAreaMinimumSize(DocumentArea.Side).Width;
-        }
-        SideAreaColumn.MinWidth = sideMinimumWidth;
+        // Every track holds the floor composed for what it is presenting, including the star tracks the Main
+        // area sits in: they take whatever the pixel-sized surfaces leave, so a track without a floor of its
+        // own is the one that absorbs every shortfall. A surface that is not presented composes to zero, which
+        // is what lets the zero track sizes above hold.
+        MainAreaRow.MinHeight = MainRowMinimumHeight;
+        MainAreaColumn.MinWidth = MainColumnMinimumWidth;
+        BottomAreaRow.MinHeight = GetAreaMinimumSize(DocumentArea.Bottom).Height;
+        SideAreaColumn.MinWidth = GetAreaMinimumSize(DocumentArea.Side).Width;
+
+        ClampPresentedSurfaceSizes();
     }
 
     /// <summary>
-    /// Sets the width of the Utility Panel, the height of the Bottom area or the width of the Side area.
-    /// Ignored while the surface is hidden, and for an area that is the only one presented, because a
-    /// sole presented area fills the panel.
+    /// Sets the width of the Utility Panel, the height of the Bottom area or the width of the Side area,
+    /// clamped to what the current layout leaves for it. Ignored while the surface is hidden, and for an
+    /// area that is the only one presented, because a sole presented area fills the panel.
     /// </summary>
     public void SetSurfaceSize(WorkspaceSurface surface, double size)
     {
@@ -357,7 +364,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             case WorkspaceSurface.UtilityPanel:
                 if (_presentation.IsUtilityPanelPresented)
                 {
-                    UtilityPanelColumn.Width = new GridLength(size);
+                    UtilityPanelColumn.Width = ClampSurfaceWidth(size, UtilityPanelMinimumWidth);
                 }
                 break;
 
@@ -365,7 +372,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
                 if (_presentation.IsBottomAreaPresented &&
                     _presentation.IsMainAreaPresented)
                 {
-                    BottomAreaRow.Height = new GridLength(size);
+                    BottomAreaRow.Height = ClampSurfaceHeight(size, GetAreaMinimumSize(DocumentArea.Bottom).Height);
                 }
                 break;
 
@@ -373,10 +380,63 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
                 if (_presentation.IsSideAreaPresented &&
                     isMainColumnPresented)
                 {
-                    SideAreaColumn.Width = new GridLength(size);
+                    SideAreaColumn.Width = ClampSurfaceWidth(size, GetAreaMinimumSize(DocumentArea.Side).Width);
                 }
                 break;
         }
+    }
+
+    // A surface holds the size it was given while its peers were different ones, so revealing a surface, or
+    // spanning the Bottom area across one, can leave a size the arrangement no longer has room for. Only the
+    // pixel-sized tracks are re-clamped: a star-sized track is a sole presented area filling the panel.
+    private void ClampPresentedSurfaceSizes()
+    {
+        if (_presentation.IsUtilityPanelPresented &&
+            UtilityPanelColumn.Width.IsAbsolute)
+        {
+            UtilityPanelColumn.Width = ClampSurfaceWidth(UtilityPanelColumn.Width.Value, UtilityPanelMinimumWidth);
+        }
+
+        if (_presentation.IsBottomAreaPresented &&
+            BottomAreaRow.Height.IsAbsolute)
+        {
+            double bottomMinimumHeight = GetAreaMinimumSize(DocumentArea.Bottom).Height;
+            BottomAreaRow.Height = ClampSurfaceHeight(BottomAreaRow.Height.Value, bottomMinimumHeight);
+        }
+
+        if (_presentation.IsSideAreaPresented &&
+            SideAreaColumn.Width.IsAbsolute)
+        {
+            double sideMinimumWidth = GetAreaMinimumSize(DocumentArea.Side).Width;
+            SideAreaColumn.Width = ClampSurfaceWidth(SideAreaColumn.Width.Value, sideMinimumWidth);
+        }
+    }
+
+    // Holds a surface between its own floor and the space the workspace has beyond the minimum every presented
+    // surface needs. The workspace has no extent to divide until it has been laid out, which is where the
+    // stored sizes arrive, so only the floor applies until then.
+    private GridLength ClampSurfaceWidth(double width, double surfaceMinimumWidth)
+    {
+        return new GridLength(ClampSurfaceExtent(width, surfaceMinimumWidth, RootGrid.ActualWidth, MinimumSize.Width));
+    }
+
+    private GridLength ClampSurfaceHeight(double height, double surfaceMinimumHeight)
+    {
+        return new GridLength(ClampSurfaceExtent(height, surfaceMinimumHeight, RootGrid.ActualHeight, MinimumSize.Height));
+    }
+
+    private static double ClampSurfaceExtent(double extent, double surfaceMinimum, double workspaceExtent, double workspaceMinimum)
+    {
+        double clampedExtent = Math.Max(extent, surfaceMinimum);
+
+        if (workspaceExtent <= 0)
+        {
+            return clampedExtent;
+        }
+
+        double availableExtent = WorkspaceMinimumSize.SpaceForSurface(workspaceExtent, workspaceMinimum, surfaceMinimum);
+
+        return Math.Min(clampedExtent, availableExtent);
     }
 
     // Spans the Bottom area, and the splitter that sizes it, across the surfaces the presentation says
@@ -438,7 +498,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             3,
             minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Bottom).Height,
             invertDelta: true,
-            maxSizeFunc: () => MainAreaRow.ActualHeight + BottomAreaRow.ActualHeight - GetAreaMinimumSize(DocumentArea.Main).Height)
+            maxSizeFunc: () => MainAreaRow.ActualHeight + BottomAreaRow.ActualHeight - MainRowMinimumHeight)
         {
             SnapTargets = () => BottomAreaSplitterSnapTargets?.Invoke() ?? Array.Empty<double>()
         };

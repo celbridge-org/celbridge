@@ -326,6 +326,10 @@ public sealed partial class DocumentSectionContainer
 
         RebuildArea(area);
 
+        // A split area needs room for two sections, so its minimum grows, and the workspace floors the
+        // surface container composes from it are re-applied by pushing the presentation again.
+        ApplyWorkspaceLayout();
+
         AreaLayoutChanged?.Invoke(area, isSplit, _layoutState.GetAreaSplitRatio(area));
     }
 
