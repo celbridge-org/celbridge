@@ -1,6 +1,7 @@
 using Celbridge.Documents;
 using Celbridge.Documents.Services;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
 
@@ -187,5 +188,57 @@ public class AreaLayoutStateTests
     public void ShouldFoldSplit_UnsplitArea_NeverFolds()
     {
         _layoutState.ShouldFoldSplit(DocumentArea.Main, primaryTabCount: 0, secondaryTabCount: 0).Should().BeFalse();
+    }
+
+    [Test]
+    public void InitialState_BottomAreaAlignmentIsCenterAndSpansNeitherNeighbour()
+    {
+        _layoutState.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Center);
+        _layoutState.BottomAreaSpansUtilityPanel.Should().BeFalse();
+        _layoutState.BottomAreaSpansSideArea.Should().BeFalse();
+    }
+
+    [Test]
+    public void BottomAreaAlignment_EachModeSpansItsOwnNeighbours()
+    {
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Left);
+        _layoutState.BottomAreaSpansUtilityPanel.Should().BeTrue();
+        _layoutState.BottomAreaSpansSideArea.Should().BeFalse();
+
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Right);
+        _layoutState.BottomAreaSpansUtilityPanel.Should().BeFalse();
+        _layoutState.BottomAreaSpansSideArea.Should().BeTrue();
+
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Justify);
+        _layoutState.BottomAreaSpansUtilityPanel.Should().BeTrue();
+        _layoutState.BottomAreaSpansSideArea.Should().BeTrue();
+    }
+
+    [Test]
+    public void BottomAreaAlignment_HiddenBottomArea_SpansNothing()
+    {
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Justify);
+        _layoutState.SetAreaVisible(DocumentArea.Bottom, false);
+
+        _layoutState.BottomAreaSpansUtilityPanel.Should().BeFalse();
+        _layoutState.BottomAreaSpansSideArea.Should().BeFalse();
+    }
+
+    [Test]
+    public void BottomAreaAlignment_IsolatedArea_SpansNothing()
+    {
+        // Focus and Presentation isolate one area, so no other area is laid out to be spanned.
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Justify);
+        _layoutState.SetIsolatedArea(DocumentArea.Main);
+
+        _layoutState.BottomAreaSpansUtilityPanel.Should().BeFalse();
+        _layoutState.BottomAreaSpansSideArea.Should().BeFalse();
+    }
+
+    [Test]
+    public void SetBottomAreaAlignment_SameAlignment_ReportsNoChange()
+    {
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Left).Should().BeTrue();
+        _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Left).Should().BeFalse();
     }
 }

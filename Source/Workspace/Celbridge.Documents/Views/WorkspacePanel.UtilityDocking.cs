@@ -8,10 +8,10 @@ namespace Celbridge.Documents.Views;
 public record DockUtilityPlacement(DocumentAddress? Address, bool Activate);
 
 /// <summary>
-/// Utility docking support for DocumentsPanel: presenting a utility as a document tab that borrows the
+/// Utility docking support for WorkspacePanel: presenting a utility as a document tab that borrows the
 /// utility's live WebView, and returning it to the Utility Panel.
 /// </summary>
-public sealed partial class DocumentsPanel
+public sealed partial class WorkspacePanel
 {
     /// <summary>
     /// Docks a utility into a document tab: creates a tab hosting the utility's borrowed controller (reusing its

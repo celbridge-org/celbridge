@@ -19,7 +19,7 @@ public partial class UtilityItemViewModel : ObservableObject
     /// The workspace panel identity used to decide whether this surface currently holds focus. Built-in
     /// Explorer and Search have their own identities. Every custom utility reports as CustomUtility.
     /// </summary>
-    public WorkspacePanel FocusIdentity { get; }
+    public WorkspacePanelId FocusIdentity { get; }
 
     [ObservableProperty]
     private bool _isSelected;
@@ -30,7 +30,7 @@ public partial class UtilityItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDocked;
 
-    public UtilityItemViewModel(EditorId id, WorkspacePanel focusIdentity)
+    public UtilityItemViewModel(EditorId id, WorkspacePanelId focusIdentity)
     {
         Id = id;
         FocusIdentity = focusIdentity;

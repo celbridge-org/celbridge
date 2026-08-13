@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Documents.Services;
 
 /// <summary>
@@ -16,6 +18,7 @@ public class AreaLayoutState
 
     private DocumentArea? _isolatedArea;
     private bool _isUtilityPanelPresented = true;
+    private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
     public AreaLayoutState()
     {
@@ -36,6 +39,27 @@ public class AreaLayoutState
     /// Whether the Utility Panel is showing alongside the document areas.
     /// </summary>
     public bool IsUtilityPanelPresented => _isUtilityPanelPresented;
+
+    /// <summary>
+    /// How far the Bottom area spans across the workspace.
+    /// </summary>
+    public BottomAreaAlignment BottomAreaAlignment => _bottomAreaAlignment;
+
+    /// <summary>
+    /// Whether the Bottom area runs across the Utility Panel's column, so the panel stops above it.
+    /// </summary>
+    public bool BottomAreaSpansUtilityPanel =>
+        IsAreaPresented(DocumentArea.Bottom)
+            && (_bottomAreaAlignment == BottomAreaAlignment.Left
+                || _bottomAreaAlignment == BottomAreaAlignment.Justify);
+
+    /// <summary>
+    /// Whether the Bottom area runs across the Side area's column, so the Side area stops above it.
+    /// </summary>
+    public bool BottomAreaSpansSideArea =>
+        IsAreaPresented(DocumentArea.Bottom)
+            && (_bottomAreaAlignment == BottomAreaAlignment.Right
+                || _bottomAreaAlignment == BottomAreaAlignment.Justify);
 
     /// <summary>
     /// Whether the area is currently showing both of its sections.
@@ -212,6 +236,18 @@ public class AreaLayoutState
         }
 
         _isolatedArea = area;
+
+        return true;
+    }
+
+    public bool SetBottomAreaAlignment(BottomAreaAlignment alignment)
+    {
+        if (_bottomAreaAlignment == alignment)
+        {
+            return false;
+        }
+
+        _bottomAreaAlignment = alignment;
 
         return true;
     }

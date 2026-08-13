@@ -70,8 +70,6 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool HostedWebViewFocusIsNative => OperatingSystem.IsMacOS();
 
-    public bool ClipsHostedWebViewToCorners => OperatingSystem.IsWindows();
-
     public bool UsesPointerDrivenTabDrag
     {
         get

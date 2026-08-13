@@ -26,6 +26,7 @@ internal sealed class TabDragController
     private const double AutoScrollStep = 16.0;
 
     private readonly DocumentSectionContainer _container;
+    private readonly FrameworkElement _inputRoot;
     private readonly Canvas _overlay;
     private readonly SectionDragPreview _dropPreview;
     private readonly PointerEventHandler _pointerMovedHandler;
@@ -44,9 +45,10 @@ internal sealed class TabDragController
     private TabDropTarget? _currentTarget;
     private Border? _ghost;
 
-    public TabDragController(DocumentSectionContainer container, Canvas overlay, SectionDragPreview dropPreview)
+    public TabDragController(DocumentSectionContainer container, FrameworkElement inputRoot, Canvas overlay, SectionDragPreview dropPreview)
     {
         _container = container;
+        _inputRoot = inputRoot;
         _overlay = overlay;
         _dropPreview = dropPreview;
         _pointerMovedHandler = OnPointerMoved;
@@ -54,7 +56,7 @@ internal sealed class TabDragController
         _pointerCaptureLostHandler = OnPointerCaptureLost;
         _keyDownHandler = OnRootKeyDown;
 
-        _autoScrollTimer = container.DispatcherQueue.CreateTimer();
+        _autoScrollTimer = inputRoot.DispatcherQueue.CreateTimer();
         _autoScrollTimer.Interval = TimeSpan.FromMilliseconds(50);
         _autoScrollTimer.Tick += OnAutoScrollTick;
     }
@@ -87,12 +89,12 @@ internal sealed class TabDragController
         _sourceSectionView = sectionView;
         _pressPosition = e.GetCurrentPoint(_overlay).Position;
 
-        // Track the pointer on the container, not the tab: the tab strip's list captures the pointer
+        // Track the pointer on the input root, not the tab: the tab strip's list captures the pointer
         // on press, which routes subsequent events to the capture owner and up its ancestor chain.
-        // The container is on that chain; the tab is not.
-        _container.AddHandler(UIElement.PointerMovedEvent, _pointerMovedHandler, handledEventsToo: true);
-        _container.AddHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler, handledEventsToo: true);
-        _container.AddHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler, handledEventsToo: true);
+        // The input root is on that chain; the tab is not.
+        _inputRoot.AddHandler(UIElement.PointerMovedEvent, _pointerMovedHandler, handledEventsToo: true);
+        _inputRoot.AddHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler, handledEventsToo: true);
+        _inputRoot.AddHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler, handledEventsToo: true);
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
@@ -194,7 +196,7 @@ internal sealed class TabDragController
 
         // Escape cancels the drag. Wired on the window content so it fires wherever managed focus
         // sits; keystrokes inside a native web view do not reach the managed layer.
-        _keyEventRoot = _container.XamlRoot?.Content as UIElement;
+        _keyEventRoot = _inputRoot.XamlRoot?.Content as UIElement;
         _keyEventRoot?.AddHandler(UIElement.KeyDownEvent, _keyDownHandler, handledEventsToo: true);
     }
 
@@ -347,9 +349,9 @@ internal sealed class TabDragController
     {
         var tab = _pressedTab!;
 
-        _container.RemoveHandler(UIElement.PointerMovedEvent, _pointerMovedHandler);
-        _container.RemoveHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler);
-        _container.RemoveHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler);
+        _inputRoot.RemoveHandler(UIElement.PointerMovedEvent, _pointerMovedHandler);
+        _inputRoot.RemoveHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler);
+        _inputRoot.RemoveHandler(UIElement.PointerCaptureLostEvent, _pointerCaptureLostHandler);
         _keyEventRoot?.RemoveHandler(UIElement.KeyDownEvent, _keyDownHandler);
         _keyEventRoot = null;
 

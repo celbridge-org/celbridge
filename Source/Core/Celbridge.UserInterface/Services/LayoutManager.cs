@@ -18,6 +18,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
     private WorkspaceSurface _surfaceVisibility = WorkspaceSurface.All;
+    private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
     public LayoutManager(
         ILogger<LayoutManager> logger,
@@ -64,6 +65,9 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // The workspace settings are now loaded, so apply this project's preferred
         // surface visibility. No need to persist, we are restoring the saved state.
         UpdateSurfaceVisibility(PreferredSurfaceVisibility, shouldPersist: false);
+
+        var storedAlignment = WorkspaceSettings?.BottomAreaAlignment ?? WorkspaceConstants.BottomAreaAlignment;
+        UpdateBottomAreaAlignment(storedAlignment, shouldPersist: false);
     }
 
     public LayoutMode LayoutMode => _layoutMode;
@@ -145,6 +149,15 @@ public class LayoutManager : IWindowModeService, ILayoutService
         SetSurfaceVisibility(surface, !isCurrentlyVisible);
     }
 
+    public BottomAreaAlignment BottomAreaAlignment => _bottomAreaAlignment;
+
+    public void SetBottomAreaAlignment(BottomAreaAlignment alignment)
+    {
+        // Alignment is a layout preference rather than a mode, so it survives Focus and Presentation
+        // unchanged and is always persisted.
+        UpdateBottomAreaAlignment(alignment, shouldPersist: true);
+    }
+
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
     {
         // The window has exited fullscreen via drag, so sync our fullscreen state. The layout mode is
@@ -209,6 +222,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
             workspaceSettings.BottomAreaHeight = WorkspaceConstants.BottomAreaHeight;
         }
 
+        UpdateBottomAreaAlignment(WorkspaceConstants.BottomAreaAlignment, shouldPersist: true);
+
         // Reset preferred window geometry
         _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, false);
         _settingsService.Set(SettingCatalog.Window.PreferredX, 0);
@@ -264,6 +279,31 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _messengerService.Send(message);
 
         _logger.LogDebug($"Panel visibility changed: {oldVisibility} -> {newVisibility} (persist: {shouldPersist})");
+    }
+
+    private void UpdateBottomAreaAlignment(BottomAreaAlignment newAlignment, bool shouldPersist)
+    {
+        if (_bottomAreaAlignment == newAlignment)
+        {
+            return;
+        }
+
+        var oldAlignment = _bottomAreaAlignment;
+        _bottomAreaAlignment = newAlignment;
+
+        if (shouldPersist)
+        {
+            var workspaceSettings = WorkspaceSettings;
+            if (workspaceSettings is not null)
+            {
+                workspaceSettings.BottomAreaAlignment = newAlignment;
+            }
+        }
+
+        var message = new BottomAreaAlignmentChangedMessage(newAlignment);
+        _messengerService.Send(message);
+
+        _logger.LogDebug($"Bottom area alignment changed: {oldAlignment} -> {newAlignment} (persist: {shouldPersist})");
     }
 
     private void SetLayoutModeInternal(LayoutMode newMode)

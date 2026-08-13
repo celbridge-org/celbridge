@@ -10,8 +10,8 @@ public class FocusService : IFocusService
 {
     private readonly IMessengerService _messengerService;
     private readonly ILogger<FocusService> _logger;
-    private readonly Dictionary<WorkspacePanel, Action> _panelFocusHandlers = new();
-    private WorkspacePanel _focusedPanel = WorkspacePanel.None;
+    private readonly Dictionary<WorkspacePanelId, Action> _panelFocusHandlers = new();
+    private WorkspacePanelId _focusedPanel = WorkspacePanelId.None;
     private IEditTarget? _editTarget;
 
     // The release callback matters on the Skia heads, where WebView and host focus are not integrated: a
@@ -30,11 +30,11 @@ public class FocusService : IFocusService
         _messengerService.Register<WorkspacePageDeactivatedMessage>(this, OnWorkspacePageDeactivated);
     }
 
-    public WorkspacePanel FocusedPanel => _focusedPanel;
+    public WorkspacePanelId FocusedPanel => _focusedPanel;
 
     public IEditTarget? EditTarget => _editTarget;
 
-    public void OnFocusReceived(WorkspacePanel panel, IEditTarget? target = null, Action? onReleaseFocus = null)
+    public void OnFocusReceived(WorkspacePanelId panel, IEditTarget? target = null, Action? onReleaseFocus = null)
     {
         if (panel != _focusedPanel)
         {
@@ -122,7 +122,7 @@ public class FocusService : IFocusService
 
     public void ClearFocus()
     {
-        OnFocusReceived(WorkspacePanel.None);
+        OnFocusReceived(WorkspacePanelId.None);
     }
 
     public void ClearEditTarget(IEditTarget target)
@@ -137,7 +137,7 @@ public class FocusService : IFocusService
         _logger.LogDebug("Edit target cleared on teardown: {EditTarget}", target.GetType().Name);
     }
 
-    public void SetPanelFocusHandler(WorkspacePanel panel, Action? focusHandler)
+    public void SetPanelFocusHandler(WorkspacePanelId panel, Action? focusHandler)
     {
         if (focusHandler is null)
         {

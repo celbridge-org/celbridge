@@ -79,6 +79,49 @@
                             </StackPanel>
                         </ToggleButton>
 
+                        <!-- Bottom Panel Alignment. The options are mutually exclusive and each one is
+                             described in its tooltip, so they read as a row of glyphs rather than four
+                             labelled rows. The flyout deliberately stays open on a click, so the user can
+                             step through them and watch the layout change behind it. -->
+                        <TextBlock x:Name="BottomAreaAlignmentHeader"
+                                   Margin="0,4,0,0"/>
+
+                        <StackPanel x:Name="BottomAreaAlignmentButtons"
+                                    Orientation="Horizontal"
+                                    Spacing="4">
+                            <ToggleButton x:Name="AlignBottomAreaLeftButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Left"/>
+                            </ToggleButton>
+
+                            <ToggleButton x:Name="AlignBottomAreaCenterButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Center"/>
+                            </ToggleButton>
+
+                            <ToggleButton x:Name="AlignBottomAreaRightButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Right"/>
+                            </ToggleButton>
+
+                            <ToggleButton x:Name="AlignBottomAreaJustifyButton"
+                                          Click="BottomAreaAlignmentButton_Click"
+                                          Padding="8,6"
+                                          MinWidth="36"
+                                          MinHeight="32">
+                                <icons:BottomAreaAlignmentIcon Alignment="Justify"/>
+                            </ToggleButton>
+                        </StackPanel>
+
                         <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
 
                         <!-- Reset Layout Button -->
@@ -97,7 +140,6 @@
         <StackPanel x:Name="PanelToggleButtons"
                     Orientation="Horizontal"
                     VerticalAlignment="Stretch">
-            <!-- Primary Panel Toggle -->
             <Button x:Name="ToggleUtilityPanelButton"
                     AutomationProperties.AutomationId="explorer-toggle-button"
                     Click="ToggleUtilityPanelButton_Click"
@@ -110,9 +152,8 @@
                 <icons:UtilityPanelIcon x:Name="UtilityPanelIcon"/>
             </Button>
             
-            <!-- Console Panel Toggle -->
             <Button x:Name="ToggleBottomAreaButton"
-                    AutomationProperties.AutomationId="console-toggle-button"
+                    AutomationProperties.AutomationId="bottom-area-toggle-button"
                     Click="ToggleBottomAreaButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
@@ -123,9 +164,8 @@
                 <icons:BottomAreaIcon x:Name="BottomAreaIcon"/>
             </Button>
             
-            <!-- Secondary Panel Toggle -->
             <Button x:Name="ToggleSideAreaButton"
-                    AutomationProperties.AutomationId="inspector-toggle-button"
+                    AutomationProperties.AutomationId="side-area-toggle-button"
                     Click="ToggleSideAreaButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"

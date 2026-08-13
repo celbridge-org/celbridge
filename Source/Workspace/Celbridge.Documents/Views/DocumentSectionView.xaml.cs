@@ -338,6 +338,7 @@ public sealed partial class DocumentSectionView : UserControl
     /// destination strip take ownership. The packaged Windows head runs the real WinUI TabView and
     /// does not hit this.
     /// </summary>
+    // UNO-BUG: TabItems.Remove strands the removed tab's container.
     private void DetachStrandedContainer(DocumentTab tab)
     {
         var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);

@@ -42,8 +42,16 @@ public partial class DocumentTab : TabViewItem
     private readonly IMessengerService _messengerService;
     private readonly IPlatformInfo _platformInfo;
 
+    // How long after handling a double tap a second one is treated as the duplicate event rather than a
+    // new gesture. Wide enough to cover the duplicate, which trails by a few milliseconds, and well short
+    // of the two further presses a real second double-click needs.
+    private const int DuplicateDoubleTapWindowMs = 100;
+
     // The currently running attention flash, if any. Kept so a repeated flash restarts cleanly.
     private Storyboard? _attentionStoryboard;
+
+    // When the last double tap was handled, used to discard the duplicate that follows it.
+    private DateTime _lastDoubleTapTime;
 
     public DocumentTabViewModel ViewModel { get; }
 
@@ -401,6 +409,19 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        // UNO-BUG: one double-click raises DoubleTapped twice. Present in 6.6.166, absent in 6.5.237.
+        // Works around an Uno regression where one double-click raises DoubleTapped twice, as two separate
+        // routed events milliseconds apart, so marking one handled does not suppress the other and the
+        // toggle cancels itself out. Present in Uno 6.6.166, absent in 6.5.237. Remove once fixed upstream.
+        var doubleTapTime = DateTime.UtcNow;
+        if ((doubleTapTime - _lastDoubleTapTime).TotalMilliseconds < DuplicateDoubleTapWindowMs)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        _lastDoubleTapTime = doubleTapTime;
+
         // Focus shows the active document on its own, so make this tab active before toggling rather
         // than relying on the first tap of the double having already done it.
         _messengerService.Send(new DocumentViewFocusedMessage(ViewModel.FileResource));

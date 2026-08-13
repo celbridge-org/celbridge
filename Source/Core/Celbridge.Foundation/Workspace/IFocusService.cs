@@ -12,7 +12,7 @@ public interface IFocusService
     /// The panel that currently holds focus, or None when focus has left the workspace panels (for example
     /// onto a toolbar or another chrome element).
     /// </summary>
-    WorkspacePanel FocusedPanel { get; }
+    WorkspacePanelId FocusedPanel { get; }
 
     /// <summary>
     /// The surface that Edit commands route to, or null before any surface has claimed one. Preserved when
@@ -28,7 +28,7 @@ public interface IFocusService
     /// a release callback, so a claim without one that names the panel a surface already holds is managed
     /// chrome (a URL bar, a find bar) taking the keyboard off that surface, and releases it.
     /// </summary>
-    void OnFocusReceived(WorkspacePanel panel, IEditTarget? target = null, Action? onReleaseFocus = null);
+    void OnFocusReceived(WorkspacePanelId panel, IEditTarget? target = null, Action? onReleaseFocus = null);
 
     /// <summary>
     /// Clears the focused panel to None and releases the surface that holds the caret. The edit context is
@@ -47,7 +47,7 @@ public interface IFocusService
     /// focus to the focused panel after an interaction moves it away transiently (a modal dialog closing,
     /// a resource-tree rebuild).
     /// </summary>
-    void SetPanelFocusHandler(WorkspacePanel panel, Action? focusHandler);
+    void SetPanelFocusHandler(WorkspacePanelId panel, Action? focusHandler);
 
     /// <summary>
     /// Re-asserts keyboard focus on the currently focused panel by invoking its registered focus handler,

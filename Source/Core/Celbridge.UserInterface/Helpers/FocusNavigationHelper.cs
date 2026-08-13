@@ -13,6 +13,7 @@ public static class FocusNavigationHelper
     /// </summary>
     public static void MoveFocusToNextElement()
     {
+        // UNO-BUG: the FindNextElementOptions overload throws for Next, Previous and None.
         // Uno obsoletes this overload in favour of the FindNextElementOptions overload, but that overload
         // throws for Next, Previous, and None, so this is the only FocusManager API that can move focus in
         // tab order. Suppress the obsoletion in one place rather than at every call site.

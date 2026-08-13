@@ -53,7 +53,7 @@
       </GridView.ItemTemplate>
       <GridView.ItemsPanel>
         <ItemsPanelTemplate>
-          <!-- Non-virtualizing panel: a virtualizing items panel realizes no containers on the Uno Skia head. -->
+          <!-- UNO-BUG: a virtualizing items panel realizes no containers on the Skia head, so use a plain one. -->
           <StackPanel Orientation="Horizontal"/>
         </ItemsPanelTemplate>
       </GridView.ItemsPanel>

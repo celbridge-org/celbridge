@@ -37,9 +37,14 @@ public record WorkspaceStateDirtyMessage();
 public record SurfaceVisibilityChangedMessage(WorkspaceSurface SurfaceVisibility);
 
 /// <summary>
+/// Message sent when the Bottom document area's alignment changes.
+/// </summary>
+public record BottomAreaAlignmentChangedMessage(BottomAreaAlignment Alignment);
+
+/// <summary>
 /// Message sent when the focused panel changes.
 /// </summary>
-public record PanelFocusChangedMessage(WorkspacePanel FocusedPanel);
+public record PanelFocusChangedMessage(WorkspacePanelId FocusedPanel);
 
 /// <summary>
 /// Sent when the surface shown in the Utility Panel rail changes. UtilityId is the fully-qualified id of the

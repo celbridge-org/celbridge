@@ -14,7 +14,7 @@ namespace Celbridge.WebHost;
 /// </summary>
 public sealed record WebViewFocusRegistration(
     WebView2 WebView,
-    WorkspacePanel Panel,
+    WorkspacePanelId Panel,
     IEditTarget? EditTarget,
     Action ReleaseFocus,
     Func<Task>? GrantDomFocus = null,

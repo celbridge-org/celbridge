@@ -57,6 +57,11 @@
     <PythonPackageFolder>$(MSBuildThisFileDirectory)packages\celbridge</PythonPackageFolder>
     <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
     <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
+    <!-- The wheel is platform independent, so one head per OS builds it and the rest consume it. -->
+    <PythonWheelTargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows10.0.22621</PythonWheelTargetFramework>
+    <PythonWheelTargetFramework Condition="'$(PythonWheelTargetFramework)' == ''">net10.0-desktop</PythonWheelTargetFramework>
+    <PythonLauncher Condition="$([MSBuild]::IsOSPlatform('Windows'))">python</PythonLauncher>
+    <PythonLauncher Condition="'$(PythonLauncher)' == ''">python3</PythonLauncher>
   </PropertyGroup>
 
   <ItemGroup>
@@ -64,14 +69,19 @@
     <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
   </ItemGroup>
 
-  <!-- Rebuild the wheel via build.py (requires a system Python on PATH) before content target paths
-       are assigned. Runs on the Windows head only; other heads use the committed wheel. Skipped during
-       design-time builds so editing Python source in Visual Studio does not invoke pip. -->
+  <!-- Rebuild the wheel via build.py before content target paths are assigned. A machine with no Python
+       new enough to build the package keeps the committed wheel and gets a warning, so no build depends
+       on a system Python being installed. Skipped during design-time builds so editing Python source in
+       Visual Studio does not invoke pip. -->
   <Target Name="BuildPythonWheel" BeforeTargets="AssignTargetPaths"
           Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
-          Condition="'$(TargetFramework)' == 'net10.0-windows10.0.22621' AND '$(DesignTimeBuild)' != 'true'">
+          Condition="'$(TargetFramework)' == '$(PythonWheelTargetFramework)' AND '$(DesignTimeBuild)' != 'true'">
     <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
-    <Exec Command="python &quot;$(MSBuildThisFileDirectory)build.py&quot;" />
+    <Exec Command="$(PythonLauncher) &quot;$(MSBuildThisFileDirectory)build.py&quot;" ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="PythonWheelExitCode" />
+    </Exec>
+    <Warning Condition="'$(PythonWheelExitCode)' != '0'"
+             Text="Python sources changed but the celbridge wheel could not be rebuilt, so the committed wheel is being used and is now stale. Install Python 3.10 or later to rebuild it here." />
   </Target>
 
   <!-- Include the generated wheel as Content before target paths are assigned, so it enters the Uno

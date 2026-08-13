@@ -17,14 +17,16 @@ public sealed partial class DocumentSectionContainer
 {
     private TabDragController? _tabDragController;
     private SectionDragPreview? _dropPreview;
+    private FrameworkElement? _dragInputRoot;
 
     /// <summary>
     /// Enables the drag overlay used on heads where the built-in TabView drag-and-drop is disabled:
     /// the pointer-driven tab drag controller and the shared drop-target preview (the insertion divider
-    /// and section highlight, used by tab drags and by resource drags from the Explorer). No-op on heads
-    /// that keep the built-in drag-and-drop.
+    /// and section highlight, used by tab drags and by resource drags from the Explorer). The input root
+    /// is the element pointer events are tracked on during a drag, spanning every section. No-op on
+    /// heads that keep the built-in drag-and-drop.
     /// </summary>
-    public void InitializeTabDrag(Canvas dragOverlay)
+    public void InitializeTabDrag(Canvas dragOverlay, FrameworkElement inputRoot)
     {
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (!platformInfo.UsesPointerDrivenTabDrag)
@@ -32,8 +34,9 @@ public sealed partial class DocumentSectionContainer
             return;
         }
 
+        _dragInputRoot = inputRoot;
         _dropPreview = new SectionDragPreview(this, dragOverlay);
-        _tabDragController = new TabDragController(this, dragOverlay, _dropPreview);
+        _tabDragController = new TabDragController(this, inputRoot, dragOverlay, _dropPreview);
     }
 
     /// <summary>
@@ -100,7 +103,7 @@ public sealed partial class DocumentSectionContainer
 
     private Point WindowToSectionPoint(DocumentSectionView sectionView, Point windowPoint)
     {
-        if (XamlRoot?.Content is UIElement windowContent)
+        if (_dragInputRoot?.XamlRoot?.Content is UIElement windowContent)
         {
             return windowContent.TransformToVisual(sectionView).TransformPoint(windowPoint);
         }

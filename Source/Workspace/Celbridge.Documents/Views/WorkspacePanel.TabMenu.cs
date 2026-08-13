@@ -4,10 +4,10 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Document tab context-menu handling for DocumentsPanel: the close family, moving a tab between the
+/// Document tab context-menu handling for WorkspacePanel: the close family, moving a tab between the
 /// sections of its area, the clipboard and reveal actions, and reopening with a different editor.
 /// </summary>
-public sealed partial class DocumentsPanel
+public sealed partial class WorkspacePanel
 {
     private void OnDocumentTabContextMenuAction(DocumentTab tab, DocumentTabMenuAction action)
     {

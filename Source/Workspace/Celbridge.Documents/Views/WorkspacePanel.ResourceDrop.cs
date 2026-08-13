@@ -6,12 +6,12 @@ using Windows.Foundation;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Resource drop-target support for DocumentsPanel, used on heads where the built-in drag-and-drop is
+/// Resource drop-target support for WorkspacePanel, used on heads where the built-in drag-and-drop is
 /// disabled. Registers the panel with the shared drag coordinator so a resource dragged from the
 /// Explorer over a document section shows the divider and highlight (via SectionDragPreview) and opens
 /// at that slot on drop. Kept in its own partial so the desktop-only drag surface stays discoverable.
 /// </summary>
-public sealed partial class DocumentsPanel : IResourceDropTarget
+public sealed partial class WorkspacePanel : IResourceDropTarget
 {
     private IResourceDragCoordinator? _resourceDragCoordinator;
 
