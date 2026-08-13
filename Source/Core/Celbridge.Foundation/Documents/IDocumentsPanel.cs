@@ -17,6 +17,18 @@ public interface IDocumentsPanel
     ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
+    /// The smallest width the panel can be laid out at, composed from the areas it is currently presenting
+    /// and the gutters between them.
+    /// </summary>
+    double MinimumWidth { get; }
+
+    /// <summary>
+    /// The smallest height the panel can be laid out at, composed from the areas it is currently presenting
+    /// and the gutters between them.
+    /// </summary>
+    double MinimumHeight { get; }
+
+    /// <summary>
     /// Gives the active document keyboard focus, for the paths that make a document active without an
     /// interaction that carries focus to it: a workspace restore and a layout-mode change.
     /// </summary>

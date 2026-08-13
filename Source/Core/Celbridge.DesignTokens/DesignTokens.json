@@ -185,6 +185,27 @@
     },
 
     {
+      "comment": [
+        "The smallest size at which a document is legible. Every minimum in the workspace layout is composed upward from this one pair, so the space the host reserves for a document never falls below it, and a document laying itself out against these values works to the same floor the host does.",
+        "Mirrored by WorkspaceConstants.DocumentMinWidth and DocumentMinHeight, which the native composition reads. Keep the two in sync when either changes."
+      ],
+      "tokens": {
+        "document-min-width": {
+          "targets": ["css"],
+          "css": "--cel-document-min-width",
+          "value": "calc(200px / var(--cel-page-zoom))",
+          "published": true
+        },
+        "document-min-height": {
+          "targets": ["css"],
+          "css": "--cel-document-min-height",
+          "value": "calc(120px / var(--cel-page-zoom))",
+          "published": true
+        }
+      }
+    },
+
+    {
       "tokens": {
         "color-scheme": {
           "targets": ["css"],

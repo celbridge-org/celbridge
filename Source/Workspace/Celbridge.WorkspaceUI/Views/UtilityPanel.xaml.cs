@@ -6,9 +6,11 @@ using Celbridge.ProjectSettings;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
+using Windows.Foundation;
 
 namespace Celbridge.WorkspaceUI.Views;
 
@@ -49,6 +51,22 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     public UtilityPanelViewModel ViewModel { get; }
 
     public EditorId ActiveUtilityId => ViewModel.SelectedUtilityId;
+
+    public double MinimumWidth
+    {
+        get
+        {
+            double gutterSize = (double)Application.Current.Resources["GutterSize"];
+
+            // The content area is carved out like a document section, so it composes from the same floor.
+            var contentChrome = new Size(
+                ContentArea.BorderThickness.Left + ContentArea.BorderThickness.Right,
+                ContentArea.BorderThickness.Top + ContentArea.BorderThickness.Bottom);
+            double contentMinimumWidth = WorkspaceMinimumSize.ComposeSection(contentChrome).Width;
+
+            return WorkspaceMinimumSize.ComposeAdjacent(RailColumn.Width.Value, contentMinimumWidth, gutterSize);
+        }
+    }
 
     public UtilityPanel()
     {

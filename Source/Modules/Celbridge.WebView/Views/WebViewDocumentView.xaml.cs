@@ -141,7 +141,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             LayoutRoot,
             GridResizeMode.Columns,
             index: 2,
-            minSize: MinSettingsPanelWidth,
+            minSizeFunc: () => MinSettingsPanelWidth,
             invertDelta: true,
             maxSizeFunc: () => LayoutRoot.ActualWidth - MinWebViewWidth);
 

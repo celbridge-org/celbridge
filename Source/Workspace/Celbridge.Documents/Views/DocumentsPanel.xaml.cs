@@ -37,6 +37,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         set => SectionContainer.SetActiveDocument(value);
     }
 
+    public double MinimumWidth => SectionContainer.MinimumSize.Width;
+
+    public double MinimumHeight => SectionContainer.MinimumSize.Height;
+
     public DocumentsPanel(
         IServiceProvider serviceProvider,
         IDocumentsLogger logger,

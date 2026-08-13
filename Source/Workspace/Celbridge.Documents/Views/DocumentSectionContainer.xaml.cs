@@ -3,6 +3,8 @@ using Celbridge.Documents.Services;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
+using Celbridge.Workspace;
+using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
 
@@ -17,12 +19,6 @@ public record DocumentTabLocation(DocumentSectionView SectionView, DocumentTab T
 /// </summary>
 public sealed partial class DocumentSectionContainer : UserControl
 {
-    private const double MinSectionWidth = 200;
-    private const double MinSectionHeight = 120;
-    private const double MinBottomAreaHeight = 150;
-    private const double MinSideAreaWidth = 200;
-    private const double MinMainAreaWidth = 200;
-    private const double MinMainAreaHeight = 150;
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
 
     private readonly AreaLayoutState _layoutState = new();
@@ -116,6 +112,11 @@ public sealed partial class DocumentSectionContainer : UserControl
             CreateSection(section);
         }
 
+        // The stored sizes arrive with the workspace settings, so the collapsible areas open at their
+        // defaults until then.
+        SideAreaColumn.Width = new GridLength(WorkspaceConstants.SideAreaWidth);
+        BottomAreaRow.Height = new GridLength(WorkspaceConstants.BottomAreaHeight);
+
         InitializeAreaSplitters();
 
         foreach (var area in DocumentLayoutHelper.AllAreas)
@@ -125,6 +126,27 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         ApplyRootGridLayout();
+
+        _sections[DocumentArea.Main.GetPrimarySection()].Loaded += OnPrimarySectionLoaded;
+    }
+
+    // The section chrome is measured from the tab strip the section template builds, which has no size until
+    // the section has laid out, so every minimum composed above stands on the unmeasured strip. Re-applies
+    // them on the cycle after the load, by which point the strip has been measured.
+    private void OnPrimarySectionLoaded(object sender, RoutedEventArgs e)
+    {
+        var primarySectionView = _sections[DocumentArea.Main.GetPrimarySection()];
+        primarySectionView.Loaded -= OnPrimarySectionLoaded;
+
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            foreach (var area in DocumentLayoutHelper.AllAreas)
+            {
+                ApplySectionTrackMinimums(area);
+            }
+
+            ApplyRootGridLayout();
+        });
     }
 
     // An area that shrinks below the room for two sections can no longer be split, which the tab context
@@ -144,13 +166,84 @@ public sealed partial class DocumentSectionContainer : UserControl
     public bool CanSplitArea(DocumentArea area)
     {
         var areaGrid = GetAreaGrid(area);
+        var splitMinimum = WorkspaceMinimumSize.ComposeArea(
+            SectionMinimumSize,
+            isSplit: true,
+            splitsHorizontally: area.SplitsHorizontally(),
+            gutterSize: GutterSize);
 
         if (area.SplitsHorizontally())
         {
-            return areaGrid.ActualWidth >= MinSectionWidth * 2;
+            return areaGrid.ActualWidth >= splitMinimum.Width;
         }
 
-        return areaGrid.ActualHeight >= MinSectionHeight * 2;
+        return areaGrid.ActualHeight >= splitMinimum.Height;
+    }
+
+    /// <summary>
+    /// The smallest size the panel can be laid out at: the main column beside the Side area, and the Main
+    /// area above the Bottom one, with a gutter between each pair that is presented.
+    /// </summary>
+    public Size MinimumSize
+    {
+        get
+        {
+            double gutterSize = GutterSize;
+
+            var mainMinimum = GetAreaMinimumSize(DocumentArea.Main);
+            var bottomMinimum = GetAreaMinimumSize(DocumentArea.Bottom);
+            var sideMinimum = GetAreaMinimumSize(DocumentArea.Side);
+
+            double width = WorkspaceMinimumSize.ComposeAdjacent(MainColumnMinimumWidth, sideMinimum.Width, gutterSize);
+
+            double mainColumnHeight = WorkspaceMinimumSize.ComposeAdjacent(mainMinimum.Height, bottomMinimum.Height, gutterSize);
+
+            // The Side area spans every row, so the panel is as tall as the taller of it and the main column.
+            double height = Math.Max(mainColumnHeight, sideMinimum.Height);
+
+            return new Size(width, height);
+        }
+    }
+
+    /// <summary>
+    /// The smallest size the area can be laid out at, or zero while it is not presented. A split area holds
+    /// two sections along its split axis, with a gutter between them.
+    /// </summary>
+    public Size GetAreaMinimumSize(DocumentArea area)
+    {
+        if (!_layoutState.IsAreaPresented(area))
+        {
+            return new Size(0, 0);
+        }
+
+        return WorkspaceMinimumSize.ComposeArea(
+            SectionMinimumSize,
+            isSplit: _layoutState.IsAreaSplit(area),
+            splitsHorizontally: area.SplitsHorizontally(),
+            gutterSize: GutterSize);
+    }
+
+    // Every section is built from the same template, so the Main area's primary section, the one section that
+    // is always mounted, measures the chrome on behalf of all of them.
+    private Size SectionMinimumSize => _sections[DocumentArea.Main.GetPrimarySection()].MinimumSize;
+
+    // The Main and Bottom areas share the panel's first column, so the column holds the wider of the two.
+    private double MainColumnMinimumWidth => Math.Max(
+        GetAreaMinimumSize(DocumentArea.Main).Width,
+        GetAreaMinimumSize(DocumentArea.Bottom).Width);
+
+    // The channel between two surfaces. The splitter in it takes this size, which is what holds the gap open.
+    private static double GutterSize => (double)Application.Current.Resources["GutterSize"];
+
+    // The floor a split area's sections are held at, along the axis its split splitter moves.
+    private double ResolveSplitSectionMinimum(DocumentArea area)
+    {
+        if (area.SplitsHorizontally())
+        {
+            return SectionMinimumSize.Width;
+        }
+
+        return SectionMinimumSize.Height;
     }
 
     /// <summary>
@@ -813,16 +906,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             areaGrid.ColumnDefinitions.Add(new ColumnDefinition
             {
-                Width = new GridLength(isSplit ? ratio : 1, GridUnitType.Star),
-                MinWidth = MinSectionWidth
+                Width = new GridLength(isSplit ? ratio : 1, GridUnitType.Star)
             });
         }
         else
         {
             areaGrid.RowDefinitions.Add(new RowDefinition
             {
-                Height = new GridLength(isSplit ? ratio : 1, GridUnitType.Star),
-                MinHeight = MinSectionHeight
+                Height = new GridLength(isSplit ? ratio : 1, GridUnitType.Star)
             });
         }
 
@@ -839,8 +930,7 @@ public sealed partial class DocumentSectionContainer : UserControl
                 areaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 areaGrid.ColumnDefinitions.Add(new ColumnDefinition
                 {
-                    Width = new GridLength(1 - ratio, GridUnitType.Star),
-                    MinWidth = MinSectionWidth
+                    Width = new GridLength(1 - ratio, GridUnitType.Star)
                 });
             }
             else
@@ -848,8 +938,7 @@ public sealed partial class DocumentSectionContainer : UserControl
                 areaGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 areaGrid.RowDefinitions.Add(new RowDefinition
                 {
-                    Height = new GridLength(1 - ratio, GridUnitType.Star),
-                    MinHeight = MinSectionHeight
+                    Height = new GridLength(1 - ratio, GridUnitType.Star)
                 });
             }
 
@@ -865,9 +954,39 @@ public sealed partial class DocumentSectionContainer : UserControl
             }
         }
 
+        ApplySectionTrackMinimums(area);
         UpdateSectionMoveTargets(area);
         PlaceAreaToolbar(area);
         ApplyAreaSectionChrome(area);
+    }
+
+    // Puts the composed section minimum on the tracks the area's sections sit in. The gutter track between
+    // them is auto sized and carries none of its own.
+    private void ApplySectionTrackMinimums(DocumentArea area)
+    {
+        var areaGrid = GetAreaGrid(area);
+        var sectionMinimum = SectionMinimumSize;
+
+        if (area.SplitsHorizontally())
+        {
+            foreach (var columnDefinition in areaGrid.ColumnDefinitions)
+            {
+                if (columnDefinition.Width.IsStar)
+                {
+                    columnDefinition.MinWidth = sectionMinimum.Width;
+                }
+            }
+
+            return;
+        }
+
+        foreach (var rowDefinition in areaGrid.RowDefinitions)
+        {
+            if (rowDefinition.Height.IsStar)
+            {
+                rowDefinition.MinHeight = sectionMinimum.Height;
+            }
+        }
     }
 
     private static void SetSectionPosition(FrameworkElement element, bool isHorizontal, int index)
@@ -965,9 +1084,12 @@ public sealed partial class DocumentSectionContainer : UserControl
             RootGrid,
             GridResizeMode.Rows,
             2,
-            minSize: MinBottomAreaHeight,
+            minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Bottom).Height,
             invertDelta: true,
-            maxSizeFunc: () => RootGrid.ActualHeight - MinMainAreaHeight)
+            maxSizeFunc: () => WorkspaceMinimumSize.SpaceBeside(
+                RootGrid.ActualHeight,
+                GetAreaMinimumSize(DocumentArea.Main).Height,
+                GutterSize))
         {
             SnapTargets = ResolveBottomAreaSnapTargets
         };
@@ -976,9 +1098,12 @@ public sealed partial class DocumentSectionContainer : UserControl
             RootGrid,
             GridResizeMode.Columns,
             2,
-            minSize: MinSideAreaWidth,
+            minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Side).Width,
             invertDelta: true,
-            maxSizeFunc: () => RootGrid.ActualWidth - MinMainAreaWidth);
+            maxSizeFunc: () => WorkspaceMinimumSize.SpaceBeside(
+                RootGrid.ActualWidth,
+                MainColumnMinimumWidth,
+                GutterSize));
 
         BottomAreaSplitter.DragStarted += (s, e) => _bottomAreaSplitterHelper?.OnDragStarted();
         BottomAreaSplitter.DragDelta += (s, delta) => _bottomAreaSplitterHelper?.OnDragDelta(delta);
@@ -1028,7 +1153,12 @@ public sealed partial class DocumentSectionContainer : UserControl
             BottomAreaRow.Height = new GridLength(1, GridUnitType.Star);
         }
 
-        BottomAreaRow.MinHeight = showBottomSplitter ? MinBottomAreaHeight : 0;
+        double bottomMinimumHeight = 0;
+        if (showBottomSplitter)
+        {
+            bottomMinimumHeight = GetAreaMinimumSize(DocumentArea.Bottom).Height;
+        }
+        BottomAreaRow.MinHeight = bottomMinimumHeight;
 
         MainAreaColumn.Width = isMainColumnPresented ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
@@ -1041,7 +1171,12 @@ public sealed partial class DocumentSectionContainer : UserControl
             SideAreaColumn.Width = new GridLength(1, GridUnitType.Star);
         }
 
-        SideAreaColumn.MinWidth = showSideSplitter ? MinSideAreaWidth : 0;
+        double sideMinimumWidth = 0;
+        if (showSideSplitter)
+        {
+            sideMinimumWidth = GetAreaMinimumSize(DocumentArea.Side).Width;
+        }
+        SideAreaColumn.MinWidth = sideMinimumWidth;
 
         ApplySectionChrome();
     }
@@ -1087,8 +1222,7 @@ public sealed partial class DocumentSectionContainer : UserControl
         {
             var areaGrid = GetAreaGrid(area);
             var mode = area.SplitsHorizontally() ? GridResizeMode.Columns : GridResizeMode.Rows;
-            double minSize = area.SplitsHorizontally() ? MinSectionWidth : MinSectionHeight;
-            helper = new SplitterHelper(areaGrid, mode, 0, 2, minSize: minSize)
+            helper = new SplitterHelper(areaGrid, mode, 0, 2, minSizeFunc: () => ResolveSplitSectionMinimum(area))
             {
                 SnapTargets = () => ResolveSplitSnapTargets(area)
             };

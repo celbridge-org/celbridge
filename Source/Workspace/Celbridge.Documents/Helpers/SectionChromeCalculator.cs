@@ -21,7 +21,10 @@ public record AreaSectionChrome(SectionChrome Primary, SectionChrome? Secondary)
 /// </summary>
 public class SectionChromeCalculator
 {
-    private const double EdgeThickness = 1.0;
+    /// <summary>
+    /// The thickness of one edge a section draws against a gutter.
+    /// </summary>
+    public const double EdgeThickness = 1.0;
 
     private readonly AreaLayoutState _layoutState;
     private readonly bool _roundsBottomCorners;

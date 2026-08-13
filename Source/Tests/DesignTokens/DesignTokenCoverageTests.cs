@@ -41,6 +41,10 @@ public class DesignTokenCoverageTests
         "--cel-font-weight-regular",
         // No host surface rounds a card yet. It pairs with --cel-radius-control.
         "--cel-radius-card",
+        // The document floor. The host composes its own minimums from the matching values in
+        // WorkspaceConstants; the web names carry the same floor for a document sizing itself against it.
+        "--cel-document-min-width",
+        "--cel-document-min-height",
         // The native side paints match highlighting with SearchMatchHighlightBrush. The web name carries
         // the same value for a package rendering its own results.
         "--cel-search-highlight"
@@ -60,6 +64,8 @@ public class DesignTokenCoverageTests
         "--cel-control-hover-bg",
         "--cel-divider",
         "--cel-divider-subtle",
+        "--cel-document-min-height",
+        "--cel-document-min-width",
         "--cel-expander-content-bg",
         "--cel-expander-header-bg",
         "--cel-font-mono",
