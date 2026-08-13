@@ -140,7 +140,6 @@
         <StackPanel x:Name="PanelToggleButtons"
                     Orientation="Horizontal"
                     VerticalAlignment="Stretch">
-            <!-- Primary Panel Toggle -->
             <Button x:Name="ToggleUtilityPanelButton"
                     AutomationProperties.AutomationId="explorer-toggle-button"
                     Click="ToggleUtilityPanelButton_Click"
@@ -153,9 +152,8 @@
                 <icons:UtilityPanelIcon x:Name="UtilityPanelIcon"/>
             </Button>
             
-            <!-- Console Panel Toggle -->
             <Button x:Name="ToggleBottomAreaButton"
-                    AutomationProperties.AutomationId="console-toggle-button"
+                    AutomationProperties.AutomationId="bottom-area-toggle-button"
                     Click="ToggleBottomAreaButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
@@ -166,9 +164,8 @@
                 <icons:BottomAreaIcon x:Name="BottomAreaIcon"/>
             </Button>
             
-            <!-- Secondary Panel Toggle -->
             <Button x:Name="ToggleSideAreaButton"
-                    AutomationProperties.AutomationId="inspector-toggle-button"
+                    AutomationProperties.AutomationId="side-area-toggle-button"
                     Click="ToggleSideAreaButton_Click"
                     DoubleTapped="Button_DoubleTapped"
                     Margin="2,0"
