@@ -76,17 +76,17 @@ public sealed partial class WorkspacePanel
     {
         var area = tab.Section.GetArea();
 
-        if (!SectionContainer.IsAreaSplit(area))
+        if (!SectionContainer.Areas.IsAreaSplit(area))
         {
             // Only the split direction is on offer while unsplit, and only while the area has a document
             // to leave behind.
             if (!toSecondarySection ||
-                !SectionContainer.CanStartAreaSplit(area))
+                !SectionContainer.Areas.CanStartAreaSplit(area))
             {
                 return;
             }
 
-            SectionContainer.SetAreaSplit(area, true);
+            SectionContainer.Areas.SetAreaSplit(area, true);
         }
 
         var targetSection = toSecondarySection
@@ -104,12 +104,12 @@ public sealed partial class WorkspacePanel
     private void UnsplitArea(DocumentTab tab)
     {
         var area = tab.Section.GetArea();
-        if (!SectionContainer.IsAreaSplit(area))
+        if (!SectionContainer.Areas.IsAreaSplit(area))
         {
             return;
         }
 
-        SectionContainer.SetAreaSplit(area, false);
+        SectionContainer.Areas.SetAreaSplit(area, false);
 
         UpdateAllTabDisplayNames();
         NotifyLayoutChanged();

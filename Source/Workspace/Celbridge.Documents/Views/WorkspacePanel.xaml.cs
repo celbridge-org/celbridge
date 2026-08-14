@@ -32,7 +32,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     // Manages the document sections inside the surface container's area grids.
     private DocumentSectionContainer SectionContainer { get; }
 
-    public IReadOnlyList<DocumentSection> VisibleSections => SectionContainer.VisibleSections;
+    public IReadOnlyList<DocumentSection> VisibleSections => SectionContainer.Areas.VisibleSections;
 
     public ResourceKey ActiveDocument
     {
@@ -76,7 +76,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         SectionContainer.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
         SectionContainer.CloseRequested += OnSectionCloseRequested;
         SectionContainer.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-        SectionContainer.AreaLayoutChanged += OnAreaLayoutChanged;
+        SectionContainer.Areas.AreaLayoutChanged += OnAreaLayoutChanged;
         SectionContainer.FilesDropped += OnSectionFilesDropped;
 
         // Surface sizes are dragged on the surface container's splitters and persisted here.
@@ -107,9 +107,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         // Closing the last document in an isolated area moves the active document to another area, so
         // the isolation follows it rather than leaving an empty panel on screen.
-        if (SectionContainer.IsolatedArea is not null)
+        if (SectionContainer.Areas.IsolatedArea is not null)
         {
-            SectionContainer.SetIsolatedArea(SectionContainer.ActiveSection.GetArea());
+            SectionContainer.Areas.SetIsolatedArea(SectionContainer.ActiveSection.GetArea());
         }
 
         ViewModel.OnActiveDocumentChanged(documentResource);
@@ -151,7 +151,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             toolbar.CloseAreaRequested += OnToolbarCloseAreaRequested;
 
             _areaToolbars[area] = toolbar;
-            SectionContainer.SetAreaToolbar(area, toolbar);
+            SectionContainer.Areas.SetAreaToolbar(area, toolbar);
         }
     }
 
@@ -320,7 +320,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         // Surface sizes are restored and reset through the workspace settings facade.
         ViewModel.SurfaceSizeChanged += OnStoredSurfaceSizeChanged;
-        SectionContainer.SetBottomAreaAlignment(ViewModel.BottomAreaAlignment);
+        SectionContainer.Areas.SetBottomAreaAlignment(ViewModel.BottomAreaAlignment);
         ApplyStoredSurfaceSizes();
         ApplyAreaVisibility();
 
@@ -415,7 +415,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         // Fold every area back to a single section at its default split position
-        _ = SectionContainer.ResetAreaLayoutAsync();
+        _ = SectionContainer.Areas.ResetAreaLayoutAsync();
     }
 
     private void WorkspacePanel_Unloaded(object sender, RoutedEventArgs e)
@@ -452,11 +452,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         if (isolateActiveArea)
         {
-            SectionContainer.SetIsolatedArea(SectionContainer.ActiveSection.GetArea());
+            SectionContainer.Areas.SetIsolatedArea(SectionContainer.ActiveSection.GetArea());
             return;
         }
 
-        SectionContainer.SetIsolatedArea(null);
+        SectionContainer.Areas.SetIsolatedArea(null);
         ApplyStoredSurfaceSizes();
     }
 
@@ -487,12 +487,12 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     // leaves its tabs in place, so the documents reappear where they were when it is shown again.
     private void ApplyAreaVisibility()
     {
-        SectionContainer.SetAreaVisible(DocumentArea.Bottom, ViewModel.IsAreaVisible(DocumentArea.Bottom));
-        SectionContainer.SetAreaVisible(DocumentArea.Side, ViewModel.IsAreaVisible(DocumentArea.Side));
+        SectionContainer.Areas.SetAreaVisible(DocumentArea.Bottom, ViewModel.IsAreaVisible(DocumentArea.Bottom));
+        SectionContainer.Areas.SetAreaVisible(DocumentArea.Side, ViewModel.IsAreaVisible(DocumentArea.Side));
 
         // The areas draw a left edge only while the Utility Panel is there to face. Hiding it, whether from
         // the toolbar or by entering Focus, leaves that edge on the application border instead.
-        SectionContainer.SetUtilityPanelPresented(ViewModel.IsUtilityPanelVisible);
+        SectionContainer.Areas.SetUtilityPanelPresented(ViewModel.IsUtilityPanelVisible);
 
         ApplyStoredSurfaceSizes();
     }
@@ -528,7 +528,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
-        SectionContainer.SetBottomAreaAlignment(message.Alignment);
+        SectionContainer.Areas.SetBottomAreaAlignment(message.Alignment);
     }
 
     // Mounts the section a document is about to open into. Naming an unsplit area's secondary section
@@ -538,9 +538,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     {
         var area = section.GetArea();
         if (section.IsSecondarySection()
-            && !SectionContainer.IsAreaSplit(area))
+            && !SectionContainer.Areas.IsAreaSplit(area))
         {
-            SectionContainer.SetAreaSplit(area, true);
+            SectionContainer.Areas.SetAreaSplit(area, true);
         }
 
         return section;
@@ -548,32 +548,32 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     public bool IsAreaSplit(DocumentArea area)
     {
-        return SectionContainer.IsAreaSplit(area);
+        return SectionContainer.Areas.IsAreaSplit(area);
     }
 
     public void SetAreaSplit(DocumentArea area, bool isSplit)
     {
-        SectionContainer.SetAreaSplit(area, isSplit);
+        SectionContainer.Areas.SetAreaSplit(area, isSplit);
     }
 
     public void ReconcileAreaSplit(DocumentArea area)
     {
-        SectionContainer.ReconcileAreaSplit(area);
+        SectionContainer.Areas.ReconcileAreaSplit(area);
     }
 
     public double GetAreaSplitRatio(DocumentArea area)
     {
-        return SectionContainer.GetAreaSplitRatio(area);
+        return SectionContainer.Areas.GetAreaSplitRatio(area);
     }
 
     public void SetAreaSplitRatio(DocumentArea area, double ratio)
     {
-        SectionContainer.SetAreaSplitRatio(area, ratio);
+        SectionContainer.Areas.SetAreaSplitRatio(area, ratio);
     }
 
     public async Task ResetAreaLayoutAsync()
     {
-        await SectionContainer.ResetAreaLayoutAsync();
+        await SectionContainer.Areas.ResetAreaLayoutAsync();
     }
 
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments()
@@ -877,7 +877,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         var area = sectionView.Section.GetArea();
 
         sectionView.RemoveTab(documentTab);
-        SectionContainer.ReconcileAreaSplit(area);
+        SectionContainer.Areas.ReconcileAreaSplit(area);
     }
 
     /// <summary>
