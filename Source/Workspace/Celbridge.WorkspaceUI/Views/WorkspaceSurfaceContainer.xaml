@@ -14,18 +14,16 @@
        containers; the sections inside them are managed by the documents panel. -->
   <Grid x:Name="RootGrid"
         Background="{ThemeResource ChromeBackgroundBrush}">
+    <!-- The resizable tracks carry no size here. Their defaults come from WorkspaceConstants and their
+         minimums are composed from the document floor, both applied in code-behind. -->
     <Grid.ColumnDefinitions>
-      <ColumnDefinition x:Name="UtilityPanelColumn"
-                        Width="300"
-                        MinWidth="200"/>
+      <ColumnDefinition x:Name="UtilityPanelColumn"/>
       <!-- Sized by the splitter that sits in it, and collapses with it when the Utility Panel is hidden. -->
       <ColumnDefinition Width="Auto"/>
       <ColumnDefinition x:Name="MainAreaColumn"
                         Width="*"/>
       <ColumnDefinition Width="Auto"/>
-      <ColumnDefinition x:Name="SideAreaColumn"
-                        Width="300"
-                        MinWidth="200"/>
+      <ColumnDefinition x:Name="SideAreaColumn"/>
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
@@ -35,16 +33,13 @@
       <RowDefinition x:Name="MainAreaRow"
                      Height="*"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition x:Name="BottomAreaRow"
-                     Height="350"
-                     MinHeight="150"/>
+      <RowDefinition x:Name="BottomAreaRow"/>
     </Grid.RowDefinitions>
 
     <Grid x:Name="UtilityPanelHost"
           Grid.Row="0"
           Grid.RowSpan="4"
           Grid.Column="0"
-          MinWidth="200"
           layout:WorkspaceLayout.Surface="UtilityPanel"
           AutomationProperties.AutomationId="explorer-panel"
           Background="{ThemeResource ChromeBackgroundBrush}"/>

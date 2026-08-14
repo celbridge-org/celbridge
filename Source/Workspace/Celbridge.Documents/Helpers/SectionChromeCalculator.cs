@@ -1,4 +1,5 @@
 using Celbridge.Documents.Services;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Helpers;
 
@@ -21,7 +22,10 @@ public record AreaSectionChrome(SectionChrome Primary, SectionChrome? Secondary)
 /// </summary>
 public class SectionChromeCalculator
 {
-    private const double EdgeThickness = 1.0;
+    /// <summary>
+    /// The thickness of one edge a section draws against a gutter.
+    /// </summary>
+    public const double EdgeThickness = WorkspaceConstants.SectionEdgeThickness;
 
     private readonly AreaLayoutState _layoutState;
 

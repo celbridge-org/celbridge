@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers.FullScreen;
 using Microsoft.UI.Windowing;
@@ -11,17 +12,14 @@ namespace Celbridge.UserInterface.Helpers;
 /// </summary>
 public sealed class WindowStateHelper
 {
-    // The smallest window that keeps the application toolbar and a usable editor pane on screen, chosen to
-    // sit well inside the work area of a 1280x800 display.
-    private const int MinimumWindowWidth = 800;
-    private const int MinimumWindowHeight = 600;
-
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IFullScreenController _fullScreenController;
     private readonly IWindowBoundsValidator _windowBoundsValidator;
     private readonly IWindowSizeConstraints _windowSizeConstraints;
+    private readonly IPlatformInfo _platformInfo;
+    private Window? _mainWindow;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -34,7 +32,8 @@ public sealed class WindowStateHelper
         ISettingsService settingsService,
         IFullScreenController fullScreenController,
         IWindowBoundsValidator windowBoundsValidator,
-        IWindowSizeConstraints windowSizeConstraints)
+        IWindowSizeConstraints windowSizeConstraints,
+        IPlatformInfo platformInfo)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -42,6 +41,7 @@ public sealed class WindowStateHelper
         _fullScreenController = fullScreenController;
         _windowBoundsValidator = windowBoundsValidator;
         _windowSizeConstraints = windowSizeConstraints;
+        _platformInfo = platformInfo;
     }
 
     /// <summary>
@@ -53,6 +53,8 @@ public sealed class WindowStateHelper
 
         try
         {
+            _mainWindow = mainWindow;
+
             // Window.AppWindow is the cross-platform Microsoft.UI.Windowing entry point and works on
             // both the packaged WinUI head and the Skia desktop head, so no Win32 interop is needed.
             _appWindow = mainWindow.AppWindow;
@@ -200,13 +202,45 @@ public sealed class WindowStateHelper
             return;
         }
 
-        var minimumSize = new SizeInt32
-        {
-            Width = MinimumWindowWidth,
-            Height = MinimumWindowHeight
-        };
+        var minimumSize = ComposeMinimumWindowSize();
+
+        _logger.LogDebug(
+            "Applying minimum window size {Width} x {Height} at rasterization scale {Scale}, window sizes in physical pixels: {UsesPhysicalPixels}",
+            minimumSize.Width,
+            minimumSize.Height,
+            _mainWindow?.Content?.XamlRoot?.RasterizationScale ?? 0,
+            _platformInfo.WindowSizesUsePhysicalPixels);
 
         _windowSizeConstraints.ApplyMinimumSize(_appWindow, minimumSize);
+    }
+
+    private SizeInt32 ComposeMinimumWindowSize()
+    {
+        double gutterSize = (double)Application.Current.Resources["GutterSize"];
+        var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
+
+        return WindowMinimumSize.Compose(defaultVisibleSurfaces, gutterSize, WindowSizeScale);
+    }
+
+    // The composed minimum is in device-independent pixels, which is not what every head measures its window
+    // in: the packaged Windows head uses physical pixels and its resize constraint does not scale them itself.
+    private double WindowSizeScale
+    {
+        get
+        {
+            if (!_platformInfo.WindowSizesUsePhysicalPixels)
+            {
+                return 1;
+            }
+
+            double rasterizationScale = _mainWindow?.Content?.XamlRoot?.RasterizationScale ?? 1;
+            if (rasterizationScale <= 0)
+            {
+                return 1;
+            }
+
+            return rasterizationScale;
+        }
     }
 
     private void TryRestoreWindowState()
@@ -228,10 +262,11 @@ public sealed class WindowStateHelper
         int savedWidth = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
         int savedHeight = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
 
-        // The platform constraint only applies to user resizing, and geometry saved before the minimum was
-        // introduced may be smaller than it, so clamp the restored size here too.
-        int width = Math.Max(savedWidth, MinimumWindowWidth);
-        int height = Math.Max(savedHeight, MinimumWindowHeight);
+        // The platform constraint only applies to user resizing, and geometry saved when the minimum was a
+        // different size may be smaller than it, so clamp the restored size here too.
+        var minimumSize = ComposeMinimumWindowSize();
+        int width = Math.Max(savedWidth, minimumSize.Width);
+        int height = Math.Max(savedHeight, minimumSize.Height);
 
         // Object-initializer syntax is used for the Windows.Graphics structs because the Skia desktop
         // head's projection does not expose their positional constructors.
@@ -289,8 +324,8 @@ public sealed class WindowStateHelper
             _previousPresenterKind = currentPresenterKind;
         }
 
-        if (args.DidSizeChange || 
-            args.DidPositionChange || 
+        if (args.DidSizeChange ||
+            args.DidPositionChange ||
             args.DidPresenterChange)
         {
             // Only track state when using overlapped presenter (windowed mode)

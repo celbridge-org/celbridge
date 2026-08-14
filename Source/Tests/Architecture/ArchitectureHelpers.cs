@@ -27,15 +27,15 @@ internal static class ArchitectureHelpers
     }
 
     /// <summary>
-    /// Enumerates production C# source files under the Source folder, excluding the Tests project and any
-    /// generated or build-output files.
+    /// Enumerates production source files of the given kind under the Source folder, excluding the Tests
+    /// project and any generated or build-output files.
     /// </summary>
-    public static IEnumerable<string> EnumerateProductionSourceFiles(string sourceFolder)
+    public static IEnumerable<string> EnumerateProductionSourceFiles(string sourceFolder, string searchPattern = "*.cs")
     {
         // The conventions govern production code. The Tests project legitimately names the guarded concepts.
         var testsFolder = Path.Combine(sourceFolder, "Tests");
 
-        foreach (var filePath in Directory.EnumerateFiles(sourceFolder, "*.cs", SearchOption.AllDirectories))
+        foreach (var filePath in Directory.EnumerateFiles(sourceFolder, searchPattern, SearchOption.AllDirectories))
         {
             if (filePath.StartsWith(testsFolder, StringComparison.OrdinalIgnoreCase))
             {

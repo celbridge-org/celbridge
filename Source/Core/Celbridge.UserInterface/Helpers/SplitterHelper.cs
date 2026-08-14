@@ -9,7 +9,7 @@ public class SplitterHelper
     private readonly GridResizeMode _mode;
     private readonly int _firstIndex;
     private readonly int _secondIndex;
-    private readonly double _minSize;
+    private readonly Func<double> _minSizeFunc;
     private readonly Func<double>? _maxSizeFunc;
     private readonly SplitterResizeMode _resizeMode;
 
@@ -25,31 +25,33 @@ public class SplitterHelper
     public Func<IReadOnlyList<double>>? SnapTargets { get; set; }
 
     /// <summary>
-    /// Creates a new SplitterHelper for managing splitter drag operations with paired resizing.
+    /// Creates a new SplitterHelper for managing splitter drag operations with paired resizing. Both tracks
+    /// are held at the minimum that minSizeFunc reports.
     /// </summary>
     public SplitterHelper(
         Grid grid,
         GridResizeMode mode,
         int firstIndex,
         int secondIndex,
-        double minSize = 200)
+        Func<double> minSizeFunc)
     {
         _grid = grid ?? throw new ArgumentNullException(nameof(grid));
         _mode = mode;
         _firstIndex = firstIndex;
         _secondIndex = secondIndex;
-        _minSize = minSize;
+        _minSizeFunc = minSizeFunc;
         _resizeMode = SplitterResizeMode.Paired;
     }
 
     /// <summary>
-    /// Creates a new SplitterHelper for managing splitter drag operations with single panel resizing.
+    /// Creates a new SplitterHelper for managing splitter drag operations with single panel resizing. The
+    /// minimum and maximum are asked for on every delta, so a floor that moves with the layout is honoured.
     /// </summary>
     public SplitterHelper(
         Grid grid,
         GridResizeMode mode,
         int index,
-        double minSize = 100,
+        Func<double> minSizeFunc,
         bool invertDelta = false,
         Func<double>? maxSizeFunc = null)
     {
@@ -57,7 +59,7 @@ public class SplitterHelper
         _mode = mode;
         _firstIndex = index;
         _secondIndex = invertDelta ? -1 : 0; // Use secondIndex == -1 to indicate inverted delta
-        _minSize = minSize;
+        _minSizeFunc = minSizeFunc;
         _maxSizeFunc = maxSizeFunc;
         _resizeMode = SplitterResizeMode.Single;
     }
@@ -98,13 +100,15 @@ public class SplitterHelper
     /// </summary>
     public void OnDragDelta(double delta)
     {
+        var minSize = _minSizeFunc();
+
         if (_resizeMode == SplitterResizeMode.Single)
         {
             // Single panel resize mode
             var adjustedDelta = _secondIndex == -1 ? -delta : delta; // Invert if secondIndex == -1
             var newSize = ApplySnap(_firstStartSize + adjustedDelta);
 
-            if (newSize < _minSize)
+            if (newSize < minSize)
             {
                 return;
             }
@@ -142,7 +146,8 @@ public class SplitterHelper
             var newSecondSize = totalSize - newFirstSize;
 
             // Enforce minimum sizes
-            if (newFirstSize < _minSize || newSecondSize < _minSize)
+            if (newFirstSize < minSize ||
+                newSecondSize < minSize)
             {
                 return;
             }

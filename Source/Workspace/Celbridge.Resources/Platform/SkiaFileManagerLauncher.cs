@@ -5,7 +5,7 @@ namespace Celbridge.Resources.Platform;
 /// <summary>
 /// File-manager launcher for the Uno Skia desktop heads. The WinRT Launcher and FolderLauncherOptions
 /// members are not fully implemented there, so files and folders are opened by shelling out to the native
-/// OS commands (open on macOS, xdg-open on Linux).
+/// OS mechanism: open on macOS, xdg-open on Linux, and the shell or Explorer on Windows.
 /// </summary>
 public sealed class SkiaFileManagerLauncher : IFileManagerLauncher
 {
@@ -73,6 +73,11 @@ public sealed class SkiaFileManagerLauncher : IFileManagerLauncher
             return StartProcess("xdg-open", path);
         }
 
+        if (OperatingSystem.IsWindows())
+        {
+            return StartShellExecute(path);
+        }
+
         return Result.Fail("Launching the associated application is not supported on this platform");
     }
 
@@ -104,6 +109,16 @@ public sealed class SkiaFileManagerLauncher : IFileManagerLauncher
             return StartProcess("xdg-open", target);
         }
 
+        if (OperatingSystem.IsWindows())
+        {
+            if (selectItem)
+            {
+                return StartExplorerReveal(fullPath);
+            }
+
+            return StartShellExecute(fullPath);
+        }
+
         return Result.Fail("Opening the file manager is not supported on this platform");
     }
 
@@ -111,26 +126,65 @@ public sealed class SkiaFileManagerLauncher : IFileManagerLauncher
     // per-platform. This avoids the shell-quoting pitfalls of a single arguments string.
     private static Result StartProcess(string fileName, params string[] arguments)
     {
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = fileName,
+            UseShellExecute = false
+        };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        return StartProcess(startInfo);
+    }
+
+    // Hands the path to the Windows shell, which opens a file with its associated application and a folder in
+    // Explorer, the same as double-clicking it.
+    private static Result StartShellExecute(string path)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = path,
+            UseShellExecute = true
+        };
+
+        return StartProcess(startInfo);
+    }
+
+    // Explorer parses its own command line rather than following the argument-quoting rules every other
+    // process uses, and its reveal switch is only understood as one argument with the path quoted inside it,
+    // which is why this is the one launch here that passes a raw argument string.
+    private static Result StartExplorerReveal(string fullPath)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = $"/select,\"{fullPath}\"",
+            UseShellExecute = false
+        };
+
+        return StartProcess(startInfo);
+    }
+
+    private static Result StartProcess(System.Diagnostics.ProcessStartInfo startInfo)
+    {
         try
         {
-            var startInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = fileName,
-                UseShellExecute = false
-            };
-
-            foreach (var argument in arguments)
-            {
-                startInfo.ArgumentList.Add(argument);
-            }
-
             System.Diagnostics.Process.Start(startInfo);
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to start the '{fileName}' process for path: {string.Join(' ', arguments)}")
+            var launchDetail = startInfo.Arguments;
+            if (string.IsNullOrEmpty(launchDetail))
+            {
+                launchDetail = string.Join(' ', startInfo.ArgumentList);
+            }
+
+            return Result.Fail($"Failed to start the '{startInfo.FileName}' process: {launchDetail}")
                 .WithException(ex);
         }
     }

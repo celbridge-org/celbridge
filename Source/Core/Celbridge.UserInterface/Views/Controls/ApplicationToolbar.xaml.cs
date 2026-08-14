@@ -11,6 +11,12 @@ namespace Celbridge.UserInterface.Views;
 /// </summary>
 public sealed partial class ApplicationToolbar : UserControl
 {
+    /// <summary>
+    /// The height of the toolbar strip. It occupies the row above the page content on every head, so the
+    /// window minimum is composed from it as well.
+    /// </summary>
+    public const double ToolbarHeight = 48;
+
     private readonly IStringLocalizer _stringLocalizer;
     private DispatcherQueueTimer? _layoutChangedTimer;
 
@@ -26,6 +32,8 @@ public sealed partial class ApplicationToolbar : UserControl
     public ApplicationToolbar()
     {
         this.InitializeComponent();
+
+        ToolbarRow.Height = new Microsoft.UI.Xaml.GridLength(ToolbarHeight);
 
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (platformInfo.ReservesWindowCaptionButtons)

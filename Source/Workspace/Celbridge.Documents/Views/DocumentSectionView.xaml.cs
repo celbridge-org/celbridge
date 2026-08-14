@@ -1,9 +1,12 @@
+using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.Foundation.Collections;
 
 namespace Celbridge.Documents.Views;
@@ -21,6 +24,11 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly IPlatformInfo _platformInfo;
     private readonly PointerEventHandler _tabStripWheelHandler;
     private bool _isShuttingDown = false;
+
+    // The tab strip band from the TabView template, resolved once so composing a minimum does not walk the
+    // section's visual tree on every query, and the tallest it has been measured at.
+    private FrameworkElement? _tabStripContainer;
+    private double _measuredTabStripHeight;
 
     /// <summary>
     /// Static field to track the tab currently being dragged between sections.
@@ -176,6 +184,51 @@ public sealed partial class DocumentSectionView : UserControl
         // The placeholder fills the section, so it has to repeat the rounding or it squares the corners off
         // again while the section is empty.
         EmptyPlaceholder.CornerRadius = corners;
+    }
+
+    /// <summary>
+    /// The smallest size this section can take: the document floor plus the chrome the section draws around
+    /// the document it hosts.
+    /// </summary>
+    public Size MinimumSize => WorkspaceMinimumSize.ComposeSection(MeasureChrome());
+
+    // The chrome a section takes around its document: the tab strip band above it, and an edge on every side.
+    // Every edge is allowed for whether or not it is currently drawn, so the minimum does not move as the
+    // section's neighbours change.
+    private Size MeasureChrome()
+    {
+        double edges = SectionChromeCalculator.EdgeThickness * 2;
+
+        return new Size(edges, MeasureTabStripHeight() + edges);
+    }
+
+    // The band the TabView template lays the tab strip out in, which is the row above the document content, so
+    // its height is the whole vertical chrome. Only the height is taken from it: the band is inset from the
+    // section's edges by differing amounts per head, so its width says nothing about what the document has.
+    private double MeasureTabStripHeight()
+    {
+        _tabStripContainer ??= VisualTree.FindDescendantByName(TabView, "TabContainerGrid") as FrameworkElement;
+
+        if (_tabStripContainer is null)
+        {
+            // The template has not been applied yet, so there is nothing to measure.
+            return WorkspaceConstants.SectionTabStripHeight;
+        }
+
+        // Presentation mode collapses the band, so the section really does have no strip above its document.
+        if (_tabStripContainer.Visibility == Visibility.Collapsed)
+        {
+            return 0;
+        }
+
+        // The band is sized by what it holds, so an empty section measures a flatter band than a populated one,
+        // and a band that has not laid out measures nothing at all. Only measurements that raise the height are
+        // taken: the authored height is the floor under all of them, and the tallest band the section has shown
+        // is kept. A section's minimum therefore never moves as its tabs open and close, which matters because
+        // the minimums composed from it are written onto grid tracks that are not recomposed on every change.
+        _measuredTabStripHeight = Math.Max(_measuredTabStripHeight, _tabStripContainer.ActualHeight);
+
+        return Math.Max(_measuredTabStripHeight, WorkspaceConstants.SectionTabStripHeight);
     }
 
     /// <summary>

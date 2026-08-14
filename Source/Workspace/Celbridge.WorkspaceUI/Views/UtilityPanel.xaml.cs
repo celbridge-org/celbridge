@@ -6,9 +6,11 @@ using Celbridge.ProjectSettings;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
+using Windows.Foundation;
 
 namespace Celbridge.WorkspaceUI.Views;
 
@@ -50,6 +52,22 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public EditorId ActiveUtilityId => ViewModel.SelectedUtilityId;
 
+    public double MinimumWidth
+    {
+        get
+        {
+            double gutterSize = (double)Application.Current.Resources["GutterSize"];
+
+            // The content area is carved out like a document section, so it composes from the same floor.
+            var contentChrome = new Size(
+                ContentArea.BorderThickness.Left + ContentArea.BorderThickness.Right,
+                ContentArea.BorderThickness.Top + ContentArea.BorderThickness.Bottom);
+            double contentMinimumWidth = WorkspaceMinimumSize.ComposeSection(contentChrome).Width;
+
+            return WorkspaceMinimumSize.ComposeAdjacent(RailColumn.Width.Value, contentMinimumWidth, gutterSize);
+        }
+    }
+
     // Whether the panel draws a bottom edge and rounded bottom corners: it does when the Bottom document
     // area runs underneath it, and meets the application border flush otherwise. Driven by the surface
     // container, which owns the panel's placement.
@@ -67,6 +85,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         this.InitializeComponent();
 
         SetBottomEdgePresented(false);
+
+        RailColumn.Width = new GridLength(WorkspaceConstants.UtilityPanelRailWidth);
 
         double gutterSize = (double)Application.Current.Resources["GutterSize"];
         ContentArea.Margin = new Thickness(gutterSize, gutterSize, 0, 0);

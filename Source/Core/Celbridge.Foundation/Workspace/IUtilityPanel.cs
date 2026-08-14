@@ -64,6 +64,12 @@ public interface IUtilityPanel
     EditorId ActiveUtilityId { get; }
 
     /// <summary>
+    /// The smallest width the panel can be laid out at: the rail, the channel beside it, and the floor for
+    /// the surface it hosts.
+    /// </summary>
+    double MinimumWidth { get; }
+
+    /// <summary>
     /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
     /// otherwise selects its rail surface in the Utility Panel. A no-op when no utility has that id.
     /// </summary>
