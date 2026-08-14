@@ -24,6 +24,50 @@ public static class WorkspaceMinimumSize
     }
 
     /// <summary>
+    /// The smallest size the workspace can be laid out at in the layout a workspace opens with: the surfaces
+    /// the given visibility shows, each unsplit and holding the floor composed from the authored chrome, with
+    /// the channels between them and the one above the document areas. Nothing here is measured, so this
+    /// holds before any workspace exists, which is where the window minimum is applied.
+    /// </summary>
+    public static Size ComposeDefaultLayout(WorkspaceSurface visibleSurfaces, double gutterSize)
+    {
+        double edges = WorkspaceConstants.SectionEdgeThickness * 2;
+        var sectionChrome = new Size(edges, WorkspaceConstants.SectionTabStripHeight + edges);
+        var sectionMinimum = ComposeSection(sectionChrome);
+
+        // No area is split in the default layout, so every document area takes one section, and the Main area
+        // is always shown.
+        double sideMinimumWidth = 0;
+        if (visibleSurfaces.HasFlag(WorkspaceSurface.SideArea))
+        {
+            sideMinimumWidth = sectionMinimum.Width;
+        }
+
+        double bottomMinimumHeight = 0;
+        if (visibleSurfaces.HasFlag(WorkspaceSurface.BottomArea))
+        {
+            bottomMinimumHeight = sectionMinimum.Height;
+        }
+
+        double utilityPanelMinimumWidth = 0;
+        if (visibleSurfaces.HasFlag(WorkspaceSurface.UtilityPanel))
+        {
+            // The panel's content area is carved out like a section and draws the same edge down each side, so
+            // it holds the same width floor. What the panel adds is the rail beside it.
+            utilityPanelMinimumWidth = ComposeAdjacent(
+                WorkspaceConstants.UtilityPanelRailWidth,
+                sectionMinimum.Width,
+                gutterSize);
+        }
+
+        double documentAreasWidth = ComposeAdjacent(sectionMinimum.Width, sideMinimumWidth, gutterSize);
+        double width = ComposeAdjacent(utilityPanelMinimumWidth, documentAreasWidth, gutterSize);
+        double documentAreasHeight = ComposeAdjacent(sectionMinimum.Height, bottomMinimumHeight, gutterSize);
+
+        return new Size(width, documentAreasHeight + gutterSize);
+    }
+
+    /// <summary>
     /// The smallest size a document area can take. A split area holds two sections along its split axis,
     /// with a gutter between them.
     /// </summary>
@@ -83,17 +127,4 @@ public static class WorkspaceMinimumSize
         return surfaceMinimum + slack;
     }
 
-    /// <summary>
-    /// The extent a surface can take beside a peer that is holding its minimum: everything the container has,
-    /// less that minimum and the gutter between the two.
-    /// </summary>
-    public static double SpaceBeside(double containerExtent, double peerMinimum, double gutterSize)
-    {
-        if (peerMinimum <= 0)
-        {
-            return containerExtent;
-        }
-
-        return containerExtent - peerMinimum - gutterSize;
-    }
 }

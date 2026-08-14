@@ -18,7 +18,8 @@
           Background="{ThemeResource ChromeBackgroundBrush}">
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>
+            <!-- Sized from ToolbarHeight in code-behind, which the window minimum also composes from. -->
+            <RowDefinition x:Name="ToolbarRow"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>

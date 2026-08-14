@@ -82,6 +82,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // Surface sizes are dragged on the surface container's splitters and persisted here.
         SurfaceContainer.SurfaceSizeChanged += OnSurfaceSizeChanged;
         SurfaceContainer.SurfaceSizeResetRequested += OnSurfaceSizeResetRequested;
+        SurfaceContainer.StoredSurfaceSizesNeeded += OnStoredSurfaceSizesNeeded;
 
         SectionContainer.InitializeTabDrag(TabDragOverlay, this);
         ConfigureResourceDropTarget();
@@ -506,6 +507,18 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private void OnStoredSurfaceSizeChanged(WorkspaceSurface surface)
     {
         SurfaceContainer.SetSurfaceSize(surface, ViewModel.GetSurfaceSize(surface));
+    }
+
+    // The stored sizes are re-applied rather than the current ones held down, so a surface narrowed to fit a
+    // smaller window returns to the size the user set once the window gives the space back.
+    private void OnStoredSurfaceSizesNeeded()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        ApplyStoredSurfaceSizes();
     }
 
     private void OnBottomAreaAlignmentChanged(object recipient, BottomAreaAlignmentChangedMessage message)

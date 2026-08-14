@@ -2,6 +2,7 @@ using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
@@ -18,10 +19,6 @@ using IDocumentSectionViewLogger = ILogger<DocumentSectionView>;
 /// </summary>
 public sealed partial class DocumentSectionView : UserControl
 {
-    // Stands in for the tab strip height until the strip has laid out, so a minimum composed before the
-    // section is loaded is close to the measured one rather than short by a whole strip.
-    private const double UnmeasuredTabStripHeight = 40;
-
     private readonly IDocumentSectionViewLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
@@ -214,8 +211,8 @@ public sealed partial class DocumentSectionView : UserControl
 
         if (_tabStripContainer is null)
         {
-            // The template has not been applied yet.
-            return UnmeasuredTabStripHeight;
+            // The template has not been applied yet, so there is nothing to measure.
+            return WorkspaceConstants.SectionTabStripHeight;
         }
 
         // Presentation mode collapses the band, so the section really does have no strip above its document.
@@ -224,18 +221,14 @@ public sealed partial class DocumentSectionView : UserControl
             return 0;
         }
 
-        // The band is sized by what it holds, so an empty section can measure a shorter one than a populated
-        // section does. The floor keeps the tallest band the section has shown rather than dropping as its
-        // tabs close.
+        // The band is sized by what it holds, so an empty section measures a flatter band than a populated one,
+        // and a band that has not laid out measures nothing at all. Only measurements that raise the height are
+        // taken: the authored height is the floor under all of them, and the tallest band the section has shown
+        // is kept. A section's minimum therefore never moves as its tabs open and close, which matters because
+        // the minimums composed from it are written onto grid tracks that are not recomposed on every change.
         _measuredTabStripHeight = Math.Max(_measuredTabStripHeight, _tabStripContainer.ActualHeight);
 
-        if (_measuredTabStripHeight <= 0)
-        {
-            // The band is in the tree but has not been laid out yet.
-            return UnmeasuredTabStripHeight;
-        }
-
-        return _measuredTabStripHeight;
+        return Math.Max(_measuredTabStripHeight, WorkspaceConstants.SectionTabStripHeight);
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers.FullScreen;
+using Celbridge.UserInterface.Views;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 
@@ -11,10 +13,30 @@ namespace Celbridge.UserInterface.Helpers;
 /// </summary>
 public sealed class WindowStateHelper
 {
-    // The smallest window that keeps the application toolbar and a usable editor pane on screen, chosen to
-    // sit well inside the work area of a 1280x800 display.
-    private const int MinimumWindowWidth = 800;
-    private const int MinimumWindowHeight = 600;
+    /// <summary>
+    /// The smallest window the application is usable in, in device-independent pixels, and the budget the
+    /// workspace layout floors are composed to fit inside. Authored rather than derived from the layout,
+    /// because the application toolbar needs most of this width for its own content and composes no minimum
+    /// of its own.
+    /// </summary>
+    public const int MinimumWindowWidth = 800;
+
+    /// <summary>
+    /// The smallest window height the application is usable in, in device-independent pixels.
+    /// </summary>
+    public const int MinimumWindowHeight = 600;
+
+    /// <summary>
+    /// The window frame either side of the application content. Counted against the minimum window size, which
+    /// covers the whole window, while the composed minimum covers only the workspace inside it.
+    /// </summary>
+    public const int WindowFrameWidth = 16;
+
+    /// <summary>
+    /// The window frame below the application content, and the native title bar above it on the heads that draw
+    /// one. Neither is a size the layout can measure, so the allowance is authored to cover the largest of them.
+    /// </summary>
+    public const int WindowFrameHeight = 40;
 
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
@@ -22,6 +44,8 @@ public sealed class WindowStateHelper
     private readonly IFullScreenController _fullScreenController;
     private readonly IWindowBoundsValidator _windowBoundsValidator;
     private readonly IWindowSizeConstraints _windowSizeConstraints;
+    private readonly IPlatformInfo _platformInfo;
+    private Window? _mainWindow;
     private AppWindow? _appWindow;
     private OverlappedPresenter? _overlappedPresenter;
     private bool _isApplyingWindowMode;
@@ -34,7 +58,8 @@ public sealed class WindowStateHelper
         ISettingsService settingsService,
         IFullScreenController fullScreenController,
         IWindowBoundsValidator windowBoundsValidator,
-        IWindowSizeConstraints windowSizeConstraints)
+        IWindowSizeConstraints windowSizeConstraints,
+        IPlatformInfo platformInfo)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -42,6 +67,7 @@ public sealed class WindowStateHelper
         _fullScreenController = fullScreenController;
         _windowBoundsValidator = windowBoundsValidator;
         _windowSizeConstraints = windowSizeConstraints;
+        _platformInfo = platformInfo;
     }
 
     /// <summary>
@@ -53,6 +79,8 @@ public sealed class WindowStateHelper
 
         try
         {
+            _mainWindow = mainWindow;
+
             // Window.AppWindow is the cross-platform Microsoft.UI.Windowing entry point and works on
             // both the packaged WinUI head and the Skia desktop head, so no Win32 interop is needed.
             _appWindow = mainWindow.AppWindow;
@@ -200,13 +228,65 @@ public sealed class WindowStateHelper
             return;
         }
 
-        var minimumSize = new SizeInt32
-        {
-            Width = MinimumWindowWidth,
-            Height = MinimumWindowHeight
-        };
+        var minimumSize = ComposeMinimumWindowSize();
+
+        _logger.LogDebug(
+            "Applying minimum window size {Width} x {Height} at rasterization scale {Scale}, window sizes in physical pixels: {UsesPhysicalPixels}",
+            minimumSize.Width,
+            minimumSize.Height,
+            _mainWindow?.Content?.XamlRoot?.RasterizationScale ?? 0,
+            _platformInfo.WindowSizesUsePhysicalPixels);
 
         _windowSizeConstraints.ApplyMinimumSize(_appWindow, minimumSize);
+    }
+
+    // The authored minimum, held to at least the window the workspace needs: the composed floor of the layout a
+    // workspace opens with, the application toolbar above it, and the window's own chrome around both. The
+    // layout floors are chosen to fit inside the authored size, so the composed terms only take over if a floor
+    // is ever raised past it, which grows the window rather than clipping the workspace. A layout the user has
+    // widened or split needs more, and is clamped or clipped rather than holding the window open.
+    private SizeInt32 ComposeMinimumWindowSize()
+    {
+        double gutterSize = (double)Application.Current.Resources["GutterSize"];
+        var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
+
+        var workspaceMinimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(defaultVisibleSurfaces, gutterSize);
+
+        double workspaceWindowWidth = workspaceMinimumSize.Width + WindowFrameWidth;
+        double workspaceWindowHeight = workspaceMinimumSize.Height +
+            ApplicationToolbar.ToolbarHeight +
+            WindowFrameHeight;
+
+        double width = Math.Max(MinimumWindowWidth, workspaceWindowWidth);
+        double height = Math.Max(MinimumWindowHeight, workspaceWindowHeight);
+        double scale = WindowSizeScale;
+
+        return new SizeInt32
+        {
+            Width = (int)Math.Ceiling(width * scale),
+            Height = (int)Math.Ceiling(height * scale)
+        };
+    }
+
+    // The composed minimum is in device-independent pixels, which is not what every head measures its window
+    // in: the packaged Windows head uses physical pixels and its resize constraint does not scale them itself.
+    private double WindowSizeScale
+    {
+        get
+        {
+            if (!_platformInfo.WindowSizesUsePhysicalPixels)
+            {
+                return 1;
+            }
+
+            double rasterizationScale = _mainWindow?.Content?.XamlRoot?.RasterizationScale ?? 1;
+            if (rasterizationScale <= 0)
+            {
+                return 1;
+            }
+
+            return rasterizationScale;
+        }
     }
 
     private void TryRestoreWindowState()
@@ -228,10 +308,11 @@ public sealed class WindowStateHelper
         int savedWidth = _settingsService.Get(SettingCatalog.Window.PreferredWidth);
         int savedHeight = _settingsService.Get(SettingCatalog.Window.PreferredHeight);
 
-        // The platform constraint only applies to user resizing, and geometry saved before the minimum was
-        // introduced may be smaller than it, so clamp the restored size here too.
-        int width = Math.Max(savedWidth, MinimumWindowWidth);
-        int height = Math.Max(savedHeight, MinimumWindowHeight);
+        // The platform constraint only applies to user resizing, and geometry saved when the minimum was a
+        // different size may be smaller than it, so clamp the restored size here too.
+        var minimumSize = ComposeMinimumWindowSize();
+        int width = Math.Max(savedWidth, minimumSize.Width);
+        int height = Math.Max(savedHeight, minimumSize.Height);
 
         // Object-initializer syntax is used for the Windows.Graphics structs because the Skia desktop
         // head's projection does not expose their positional constructors.
@@ -289,8 +370,8 @@ public sealed class WindowStateHelper
             _previousPresenterKind = currentPresenterKind;
         }
 
-        if (args.DidSizeChange || 
-            args.DidPositionChange || 
+        if (args.DidSizeChange ||
+            args.DidPositionChange ||
             args.DidPresenterChange)
         {
             // Only track state when using overlapped presenter (windowed mode)

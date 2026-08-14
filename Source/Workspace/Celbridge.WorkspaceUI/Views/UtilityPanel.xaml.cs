@@ -86,6 +86,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         SetBottomEdgePresented(false);
 
+        RailColumn.Width = new GridLength(WorkspaceConstants.UtilityPanelRailWidth);
+
         double gutterSize = (double)Application.Current.Resources["GutterSize"];
         ContentArea.Margin = new Thickness(gutterSize, gutterSize, 0, 0);
 

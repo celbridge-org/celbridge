@@ -59,6 +59,13 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
     public event Action<WorkspaceSurface>? SurfaceSizeResetRequested;
 
     /// <summary>
+    /// Raised when the space the workspace has to divide changes, asking for the stored surface sizes to be
+    /// applied again. The stored size is the one the user set, so a surface held narrower to fit a smaller
+    /// window comes back to it when the space returns.
+    /// </summary>
+    public event Action? StoredSurfaceSizesNeeded;
+
+    /// <summary>
     /// Snap targets for the Bottom area splitter, supplied by the documents panel because they derive
     /// from the sections inside the area grids. Null means no snapping.
     /// </summary>
@@ -94,6 +101,11 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         UtilityPanelHost.Children.Add(_utilityPanel);
 
         InitializeSurfaceSplitters();
+
+        // A pixel-sized surface holds its width as the window shrinks, so the star tracks take the whole
+        // shortfall and the surfaces past them are pushed off the window once those reach their floors. The
+        // sizes are applied again against the new extent instead, which holds each surface to what still fits.
+        SizeChanged += (s, e) => StoredSurfaceSizesNeeded?.Invoke();
     }
 
     /// <summary>
@@ -364,7 +376,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             case WorkspaceSurface.UtilityPanel:
                 if (_presentation.IsUtilityPanelPresented)
                 {
-                    UtilityPanelColumn.Width = ClampSurfaceWidth(size, UtilityPanelMinimumWidth);
+                    UtilityPanelColumn.Width = ClampSurfaceWidth(size, UtilityPanelMinimumWidth, SideAreaExcessWidth);
                 }
                 break;
 
@@ -380,7 +392,10 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
                 if (_presentation.IsSideAreaPresented &&
                     isMainColumnPresented)
                 {
-                    SideAreaColumn.Width = ClampSurfaceWidth(size, GetAreaMinimumSize(DocumentArea.Side).Width);
+                    SideAreaColumn.Width = ClampSurfaceWidth(
+                        size,
+                        GetAreaMinimumSize(DocumentArea.Side).Width,
+                        UtilityPanelExcessWidth);
                 }
                 break;
         }
@@ -388,13 +403,17 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
 
     // A surface holds the size it was given while its peers were different ones, so revealing a surface, or
     // spanning the Bottom area across one, can leave a size the arrangement no longer has room for. Only the
-    // pixel-sized tracks are re-clamped: a star-sized track is a sole presented area filling the panel.
+    // pixel-sized tracks are re-clamped: a star-sized track is a sole presented area filling the panel. The
+    // Side area is clamped after the Utility Panel, so it is offered what the panel has settled at.
     private void ClampPresentedSurfaceSizes()
     {
         if (_presentation.IsUtilityPanelPresented &&
             UtilityPanelColumn.Width.IsAbsolute)
         {
-            UtilityPanelColumn.Width = ClampSurfaceWidth(UtilityPanelColumn.Width.Value, UtilityPanelMinimumWidth);
+            UtilityPanelColumn.Width = ClampSurfaceWidth(
+                UtilityPanelColumn.Width.Value,
+                UtilityPanelMinimumWidth,
+                SideAreaExcessWidth);
         }
 
         if (_presentation.IsBottomAreaPresented &&
@@ -408,35 +427,84 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             SideAreaColumn.Width.IsAbsolute)
         {
             double sideMinimumWidth = GetAreaMinimumSize(DocumentArea.Side).Width;
-            SideAreaColumn.Width = ClampSurfaceWidth(SideAreaColumn.Width.Value, sideMinimumWidth);
+            SideAreaColumn.Width = ClampSurfaceWidth(
+                SideAreaColumn.Width.Value,
+                sideMinimumWidth,
+                UtilityPanelExcessWidth);
         }
     }
 
-    // Holds a surface between its own floor and the space the workspace has beyond the minimum every presented
-    // surface needs. The workspace has no extent to divide until it has been laid out, which is where the
-    // stored sizes arrive, so only the floor applies until then.
-    private GridLength ClampSurfaceWidth(double width, double surfaceMinimumWidth)
+    // What the other resizable surface across the workspace is holding above its own floor. A surface sized
+    // against its peers' floors alone would be offered space a peer is using and will not give up, which the
+    // Main area absorbs until it reaches its own floor and the layout clips. The Bottom area is the only
+    // resizable surface down the workspace, so nothing is held from it.
+    private double UtilityPanelExcessWidth => ResolveSurfaceExcess(
+        UtilityPanelColumn.Width,
+        _presentation.IsUtilityPanelPresented,
+        UtilityPanelMinimumWidth);
+
+    private double SideAreaExcessWidth => ResolveSurfaceExcess(
+        SideAreaColumn.Width,
+        _presentation.IsSideAreaPresented,
+        GetAreaMinimumSize(DocumentArea.Side).Width);
+
+    private static double ResolveSurfaceExcess(GridLength trackSize, bool isPresented, double surfaceMinimum)
     {
-        return new GridLength(ClampSurfaceExtent(width, surfaceMinimumWidth, RootGrid.ActualWidth, MinimumSize.Width));
+        if (!isPresented ||
+            !trackSize.IsAbsolute)
+        {
+            return 0;
+        }
+
+        return Math.Max(0, trackSize.Value - surfaceMinimum);
+    }
+
+    // The largest a surface can be laid out at: its own floor, plus what the workspace has beyond the minimum
+    // every presented surface needs, less what its peer is holding above its own floor. Every site that sizes a
+    // surface asks for this, so a drag stops exactly where a restore would have clamped.
+    //
+    // The extent is this control's own, never the root grid's or its tracks'. On the Skia heads a grid laid out
+    // larger than the space it was given reports the size it wanted rather than the size it has, so anything
+    // measured from it grows with every delta that overflows: the drag reads a larger workspace, allows a larger
+    // surface, and overflows further, which is visible as the full-height surfaces running past the window edge.
+    // The packaged Windows head holds its tracks at their floors instead, so it never showed this. This control
+    // is arranged by its parent on both, so its extent is the space the workspace actually has.
+    private double AvailableSurfaceWidth(double surfaceMinimumWidth, double peerExcessWidth)
+    {
+        double workspaceMinimumWidth = MinimumSize.Width + peerExcessWidth;
+
+        return WorkspaceMinimumSize.SpaceForSurface(ActualWidth, workspaceMinimumWidth, surfaceMinimumWidth);
+    }
+
+    private double AvailableSurfaceHeight(double surfaceMinimumHeight)
+    {
+        return WorkspaceMinimumSize.SpaceForSurface(ActualHeight, MinimumSize.Height, surfaceMinimumHeight);
+    }
+
+    // The workspace has no extent to divide until it has been laid out, which is where the stored sizes arrive,
+    // so only the floor applies until then.
+    private GridLength ClampSurfaceWidth(double width, double surfaceMinimumWidth, double peerExcessWidth)
+    {
+        double clampedWidth = Math.Max(width, surfaceMinimumWidth);
+
+        if (ActualWidth <= 0)
+        {
+            return new GridLength(clampedWidth);
+        }
+
+        return new GridLength(Math.Min(clampedWidth, AvailableSurfaceWidth(surfaceMinimumWidth, peerExcessWidth)));
     }
 
     private GridLength ClampSurfaceHeight(double height, double surfaceMinimumHeight)
     {
-        return new GridLength(ClampSurfaceExtent(height, surfaceMinimumHeight, RootGrid.ActualHeight, MinimumSize.Height));
-    }
+        double clampedHeight = Math.Max(height, surfaceMinimumHeight);
 
-    private static double ClampSurfaceExtent(double extent, double surfaceMinimum, double workspaceExtent, double workspaceMinimum)
-    {
-        double clampedExtent = Math.Max(extent, surfaceMinimum);
-
-        if (workspaceExtent <= 0)
+        if (ActualHeight <= 0)
         {
-            return clampedExtent;
+            return new GridLength(clampedHeight);
         }
 
-        double availableExtent = WorkspaceMinimumSize.SpaceForSurface(workspaceExtent, workspaceMinimum, surfaceMinimum);
-
-        return Math.Min(clampedExtent, availableExtent);
+        return new GridLength(Math.Min(clampedHeight, AvailableSurfaceHeight(surfaceMinimumHeight)));
     }
 
     // Spans the Bottom area, and the splitter that sizes it, across the surfaces the presentation says
@@ -479,18 +547,14 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
     // near edge.
     private void InitializeSurfaceSplitters()
     {
-        // The Utility Panel takes whatever the document areas beside it do not need. The two area splitters
-        // divide a pair of tracks whose extent excludes the gutter between them, so the space left for one is
-        // the pair less the other's minimum.
+        // Each splitter is held between its surface's own floor and the space the arrangement leaves it, the
+        // same pair of values every other site that sizes a surface asks for.
         _utilityPanelSplitterHelper = new SplitterHelper(
             RootGrid,
             GridResizeMode.Columns,
             0,
             minSizeFunc: () => UtilityPanelMinimumWidth,
-            maxSizeFunc: () => WorkspaceMinimumSize.SpaceBeside(
-                RootGrid.ActualWidth,
-                DocumentAreasMinimumWidth,
-                GutterSize));
+            maxSizeFunc: () => AvailableSurfaceWidth(UtilityPanelMinimumWidth, SideAreaExcessWidth));
 
         _bottomAreaSplitterHelper = new SplitterHelper(
             RootGrid,
@@ -498,7 +562,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             3,
             minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Bottom).Height,
             invertDelta: true,
-            maxSizeFunc: () => MainAreaRow.ActualHeight + BottomAreaRow.ActualHeight - MainRowMinimumHeight)
+            maxSizeFunc: () => AvailableSurfaceHeight(GetAreaMinimumSize(DocumentArea.Bottom).Height))
         {
             SnapTargets = () => BottomAreaSplitterSnapTargets?.Invoke() ?? Array.Empty<double>()
         };
@@ -509,7 +573,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             4,
             minSizeFunc: () => GetAreaMinimumSize(DocumentArea.Side).Width,
             invertDelta: true,
-            maxSizeFunc: () => MainAreaColumn.ActualWidth + SideAreaColumn.ActualWidth - MainColumnMinimumWidth);
+            maxSizeFunc: () => AvailableSurfaceWidth(GetAreaMinimumSize(DocumentArea.Side).Width, UtilityPanelExcessWidth));
 
         UtilityPanelSplitter.DragStarted += (s, e) => _utilityPanelSplitterHelper?.OnDragStarted();
         UtilityPanelSplitter.DragDelta += (s, delta) => _utilityPanelSplitterHelper?.OnDragDelta(delta);

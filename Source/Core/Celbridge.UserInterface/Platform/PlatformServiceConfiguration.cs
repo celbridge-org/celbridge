@@ -36,13 +36,9 @@ public static class PlatformServiceConfiguration
         services.AddSingleton<IWindowBoundsValidator, SkiaWindowBoundsValidator>();
 #endif
 
-        // The minimum window size is applied to the overlapped presenter on the packaged WinAppSDK head and
-        // to the native window on the macOS Skia head. The remaining Skia heads leave it unconstrained.
-#if WINDOWS
-        services.AddSingleton<IWindowSizeConstraints, WinAppSdkWindowSizeConstraints>();
-#else
-        services.AddSingleton<IWindowSizeConstraints, SkiaWindowSizeConstraints>();
-#endif
+        // One implementation for both heads: the presenter constraint it uses off macOS is honoured by the Uno
+        // presenter as well as the WinAppSDK one, so what it branches on is the running OS, not the head.
+        services.AddSingleton<IWindowSizeConstraints, WindowSizeConstraints>();
 
         // Both heads broadcast window activation identically, but the state enum on the activation event
         // args differs: WindowActivationState on the packaged head, CoreWindowActivationState on Skia.
