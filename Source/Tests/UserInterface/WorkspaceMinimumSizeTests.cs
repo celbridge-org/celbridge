@@ -1,13 +1,12 @@
-using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.UserInterface.Views;
 using Celbridge.Workspace;
+using Windows.Foundation;
 
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Tests the composition behind the workspace minimum sizes, and that the floors it composes from still fit
-/// inside the minimum window size.
+/// Tests the primitives every workspace minimum is composed from: the section floor, the area floor above
+/// it, and the floor of the layout a workspace opens with.
 /// </summary>
 [TestFixture]
 public class WorkspaceMinimumSizeTests
@@ -17,25 +16,77 @@ public class WorkspaceMinimumSizeTests
     private const double GutterSize = 7;
 
     [Test]
-    public void DefaultLayout_FitsWithinTheMinimumWindowSize()
+    public void ComposeSection_AddsTheMeasuredChromeToTheDocumentFloor()
     {
-        var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
+        // The chrome is the one measured term in the composition, so the section passes it in rather than the
+        // composition assuming it.
+        var sectionChrome = new Size(4, 60);
 
-        var workspaceMinimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(defaultVisibleSurfaces, GutterSize);
+        var sectionMinimum = WorkspaceMinimumSize.ComposeSection(sectionChrome);
 
-        // The minimum window size covers the whole window, so the workspace only gets what is left of it after
-        // the application toolbar above and the window's own chrome around both.
-        double windowWidth = workspaceMinimumSize.Width + WindowStateHelper.WindowFrameWidth;
-        double windowHeight = workspaceMinimumSize.Height +
-            ApplicationToolbar.ToolbarHeight +
-            WindowStateHelper.WindowFrameHeight;
-
-        windowWidth.Should().BeLessThanOrEqualTo(WindowStateHelper.MinimumWindowWidth);
-        windowHeight.Should().BeLessThanOrEqualTo(WindowStateHelper.MinimumWindowHeight);
+        sectionMinimum.Width.Should().Be(WorkspaceConstants.DocumentMinWidth + sectionChrome.Width);
+        sectionMinimum.Height.Should().Be(WorkspaceConstants.DocumentMinHeight + sectionChrome.Height);
     }
 
     [Test]
-    public void DefaultLayout_ComposesEverySurfaceItShows()
+    public void ComposeArea_TakesTheSectionFloorWhileUnsplit()
+    {
+        var sectionMinimum = new Size(232, 242);
+
+        var areaMinimum = WorkspaceMinimumSize.ComposeArea(
+            sectionMinimum,
+            isSplit: false,
+            splitsHorizontally: true,
+            gutterSize: GutterSize);
+
+        areaMinimum.Should().Be(sectionMinimum);
+    }
+
+    [Test]
+    public void ComposeArea_DoublesTheSectionFloorAlongTheSplitAxis()
+    {
+        var sectionMinimum = new Size(232, 242);
+
+        var horizontalSplit = WorkspaceMinimumSize.ComposeArea(
+            sectionMinimum,
+            isSplit: true,
+            splitsHorizontally: true,
+            gutterSize: GutterSize);
+        var verticalSplit = WorkspaceMinimumSize.ComposeArea(
+            sectionMinimum,
+            isSplit: true,
+            splitsHorizontally: false,
+            gutterSize: GutterSize);
+
+        horizontalSplit.Width.Should().Be(sectionMinimum.Width + GutterSize + sectionMinimum.Width);
+        horizontalSplit.Height.Should().Be(sectionMinimum.Height);
+
+        verticalSplit.Width.Should().Be(sectionMinimum.Width);
+        verticalSplit.Height.Should().Be(sectionMinimum.Height + GutterSize + sectionMinimum.Height);
+    }
+
+    [Test]
+    public void ComposeAdjacent_DropsTheChannelBesideASurfaceThatIsNotPresented()
+    {
+        WorkspaceMinimumSize.ComposeAdjacent(100, 50, GutterSize).Should().Be(157);
+        WorkspaceMinimumSize.ComposeAdjacent(0, 50, GutterSize).Should().Be(50);
+        WorkspaceMinimumSize.ComposeAdjacent(100, 0, GutterSize).Should().Be(100);
+    }
+
+    [Test]
+    public void SpaceForSurface_OffersTheSurfaceWhateverTheContainerHasBeyondItsMinimum()
+    {
+        WorkspaceMinimumSize.SpaceForSurface(containerExtent: 1000, containerMinimum: 800, surfaceMinimum: 200)
+            .Should().Be(400);
+
+        // Below the container's own minimum the space has run out for every surface at once, so the surface
+        // comes back to its floor and the excess is clipped instead.
+        WorkspaceMinimumSize.SpaceForSurface(containerExtent: 700, containerMinimum: 800, surfaceMinimum: 200)
+            .Should().Be(200);
+    }
+
+    [Test]
+    public void ComposeDefaultLayout_ComposesEverySurfaceItShows()
     {
         double sectionWidth = WorkspaceConstants.DocumentMinWidth + WorkspaceConstants.SectionEdgeThickness * 2;
         double sectionHeight = WorkspaceConstants.DocumentMinHeight +
@@ -53,7 +104,7 @@ public class WorkspaceMinimumSizeTests
     }
 
     [Test]
-    public void DefaultLayout_DropsASurfaceItDoesNotShowAndTheChannelWithIt()
+    public void ComposeDefaultLayout_DropsASurfaceItDoesNotShowAndTheChannelWithIt()
     {
         double sectionWidth = WorkspaceConstants.DocumentMinWidth + WorkspaceConstants.SectionEdgeThickness * 2;
 

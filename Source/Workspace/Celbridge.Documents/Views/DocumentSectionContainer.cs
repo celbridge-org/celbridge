@@ -3,6 +3,7 @@ using Celbridge.Documents.Services;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
+using Celbridge.WorkspaceUI.Helpers;
 using Celbridge.WorkspaceUI.Views;
 using Windows.Foundation;
 

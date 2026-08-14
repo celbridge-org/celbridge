@@ -2,7 +2,6 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers.FullScreen;
-using Celbridge.UserInterface.Views;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 
@@ -13,31 +12,6 @@ namespace Celbridge.UserInterface.Helpers;
 /// </summary>
 public sealed class WindowStateHelper
 {
-    /// <summary>
-    /// The smallest window the application is usable in, in device-independent pixels, and the budget the
-    /// workspace layout floors are composed to fit inside. Authored rather than derived from the layout,
-    /// because the application toolbar needs most of this width for its own content and composes no minimum
-    /// of its own.
-    /// </summary>
-    public const int MinimumWindowWidth = 800;
-
-    /// <summary>
-    /// The smallest window height the application is usable in, in device-independent pixels.
-    /// </summary>
-    public const int MinimumWindowHeight = 600;
-
-    /// <summary>
-    /// The window frame either side of the application content. Counted against the minimum window size, which
-    /// covers the whole window, while the composed minimum covers only the workspace inside it.
-    /// </summary>
-    public const int WindowFrameWidth = 16;
-
-    /// <summary>
-    /// The window frame below the application content, and the native title bar above it on the heads that draw
-    /// one. Neither is a size the layout can measure, so the allowance is authored to cover the largest of them.
-    /// </summary>
-    public const int WindowFrameHeight = 40;
-
     private readonly ILogger<WindowStateHelper> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
@@ -240,32 +214,12 @@ public sealed class WindowStateHelper
         _windowSizeConstraints.ApplyMinimumSize(_appWindow, minimumSize);
     }
 
-    // The authored minimum, held to at least the window the workspace needs: the composed floor of the layout a
-    // workspace opens with, the application toolbar above it, and the window's own chrome around both. The
-    // layout floors are chosen to fit inside the authored size, so the composed terms only take over if a floor
-    // is ever raised past it, which grows the window rather than clipping the workspace. A layout the user has
-    // widened or split needs more, and is clamped or clipped rather than holding the window open.
     private SizeInt32 ComposeMinimumWindowSize()
     {
         double gutterSize = (double)Application.Current.Resources["GutterSize"];
         var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
 
-        var workspaceMinimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(defaultVisibleSurfaces, gutterSize);
-
-        double workspaceWindowWidth = workspaceMinimumSize.Width + WindowFrameWidth;
-        double workspaceWindowHeight = workspaceMinimumSize.Height +
-            ApplicationToolbar.ToolbarHeight +
-            WindowFrameHeight;
-
-        double width = Math.Max(MinimumWindowWidth, workspaceWindowWidth);
-        double height = Math.Max(MinimumWindowHeight, workspaceWindowHeight);
-        double scale = WindowSizeScale;
-
-        return new SizeInt32
-        {
-            Width = (int)Math.Ceiling(width * scale),
-            Height = (int)Math.Ceiling(height * scale)
-        };
+        return WindowMinimumSize.Compose(defaultVisibleSurfaces, gutterSize, WindowSizeScale);
     }
 
     // The composed minimum is in device-independent pixels, which is not what every head measures its window
