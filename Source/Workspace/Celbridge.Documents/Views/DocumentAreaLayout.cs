@@ -82,28 +82,11 @@ public sealed class DocumentAreaLayout
     }
 
     /// <summary>
-    /// Whether the section is currently in the visual tree: its area is presented and, for a secondary
-    /// section, that area is split.
-    /// </summary>
-    public bool IsSectionMounted(DocumentSection section)
-    {
-        return _layoutState.IsSectionMounted(section);
-    }
-
-    /// <summary>
     /// Whether the area is currently showing both of its sections.
     /// </summary>
     public bool IsAreaSplit(DocumentArea area)
     {
         return _layoutState.IsAreaSplit(area);
-    }
-
-    /// <summary>
-    /// Whether the area is currently visible. Main is always visible.
-    /// </summary>
-    public bool IsAreaVisible(DocumentArea area)
-    {
-        return _layoutState.IsAreaVisible(area);
     }
 
     /// <summary>

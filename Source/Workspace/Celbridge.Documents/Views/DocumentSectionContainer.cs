@@ -21,11 +21,6 @@ public sealed partial class DocumentSectionContainer
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
-    /// Event raised when the selected document changes in any section.
-    /// </summary>
-    public event Action<DocumentSectionView, ResourceKey>? SectionSelectionChanged;
-
-    /// <summary>
     /// Event raised when the active document changes.
     /// This is the document that should be inspected.
     /// </summary>
@@ -109,22 +104,6 @@ public sealed partial class DocumentSectionContainer
         {
             yield return _sections[section];
         }
-    }
-
-    /// <summary>
-    /// Finds the section containing a specific document, including sections in a collapsed area.
-    /// </summary>
-    public DocumentSectionView? FindSectionContaining(ResourceKey fileResource)
-    {
-        foreach (var sectionView in GetAllSections())
-        {
-            if (sectionView.ContainsDocument(fileResource))
-            {
-                return sectionView;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>
@@ -430,7 +409,6 @@ public sealed partial class DocumentSectionContainer
             Section = section
         };
 
-        sectionView.SelectionChanged += OnSectionSelectionChanged;
         sectionView.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
         sectionView.CloseRequested += OnSectionCloseRequested;
         sectionView.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
@@ -478,13 +456,6 @@ public sealed partial class DocumentSectionContainer
         {
             tab.FlashAttentionDeferred();
         }
-    }
-
-    private void OnSectionSelectionChanged(DocumentSectionView sectionView, ResourceKey documentResource)
-    {
-        // This handles section-level selection (which tab is selected within a section's TabView).
-        // This is distinct from the active document, which is updated via ActivateDocument/SetActiveDocument.
-        SectionSelectionChanged?.Invoke(sectionView, documentResource);
     }
 
     /// <summary>

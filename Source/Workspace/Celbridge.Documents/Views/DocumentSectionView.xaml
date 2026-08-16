@@ -38,7 +38,6 @@
              CanDragTabs="True"
              AllowDrop="True"
              TabCloseRequested="TabView_CloseRequested"
-             SelectionChanged="TabView_SelectionChanged"
              TabItemsChanged="TabView_TabItemsChanged"
              TabDroppedOutside="TabView_TabDroppedOutside"
              DragOver="TabView_DragOver"
