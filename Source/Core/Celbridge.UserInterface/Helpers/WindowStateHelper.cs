@@ -205,10 +205,10 @@ public sealed class WindowStateHelper
         var minimumSize = ComposeMinimumWindowSize();
 
         _logger.LogDebug(
-            "Applying minimum window size {Width} x {Height} at rasterization scale {Scale}, window sizes in physical pixels: {UsesPhysicalPixels}",
+            "Applying minimum window size {Width} x {Height} at scale {Scale}, window sizes in physical pixels: {UsesPhysicalPixels}",
             minimumSize.Width,
             minimumSize.Height,
-            _mainWindow?.Content?.XamlRoot?.RasterizationScale ?? 0,
+            WindowSizeScale,
             _platformInfo.WindowSizesUsePhysicalPixels);
 
         _windowSizeConstraints.ApplyMinimumSize(_appWindow, minimumSize);

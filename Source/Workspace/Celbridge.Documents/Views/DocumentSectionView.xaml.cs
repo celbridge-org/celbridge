@@ -50,11 +50,6 @@ public sealed partial class DocumentSectionView : UserControl
     public DocumentSection Section { get; set; }
 
     /// <summary>
-    /// Event raised when the selected document changes in this section.
-    /// </summary>
-    public event Action<DocumentSectionView, ResourceKey>? SelectionChanged;
-
-    /// <summary>
     /// Event raised when the open documents in this section change.
     /// </summary>
     public event Action<DocumentSectionView, List<ResourceKey>>? DocumentsLayoutChanged;
@@ -275,23 +270,6 @@ public sealed partial class DocumentSectionView : UserControl
             return documentTab.ViewModel.FileResource;
         }
         return ResourceKey.Empty;
-    }
-
-    /// <summary>
-    /// Checks if a document is open in this section.
-    /// </summary>
-    public bool ContainsDocument(ResourceKey fileResource)
-    {
-        EnsureUIThread();
-
-        foreach (var tabItem in TabView.TabItems)
-        {
-            if (tabItem is DocumentTab tab && fileResource == tab.ViewModel.FileResource)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     /// <summary>
@@ -628,24 +606,6 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         TabView.TabItems.Clear();
-    }
-
-    private void TabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        ResourceKey documentResource = ResourceKey.Empty;
-
-        var documentTab = TabView.SelectedItem as DocumentTab;
-        if (documentTab is not null)
-        {
-            documentResource = documentTab.ViewModel.FileResource;
-        }
-
-        SelectionChanged?.Invoke(this, documentResource);
     }
 
     private void TabView_TabItemsChanged(TabView sender, IVectorChangedEventArgs args)
