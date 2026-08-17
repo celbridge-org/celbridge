@@ -111,11 +111,16 @@ public sealed partial class FileIcon : UserControl
     }
 
     // Draws the glyph at the host's size, folded with the icon's per-glyph scale so a glyph its font draws
-    // small can be enlarged to match its neighbours.
+    // small can be enlarged to match its neighbours. The layout box stays at the host's size whatever the
+    // glyph is drawn at: an icon font's line box already runs taller than its font size, and the scale can
+    // take it further still, so a box that followed the glyph would let one file type set the height of every
+    // row and tab strip it appears in. An enlarged glyph therefore overhangs its box rather than growing it.
     private void ApplySize()
     {
         var scale = ParseScale(IconDefinition?.FontSize);
         IconElement.FontSize = Size * scale;
+        IconElement.Width = Size;
+        IconElement.Height = Size;
     }
 
     private static double ParseScale(string? percent)

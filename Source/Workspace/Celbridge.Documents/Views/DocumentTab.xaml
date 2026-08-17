@@ -78,7 +78,8 @@
                            ToolTipService.Placement="Bottom" />
             </StackPanel>
             
-            <!-- Selection indicator -->
+            <!-- Selection indicator. The bottom margin stops short of the strip's bottom edge so the scroll
+                 indicator can sit below it rather than across it while the strip overflows. -->
             <Border x:Name="SelectionIndicator"
                     Height="3"
                     CornerRadius="1.5"
@@ -86,7 +87,7 @@
                     Visibility="Collapsed"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Bottom"
-                    Margin="0,0,-36,-4" />
+                    Margin="0,0,-36,-1" />
         </Grid>
     </muxc:TabViewItem.Header>
 
