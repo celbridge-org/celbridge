@@ -11,7 +11,7 @@ public partial class DataTools
     [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> CheckReferences()
     {
-        var commandResult = await ExecuteCommandAsync<IProjectCheckCommand, ProjectCheckReport>();
+        var commandResult = await ExecuteCommandAsync<ICheckReferencesCommand, CheckReferencesReport>();
         if (commandResult.IsFailure)
         {
             return ToolResponse.Error(commandResult);

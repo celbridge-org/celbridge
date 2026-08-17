@@ -12,9 +12,9 @@ namespace Celbridge.Tests.Projects;
 
 /// <summary>
 /// Unit tests for ProjectLoadReporter — the stateful singleton that accumulates
-/// project-load events from ProjectLoader plus consistency-check findings from
-/// ProjectCheckCommand and writes one report document on FlushAsync. The tests pin
-/// the resource key, the section layout, and the state-reset semantics of BeginLoad.
+/// project-load events from ProjectLoader plus the registry's sidecar snapshot, and writes one
+/// report document on FlushAsync. The tests pin the resource key, the section layout, and the
+/// state-reset semantics of BeginLoad.
 /// </summary>
 [TestFixture]
 public class ProjectLoadReporterTests
@@ -65,15 +65,15 @@ public class ProjectLoadReporterTests
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
 
-        var reportResource = await _reporter.FlushAsync();
+        var reportSummary = await _reporter.FlushAsync();
 
-        reportResource.Should().NotBeNull();
+        reportSummary.Should().NotBeNull();
 
-        var key = reportResource!.Value.ToString();
+        var key = reportSummary!.Resource.ToString();
         key.Should().StartWith("logs:reports/project-load-");
         key.Should().EndWith(".report");
 
-        File.Exists(ResolveReportFilePath(reportResource.Value)).Should().BeTrue();
+        File.Exists(ResolveReportFilePath(reportSummary.Resource)).Should().BeTrue();
     }
 
     [Test]
@@ -164,10 +164,10 @@ public class ProjectLoadReporterTests
     }
 
     [Test]
-    public async Task FlushAsync_AfterRecordCheckReport_IncludesFindingsWithResourcesAndActions()
+    public async Task FlushAsync_AfterRecordSidecarReport_IncludesFindingsWithResourcesAndActions()
     {
-        // Mirrors the runtime flow: ProjectLoader pushes load info first, then
-        // ProjectCheckCommand pushes the check report later.
+        // Mirrors the runtime flow: ProjectLoader pushes load info first, then WorkspaceLoader pushes
+        // the registry's sidecar snapshot once the resources are populated.
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordMigrationResult(
             MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "1.0.0", "1.0.0"),
@@ -175,49 +175,72 @@ public class ProjectLoadReporterTests
             userCancelledUpgrade: false);
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
 
-        var checkReport = new ProjectCheckReport(
-            BrokenReferences: new[] { new BrokenReference(new ResourceKey("source.json"), new ResourceKey("missing.json")) },
-            OrphanCelFiles: new[] { new ResourceKey("foo.png.cel") },
-            BrokenCelFiles: Array.Empty<ResourceKey>());
-        _reporter.RecordCheckReport(checkReport);
+        var sidecarReport = new SidecarReport(
+            Healthy: Array.Empty<ResourceKey>(),
+            Broken: new[] { new ResourceKey("bad.png.cel") },
+            Orphan: new[] { new ResourceKey("foo.png.cel") });
+        _reporter.RecordSidecarReport(sidecarReport);
 
         var report = await FlushAndReadAsync();
 
         report.RootElement.GetProperty("severity").GetString().Should().Be("warning");
         report.RootElement.GetProperty("summary").GetString().Should().Contain("2 issues");
 
-        var items = GetSectionItems(report, "Consistency check");
+        var items = GetSectionItems(report, "Sidecar files");
         items.Should().HaveCount(2);
 
-        var brokenReference = items[0];
-        brokenReference.GetProperty("resource").GetString().Should().Be("project:source.json");
-        brokenReference.GetProperty("target").GetString().Should().Be("project:missing.json");
+        var orphan = items[0];
+        orphan.GetProperty("resource").GetString().Should().Be("project:foo.png.cel");
 
         // The click-through is the point of the structured format: the finding names the
         // resource to open, rather than printing a path for the user to go and find.
-        var action = brokenReference.GetProperty("actions")[0];
+        var action = orphan.GetProperty("actions")[0];
         action.GetProperty("kind").GetString().Should().Be("openResource");
-        action.GetProperty("resource").GetString().Should().Be("project:source.json");
+        action.GetProperty("resource").GetString().Should().Be("project:foo.png.cel");
 
-        items[1].GetProperty("resource").GetString().Should().Be("project:foo.png.cel");
+        items[1].GetProperty("resource").GetString().Should().Be("project:bad.png.cel");
     }
 
     [Test]
-    public async Task FlushAsync_CleanCheck_OmitsTheCheckSection()
+    public async Task FlushAsync_HealthySidecars_OmitsTheSidecarSection()
     {
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
 
-        var checkReport = new ProjectCheckReport(
-            BrokenReferences: Array.Empty<BrokenReference>(),
-            OrphanCelFiles: Array.Empty<ResourceKey>(),
-            BrokenCelFiles: Array.Empty<ResourceKey>());
-        _reporter.RecordCheckReport(checkReport);
+        var sidecarReport = new SidecarReport(
+            Healthy: new[] { new ResourceKey("foo.png.cel") },
+            Broken: Array.Empty<ResourceKey>(),
+            Orphan: Array.Empty<ResourceKey>());
+        _reporter.RecordSidecarReport(sidecarReport);
 
         var report = await FlushAndReadAsync();
 
-        GetSectionTitles(report).Should().NotContain("Consistency check");
+        GetSectionTitles(report).Should().NotContain("Sidecar files");
         report.RootElement.GetProperty("severity").GetString().Should().Be("info");
+    }
+
+    [Test]
+    public async Task FlushAsync_AfterRecordConfigEntryErrors_IncludesTheSkippedEntries()
+    {
+        // The entries the config parser skipped reach a banner today; the report is where the reason
+        // behind each one lands.
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var entryErrors = new[]
+        {
+            new ProjectConfigEntryError("contribution", "Unknown package 'acme-notes'")
+        };
+        _reporter.RecordConfigEntryErrors(entryErrors);
+
+        var report = await FlushAndReadAsync();
+
+        report.RootElement.GetProperty("severity").GetString().Should().Be("warning");
+
+        var items = GetSectionItems(report, "Configuration (test.celbridge)");
+        items.Should().ContainSingle();
+        items[0].GetProperty("message").GetString().Should().Contain("contribution");
+        items[0].GetProperty("detail").GetString().Should().Contain("acme-notes");
     }
 
     [Test]
@@ -328,15 +351,15 @@ public class ProjectLoadReporterTests
     }
 
     [Test]
-    public async Task BeginLoad_ClearsPriorCheckAndPackageState()
+    public async Task BeginLoad_ClearsPriorSidecarAndPackageState()
     {
         // A new project load invalidates the previous run's state. Each flush writes a
         // fresh report rather than carrying findings forward.
         _reporter.BeginLoad(_projectFilePath);
-        _reporter.RecordCheckReport(new ProjectCheckReport(
-            BrokenReferences: Array.Empty<BrokenReference>(),
-            OrphanCelFiles: new[] { new ResourceKey("stale.png.cel") },
-            BrokenCelFiles: Array.Empty<ResourceKey>()));
+        _reporter.RecordSidecarReport(new SidecarReport(
+            Healthy: Array.Empty<ResourceKey>(),
+            Broken: Array.Empty<ResourceKey>(),
+            Orphan: new[] { new ResourceKey("stale.png.cel") }));
         _reporter.RecordPackageReport(new PackageDiscoveryReport
         {
             BundledPackageCount = 5,
@@ -375,18 +398,18 @@ public class ProjectLoadReporterTests
             userCancelledUpgrade: false);
         _reporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
 
-        var reportResource = await _reporter.FlushAsync();
+        var reportSummary = await _reporter.FlushAsync();
 
-        reportResource.Should().NotBeNull();
-        File.Exists(ResolveReportFilePath(reportResource!.Value)).Should().BeTrue();
+        reportSummary.Should().NotBeNull();
+        File.Exists(ResolveReportFilePath(reportSummary!.Resource)).Should().BeTrue();
     }
 
     private async Task<JsonDocument> FlushAndReadAsync()
     {
-        var reportResource = await _reporter.FlushAsync();
-        reportResource.Should().NotBeNull();
+        var reportSummary = await _reporter.FlushAsync();
+        reportSummary.Should().NotBeNull();
 
-        var content = await File.ReadAllTextAsync(ResolveReportFilePath(reportResource!.Value));
+        var content = await File.ReadAllTextAsync(ResolveReportFilePath(reportSummary!.Resource));
 
         return JsonDocument.Parse(content);
     }

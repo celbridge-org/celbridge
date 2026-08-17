@@ -1,4 +1,16 @@
+using Celbridge.Reports;
+using Celbridge.Resources;
+
 namespace Celbridge.Projects;
+
+/// <summary>
+/// A project load report that was written to disk: where it can be opened from, how serious its worst
+/// finding is, and how many findings it holds.
+/// </summary>
+public record ProjectLoadReportSummary(
+    ResourceKey Resource,
+    ReportSeverity Severity,
+    int IssueCount);
 
 /// <summary>
 /// Accumulates project-load state and writes it as a report document on flush.
@@ -21,6 +33,11 @@ public interface IProjectLoadReporter
     void RecordLoadOutcome(bool loadSucceeded, Result? loadResult);
 
     /// <summary>
+    /// Records the config entries the parser skipped or degraded.
+    /// </summary>
+    void RecordConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors);
+
+    /// <summary>
     /// Records the package discovery outcome, including any load failures.
     /// </summary>
     void RecordPackageReport(PackageDiscoveryReport report);
@@ -31,13 +48,13 @@ public interface IProjectLoadReporter
     void RecordResourceCounts(int fileCount, int folderCount);
 
     /// <summary>
-    /// Records the consistency-check findings.
+    /// Records the state of the project's .cel sidecar files.
     /// </summary>
-    void RecordCheckReport(ProjectCheckReport report);
+    void RecordSidecarReport(SidecarReport report);
 
     /// <summary>
-    /// Writes the current state to disk. Returns the resource key of the report written,
-    /// or null on failure. Never throws.
+    /// Writes the current state to disk. Returns a summary of the report written, or null on
+    /// failure. Never throws.
     /// </summary>
-    Task<ResourceKey?> FlushAsync();
+    Task<ProjectLoadReportSummary?> FlushAsync();
 }

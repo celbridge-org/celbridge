@@ -63,10 +63,10 @@ public class NotificationBarViewModelTests
     {
         var viewModel = CreateViewModel();
 
-        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectCheckError, string.Empty));
+        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty));
         RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, "project.celbridge"));
 
-        viewModel.BannerTitle.Should().Be("NotificationBar_ProjectCheckFindingsTitle");
+        viewModel.BannerTitle.Should().Be("NotificationBar_ProjectLoadIssuesTitle");
 
         viewModel.OnBannerDismissed();
 
@@ -79,7 +79,7 @@ public class NotificationBarViewModelTests
     {
         var viewModel = CreateViewModel();
 
-        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectCheckError, string.Empty));
+        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty));
 
         viewModel.OnBannerDismissed();
 
@@ -92,9 +92,9 @@ public class NotificationBarViewModelTests
         var viewModel = CreateViewModel();
 
         RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.MigrationError, "project.celbridge"));
-        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectCheckError, string.Empty));
+        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty));
 
-        viewModel.BannerTitle.Should().Be("NotificationBar_ProjectCheckFindingsTitle");
+        viewModel.BannerTitle.Should().Be("NotificationBar_ProjectLoadIssuesTitle");
         viewModel.IsBannerDismissable.Should().BeTrue();
 
         viewModel.OnBannerDismissed();
@@ -109,7 +109,7 @@ public class NotificationBarViewModelTests
         var viewModel = CreateViewModel();
 
         var reportResource = new ResourceKey("logs:reports/project-load-20260817T101500Z.report");
-        var message = new ProjectErrorMessage(ProjectErrorType.ProjectCheckError, string.Empty)
+        var message = new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty)
         {
             FindingCount = 3,
             ReportResource = reportResource
@@ -133,7 +133,7 @@ public class NotificationBarViewModelTests
     {
         var viewModel = CreateViewModel();
 
-        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectCheckError, string.Empty));
+        RaiseProjectError(new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty));
 
         viewModel.IsActionVisible.Should().BeFalse();
     }

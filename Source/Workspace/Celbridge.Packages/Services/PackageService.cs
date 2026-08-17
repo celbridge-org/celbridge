@@ -30,9 +30,8 @@ public class PackageService : IPackageService
         // the config parsed cleanly. Both gates are applied inside the reconcile.
         var report = await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: true);
 
-        // Record the outcome in the project load report before raising the
-        // error banner, so the details the banner points at are already on
-        // disk when the user goes looking.
+        // Flushed here as well as at the end of the load, so a load that never reaches the end still
+        // leaves the package outcome on disk. Every flush during a load writes the same file.
         _loadReporter.RecordPackageReport(report);
         await _loadReporter.FlushAsync();
 

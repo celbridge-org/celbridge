@@ -130,6 +130,15 @@ public class MainMenu
             isEnabled: isWorkspaceLoaded,
             onClick: (sender, e) => _ = ViewModel.CloseProjectAsync()));
 
+        fileSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        // Scans the project for project: references that no longer resolve and opens the findings as a report.
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Link,
+            label: _stringLocalizer.GetString("MainMenu_CheckReferences"),
+            isEnabled: isWorkspaceLoaded,
+            onClick: (sender, e) => ExecuteCheckReferences()));
+
         return fileSubItem;
     }
 
@@ -218,6 +227,12 @@ public class MainMenu
         {
             command.ResourceType = resourceType;
         });
+    }
+
+    private void ExecuteCheckReferences()
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        commandService.Execute<ICheckReferencesCommand>(command => command.OpenReport = true);
     }
 
     private void PerformEdit(EditIntent intent)

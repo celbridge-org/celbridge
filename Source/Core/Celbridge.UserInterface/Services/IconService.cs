@@ -82,6 +82,7 @@ public class IconService : IIconService
         { IconSymbol.Menu, "bs-list" },
         { IconSymbol.Play, "bs-play-fill" },
         { IconSymbol.Examples, "bs-collection" },
+        { IconSymbol.Link, "bs-link-45deg" },
         { IconSymbol.Exit, "bs-box-arrow-right" }
     };
 

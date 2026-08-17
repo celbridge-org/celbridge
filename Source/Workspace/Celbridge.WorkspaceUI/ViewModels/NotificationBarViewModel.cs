@@ -138,11 +138,11 @@ public partial class NotificationBarViewModel : ObservableObject
                     _stringLocalizer.GetString("NotificationBar_PackageLoadErrorTitle"),
                     _stringLocalizer.GetString("NotificationBar_PackageLoadErrorMessage"));
 
-            case ProjectErrorType.ProjectCheckError:
-                // Project check findings are advisory, not blocking: the project loaded fine.
+            case ProjectErrorType.ProjectLoadIssues:
+                // The load report's findings are advisory, not blocking: the project loaded fine.
                 return ComposeAdvisory(
-                    _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsTitle"),
-                    _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsMessage", message.FindingCount),
+                    _stringLocalizer.GetString("NotificationBar_ProjectLoadIssuesTitle"),
+                    _stringLocalizer.GetString("NotificationBar_ProjectLoadIssuesMessage", message.FindingCount),
                     message.ReportResource);
 
             case ProjectErrorType.ProjectConfigEntryError:

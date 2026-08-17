@@ -28,6 +28,7 @@ internal static class MacOSMainMenu
     private const long TagShowLogs = 13;
     private const long TagFind = 14;
     private const long TagExitPresentation = 15;
+    private const long TagCheckReferences = 16;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -78,7 +79,11 @@ internal static class MacOSMainMenu
                 MacMenuItem.Submenu(Text("MainMenu_OpenRecent"), BuildRecentProjectItems),
                 MacMenuItem.Separator(),
                 MacMenuItem.Command(Text("MainMenu_ReloadProject"), TagReloadProject),
-                MacMenuItem.Command(Text("MainMenu_CloseProject"), TagCloseProject)
+                MacMenuItem.Command(Text("MainMenu_CloseProject"), TagCloseProject),
+                MacMenuItem.Separator(),
+                // Scans the project for project: references that no longer resolve and opens the
+                // findings as a report.
+                MacMenuItem.Command(Text("MainMenu_CheckReferences"), TagCheckReferences)
             }
         };
 
@@ -208,6 +213,7 @@ internal static class MacOSMainMenu
             case TagCloseProject:
             case TagNewFile:
             case TagNewFolder:
+            case TagCheckReferences:
                 return ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
 
             case TagFind:
@@ -290,6 +296,13 @@ internal static class MacOSMainMenu
 
             case TagShowLogs:
                 viewModel.ShowLogs();
+                break;
+
+            case TagCheckReferences:
+                ServiceLocator.AcquireService<ICommandService>().Execute<ICheckReferencesCommand>(command =>
+                {
+                    command.OpenReport = true;
+                });
                 break;
 
             case TagFind:

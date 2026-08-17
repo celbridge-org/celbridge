@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
 using Celbridge.Projects;
+using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.Settings;
 
@@ -15,7 +16,6 @@ public class WorkspaceLoader
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
-    private readonly ProjectCheckReporter _projectCheckReporter;
     private readonly IProjectLoadReporter _loadReporter;
     private readonly IAppEnvironment _appEnvironment;
 
@@ -25,7 +25,6 @@ public class WorkspaceLoader
         IFeatureFlags featureFlags,
         IProjectService projectService,
         IServerService serverService,
-        ProjectCheckReporter projectCheckReporter,
         IProjectLoadReporter loadReporter,
         IAppEnvironment appEnvironment)
     {
@@ -34,7 +33,6 @@ public class WorkspaceLoader
         _featureFlags = featureFlags;
         _projectService = projectService;
         _serverService = serverService;
-        _projectCheckReporter = projectCheckReporter;
         _loadReporter = loadReporter;
         _appEnvironment = appEnvironment;
     }
@@ -181,9 +179,8 @@ public class WorkspaceLoader
 
         // A console session starts only when the user opens a .console document, not on load.
 
-        // Awaited so the consistency check completes before any project script that runs on load can
-        // modify the structure the scan reads.
-        await RunProjectCheckAsync();
+        // Written last, so the report covers everything the load recorded along the way.
+        await WriteLoadReportAsync();
 
         return Result.Ok();
     }
@@ -213,36 +210,37 @@ public class WorkspaceLoader
         }
     }
 
-    // Errors are logged, never thrown — a broken consistency check must not fail
-    // workspace load.
-    private async Task RunProjectCheckAsync()
+    // Errors are logged, never thrown — a report that could not be written must not fail workspace load.
+    private async Task WriteLoadReportAsync()
     {
         try
         {
-            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
+            var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-            // ExecuteImmediate, not ExecuteAsync: this runs inside the in-flight LoadProjectCommand, so
-            // enqueuing and awaiting a command would deadlock the serial queue.
-            var reportResult = await commandService.ExecuteImmediate<IProjectCheckCommand, ProjectCheckReport>();
-            if (reportResult.IsFailure)
+            // The sidecar snapshot is a by-product of the registry build that has already run, so this is
+            // a read rather than a check.
+            _loadReporter.RecordSidecarReport(registry.GetSidecarReport());
+            RecordResourceCounts();
+
+            var reportSummary = await _loadReporter.FlushAsync();
+            if (reportSummary is null
+                || reportSummary.Severity == ReportSeverity.Info)
             {
-                _logger.LogWarning(reportResult, "Project consistency check failed.");
                 return;
             }
 
-            var checkReport = reportResult.Value;
-
-            _loadReporter.RecordCheckReport(checkReport);
-            RecordResourceCounts();
-
-            // Flush before reporting so the notification can point at the report that was written.
-            var reportResourceKey = await _loadReporter.FlushAsync();
-
-            _projectCheckReporter.Report(checkReport, reportResourceKey);
+            // Raised after the flush, so the report the notification points at is already on disk.
+            var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+            var message = new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty)
+            {
+                FindingCount = reportSummary.IssueCount,
+                ReportResource = reportSummary.Resource
+            };
+            messengerService.Send(message);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Project consistency check threw an unexpected exception.");
+            _logger.LogWarning(ex, "Failed to write the project load report.");
         }
     }
 
@@ -325,6 +323,8 @@ public class WorkspaceLoader
         {
             return;
         }
+
+        _loadReporter.RecordConfigEntryErrors(entryErrors);
 
         var projectFileName = Path.GetFileName(projectFilePath);
 

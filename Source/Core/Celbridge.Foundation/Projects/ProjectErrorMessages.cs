@@ -33,10 +33,10 @@ public enum ProjectErrorType
     PackageLoadError,
 
     /// <summary>
-    /// The workspace-load project consistency check returned non-empty
-    /// findings (broken references, orphan .cel files, or broken .cel files).
+    /// The project load report recorded findings. The project itself loaded, so this points at the
+    /// report rather than describing what it holds.
     /// </summary>
-    ProjectCheckError,
+    ProjectLoadIssues,
 
     /// <summary>
     /// One or more entries in the .celbridge project config were skipped or degraded.

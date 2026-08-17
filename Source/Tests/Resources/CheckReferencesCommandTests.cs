@@ -1,5 +1,8 @@
+using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
+using Celbridge.Projects;
+using Celbridge.Reports;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
@@ -10,19 +13,22 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ProjectCheckCommand — the engine consumed by the workspace-load
-/// project-check reporter. The command runs the on-demand ResourceScanner over
-/// the project's text files and consults the registry's sidecar report.
+/// Tests for CheckReferencesCommand, which runs the on-demand ResourceScanner over the project's text
+/// files and reports the project: references that do not resolve. The sidecar half of project health
+/// lives on the registry's sidecar report and is covered by the sidecar tests.
 /// </summary>
 [TestFixture]
-public class DataCheckProjectTests
+public class CheckReferencesCommandTests
 {
     private string _projectFolderPath = null!;
     private ResourceRegistry _resourceRegistry = null!;
     private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IMessengerService _messengerService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private ProjectCheckCommand _command = null!;
+    private IProjectService _projectService = null!;
+    private ICommandService _commandService = null!;
+    private IReportWriter _reportWriter = null!;
+    private CheckReferencesCommand _command = null!;
 
     [SetUp]
     public void Setup()
@@ -30,7 +36,7 @@ public class DataCheckProjectTests
         _projectFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
-            nameof(DataCheckProjectTests),
+            nameof(CheckReferencesCommandTests),
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
@@ -70,7 +76,24 @@ public class DataCheckProjectTests
             _workspaceWrapper);
         resourceService.Scanner.Returns(scanner);
 
-        _command = new ProjectCheckCommand(_workspaceWrapper);
+        var project = Substitute.For<IProject>();
+        project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
+
+        _projectService = Substitute.For<IProjectService>();
+        _projectService.CurrentProject.Returns(project);
+
+        _commandService = Substitute.For<ICommandService>();
+
+        _reportWriter = new ReportWriter(
+            TestFileSystem.CreateLocal(),
+            Substitute.For<ILogger<ReportWriter>>());
+
+        _command = new CheckReferencesCommand(
+            _workspaceWrapper,
+            _projectService,
+            _commandService,
+            _reportWriter,
+            Substitute.For<ILogger<CheckReferencesCommand>>());
     }
 
     [TearDown]
@@ -90,7 +113,7 @@ public class DataCheckProjectTests
     }
 
     [Test]
-    public async Task CleanProject_AllReportListsAreEmpty()
+    public async Task CleanProject_ReportsNoBrokenReferences()
     {
         // Fixture uses .json because the scanner only walks allowlisted
         // data-bearing extensions. See ResourceScanner.ScannableExtensions.
@@ -103,8 +126,7 @@ public class DataCheckProjectTests
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
         _command.ResultValue.BrokenReferences.Should().BeEmpty();
-        _command.ResultValue.OrphanCelFiles.Should().BeEmpty();
-        _command.ResultValue.BrokenCelFiles.Should().BeEmpty();
+        _command.ResultValue.CheckedTargetCount.Should().Be(1);
     }
 
     [Test]
@@ -166,51 +188,6 @@ public class DataCheckProjectTests
     }
 
     [Test]
-    public async Task OrphanCelFile_AppearsInReport()
-    {
-        // foo.png is the would-be parent. Only the sidecar exists.
-        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "_tags = [\"orphaned\"]\n");
-
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
-
-        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
-
-        _command.ResultValue.OrphanCelFiles
-            .Should().Contain(new ResourceKey("foo.png.cel"));
-    }
-
-    [Test]
-    public async Task BrokenCelFile_AppearsInReport()
-    {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md"), "Body.");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md.cel"),
-            "this = is not valid = toml ###\n");
-
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
-
-        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
-
-        _command.ResultValue.BrokenCelFiles
-            .Should().Contain(new ResourceKey("doc.md.cel"));
-    }
-
-    [Test]
-    public async Task InvalidCelSuffix_AppearsInBrokenList()
-    {
-        // .cel.cel files are classified Broken per the sidecar pairing rules.
-        File.WriteAllText(Path.Combine(_projectFolderPath, "weird.cel.cel"),
-            "_tags = [\"x\"]\n");
-
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
-
-        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
-
-        _command.ResultValue.BrokenCelFiles
-            .Should().Contain(new ResourceKey("weird.cel.cel"));
-    }
-
-    [Test]
     public async Task MultipleBrokenReferences_OrderedDeterministically()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "a.json"),
@@ -237,4 +214,43 @@ public class DataCheckProjectTests
         keys[2].Item2.Should().Be("project:b.json");
     }
 
+    [Test]
+    public async Task OpenReport_WritesTheReportAndOpensIt()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{ \"target\": \"project:missing.json\" }");
+
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
+
+        _command.OpenReport = true;
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var reportsFolderPath = Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports");
+        var reportFiles = Directory.GetFiles(reportsFolderPath, $"{CheckReferencesCommand.ReportId}-*.report");
+        reportFiles.Should().ContainSingle();
+
+        _commandService.Received(1).Execute<IOpenDocumentCommand>(
+            Arg.Any<Action<IOpenDocumentCommand>>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task WithoutOpenReport_NothingIsWritten()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{ \"target\": \"project:missing.json\" }");
+
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        Directory.Exists(Path.Combine(_projectFolderPath, ".celbridge")).Should().BeFalse();
+
+        _commandService.DidNotReceive().Execute<IOpenDocumentCommand>(
+            Arg.Any<Action<IOpenDocumentCommand>>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
 }

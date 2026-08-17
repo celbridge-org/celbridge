@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -396,6 +396,9 @@
   <data name="MainMenu_ReloadProject" xml:space="preserve">
     <value>Reload Project</value>
   </data>
+  <data name="MainMenu_CheckReferences" xml:space="preserve">
+    <value>Check References</value>
+  </data>
   <data name="MainMenu_ShowLogs" xml:space="preserve">
     <value>Show Application Logs</value>
   </data>
@@ -713,11 +716,11 @@ Open with default application instead?</value>
   <data name="NotificationBar_PackageLoadErrorMessage" xml:space="preserve">
     <value>One or more packages failed to load. See the project load report for details.</value>
   </data>
-  <data name="NotificationBar_ProjectCheckFindingsTitle" xml:space="preserve">
-    <value>Project Check Findings</value>
+  <data name="NotificationBar_ProjectLoadIssuesTitle" xml:space="preserve">
+    <value>Project Load Issues</value>
   </data>
-  <data name="NotificationBar_ProjectCheckFindingsMessage" xml:space="preserve">
-    <value>Project check found {0} issue(s).</value>
+  <data name="NotificationBar_ProjectLoadIssuesMessage" xml:space="preserve">
+    <value>The project loaded with {0} issue(s).</value>
   </data>
   <data name="NotificationBar_ProjectConfigEntryErrorTitle" xml:space="preserve">
     <value>Project Config Issues</value>

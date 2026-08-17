@@ -50,7 +50,7 @@ public static class ServiceConfiguration
         services.AddTransient<IListFolderContentsCommand, ListFolderContentsCommand>();
         services.AddTransient<IGetFileTreeCommand, GetFileTreeCommand>();
         services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
-        services.AddTransient<IProjectCheckCommand, ProjectCheckCommand>();
+        services.AddTransient<ICheckReferencesCommand, CheckReferencesCommand>();
 
         services.AddTransient<ISetFieldsCommand, SetFieldsCommand>();
         services.AddTransient<IRemoveFieldsCommand, RemoveFieldsCommand>();

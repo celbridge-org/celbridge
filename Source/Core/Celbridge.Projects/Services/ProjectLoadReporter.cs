@@ -2,6 +2,7 @@ using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Reports;
 using Celbridge.Resources;
+using Celbridge.Utilities;
 
 namespace Celbridge.Projects.Services;
 
@@ -15,18 +16,9 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     /// </summary>
     public const string ReportId = "project-load";
 
-    /// <summary>
-    /// Sub-folder of the logs root that reports are written to.
-    /// </summary>
-    public const string ReportsFolderName = "reports";
-
     // A project with pathological numbers of findings would otherwise produce a report too large to
     // read or open.
     private const int MaxItemsPerSection = 200;
-
-    // The logs: root name, which the resource layer owns. Repeated here because it sits above this
-    // project and cannot be referenced from it.
-    private const string LogsRootName = "logs";
 
     private readonly IReportWriter _reportWriter;
     private readonly ILogger<ProjectLoadReporter> _logger;
@@ -39,9 +31,9 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     private bool _userCancelledUpgrade;
     private bool _loadSucceeded;
     private Result? _loadResult;
+    private IReadOnlyList<ProjectConfigEntryError> _configEntryErrors = Array.Empty<ProjectConfigEntryError>();
     private PackageDiscoveryReport? _packageReport;
-    private ProjectCheckReport? _checkReport;
-    private DateTimeOffset? _checkCompletedAt;
+    private SidecarReport? _sidecarReport;
     private int? _fileResourceCount;
     private int? _folderResourceCount;
 
@@ -63,9 +55,9 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _userCancelledUpgrade = false;
         _loadSucceeded = false;
         _loadResult = null;
+        _configEntryErrors = Array.Empty<ProjectConfigEntryError>();
         _packageReport = null;
-        _checkReport = null;
-        _checkCompletedAt = null;
+        _sidecarReport = null;
         _fileResourceCount = null;
         _folderResourceCount = null;
     }
@@ -84,6 +76,11 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _loadCompletedAt = DateTimeOffset.UtcNow;
     }
 
+    public void RecordConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors)
+    {
+        _configEntryErrors = entryErrors;
+    }
+
     public void RecordPackageReport(PackageDiscoveryReport report)
     {
         _packageReport = report;
@@ -95,13 +92,12 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _folderResourceCount = folderCount;
     }
 
-    public void RecordCheckReport(ProjectCheckReport report)
+    public void RecordSidecarReport(SidecarReport report)
     {
-        _checkReport = report;
-        _checkCompletedAt = DateTimeOffset.UtcNow;
+        _sidecarReport = report;
     }
 
-    public async Task<ResourceKey?> FlushAsync()
+    public async Task<ProjectLoadReportSummary?> FlushAsync()
     {
         if (string.IsNullOrEmpty(_projectFilePath))
         {
@@ -111,36 +107,24 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         try
         {
             var report = BuildReport();
-            var reportsFolderPath = ResolveReportsFolderPath(_projectFilePath);
 
-            var writeResult = await _reportWriter.WriteReportAsync(report, reportsFolderPath);
+            var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, _projectFilePath);
             if (writeResult.IsFailure)
             {
                 _logger.LogWarning(writeResult, $"Failed to write project load report for: '{_projectFilePath}'");
                 return null;
             }
 
-            var reportFilePath = writeResult.Value;
-            var reportFileName = Path.GetFileName(reportFilePath);
+            var reportResource = writeResult.Value;
+            var issueCount = CountIssues(report.Sections);
 
-            return new ResourceKey($"{LogsRootName}:{ReportsFolderName}/{reportFileName}");
+            return new ProjectLoadReportSummary(reportResource, report.Severity, issueCount);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, $"Failed to write project load report for: '{_projectFilePath}'");
             return null;
         }
-    }
-
-    private static string ResolveReportsFolderPath(string projectFilePath)
-    {
-        var projectFolder = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
-
-        return Path.Combine(
-            projectFolder,
-            ProjectConstants.CelbridgeFolder,
-            ProjectConstants.LogsFolder,
-            ReportsFolderName);
     }
 
     private ReportDocument BuildReport()
@@ -158,16 +142,22 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             sections.Add(loadIssuesSection);
         }
 
+        var configurationSection = BuildConfigurationSection(ref omittedItemCount);
+        if (configurationSection is not null)
+        {
+            sections.Add(configurationSection);
+        }
+
         var packagesSection = BuildPackagesSection(ref omittedItemCount);
         if (packagesSection is not null)
         {
             sections.Add(packagesSection);
         }
 
-        var checkSection = BuildCheckSection(ref omittedItemCount);
-        if (checkSection is not null)
+        var sidecarSection = BuildSidecarSection(ref omittedItemCount);
+        if (sidecarSection is not null)
         {
-            sections.Add(checkSection);
+            sections.Add(sidecarSection);
         }
 
         var severity = ResolveWorstSeverity(sections);
@@ -177,10 +167,14 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             ? new ReportTruncation(omittedItemCount)
             : null;
 
+        // Stamped with the start of the load rather than the moment of writing, so every flush during a
+        // load addresses the same file and one load leaves one report behind.
+        var generatedAt = _loadStartedAt ?? DateTimeOffset.UtcNow;
+
         return new ReportDocument(
             ReportId,
             "Project Load",
-            DateTimeOffset.UtcNow,
+            generatedAt,
             severity,
             summary,
             sections)
@@ -230,11 +224,6 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             var durationMilliseconds = (completedAt - startedAt).TotalMilliseconds;
             items.Add(CreateFact("Load duration", $"{durationMilliseconds:F0} ms"));
-        }
-
-        if (_checkCompletedAt is DateTimeOffset checkedAt)
-        {
-            items.Add(CreateFact("Consistency check", checkedAt.UtcDateTime.ToString("u")));
         }
 
         return new ReportSection("Summary", ReportSeverity.Info, items);
@@ -292,6 +281,29 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         return new ReportSection("Load", ResolveWorstItemSeverity(items), items);
     }
 
+    private ReportSection? BuildConfigurationSection(ref int omittedItemCount)
+    {
+        if (_configEntryErrors.Count == 0)
+        {
+            return null;
+        }
+
+        var projectFileName = Path.GetFileName(_projectFilePath);
+
+        var items = new List<ReportItem>();
+        foreach (var entryError in _configEntryErrors)
+        {
+            items.Add(new ReportItem(ReportSeverity.Warning, $"Config entry skipped: {entryError.EntryName}")
+            {
+                Detail = NormaliseDetail(entryError.Message)
+            });
+        }
+
+        var cappedItems = CapItems(items, ref omittedItemCount);
+
+        return new ReportSection($"Configuration ({projectFileName})", ResolveWorstItemSeverity(cappedItems), cappedItems);
+    }
+
     private ReportSection? BuildPackagesSection(ref int omittedItemCount)
     {
         if (_packageReport is null)
@@ -341,28 +353,21 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         return new ReportSection("Packages", ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
-    private ReportSection? BuildCheckSection(ref int omittedItemCount)
+    private ReportSection? BuildSidecarSection(ref int omittedItemCount)
     {
-        if (_checkReport is null)
+        if (_sidecarReport is null)
         {
             return null;
         }
 
-        var report = _checkReport;
+        var report = _sidecarReport;
         var items = new List<ReportItem>();
 
-        foreach (var brokenReference in report.BrokenReferences)
-        {
-            items.Add(new ReportItem(ReportSeverity.Warning, "References a missing resource.")
-            {
-                Resource = brokenReference.Source,
-                Target = brokenReference.MissingTarget,
-                Detail = "The reference was left in place; the project loaded without it.",
-                Actions = CreateOpenResourceActions(brokenReference.Source)
-            });
-        }
+        var orphanFiles = report.Orphan
+            .OrderBy(resource => resource.ToString(), StringComparer.Ordinal)
+            .ToList();
 
-        foreach (var orphanFile in report.OrphanCelFiles)
+        foreach (var orphanFile in orphanFiles)
         {
             items.Add(new ReportItem(ReportSeverity.Warning, "Orphan .cel file: no resource it describes.")
             {
@@ -371,7 +376,11 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             });
         }
 
-        foreach (var brokenFile in report.BrokenCelFiles)
+        var brokenFiles = report.Broken
+            .OrderBy(resource => resource.ToString(), StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var brokenFile in brokenFiles)
         {
             items.Add(new ReportItem(ReportSeverity.Warning, "Broken .cel file: could not be parsed.")
             {
@@ -387,7 +396,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         var cappedItems = CapItems(items, ref omittedItemCount);
 
-        return new ReportSection("Consistency check", ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection("Sidecar files", ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
     private static IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
@@ -444,13 +453,17 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return "The project loaded with no issues.";
         }
 
-        var issueCount = sections
-            .SelectMany(section => section.Items)
-            .Count(item => item.Severity != ReportSeverity.Info);
-
+        var issueCount = CountIssues(sections);
         var issueLabel = issueCount == 1 ? "issue" : "issues";
 
         return $"The project loaded with {issueCount} {issueLabel}.";
+    }
+
+    private static int CountIssues(IReadOnlyList<ReportSection> sections)
+    {
+        return sections
+            .SelectMany(section => section.Items)
+            .Count(item => item.Severity != ReportSeverity.Info);
     }
 
     private static ReportSeverity ResolveWorstSeverity(IReadOnlyList<ReportSection> sections)
