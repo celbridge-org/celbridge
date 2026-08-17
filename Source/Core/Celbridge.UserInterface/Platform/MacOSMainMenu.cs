@@ -83,7 +83,9 @@ internal static class MacOSMainMenu
                 MacMenuItem.Separator(),
                 // Scans the project for project: references that no longer resolve and opens the
                 // findings as a report.
-                MacMenuItem.Command(Text("MainMenu_CheckReferences"), TagCheckReferences)
+                MacMenuItem.Command(Text("MainMenu_CheckReferences"), TagCheckReferences),
+                // Reveals the current run's log file in the file manager.
+                MacMenuItem.Command(Text("MainMenu_ShowLog"), TagShowLogs)
             }
         };
 
@@ -135,8 +137,6 @@ internal static class MacOSMainMenu
             Title = Text("Menu_Help"),
             Items = new List<MacMenuItem>
             {
-                MacMenuItem.Command(Text("MainMenu_ShowLogs"), TagShowLogs),
-                MacMenuItem.Separator(),
                 MacMenuItem.Command(Text("Menu_HelpWebsite"), TagHelpWebsite)
             }
         };

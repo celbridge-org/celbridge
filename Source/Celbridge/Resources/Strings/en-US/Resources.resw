@@ -399,8 +399,8 @@
   <data name="MainMenu_CheckReferences" xml:space="preserve">
     <value>Check References</value>
   </data>
-  <data name="MainMenu_ShowLogs" xml:space="preserve">
-    <value>Show Application Logs</value>
+  <data name="MainMenu_ShowLog" xml:space="preserve">
+    <value>Show Log</value>
   </data>
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
