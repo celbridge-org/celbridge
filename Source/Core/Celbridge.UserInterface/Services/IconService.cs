@@ -67,6 +67,7 @@ public class IconService : IIconService
         { IconSymbol.People, "bs-people" },
         { IconSymbol.Upload, "bs-upload" },
         { IconSymbol.ChevronDown, "bs-chevron-down" },
+        { IconSymbol.ChevronLeft, "bs-chevron-left" },
         { IconSymbol.ChevronRight, "bs-chevron-right" },
         { IconSymbol.ChevronUp, "bs-chevron-up" },
         { IconSymbol.MatchCase, "bs-type" },

@@ -136,7 +136,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         OnDocumentTabContextMenuAction(tab, action);
     }
 
-    // Builds the per-area toolbar hosted in each area's tab strip footer. It carries the close button, so
+    // Builds the per-area toolbar hosted in each area's tab strip footer. It carries the collapse button, so
     // only the collapsible areas get one; splitting is driven from the document tab context menu.
     private void CreateAreaToolbars()
     {
@@ -148,7 +148,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             }
 
             var toolbar = new DocumentToolbar(area);
-            toolbar.CloseAreaRequested += OnToolbarCloseAreaRequested;
+            toolbar.CollapseAreaRequested += OnToolbarCollapseAreaRequested;
 
             _areaToolbars[area] = toolbar;
             SectionContainer.Areas.SetAreaToolbar(area, toolbar);
@@ -180,7 +180,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         ViewModel.ResetSurfaceSize(surface);
     }
 
-    private void OnToolbarCloseAreaRequested(DocumentArea area)
+    private void OnToolbarCollapseAreaRequested(DocumentArea area)
     {
         ViewModel.SetAreaVisible(area, false);
     }

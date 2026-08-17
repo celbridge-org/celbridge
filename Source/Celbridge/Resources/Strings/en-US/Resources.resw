@@ -357,8 +357,8 @@
   <data name="NotificationBar_ReloadProjectButton" xml:space="preserve">
     <value>Reload Project</value>
   </data>
-  <data name="PanelHeader_CloseTooltip" xml:space="preserve">
-    <value>Close Panel</value>
+  <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
+    <value>Collapse Panel</value>
   </data>
   <data name="NotificationBar_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
@@ -722,8 +722,8 @@ Open with default application instead?</value>
   <data name="NotificationBar_ProjectConfigEntryErrorMessage" xml:space="preserve">
     <value>Some entries in {0} were skipped or degraded. See log for details.</value>
   </data>
-  <data name="DocumentToolbar_CloseAreaTooltip" xml:space="preserve">
-    <value>Close Panel</value>
+  <data name="DocumentToolbar_CollapseAreaTooltip" xml:space="preserve">
+    <value>Collapse Panel</value>
   </data>
   <data name="DocumentSection_DropFilesPrompt" xml:space="preserve">
     <value>Drop files here to open them</value>

@@ -38,17 +38,17 @@
                       VerticalAlignment="Center"
                       Margin="0,0,4,0"/>
 
-    <!-- Close Button -->
-    <Button x:Name="CloseButton"
+    <!-- Collapse Button. The chevron points towards the edge the panel collapses into, which depends on the
+         surface the header sits in, so it is set in code-behind rather than declared here. -->
+    <Button x:Name="CollapseButton"
             Grid.Column="4"
             Style="{StaticResource TransparentIconButtonStyle}"
-            ToolTipService.ToolTip="{x:Bind CloseButtonTooltip}"
+            ToolTipService.ToolTip="{x:Bind CollapseButtonTooltip}"
             Margin="0,0,8,0"
             VerticalAlignment="Center"
-            Click="CloseButton_Click">
-      <controls:Icon
-                Symbol="Close"
-                FontSize="{StaticResource IconSizeMedium}" />
+            Click="CollapseButton_Click">
+      <controls:Icon x:Name="CollapseButtonIcon"
+                     FontSize="{StaticResource IconSizeMedium}" />
     </Button>
   </Grid>
 </UserControl>

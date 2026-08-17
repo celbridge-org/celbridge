@@ -110,6 +110,8 @@ public sealed partial class DocumentSectionView : UserControl
         // Disable tab add/remove animations so tabs snap into place immediately
         DisableTabViewAnimations();
 
+        ClearAddTabButtonWidthReservation();
+
         // The border lines come from the strip's template, and the pair inside the tab list only appears
         // once that list has laid out, so a section that starts empty is covered by applying now and again
         // on the next dispatcher cycle.
@@ -160,7 +162,15 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Sets the content to display in the tab strip footer area.
+    /// Sets the content to display before the tabs, at the leading edge of the tab strip.
+    /// </summary>
+    public void SetTabStripHeader(UIElement? content)
+    {
+        HeaderPresenter.Content = content;
+    }
+
+    /// <summary>
+    /// Sets the content to display after the tabs, at the trailing edge of the tab strip.
     /// </summary>
     public void SetTabStripFooter(UIElement? content)
     {
@@ -635,6 +645,31 @@ public sealed partial class DocumentSectionView : UserControl
         {
             scrollViewer.ChangeView(scrollViewer.ScrollableWidth, null, null, disableAnimation: true);
         }
+    }
+
+    // UNO-BUG: IsAddTabButtonVisible=False collapses the add button's presenter but leaves the button itself
+    // with its declared 32px width, which the strip's width calculation still subtracts from the space it
+    // gives the tabs. Observed in 6.6.166; not verified against the packaged Windows head.
+    /// <summary>
+    /// Clears the width the collapsed add button reserves in the tab strip, so the tabs get the whole strip
+    /// rather than stopping 32px short of the trailing edge.
+    /// </summary>
+    private void ClearAddTabButtonWidthReservation()
+    {
+        if (TabView.IsAddTabButtonVisible)
+        {
+            // A button the user can actually reach keeps its width.
+            return;
+        }
+
+        if (VisualTree.FindDescendantByName(TabView, "AddButton") is not FrameworkElement addButton)
+        {
+            return;
+        }
+
+        // Collapsing the button is what zeroes the reservation: the strip measures what the button wants, and
+        // a collapsed element wants nothing.
+        addButton.Visibility = Visibility.Collapsed;
     }
 
     private ScrollViewer? GetTabStripScrollViewer()

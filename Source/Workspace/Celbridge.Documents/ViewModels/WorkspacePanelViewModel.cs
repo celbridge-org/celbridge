@@ -169,7 +169,7 @@ public partial class WorkspacePanelViewModel : ObservableObject
             return true;
         }
 
-        return _layoutService.SurfaceVisibility.HasFlag(GetSurface(area));
+        return _layoutService.SurfaceVisibility.HasFlag(area.GetSurface());
     }
 
     public void SetAreaVisible(DocumentArea area, bool isVisible)
@@ -181,26 +181,9 @@ public partial class WorkspacePanelViewModel : ObservableObject
 
         _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
         {
-            command.Surfaces = GetSurface(area);
+            command.Surfaces = area.GetSurface();
             command.IsVisible = isVisible;
         });
-    }
-
-    // Bottom and Side are also workspace surfaces, so the Layout toolbar and the layout modes can collapse
-    // them. Main is always visible and has no surface.
-    private static WorkspaceSurface GetSurface(DocumentArea area)
-    {
-        switch (area)
-        {
-            case DocumentArea.Bottom:
-                return WorkspaceSurface.BottomArea;
-
-            case DocumentArea.Side:
-                return WorkspaceSurface.SideArea;
-
-            default:
-                return WorkspaceSurface.None;
-        }
     }
 
     public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)

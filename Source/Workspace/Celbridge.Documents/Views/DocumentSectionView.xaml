@@ -42,6 +42,12 @@
              TabDroppedOutside="TabView_TabDroppedOutside"
              DragOver="TabView_DragOver"
              Drop="TabView_Drop">
+      <!-- An area's toolbar goes in whichever of these two slots sits nearest that area's inner edge, so the
+           collapse chevron reads as pushing the area out towards the application edge. -->
+      <TabView.TabStripHeader>
+        <ContentPresenter x:Name="HeaderPresenter"
+                          MinWidth="0"/>
+      </TabView.TabStripHeader>
       <TabView.TabStripFooter>
         <ContentPresenter x:Name="FooterPresenter"
                           MinWidth="0"/>

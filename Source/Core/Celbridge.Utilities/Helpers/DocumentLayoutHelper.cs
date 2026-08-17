@@ -1,4 +1,5 @@
 using Celbridge.Documents;
+using Celbridge.Workspace;
 
 namespace Celbridge.Utilities;
 
@@ -131,6 +132,36 @@ public static class DocumentLayoutHelper
     public static bool IsCollapsible(this DocumentArea area)
     {
         return area != DocumentArea.Main;
+    }
+
+    /// <summary>
+    /// Whether the area's toolbar belongs at the leading end of its tab strip rather than the trailing end.
+    /// True for Side, whose inner edge is the one facing the documents, so its collapse chevron sits there and
+    /// points out towards the application edge. Bottom collapses downwards, which leaves its strip free to
+    /// keep the toolbar in the conventional trailing corner.
+    /// </summary>
+    public static bool PlacesToolbarAtStripStart(this DocumentArea area)
+    {
+        return area == DocumentArea.Side;
+    }
+
+    /// <summary>
+    /// The workspace surface the area occupies, or None for Main, which is always visible and has no
+    /// surface of its own.
+    /// </summary>
+    public static WorkspaceSurface GetSurface(this DocumentArea area)
+    {
+        switch (area)
+        {
+            case DocumentArea.Bottom:
+                return WorkspaceSurface.BottomArea;
+
+            case DocumentArea.Side:
+                return WorkspaceSurface.SideArea;
+
+            default:
+                return WorkspaceSurface.None;
+        }
     }
 
     /// <summary>
