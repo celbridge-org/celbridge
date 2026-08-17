@@ -1,13 +1,48 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Projects;
+using Celbridge.Reports;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
+/// What the user can do about a notification, offered as the banner's action button.
+/// </summary>
+public enum NotificationAction
+{
+    None,
+    ReloadProject,
+    ViewReport
+}
+
+/// <summary>
+/// One condition worth telling the user about: the text of its banner, how serious it is, and what
+/// the user can do about it.
+/// </summary>
+public record WorkspaceNotification(
+    ReportSeverity Severity,
+    string Title,
+    string Message)
+{
+    public NotificationAction Action { get; init; } = NotificationAction.None;
+
+    /// <summary>
+    /// The report a ViewReport action opens.
+    /// </summary>
+    public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;
+
+    /// <summary>
+    /// Whether the user can dismiss the banner and move on to the next notification.
+    /// </summary>
+    public bool IsDismissable { get; init; } = true;
+}
+
+/// <summary>
 /// Tracks project-scoped conditions worth telling the user about, such as a config file that failed
-/// to load or was only partly applied, and exposes them as banners for the notification bar.
+/// to load or was only partly applied, and projects the current one onto the notification bar's banner.
 /// </summary>
 public partial class NotificationBarViewModel : ObservableObject
 {
@@ -17,45 +52,30 @@ public partial class NotificationBarViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
-    private bool _isErrorBannerVisible;
+    private readonly List<WorkspaceNotification> _notifications = new();
+
+    private int _currentIndex;
 
     [ObservableProperty]
-    private string _errorBannerTitle = string.Empty;
+    private bool _isBannerVisible;
 
     [ObservableProperty]
-    private string _errorBannerMessage = string.Empty;
+    private InfoBarSeverity _bannerSeverity = InfoBarSeverity.Informational;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
-    private bool _isMigrationBannerVisible;
+    private string _bannerTitle = string.Empty;
 
     [ObservableProperty]
-    private string _migrationBannerTitle = string.Empty;
+    private string _bannerMessage = string.Empty;
 
     [ObservableProperty]
-    private string _migrationBannerMessage = string.Empty;
+    private bool _isBannerDismissable = true;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAnyBannerVisible))]
-    private bool _isProjectCheckBannerVisible;
+    private bool _isActionVisible;
 
     [ObservableProperty]
-    private string _projectCheckBannerTitle = string.Empty;
-
-    [ObservableProperty]
-    private string _projectCheckBannerMessage = string.Empty;
-
-    /// <summary>
-    /// The report holding the detail behind the project check banner, or null when none was written.
-    /// </summary>
-    public ResourceKey? ProjectCheckReportResource { get; private set; }
-
-    public bool IsAnyBannerVisible =>
-        IsErrorBannerVisible ||
-        IsMigrationBannerVisible ||
-        IsProjectCheckBannerVisible;
+    private string _actionText = string.Empty;
 
     public NotificationBarViewModel(
         IMessengerService messengerService,
@@ -83,78 +103,193 @@ public partial class NotificationBarViewModel : ObservableObject
         // is handled on the main UI thread.
         _dispatcher.TryEnqueue(() =>
         {
-            HandleProjectError(message);
+            AddNotification(ComposeNotification(message));
         });
     }
 
-    private void HandleProjectError(ProjectErrorMessage message)
+    private WorkspaceNotification ComposeNotification(ProjectErrorMessage message)
     {
         var configFile = message.ConfigFileName ?? "project configuration file";
 
-        // Set the error banner properties based on error type
         switch (message.ErrorType)
         {
             case ProjectErrorType.InvalidProjectConfig:
-                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectConfigErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectConfigErrorMessage", configFile);
-                break;
+                return ComposeProjectLoadFailure(
+                    _stringLocalizer.GetString("NotificationBar_ProjectConfigErrorTitle"),
+                    _stringLocalizer.GetString("NotificationBar_ProjectConfigErrorMessage", configFile));
 
             case ProjectErrorType.IncompatibleVersion:
-                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_IncompatibleVersionTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_IncompatibleVersionMessage", configFile);
-                break;
+                return ComposeProjectLoadFailure(
+                    _stringLocalizer.GetString("NotificationBar_IncompatibleVersionTitle"),
+                    _stringLocalizer.GetString("NotificationBar_IncompatibleVersionMessage", configFile));
 
             case ProjectErrorType.InvalidVersion:
-                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_InvalidVersionTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_InvalidVersionMessage", configFile);
-                break;
+                return ComposeProjectLoadFailure(
+                    _stringLocalizer.GetString("NotificationBar_InvalidVersionTitle"),
+                    _stringLocalizer.GetString("NotificationBar_InvalidVersionMessage", configFile));
 
             case ProjectErrorType.MigrationError:
-                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_MigrationErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_MigrationErrorMessage", configFile);
-                break;
+                return ComposeProjectLoadFailure(
+                    _stringLocalizer.GetString("NotificationBar_MigrationErrorTitle"),
+                    _stringLocalizer.GetString("NotificationBar_MigrationErrorMessage", configFile));
 
             case ProjectErrorType.PackageLoadError:
-                ErrorBannerTitle = _stringLocalizer.GetString("NotificationBar_PackageLoadErrorTitle");
-                ErrorBannerMessage = _stringLocalizer.GetString("NotificationBar_PackageLoadErrorMessage");
-                break;
+                return ComposeProjectLoadFailure(
+                    _stringLocalizer.GetString("NotificationBar_PackageLoadErrorTitle"),
+                    _stringLocalizer.GetString("NotificationBar_PackageLoadErrorMessage"));
 
             case ProjectErrorType.ProjectCheckError:
-                // Project check findings are advisory, not blocking — the
-                // project loaded fine. Route to the dismissable warning
-                // banner rather than the non-dismissable error banner, and
-                // return early so the error-banner side effects below do
-                // not fire.
-                ProjectCheckBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsTitle");
-                ProjectCheckBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsMessage", message.FindingCount);
-                ProjectCheckReportResource = message.ReportResource;
-                IsProjectCheckBannerVisible = true;
-                return;
+                // Project check findings are advisory, not blocking: the project loaded fine.
+                return ComposeAdvisory(
+                    _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsTitle"),
+                    _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsMessage", message.FindingCount),
+                    message.ReportResource);
 
             case ProjectErrorType.ProjectConfigEntryError:
-                // Per-entry config errors are advisory: the rest of the file
-                // applied and the project loaded. Route to the dismissable
-                // warning banner like project check findings.
-                ProjectCheckBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectConfigEntryErrorTitle");
-                ProjectCheckBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectConfigEntryErrorMessage", configFile);
-                IsProjectCheckBannerVisible = true;
-                return;
+                // Per-entry config errors are advisory: the rest of the file applied and the project loaded.
+                return ComposeAdvisory(
+                    _stringLocalizer.GetString("NotificationBar_ProjectConfigEntryErrorTitle"),
+                    _stringLocalizer.GetString("NotificationBar_ProjectConfigEntryErrorMessage", configFile),
+                    message.ReportResource);
 
             default:
                 throw new ArgumentOutOfRangeException();
         }
-
-        IsErrorBannerVisible = true;
     }
 
-    public void OnProjectCheckBannerClosed()
+    // A project that did not load stays on screen until the user reloads it, so its banner offers the
+    // reload rather than a dismissal.
+    private static WorkspaceNotification ComposeProjectLoadFailure(string title, string message)
     {
-        IsProjectCheckBannerVisible = false;
+        return new WorkspaceNotification(ReportSeverity.Error, title, message)
+        {
+            Action = NotificationAction.ReloadProject,
+            IsDismissable = false
+        };
     }
 
-    public void OnReloadProjectClicked()
+    private static WorkspaceNotification ComposeAdvisory(string title, string message, ResourceKey? reportResource)
     {
-        _commandService.Execute<IReloadProjectCommand>();
+        var notification = new WorkspaceNotification(ReportSeverity.Warning, title, message);
+
+        if (reportResource is not ResourceKey resource)
+        {
+            return notification;
+        }
+
+        return notification with
+        {
+            Action = NotificationAction.ViewReport,
+            ReportResource = resource
+        };
+    }
+
+    private void AddNotification(WorkspaceNotification notification)
+    {
+        int insertIndex = _notifications.Count;
+
+        if (notification.IsDismissable)
+        {
+            // A notification the user cannot dismiss sits behind the ones they can, so it never blocks
+            // them from reaching the rest.
+            int blockingIndex = _notifications.FindIndex(entry => !entry.IsDismissable);
+            if (blockingIndex >= 0)
+            {
+                insertIndex = blockingIndex;
+            }
+        }
+
+        _notifications.Insert(insertIndex, notification);
+
+        UpdateBanner();
+    }
+
+    /// <summary>
+    /// Moves the banner on to the next notification, hiding it once none are left.
+    /// </summary>
+    public void OnBannerDismissed()
+    {
+        if (_currentIndex >= _notifications.Count)
+        {
+            return;
+        }
+
+        _currentIndex++;
+
+        UpdateBanner();
+    }
+
+    public void OnActionClicked()
+    {
+        if (_currentIndex >= _notifications.Count)
+        {
+            return;
+        }
+
+        var notification = _notifications[_currentIndex];
+
+        switch (notification.Action)
+        {
+            case NotificationAction.ReloadProject:
+                _commandService.Execute<IReloadProjectCommand>();
+                break;
+
+            case NotificationAction.ViewReport:
+                var reportResource = notification.ReportResource;
+                _commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportResource);
+                break;
+        }
+    }
+
+    private void UpdateBanner()
+    {
+        if (_currentIndex >= _notifications.Count)
+        {
+            IsBannerVisible = false;
+            return;
+        }
+
+        var notification = _notifications[_currentIndex];
+
+        BannerSeverity = ResolveBannerSeverity(notification.Severity);
+        BannerTitle = notification.Title;
+        BannerMessage = notification.Message;
+        IsBannerDismissable = notification.IsDismissable;
+
+        ActionText = ResolveActionText(notification.Action);
+        IsActionVisible = notification.Action != NotificationAction.None;
+
+        IsBannerVisible = true;
+    }
+
+    private string ResolveActionText(NotificationAction action)
+    {
+        switch (action)
+        {
+            case NotificationAction.ReloadProject:
+                return _stringLocalizer.GetString("NotificationBar_ReloadProjectButton");
+
+            case NotificationAction.ViewReport:
+                return _stringLocalizer.GetString("NotificationBar_ViewReportButton");
+
+            default:
+                return string.Empty;
+        }
+    }
+
+    private static InfoBarSeverity ResolveBannerSeverity(ReportSeverity severity)
+    {
+        switch (severity)
+        {
+            case ReportSeverity.Error:
+                return InfoBarSeverity.Error;
+
+            case ReportSeverity.Warning:
+                return InfoBarSeverity.Warning;
+
+            default:
+                return InfoBarSeverity.Informational;
+        }
     }
 
     private void CheckMigrationStatus()
@@ -173,16 +308,11 @@ public partial class NotificationBarViewModel : ObservableObject
             !string.IsNullOrEmpty(newVersion) &&
             oldVersion != newVersion)
         {
-            // Populate the migration banner strings
-            MigrationBannerTitle = _stringLocalizer.GetString("NotificationBar_MigrationBannerTitle");
-            MigrationBannerMessage = _stringLocalizer.GetString("NotificationBar_MigrationBannerMessage", oldVersion, newVersion);
-            IsMigrationBannerVisible = true;
-        }
-    }
+            var title = _stringLocalizer.GetString("NotificationBar_MigrationBannerTitle");
+            var message = _stringLocalizer.GetString("NotificationBar_MigrationBannerMessage", oldVersion, newVersion);
 
-    public void OnMigrationBannerClosed()
-    {
-        IsMigrationBannerVisible = false;
+            AddNotification(new WorkspaceNotification(ReportSeverity.Info, title, message));
+        }
     }
 
     public void Cleanup()

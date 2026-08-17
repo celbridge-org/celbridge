@@ -357,6 +357,9 @@
   <data name="NotificationBar_ReloadProjectButton" xml:space="preserve">
     <value>Reload Project</value>
   </data>
+  <data name="NotificationBar_ViewReportButton" xml:space="preserve">
+    <value>View Report</value>
+  </data>
   <data name="PanelHeader_CloseTooltip" xml:space="preserve">
     <value>Close Panel</value>
   </data>

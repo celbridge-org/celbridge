@@ -1,28 +1,34 @@
 using Celbridge.WorkspaceUI.ViewModels;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
-/// The strip of project-notification banners docked below the workspace document area. It sizes to
-/// its content rather than occupying layout space, so it takes no space while no banner is showing.
+/// The project-notification banner docked below the workspace document area. It sizes to its content rather
+/// than occupying layout space, so it takes no space while no notification is showing.
 /// </summary>
 public sealed partial class NotificationBar : UserControl
 {
-    private readonly IStringLocalizer _stringLocalizer;
-
-    private string ReloadProjectText => _stringLocalizer.GetString("NotificationBar_ReloadProjectButton");
-
     public NotificationBarViewModel ViewModel { get; }
 
     public NotificationBar()
     {
-        // Acquire the localizer and view model before InitializeComponent so the x:Bind bindings
-        // (ReloadProjectText, ViewModel.*) have their sources ready when they first evaluate.
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        // Acquire the view model before InitializeComponent so the x:Bind bindings have their source ready
+        // when they first evaluate.
         ViewModel = ServiceLocator.AcquireService<NotificationBarViewModel>();
 
         this.InitializeComponent();
+    }
+
+    // The banner is reused across notifications, so it closes both when the user dismisses it and whenever
+    // the view model takes it down to show the next one. Only the former advances.
+    private void OnBannerClosed(InfoBar sender, InfoBarClosedEventArgs args)
+    {
+        if (args.Reason != InfoBarCloseReason.CloseButton)
+        {
+            return;
+        }
+
+        ViewModel.OnBannerDismissed();
     }
 
     public void Cleanup()
