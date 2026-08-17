@@ -68,6 +68,30 @@
     <UnoImage Include="Assets\Images\title_icon.svg" />
   </ItemGroup>
 
+  <!-- A published macOS bundle keeps the app's content under Contents/Resources, and ms-appx asset lookups
+       go looking for it there. A plain build lays that content out beside the executable instead, so running
+       the built binary directly resolves no bundled asset: fonts included, which renders every icon as the
+       fallback glyph. Mirroring the published shape with a folder of links costs nothing and makes a build
+       that is run in place behave like the shipped one. Debug only, and only when building on macOS. -->
+  <Target Name="StageBundledAssetsForLocalRun"
+          AfterTargets="Build"
+          Condition="'$(TargetFramework)' == 'net10.0-desktop' AND '$(Configuration)' == 'Debug' AND $([MSBuild]::IsOSPlatform('OSX'))">
+    <PropertyGroup>
+      <LocalRunResourcesFolder>$(OutputPath)Resources</LocalRunResourcesFolder>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- Only the content folders are linked. The assemblies beside them are found by the runtime's own
+           probing, which does not consult this folder. -->
+      <LocalRunAssetFolder Include="$([System.IO.Directory]::GetDirectories('$(OutputPath)'))"
+                           Exclude="$(LocalRunResourcesFolder)" />
+    </ItemGroup>
+    <MakeDir Directories="$(LocalRunResourcesFolder)" />
+    <!-- Every link is made by one shell rather than one per folder, which keeps this off the critical path
+         of an incremental build. -->
+    <Exec Condition="'@(LocalRunAssetFolder)' != ''"
+          Command="@(LocalRunAssetFolder->'ln -sfn &quot;../%(Filename)%(Extension)&quot; &quot;$(LocalRunResourcesFolder)/%(Filename)%(Extension)&quot;', ' &amp;&amp; ')" />
+  </Target>
+
   <!-- Direct project dependencies -->
   <ItemGroup>
     <ProjectReference Include="..\Core\Celbridge.Server\Celbridge.Server.csproj" />
