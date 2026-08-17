@@ -1,7 +1,7 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Accumulates project-load state and writes it to a Markdown report on flush.
+/// Accumulates project-load state and writes it as a report document on flush.
 /// </summary>
 public interface IProjectLoadReporter
 {
@@ -26,13 +26,18 @@ public interface IProjectLoadReporter
     void RecordPackageReport(PackageDiscoveryReport report);
 
     /// <summary>
+    /// Records how many file and folder resources the loaded project holds.
+    /// </summary>
+    void RecordResourceCounts(int fileCount, int folderCount);
+
+    /// <summary>
     /// Records the consistency-check findings.
     /// </summary>
     void RecordCheckReport(ProjectCheckReport report);
 
     /// <summary>
-    /// Writes the current state to disk. Returns the report path on success,
+    /// Writes the current state to disk. Returns the resource key of the report written,
     /// or null on failure. Never throws.
     /// </summary>
-    Task<string?> FlushAsync();
+    Task<ResourceKey?> FlushAsync();
 }

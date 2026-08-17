@@ -35,7 +35,6 @@ public enum ProjectErrorType
     /// <summary>
     /// The workspace-load project consistency check returned non-empty
     /// findings (broken references, orphan .cel files, or broken .cel files).
-    /// The ProjectErrorMessage.ConfigFileName field carries the summary text.
     /// </summary>
     ProjectCheckError,
 
@@ -50,4 +49,15 @@ public enum ProjectErrorType
 /// Message raised when a project or workspace-scoped error occurs during workspace load, surfaced in
 /// the project-notification banners.
 /// </summary>
-public record ProjectErrorMessage(ProjectErrorType ErrorType, string ConfigFileName);
+public record ProjectErrorMessage(ProjectErrorType ErrorType, string ConfigFileName)
+{
+    /// <summary>
+    /// How many findings the error covers, for the error types that report a count.
+    /// </summary>
+    public int FindingCount { get; init; }
+
+    /// <summary>
+    /// The report holding the detail behind this error, or null when no report was written.
+    /// </summary>
+    public ResourceKey? ReportResource { get; init; }
+}

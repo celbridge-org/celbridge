@@ -714,7 +714,7 @@ Open with default application instead?</value>
     <value>Project Check Findings</value>
   </data>
   <data name="NotificationBar_ProjectCheckFindingsMessage" xml:space="preserve">
-    <value>Project check found {0} issue(s). See log for details.</value>
+    <value>Project check found {0} issue(s).</value>
   </data>
   <data name="NotificationBar_ProjectConfigEntryErrorTitle" xml:space="preserve">
     <value>Project Config Issues</value>

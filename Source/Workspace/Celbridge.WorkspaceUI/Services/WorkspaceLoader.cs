@@ -230,13 +230,52 @@ public class WorkspaceLoader
                 return;
             }
 
-            _projectCheckReporter.Report(reportResult.Value);
-            _loadReporter.RecordCheckReport(reportResult.Value);
-            await _loadReporter.FlushAsync();
+            var checkReport = reportResult.Value;
+
+            _loadReporter.RecordCheckReport(checkReport);
+            RecordResourceCounts();
+
+            // Flush before reporting so the notification can point at the report that was written.
+            var reportResourceKey = await _loadReporter.FlushAsync();
+
+            _projectCheckReporter.Report(checkReport, reportResourceKey);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Project consistency check threw an unexpected exception.");
+        }
+    }
+
+    private void RecordResourceCounts()
+    {
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        if (workspaceService is null)
+        {
+            return;
+        }
+
+        var projectFolder = workspaceService.ResourceService.Registry.ProjectFolder;
+
+        var fileCount = 0;
+        var folderCount = 0;
+        CountResources(projectFolder, ref fileCount, ref folderCount);
+
+        _loadReporter.RecordResourceCounts(fileCount, folderCount);
+    }
+
+    private static void CountResources(IFolderResource folder, ref int fileCount, ref int folderCount)
+    {
+        foreach (var child in folder.Children)
+        {
+            if (child is IFolderResource childFolder)
+            {
+                folderCount++;
+                CountResources(childFolder, ref fileCount, ref folderCount);
+            }
+            else
+            {
+                fileCount++;
+            }
         }
     }
 

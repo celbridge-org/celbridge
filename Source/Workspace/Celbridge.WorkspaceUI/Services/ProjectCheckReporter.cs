@@ -28,9 +28,10 @@ public sealed class ProjectCheckReporter
 
     /// <summary>
     /// Logs one warning per non-empty finding category and, when there are findings,
-    /// sends a ProjectErrorMessage carrying the total finding count.
+    /// sends a ProjectErrorMessage carrying the total finding count and the report
+    /// holding the per-finding detail.
     /// </summary>
-    public void Report(ProjectCheckReport report)
+    public void Report(ProjectCheckReport report, ResourceKey? reportResource)
     {
         if (report.BrokenReferences.Count > 0)
         {
@@ -67,7 +68,11 @@ public sealed class ProjectCheckReporter
         {
             var message = new ProjectErrorMessage(
                 ProjectErrorType.ProjectCheckError,
-                totalFindings.ToString(CultureInfo.InvariantCulture));
+                string.Empty)
+            {
+                FindingCount = totalFindings,
+                ReportResource = reportResource
+            };
             _messengerService.Send(message);
         }
     }

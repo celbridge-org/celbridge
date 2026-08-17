@@ -47,6 +47,11 @@ public partial class NotificationBarViewModel : ObservableObject
     [ObservableProperty]
     private string _projectCheckBannerMessage = string.Empty;
 
+    /// <summary>
+    /// The report holding the detail behind the project check banner, or null when none was written.
+    /// </summary>
+    public ResourceKey? ProjectCheckReportResource { get; private set; }
+
     public bool IsAnyBannerVisible =>
         IsErrorBannerVisible ||
         IsMigrationBannerVisible ||
@@ -121,7 +126,8 @@ public partial class NotificationBarViewModel : ObservableObject
                 // return early so the error-banner side effects below do
                 // not fire.
                 ProjectCheckBannerTitle = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsTitle");
-                ProjectCheckBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsMessage", configFile);
+                ProjectCheckBannerMessage = _stringLocalizer.GetString("NotificationBar_ProjectCheckFindingsMessage", message.FindingCount);
+                ProjectCheckReportResource = message.ReportResource;
                 IsProjectCheckBannerVisible = true;
                 return;
 

@@ -1,20 +1,34 @@
-using System.Globalization;
-using System.Text;
 using Celbridge.Logging;
 using Celbridge.Packages;
+using Celbridge.Reports;
 using Celbridge.Resources;
 
 namespace Celbridge.Projects.Services;
 
 /// <summary>
-/// In-memory accumulator of project-load state. FlushAsync writes the report
-/// file from whatever has been recorded since BeginLoad.
+/// In-memory accumulator of project-load state, written out as a report document on flush.
 /// </summary>
 public sealed class ProjectLoadReporter : IProjectLoadReporter
 {
-    public const string ReportFileName = "project-load.md";
+    /// <summary>
+    /// Identifies every report this reporter writes.
+    /// </summary>
+    public const string ReportId = "project-load";
 
-    private readonly ILocalFileSystem _fileSystem;
+    /// <summary>
+    /// Sub-folder of the logs root that reports are written to.
+    /// </summary>
+    public const string ReportsFolderName = "reports";
+
+    // A project with pathological numbers of findings would otherwise produce a report too large to
+    // read or open.
+    private const int MaxItemsPerSection = 200;
+
+    // The logs: root name, which the resource layer owns. Repeated here because it sits above this
+    // project and cannot be referenced from it.
+    private const string LogsRootName = "logs";
+
+    private readonly IReportWriter _reportWriter;
     private readonly ILogger<ProjectLoadReporter> _logger;
 
     private string _projectFilePath = string.Empty;
@@ -28,12 +42,14 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     private PackageDiscoveryReport? _packageReport;
     private ProjectCheckReport? _checkReport;
     private DateTimeOffset? _checkCompletedAt;
+    private int? _fileResourceCount;
+    private int? _folderResourceCount;
 
     public ProjectLoadReporter(
-        ILocalFileSystem fileSystem,
+        IReportWriter reportWriter,
         ILogger<ProjectLoadReporter> logger)
     {
-        _fileSystem = fileSystem;
+        _reportWriter = reportWriter;
         _logger = logger;
     }
 
@@ -50,6 +66,8 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _packageReport = null;
         _checkReport = null;
         _checkCompletedAt = null;
+        _fileResourceCount = null;
+        _folderResourceCount = null;
     }
 
     public void RecordMigrationResult(MigrationResult result, bool userConfirmedUpgrade, bool userCancelledUpgrade)
@@ -71,13 +89,19 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _packageReport = report;
     }
 
+    public void RecordResourceCounts(int fileCount, int folderCount)
+    {
+        _fileResourceCount = fileCount;
+        _folderResourceCount = folderCount;
+    }
+
     public void RecordCheckReport(ProjectCheckReport report)
     {
         _checkReport = report;
         _checkCompletedAt = DateTimeOffset.UtcNow;
     }
 
-    public async Task<string?> FlushAsync()
+    public async Task<ResourceKey?> FlushAsync()
     {
         if (string.IsNullOrEmpty(_projectFilePath))
         {
@@ -86,25 +110,20 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         try
         {
-            var reportFilePath = ResolveReportFilePath(_projectFilePath);
-            var logsFolder = Path.GetDirectoryName(reportFilePath) ?? string.Empty;
+            var report = BuildReport();
+            var reportsFolderPath = ResolveReportsFolderPath(_projectFilePath);
 
-            var createResult = await _fileSystem.CreateFolderAsync(logsFolder);
-            if (createResult.IsFailure)
-            {
-                _logger.LogWarning(createResult, $"Failed to create logs folder for load report: '{logsFolder}'");
-                return null;
-            }
-
-            var content = FormatReport();
-            var writeResult = await _fileSystem.WriteAllTextAsync(reportFilePath, content);
+            var writeResult = await _reportWriter.WriteReportAsync(report, reportsFolderPath);
             if (writeResult.IsFailure)
             {
-                _logger.LogWarning(writeResult, $"Failed to write project load report: '{reportFilePath}'");
+                _logger.LogWarning(writeResult, $"Failed to write project load report for: '{_projectFilePath}'");
                 return null;
             }
 
-            return reportFilePath;
+            var reportFilePath = writeResult.Value;
+            var reportFileName = Path.GetFileName(reportFilePath);
+
+            return new ResourceKey($"{LogsRootName}:{ReportsFolderName}/{reportFileName}");
         }
         catch (Exception ex)
         {
@@ -113,242 +132,362 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         }
     }
 
-    private static string ResolveReportFilePath(string projectFilePath)
+    private static string ResolveReportsFolderPath(string projectFilePath)
     {
         var projectFolder = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
-        return Path.Combine(projectFolder, ProjectConstants.CelbridgeFolder, ProjectConstants.LogsFolder, ReportFileName);
+
+        return Path.Combine(
+            projectFolder,
+            ProjectConstants.CelbridgeFolder,
+            ProjectConstants.LogsFolder,
+            ReportsFolderName);
     }
 
-    private string FormatReport()
+    private ReportDocument BuildReport()
     {
-        var builder = new StringBuilder();
+        var omittedItemCount = 0;
 
-        builder.AppendLine("# Project load report");
-        builder.AppendLine();
-        builder.AppendLine($"- Project: `{_projectFilePath}`");
-        if (_loadStartedAt is DateTimeOffset startedAt)
+        var sections = new List<ReportSection>
         {
-            builder.AppendLine($"- Started: {FormatTimestamp(startedAt)}");
+            BuildSummarySection()
+        };
+
+        var loadIssuesSection = BuildLoadIssuesSection();
+        if (loadIssuesSection is not null)
+        {
+            sections.Add(loadIssuesSection);
         }
+
+        var packagesSection = BuildPackagesSection(ref omittedItemCount);
+        if (packagesSection is not null)
+        {
+            sections.Add(packagesSection);
+        }
+
+        var checkSection = BuildCheckSection(ref omittedItemCount);
+        if (checkSection is not null)
+        {
+            sections.Add(checkSection);
+        }
+
+        var severity = ResolveWorstSeverity(sections);
+        var summary = ComposeSummaryLine(severity, sections);
+
+        var truncation = omittedItemCount > 0
+            ? new ReportTruncation(omittedItemCount)
+            : null;
+
+        return new ReportDocument(
+            ReportId,
+            "Project Load",
+            DateTimeOffset.UtcNow,
+            severity,
+            summary,
+            sections)
+        {
+            Truncated = truncation
+        };
+    }
+
+    private ReportSection BuildSummarySection()
+    {
+        var items = new List<ReportItem>();
+
+        var projectName = Path.GetFileNameWithoutExtension(_projectFilePath);
+        items.Add(CreateFact("Project", projectName));
+
+        if (_fileResourceCount is int fileCount
+            && _folderResourceCount is int folderCount)
+        {
+            items.Add(CreateFact("Resources", $"{fileCount} files in {folderCount} folders"));
+        }
+
+        if (_packageReport is PackageDiscoveryReport packageReport)
+        {
+            var packageCounts = $"{packageReport.BundledPackageCount} bundled, {packageReport.ProjectPackageCount} project";
+            items.Add(CreateFact("Packages loaded", packageCounts));
+            items.Add(CreateFact("Editors resolved", packageReport.ResolvedEditorCount.ToString()));
+        }
+
+        if (_migrationResult is MigrationResult migrationResult)
+        {
+            if (!string.IsNullOrEmpty(migrationResult.OldVersion))
+            {
+                items.Add(CreateFact("Project version", migrationResult.OldVersion));
+            }
+            if (!string.IsNullOrEmpty(migrationResult.NewVersion))
+            {
+                items.Add(CreateFact("Application version", migrationResult.NewVersion));
+            }
+
+            items.Add(CreateFact("Migration status", migrationResult.Status.ToString()));
+        }
+
+        items.Add(CreateFact("Outcome", ResolveOutcomeText()));
+
         if (_loadCompletedAt is DateTimeOffset completedAt
-            && _loadStartedAt is DateTimeOffset started)
+            && _loadStartedAt is DateTimeOffset startedAt)
         {
-            var duration = (completedAt - started).TotalMilliseconds;
-            builder.AppendLine($"- Duration: {duration:F0} ms");
-            builder.AppendLine($"- Outcome: {(_loadSucceeded ? "success" : "failed")}");
-        }
-        else
-        {
-            builder.AppendLine("- Outcome: in progress");
-        }
-        builder.AppendLine();
-
-        AppendLoadSection(builder);
-
-        if (_packageReport is not null)
-        {
-            AppendPackagesSection(builder);
+            var durationMilliseconds = (completedAt - startedAt).TotalMilliseconds;
+            items.Add(CreateFact("Load duration", $"{durationMilliseconds:F0} ms"));
         }
 
-        if (_checkReport is not null)
+        if (_checkCompletedAt is DateTimeOffset checkedAt)
         {
-            AppendCheckSection(builder);
+            items.Add(CreateFact("Consistency check", checkedAt.UtcDateTime.ToString("u")));
         }
 
-        return builder.ToString();
+        return new ReportSection("Summary", ReportSeverity.Info, items);
     }
 
-    private void AppendLoadSection(StringBuilder builder)
+    private string ResolveOutcomeText()
     {
-        builder.AppendLine("## Load");
-        builder.AppendLine();
+        if (_loadCompletedAt is null)
+        {
+            return "In progress";
+        }
+
+        return _loadSucceeded ? "Loaded" : "Failed";
+    }
+
+    private ReportSection? BuildLoadIssuesSection()
+    {
+        var items = new List<ReportItem>();
 
         if (_migrationResult is null)
         {
-            builder.AppendLine("Migration step was not reached.");
-            builder.AppendLine();
-            return;
+            // Migration is recorded on every path that reaches loading, so its absence only says
+            // something when the load finished without succeeding.
+            if (_loadCompletedAt is null
+                || _loadSucceeded)
+            {
+                return null;
+            }
+
+            items.Add(new ReportItem(ReportSeverity.Error, "Migration step was not reached."));
+
+            return new ReportSection("Load", ReportSeverity.Error, items);
         }
 
-        builder.AppendLine($"- Migration status: `{_migrationResult.Status}`");
-        if (!string.IsNullOrEmpty(_migrationResult.OldVersion))
-        {
-            builder.AppendLine($"- Project version: `{_migrationResult.OldVersion}`");
-        }
-        if (!string.IsNullOrEmpty(_migrationResult.NewVersion))
-        {
-            builder.AppendLine($"- Application version: `{_migrationResult.NewVersion}`");
-        }
         if (_userCancelledUpgrade)
         {
-            builder.AppendLine("- User cancelled the upgrade dialog.");
+            items.Add(new ReportItem(ReportSeverity.Warning, "The upgrade was cancelled, so the project was not loaded."));
         }
-        else if (_userConfirmedUpgrade)
-        {
-            builder.AppendLine("- User confirmed the upgrade dialog.");
-        }
-        builder.AppendLine();
 
         if (_migrationResult.OperationResult.IsFailure)
         {
-            AppendErrorBlock(builder, "Migration errors", _migrationResult.OperationResult);
+            items.Add(CreateResultItem("Migration failed.", _migrationResult.OperationResult));
         }
 
         if (_loadResult is { IsFailure: true } loadResult)
         {
-            AppendErrorBlock(builder, "Load errors", loadResult);
+            items.Add(CreateResultItem("Project load failed.", loadResult));
         }
+
+        if (items.Count == 0)
+        {
+            return null;
+        }
+
+        return new ReportSection("Load", ResolveWorstItemSeverity(items), items);
     }
 
-    private void AppendPackagesSection(StringBuilder builder)
+    private ReportSection? BuildPackagesSection(ref int omittedItemCount)
     {
-        builder.AppendLine("## Packages");
-        builder.AppendLine();
-
-        var report = _packageReport!;
-        builder.AppendLine($"- Bundled packages loaded: {report.BundledPackageCount}");
-        builder.AppendLine($"- Project packages loaded: {report.ProjectPackageCount}");
-        builder.AppendLine($"- Editors loaded: {report.ResolvedEditorCount}");
-
-        if (report.Failures.Count == 0
-            && report.ResolvedEditorFailures.Count == 0
-            && report.ResolvedEditorWarnings.Count == 0)
+        if (_packageReport is null)
         {
-            builder.AppendLine("- No load failures.");
-            builder.AppendLine();
-            return;
+            return null;
         }
 
-        builder.AppendLine();
+        var report = _packageReport;
+        var items = new List<ReportItem>();
 
-        if (report.Failures.Count > 0)
+        foreach (var failure in report.Failures)
         {
-            builder.AppendLine($"### Load failures ({report.Failures.Count})");
-            builder.AppendLine();
-            foreach (var failure in report.Failures)
+            var location = string.IsNullOrEmpty(failure.PackageName)
+                ? failure.Folder
+                : $"{failure.PackageName} ({failure.Folder})";
+
+            items.Add(new ReportItem(ReportSeverity.Error, $"Package failed to load: {location}")
             {
-                var packageLabel = string.IsNullOrEmpty(failure.PackageName)
-                    ? $"`{failure.Folder}`"
-                    : $"`{failure.PackageName}` in `{failure.Folder}`";
-                builder.AppendLine($"- {packageLabel}: `{failure.Reason}`");
-                if (!string.IsNullOrEmpty(failure.Detail))
-                {
-                    builder.AppendLine($"  - {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
-                }
-            }
-            builder.AppendLine();
+                Value = failure.Reason.ToString(),
+                Detail = NormaliseDetail(failure.Detail)
+            });
         }
 
-        if (report.ResolvedEditorFailures.Count > 0)
+        foreach (var failure in report.ResolvedEditorFailures)
         {
-            builder.AppendLine($"### Skipped editors ({report.ResolvedEditorFailures.Count})");
-            builder.AppendLine();
-            foreach (var failure in report.ResolvedEditorFailures)
+            items.Add(new ReportItem(ReportSeverity.Error, $"Editor skipped: {failure.EditorId}")
             {
-                builder.AppendLine($"- `{failure.EditorId}`: {NormaliseNewlines(failure.Detail).Replace("\n", " ")}");
-            }
-            builder.AppendLine();
+                Detail = NormaliseDetail(failure.Detail)
+            });
         }
 
-        if (report.ResolvedEditorWarnings.Count > 0)
+        foreach (var warning in report.ResolvedEditorWarnings)
         {
-            builder.AppendLine($"### Degraded editors ({report.ResolvedEditorWarnings.Count})");
-            builder.AppendLine();
-            foreach (var warning in report.ResolvedEditorWarnings)
+            items.Add(new ReportItem(ReportSeverity.Warning, $"Editor degraded: {warning.EditorId}")
             {
-                builder.AppendLine($"- `{warning.EditorId}`: {NormaliseNewlines(warning.Detail).Replace("\n", " ")}");
-            }
-            builder.AppendLine();
+                Detail = NormaliseDetail(warning.Detail)
+            });
         }
+
+        if (items.Count == 0)
+        {
+            return null;
+        }
+
+        var cappedItems = CapItems(items, ref omittedItemCount);
+
+        return new ReportSection("Packages", ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
-    private void AppendCheckSection(StringBuilder builder)
+    private ReportSection? BuildCheckSection(ref int omittedItemCount)
     {
-        builder.AppendLine("## Consistency check");
-        builder.AppendLine();
-
-        if (_checkCompletedAt is DateTimeOffset checkedAt)
+        if (_checkReport is null)
         {
-            builder.AppendLine($"- Last run: {FormatTimestamp(checkedAt)}");
+            return null;
         }
 
-        var report = _checkReport!;
-        var totalFindings = report.BrokenReferences.Count
-            + report.OrphanCelFiles.Count
-            + report.BrokenCelFiles.Count;
-        if (totalFindings == 0)
+        var report = _checkReport;
+        var items = new List<ReportItem>();
+
+        foreach (var brokenReference in report.BrokenReferences)
         {
-            builder.AppendLine("- No findings.");
-            builder.AppendLine();
-            return;
+            items.Add(new ReportItem(ReportSeverity.Warning, "References a missing resource.")
+            {
+                Resource = brokenReference.Source,
+                Target = brokenReference.MissingTarget,
+                Detail = "The reference was left in place; the project loaded without it.",
+                Actions = CreateOpenResourceActions(brokenReference.Source)
+            });
         }
 
-        if (report.BrokenReferences.Count > 0)
+        foreach (var orphanFile in report.OrphanCelFiles)
         {
-            builder.AppendLine();
-            builder.AppendLine($"### Broken references ({report.BrokenReferences.Count})");
-            builder.AppendLine();
-            foreach (var entry in report.BrokenReferences)
+            items.Add(new ReportItem(ReportSeverity.Warning, "Orphan .cel file: no resource it describes.")
             {
-                builder.AppendLine($"- `{entry.Source.FullKey}` references missing `{entry.MissingTarget.FullKey}`");
-            }
+                Resource = orphanFile,
+                Actions = CreateOpenResourceActions(orphanFile)
+            });
         }
-        if (report.OrphanCelFiles.Count > 0)
+
+        foreach (var brokenFile in report.BrokenCelFiles)
         {
-            builder.AppendLine();
-            builder.AppendLine($"### Orphan .cel files ({report.OrphanCelFiles.Count})");
-            builder.AppendLine();
-            foreach (var entry in report.OrphanCelFiles)
+            items.Add(new ReportItem(ReportSeverity.Warning, "Broken .cel file: could not be parsed.")
             {
-                builder.AppendLine($"- `{entry.FullKey}`");
-            }
+                Resource = brokenFile,
+                Actions = CreateOpenResourceActions(brokenFile)
+            });
         }
-        if (report.BrokenCelFiles.Count > 0)
+
+        if (items.Count == 0)
         {
-            builder.AppendLine();
-            builder.AppendLine($"### Broken .cel files ({report.BrokenCelFiles.Count})");
-            builder.AppendLine();
-            foreach (var entry in report.BrokenCelFiles)
-            {
-                builder.AppendLine($"- `{entry.FullKey}`");
-            }
+            return null;
         }
-        builder.AppendLine();
+
+        var cappedItems = CapItems(items, ref omittedItemCount);
+
+        return new ReportSection("Consistency check", ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
-    private static void AppendErrorBlock(StringBuilder builder, string heading, Result result)
+    private static IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
     {
-        builder.AppendLine($"### {heading}");
-        builder.AppendLine();
-
-        if (!string.IsNullOrEmpty(result.MessageChain))
+        var action = new ReportAction(ReportActionKind.OpenResource, $"Open {resource.ResourceName}")
         {
-            builder.AppendLine("```");
-            builder.AppendLine(NormaliseNewlines(result.MessageChain));
-            builder.AppendLine("```");
-        }
+            Resource = resource
+        };
 
-        if (!string.IsNullOrEmpty(result.DiagnosticReport))
+        return new List<ReportAction>
         {
-            builder.AppendLine();
-            builder.AppendLine($"<details><summary>Diagnostic chain</summary>");
-            builder.AppendLine();
-            builder.AppendLine("```");
-            builder.AppendLine(NormaliseNewlines(result.DiagnosticReport));
-            builder.AppendLine("```");
-            builder.AppendLine();
-            builder.AppendLine("</details>");
-        }
-        builder.AppendLine();
+            action
+        };
     }
 
-    private static string FormatTimestamp(DateTimeOffset timestamp)
+    private static ReportItem CreateFact(string label, string value)
     {
-        return timestamp.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        return new ReportItem(ReportSeverity.Info, label)
+        {
+            Value = value
+        };
     }
 
-    private static string NormaliseNewlines(string text)
+    private static ReportItem CreateResultItem(string message, Result result)
     {
-        return text.Replace("\r\n", "\n").Replace("\r", "\n").TrimEnd();
+        var detail = result.MessageChain;
+        if (string.IsNullOrEmpty(detail))
+        {
+            detail = result.DiagnosticReport;
+        }
+
+        return new ReportItem(ReportSeverity.Error, message)
+        {
+            Detail = NormaliseDetail(detail)
+        };
+    }
+
+    private static IReadOnlyList<ReportItem> CapItems(List<ReportItem> items, ref int omittedItemCount)
+    {
+        if (items.Count <= MaxItemsPerSection)
+        {
+            return items;
+        }
+
+        omittedItemCount += items.Count - MaxItemsPerSection;
+
+        return items.Take(MaxItemsPerSection).ToList();
+    }
+
+    private static string ComposeSummaryLine(ReportSeverity severity, IReadOnlyList<ReportSection> sections)
+    {
+        if (severity == ReportSeverity.Info)
+        {
+            return "The project loaded with no issues.";
+        }
+
+        var issueCount = sections
+            .SelectMany(section => section.Items)
+            .Count(item => item.Severity != ReportSeverity.Info);
+
+        var issueLabel = issueCount == 1 ? "issue" : "issues";
+
+        return $"The project loaded with {issueCount} {issueLabel}.";
+    }
+
+    private static ReportSeverity ResolveWorstSeverity(IReadOnlyList<ReportSection> sections)
+    {
+        var worst = ReportSeverity.Info;
+        foreach (var section in sections)
+        {
+            if (section.Severity > worst)
+            {
+                worst = section.Severity;
+            }
+        }
+
+        return worst;
+    }
+
+    private static ReportSeverity ResolveWorstItemSeverity(IReadOnlyList<ReportItem> items)
+    {
+        var worst = ReportSeverity.Info;
+        foreach (var item in items)
+        {
+            if (item.Severity > worst)
+            {
+                worst = item.Severity;
+            }
+        }
+
+        return worst;
+    }
+
+    private static string? NormaliseDetail(string? detail)
+    {
+        if (string.IsNullOrEmpty(detail))
+        {
+            return null;
+        }
+
+        return detail.Replace("\r\n", "\n").Replace("\r", "\n").TrimEnd();
     }
 }
