@@ -64,7 +64,7 @@ python run_tests.py
 
 Colours and the shared UI dimensions are held once in `Source/Core/Celbridge.DesignTokens/DesignTokens.json` and generated at build time into two files, so the native and web sides cannot disagree about a value:
 
-- `Celbridge.UserInterface/Resources/ColorTokens.xaml` — the theme dictionaries and the brushes declared straight over them
+- `Celbridge.UserInterface/Resources/ColorTokens.xaml` — the theme dictionaries, each holding its own colours and the brushes over them. A brush is emitted once per theme rather than once over the palette: a brush declared over the dictionaries is a single shared object whose colour resolves against the application theme, which follows the OS, so it ignores the `ElementTheme` the app applies to the window root and paints the wrong palette whenever the two disagree
 - `Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css` — the `--cel-*` custom properties served to WebView content
 
 Both are gitignored. Never edit them: change the token source and rebuild. `Celbridge.UserInterface` and `Celbridge.WebHost` each reference `Celbridge.DesignTokens` so the generator runs first, and each declares its generated file as an explicit build item so a clean checkout resolves.
