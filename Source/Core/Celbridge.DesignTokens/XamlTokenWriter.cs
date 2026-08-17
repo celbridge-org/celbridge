@@ -3,14 +3,20 @@ using System.Text;
 namespace Celbridge.DesignTokens;
 
 /// <summary>
-/// Emits the theme dictionaries and the brushes declared over them as a WinUI resource dictionary.
-/// The WinUI system brush overrides are not emitted: they decide which native control keys redirect
-/// onto the palette, so they stay hand written in the dictionary that merges this one.
+/// Emits the theme dictionaries, each holding its own colors and the brushes over them, as a WinUI resource
+/// dictionary. The WinUI system brush overrides are not emitted: they decide which native control keys
+/// redirect onto the palette, so they stay hand written in the dictionary that merges this one.
 /// </summary>
 public static class XamlTokenWriter
 {
     private const string ThemeDictionaryIndent = "      ";
-    private const string BrushIndent = "  ";
+
+    // Emitted into the generated dictionary so a reader there is told why each brush is declared per theme
+    // rather than once over the palette.
+    private static readonly IReadOnlyList<string> BrushPlacementComment = new List<string>
+    {
+        "Each brush is declared in both theme dictionaries rather than once over the colors. A brush declared over them is one shared object whose color resolves against the application theme, which follows the operating system, so it would ignore an element asking for it under the opposite ElementTheme."
+    };
 
     public static string Write(DesignTokenSource source)
     {
@@ -31,8 +37,6 @@ public static class XamlTokenWriter
 
         builder.Append('\n');
         builder.Append("  </ResourceDictionary.ThemeDictionaries>\n");
-
-        AppendBrushes(builder, source);
 
         builder.Append('\n');
         builder.Append("</ResourceDictionary>\n");
@@ -74,6 +78,8 @@ public static class XamlTokenWriter
             }
         }
 
+        AppendBrushes(builder, source, theme);
+
         builder.Append("    </ResourceDictionary>\n");
     }
 
@@ -96,13 +102,34 @@ public static class XamlTokenWriter
         builder.Append('\n');
     }
 
-    private static void AppendBrushes(StringBuilder builder, DesignTokenSource source)
+    // A brush belongs to a theme, not to the palette as a whole. Declared once over the colors it would be a
+    // single shared object whose color resolves against the application theme, which follows the operating
+    // system, so an element asking for it under the opposite ElementTheme would still be handed the other
+    // theme's color. One brush per theme dictionary is what makes a brush key answer to the element's theme.
+    private static void AppendBrushes(StringBuilder builder, DesignTokenSource source, DesignTokenTheme theme)
     {
-        foreach (var token in source.Tokens.Where(token => token.XamlBrushKey is not null))
+        var brushTokens = source.Tokens
+            .Where(token => token.XamlBrushKey is not null)
+            .ToList();
+
+        if (brushTokens.Count == 0)
         {
-            builder.Append('\n');
-            builder.Append($"{BrushIndent}<SolidColorBrush x:Key=\"{token.XamlBrushKey}\"\n");
-            builder.Append($"{BrushIndent}                 Color=\"{{ThemeResource {token.XamlColorKey}}}\" />\n");
+            return;
+        }
+
+        builder.Append('\n');
+
+        if (theme == DesignTokenTheme.Light)
+        {
+            AppendComment(builder, BrushPlacementComment, ThemeDictionaryIndent);
+        }
+
+        foreach (var token in brushTokens)
+        {
+            // The color sits in this same dictionary and above this line, so the brush takes its own theme's
+            // value rather than asking the theme system a second time.
+            builder.Append($"{ThemeDictionaryIndent}<SolidColorBrush x:Key=\"{token.XamlBrushKey}\"\n");
+            builder.Append($"{ThemeDictionaryIndent}                 Color=\"{{StaticResource {token.XamlColorKey}}}\" />\n");
         }
     }
 

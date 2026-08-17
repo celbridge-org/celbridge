@@ -1,10 +1,12 @@
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// The toolbar hosted in a collapsible document area's tab strip footer: a button that closes the area.
-/// Splitting is driven from the document tab context menu, so Main carries no toolbar.
+/// The toolbar hosted in a collapsible document area's tab strip: a button that collapses the area. Which end
+/// of the strip it sits in is the area's to decide. Splitting is driven from the document tab context menu, so
+/// Main carries no toolbar.
 /// </summary>
 public sealed partial class DocumentToolbar : UserControl
 {
@@ -15,7 +17,7 @@ public sealed partial class DocumentToolbar : UserControl
     /// <summary>
     /// Event raised when the user asks to collapse this area.
     /// </summary>
-    public event Action<DocumentArea>? CloseAreaRequested;
+    public event Action<DocumentArea>? CollapseAreaRequested;
 
     public DocumentToolbar(DocumentArea area)
     {
@@ -24,14 +26,21 @@ public sealed partial class DocumentToolbar : UserControl
         _area = area;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
+        // Spotlight landmarks address this button by id, so the id stays as it is.
         var areaId = area.ToString().ToLowerInvariant();
-        AutomationProperties.SetAutomationId(CloseAreaButton, $"{areaId}-area-close-button");
+        AutomationProperties.SetAutomationId(CollapseAreaButton, $"{areaId}-area-close-button");
 
-        ToolTipService.SetToolTip(CloseAreaButton, _stringLocalizer.GetString("DocumentToolbar_CloseAreaTooltip"));
+        ToolTipService.SetToolTip(CollapseAreaButton, _stringLocalizer.GetString("DocumentToolbar_CollapseAreaTooltip"));
+
+        CollapseAreaIcon.Symbol = area.GetSurface().GetCollapseSymbol();
+
+        // The trailing slot is a stretched column, so the toolbar has to hold itself against the end of the
+        // strip it belongs to rather than floating in the middle of that column.
+        HorizontalAlignment = area.PlacesToolbarAtStripStart() ? HorizontalAlignment.Left : HorizontalAlignment.Right;
     }
 
-    private void CloseAreaButton_Click(object sender, RoutedEventArgs e)
+    private void CollapseAreaButton_Click(object sender, RoutedEventArgs e)
     {
-        CloseAreaRequested?.Invoke(_area);
+        CollapseAreaRequested?.Invoke(_area);
     }
 }

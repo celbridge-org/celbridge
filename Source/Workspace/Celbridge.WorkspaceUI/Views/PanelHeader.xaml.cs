@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WorkspaceUI.Views;
@@ -12,7 +13,7 @@ public sealed partial class PanelHeader : UserControl
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
 
-    private string CloseButtonTooltip => _stringLocalizer.GetString("PanelHeader_CloseTooltip");
+    private string CollapseButtonTooltip => _stringLocalizer.GetString("PanelHeader_CollapseTooltip");
 
     /// <summary>
     /// The title text displayed in the header.
@@ -47,26 +48,26 @@ public sealed partial class PanelHeader : UserControl
             new PropertyMetadata(null));
 
     /// <summary>
-    /// Whether the close button should be shown. Defaults to true.
+    /// Whether the collapse button should be shown. Defaults to true.
     /// </summary>
-    public bool ShowCloseButton
+    public bool ShowCollapseButton
     {
-        get => (bool)GetValue(ShowCloseButtonProperty);
-        set => SetValue(ShowCloseButtonProperty, value);
+        get => (bool)GetValue(ShowCollapseButtonProperty);
+        set => SetValue(ShowCollapseButtonProperty, value);
     }
 
-    public static readonly DependencyProperty ShowCloseButtonProperty =
+    public static readonly DependencyProperty ShowCollapseButtonProperty =
         DependencyProperty.Register(
-            nameof(ShowCloseButton),
+            nameof(ShowCollapseButton),
             typeof(bool),
             typeof(PanelHeader),
-            new PropertyMetadata(true, OnShowCloseButtonChanged));
+            new PropertyMetadata(true, OnShowCollapseButtonChanged));
 
-    private static void OnShowCloseButtonChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnShowCollapseButtonChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is PanelHeader header)
         {
-            header.CloseButton.Visibility = (bool)e.NewValue ? Visibility.Visible : Visibility.Collapsed;
+            header.CollapseButton.Visibility = (bool)e.NewValue ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -118,9 +119,13 @@ public sealed partial class PanelHeader : UserControl
         // indicator's panel from the nearest such ancestor rather than duplicating the value on the header.
         // The walk runs on Loaded because the header's ancestors are only reachable once the tree is live.
         FocusIndicatorControl.Panel = FocusTracking.FindPanel(this);
+
+        // Loaded also covers a panel that is re-docked into another surface, which changes the direction it
+        // collapses in.
+        CollapseButtonIcon.Symbol = WorkspaceLayout.FindSurface(this).GetCollapseSymbol();
     }
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    private void CollapseButton_Click(object sender, RoutedEventArgs e)
     {
         // The surface is derived from the container the header currently sits in.
         var surface = WorkspaceLayout.FindSurface(this);

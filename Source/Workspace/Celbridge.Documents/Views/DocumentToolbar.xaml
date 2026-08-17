@@ -3,23 +3,25 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    HorizontalAlignment="Right">
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
+  <!-- The insets are symmetric because either one can be the gap that keeps the collapse chevron clear of the
+       tab strip's own scroll chevrons, depending on which end of the strip the area puts the toolbar in. The
+       other one insets it from the panel edge by the same amount the panel headers use. -->
   <StackPanel x:Name="ToolbarPanel"
               Orientation="Horizontal"
               Spacing="0"
               VerticalAlignment="Center"
-              Margin="0, 0, 4, 0">
-    <Button x:Name="CloseAreaButton"
+              Margin="8, 0, 8, 0">
+    <!-- The chevron points towards the edge the area collapses into, which depends on the area, so it is
+         set in code-behind rather than declared here. -->
+    <Button x:Name="CollapseAreaButton"
             Style="{StaticResource TransparentIconButtonStyle}"
-            Width="24"
-            Height="24"
             ToolTipService.Placement="Bottom"
-            Padding="4"
             VerticalAlignment="Center"
-            Click="CloseAreaButton_Click">
-      <FontIcon Glyph="&#xE8BB;"
-                FontSize="{StaticResource IconSizeMedium}"/>
+            Click="CollapseAreaButton_Click">
+      <controls:Icon x:Name="CollapseAreaIcon"
+                     FontSize="{StaticResource IconSizeMedium}"/>
     </Button>
   </StackPanel>
 </UserControl>

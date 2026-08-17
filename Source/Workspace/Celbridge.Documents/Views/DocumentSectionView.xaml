@@ -3,7 +3,8 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+  xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+  xmlns:local="using:Celbridge.Documents.Views">
 
   <!-- A section is carved out of the chrome field, so it takes the content background across its whole
        area, tab strip included, and draws the edges that face a channel. The thicknesses and corners depend
@@ -42,10 +43,24 @@
              TabDroppedOutside="TabView_TabDroppedOutside"
              DragOver="TabView_DragOver"
              Drop="TabView_Drop">
+      <!-- An area's toolbar goes in whichever of these two slots sits nearest that area's inner edge, so the
+           collapse chevron reads as pushing the area out towards the application edge. -->
+      <TabView.TabStripHeader>
+        <ContentPresenter x:Name="HeaderPresenter"
+                          MinWidth="0"/>
+      </TabView.TabStripHeader>
       <TabView.TabStripFooter>
         <ContentPresenter x:Name="FooterPresenter"
                           MinWidth="0"/>
       </TabView.TabStripFooter>
     </TabView>
+
+    <!-- Overlays the bottom edge of the tab strip rather than taking a row of its own, so an overflowing strip
+         gains a scroll affordance without changing the height the section composes its minimum from. Placed
+         over the tabs from code-behind, which is where the strip's geometry is known. -->
+    <local:TabStripScrollIndicator x:Name="ScrollIndicator"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Top"
+                                   Visibility="Collapsed"/>
   </Grid>
 </UserControl>

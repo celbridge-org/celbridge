@@ -37,6 +37,7 @@ public enum IconSymbol
     People,
     Upload,
     ChevronDown,
+    ChevronLeft,
     ChevronRight,
     ChevronUp,
     MatchCase,

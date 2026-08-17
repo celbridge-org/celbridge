@@ -234,8 +234,8 @@ public sealed class DocumentAreaLayout
     }
 
     /// <summary>
-    /// Sets the toolbar hosted in an area's tab strip footer. The toolbar is re-placed on the section
-    /// nearest the area's top-right corner whenever that area is rebuilt.
+    /// Sets the toolbar hosted in an area's tab strip. The toolbar is re-placed on the section nearest the
+    /// area's inner corner whenever that area is rebuilt.
     /// </summary>
     public void SetAreaToolbar(DocumentArea area, UIElement toolbar)
     {
@@ -493,8 +493,9 @@ public sealed class DocumentAreaLayout
         return splitter;
     }
 
-    // Places an area's toolbar on the section nearest that area's top-right corner: the right-hand
-    // section of a horizontally split area, and the top section of the Side area.
+    // Places an area's toolbar on the section nearest that area's inner corner, in the end of that section's
+    // tab strip nearest the same corner: the top-left of the Side area, and the top-right of the Bottom area,
+    // whose right-hand section takes it while it is split.
     private void PlaceAreaToolbar(DocumentArea area)
     {
         if (!_areaToolbars.TryGetValue(area, out var toolbar))
@@ -507,8 +508,24 @@ public sealed class DocumentAreaLayout
 
         bool toolbarOnSecondary = area.SplitsHorizontally() && _layoutState.IsAreaSplit(area);
 
-        primarySectionView.SetTabStripFooter(toolbarOnSecondary ? null : toolbar);
-        secondarySectionView.SetTabStripFooter(toolbarOnSecondary ? toolbar : null);
+        var hostSectionView = toolbarOnSecondary ? secondarySectionView : primarySectionView;
+        var clearedSectionView = toolbarOnSecondary ? primarySectionView : secondarySectionView;
+
+        // Both slots are cleared on both sections: the area a toolbar sits in can change which end it takes,
+        // and a section can lose the toolbar to its sibling.
+        clearedSectionView.SetTabStripHeader(null);
+        clearedSectionView.SetTabStripFooter(null);
+
+        if (area.PlacesToolbarAtStripStart())
+        {
+            hostSectionView.SetTabStripFooter(null);
+            hostSectionView.SetTabStripHeader(toolbar);
+
+            return;
+        }
+
+        hostSectionView.SetTabStripHeader(null);
+        hostSectionView.SetTabStripFooter(toolbar);
     }
 
     // Pushes the area state the tab context menu needs down onto its tabs: whether the area is split, and
