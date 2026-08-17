@@ -119,14 +119,13 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             // loses that granularity.
             foreach (var key in keysToCheck)
             {
-                var perKeyReferencers = new List<ResourceKey>();
-                foreach (var referencer in referenceIndex.GetReferencers(key))
-                {
-                    if (!IsInsideBatch(referencer))
-                    {
-                        perKeyReferencers.Add(referencer);
-                    }
-                }
+                // The index holds one entry per reference, so a file naming the key more than once
+                // appears more than once. What matters here is which files reference it.
+                var perKeyReferencers = referenceIndex.GetReferencers(key)
+                    .Select(referencer => referencer.Source)
+                    .Distinct()
+                    .Where(referencer => !IsInsideBatch(referencer))
+                    .ToList();
                 if (perKeyReferencers.Count > 0)
                 {
                     externalReferencers[key] = perKeyReferencers;

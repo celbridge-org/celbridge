@@ -30,6 +30,28 @@ internal sealed class ReportResourceKeyConverter : JsonConverter<ResourceKey>
     }
 }
 
+/// <summary>
+/// Writes a ReportCode as its string form so a reader that does not know the code still renders it.
+/// </summary>
+internal sealed class ReportCodeConverter : JsonConverter<ReportCode>
+{
+    public override void Write(Utf8JsonWriter writer, ReportCode value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.ToString());
+    }
+
+    public override ReportCode Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var value = reader.GetString() ?? string.Empty;
+        if (!ReportCode.TryParse(value, out var code))
+        {
+            throw new JsonException($"Invalid report code: '{value}'");
+        }
+
+        return code;
+    }
+}
+
 public sealed class ReportWriter : IReportWriter
 {
     /// <summary>
@@ -133,6 +155,7 @@ public sealed class ReportWriter : IReportWriter
 
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
         options.Converters.Add(new ReportResourceKeyConverter());
+        options.Converters.Add(new ReportCodeConverter());
 
         return options;
     }

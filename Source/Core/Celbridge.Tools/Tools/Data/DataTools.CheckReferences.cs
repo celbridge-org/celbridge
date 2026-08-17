@@ -23,6 +23,8 @@ public partial class DataTools
             {
                 source = entry.Source.ToString(),
                 missingTarget = entry.MissingTarget.ToString(),
+                line = entry.Site.Line,
+                column = entry.Site.Column,
             })
             .ToArray();
 

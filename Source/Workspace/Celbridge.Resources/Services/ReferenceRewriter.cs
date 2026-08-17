@@ -50,7 +50,7 @@ internal sealed class ReferenceRewriter
         var referencerSet = new HashSet<ResourceKey>();
         foreach (var referencer in referenceIndex.GetReferencers(source))
         {
-            referencerSet.Add(referencer);
+            referencerSet.Add(referencer.Source);
         }
 
         if (sourceIsFolder)
@@ -63,7 +63,7 @@ internal sealed class ReferenceRewriter
                 {
                     foreach (var referencer in referenceIndex.GetReferencers(target))
                     {
-                        referencerSet.Add(referencer);
+                        referencerSet.Add(referencer.Source);
                     }
                 }
             }

@@ -226,7 +226,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             items.Add(CreateFact("Load duration", $"{durationMilliseconds:F0} ms"));
         }
 
-        return new ReportSection("Summary", ReportSeverity.Info, items);
+        return new ReportSection("Summary", ReportSectionKind.Facts, ReportSeverity.Info, items);
     }
 
     private string ResolveOutcomeText()
@@ -253,24 +253,24 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
                 return null;
             }
 
-            items.Add(new ReportItem(ReportSeverity.Error, "Migration step was not reached."));
+            items.Add(ReportFinding.Create(ReportFindingCatalog.Project.MigrationNotReached));
 
-            return new ReportSection("Load", ReportSeverity.Error, items);
+            return new ReportSection("Load", ReportSectionKind.Findings, ReportSeverity.Error, items);
         }
 
         if (_userCancelledUpgrade)
         {
-            items.Add(new ReportItem(ReportSeverity.Warning, "The upgrade was cancelled, so the project was not loaded."));
+            items.Add(ReportFinding.Create(ReportFindingCatalog.Project.UpgradeCancelled));
         }
 
         if (_migrationResult.OperationResult.IsFailure)
         {
-            items.Add(CreateResultItem("Migration failed.", _migrationResult.OperationResult));
+            items.Add(CreateResultItem(ReportFindingCatalog.Project.MigrationFailed, _migrationResult.OperationResult));
         }
 
         if (_loadResult is { IsFailure: true } loadResult)
         {
-            items.Add(CreateResultItem("Project load failed.", loadResult));
+            items.Add(CreateResultItem(ReportFindingCatalog.Project.LoadFailed, loadResult));
         }
 
         if (items.Count == 0)
@@ -278,7 +278,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return null;
         }
 
-        return new ReportSection("Load", ResolveWorstItemSeverity(items), items);
+        return new ReportSection("Load", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
     private ReportSection? BuildConfigurationSection(ref int omittedItemCount)
@@ -293,15 +293,17 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         var items = new List<ReportItem>();
         foreach (var entryError in _configEntryErrors)
         {
-            items.Add(new ReportItem(ReportSeverity.Warning, $"Config entry skipped: {entryError.EntryName}")
+            var item = ReportFinding.Create(ReportFindingCatalog.Project.ConfigEntrySkipped, entryError.EntryName) with
             {
                 Detail = NormaliseDetail(entryError.Message)
-            });
+            };
+
+            items.Add(item);
         }
 
         var cappedItems = CapItems(items, ref omittedItemCount);
 
-        return new ReportSection($"Configuration ({projectFileName})", ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection($"Configuration ({projectFileName})", ReportSectionKind.Findings, ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
     private ReportSection? BuildPackagesSection(ref int omittedItemCount)
@@ -320,27 +322,33 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
                 ? failure.Folder
                 : $"{failure.PackageName} ({failure.Folder})";
 
-            items.Add(new ReportItem(ReportSeverity.Error, $"Package failed to load: {location}")
+            var item = ReportFinding.Create(ReportFindingCatalog.Package.PackageLoadFailed, location) with
             {
                 Value = failure.Reason.ToString(),
                 Detail = NormaliseDetail(failure.Detail)
-            });
+            };
+
+            items.Add(item);
         }
 
         foreach (var failure in report.ResolvedEditorFailures)
         {
-            items.Add(new ReportItem(ReportSeverity.Error, $"Editor skipped: {failure.EditorId}")
+            var item = ReportFinding.Create(ReportFindingCatalog.Package.EditorSkipped, failure.EditorId) with
             {
                 Detail = NormaliseDetail(failure.Detail)
-            });
+            };
+
+            items.Add(item);
         }
 
         foreach (var warning in report.ResolvedEditorWarnings)
         {
-            items.Add(new ReportItem(ReportSeverity.Warning, $"Editor degraded: {warning.EditorId}")
+            var item = ReportFinding.Create(ReportFindingCatalog.Package.EditorDegraded, warning.EditorId) with
             {
                 Detail = NormaliseDetail(warning.Detail)
-            });
+            };
+
+            items.Add(item);
         }
 
         if (items.Count == 0)
@@ -350,7 +358,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         var cappedItems = CapItems(items, ref omittedItemCount);
 
-        return new ReportSection("Packages", ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection("Packages", ReportSectionKind.Findings, ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
     private ReportSection? BuildSidecarSection(ref int omittedItemCount)
@@ -369,11 +377,13 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         foreach (var orphanFile in orphanFiles)
         {
-            items.Add(new ReportItem(ReportSeverity.Warning, "Orphan .cel file: no resource it describes.")
+            var item = ReportFinding.Create(ReportFindingCatalog.Resource.OrphanSidecar) with
             {
                 Resource = orphanFile,
                 Actions = CreateOpenResourceActions(orphanFile)
-            });
+            };
+
+            items.Add(item);
         }
 
         var brokenFiles = report.Broken
@@ -382,11 +392,13 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         foreach (var brokenFile in brokenFiles)
         {
-            items.Add(new ReportItem(ReportSeverity.Warning, "Broken .cel file: could not be parsed.")
+            var item = ReportFinding.Create(ReportFindingCatalog.Resource.BrokenSidecar) with
             {
                 Resource = brokenFile,
                 Actions = CreateOpenResourceActions(brokenFile)
-            });
+            };
+
+            items.Add(item);
         }
 
         if (items.Count == 0)
@@ -396,7 +408,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         var cappedItems = CapItems(items, ref omittedItemCount);
 
-        return new ReportSection("Sidecar files", ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection("Sidecar files", ReportSectionKind.Findings, ResolveWorstItemSeverity(cappedItems), cappedItems);
     }
 
     private static IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
@@ -420,7 +432,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         };
     }
 
-    private static ReportItem CreateResultItem(string message, Result result)
+    private static ReportItem CreateResultItem(ReportFindingDescriptor descriptor, Result result)
     {
         var detail = result.MessageChain;
         if (string.IsNullOrEmpty(detail))
@@ -428,7 +440,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             detail = result.DiagnosticReport;
         }
 
-        return new ReportItem(ReportSeverity.Error, message)
+        return ReportFinding.Create(descriptor) with
         {
             Detail = NormaliseDetail(detail)
         };

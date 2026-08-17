@@ -25,6 +25,11 @@ public enum ReportActionKind
 }
 
 /// <summary>
+/// A point in a text resource, in one-based line and column numbers.
+/// </summary>
+public record ReportSourceLocation(int Line, int Column);
+
+/// <summary>
 /// A single thing the reader can do about an item, offered as a link or button beside it.
 /// </summary>
 public record ReportAction(
@@ -35,6 +40,11 @@ public record ReportAction(
     /// The resource an OpenResource action opens.
     /// </summary>
     public ResourceKey? Resource { get; init; }
+
+    /// <summary>
+    /// Where in the resource an OpenResource action lands, or null to open it at the top.
+    /// </summary>
+    public ReportSourceLocation? Location { get; init; }
 }
 
 /// <summary>
@@ -45,6 +55,12 @@ public record ReportItem(
     ReportSeverity Severity,
     string Message)
 {
+    /// <summary>
+    /// The finding descriptor this item is an occurrence of, or null for a fact and for a finding a
+    /// producer chose not to give a code.
+    /// </summary>
+    public ReportCode? Code { get; init; }
+
     /// <summary>
     /// The reading paired with Message as a label, which renders the row as a labelled value
     /// rather than prose. Used by summary sections.
@@ -71,10 +87,21 @@ public record ReportItem(
 }
 
 /// <summary>
+/// What a section's items are. Facts describe the operation and are always present; findings are
+/// things that need attention, are absent when there are none, and carry codes.
+/// </summary>
+public enum ReportSectionKind
+{
+    Facts,
+    Findings
+}
+
+/// <summary>
 /// A titled group of items within a report, carrying the most serious severity among them.
 /// </summary>
 public record ReportSection(
     string Title,
+    ReportSectionKind Kind,
     ReportSeverity Severity,
     IReadOnlyList<ReportItem> Items);
 

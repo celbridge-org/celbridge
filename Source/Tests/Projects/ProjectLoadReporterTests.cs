@@ -140,6 +140,10 @@ public class ProjectLoadReporterTests
         var loadItems = GetSectionItems(report, "Load");
         loadItems.Should().HaveCount(2);
 
+        GetSectionCodes(report, "Load").Should().Equal(
+            ReportFindingCatalog.Project.MigrationFailed.Code,
+            ReportFindingCatalog.Project.LoadFailed.Code);
+
         var detail = string.Join("\n", loadItems.Select(item => item.GetProperty("detail").GetString()));
         detail.Should().Contain("Invalid \\r not followed by \\n");
         detail.Should().Contain("Failed to load project");
@@ -157,10 +161,8 @@ public class ProjectLoadReporterTests
 
         var report = await FlushAndReadAsync();
 
-        var messages = GetSectionItems(report, "Load")
-            .Select(item => item.GetProperty("message").GetString())
-            .ToList();
-        messages.Should().Contain(message => message!.Contains("upgrade was cancelled"));
+        GetSectionCodes(report, "Load")
+            .Should().Contain(ReportFindingCatalog.Project.UpgradeCancelled.Code);
     }
 
     [Test]
@@ -188,6 +190,10 @@ public class ProjectLoadReporterTests
 
         var items = GetSectionItems(report, "Sidecar files");
         items.Should().HaveCount(2);
+
+        GetSectionCodes(report, "Sidecar files").Should().Equal(
+            ReportFindingCatalog.Resource.OrphanSidecar.Code,
+            ReportFindingCatalog.Resource.BrokenSidecar.Code);
 
         var orphan = items[0];
         orphan.GetProperty("resource").GetString().Should().Be("project:foo.png.cel");
@@ -239,6 +245,7 @@ public class ProjectLoadReporterTests
 
         var items = GetSectionItems(report, "Configuration (test.celbridge)");
         items.Should().ContainSingle();
+        items[0].GetProperty("code").GetString().Should().Be(ReportFindingCatalog.Project.ConfigEntrySkipped.Code);
         items[0].GetProperty("message").GetString().Should().Contain("contribution");
         items[0].GetProperty("detail").GetString().Should().Contain("acme-notes");
     }
@@ -281,6 +288,7 @@ public class ProjectLoadReporterTests
 
         var items = GetSectionItems(report, "Packages");
         items.Should().HaveCount(2);
+        items[0].GetProperty("code").GetString().Should().Be(ReportFindingCatalog.Package.PackageLoadFailed.Code);
         items[0].GetProperty("value").GetString().Should().Be("InvalidManifest");
         items[0].GetProperty("detail").GetString().Should().Contain("Excel Art");
         items[1].GetProperty("message").GetString().Should().Contain("celbridge.notes");
@@ -343,9 +351,12 @@ public class ProjectLoadReporterTests
         var items = GetSectionItems(report, "Packages");
         items.Should().HaveCount(2);
 
+        // The severity a finding carries comes from its descriptor, so the two kinds separate by code.
+        items[0].GetProperty("code").GetString().Should().Be(ReportFindingCatalog.Package.EditorSkipped.Code);
         items[0].GetProperty("severity").GetString().Should().Be("error");
         items[0].GetProperty("message").GetString().Should().Contain("notepad");
 
+        items[1].GetProperty("code").GetString().Should().Be(ReportFindingCatalog.Package.EditorDegraded.Code);
         items[1].GetProperty("severity").GetString().Should().Be("warning");
         items[1].GetProperty("message").GetString().Should().Contain("charts");
     }
@@ -436,6 +447,13 @@ public class ProjectLoadReporterTests
             .Single(candidate => candidate.GetProperty("title").GetString() == sectionTitle);
 
         return section.GetProperty("items").EnumerateArray().ToList();
+    }
+
+    private static List<string?> GetSectionCodes(JsonDocument report, string sectionTitle)
+    {
+        return GetSectionItems(report, sectionTitle)
+            .Select(item => item.GetProperty("code").GetString())
+            .ToList();
     }
 
     private static Dictionary<string, string?> GetSectionFacts(JsonDocument report, string sectionTitle)

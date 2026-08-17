@@ -152,7 +152,7 @@ public class ReportWriterTests
 
         var sections = new List<ReportSection>
         {
-            new ReportSection("Summary", ReportSeverity.Info, items)
+            new ReportSection("Summary", ReportSectionKind.Facts, ReportSeverity.Info, items)
         };
 
         return new ReportDocument(

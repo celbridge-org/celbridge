@@ -70,9 +70,9 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             {
                 continue;
             }
-            foreach (var source in referenceIndex.GetReferencers(target))
+            foreach (var site in referenceIndex.GetReferencers(target))
             {
-                brokenReferences.Add(new BrokenReference(source, target));
+                brokenReferences.Add(new BrokenReference(site, target));
             }
         }
 
@@ -85,7 +85,20 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             {
                 return byTarget;
             }
-            return string.Compare(a.Source.ToString(), b.Source.ToString(), StringComparison.Ordinal);
+
+            var bySource = string.Compare(a.Source.ToString(), b.Source.ToString(), StringComparison.Ordinal);
+            if (bySource != 0)
+            {
+                return bySource;
+            }
+
+            var byLine = a.Site.Line.CompareTo(b.Site.Line);
+            if (byLine != 0)
+            {
+                return byLine;
+            }
+
+            return a.Site.Column.CompareTo(b.Site.Column);
         });
 
         ResultValue = new CheckReferencesReport(brokenReferences, checkedTargetCount);
@@ -168,7 +181,7 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             CreateFact("References not found", checkReport.BrokenReferences.Count.ToString())
         };
 
-        return new ReportSection("Summary", ReportSeverity.Info, items);
+        return new ReportSection("Summary", ReportSectionKind.Facts, ReportSeverity.Info, items);
     }
 
     private static ReportSection? BuildFindingsSection(CheckReferencesReport checkReport, ref int omittedItemCount)
@@ -181,9 +194,13 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
         var items = new List<ReportItem>();
         foreach (var brokenReference in checkReport.BrokenReferences)
         {
-            var action = new ReportAction(ReportActionKind.OpenResource, $"Open {brokenReference.Source.ResourceName}")
+            var site = brokenReference.Site;
+            var location = new ReportSourceLocation(site.Line, site.Column);
+
+            var action = new ReportAction(ReportActionKind.OpenResource, $"Open {site.Source.ResourceName}")
             {
-                Resource = brokenReference.Source
+                Resource = site.Source,
+                Location = location
             };
 
             var actions = new List<ReportAction>
@@ -191,13 +208,15 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
                 action
             };
 
-            items.Add(new ReportItem(ReportSeverity.Warning, "References a missing resource.")
+            var item = ReportFinding.Create(ReportFindingCatalog.Resource.MissingReference) with
             {
-                Resource = brokenReference.Source,
+                Resource = site.Source,
                 Target = brokenReference.MissingTarget,
                 Detail = "The scan matches reference literals in the file text, so a key quoted as an example reads the same as a live reference.",
                 Actions = actions
-            });
+            };
+
+            items.Add(item);
         }
 
         var cappedItems = items;
@@ -207,7 +226,7 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             cappedItems = items.Take(MaxReportItems).ToList();
         }
 
-        return new ReportSection("Missing references", ReportSeverity.Warning, cappedItems);
+        return new ReportSection("Missing references", ReportSectionKind.Findings, ReportSeverity.Warning, cappedItems);
     }
 
     private static ReportItem CreateFact(string label, string value)

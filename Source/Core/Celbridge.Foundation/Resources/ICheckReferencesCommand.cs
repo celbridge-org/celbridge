@@ -3,11 +3,16 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// A single project: reference that does not resolve to an existing resource.
-/// Source is the file that contains the reference literal; MissingTarget is the
-/// resource key the literal points to.
+/// A single project: reference that does not resolve to an existing resource. Site is where the
+/// reference literal sits; MissingTarget is the resource key the literal points to.
 /// </summary>
-public record BrokenReference(ResourceKey Source, ResourceKey MissingTarget);
+public record BrokenReference(ResourceReferenceSite Site, ResourceKey MissingTarget)
+{
+    /// <summary>
+    /// The file holding the reference literal.
+    /// </summary>
+    public ResourceKey Source => Site.Source;
+}
 
 /// <summary>
 /// The outcome of a reference check: the references that did not resolve, and how many distinct

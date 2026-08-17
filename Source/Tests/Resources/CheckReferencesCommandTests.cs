@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
@@ -143,6 +144,75 @@ public class CheckReferencesCommandTests
         var entry = _command.ResultValue.BrokenReferences[0];
         entry.Source.Should().Be(new ResourceKey("source.json"));
         entry.MissingTarget.Should().Be(new ResourceKey("missing.json"));
+    }
+
+    [Test]
+    public async Task BrokenReference_CarriesThePositionOfTheReferenceLiteral()
+    {
+        // The literal sits on the third line, and the column is where its "project:" marker starts.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{\n  \"a\": 1,\n  \"target\": \"project:missing.json\"\n}");
+
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var site = _command.ResultValue.BrokenReferences.Should().ContainSingle().Subject.Site;
+        site.Source.Should().Be(new ResourceKey("source.json"));
+        site.Line.Should().Be(3);
+        site.Column.Should().Be(14);
+    }
+
+    [Test]
+    public async Task TheSameMissingTargetTwiceInOneFile_IsTwoFindings()
+    {
+        // Each reference is a separate place to fix, so the index holds one entry per literal rather
+        // than one per file.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{\n  \"a\": \"project:missing.json\",\n  \"b\": \"project:missing.json\"\n}");
+
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var lines = _command.ResultValue.BrokenReferences
+            .Select(brokenReference => brokenReference.Site.Line)
+            .ToList();
+        lines.Should().Equal(2, 3);
+    }
+
+    [Test]
+    public async Task ReportFindings_CarryTheCodeAndTheLocationToOpenAt()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{\n  \"target\": \"project:missing.json\"\n}");
+
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
+
+        _command.OpenReport = true;
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var report = ReadWrittenReport();
+
+        var findings = report.RootElement.GetProperty("sections")
+            .EnumerateArray()
+            .Single(section => section.GetProperty("kind").GetString() == "findings");
+
+        var item = findings.GetProperty("items")[0];
+        item.GetProperty("code").GetString().Should().Be(ReportFindingCatalog.Resource.MissingReference.Code);
+
+        var location = item.GetProperty("actions")[0].GetProperty("location");
+        location.GetProperty("line").GetInt32().Should().Be(2);
+        location.GetProperty("column").GetInt32().Should().Be(14);
+    }
+
+    private JsonDocument ReadWrittenReport()
+    {
+        var reportsFolderPath = Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports");
+        var reportFilePath = Directory.GetFiles(reportsFolderPath, $"{CheckReferencesCommand.ReportId}-*.report").Single();
+
+        return JsonDocument.Parse(File.ReadAllText(reportFilePath));
     }
 
     [Test]

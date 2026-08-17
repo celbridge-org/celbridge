@@ -11,16 +11,16 @@ None.
 ```json
 {
   "references": [
-    { "source": "project:docs/notes.py", "missingTarget": "project:assets/missing.png" },
-    { "source": "project:docs/notes.py", "missingTarget": "project:assets/old.toml" },
-    { "source": "project:scripts/main.py", "missingTarget": "project:assets/missing.png" }
+    { "source": "project:docs/notes.py", "missingTarget": "project:assets/missing.png", "line": 12, "column": 22 },
+    { "source": "project:docs/notes.py", "missingTarget": "project:assets/old.toml", "line": 30, "column": 9 },
+    { "source": "project:scripts/main.py", "missingTarget": "project:assets/missing.png", "line": 4, "column": 15 }
   ]
 }
 ```
 
-Sorted by `(missingTarget, source)` ordinal so two runs over the same state produce identical output. The `references` array is empty when the project has no dangling references.
+Sorted by `(missingTarget, source, line, column)` ordinal so two runs over the same state produce identical output. The `references` array is empty when the project has no dangling references.
 
-Each entry pairs the file that *contains* the reference literal (`source`) with the resource key the literal points at (`missingTarget`). The same target can appear under multiple sources — one entry per source.
+Each entry pairs the file that *contains* the reference literal (`source`) with the resource key the literal points at (`missingTarget`), and gives the position of the literal in that file. `line` and `column` are one-based, so they can be passed straight to an editor. One entry per reference literal: the same target named twice in one file produces two entries, at different positions.
 
 ## When to use
 
@@ -36,7 +36,7 @@ Each entry pairs the file that *contains* the reference literal (`source`) with 
 ## Related tools
 
 - **Sidecar health (orphan / broken / invalid `.cel` files)** lives on `data_inspect`, not here. The two cover orthogonal categories of project consistency.
-- **Workspace-load reporting.** A project consistency check also runs at workspace load and writes findings to the host log. `data_check_references` lets an agent query the same state on demand without waiting for a reload.
+- **Workspace-load reporting.** The reference scan does not run at workspace load; the load report covers sidecar state only. The same scan is available to the user through `File > Check References`, which writes its findings as a report document.
 
 ## Notes
 
