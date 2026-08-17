@@ -25,6 +25,7 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly PointerEventHandler _tabStripWheelHandler;
     private bool _isShuttingDown = false;
     private bool _scrollButtonsHidden;
+    private bool _scrollIndicatorAttached;
 
     // The tab list template's two overflow arrows, named by their containers because that is what carries
     // the width each arrow costs the strip.
@@ -35,9 +36,8 @@ public sealed partial class DocumentSectionView : UserControl
     };
 
     // The tab strip band from the TabView template, resolved once so composing a minimum does not walk the
-    // section's visual tree on every query, and the tallest it has been measured at.
+    // section's visual tree on every query.
     private FrameworkElement? _tabStripContainer;
-    private double _measuredTabStripHeight;
 
     /// <summary>
     /// Static field to track the tab currently being dragged between sections.
@@ -97,13 +97,10 @@ public sealed partial class DocumentSectionView : UserControl
 
         TabView.Loaded += OnTabViewLoaded;
 
-        // On macOS the strip does not re-reveal the selected tab when it gets narrower, so a window resize
-        // or a change in the number of sections can leave the active tab clipped off-screen. Re-scroll it
-        // into view whenever the strip's width changes.
-        if (_platformInfo.RequiresMacOSTabScrollIntoView)
-        {
-            TabView.SizeChanged += OnTabViewSizeChanged;
-        }
+        // A narrower strip moves the scroll indicator and can change whether it is needed at all. It also
+        // leaves the active tab clipped off-screen on macOS, where the strip does not re-reveal the selection
+        // on its own, so a window resize or a change in the number of sections has to re-scroll it into view.
+        TabView.SizeChanged += OnTabViewSizeChanged;
 
         // On macOS the overflowing strip does not scroll in response to the mouse wheel, so translate the
         // wheel into horizontal scrolling ourselves. Subscribe for handled events too because the strip's
@@ -125,12 +122,16 @@ public sealed partial class DocumentSectionView : UserControl
         // once that list has laid out, so a section that starts empty is covered by applying now and again
         // on the next dispatcher cycle. The scroll arrows live in that same late template.
         UpdateTabStripBorderLines();
+        FixTabStripBandHeight();
         HideTabStripScrollButtons();
+        AttachTabStripScrollIndicator();
 
         _ = DispatcherQueue.TryEnqueue(() =>
         {
             UpdateTabStripBorderLines();
+            FixTabStripBandHeight();
             HideTabStripScrollButtons();
+            AttachTabStripScrollIndicator();
         });
     }
 
@@ -143,8 +144,11 @@ public sealed partial class DocumentSectionView : UserControl
 
         if (TabView.SelectedItem is DocumentTab selectedTab)
         {
+            // No-ops on the heads whose strip reveals the selection itself.
             ScrollTabIntoView(selectedTab);
         }
+
+        UpdateTabStripScrollIndicator();
     }
 
     /// <summary>
@@ -223,32 +227,20 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     // The band the TabView template lays the tab strip out in, which is the row above the document content, so
-    // its height is the whole vertical chrome. Only the height is taken from it: the band is inset from the
-    // section's edges by differing amounts per head, so its width says nothing about what the document has.
+    // its height is the whole vertical chrome. It is fixed at the authored height rather than measured, so a
+    // section's minimum does not move as its tabs open and close.
     private double MeasureTabStripHeight()
     {
         _tabStripContainer ??= VisualTree.FindDescendantByName(TabView, "TabContainerGrid") as FrameworkElement;
 
-        if (_tabStripContainer is null)
-        {
-            // The template has not been applied yet, so there is nothing to measure.
-            return WorkspaceConstants.SectionTabStripHeight;
-        }
-
         // Presentation mode collapses the band, so the section really does have no strip above its document.
-        if (_tabStripContainer.Visibility == Visibility.Collapsed)
+        if (_tabStripContainer is not null &&
+            _tabStripContainer.Visibility == Visibility.Collapsed)
         {
             return 0;
         }
 
-        // The band is sized by what it holds, so an empty section measures a flatter band than a populated one,
-        // and a band that has not laid out measures nothing at all. Only measurements that raise the height are
-        // taken: the authored height is the floor under all of them, and the tallest band the section has shown
-        // is kept. A section's minimum therefore never moves as its tabs open and close, which matters because
-        // the minimums composed from it are written onto grid tracks that are not recomposed on every change.
-        _measuredTabStripHeight = Math.Max(_measuredTabStripHeight, _tabStripContainer.ActualHeight);
-
-        return Math.Max(_measuredTabStripHeight, WorkspaceConstants.SectionTabStripHeight);
+        return WorkspaceConstants.SectionTabStripHeight;
     }
 
     /// <summary>
@@ -650,6 +642,14 @@ public sealed partial class DocumentSectionView : UserControl
         // tabs at the leading edge while showing a blank gap at the trailing edge. Re-clamp once
         // layout has settled.
         _ = DispatcherQueue.TryEnqueue(ClampTabStripScrollOffset);
+
+        // Opening or closing a tab changes how much there is to scroll, and the indicator is attached late
+        // enough that a section's first tabs can arrive before it exists.
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            AttachTabStripScrollIndicator();
+            UpdateTabStripScrollIndicator();
+        });
     }
 
 
@@ -661,6 +661,21 @@ public sealed partial class DocumentSectionView : UserControl
         {
             scrollViewer.ChangeView(scrollViewer.ScrollableWidth, null, null, disableAnimation: true);
         }
+    }
+
+    /// <summary>
+    /// Fixes the tab strip band at its authored height, so what a tab happens to contain cannot set the height
+    /// of the strip. Left to itself the band takes the tallest tab, which puts one file type's icon in charge
+    /// of the strip's height and of the section minimum composed from it.
+    /// </summary>
+    private void FixTabStripBandHeight()
+    {
+        if (VisualTree.FindDescendantByName(TabView, "TabContainerGrid") is not FrameworkElement band)
+        {
+            return;
+        }
+
+        band.Height = WorkspaceConstants.SectionTabStripHeight;
     }
 
     /// <summary>
@@ -697,6 +712,121 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         _scrollButtonsHidden = true;
+    }
+
+    // Wires the scroll indicator to the strip's own ScrollViewer, which only exists once the tab list's
+    // template has been applied.
+    private void AttachTabStripScrollIndicator()
+    {
+        if (_scrollIndicatorAttached)
+        {
+            return;
+        }
+
+        var scrollViewer = GetTabStripScrollViewer();
+        if (scrollViewer is null)
+        {
+            return;
+        }
+
+        scrollViewer.ViewChanged += OnTabStripViewChanged;
+        ScrollIndicator.ScrollRequested += OnScrollIndicatorScrollRequested;
+        _scrollIndicatorAttached = true;
+
+        UpdateTabStripScrollIndicator();
+    }
+
+    private void OnTabStripViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        UpdateTabStripScrollIndicator();
+    }
+
+    private void OnScrollIndicatorScrollRequested(double offset)
+    {
+        var scrollViewer = GetTabStripScrollViewer();
+        scrollViewer?.ChangeView(offset, null, null, disableAnimation: true);
+    }
+
+    /// <summary>
+    /// Places the scroll indicator inside the tab strip and hands it the strip's geometry.
+    /// </summary>
+    private void UpdateTabStripScrollIndicator()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        var scrollViewer = GetTabStripScrollViewer();
+        if (scrollViewer is null ||
+            scrollViewer.ActualWidth <= 0)
+        {
+            ScrollIndicator.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        var stripBounds = scrollViewer
+            .TransformToVisual(RootGrid)
+            .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
+
+        ScrollIndicator.Width = stripBounds.Width;
+        ScrollIndicator.Margin = new Thickness(stripBounds.Left, MeasureScrollIndicatorTop(stripBounds), 0, 0);
+
+        ScrollIndicator.Update(
+            MeasureTabStripContentWidth(scrollViewer),
+            scrollViewer.ViewportWidth,
+            scrollViewer.HorizontalOffset);
+
+    }
+
+    // The indicator sits one pixel under the active tab's selection bar, so the pair reads as stacked bars
+    // whatever height the strip band happens to take. It also keeps a pixel of band below itself: the document
+    // below the strip is drawn by a native web view that sits over managed content, and a thumb flush with the
+    // band's bottom edge has its lower edge clipped by it.
+    private double MeasureScrollIndicatorTop(Rect stripBounds)
+    {
+        double lowestTop = stripBounds.Bottom - ScrollIndicator.Height - 1;
+
+        if (TabView.SelectedItem is not DocumentTab selectedTab ||
+            VisualTree.FindDescendantByName(selectedTab, "SelectionIndicator") is not FrameworkElement selectionBar ||
+            selectionBar.ActualHeight <= 0)
+        {
+            // Nothing is selected, so there is no bar to sit under.
+            return lowestTop;
+        }
+
+        var barBounds = selectionBar
+            .TransformToVisual(RootGrid)
+            .TransformBounds(new Rect(0, 0, selectionBar.ActualWidth, selectionBar.ActualHeight));
+
+        return Math.Min(barBounds.Bottom, lowestTop);
+    }
+
+    // The strip's ExtentWidth under-reports the width it actually arranges its tabs in, so a thumb sized from
+    // it alone reaches the end of its track before the tabs reach the end of the strip. The trailing arranged
+    // tab's right edge is the accurate figure and it is available exactly where it matters, at the end of the
+    // strip. Away from there the tabs past the viewport can be virtualized, and the extent is the estimate
+    // that accounts for them.
+    private double MeasureTabStripContentWidth(ScrollViewer scrollViewer)
+    {
+        double arrangedRight = 0;
+        foreach (var tabItem in TabView.TabItems)
+        {
+            if (tabItem is not DocumentTab tab ||
+                tab.ActualWidth <= 0)
+            {
+                continue;
+            }
+
+            var bounds = tab
+                .TransformToVisual(scrollViewer)
+                .TransformBounds(new Rect(0, 0, tab.ActualWidth, tab.ActualHeight));
+
+            arrangedRight = Math.Max(arrangedRight, bounds.Right + scrollViewer.HorizontalOffset);
+        }
+
+        return Math.Max(scrollViewer.ExtentWidth, arrangedRight);
     }
 
     private static void HoldScrollButtonCollapsed(DependencyObject sender, DependencyProperty property)

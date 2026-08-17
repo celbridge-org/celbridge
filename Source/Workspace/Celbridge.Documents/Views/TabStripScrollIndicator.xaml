@@ -1,0 +1,23 @@
+<UserControl
+    x:Class="Celbridge.Documents.Views.TabStripScrollIndicator"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Height="3">
+
+  <!-- The track has no background, so it neither draws nor takes pointer input: only the thumb does, which
+       keeps the strip's bottom edge clickable as tab rather than as scrollbar. A drag still tracks the pointer
+       across the whole track because the thumb captures it. -->
+  <Grid x:Name="Track"
+        SizeChanged="Track_SizeChanged">
+    <Border x:Name="Thumb"
+            HorizontalAlignment="Left"
+            MinWidth="24"
+            CornerRadius="1.5"
+            Background="{ThemeResource DividerBrush}"
+            PointerPressed="Thumb_PointerPressed"
+            PointerMoved="Thumb_PointerMoved"
+            PointerReleased="Thumb_PointerReleased"
+            PointerCaptureLost="Thumb_PointerCaptureLost"/>
+  </Grid>
+</UserControl>
