@@ -17,9 +17,9 @@ public sealed partial class WorkspacePage : Page
 
     private bool _initialized = false;
 
-    // The project-notification banner strip, kept so its messenger subscriptions can be torn down on
-    // page unload.
-    private NotificationBar? _notificationBar;
+    // The workspace notification toast, kept so its messenger subscriptions and timer can be torn down
+    // on page unload.
+    private WorkspaceToast? _workspaceToast;
 
     public WorkspacePage()
     {
@@ -74,13 +74,13 @@ public sealed partial class WorkspacePage : Page
         // registers both with the workspace service as it builds.
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
 
-        // The notification bar is not a layout surface, so it is always present. It collapses to zero
-        // height when no banners are showing.
-        _notificationBar = ServiceLocator.AcquireService<NotificationBar>();
+        // The toast overlays the surfaces rather than sitting in the layout, so it is always present and
+        // costs nothing while no notification is showing.
+        _workspaceToast = ServiceLocator.AcquireService<WorkspaceToast>();
 
         // Add panels to the UI
         WorkspacePanelHost.Children.Add(documentsPanel as UIElement);
-        NotificationBarHost.Children.Add(_notificationBar);
+        WorkspaceToastHost.Children.Add(_workspaceToast);
 
         // Enable the pointer-driven resource drag overlay on heads where the built-in drag-and-drop is
         // disabled. The panels register their drop targets with the coordinator as they load.
@@ -113,9 +113,9 @@ public sealed partial class WorkspacePage : Page
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
 
-        // Tear down the notification bar's messenger subscriptions.
-        _notificationBar?.Cleanup();
-        _notificationBar = null;
+        // Tear down the toast's messenger subscriptions and auto-dismiss timer.
+        _workspaceToast?.Cleanup();
+        _workspaceToast = null;
 
         await ViewModel.OnWorkspacePageUnloadedAsync();
 

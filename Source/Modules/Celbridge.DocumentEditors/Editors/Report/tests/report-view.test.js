@@ -72,6 +72,25 @@ describe('renderReport', () => {
         expect(truncated.textContent).toContain('12');
     });
 
+    it('gives a section a heading rather than a row of its own', () => {
+        // A severity glyph on the heading made it read as another finding instead of as what contains
+        // them, since every row below carries one already.
+        const sections = [
+            {
+                title: 'Sidecar files',
+                kind: 'findings',
+                severity: Severity.Warning,
+                items: [brokenReference('project:a.cel')]
+            }
+        ];
+
+        renderReport(report({ sections }), () => { });
+
+        const heading = document.querySelector('.section-title');
+        expect(heading.textContent).toBe('Sidecar files');
+        expect(heading.querySelector('.bi')).toBeNull();
+    });
+
     it('renders a facts section as labelled readings', () => {
         const sections = [
             {

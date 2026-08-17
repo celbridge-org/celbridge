@@ -33,7 +33,8 @@ public interface IProjectLoadReporter
     void RecordLoadOutcome(bool loadSucceeded, Result? loadResult);
 
     /// <summary>
-    /// Records the config entries the parser skipped or degraded.
+    /// Records config entries that were skipped or degraded. Several parts of a load validate their
+    /// own entries, so each call adds to what the report will hold rather than replacing it.
     /// </summary>
     void RecordConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors);
 

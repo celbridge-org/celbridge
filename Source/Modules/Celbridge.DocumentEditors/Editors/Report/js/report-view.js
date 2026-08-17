@@ -314,17 +314,13 @@ function renderSection(section, onOpenResource) {
     const element = document.createElement('section');
     element.className = 'report-section';
 
-    const header = document.createElement('div');
-    header.className = 'section-header';
-    header.appendChild(createSeverityIcon(section.severity));
-
+    // No severity glyph and no count on a section heading. Every item below carries its own glyph, so
+    // repeating one on the heading made the heading read as another item rather than as what contains
+    // them, and the total is already in the report's summary.
     const title = document.createElement('h2');
+    title.className = 'section-title';
     title.textContent = section.title ?? '';
-    header.appendChild(title);
-
-    // No count on the header: the rows below already carry it, either as the size of a group or as
-    // the rows themselves, and the report's summary states the total.
-    element.appendChild(header);
+    element.appendChild(title);
 
     const items = Array.isArray(section.items) ? section.items : [];
     const isFacts = section.kind === SectionKind.Facts;

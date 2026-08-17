@@ -2,6 +2,8 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Navigation;
 using Celbridge.Platform;
+using Celbridge.Projects;
+using Celbridge.Reports;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -16,6 +18,8 @@ public sealed partial class ProjectSwitcher : UserControl
     // The items declared in XAML: the project actions, the current-project section and the recent-projects
     // header. They are kept across rebuilds, and every item added after them is rebuilt on each open.
     private readonly int _staticFlyoutItemCount;
+
+    private readonly IProjectHealthService _projectHealthService;
 
     private ApplicationMenuViewModel? _applicationMenuViewModel;
 
@@ -33,6 +37,7 @@ public sealed partial class ProjectSwitcher : UserControl
         // The menu's labels are bound one-time, so the localizer has to be in place before the XAML loads.
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _projectHealthService = ServiceLocator.AcquireService<IProjectHealthService>();
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
 
         this.InitializeComponent();
@@ -94,6 +99,7 @@ public sealed partial class ProjectSwitcher : UserControl
             CurrentProjectHeader.Visibility = Visibility.Collapsed;
             CurrentProjectItem.Visibility = Visibility.Collapsed;
             CurrentProjectSeparator.Visibility = Visibility.Collapsed;
+            ProjectHealthItem.Visibility = Visibility.Collapsed;
         }
         else
         {
@@ -104,6 +110,8 @@ public sealed partial class ProjectSwitcher : UserControl
             CurrentProjectHeader.Visibility = Visibility.Visible;
             CurrentProjectItem.Visibility = Visibility.Visible;
             CurrentProjectSeparator.Visibility = Visibility.Visible;
+
+            UpdateProjectHealthItem();
         }
 
         var recentProjects = viewModel.GetRecentProjects();
@@ -169,6 +177,34 @@ public sealed partial class ProjectSwitcher : UserControl
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
         commandService.Execute<IActivateDocumentCommand>(command => command.FileResource = activeDocument);
+    }
+
+    private void UpdateProjectHealthItem()
+    {
+        var health = _projectHealthService.CurrentHealth;
+        if (health is null)
+        {
+            // Nothing was recorded for this load, so there is no report to open.
+            ProjectHealthItem.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ProjectHealthItem.Text = _stringLocalizer.GetString("TitleBar_ViewLoadReport");
+        ProjectHealthIcon.Symbol = IconSymbol.Report;
+
+        ProjectHealthItem.Visibility = Visibility.Visible;
+    }
+
+    private void OpenProjectHealthReport(object sender, RoutedEventArgs e)
+    {
+        var reportResource = _projectHealthService.CurrentHealth?.Resource ?? ResourceKey.Empty;
+        if (reportResource.IsEmpty)
+        {
+            return;
+        }
+
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportResource);
     }
 
     private void ProjectMenuButton_Tapped(object sender, TappedRoutedEventArgs e)

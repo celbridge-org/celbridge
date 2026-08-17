@@ -655,17 +655,6 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task RegisterPackages_LoadFailures_SendPackageLoadErrorMessage()
-    {
-        CreateProjectPackage("dup-a", "dup-tool", "Dup A", ".a");
-        CreateProjectPackage("dup-b", "dup-tool", "Dup B", ".b");
-
-        await _service.RegisterPackagesAsync(_tempProjectFolder);
-
-        _messengerService.Received(1).Send(Arg.Is<ProjectErrorMessage>(m => m.ErrorType == ProjectErrorType.PackageLoadError));
-    }
-
-    [Test]
     public async Task RegisterPackages_RecordsDiscoveryInProjectLoadReport()
     {
         CreateProjectPackage("good", "good", "Good", ".good");
@@ -681,16 +670,6 @@ public class PackageServiceTests
             r.Failures[0].Reason == PackageLoadFailureReason.InvalidManifest &&
             !string.IsNullOrEmpty(r.Failures[0].Detail)));
         await _loadReporter.Received(1).FlushAsync();
-    }
-
-    [Test]
-    public async Task RegisterPackages_NoFailures_DoesNotSendPackageLoadErrorMessage()
-    {
-        CreateProjectPackage("legit", "legit", "Legit", ".legit");
-
-        await _service.RegisterPackagesAsync(_tempProjectFolder);
-
-        _messengerService.DidNotReceive().Send(Arg.Is<ProjectErrorMessage>(m => m.ErrorType == ProjectErrorType.PackageLoadError));
     }
 
     [Test]

@@ -17,7 +17,6 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Panel Header -->
@@ -43,9 +42,6 @@
     <!-- Resource Tree -->
     <local:ResourceTree x:Name="ResourceTree"
                         Grid.Row="2"/>
-
-    <!-- Notification Bar -->
-    <local:ExplorerNotificationBar Grid.Row="3"/>
 
   </Grid>
 </UserControl>

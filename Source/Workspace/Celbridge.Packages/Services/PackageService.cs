@@ -35,24 +35,7 @@ public class PackageService : IPackageService
         _loadReporter.RecordPackageReport(report);
         await _loadReporter.FlushAsync();
 
-        var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
-
-        if (report.Failures.Count > 0)
-        {
-            // Surface the failures via the project-notification error banner.
-            var message = new ProjectErrorMessage(ProjectErrorType.PackageLoadError, projectName);
-            _messengerService.Send(message);
-        }
-
-        if (report.ResolvedEditorFailures.Count > 0 ||
-            report.ResolvedEditorWarnings.Count > 0)
-        {
-            // Skipped or degraded contribution declarations are project config errors, surfaced on
-            // the advisory banner because the rest of the file still applied.
-            var message = new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectName);
-            _messengerService.Send(message);
-        }
-
+        // Failures reach the user through the load report recorded above, not from here.
         _messengerService.Send(new PackagesInitializedMessage());
     }
 

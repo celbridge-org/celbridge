@@ -237,8 +237,14 @@ public class DocumentsService : IDocumentsService, IDisposable
             _logger.LogWarning(
                 $"Ignored invalid editor-associations entries: {string.Join("; ", invalidEntries)}");
 
-            var projectName = Path.GetFileName(projectService.CurrentProject!.ProjectFilePath);
-            _messengerService.Send(new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectName));
+            // Recorded on the load report rather than raised as its own notification, so the load's one
+            // notification covers it along with every other config entry that did not apply.
+            var entryErrors = invalidEntries
+                .Select(entry => new ProjectConfigEntryError("editor-associations", entry))
+                .ToList();
+
+            var loadReporter = ServiceLocator.AcquireService<IProjectLoadReporter>();
+            loadReporter.RecordConfigEntryErrors(entryErrors);
         }
 
         _documentEditorRegistry.SetEditorAssociations(validatedAssociations);

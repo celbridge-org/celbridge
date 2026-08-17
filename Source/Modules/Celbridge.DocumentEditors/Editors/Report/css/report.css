@@ -82,22 +82,22 @@ body {
     gap: 8px;
 }
 
-.section-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-}
-
-.section-header h2 {
+/* A section heading has to read as what contains the rows below it, not as another row. The type scale
+   has three sizes and the report's own title takes the largest, so a section separates from its rows by
+   weight, a rule across the content, and the rows indenting under it. */
+.section-title {
     margin: 0;
     font-size: var(--cel-font-size-base);
     font-weight: var(--cel-font-weight-strong);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--cel-divider);
 }
 
 .section-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    padding-left: 16px;
 }
 
 /* A fact is a label and its reading, aligned into a column so a summary section scans as a table. */

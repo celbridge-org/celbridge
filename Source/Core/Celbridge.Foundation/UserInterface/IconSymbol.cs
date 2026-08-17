@@ -23,6 +23,7 @@ public enum IconSymbol
     Delete,
     Error,
     Warning,
+    Report,
     More,
     Collapse,
     Settings,

@@ -17,6 +17,7 @@ public class WorkspaceLoader
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
     private readonly IProjectLoadReporter _loadReporter;
+    private readonly IProjectHealthService _projectHealthService;
     private readonly IAppEnvironment _appEnvironment;
 
     public WorkspaceLoader(
@@ -26,6 +27,7 @@ public class WorkspaceLoader
         IProjectService projectService,
         IServerService serverService,
         IProjectLoadReporter loadReporter,
+        IProjectHealthService projectHealthService,
         IAppEnvironment appEnvironment)
     {
         _logger = logger;
@@ -34,6 +36,7 @@ public class WorkspaceLoader
         _projectService = projectService;
         _serverService = serverService;
         _loadReporter = loadReporter;
+        _projectHealthService = projectHealthService;
         _appEnvironment = appEnvironment;
     }
 
@@ -52,15 +55,9 @@ public class WorkspaceLoader
             var projectFeatures = currentProject.Config.Features;
             _featureFlags.ApplyProjectOverrides(projectFeatures);
 
-            // Surface entries the config parser skipped or degraded. The rest of the file applied.
+            // Record entries the config parser skipped or degraded. The rest of the file applied, and
+            // the load report is where the detail lands.
             HandleConfigEntryErrors(currentProject.Config.EntryErrors, currentProject.ProjectFilePath);
-
-            // Surface a failed migration or an invalid/incompatible project version as a banner. These are
-            // project-scoped and fire on load regardless of whether any console is open.
-            if (currentProject.MigrationResult.Status != MigrationStatus.Complete)
-            {
-                HandleMigrationFailure(currentProject.MigrationResult, currentProject.ProjectFilePath);
-            }
         }
 
         // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
@@ -223,19 +220,24 @@ public class WorkspaceLoader
             RecordResourceCounts();
 
             var reportSummary = await _loadReporter.FlushAsync();
-            if (reportSummary is null
-                || reportSummary.Severity == ReportSeverity.Info)
+            if (reportSummary is null)
             {
                 return;
             }
 
-            // Raised after the flush, so the report the notification points at is already on disk.
-            var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-            var message = new ProjectErrorMessage(ProjectErrorType.ProjectLoadIssues, string.Empty)
+            // Recorded in every state, including a clean load: the switcher's health row states what the
+            // load found whether or not it found anything, and needs a report to open either way.
+            _projectHealthService.SetHealth(reportSummary);
+
+            if (reportSummary.Severity == ReportSeverity.Info)
             {
-                FindingCount = reportSummary.IssueCount,
-                ReportResource = reportSummary.Resource
-            };
+                return;
+            }
+
+            // One notification for the whole load: everything it covers is in the report the action opens.
+            // Raised after the flush, so that report is already on disk.
+            var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+            var message = new ProjectLoadNotificationMessage(reportSummary);
             messengerService.Send(message);
         }
         catch (Exception ex)
@@ -335,44 +337,5 @@ public class WorkspaceLoader
             sb.AppendLine($"  [{entryError.EntryName}]: {entryError.Message}");
         }
         _logger.LogError(sb.ToString());
-
-        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        var message = new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectFileName);
-        messengerService.Send(message);
-    }
-
-    private void HandleMigrationFailure(MigrationResult migrationResult, string projectFilePath)
-    {
-        var projectFileName = Path.GetFileName(projectFilePath);
-        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-
-        ProjectErrorMessage message;
-
-        switch (migrationResult.Status)
-        {
-            case MigrationStatus.InvalidConfig:
-                _logger.LogError("Project config is invalid");
-                message = new ProjectErrorMessage(ProjectErrorType.InvalidProjectConfig, projectFileName);
-                messengerService.Send(message);
-                break;
-
-            case MigrationStatus.IncompatibleVersion:
-                _logger.LogError("Project version is not compatible with application version");
-                message = new ProjectErrorMessage(ProjectErrorType.IncompatibleVersion, projectFileName);
-                messengerService.Send(message);
-                break;
-
-            case MigrationStatus.InvalidVersion:
-                _logger.LogError("Project version is invalid");
-                message = new ProjectErrorMessage(ProjectErrorType.InvalidVersion, projectFileName);
-                messengerService.Send(message);
-                break;
-
-            case MigrationStatus.Failed:
-                _logger.LogError("Project migration failed");
-                message = new ProjectErrorMessage(ProjectErrorType.MigrationError, projectFileName);
-                messengerService.Send(message);
-                break;
-        }
     }
 }

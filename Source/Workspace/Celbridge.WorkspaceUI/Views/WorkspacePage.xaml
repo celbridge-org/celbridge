@@ -17,27 +17,18 @@
         VerticalAlignment="Stretch"
         Background="{ThemeResource ChromeBackgroundBrush}">
 
-    <Grid.RowDefinitions>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
-
     <Grid x:Name="WorkspacePanelHost"
-          Grid.Row="0"
           AutomationProperties.AutomationId="documents-panel"
           Background="{ThemeResource ChromeBackgroundBrush}"/>
 
-    <!-- Notification Bar. Always spans the full width of the workspace, below every surface, and sizes
-         to its content so it takes no space when no banners are showing. -->
-    <Grid x:Name="NotificationBarHost"
-          Grid.Row="1"
-          AutomationProperties.AutomationId="notification-bar"/>
+    <!-- Notification toast. Overlaid at the bottom-right corner of the workspace rather than docked, so a
+         notification never takes space from the surfaces it appears over. -->
+    <Grid x:Name="WorkspaceToastHost"
+          AutomationProperties.AutomationId="workspace-toast"/>
 
     <!-- Topmost display-only overlay for pointer-driven resource drag visuals (the ghost),
          spanning every panel so the ghost is visible across the whole workspace. -->
     <Canvas x:Name="ResourceDragOverlay"
-            Grid.Row="0"
-            Grid.RowSpan="2"
             IsHitTestVisible="False"/>
   </Grid>
 </Page>

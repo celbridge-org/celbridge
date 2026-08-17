@@ -29,7 +29,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     private bool _userCancelledUpgrade;
     private bool _loadSucceeded;
     private Result? _loadResult;
-    private IReadOnlyList<ProjectConfigEntryError> _configEntryErrors = Array.Empty<ProjectConfigEntryError>();
+    private readonly List<ProjectConfigEntryError> _configEntryErrors = new();
     private PackageDiscoveryReport? _packageReport;
     private SidecarReport? _sidecarReport;
     private int? _fileResourceCount;
@@ -53,7 +53,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _userCancelledUpgrade = false;
         _loadSucceeded = false;
         _loadResult = null;
-        _configEntryErrors = Array.Empty<ProjectConfigEntryError>();
+        _configEntryErrors.Clear();
         _packageReport = null;
         _sidecarReport = null;
         _fileResourceCount = null;
@@ -76,7 +76,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
     public void RecordConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors)
     {
-        _configEntryErrors = entryErrors;
+        _configEntryErrors.AddRange(entryErrors);
     }
 
     public void RecordPackageReport(PackageDiscoveryReport report)

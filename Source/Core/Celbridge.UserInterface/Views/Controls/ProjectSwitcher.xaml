@@ -70,6 +70,15 @@
                                   Style="{StaticResource ProjectMenuItemStyle}"
                                   Click="ReturnToCurrentProject"/>
 
+        <!-- The deliberate route back to the load report, in every state including a healthy one. Named
+             for what it does: the health itself is stated by the button beside the switcher. -->
+        <MenuFlyoutItem x:Name="ProjectHealthItem"
+                        Click="OpenProjectHealthReport">
+          <MenuFlyoutItem.Icon>
+            <controls:Icon x:Name="ProjectHealthIcon"/>
+          </MenuFlyoutItem.Icon>
+        </MenuFlyoutItem>
+
         <MenuFlyoutSeparator/>
 
         <controls:MenuSectionHeaderItem Text="{x:Bind RecentProjectsHeaderString}"
