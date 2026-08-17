@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Celbridge.FileSystem;
@@ -59,8 +58,6 @@ public sealed class ReportWriter : IReportWriter
     /// </summary>
     public const int RetainCount = 5;
 
-    private const string TimestampFormat = "yyyyMMdd'T'HHmmss'Z'";
-
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly ILocalFileSystem _fileSystem;
@@ -107,7 +104,7 @@ public sealed class ReportWriter : IReportWriter
 
     private static string ComposeFileName(string reportId, DateTimeOffset generatedAt)
     {
-        var timestamp = generatedAt.UtcDateTime.ToString(TimestampFormat, CultureInfo.InvariantCulture);
+        var timestamp = FileTimestamp.Compose(generatedAt);
 
         return $"{reportId}-{timestamp}{ReportDocument.FileExtension}";
     }
