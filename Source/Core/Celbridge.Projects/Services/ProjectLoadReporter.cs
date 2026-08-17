@@ -18,8 +18,6 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
     // A project with pathological numbers of findings would otherwise produce a report too large to
     // read or open.
-    private const int MaxItemsPerSection = 200;
-
     private readonly IReportWriter _reportWriter;
     private readonly ILogger<ProjectLoadReporter> _logger;
 
@@ -129,8 +127,6 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
     private ReportDocument BuildReport()
     {
-        var omittedItemCount = 0;
-
         var sections = new List<ReportSection>
         {
             BuildSummarySection()
@@ -142,19 +138,19 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             sections.Add(loadIssuesSection);
         }
 
-        var configurationSection = BuildConfigurationSection(ref omittedItemCount);
+        var configurationSection = BuildConfigurationSection();
         if (configurationSection is not null)
         {
             sections.Add(configurationSection);
         }
 
-        var packagesSection = BuildPackagesSection(ref omittedItemCount);
+        var packagesSection = BuildPackagesSection();
         if (packagesSection is not null)
         {
             sections.Add(packagesSection);
         }
 
-        var sidecarSection = BuildSidecarSection(ref omittedItemCount);
+        var sidecarSection = BuildSidecarSection();
         if (sidecarSection is not null)
         {
             sections.Add(sidecarSection);
@@ -162,10 +158,6 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         var severity = ResolveWorstSeverity(sections);
         var summary = ComposeSummaryLine(severity, sections);
-
-        var truncation = omittedItemCount > 0
-            ? new ReportTruncation(omittedItemCount)
-            : null;
 
         // Stamped with the start of the load rather than the moment of writing, so every flush during a
         // load addresses the same file and one load leaves one report behind.
@@ -177,10 +169,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             generatedAt,
             severity,
             summary,
-            sections)
-        {
-            Truncated = truncation
-        };
+            sections);
     }
 
     private ReportSection BuildSummarySection()
@@ -281,7 +270,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         return new ReportSection("Load", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
-    private ReportSection? BuildConfigurationSection(ref int omittedItemCount)
+    private ReportSection? BuildConfigurationSection()
     {
         if (_configEntryErrors.Count == 0)
         {
@@ -301,12 +290,10 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             items.Add(item);
         }
 
-        var cappedItems = CapItems(items, ref omittedItemCount);
-
-        return new ReportSection($"Configuration ({projectFileName})", ReportSectionKind.Findings, ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection($"Configuration ({projectFileName})", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
-    private ReportSection? BuildPackagesSection(ref int omittedItemCount)
+    private ReportSection? BuildPackagesSection()
     {
         if (_packageReport is null)
         {
@@ -356,12 +343,10 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return null;
         }
 
-        var cappedItems = CapItems(items, ref omittedItemCount);
-
-        return new ReportSection("Packages", ReportSectionKind.Findings, ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection("Packages", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
-    private ReportSection? BuildSidecarSection(ref int omittedItemCount)
+    private ReportSection? BuildSidecarSection()
     {
         if (_sidecarReport is null)
         {
@@ -406,9 +391,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return null;
         }
 
-        var cappedItems = CapItems(items, ref omittedItemCount);
-
-        return new ReportSection("Sidecar files", ReportSectionKind.Findings, ResolveWorstItemSeverity(cappedItems), cappedItems);
+        return new ReportSection("Sidecar files", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
     private static IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
@@ -444,18 +427,6 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             Detail = NormaliseDetail(detail)
         };
-    }
-
-    private static IReadOnlyList<ReportItem> CapItems(List<ReportItem> items, ref int omittedItemCount)
-    {
-        if (items.Count <= MaxItemsPerSection)
-        {
-            return items;
-        }
-
-        omittedItemCount += items.Count - MaxItemsPerSection;
-
-        return items.Take(MaxItemsPerSection).ToList();
     }
 
     private static string ComposeSummaryLine(ReportSeverity severity, IReadOnlyList<ReportSection> sections)

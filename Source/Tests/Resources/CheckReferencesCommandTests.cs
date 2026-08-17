@@ -207,10 +207,56 @@ public class CheckReferencesCommandTests
         location.GetProperty("column").GetInt32().Should().Be(14);
     }
 
+    [Test]
+    public async Task TheSummaryCountsBrokenReferencesAndMissingResourcesSeparately()
+    {
+        // One missing resource named by two references. Reporting either count as the other would
+        // overstate how much is actually wrong, or how much there is to fix.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{\n  \"a\": \"project:missing.json\",\n  \"b\": \"project:missing.json\"\n}");
+
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
+
+        _command.OpenReport = true;
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var report = ReadWrittenReport();
+
+        report.RootElement.GetProperty("summary").GetString()
+            .Should().Be("2 references point at 1 missing resource.");
+
+        var facts = report.RootElement.GetProperty("sections")
+            .EnumerateArray()
+            .Single(section => section.GetProperty("kind").GetString() == "facts");
+
+        var values = facts.GetProperty("items")
+            .EnumerateArray()
+            .ToDictionary(
+                item => item.GetProperty("message").GetString()!,
+                item => item.GetProperty("value").GetString());
+
+        values["Missing resources"].Should().Be("1");
+        values["Broken references"].Should().Be("2");
+    }
+
+    [Test]
+    public async Task AProjectWithNoReferences_SaysSoRatherThanClaimingEveryReferenceResolved()
+    {
+        _command.OpenReport = true;
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var report = ReadWrittenReport();
+
+        report.RootElement.GetProperty("summary").GetString()
+            .Should().Be("No resource references were found to check.");
+    }
+
     private JsonDocument ReadWrittenReport()
     {
         var reportsFolderPath = Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports");
-        var reportFilePath = Directory.GetFiles(reportsFolderPath, $"{CheckReferencesCommand.ReportId}-*.report").Single();
+        var reportFilePath = Path.Combine(reportsFolderPath, $"{CheckReferencesCommand.ReportId}.report");
 
         return JsonDocument.Parse(File.ReadAllText(reportFilePath));
     }
@@ -297,8 +343,9 @@ public class CheckReferencesCommandTests
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
         var reportsFolderPath = Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports");
-        var reportFiles = Directory.GetFiles(reportsFolderPath, $"{CheckReferencesCommand.ReportId}-*.report");
-        reportFiles.Should().ContainSingle();
+        var reportFiles = Directory.GetFiles(reportsFolderPath, "*.report");
+        reportFiles.Select(Path.GetFileName)
+            .Should().Equal($"{CheckReferencesCommand.ReportId}.report");
 
         _commandService.Received(1).Execute<IOpenDocumentCommand>(
             Arg.Any<Action<IOpenDocumentCommand>>(),

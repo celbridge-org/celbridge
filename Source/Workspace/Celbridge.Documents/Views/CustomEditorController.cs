@@ -99,6 +99,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
     // and SetContentLoaded applies it once the JS client signals readiness.
     private string? _pendingEditorStateJson;
+    private string? _pendingLocation;
     private bool _isContentLoaded;
 
     // Save tracking state for async save coordination with WebView
@@ -572,6 +573,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _isContentLoaded = false;
         _pendingEditorStateJson = null;
+        _pendingLocation = null;
 
         TeardownWebViewState();
     }
@@ -758,13 +760,26 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _isContentLoaded = true;
 
-        if (_pendingEditorStateJson is null)
-        {
-            return;
-        }
+        var location = _pendingLocation;
+        _pendingLocation = null;
 
         var state = _pendingEditorStateJson;
         _pendingEditorStateJson = null;
+
+        // Applied in the order the opening caller issued them: navigate, then restore state.
+        if (location is not null)
+        {
+            var navigateResult = await NavigateToLocationAsync(location);
+            if (navigateResult.IsFailure)
+            {
+                _logger.LogWarning(navigateResult, "Failed to navigate to location after content loaded");
+            }
+        }
+
+        if (state is null)
+        {
+            return;
+        }
 
         try
         {
@@ -968,13 +983,22 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     /// <summary>
     /// Sends a navigate-to-location request to the editor. The location is a JSON object describing the target
-    /// line and column range. A null host or empty location is a no-op.
+    /// line and column range. An empty location is a no-op, and a request arriving before the editor has
+    /// loaded its content is held until it has.
     /// </summary>
     public async Task<Result> NavigateToLocationAsync(string location)
     {
-        if (Host is null ||
-            string.IsNullOrEmpty(location))
+        if (string.IsNullOrEmpty(location))
         {
+            return Result.Ok();
+        }
+
+        // Opening a document and navigating within it arrive together, but the WebView connects
+        // asynchronously, so on a first open the editor is not there to receive this yet.
+        if (!_isContentLoaded ||
+            Host is null)
+        {
+            _pendingLocation = location;
             return Result.Ok();
         }
 

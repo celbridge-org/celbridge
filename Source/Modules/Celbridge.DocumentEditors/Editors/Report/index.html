@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Report</title>
+
+    <link rel="icon" href="data:,">
+
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+    <link rel="stylesheet" href="css/report.css">
+</head>
+
+<body>
+    <article id="report">
+        <header id="report-header">
+            <div class="report-title-row">
+                <i id="report-severity" class="bi" aria-hidden="true"></i>
+                <h1 id="report-title"></h1>
+            </div>
+            <p id="report-summary"></p>
+            <p id="report-generated" class="report-meta"></p>
+            <p id="report-truncated" class="report-meta report-truncated" hidden></p>
+        </header>
+
+        <div id="report-sections"></div>
+    </article>
+
+    <div id="report-error" class="report-error" hidden>
+        <i class="bi bi-exclamation-octagon" aria-hidden="true"></i>
+        <p data-loc-key="Report_ParseError"></p>
+    </div>
+
+    <script type="module" src="js/report.js"></script>
+</body>
+
+</html>

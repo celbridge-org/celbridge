@@ -47,23 +47,22 @@ public class ReportWriterTests
     }
 
     [Test]
-    public async Task WriteReportAsync_StampsTheGenerationTimeIntoTheFileName()
+    public async Task WriteReportAsync_WritesTheCurrentReportAtAStableName()
     {
+        // The path a report is opened by carries no timestamp, so the reader sees a name they can
+        // recognise and an already-open report is the same resource on every run.
         var generatedAt = new DateTimeOffset(2026, 8, 16, 14, 32, 11, TimeSpan.Zero);
         var report = CreateReport("project-load", generatedAt);
 
         var result = await _reportWriter.WriteReportAsync(report, _reportsFolderPath);
 
         result.IsSuccess.Should().BeTrue();
-        Path.GetFileName(result.Value).Should().Be("project-load-20260816T143211Z.report");
+        Path.GetFileName(result.Value).Should().Be("project-load.report");
     }
 
     [Test]
-    public async Task WriteReportAsync_TwoRunsOfTheSameOperation_WritesTwoFiles()
+    public async Task WriteReportAsync_ASecondRun_ArchivesTheFirstUnderItsGenerationTime()
     {
-        // A report is a record of one completed run, so a second run never overwrites the
-        // first. This is also what keeps an already-open report from changing underneath
-        // the reader on an unwatched root.
         await _reportWriter.WriteReportAsync(
             CreateReport("project-load", new DateTimeOffset(2026, 8, 16, 10, 0, 0, TimeSpan.Zero)),
             _reportsFolderPath);
@@ -71,11 +70,27 @@ public class ReportWriterTests
             CreateReport("project-load", new DateTimeOffset(2026, 8, 16, 11, 0, 0, TimeSpan.Zero)),
             _reportsFolderPath);
 
-        GetReportFileNames().Should().HaveCount(2);
+        GetReportFileNames().Should().Equal("project-load.report");
+        GetHistoryFileNames().Should().Equal("project-load-20260816T100000Z.report");
     }
 
     [Test]
-    public async Task WriteReportAsync_BeyondTheRetentionLimit_PrunesTheOldest()
+    public async Task WriteReportAsync_RewritingOneGeneration_DoesNotArchiveIt()
+    {
+        // A producer that flushes several times during one operation is revising a single report, so
+        // the intermediate states are not history.
+        var generatedAt = new DateTimeOffset(2026, 8, 16, 10, 0, 0, TimeSpan.Zero);
+
+        await _reportWriter.WriteReportAsync(CreateReport("project-load", generatedAt), _reportsFolderPath);
+        await _reportWriter.WriteReportAsync(CreateReport("project-load", generatedAt), _reportsFolderPath);
+        await _reportWriter.WriteReportAsync(CreateReport("project-load", generatedAt), _reportsFolderPath);
+
+        GetReportFileNames().Should().Equal("project-load.report");
+        GetHistoryFileNames().Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task WriteReportAsync_BeyondTheRetentionLimit_PrunesTheOldestHistoryEntry()
     {
         var generatedAt = new DateTimeOffset(2026, 8, 16, 9, 0, 0, TimeSpan.Zero);
 
@@ -85,12 +100,16 @@ public class ReportWriterTests
             await _reportWriter.WriteReportAsync(report, _reportsFolderPath);
         }
 
-        var fileNames = GetReportFileNames();
-        fileNames.Should().HaveCount(ReportWriter.RetainCount);
+        var historyFileNames = GetHistoryFileNames();
+        historyFileNames.Should().HaveCount(ReportWriter.RetainCount);
 
         // The survivors are the newest, so the earliest timestamps are the ones that went.
-        fileNames.Should().NotContain("project-load-20260816T090000Z.report");
-        fileNames.Should().Contain("project-load-20260816T090700Z.report");
+        historyFileNames.Should().NotContain("project-load-20260816T090000Z.report");
+        historyFileNames.Should().Contain("project-load-20260816T090600Z.report");
+
+        // The last generation written is the current report, not a history entry.
+        GetReportFileNames().Should().Equal("project-load.report");
+        historyFileNames.Should().NotContain("project-load-20260816T090700Z.report");
     }
 
     [Test]
@@ -104,12 +123,13 @@ public class ReportWriterTests
             await _reportWriter.WriteReportAsync(report, _reportsFolderPath);
         }
 
-        var otherReport = CreateReport("resource-move", generatedAt);
-        await _reportWriter.WriteReportAsync(otherReport, _reportsFolderPath);
+        await _reportWriter.WriteReportAsync(CreateReport("resource-move", generatedAt), _reportsFolderPath);
+        await _reportWriter.WriteReportAsync(
+            CreateReport("resource-move", generatedAt.AddMinutes(1)),
+            _reportsFolderPath);
 
-        var fileNames = GetReportFileNames();
-        fileNames.Should().HaveCount(ReportWriter.RetainCount + 1);
-        fileNames.Should().Contain("resource-move-20260816T090000Z.report");
+        GetReportFileNames().Should().BeEquivalentTo(new[] { "project-load.report", "resource-move.report" });
+        GetHistoryFileNames().Should().Contain("resource-move-20260816T090000Z.report");
     }
 
     [Test]
@@ -166,7 +186,23 @@ public class ReportWriterTests
 
     private List<string> GetReportFileNames()
     {
-        return Directory.GetFiles(_reportsFolderPath, "*.report")
+        return ListReportFileNames(_reportsFolderPath);
+    }
+
+    private List<string> GetHistoryFileNames()
+    {
+        var historyFolderPath = Path.Combine(_reportsFolderPath, ReportWriter.HistoryFolderName);
+        if (!Directory.Exists(historyFolderPath))
+        {
+            return new List<string>();
+        }
+
+        return ListReportFileNames(historyFolderPath);
+    }
+
+    private static List<string> ListReportFileNames(string folderPath)
+    {
+        return Directory.GetFiles(folderPath, "*.report")
             .Select(Path.GetFileName)
             .Where(fileName => fileName is not null)
             .Select(fileName => fileName!)

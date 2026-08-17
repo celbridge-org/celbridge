@@ -304,6 +304,14 @@
           "dark": "#FFCA28",
           "published": true
         },
+        "error-text": {
+          "targets": ["css"],
+          "css": "--cel-error-text",
+          "light": "#D32F2F",
+          "dark": "#EF5350",
+          "published": true,
+          "comment": "The counterpart to warning-text at the next severity up, drawn from the same palette so the two read as one scale."
+        },
         "caution": {
           "targets": ["css"],
           "css": "--cel-caution",

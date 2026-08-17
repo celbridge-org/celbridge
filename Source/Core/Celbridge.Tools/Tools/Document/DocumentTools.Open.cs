@@ -10,11 +10,17 @@ public partial class DocumentTools
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
     [RelatedGuides("resource_keys", "workspace_panels")]
-    public async partial Task<CallToolResult> Open(string fileResource, string section = "", bool forceReload = false, bool activate = false)
+    public async partial Task<CallToolResult> Open(string fileResource, string section = "", bool forceReload = false, bool activate = false, int line = 0, int column = 0)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
             return ToolResponse.InvalidResourceKey(fileResource);
+        }
+
+        if (line < 0 ||
+            column < 0)
+        {
+            return ToolResponse.Error("Line and column must be one-based positions, or zero for none.");
         }
 
         DocumentSection? targetSection = null;
@@ -29,12 +35,15 @@ public partial class DocumentTools
             targetSection = parsedSection;
         }
 
+        var location = DocumentLocation.Compose(line, column);
+
         var openResult = await ExecuteCommandAsync<IOpenDocumentCommand, OpenDocumentOutcome>(command =>
         {
             command.FileResource = fileResourceKey;
             command.TargetSection = targetSection;
             command.ForceReload = forceReload;
             command.Activate = activate;
+            command.Location = location;
         });
 
         if (openResult.IsFailure)

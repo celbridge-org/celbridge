@@ -1,0 +1,17 @@
+{
+    "Report_Package_Name": "Reports",
+    "Report_Editor_Name": "Report Viewer",
+    "Report_Editor_Description": "Shows the record of a completed operation.",
+    "Report_FileType_Report": "Report",
+    "Report_Generated": "Generated {0}",
+    "Report_Truncated": "The operation omitted {0} further items from this report.",
+    "Report_ParseError": "This report could not be read.",
+    "Report_Severity_Info": "Information",
+    "Report_Severity_Warning": "Warning",
+    "Report_Severity_Error": "Error",
+    "Report_Occurrences_Many": "{0} occurrences",
+    "Report_Column_Resource": "Resource",
+    "Report_Column_Target": "Target",
+    "Report_Column_Line": "Line",
+    "Report_Column_Detail": "Detail"
+}

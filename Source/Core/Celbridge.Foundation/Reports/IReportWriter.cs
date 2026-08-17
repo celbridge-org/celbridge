@@ -6,8 +6,9 @@ namespace Celbridge.Reports;
 public interface IReportWriter
 {
     /// <summary>
-    /// Writes a report into the folder, returning the path it was written to. Each write is a
-    /// new file, never a replacement for an earlier one.
+    /// Writes a report as the current report for its id, returning the path it was written to. Any
+    /// previous report for that id is moved into the history sub-folder rather than lost, and the
+    /// oldest history entries beyond the retention limit are deleted.
     /// </summary>
     Task<Result<string>> WriteReportAsync(ReportDocument report, string folderPath);
 }

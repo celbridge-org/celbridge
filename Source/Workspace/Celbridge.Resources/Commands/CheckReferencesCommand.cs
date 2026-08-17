@@ -19,10 +19,6 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
     /// </summary>
     public const string ReportId = "check-references";
 
-    // A project with pathological numbers of findings would otherwise produce a report too large to
-    // read or open.
-    private const int MaxReportItems = 200;
-
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
@@ -134,7 +130,15 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
 
         // Fire and forget: this runs inside the command queue, so awaiting an enqueued command here would
         // deadlock it.
-        _commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportResource);
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = reportResource;
+
+            // Every run writes the same resource, so a report left open from an earlier run is already
+            // on screen showing the previous result. The logs: root is deliberately unwatched, so the
+            // reload is asked for here rather than arriving as a file change event.
+            command.ForceReload = true;
+        });
     }
 
     private static ReportDocument BuildReport(CheckReferencesReport checkReport)
@@ -146,9 +150,7 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             summarySection
         };
 
-        var omittedItemCount = 0;
-
-        var findingsSection = BuildFindingsSection(checkReport, ref omittedItemCount);
+        var findingsSection = BuildFindingsSection(checkReport);
         if (findingsSection is not null)
         {
             sections.Add(findingsSection);
@@ -157,34 +159,30 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
         var severity = findingsSection?.Severity ?? ReportSeverity.Info;
         var summary = ComposeSummaryLine(checkReport);
 
-        var truncation = omittedItemCount > 0
-            ? new ReportTruncation(omittedItemCount)
-            : null;
-
         return new ReportDocument(
             ReportId,
             "Check References",
             DateTimeOffset.UtcNow,
             severity,
             summary,
-            sections)
-        {
-            Truncated = truncation
-        };
+            sections);
     }
 
     private static ReportSection BuildSummarySection(CheckReferencesReport checkReport)
     {
+        // The scan walks referenced resources, and each one can be named by any number of references,
+        // so the counts are labelled by what they actually count.
         var items = new List<ReportItem>
         {
-            CreateFact("References checked", checkReport.CheckedTargetCount.ToString()),
-            CreateFact("References not found", checkReport.BrokenReferences.Count.ToString())
+            CreateFact("Referenced resources", checkReport.CheckedTargetCount.ToString()),
+            CreateFact("Missing resources", CountMissingTargets(checkReport).ToString()),
+            CreateFact("Broken references", checkReport.BrokenReferences.Count.ToString())
         };
 
         return new ReportSection("Summary", ReportSectionKind.Facts, ReportSeverity.Info, items);
     }
 
-    private static ReportSection? BuildFindingsSection(CheckReferencesReport checkReport, ref int omittedItemCount)
+    private static ReportSection? BuildFindingsSection(CheckReferencesReport checkReport)
     {
         if (checkReport.BrokenReferences.Count == 0)
         {
@@ -208,25 +206,20 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
                 action
             };
 
+            // No detail: every occurrence says the same thing as the descriptor's message, and what a
+            // lexical scan can and cannot tell apart belongs to the finding kind rather than to each
+            // place it was found.
             var item = ReportFinding.Create(ReportFindingCatalog.Resource.MissingReference) with
             {
                 Resource = site.Source,
                 Target = brokenReference.MissingTarget,
-                Detail = "The scan matches reference literals in the file text, so a key quoted as an example reads the same as a live reference.",
                 Actions = actions
             };
 
             items.Add(item);
         }
 
-        var cappedItems = items;
-        if (items.Count > MaxReportItems)
-        {
-            omittedItemCount += items.Count - MaxReportItems;
-            cappedItems = items.Take(MaxReportItems).ToList();
-        }
-
-        return new ReportSection("Missing references", ReportSectionKind.Findings, ReportSeverity.Warning, cappedItems);
+        return new ReportSection("Missing references", ReportSectionKind.Findings, ReportSeverity.Warning, items);
     }
 
     private static ReportItem CreateFact(string label, string value)
@@ -239,14 +232,36 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
 
     private static string ComposeSummaryLine(CheckReferencesReport checkReport)
     {
+        var checkedCount = checkReport.CheckedTargetCount;
+        if (checkedCount == 0)
+        {
+            return "No resource references were found to check.";
+        }
+
         var brokenCount = checkReport.BrokenReferences.Count;
         if (brokenCount == 0)
         {
-            return "Every project: reference resolved.";
+            var checkedLabel = checkedCount == 1 ? "resource" : "resources";
+
+            return $"All {checkedCount} referenced {checkedLabel} were found.";
         }
 
+        var missingCount = CountMissingTargets(checkReport);
         var referenceLabel = brokenCount == 1 ? "reference" : "references";
+        var missingLabel = missingCount == 1 ? "resource" : "resources";
 
-        return $"{brokenCount} project: {referenceLabel} did not resolve.";
+        return $"{brokenCount} {referenceLabel} point at {missingCount} missing {missingLabel}.";
+    }
+
+    // A missing resource is usually named by more than one reference, so the two counts differ.
+    private static int CountMissingTargets(CheckReferencesReport checkReport)
+    {
+        var missingTargets = new HashSet<ResourceKey>();
+        foreach (var brokenReference in checkReport.BrokenReferences)
+        {
+            missingTargets.Add(brokenReference.MissingTarget);
+        }
+
+        return missingTargets.Count;
     }
 }

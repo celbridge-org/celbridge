@@ -1,0 +1,245 @@
+/* The report is a document surface, so the page takes the content background from the shared
+   stylesheet and adds only what the report's own structure needs. */
+
+body {
+    margin: 0;
+    overflow-y: auto;
+}
+
+#report {
+    max-width: 900px;
+    padding: 20px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* A display declared on the element outranks the [hidden] attribute's own display:none, which the
+   user agent applies at the lowest specificity. Both surfaces below are toggled by that attribute,
+   so each restates it at a specificity that wins. */
+#report[hidden],
+#report-error[hidden] {
+    display: none;
+}
+
+#report-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--cel-divider);
+}
+
+.report-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#report-title {
+    margin: 0;
+    font-size: var(--cel-font-size-heading);
+    font-weight: var(--cel-font-weight-strong);
+}
+
+#report-summary {
+    margin: 0;
+}
+
+.report-meta {
+    margin: 0;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+.report-truncated {
+    color: var(--cel-warning-text);
+}
+
+/* Severity glyphs carry the same colours the host uses for status text; info stays muted so a
+   healthy report does not paint itself as something to act on. */
+.severity-info {
+    color: var(--cel-text-secondary);
+}
+
+.severity-warning {
+    color: var(--cel-warning-text);
+}
+
+.severity-error {
+    color: var(--cel-error-text);
+}
+
+#report-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.report-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: var(--cel-font-size-base);
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* A fact is a label and its reading, aligned into a column so a summary section scans as a table. */
+.fact-row {
+    display: grid;
+    grid-template-columns: minmax(0, 14em) 1fr;
+    gap: 12px;
+    align-items: baseline;
+}
+
+.fact-label {
+    color: var(--cel-text-secondary);
+}
+
+.finding-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.item-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.item-message {
+    margin: 0;
+}
+
+.item-resources {
+    margin: 0;
+}
+
+.item-detail {
+    margin: 0;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+.item-actions {
+    margin: 4px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Resource keys are read character by character when comparing two of them, so they take the mono
+   face wherever they appear. */
+.resource {
+    font-family: var(--cel-font-mono);
+    font-size: var(--cel-font-size-small);
+    overflow-wrap: anywhere;
+}
+
+.resource-separator {
+    margin: 0 6px;
+    color: var(--cel-text-secondary);
+}
+
+/* The resource is the control, so it carries the link treatment rather than sitting beside a button
+   that repeats the verb. A button rather than an anchor: it runs an action, it does not go to a URL. */
+.resource-link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--cel-accent);
+    cursor: pointer;
+    text-align: left;
+}
+
+.resource-link:hover {
+    text-decoration: underline;
+}
+
+.finding-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.group-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.group-message {
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.group-count {
+    color: var(--cel-text-secondary);
+    font-size: var(--cel-font-size-small);
+}
+
+/* Occurrences of one finding are parallel, so they align into columns and the eye can run down them
+   rather than reading each row as prose. */
+.finding-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.finding-table th {
+    text-align: left;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-regular);
+    color: var(--cel-text-secondary);
+    padding: 2px 12px 4px 0;
+    border-bottom: 1px solid var(--cel-divider);
+}
+
+.finding-table td {
+    padding: 3px 12px 3px 0;
+    vertical-align: baseline;
+}
+
+.finding-table tbody tr:hover {
+    background: var(--cel-control-hover-bg);
+}
+
+.finding-table .column-line {
+    text-align: right;
+    width: 1%;
+    white-space: nowrap;
+    padding-right: 0;
+}
+
+.finding-table .cell-detail {
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+.report-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 24px;
+    color: var(--cel-error-text);
+}
+
+.report-error p {
+    margin: 0;
+}

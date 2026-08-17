@@ -69,9 +69,9 @@ public class ProjectLoadReporterTests
 
         reportSummary.Should().NotBeNull();
 
+        // The key carries no timestamp, so it stays valid across loads and across sessions.
         var key = reportSummary!.Resource.ToString();
-        key.Should().StartWith("logs:reports/project-load-");
-        key.Should().EndWith(".report");
+        key.Should().Be("logs:reports/project-load.report");
 
         File.Exists(ResolveReportFilePath(reportSummary.Resource)).Should().BeTrue();
     }

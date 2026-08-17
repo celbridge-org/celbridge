@@ -1,0 +1,11 @@
+[editor]
+id = "report"
+type = "document"
+entry-point = "index.html"
+display-name = "Report_Editor_Name"
+description = "Report_Editor_Description"
+
+[[file-types]]
+extension = ".report"
+display-name = "Report_FileType_Report"
+icon = "bs-clipboard-data"

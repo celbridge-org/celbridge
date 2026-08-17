@@ -54,9 +54,15 @@ internal sealed class ReportCodeConverter : JsonConverter<ReportCode>
 public sealed class ReportWriter : IReportWriter
 {
     /// <summary>
-    /// How many reports sharing an id are kept.
+    /// How many superseded reports are kept in the history folder, per report id. The current report
+    /// is not one of them.
     /// </summary>
     public const int RetainCount = 5;
+
+    /// <summary>
+    /// Sub-folder holding the superseded reports for every id.
+    /// </summary>
+    public const string HistoryFolderName = "history";
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
@@ -85,8 +91,9 @@ public sealed class ReportWriter : IReportWriter
                 .WithErrors(createFolderResult);
         }
 
-        var fileName = ComposeFileName(report.Id, report.GeneratedAt);
-        var filePath = Path.Combine(folderPath, fileName);
+        var filePath = Path.Combine(folderPath, $"{report.Id}{ReportDocument.FileExtension}");
+
+        await ArchiveCurrentReportAsync(report, filePath, folderPath);
 
         var content = JsonSerializer.Serialize(report, SerializerOptions);
 
@@ -97,28 +104,94 @@ public sealed class ReportWriter : IReportWriter
                 .WithErrors(writeResult);
         }
 
-        await PruneOldReportsAsync(report.Id, folderPath);
+        await PruneHistoryAsync(report.Id, folderPath);
 
         return filePath;
     }
 
-    private static string ComposeFileName(string reportId, DateTimeOffset generatedAt)
+    // Moving rather than overwriting is what keeps the current report at a stable, addressable path
+    // without any earlier report being lost. Best effort: a report that cannot be archived is left in
+    // place to be overwritten, since failing the write would lose the newer report instead of an older
+    // one.
+    private async Task ArchiveCurrentReportAsync(ReportDocument report, string filePath, string folderPath)
     {
-        var timestamp = FileTimestamp.Compose(generatedAt);
+        var infoResult = await _fileSystem.GetInfoAsync(filePath);
+        if (infoResult.IsFailure ||
+            infoResult.Value.Kind != StorageItemKind.File)
+        {
+            return;
+        }
 
-        return $"{reportId}-{timestamp}{ReportDocument.FileExtension}";
+        var currentGeneratedAt = await ReadGeneratedAtAsync(filePath, infoResult.Value.ModifiedUtc);
+
+        // A producer that flushes more than once during an operation rewrites one report rather than
+        // producing several, so history gains an entry per generation, not per write.
+        if (currentGeneratedAt == report.GeneratedAt)
+        {
+            return;
+        }
+
+        var historyFolderPath = Path.Combine(folderPath, HistoryFolderName);
+
+        var createFolderResult = await _fileSystem.CreateFolderAsync(historyFolderPath);
+        if (createFolderResult.IsFailure)
+        {
+            _logger.LogWarning(createFolderResult, $"Failed to create report history folder: '{historyFolderPath}'");
+            return;
+        }
+
+        var timestamp = FileTimestamp.Compose(currentGeneratedAt);
+        var historyFileName = $"{report.Id}-{timestamp}{ReportDocument.FileExtension}";
+        var historyFilePath = Path.Combine(historyFolderPath, historyFileName);
+
+        var moveResult = await _fileSystem.MoveFileAsync(filePath, historyFilePath);
+        if (moveResult.IsFailure)
+        {
+            _logger.LogWarning(moveResult, $"Failed to archive the previous report: '{filePath}'");
+        }
+    }
+
+    // The report's own stamp names the generation being archived. A report that cannot be read falls
+    // back to when it was written, so an unreadable file still archives under a plausible name rather
+    // than blocking the rotation.
+    private async Task<DateTimeOffset> ReadGeneratedAtAsync(string filePath, DateTime modifiedUtc)
+    {
+        var fallback = new DateTimeOffset(modifiedUtc, TimeSpan.Zero);
+
+        var readResult = await _fileSystem.ReadAllTextAsync(filePath);
+        if (readResult.IsFailure)
+        {
+            return fallback;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(readResult.Value);
+            if (document.RootElement.TryGetProperty("generatedAt", out var generatedAt) &&
+                generatedAt.TryGetDateTimeOffset(out var parsed))
+            {
+                return parsed;
+            }
+        }
+        catch (JsonException)
+        {
+            // Falls through to the write time below.
+        }
+
+        return fallback;
     }
 
     // Retention is best effort: a report that was written successfully is not failed because an
     // older one could not be removed.
-    private async Task PruneOldReportsAsync(string reportId, string folderPath)
+    private async Task PruneHistoryAsync(string reportId, string folderPath)
     {
+        var historyFolderPath = Path.Combine(folderPath, HistoryFolderName);
         var pattern = $"{reportId}-*{ReportDocument.FileExtension}";
 
-        var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, pattern, recursive: false);
+        var enumerateResult = await _fileSystem.EnumerateAsync(historyFolderPath, pattern, recursive: false);
         if (enumerateResult.IsFailure)
         {
-            _logger.LogWarning(enumerateResult, $"Failed to enumerate reports for pruning in '{folderPath}'");
+            // The folder does not exist until the first report is superseded.
             return;
         }
 

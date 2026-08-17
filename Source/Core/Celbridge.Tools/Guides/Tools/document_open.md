@@ -22,6 +22,14 @@ When `true`, reload the document from disk even if it is already open. The norma
 
 When `true`, the opened document becomes the active tab in its section. Default `false`.
 
+### line, column
+
+A one-based position for the editor to scroll to and place the caret at. Both default to `0`, which opens the document at the top; `column` on its own is ignored. A negative value is rejected.
+
+Only editors that address their content by position act on it — the code editor does, the spreadsheet and file viewer do not. Navigation is delivered to the editor after the document opens, so a position past the end of the file still opens the document; the editor decides where to land.
+
+Pair this with `activate: true` when the point of the call is for the user to look at that line.
+
 ## Returns
 
 A status string:
