@@ -24,6 +24,15 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly IPlatformInfo _platformInfo;
     private readonly PointerEventHandler _tabStripWheelHandler;
     private bool _isShuttingDown = false;
+    private bool _scrollButtonsHidden;
+
+    // The tab list template's two overflow arrows, named by their containers because that is what carries
+    // the width each arrow costs the strip.
+    private static readonly string[] TabStripScrollButtonContainerNames =
+    {
+        "ScrollDecreaseButtonContainer",
+        "ScrollIncreaseButtonContainer"
+    };
 
     // The tab strip band from the TabView template, resolved once so composing a minimum does not walk the
     // section's visual tree on every query, and the tallest it has been measured at.
@@ -114,9 +123,15 @@ public sealed partial class DocumentSectionView : UserControl
 
         // The border lines come from the strip's template, and the pair inside the tab list only appears
         // once that list has laid out, so a section that starts empty is covered by applying now and again
-        // on the next dispatcher cycle.
+        // on the next dispatcher cycle. The scroll arrows live in that same late template.
         UpdateTabStripBorderLines();
-        _ = DispatcherQueue.TryEnqueue(UpdateTabStripBorderLines);
+        HideTabStripScrollButtons();
+
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            UpdateTabStripBorderLines();
+            HideTabStripScrollButtons();
+        });
     }
 
     private void OnTabViewSizeChanged(object sender, SizeChangedEventArgs e)
@@ -637,6 +652,7 @@ public sealed partial class DocumentSectionView : UserControl
         _ = DispatcherQueue.TryEnqueue(ClampTabStripScrollOffset);
     }
 
+
     private void ClampTabStripScrollOffset()
     {
         var scrollViewer = GetTabStripScrollViewer();
@@ -644,6 +660,51 @@ public sealed partial class DocumentSectionView : UserControl
             scrollViewer.HorizontalOffset > scrollViewer.ScrollableWidth)
         {
             scrollViewer.ChangeView(scrollViewer.ScrollableWidth, null, null, disableAnimation: true);
+        }
+    }
+
+    /// <summary>
+    /// Hides the tab strip's overflow scroll arrows and holds them hidden, freeing the 43px each one takes from
+    /// a strip that is short of room precisely when they appear. The strip still scrolls by wheel, and the
+    /// active tab is revealed on selection.
+    /// </summary>
+    private void HideTabStripScrollButtons()
+    {
+        if (_scrollButtonsHidden)
+        {
+            return;
+        }
+
+        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
+        if (tabListView is null)
+        {
+            // The tab list's template has not been applied yet, so try again on the next cycle.
+            return;
+        }
+
+        foreach (var containerName in TabStripScrollButtonContainerNames)
+        {
+            if (VisualTree.FindDescendantByName(tabListView, containerName) is not FrameworkElement container)
+            {
+                continue;
+            }
+
+            container.Visibility = Visibility.Collapsed;
+
+            // The strip shows the arrows again every time it starts overflowing, so the collapse has to be
+            // held rather than applied once.
+            container.RegisterPropertyChangedCallback(VisibilityProperty, HoldScrollButtonCollapsed);
+        }
+
+        _scrollButtonsHidden = true;
+    }
+
+    private static void HoldScrollButtonCollapsed(DependencyObject sender, DependencyProperty property)
+    {
+        if (sender is FrameworkElement container &&
+            container.Visibility != Visibility.Collapsed)
+        {
+            container.Visibility = Visibility.Collapsed;
         }
     }
 
