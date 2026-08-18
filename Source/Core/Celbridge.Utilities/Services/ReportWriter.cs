@@ -109,10 +109,10 @@ public static class ReportSerializer
 public sealed class ReportWriter : IReportWriter
 {
     /// <summary>
-    /// How many superseded reports are kept in the history folder, per report id. The current report
-    /// is not one of them.
+    /// How long a superseded report is kept in the history folder. The current report of an id is
+    /// never swept, however old it is.
     /// </summary>
-    public const int RetainCount = 5;
+    public static readonly TimeSpan RetentionPeriod = TimeSpan.FromDays(7);
 
     /// <summary>
     /// Sub-folder holding the superseded reports for every id.
@@ -145,11 +145,19 @@ public sealed class ReportWriter : IReportWriter
                 .WithErrors(createFolderResult);
         }
 
-        var filePath = Path.Combine(folderPath, $"{report.Id}{ReportDocument.FileExtension}");
+        // A producer that supplied no stamp gets the write time. Left unset, every generation would
+        // carry the same default and the rotation below could not tell one from the next.
+        var stampedReport = report;
+        if (stampedReport.GeneratedAt == default)
+        {
+            stampedReport = stampedReport with { GeneratedAt = DateTimeOffset.UtcNow };
+        }
 
-        await ArchiveCurrentReportAsync(report, filePath, folderPath);
+        var filePath = Path.Combine(folderPath, $"{stampedReport.Id}{ReportDocument.FileExtension}");
 
-        var content = ReportSerializer.Serialize(report);
+        await ArchiveCurrentReportAsync(stampedReport, filePath, folderPath);
+
+        var content = ReportSerializer.Serialize(stampedReport);
 
         var writeResult = await _fileSystem.WriteAllTextAsync(filePath, content);
         if (writeResult.IsFailure)
@@ -158,7 +166,7 @@ public sealed class ReportWriter : IReportWriter
                 .WithErrors(writeResult);
         }
 
-        await PruneHistoryAsync(report.Id, folderPath);
+        await PruneHistoryAsync(folderPath);
 
         return filePath;
     }
@@ -235,12 +243,13 @@ public sealed class ReportWriter : IReportWriter
         return fallback;
     }
 
-    // Retention is best effort: a report that was written successfully is not failed because an
-    // older one could not be removed.
-    private async Task PruneHistoryAsync(string reportId, string folderPath)
+    // Swept by age rather than by a count per id, so one pass covers every id in the folder and no
+    // id's history depends on how the ids happen to be named. Retention is best effort: a report that
+    // was written successfully is not failed because an older one could not be removed.
+    private async Task PruneHistoryAsync(string folderPath)
     {
         var historyFolderPath = Path.Combine(folderPath, HistoryFolderName);
-        var pattern = $"{reportId}-*{ReportDocument.FileExtension}";
+        var pattern = $"*{ReportDocument.FileExtension}";
 
         var enumerateResult = await _fileSystem.EnumerateAsync(historyFolderPath, pattern, recursive: false);
         if (enumerateResult.IsFailure)
@@ -249,21 +258,21 @@ public sealed class ReportWriter : IReportWriter
             return;
         }
 
-        var entries = enumerateResult.Value;
+        // The archive is a move, which carries the write time across, so the entry's own modified time
+        // is when the report it holds was written.
+        var expiryTime = DateTime.UtcNow - RetentionPeriod;
 
-        // The timestamp is fixed width, so ordering by name descending puts the newest first.
-        var staleReports = entries
+        var expiredReports = enumerateResult.Value
             .Where(entry => !entry.IsFolder)
-            .OrderByDescending(entry => entry.FullPath, StringComparer.Ordinal)
-            .Skip(RetainCount)
+            .Where(entry => entry.ModifiedUtc < expiryTime)
             .ToList();
 
-        foreach (var staleReport in staleReports)
+        foreach (var expiredReport in expiredReports)
         {
-            var deleteResult = await _fileSystem.DeleteFileAsync(staleReport.FullPath);
+            var deleteResult = await _fileSystem.DeleteFileAsync(expiredReport.FullPath);
             if (deleteResult.IsFailure)
             {
-                _logger.LogWarning(deleteResult, $"Failed to delete stale report: '{staleReport.FullPath}'");
+                _logger.LogWarning(deleteResult, $"Failed to delete expired report: '{expiredReport.FullPath}'");
             }
         }
     }

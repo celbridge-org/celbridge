@@ -5,10 +5,15 @@ using Celbridge.Utilities;
 
 namespace Celbridge.Resources.Helpers;
 
-// The report an operation writes: the id retention groups its history by, and the title the reader
-// sees. Operations that can only ever fail on one resource have no kind, because a report holding a
-// single row says nothing the notification did not.
-internal partial record ResourceOperationReportKind(string Id, string Title);
+// How an operation that failed on more than one resource reports itself: the id its history is kept
+// under, the title the reader sees, the finding every failed resource is an occurrence of, and the
+// verb the summary line reads. Only the operations that can fail on more than one resource have one,
+// because a report holding a single row says nothing the notification did not.
+internal partial record ResourceOperationReportKind(
+    string Id,
+    string Title,
+    ReportFindingDescriptor FailureDescriptor,
+    string FailureVerb);
 
 /// <summary>
 /// Tells the user what a resource operation could not do. One failure is fully expressed by the
@@ -92,7 +97,7 @@ public sealed class ResourceOperationNotifier
             return ResourceKey.Empty;
         }
 
-        var report = BuildReport(reportKind, operationType, failedResources, skippedReferencers);
+        var report = BuildReport(reportKind, failedResources, skippedReferencers);
 
         var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectFilePath);
         if (writeResult.IsFailure)
@@ -106,7 +111,6 @@ public sealed class ResourceOperationNotifier
 
     private static ReportDocument BuildReport(
         ResourceOperationReportKind reportKind,
-        ResourceOperationType operationType,
         IReadOnlyList<FailedResource> failedResources,
         IReadOnlyList<SkippedReferencer> skippedReferencers)
     {
@@ -114,7 +118,7 @@ public sealed class ResourceOperationNotifier
 
         if (failedResources.Count > 0)
         {
-            sections.Add(BuildFailedResourcesSection(operationType, failedResources));
+            sections.Add(BuildFailedResourcesSection(reportKind, failedResources));
         }
 
         if (skippedReferencers.Count > 0)
@@ -126,7 +130,7 @@ public sealed class ResourceOperationNotifier
             ? ReportSeverity.Error
             : ReportSeverity.Warning;
 
-        var summary = ComposeSummaryLine(operationType, failedResources.Count, skippedReferencers.Count);
+        var summary = ComposeSummaryLine(reportKind, failedResources.Count, skippedReferencers.Count);
 
         return new ReportDocument(
             reportKind.Id,
@@ -138,10 +142,10 @@ public sealed class ResourceOperationNotifier
     }
 
     private static ReportSection BuildFailedResourcesSection(
-        ResourceOperationType operationType,
+        ResourceOperationReportKind reportKind,
         IReadOnlyList<FailedResource> failedResources)
     {
-        var descriptor = ResolveFailureDescriptor(operationType);
+        var descriptor = reportKind.FailureDescriptor;
 
         var items = new List<ReportItem>(failedResources.Count);
         foreach (var failedResource in failedResources)
@@ -194,7 +198,7 @@ public sealed class ResourceOperationNotifier
     }
 
     private static string ComposeSummaryLine(
-        ResourceOperationType operationType,
+        ResourceOperationReportKind reportKind,
         int failedCount,
         int skippedCount)
     {
@@ -206,8 +210,7 @@ public sealed class ResourceOperationNotifier
         }
 
         var resourceLabel = failedCount == 1 ? "resource" : "resources";
-        var verb = ResolveFailureVerb(operationType);
-        var failedClause = $"{failedCount} {resourceLabel} could not be {verb}";
+        var failedClause = $"{failedCount} {resourceLabel} could not be {reportKind.FailureVerb}";
 
         if (skippedCount == 0)
         {
@@ -224,51 +227,35 @@ public sealed class ResourceOperationNotifier
         return $"{skippedCount} {referenceLabel} left pointing at the old location";
     }
 
+    // Null for every other operation, because they act on one resource at a time and so can never
+    // reach the report path at all.
     private static ResourceOperationReportKind? ResolveReportKind(ResourceOperationType operationType)
     {
         switch (operationType)
         {
             case ResourceOperationType.Copy:
-                return new ResourceOperationReportKind("copy-resources", "Copy Resources");
+                return new ResourceOperationReportKind(
+                    "copy-resources",
+                    "Copy Resources",
+                    ReportFindingCatalog.Resource.CopyFailed,
+                    "copied");
 
             case ResourceOperationType.Move:
-                return new ResourceOperationReportKind("move-resources", "Move Resources");
+                return new ResourceOperationReportKind(
+                    "move-resources",
+                    "Move Resources",
+                    ReportFindingCatalog.Resource.MoveFailed,
+                    "moved");
 
             case ResourceOperationType.Delete:
-                return new ResourceOperationReportKind("delete-resources", "Delete Resources");
+                return new ResourceOperationReportKind(
+                    "delete-resources",
+                    "Delete Resources",
+                    ReportFindingCatalog.Resource.DeleteFailed,
+                    "deleted");
 
             default:
                 return null;
-        }
-    }
-
-    private static ReportFindingDescriptor ResolveFailureDescriptor(ResourceOperationType operationType)
-    {
-        switch (operationType)
-        {
-            case ResourceOperationType.Copy:
-                return ReportFindingCatalog.Resource.CopyFailed;
-
-            case ResourceOperationType.Delete:
-                return ReportFindingCatalog.Resource.DeleteFailed;
-
-            default:
-                return ReportFindingCatalog.Resource.MoveFailed;
-        }
-    }
-
-    private static string ResolveFailureVerb(ResourceOperationType operationType)
-    {
-        switch (operationType)
-        {
-            case ResourceOperationType.Copy:
-                return "copied";
-
-            case ResourceOperationType.Delete:
-                return "deleted";
-
-            default:
-                return "moved";
         }
     }
 }

@@ -17,7 +17,7 @@ The project load is the exception that proves the rule: it writes on **every** l
 - `logs:reports/` for a host-generated report about the user's project. Use `ReportLocation.WriteReportAsync`, which resolves the folder and returns the resource key to open.
 - `project:` for a report the user asked for and will keep, share, or commit. An ordinary resource at the name the caller asked for, with no rotation.
 
-Under `logs:reports/` the current report of a kind sits at `{id}.report` and the previous one moves into `history/`, pruned to the most recent 5 per id. Pick an `id` per *kind of operation*, not per run: a copy report must not displace a delete report's history. `logs:` is unwatched, so a producer that reopens its own report passes `ForceReload` on the open command rather than waiting for a change event.
+Under `logs:reports/` the current report of a kind sits at `{id}.report` and the previous one moves into `history/`, where it is kept for a week. Pick an `id` per *kind of operation*, not per run: a per-run id opens a new document every time and leaves nothing to compare against. `logs:` is unwatched, so a producer that reopens its own report passes `ForceReload` on the open command rather than waiting for a change event.
 
 A producer that flushes several times during one operation is revising one report, not writing several. Stamp `GeneratedAt` with the start of the operation so every flush addresses the same file and history gains one entry per operation.
 

@@ -8,8 +8,8 @@ namespace Celbridge.Tests.Reports;
 
 /// <summary>
 /// Unit tests for ReportWriter — serializing a report document, stamping its filename with
-/// the generation time so a written report is never overwritten, and pruning the oldest
-/// reports that share an id.
+/// the generation time so a written report is never overwritten, and sweeping the history
+/// entries that have outlived the retention period.
 /// </summary>
 [TestFixture]
 public class ReportWriterTests
@@ -90,46 +90,87 @@ public class ReportWriterTests
     }
 
     [Test]
-    public async Task WriteReportAsync_BeyondTheRetentionLimit_PrunesTheOldestHistoryEntry()
+    public async Task WriteReportAsync_SweepsHistoryEntriesPastTheRetentionPeriod()
     {
         var generatedAt = new DateTimeOffset(2026, 8, 16, 9, 0, 0, TimeSpan.Zero);
 
-        for (var writeIndex = 0; writeIndex < ReportWriter.RetainCount + 3; writeIndex++)
-        {
-            var report = CreateReport("project-load", generatedAt.AddMinutes(writeIndex));
-            await _reportWriter.WriteReportAsync(report, _reportsFolderPath);
-        }
+        await _reportWriter.WriteReportAsync(CreateReport("project-load", generatedAt), _reportsFolderPath);
+        await _reportWriter.WriteReportAsync(
+            CreateReport("project-load", generatedAt.AddMinutes(1)),
+            _reportsFolderPath);
 
-        var historyFileNames = GetHistoryFileNames();
-        historyFileNames.Should().HaveCount(ReportWriter.RetainCount);
+        // The sweep reads the file's own write time, so the entry is aged rather than the clock moved.
+        AgeHistoryEntry("project-load-20260816T090000Z.report", ReportWriter.RetentionPeriod.Add(TimeSpan.FromDays(1)));
 
-        // The survivors are the newest, so the earliest timestamps are the ones that went.
-        historyFileNames.Should().NotContain("project-load-20260816T090000Z.report");
-        historyFileNames.Should().Contain("project-load-20260816T090600Z.report");
+        await _reportWriter.WriteReportAsync(
+            CreateReport("project-load", generatedAt.AddMinutes(2)),
+            _reportsFolderPath);
 
-        // The last generation written is the current report, not a history entry.
+        // The aged entry went; the one archived by the write that triggered the sweep stayed.
+        GetHistoryFileNames().Should().Equal("project-load-20260816T090100Z.report");
         GetReportFileNames().Should().Equal("project-load.report");
-        historyFileNames.Should().NotContain("project-load-20260816T090700Z.report");
     }
 
     [Test]
-    public async Task WriteReportAsync_PruningIsScopedToTheReportId()
+    public async Task WriteReportAsync_LeavesHistoryEntriesWithinTheRetentionPeriod()
     {
         var generatedAt = new DateTimeOffset(2026, 8, 16, 9, 0, 0, TimeSpan.Zero);
 
-        for (var writeIndex = 0; writeIndex < ReportWriter.RetainCount + 2; writeIndex++)
+        for (var writeIndex = 0; writeIndex < 8; writeIndex++)
         {
             var report = CreateReport("project-load", generatedAt.AddMinutes(writeIndex));
             await _reportWriter.WriteReportAsync(report, _reportsFolderPath);
         }
 
-        await _reportWriter.WriteReportAsync(CreateReport("resource-move", generatedAt), _reportsFolderPath);
+        // Nothing is capped by count, so every generation but the current one is still there.
+        GetHistoryFileNames().Should().HaveCount(7);
+        GetHistoryFileNames().Should().Contain("project-load-20260816T090000Z.report");
+        GetReportFileNames().Should().Equal("project-load.report");
+    }
+
+    [Test]
+    public async Task WriteReportAsync_ABusyIdDoesNotDisplaceTheHistoryOfAnIdSharingItsPrefix()
+    {
+        // "acme-tiles-*" also matches every history entry belonging to "acme-tiles-convert", so a
+        // per-id glob counted the busy id's entries against the quiet one and swept the quiet one out.
+        var generatedAt = new DateTimeOffset(2026, 8, 16, 9, 0, 0, TimeSpan.Zero);
+
+        // The busy neighbour runs first, so its entries are already in the folder when the quiet id
+        // archives its own. That is the order the glob crossed them in.
+        for (var writeIndex = 0; writeIndex < 8; writeIndex++)
+        {
+            var report = CreateReport("acme-tiles-convert", generatedAt.AddMinutes(writeIndex));
+            await _reportWriter.WriteReportAsync(report, _reportsFolderPath);
+        }
+
+        await _reportWriter.WriteReportAsync(CreateReport("acme-tiles", generatedAt), _reportsFolderPath);
         await _reportWriter.WriteReportAsync(
-            CreateReport("resource-move", generatedAt.AddMinutes(1)),
+            CreateReport("acme-tiles", generatedAt.AddMinutes(1)),
             _reportsFolderPath);
 
-        GetReportFileNames().Should().BeEquivalentTo(new[] { "project-load.report", "resource-move.report" });
-        GetHistoryFileNames().Should().Contain("resource-move-20260816T090000Z.report");
+        // The quiet id's one entry is still there, however busy its prefix-sharing neighbour was.
+        GetHistoryFileNames().Should().Contain("acme-tiles-20260816T090000Z.report");
+        GetReportFileNames().Should().BeEquivalentTo(new[] { "acme-tiles.report", "acme-tiles-convert.report" });
+    }
+
+    [Test]
+    public async Task WriteReportAsync_WithNoGenerationStamp_StampsTheWriteTime()
+    {
+        // A contribution that leaves generatedAt out would otherwise write the default stamp on every
+        // run, which reads as one generation being revised and so never rotates.
+        var writtenAt = DateTimeOffset.UtcNow;
+
+        await _reportWriter.WriteReportAsync(CreateReport("acme-convert", default), _reportsFolderPath);
+        await _reportWriter.WriteReportAsync(CreateReport("acme-convert", default), _reportsFolderPath);
+
+        var content = await File.ReadAllTextAsync(Path.Combine(_reportsFolderPath, "acme-convert.report"));
+        using var document = JsonDocument.Parse(content);
+
+        var stamp = document.RootElement.GetProperty("generatedAt").GetDateTimeOffset();
+        stamp.Should().BeOnOrAfter(writtenAt);
+
+        // Two runs, so the first is history rather than having been overwritten in place.
+        GetHistoryFileNames().Should().HaveCount(1);
     }
 
     [Test]
@@ -182,6 +223,14 @@ public class ReportWriterTests
             ReportSeverity.Info,
             "The project loaded with no issues.",
             sections);
+    }
+
+    // Backdates a history entry so the age sweep sees it as expired.
+    private void AgeHistoryEntry(string historyFileName, TimeSpan age)
+    {
+        var historyFilePath = Path.Combine(_reportsFolderPath, ReportWriter.HistoryFolderName, historyFileName);
+
+        File.SetLastWriteTimeUtc(historyFilePath, DateTime.UtcNow - age);
     }
 
     private List<string> GetReportFileNames()

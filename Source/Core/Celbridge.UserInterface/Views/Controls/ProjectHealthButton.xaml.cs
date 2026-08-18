@@ -44,7 +44,8 @@ public sealed partial class ProjectHealthButton : UserControl
 
     private void OnProjectHealthChanged(object recipient, ProjectHealthChangedMessage message)
     {
-        UpdateHealth();
+        // Recorded at the end of the project load, which runs off the UI thread.
+        DispatcherQueue.TryEnqueue(UpdateHealth);
     }
 
     private void UpdateHealth()

@@ -17,8 +17,8 @@ public sealed partial class WorkspacePage : Page
 
     private bool _initialized = false;
 
-    // The workspace notification toast, kept so its messenger subscriptions and timer can be torn down
-    // on page unload.
+    // The workspace notification toast, kept so its messenger subscriptions can be torn down on page
+    // unload.
     private WorkspaceToast? _workspaceToast;
 
     public WorkspacePage()
@@ -113,7 +113,7 @@ public sealed partial class WorkspacePage : Page
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
 
-        // Tear down the toast's messenger subscriptions and auto-dismiss timer.
+        // Tear down the toast's messenger subscriptions.
         _workspaceToast?.Cleanup();
         _workspaceToast = null;
 
