@@ -4,6 +4,7 @@
   "workspaces": [
     "Core/Celbridge.WebHost/Web/celbridge-client",
     "Modules/Celbridge.DocumentEditors/Editors/CodeEditor",
+    "Modules/Celbridge.DocumentEditors/Editors/Report",
     "Workspace/Celbridge.Console/Web/Console"
   ],
   "scripts": {

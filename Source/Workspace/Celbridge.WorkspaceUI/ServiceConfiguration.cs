@@ -27,14 +27,13 @@ public static class ServiceConfiguration
         services.AddTransient<IWorkspaceService, WorkspaceService>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
-        services.AddTransient<ProjectCheckReporter>();
 
         //
         // Register panels
         //
 
         services.AddTransient<IUtilityPanel, UtilityPanel>();
-        services.AddTransient<NotificationBar>();
+        services.AddTransient<WorkspaceToast>();
 
         //
         // Register view models
@@ -42,7 +41,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<WorkspacePageViewModel>();
         services.AddTransient<UtilityPanelViewModel>();
-        services.AddTransient<NotificationBarViewModel>();
+        services.AddTransient<WorkspaceToastViewModel>();
 
         //
         // Register commands

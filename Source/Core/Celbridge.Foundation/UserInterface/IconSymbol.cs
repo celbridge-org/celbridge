@@ -23,6 +23,7 @@ public enum IconSymbol
     Delete,
     Error,
     Warning,
+    Report,
     More,
     Collapse,
     Settings,
@@ -52,5 +53,6 @@ public enum IconSymbol
     Menu,
     Play,
     Examples,
+    Link,
     Exit
 }

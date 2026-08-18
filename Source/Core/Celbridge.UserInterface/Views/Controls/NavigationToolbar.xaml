@@ -65,6 +65,9 @@
                         VerticalAlignment="Stretch">
               <views:ProjectSwitcher x:Name="ProjectSwitcher"
                                      VerticalAlignment="Stretch"/>
+
+              <controls:ProjectHealthButton x:Name="ProjectHealthButton"
+                                            Margin="4,0,0,0"/>
             </StackPanel>
         </NavigationView.PaneCustomContent>
     </NavigationView>

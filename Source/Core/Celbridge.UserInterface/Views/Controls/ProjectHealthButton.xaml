@@ -1,0 +1,29 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.ProjectHealthButton"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    Visibility="Collapsed">
+
+  <!-- Collapsed while the current load found nothing: an indicator that is always lit stops being
+       looked at. Each severity is its own element so its foreground can stay a ThemeResource and
+       follow a theme change; a brush read from Application.Current.Resources would not. -->
+  <Button x:Name="HealthButton"
+          AutomationProperties.AutomationId="project-health-button"
+          Style="{StaticResource TransparentIconButtonStyle}"
+          VerticalAlignment="Center"
+          Click="HealthButton_Click">
+    <Grid>
+      <controls:Icon x:Name="WarningIcon"
+                     Symbol="Warning"
+                     FontSize="{StaticResource IconSizeMedium}"
+                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                     Visibility="Collapsed"/>
+      <controls:Icon x:Name="ErrorIcon"
+                     Symbol="Error"
+                     FontSize="{StaticResource IconSizeMedium}"
+                     Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                     Visibility="Collapsed"/>
+    </Grid>
+  </Button>
+</UserControl>

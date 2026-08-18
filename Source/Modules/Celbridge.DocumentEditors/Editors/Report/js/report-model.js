@@ -1,0 +1,180 @@
+// Pure helpers over the .report document shape. Kept free of DOM and client access so the parts of
+// the editor that make decisions about the data can be tested on their own.
+
+/** Severity values as they appear in the file. */
+export const Severity = Object.freeze({
+    Info: 'info',
+    Warning: 'warning',
+    Error: 'error'
+});
+
+/** Section kinds as they appear in the file. */
+export const SectionKind = Object.freeze({
+    Facts: 'facts',
+    Findings: 'findings'
+});
+
+/** Action kinds as they appear in the file. */
+export const ActionKind = Object.freeze({
+    OpenResource: 'openResource'
+});
+
+const SEVERITY_RANK = Object.freeze({
+    [Severity.Info]: 0,
+    [Severity.Warning]: 1,
+    [Severity.Error]: 2
+});
+
+/**
+ * Orders severities from least to most serious. An unrecognised severity ranks lowest, so a report
+ * written by a newer producer still renders rather than failing on a value this build does not know.
+ * @param {string} severity
+ * @returns {number}
+ */
+export function severityRank(severity) {
+    return SEVERITY_RANK[severity] ?? 0;
+}
+
+/**
+ * Normalises a severity to one this editor can render.
+ * @param {string} severity
+ * @returns {string}
+ */
+export function normalizeSeverity(severity) {
+    return severity in SEVERITY_RANK ? severity : Severity.Info;
+}
+
+/**
+ * Parses report file content, rejecting anything that is not a report this editor can render.
+ * @param {string} text - The file content.
+ * @returns {Object} The parsed report.
+ * @throws {Error} When the content is not valid JSON or is missing the report shape.
+ */
+export function parseReport(text) {
+    const report = JSON.parse(text);
+
+    if (report === null || typeof report !== 'object' || Array.isArray(report)) {
+        throw new Error('Report is not an object.');
+    }
+
+    if (!Array.isArray(report.sections)) {
+        throw new Error('Report has no sections.');
+    }
+
+    return report;
+}
+
+/**
+ * Collects a section's items into groups that render as one row each. Occurrences of one finding
+ * collapse into a single group carrying its count; everything else stays a group of one.
+ *
+ * The key is the code paired with the message rather than the code alone: a few descriptors compose
+ * their message from arguments, so two occurrences of one code can read differently, and a group
+ * header showing the first of them would misdescribe the rest.
+ *
+ * @param {Array<Object>} items - The section's items, in file order.
+ * @returns {Array<{code: string|null, message: string, severity: string, items: Array<Object>}>}
+ */
+export function groupItems(items) {
+    const groups = [];
+    const groupsByKey = new Map();
+
+    for (const item of items) {
+        const code = item.code ?? null;
+        const message = item.message ?? '';
+
+        // An item with no code names no finding kind, so there is nothing for it to be an occurrence
+        // of and it always stands alone.
+        if (code === null) {
+            groups.push(createGroup(code, message, item));
+            continue;
+        }
+
+        const key = `${code}\u0000${message}`;
+        const existing = groupsByKey.get(key);
+        if (existing === undefined) {
+            const group = createGroup(code, message, item);
+            groupsByKey.set(key, group);
+            groups.push(group);
+            continue;
+        }
+
+        existing.items.push(item);
+        if (severityRank(item.severity) > severityRank(existing.severity)) {
+            existing.severity = normalizeSeverity(item.severity);
+        }
+    }
+
+    return groups;
+}
+
+function createGroup(code, message, item) {
+    return {
+        code,
+        message,
+        severity: normalizeSeverity(item.severity),
+        items: [item]
+    };
+}
+
+/**
+ * Returns the open-resource actions of an item, dropping any that name no resource or a kind this
+ * build does not offer.
+ * @param {Object} item
+ * @returns {Array<Object>}
+ */
+export function resolveActions(item) {
+    const actions = Array.isArray(item.actions) ? item.actions : [];
+
+    return actions.filter(action =>
+        action?.kind === ActionKind.OpenResource &&
+        typeof action.resource === 'string' &&
+        action.resource.length > 0);
+}
+
+/**
+ * Returns the action that opens the item's own resource, or null when it has none. Every producer
+ * emits actions of this shape, which is what lets the resource itself be the control.
+ * @param {Object} item
+ * @returns {Object|null}
+ */
+export function findResourceAction(item) {
+    if (!item?.resource) {
+        return null;
+    }
+
+    return resolveActions(item).find(action => action.resource === item.resource) ?? null;
+}
+
+/**
+ * Returns the item's actions that name some resource other than its own, which have no cell of their
+ * own to occupy.
+ * @param {Object} item
+ * @returns {Array<Object>}
+ */
+export function findOtherActions(item) {
+    return resolveActions(item).filter(action => action.resource !== item?.resource);
+}
+
+/**
+ * Reads an action's target position as one-based line and column numbers. Both are zero when there is
+ * no action or it carries no location, which opens the resource at the top.
+ * @param {Object|null} action
+ * @returns {{line: number, column: number}}
+ */
+export function resolveActionPosition(action) {
+    const location = action?.location;
+    if (location === null || typeof location !== 'object') {
+        return { line: 0, column: 0 };
+    }
+
+    const line = Number.isInteger(location.line) && location.line > 0 ? location.line : 0;
+    const column = Number.isInteger(location.column) && location.column > 0 ? location.column : 0;
+
+    // A column without a line has nothing to resolve against.
+    if (line === 0) {
+        return { line: 0, column: 0 };
+    }
+
+    return { line, column };
+}

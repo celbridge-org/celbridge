@@ -30,30 +30,12 @@ public class PackageService : IPackageService
         // the config parsed cleanly. Both gates are applied inside the reconcile.
         var report = await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: true);
 
-        // Record the outcome in the project load report before raising the
-        // error banner, so the details the banner points at are already on
-        // disk when the user goes looking.
+        // Flushed here as well as at the end of the load, so a load that never reaches the end still
+        // leaves the package outcome on disk. Every flush during a load writes the same file.
         _loadReporter.RecordPackageReport(report);
         await _loadReporter.FlushAsync();
 
-        var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
-
-        if (report.Failures.Count > 0)
-        {
-            // Surface the failures via the project-notification error banner.
-            var message = new ProjectErrorMessage(ProjectErrorType.PackageLoadError, projectName);
-            _messengerService.Send(message);
-        }
-
-        if (report.ResolvedEditorFailures.Count > 0 ||
-            report.ResolvedEditorWarnings.Count > 0)
-        {
-            // Skipped or degraded contribution declarations are project config errors, surfaced on
-            // the advisory banner because the rest of the file still applied.
-            var message = new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectName);
-            _messengerService.Send(message);
-        }
-
+        // Failures reach the user through the load report recorded above, not from here.
         _messengerService.Send(new PackagesInitializedMessage());
     }
 

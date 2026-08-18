@@ -67,6 +67,15 @@ public record SkippedReferencer(
     string Message);
 
 /// <summary>
+/// One resource an operation could not process, paired with the reason it failed. Carried by the
+/// batch command results and by ResourceOperationFailedMessage, so the reason reaches the person at
+/// the keyboard as well as a programmatic caller.
+/// </summary>
+public record FailedResource(
+    ResourceKey Resource,
+    string Message);
+
+/// <summary>
 /// Result of an integrity-aware move: the list of resources whose references
 /// were rewritten, the list of referencers the cascade had to skip (with a
 /// reason for each), and the outcome of the paired-sidecar cascade.

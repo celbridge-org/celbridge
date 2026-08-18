@@ -11,11 +11,11 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 internal sealed class ResourceReferenceIndex : IResourceReferenceIndex
 {
-    private readonly IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceKey>> _referencersByTarget;
+    private readonly IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceReferenceSite>> _referencersByTarget;
 
     public ResourceReferenceIndex(
         IReadOnlyList<ResourceKey> referencedTargets,
-        IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceKey>> referencersByTarget)
+        IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceReferenceSite>> referencersByTarget)
     {
         ReferencedTargets = referencedTargets;
         _referencersByTarget = referencersByTarget;
@@ -23,14 +23,14 @@ internal sealed class ResourceReferenceIndex : IResourceReferenceIndex
 
     public IReadOnlyList<ResourceKey> ReferencedTargets { get; }
 
-    public IReadOnlyList<ResourceKey> GetReferencers(ResourceKey target)
+    public IReadOnlyList<ResourceReferenceSite> GetReferencers(ResourceKey target)
     {
         if (_referencersByTarget.TryGetValue(target, out var referencers))
         {
             return referencers;
         }
 
-        return Array.Empty<ResourceKey>();
+        return Array.Empty<ResourceReferenceSite>();
     }
 }
 
@@ -84,7 +84,7 @@ public sealed class ResourceScanner : IResourceScanner
 
     public async Task<IResourceReferenceIndex> BuildReferenceIndexAsync()
     {
-        var referencersByTarget = new ConcurrentDictionary<ResourceKey, ConcurrentBag<ResourceKey>>();
+        var referencersByTarget = new ConcurrentDictionary<ResourceKey, ConcurrentBag<ResourceReferenceSite>>();
 
         await EnumerateProjectTextFilesAsync(async (resourceKey, _) =>
         {
@@ -94,10 +94,17 @@ public sealed class ResourceScanner : IResourceScanner
                 return;
             }
 
-            foreach (var target in ScanReferences(text))
+            // Offsets are converted to line and column here, while the text is in hand. Doing it later
+            // would mean re-reading the file purely to count newlines.
+            var lineIndex = new TextLineIndex(text);
+
+            foreach (var reference in ScanReferenceSites(text))
             {
-                var referencers = referencersByTarget.GetOrAdd(target, _ => new ConcurrentBag<ResourceKey>());
-                referencers.Add(resourceKey);
+                var position = lineIndex.Resolve(reference.StartIndex);
+                var site = new ResourceReferenceSite(resourceKey, position.Line, position.Column);
+
+                var referencers = referencersByTarget.GetOrAdd(reference.Key, _ => new ConcurrentBag<ResourceReferenceSite>());
+                referencers.Add(site);
             }
         });
 
@@ -105,11 +112,13 @@ public sealed class ResourceScanner : IResourceScanner
             .OrderBy(t => t.ToString(), StringComparer.Ordinal)
             .ToList();
 
-        var sortedReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>();
+        var sortedReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceReferenceSite>>();
         foreach (var target in referencedTargets)
         {
             sortedReferencers[target] = referencersByTarget[target]
-                .OrderBy(k => k.ToString(), StringComparer.Ordinal)
+                .OrderBy(site => site.Source.ToString(), StringComparer.Ordinal)
+                .ThenBy(site => site.Line)
+                .ThenBy(site => site.Column)
                 .ToList();
         }
 
@@ -225,6 +234,17 @@ public sealed class ResourceScanner : IResourceScanner
     private static HashSet<ResourceKey> ScanReferences(string text)
     {
         var references = new HashSet<ResourceKey>();
+        foreach (var reference in ScanReferenceSites(text))
+        {
+            references.Add(reference.Key);
+        }
+        return references;
+    }
+
+    // Yields every "project:" reference literal in `text`, in the order they appear. The same key
+    // named twice yields twice, because each is a separate place in the file.
+    private static IEnumerable<ParsedReference> ScanReferenceSites(string text)
+    {
         var marker = ResourceReferenceParser.ReferenceMarker;
         int searchStart = 0;
         while (true)
@@ -238,7 +258,7 @@ public sealed class ResourceScanner : IResourceScanner
             var parsed = ResourceReferenceParser.TryParseReferenceAt(text, markerIndex);
             if (parsed is not null)
             {
-                references.Add(parsed.Key);
+                yield return parsed;
                 searchStart = parsed.EndIndex;
             }
             else
@@ -246,7 +266,6 @@ public sealed class ResourceScanner : IResourceScanner
                 searchStart = markerIndex + marker.Length;
             }
         }
-        return references;
     }
 
     // Walks all project: text files in parallel, invoking the visitor for

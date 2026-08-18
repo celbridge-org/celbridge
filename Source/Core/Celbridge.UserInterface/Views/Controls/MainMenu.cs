@@ -58,15 +58,6 @@ public class MainMenu
             onClick: (sender, e) => ViewModel.NavigateToSettings());
         _menuFlyout.Items.Add(settingsItem);
 
-        // Show Application Logs, an app-level diagnostic that reveals the current log file in the file manager.
-        // Always enabled, since logs are useful even when no project is loaded.
-        var showLogsItem = CreateMenuItem(
-            iconSymbol: IconSymbol.Bug,
-            label: _stringLocalizer.GetString("MainMenu_ShowLogs"),
-            isEnabled: true,
-            onClick: (sender, e) => ViewModel.ShowLogs());
-        _menuFlyout.Items.Add(showLogsItem);
-
         _menuFlyout.Items.Add(new MenuFlyoutSeparator());
 
         var exitItem = CreateMenuItem(
@@ -129,6 +120,23 @@ public class MainMenu
             label: _stringLocalizer.GetString("MainMenu_CloseProject"),
             isEnabled: isWorkspaceLoaded,
             onClick: (sender, e) => _ = ViewModel.CloseProjectAsync()));
+
+        fileSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        // Scans the project for project: references that no longer resolve and opens the findings as a report.
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Link,
+            label: _stringLocalizer.GetString("MainMenu_CheckReferences"),
+            isEnabled: isWorkspaceLoaded,
+            onClick: (sender, e) => ExecuteCheckReferences()));
+
+        // Reveals the current run's log file in the file manager. Always enabled, since the log is useful
+        // even when no project is loaded.
+        fileSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Bug,
+            label: _stringLocalizer.GetString("MainMenu_ShowLog"),
+            isEnabled: true,
+            onClick: (sender, e) => ViewModel.ShowLogs()));
 
         return fileSubItem;
     }
@@ -218,6 +226,12 @@ public class MainMenu
         {
             command.ResourceType = resourceType;
         });
+    }
+
+    private void ExecuteCheckReferences()
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        commandService.Execute<ICheckReferencesCommand>(command => command.OpenReport = true);
     }
 
     private void PerformEdit(EditIntent intent)

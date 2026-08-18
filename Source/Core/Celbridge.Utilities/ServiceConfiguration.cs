@@ -1,3 +1,4 @@
+using Celbridge.Reports;
 using Celbridge.Utilities.Platform;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,5 +11,6 @@ public static class ServiceConfiguration
         services.AddSingleton<ITextBinarySniffer, TextBinarySniffer>();
         services.AddSingleton<IPlatformInfo, PlatformInfo>();
         services.AddSingleton<IAppEnvironment, AppEnvironment>();
+        services.AddSingleton<IReportWriter, ReportWriter>();
     }
 }

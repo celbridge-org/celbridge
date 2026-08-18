@@ -19,6 +19,7 @@ public class ProjectUnloaderTests
     private INavigationService _navigationService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IServerService _serverService = null!;
+    private IProjectHealthService _projectHealthService = null!;
     private ProjectUnloader _projectUnloader = null!;
 
     [SetUp]
@@ -28,6 +29,7 @@ public class ProjectUnloaderTests
         _navigationService = Substitute.For<INavigationService>();
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _serverService = Substitute.For<IServerService>();
+        _projectHealthService = Substitute.For<IProjectHealthService>();
 
         var project = Substitute.For<IProject>();
         project.ProjectName.Returns("TestProject");
@@ -40,7 +42,8 @@ public class ProjectUnloaderTests
             _projectService,
             _navigationService,
             _workspaceWrapper,
-            _serverService);
+            _serverService,
+            _projectHealthService);
     }
 
     [Test]

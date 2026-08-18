@@ -246,6 +246,81 @@ const list = createCardList({
 
 Prefer this over a delimited text field (`a | b | c` per line) for anything Celbridge-specific: it removes a syntax the user has to learn and a parser you have to maintain. The exception is a setting whose data has a canonical text form elsewhere — command-line arguments, `requirements.txt` entries, `KEY=value` environment pairs — where a plain textarea is the better control, because it lets the user paste from the file the data already lives in.
 
+## Telling the user something
+
+`client.dialog.toast(severity, message)` shows the workspace toast — the same single-line notification the host uses for a project load or a failed batch operation.
+
+```javascript
+await client.dialog.toast('warning', t('MyEditor_ConvertedWithWarnings', failed.length));
+```
+
+`severity` is `'info'`, `'warning'` or `'error'`. Anything else is rejected rather than downgraded, so a typo surfaces as an error instead of quietly showing your failure as information. `message` is one line you have already localized; only its first line is shown.
+
+A third argument gives the toast a button that opens a document:
+
+```javascript
+await client.dialog.toast('error', t('MyEditor_ConfigSyntaxError'), {
+    resource: 'project:config.json',
+    label: t('MyEditor_OpenConfig'),
+    line: 42
+});
+```
+
+`resource` is any document, not only a report — `line` and `column` are one-based and land the reader on a spot in it, so a single problem with a known position does not need a report written just to be navigable. `label` is your own localized text; omit it and the button uses the host's wording for opening a report. Omit the whole argument and the toast carries no button.
+
+**It resolves when the host has taken the toast, not when the user has seen it.** One notification is on screen at a time, a newer one replaces the current one, and anything below an error is dropped while an error is still showing. Nothing auto-dismisses. Treat the call as best effort and never as an acknowledgement.
+
+This sits under `dialog` alongside `alert`, but it is the opposite kind of call: `alert` blocks until the user answers, `toast` tells them and returns. Note that it is unrelated to `notifyChanged`, `notifyContentLoaded` and the other `notify*` calls, which are protocol messages to the host rather than anything the user sees. Reach for `alert` only when the user genuinely cannot continue without responding.
+
+Use it for an outcome the user should know about but did not ask a question about — a conversion that finished with failures, a long operation that completed. **One operation raises one toast**, whatever it found: a loop that toasts per item will have every line but the last replaced before anyone reads it. When there is per-item detail worth reading, say it once here and write the detail as a report.
+
+## Reporting per-item detail
+
+`client.document.writeReport(report)` writes a `.report` document into the project and returns the resource key it opens by. Hand that key to `dialog.toast` as its action resource and the toast gains a button that opens it.
+
+```javascript
+const resource = await client.document.writeReport({
+    id: 'acme-tiles-convert',
+    title: 'Convert Tilesets',
+    severity: 'warning',
+    summary: '9 of 40 tilesets could not be converted.',
+    sections: [{
+        title: 'Tilesets',
+        kind: 'findings',
+        severity: 'warning',
+        items: failed.map(entry => ({
+            severity: 'warning',
+            message: 'Could not be converted.',
+            resource: entry.resource,
+            detail: entry.reason,
+            actions: [{ kind: 'openResource', label: 'Open', resource: entry.resource }]
+        }))
+    }]
+});
+
+await client.dialog.toast('warning', '9 of 40 tilesets could not be converted', { resource });
+```
+
+**Write one when there is per-item detail worth reading beyond the notification line** — more than one item, or one item whose reason will not fit a line. A single failure fully described by its notification does not need a report, and a reports folder churning with one-row documents devalues the ones that matter.
+
+### The id names the kind, not the run
+
+The current report of an id sits at `{id}.report` and writing a new one moves the previous into `history/`, where it is kept for a week. So `id` is stable across runs — `acme-tiles-convert`, not `convert-2026-08-18`. That keeps re-running from opening a new tab each time, and lets the reader compare against the last few.
+
+It must be lowercase letters, digits, hyphens and dots. **Nothing stops you colliding with another package or with the host, so qualify it with your package name.** The host's own ids are `project-load`, `check-references`, `copy-resources`, `move-resources`, `delete-resources`; taking one of those replaces the report the user's project health button opens.
+
+Set `generatedAt` yourself (an ISO 8601 UTC stamp) if one operation writes its report more than once as it progresses — the same stamp means one report being revised rather than several superseding each other. Omit it and the host stamps the write.
+
+### Sections and items
+
+A section declares its `kind`. `facts` sections are labelled readings — `message` is the label and `value` the reading — and their items carry no code. `findings` sections are things needing attention, and the editor groups their items by message into a table whose columns come from what the rows actually carry.
+
+`detail` is **per-occurrence only**: the parse error, the rejected value, the reason this item failed. Anything true of every item belongs in the `message`, which is stated once as the group heading. A constant `detail` repeated on every row is the common mistake — it says nothing the message did not, and becomes the same paragraph printed a hundred times.
+
+`openResource` is the only action kind, and a report can be shared or committed, so there is deliberately no way to name a URL or a command to run. Give an item an action naming its own `resource` and the editor turns the resource itself into the link; add `location: { line, column }` when the finding has a position.
+
+Report text is resolved by you and written into the file, exactly as notification text is. A report is a JSON file that can be read outside Celbridge, so it holds words rather than localization keys.
+
 ## Edit verbs (optional)
 
 The macOS Edit menu and the in-window menu route the standard verbs (copy, cut, paste, selectAll, undo, redo) to the focused editor. Wire two things to participate; skip both and the menu greys out for your editor and the shortcut falls through to your own key handling unchanged.

@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
 using Celbridge.Projects;
+using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.Settings;
 
@@ -15,8 +16,8 @@ public class WorkspaceLoader
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
-    private readonly ProjectCheckReporter _projectCheckReporter;
     private readonly IProjectLoadReporter _loadReporter;
+    private readonly IProjectHealthService _projectHealthService;
     private readonly IAppEnvironment _appEnvironment;
 
     public WorkspaceLoader(
@@ -25,8 +26,8 @@ public class WorkspaceLoader
         IFeatureFlags featureFlags,
         IProjectService projectService,
         IServerService serverService,
-        ProjectCheckReporter projectCheckReporter,
         IProjectLoadReporter loadReporter,
+        IProjectHealthService projectHealthService,
         IAppEnvironment appEnvironment)
     {
         _logger = logger;
@@ -34,8 +35,8 @@ public class WorkspaceLoader
         _featureFlags = featureFlags;
         _projectService = projectService;
         _serverService = serverService;
-        _projectCheckReporter = projectCheckReporter;
         _loadReporter = loadReporter;
+        _projectHealthService = projectHealthService;
         _appEnvironment = appEnvironment;
     }
 
@@ -54,15 +55,9 @@ public class WorkspaceLoader
             var projectFeatures = currentProject.Config.Features;
             _featureFlags.ApplyProjectOverrides(projectFeatures);
 
-            // Surface entries the config parser skipped or degraded. The rest of the file applied.
+            // Record entries the config parser skipped or degraded. The rest of the file applied, and
+            // the load report is where the detail lands.
             HandleConfigEntryErrors(currentProject.Config.EntryErrors, currentProject.ProjectFilePath);
-
-            // Surface a failed migration or an invalid/incompatible project version as a banner. These are
-            // project-scoped and fire on load regardless of whether any console is open.
-            if (currentProject.MigrationResult.Status != MigrationStatus.Complete)
-            {
-                HandleMigrationFailure(currentProject.MigrationResult, currentProject.ProjectFilePath);
-            }
         }
 
         // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
@@ -181,9 +176,8 @@ public class WorkspaceLoader
 
         // A console session starts only when the user opens a .console document, not on load.
 
-        // Awaited so the consistency check completes before any project script that runs on load can
-        // modify the structure the scan reads.
-        await RunProjectCheckAsync();
+        // Written last, so the report covers everything the load recorded along the way.
+        await WriteLoadReportAsync();
 
         return Result.Ok();
     }
@@ -213,30 +207,75 @@ public class WorkspaceLoader
         }
     }
 
-    // Errors are logged, never thrown — a broken consistency check must not fail
-    // workspace load.
-    private async Task RunProjectCheckAsync()
+    // Errors are logged, never thrown — a report that could not be written must not fail workspace load.
+    private async Task WriteLoadReportAsync()
     {
         try
         {
-            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
+            var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-            // ExecuteImmediate, not ExecuteAsync: this runs inside the in-flight LoadProjectCommand, so
-            // enqueuing and awaiting a command would deadlock the serial queue.
-            var reportResult = await commandService.ExecuteImmediate<IProjectCheckCommand, ProjectCheckReport>();
-            if (reportResult.IsFailure)
+            // The sidecar snapshot is a by-product of the registry build that has already run, so this is
+            // a read rather than a check.
+            _loadReporter.RecordSidecarReport(registry.GetSidecarReport());
+            RecordResourceCounts();
+
+            var reportSummary = await _loadReporter.FlushAsync();
+            if (reportSummary is null)
             {
-                _logger.LogWarning(reportResult, "Project consistency check failed.");
                 return;
             }
 
-            _projectCheckReporter.Report(reportResult.Value);
-            _loadReporter.RecordCheckReport(reportResult.Value);
-            await _loadReporter.FlushAsync();
+            // Recorded in every state, including a clean load: the switcher's health row states what the
+            // load found whether or not it found anything, and needs a report to open either way.
+            _projectHealthService.SetHealth(reportSummary);
+
+            if (reportSummary.Severity == ReportSeverity.Info)
+            {
+                return;
+            }
+
+            // One notification for the whole load: everything it covers is in the report the action opens.
+            // Raised after the flush, so that report is already on disk.
+            var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+            var message = new ProjectLoadNotificationMessage(reportSummary);
+            messengerService.Send(message);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Project consistency check threw an unexpected exception.");
+            _logger.LogWarning(ex, "Failed to write the project load report.");
+        }
+    }
+
+    private void RecordResourceCounts()
+    {
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        if (workspaceService is null)
+        {
+            return;
+        }
+
+        var projectFolder = workspaceService.ResourceService.Registry.ProjectFolder;
+
+        var fileCount = 0;
+        var folderCount = 0;
+        CountResources(projectFolder, ref fileCount, ref folderCount);
+
+        _loadReporter.RecordResourceCounts(fileCount, folderCount);
+    }
+
+    private static void CountResources(IFolderResource folder, ref int fileCount, ref int folderCount)
+    {
+        foreach (var child in folder.Children)
+        {
+            if (child is IFolderResource childFolder)
+            {
+                folderCount++;
+                CountResources(childFolder, ref fileCount, ref folderCount);
+            }
+            else
+            {
+                fileCount++;
+            }
         }
     }
 
@@ -287,6 +326,8 @@ public class WorkspaceLoader
             return;
         }
 
+        _loadReporter.RecordConfigEntryErrors(entryErrors);
+
         var projectFileName = Path.GetFileName(projectFilePath);
 
         var sb = new StringBuilder();
@@ -296,44 +337,5 @@ public class WorkspaceLoader
             sb.AppendLine($"  [{entryError.EntryName}]: {entryError.Message}");
         }
         _logger.LogError(sb.ToString());
-
-        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        var message = new ProjectErrorMessage(ProjectErrorType.ProjectConfigEntryError, projectFileName);
-        messengerService.Send(message);
-    }
-
-    private void HandleMigrationFailure(MigrationResult migrationResult, string projectFilePath)
-    {
-        var projectFileName = Path.GetFileName(projectFilePath);
-        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-
-        ProjectErrorMessage message;
-
-        switch (migrationResult.Status)
-        {
-            case MigrationStatus.InvalidConfig:
-                _logger.LogError("Project config is invalid");
-                message = new ProjectErrorMessage(ProjectErrorType.InvalidProjectConfig, projectFileName);
-                messengerService.Send(message);
-                break;
-
-            case MigrationStatus.IncompatibleVersion:
-                _logger.LogError("Project version is not compatible with application version");
-                message = new ProjectErrorMessage(ProjectErrorType.IncompatibleVersion, projectFileName);
-                messengerService.Send(message);
-                break;
-
-            case MigrationStatus.InvalidVersion:
-                _logger.LogError("Project version is invalid");
-                message = new ProjectErrorMessage(ProjectErrorType.InvalidVersion, projectFileName);
-                messengerService.Send(message);
-                break;
-
-            case MigrationStatus.Failed:
-                _logger.LogError("Project migration failed");
-                message = new ProjectErrorMessage(ProjectErrorType.MigrationError, projectFileName);
-                messengerService.Send(message);
-                break;
-        }
     }
 }

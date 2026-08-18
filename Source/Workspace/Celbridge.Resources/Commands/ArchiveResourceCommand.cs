@@ -23,17 +23,17 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
     };
 
     private readonly ILogger<ArchiveResourceCommand> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ResourceOperationNotifier _operationNotifier;
 
     public ArchiveResourceCommand(
         ILogger<ArchiveResourceCommand> logger,
-        IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ResourceOperationNotifier operationNotifier)
     {
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _operationNotifier = operationNotifier;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -41,10 +41,14 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         var result = await ExecuteArchiveAsync();
         if (result.IsFailure)
         {
-            var sourceName = SourceResource.ResourceName;
-            var failedItems = new List<string> { sourceName };
-            _messengerService.Send(new ResourceOperationFailedMessage(ResourceOperationType.Archive, failedItems));
+            var failedResources = new List<FailedResource>
+            {
+                new FailedResource(SourceResource, result.MessageChain)
+            };
+
+            await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Archive, failedResources);
         }
+
         return result;
     }
 

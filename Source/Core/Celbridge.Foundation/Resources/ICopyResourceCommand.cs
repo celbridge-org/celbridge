@@ -4,15 +4,6 @@ using Celbridge.DataTransfer;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// A source resource whose copy or move failed, paired with the reason. Carried
-/// in CopyCommandResult so a partial-batch failure surfaces per-resource detail
-/// rather than collapsing the whole batch into a single command failure.
-/// </summary>
-public record FailedResource(
-    ResourceKey Resource,
-    string Message);
-
-/// <summary>
 /// Aggregated result of a CopyResourceCommand batch. UpdatedReferencers and
 /// SkippedReferencers are aggregated across every move in the batch (empty
 /// for copy-mode batches because copy does not rewrite references). FailedResources

@@ -15,21 +15,21 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
     public ResourceKey DestResource { get; set; }
     public bool OpenAfterCreating { get; set; } = false;
 
-    private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly CreateResourceHelper _createResourceHelper;
+    private readonly ResourceOperationNotifier _operationNotifier;
 
     public CreateResourceCommand(
-        IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        CreateResourceHelper createResourceHelper)
+        CreateResourceHelper createResourceHelper,
+        ResourceOperationNotifier operationNotifier)
     {
-        _messengerService = messengerService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _createResourceHelper = createResourceHelper;
+        _operationNotifier = operationNotifier;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -44,9 +44,11 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
             var reservationFailure = Result.Fail(
                 $"Cannot create file '{DestResource}': the .cel extension is reserved for project metadata sidecars.");
 
-            List<string> failedReservedItems = [DestResource.ResourceName];
-            var reservationMessage = new ResourceOperationFailedMessage(ResourceOperationType.Create, failedReservedItems);
-            _messengerService.Send(reservationMessage);
+            List<FailedResource> failedReservedResources =
+            [
+                new FailedResource(DestResource, reservationFailure.MessageChain)
+            ];
+            await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Create, failedReservedResources);
 
             return reservationFailure;
         }
@@ -55,10 +57,11 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
 
         if (createResult.IsFailure)
         {
-            // Notify the UI about the failure
-            List<string> failedItems = [DestResource.ResourceName];
-            var message = new ResourceOperationFailedMessage(ResourceOperationType.Create, failedItems);
-            _messengerService.Send(message);
+            List<FailedResource> failedResources =
+            [
+                new FailedResource(DestResource, createResult.MessageChain)
+            ];
+            await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Create, failedResources);
 
             return createResult;
         }

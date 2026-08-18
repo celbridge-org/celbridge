@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -216,53 +216,59 @@
   <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
   </data>
-  <data name="Explorer_OperationFailed_Delete_Single" xml:space="preserve">
-    <value>Failed to delete: {0}</value>
+  <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
+    <value>Could not delete '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Delete_Multiple" xml:space="preserve">
-    <value>Failed to delete {0} items</value>
+  <data name="Toast_OperationFailed_Delete_Multiple" xml:space="preserve">
+    <value>Could not delete {0} resources</value>
   </data>
-  <data name="Explorer_OperationFailed_Copy_Single" xml:space="preserve">
-    <value>Failed to copy: {0}</value>
+  <data name="Toast_OperationFailed_Copy_Single" xml:space="preserve">
+    <value>Could not copy '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Copy_Multiple" xml:space="preserve">
-    <value>Failed to copy {0} items</value>
+  <data name="Toast_OperationFailed_Copy_Multiple" xml:space="preserve">
+    <value>Could not copy {0} resources</value>
   </data>
-  <data name="Explorer_OperationFailed_Move_Single" xml:space="preserve">
-    <value>Failed to move: {0}</value>
+  <data name="Toast_OperationFailed_Move_Single" xml:space="preserve">
+    <value>Could not move '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Move_Multiple" xml:space="preserve">
-    <value>Failed to move {0} items</value>
+  <data name="Toast_OperationFailed_Move_Multiple" xml:space="preserve">
+    <value>Could not move {0} resources</value>
   </data>
-  <data name="Explorer_OperationFailed_Rename_Single" xml:space="preserve">
-    <value>Failed to rename: {0}</value>
+  <data name="Toast_OperationFailed_Rename_Single" xml:space="preserve">
+    <value>Could not rename '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Rename_Multiple" xml:space="preserve">
-    <value>Failed to rename {0} items</value>
+  <data name="Toast_OperationFailed_Rename_Multiple" xml:space="preserve">
+    <value>Could not rename {0} resources</value>
   </data>
-  <data name="Explorer_OperationFailed_Create_Single" xml:space="preserve">
-    <value>Failed to create: {0}</value>
+  <data name="Toast_OperationFailed_Create_Single" xml:space="preserve">
+    <value>Could not create '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Create_Multiple" xml:space="preserve">
-    <value>Failed to create {0} items</value>
+  <data name="Toast_OperationFailed_Create_Multiple" xml:space="preserve">
+    <value>Could not create {0} resources</value>
   </data>
-  <data name="Explorer_OperationFailed_Archive_Single" xml:space="preserve">
-    <value>Failed to create archive: {0}</value>
+  <data name="Toast_OperationFailed_Archive_Single" xml:space="preserve">
+    <value>Could not create the archive for '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Archive_Multiple" xml:space="preserve">
-    <value>Failed to create archive for {0} items</value>
+  <data name="Toast_OperationFailed_Archive_Multiple" xml:space="preserve">
+    <value>Could not create the archive for {0} resources</value>
   </data>
-  <data name="Explorer_OperationFailed_Extract_Single" xml:space="preserve">
-    <value>Failed to extract archive: {0}</value>
+  <data name="Toast_OperationFailed_Extract_Single" xml:space="preserve">
+    <value>Could not extract '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Extract_Multiple" xml:space="preserve">
-    <value>Failed to extract {0} archives</value>
+  <data name="Toast_OperationFailed_Extract_Multiple" xml:space="preserve">
+    <value>Could not extract {0} archives</value>
   </data>
-  <data name="Explorer_OperationFailed_Unknown_Single" xml:space="preserve">
-    <value>Operation failed: {0}</value>
+  <data name="Toast_OperationFailed_Unknown_Single" xml:space="preserve">
+    <value>The operation failed on '{0}': {1}</value>
   </data>
-  <data name="Explorer_OperationFailed_Unknown_Multiple" xml:space="preserve">
-    <value>Operation failed on {0} items</value>
+  <data name="Toast_OperationFailed_Unknown_Multiple" xml:space="preserve">
+    <value>The operation failed on {0} resources</value>
+  </data>
+  <data name="Toast_ReferencesNotUpdated_One" xml:space="preserve">
+    <value>One reference still points at the old location</value>
+  </data>
+  <data name="Toast_ReferencesNotUpdated_Many" xml:space="preserve">
+    <value>{0} references still point at the old location</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
@@ -354,17 +360,35 @@
   <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
     <value>Enter a name for the new copy:</value>
   </data>
-  <data name="NotificationBar_ReloadProjectButton" xml:space="preserve">
-    <value>Reload Project</value>
+  <data name="Toast_ViewReportButton" xml:space="preserve">
+    <value>View Report</value>
+  </data>
+  <data name="Toast_ProjectLoadIssues_One" xml:space="preserve">
+    <value>The project loaded with 1 issue.</value>
+  </data>
+  <data name="Toast_ProjectLoadIssues_Many" xml:space="preserve">
+    <value>The project loaded with {0} issues.</value>
+  </data>
+  <data name="ProjectHealth_Healthy" xml:space="preserve">
+    <value>Loaded with no issues</value>
+  </data>
+  <data name="TitleBar_ViewLoadReport" xml:space="preserve">
+    <value>View Load Report</value>
+  </data>
+  <data name="ProjectHealth_Warnings_One" xml:space="preserve">
+    <value>Loaded with 1 warning</value>
+  </data>
+  <data name="ProjectHealth_Warnings_Many" xml:space="preserve">
+    <value>Loaded with {0} warnings</value>
+  </data>
+  <data name="ProjectHealth_Errors_One" xml:space="preserve">
+    <value>Loaded with 1 error</value>
+  </data>
+  <data name="ProjectHealth_Errors_Many" xml:space="preserve">
+    <value>Loaded with {0} errors</value>
   </data>
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>
-  </data>
-  <data name="NotificationBar_ProjectConfigErrorTitle" xml:space="preserve">
-    <value>Project Configuration Error</value>
-  </data>
-  <data name="NotificationBar_ProjectConfigErrorMessage" xml:space="preserve">
-    <value>Please check '{0}' for syntax errors and reload the project.</value>
   </data>
   <data name="AlertDialog_TitleDefault" xml:space="preserve">
     <value>Alert</value>
@@ -393,8 +417,11 @@
   <data name="MainMenu_ReloadProject" xml:space="preserve">
     <value>Reload Project</value>
   </data>
-  <data name="MainMenu_ShowLogs" xml:space="preserve">
-    <value>Show Application Logs</value>
+  <data name="MainMenu_CheckReferences" xml:space="preserve">
+    <value>Check References</value>
+  </data>
+  <data name="MainMenu_ShowLog" xml:space="preserve">
+    <value>Show Log</value>
   </data>
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
@@ -680,47 +707,8 @@ Open with default application instead?</value>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
   </data>
-  <data name="NotificationBar_IncompatibleVersionTitle" xml:space="preserve">
-    <value>Incompatible Project Version</value>
-  </data>
-  <data name="NotificationBar_IncompatibleVersionMessage" xml:space="preserve">
-    <value>This project was created with a newer version of Celbridge. Please upgrade Celbridge and reload the project.</value>
-  </data>
-  <data name="NotificationBar_InvalidVersionTitle" xml:space="preserve">
-    <value>Invalid Project Version</value>
-  </data>
-  <data name="NotificationBar_InvalidVersionMessage" xml:space="preserve">
-    <value>Unable to determine project version compatibility. Please correct the 'celbridge-version' property in '{0}' and reload the project.</value>
-  </data>
-  <data name="NotificationBar_MigrationBannerTitle" xml:space="preserve">
-    <value>Project Upgraded</value>
-  </data>
-  <data name="NotificationBar_MigrationBannerMessage" xml:space="preserve">
-    <value>The project has been upgraded from version {0} to {1}</value>
-  </data>
-  <data name="NotificationBar_MigrationErrorMessage" xml:space="preserve">
-    <value>Failed to migrate the project to the current version of Celbridge. Check the log for more information.</value>
-  </data>
-  <data name="NotificationBar_MigrationErrorTitle" xml:space="preserve">
-    <value>Project Migration Error</value>
-  </data>
-  <data name="NotificationBar_PackageLoadErrorTitle" xml:space="preserve">
-    <value>Package Load Error</value>
-  </data>
-  <data name="NotificationBar_PackageLoadErrorMessage" xml:space="preserve">
-    <value>One or more packages failed to load. See the project load report for details.</value>
-  </data>
-  <data name="NotificationBar_ProjectCheckFindingsTitle" xml:space="preserve">
-    <value>Project Check Findings</value>
-  </data>
-  <data name="NotificationBar_ProjectCheckFindingsMessage" xml:space="preserve">
-    <value>Project check found {0} issue(s). See log for details.</value>
-  </data>
-  <data name="NotificationBar_ProjectConfigEntryErrorTitle" xml:space="preserve">
-    <value>Project Config Issues</value>
-  </data>
-  <data name="NotificationBar_ProjectConfigEntryErrorMessage" xml:space="preserve">
-    <value>Some entries in {0} were skipped or degraded. See log for details.</value>
+  <data name="DocumentToolbar_CloseAreaTooltip" xml:space="preserve">
+    <value>Close Panel</value>
   </data>
   <data name="DocumentToolbar_CollapseAreaTooltip" xml:space="preserve">
     <value>Collapse Panel</value>

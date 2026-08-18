@@ -23,19 +23,22 @@ public class ProjectUnloader
     private readonly INavigationService _navigationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IServerService _serverService;
+    private readonly IProjectHealthService _projectHealthService;
 
     public ProjectUnloader(
         ILogger<ProjectUnloader> logger,
         IProjectService projectService,
         INavigationService navigationService,
         IWorkspaceWrapper workspaceWrapper,
-        IServerService serverService)
+        IServerService serverService,
+        IProjectHealthService projectHealthService)
     {
         _logger = logger;
         _projectService = projectService;
         _navigationService = navigationService;
         _workspaceWrapper = workspaceWrapper;
         _serverService = serverService;
+        _projectHealthService = projectHealthService;
     }
 
     /// <summary>
@@ -62,6 +65,10 @@ public class ProjectUnloader
                 return cleanupResult;
             }
         }
+
+        // Health describes the load that is ending, so it goes with the project rather than lingering
+        // on the switcher while no project is open.
+        _projectHealthService.ClearHealth();
 
         // Clear the reference and dispose the project
         _projectService.ClearCurrentProject();

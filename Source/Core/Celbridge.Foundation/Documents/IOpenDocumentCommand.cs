@@ -3,6 +3,17 @@ using Celbridge.Commands;
 namespace Celbridge.Documents;
 
 /// <summary>
+/// A document to open and where to land in it, recorded so a producer can offer the navigation
+/// without issuing the command itself. Line and column are one-based; zero opens at the top. Label
+/// names the action for the surface that offers it, and is resolved by whoever recorded it.
+/// </summary>
+public record OpenDocumentAction(
+    ResourceKey Resource,
+    string? Label = null,
+    int Line = 0,
+    int Column = 0);
+
+/// <summary>
 /// Open a document in the documents panel.
 /// </summary>
 public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>

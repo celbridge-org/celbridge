@@ -1,6 +1,12 @@
 namespace Celbridge.Resources;
 
 /// <summary>
+/// One place a resource is referenced: the file holding the reference literal, and where in that
+/// file it sits, in one-based line and column numbers.
+/// </summary>
+public record ResourceReferenceSite(ResourceKey Source, int Line, int Column);
+
+/// <summary>
 /// Every tracked "project:" reference in the project, gathered in one walk.
 /// </summary>
 public interface IResourceReferenceIndex
@@ -11,9 +17,10 @@ public interface IResourceReferenceIndex
     IReadOnlyList<ResourceKey> ReferencedTargets { get; }
 
     /// <summary>
-    /// The text files naming the given target, sorted by key. Empty when nothing references it.
+    /// Every place the given target is named, sorted by source key then position. Empty when nothing
+    /// references it. A file naming the same target twice appears once per reference.
     /// </summary>
-    IReadOnlyList<ResourceKey> GetReferencers(ResourceKey target);
+    IReadOnlyList<ResourceReferenceSite> GetReferencers(ResourceKey target);
 }
 
 /// <summary>

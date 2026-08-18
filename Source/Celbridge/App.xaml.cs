@@ -374,9 +374,10 @@ public partial class App : Application
         // namespaced under a Celbridge subfolder on the Skia heads' shared local data location.
         var localDataPath = new Celbridge.Utilities.Platform.AppEnvironment().LocalApplicationDataFolderPath;
 
-        // Get process start time formatted to match the Python host log filenames.
+        // The launch time in UTC, matching the timestamp in a report file name. A local time would
+        // repeat an hour at every daylight saving change, so two runs could claim the same file.
         var processStartTime = System.Diagnostics.Process.GetCurrentProcess().StartTime;
-        var timestamp = processStartTime.ToString("yyyyMMdd_HHmmss");
+        var timestamp = Celbridge.Utilities.FileTimestamp.Compose(processStartTime);
 
         var logFolderPath = System.IO.Path.Combine(localDataPath, "Logs");
         var logFileName = $"celbridge_{timestamp}.log";

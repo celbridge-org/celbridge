@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
-using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -503,21 +503,8 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public void NavigateToResult(ResourceKey resource, int lineNumber, int column, int endLineNumber, int endColumn)
     {
-        // Ensure the selection range is valid (end should not be before start)
-        if (endLineNumber > 0)
-        {
-            // Swap if end is before start
-            if (endLineNumber < lineNumber || (endLineNumber == lineNumber && endColumn < column))
-            {
-                (lineNumber, endLineNumber) = (endLineNumber, lineNumber);
-                (column, endColumn) = (endColumn, column);
-            }
-        }
+        var location = DocumentLocation.Compose(lineNumber, column, endLineNumber, endColumn);
 
-        // Create location JSON for text document navigation
-        var location = JsonSerializer.Serialize(new { lineNumber, column, endLineNumber, endColumn });
-
-        // Open the document and navigate to the specific location
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resource;

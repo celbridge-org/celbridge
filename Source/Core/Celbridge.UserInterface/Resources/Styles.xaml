@@ -12,6 +12,10 @@
        open, so any layout that reserves a matching gap reads the same value rather than repeating it. -->
   <x:Double x:Key="GutterSize">7</x:Double>
 
+  <!-- The widest the workspace notification toast can grow to. It is an overlay, so this caps how much
+       of the workspace a long line covers rather than reserving anything. -->
+  <x:Double x:Key="WorkspaceToastMaxWidth">420</x:Double>
+
   <!-- Rounding on a panel corner where two gutters meet on the outside of its area, so a corner sitting on
        the application border or on an area's internal split stays square. The bottom corners round only on a
        head that clips a hosted web view to the rounding, because the document view fills the panel below the

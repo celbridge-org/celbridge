@@ -14,21 +14,21 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     public DataTransferMode TransferMode { get; set; }
     public List<ResourceTransferItem> TransferItems { get; set; } = new();
 
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
     private readonly ILocalFileSystem _fileSystem;
+    private readonly ResourceOperationNotifier _operationNotifier;
 
     public TransferResourcesCommand(
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        ILocalFileSystem fileSystem)
+        ILocalFileSystem fileSystem,
+        ResourceOperationNotifier operationNotifier)
     {
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
         _fileSystem = fileSystem;
+        _operationNotifier = operationNotifier;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -56,7 +56,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
             return Result.Ok();
         }
 
-        List<string> failedItems = new();
+        List<FailedResource> failedResources = new();
 
         // Single undo unit for the whole batch; partial success is acceptable.
         using (var batch = resourceOpService.BeginBatch())
@@ -66,7 +66,13 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                 var result = await TransferSingleItemAsync(item, resourceRegistry, transferService, resourceOpService);
                 if (result.IsFailure)
                 {
-                    failedItems.Add(item.DestResource.ResourceName);
+                    // An item dragged in from outside the project has no source resource, so the
+                    // destination is the only key naming what was attempted.
+                    var failedResource = item.SourceResource.IsEmpty
+                        ? item.DestResource
+                        : item.SourceResource;
+
+                    failedResources.Add(new FailedResource(failedResource, result.MessageChain));
                 }
             }
         }
@@ -78,15 +84,10 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
             command.Expanded = true;
         });
 
-        // Notify the UI if any items failed
-        if (failedItems.Count > 0)
-        {
-            var operationType = TransferMode == DataTransferMode.Copy
-                ? ResourceOperationType.Copy
-                : ResourceOperationType.Move;
-            var message = new ResourceOperationFailedMessage(operationType, failedItems);
-            _messengerService.Send(message);
-        }
+        var operationType = TransferMode == DataTransferMode.Copy
+            ? ResourceOperationType.Copy
+            : ResourceOperationType.Move;
+        await _operationNotifier.NotifyFailuresAsync(operationType, failedResources);
 
         return Result.Ok();
     }

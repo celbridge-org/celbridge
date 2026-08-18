@@ -54,6 +54,7 @@ public class IconService : IIconService
         { IconSymbol.Delete, "bs-trash" },
         { IconSymbol.Error, "bs-exclamation-circle-fill" },
         { IconSymbol.Warning, "bs-exclamation-triangle-fill" },
+        { IconSymbol.Report, "bs-clipboard-data" },
         { IconSymbol.More, "bs-three-dots" },
         { IconSymbol.Collapse, "bs-arrows-collapse" },
         { IconSymbol.Settings, "bs-gear" },
@@ -83,6 +84,7 @@ public class IconService : IIconService
         { IconSymbol.Menu, "bs-list" },
         { IconSymbol.Play, "bs-play-fill" },
         { IconSymbol.Examples, "bs-collection" },
+        { IconSymbol.Link, "bs-link-45deg" },
         { IconSymbol.Exit, "bs-box-arrow-right" }
     };
 

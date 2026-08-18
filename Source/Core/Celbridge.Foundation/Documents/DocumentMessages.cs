@@ -1,3 +1,5 @@
+using Celbridge.Reports;
+
 namespace Celbridge.Documents;
 
 /// <summary>
@@ -52,3 +54,18 @@ public record DocumentOpenedMessage(ResourceKey DocumentResource);
 /// that swaps to a different editor, which removes the tab without going through the documents service.
 /// </summary>
 public record DocumentClosedMessage(ResourceKey DocumentResource);
+
+/// <summary>
+/// A message sent when an editor running in a WebView asks the host to tell the user something. The
+/// message text is one line, resolved by the editor rather than by the host, following the same
+/// producer-side rule report content does.
+/// </summary>
+public record EditorNotificationMessage(
+    ReportSeverity Severity,
+    string Message)
+{
+    /// <summary>
+    /// The document the notification's action opens, or null when the editor offered none.
+    /// </summary>
+    public OpenDocumentAction? Action { get; init; }
+}

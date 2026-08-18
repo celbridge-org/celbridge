@@ -43,18 +43,18 @@ public class LogFileRetentionTests
     [Test]
     public void DeleteOldLogFiles_DeletesOldestBeyondRetainedCount()
     {
-        CreateLogFile("celbridge_20260101_000000.log");
-        CreateLogFile("celbridge_20260102_000000.log");
-        CreateLogFile("celbridge_20260103_000000.log");
-        var currentLogFilePath = Path.Combine(_logFolderPath, "celbridge_20260104_000000.log");
+        CreateLogFile("celbridge_20260101T000000Z.log");
+        CreateLogFile("celbridge_20260102T000000Z.log");
+        CreateLogFile("celbridge_20260103T000000Z.log");
+        var currentLogFilePath = Path.Combine(_logFolderPath, "celbridge_20260104T000000Z.log");
 
         LogFileRetention.DeleteOldLogFiles(_logFolderPath, currentLogFilePath, retainedFileCount: 2);
 
         var remainingFileNames = GetRemainingFileNames();
         remainingFileNames.Should().BeEquivalentTo(new[]
         {
-            "celbridge_20260102_000000.log",
-            "celbridge_20260103_000000.log",
+            "celbridge_20260102T000000Z.log",
+            "celbridge_20260103T000000Z.log",
         });
     }
 
@@ -63,21 +63,21 @@ public class LogFileRetentionTests
     {
         // The starting run's file is excluded from the sweep even when it already exists on disk, so a
         // retained count of zero still leaves this run somewhere to write.
-        var currentLogFilePath = CreateLogFile("celbridge_20260101_000000.log");
-        CreateLogFile("celbridge_20260102_000000.log");
+        var currentLogFilePath = CreateLogFile("celbridge_20260101T000000Z.log");
+        CreateLogFile("celbridge_20260102T000000Z.log");
 
         LogFileRetention.DeleteOldLogFiles(_logFolderPath, currentLogFilePath, retainedFileCount: 0);
 
         var remainingFileNames = GetRemainingFileNames();
-        remainingFileNames.Should().Equal("celbridge_20260101_000000.log");
+        remainingFileNames.Should().Equal("celbridge_20260101T000000Z.log");
     }
 
     [Test]
     public void DeleteOldLogFiles_UnderRetainedCount_DeletesNothing()
     {
-        CreateLogFile("celbridge_20260101_000000.log");
-        CreateLogFile("celbridge_20260102_000000.log");
-        var currentLogFilePath = Path.Combine(_logFolderPath, "celbridge_20260103_000000.log");
+        CreateLogFile("celbridge_20260101T000000Z.log");
+        CreateLogFile("celbridge_20260102T000000Z.log");
+        var currentLogFilePath = Path.Combine(_logFolderPath, "celbridge_20260103T000000Z.log");
 
         LogFileRetention.DeleteOldLogFiles(_logFolderPath, currentLogFilePath, retainedFileCount: 50);
 
@@ -90,10 +90,10 @@ public class LogFileRetentionTests
     {
         // The log folder is Celbridge's own, but the sweep only claims files it recognises as
         // application logs so anything else dropped in there survives.
-        CreateLogFile("celbridge_20260101_000000.log");
+        CreateLogFile("celbridge_20260101T000000Z.log");
         CreateLogFile("notes.txt");
-        CreateLogFile("python_20260101_000000.log");
-        var currentLogFilePath = Path.Combine(_logFolderPath, "celbridge_20260102_000000.log");
+        CreateLogFile("python_20260101T000000Z.log");
+        var currentLogFilePath = Path.Combine(_logFolderPath, "celbridge_20260102T000000Z.log");
 
         LogFileRetention.DeleteOldLogFiles(_logFolderPath, currentLogFilePath, retainedFileCount: 0);
 
@@ -101,7 +101,7 @@ public class LogFileRetentionTests
         remainingFileNames.Should().BeEquivalentTo(new[]
         {
             "notes.txt",
-            "python_20260101_000000.log",
+            "python_20260101T000000Z.log",
         });
     }
 
@@ -110,7 +110,7 @@ public class LogFileRetentionTests
     {
         // First run on a clean machine: NLog creates the folder later, when it opens the log file.
         var missingFolderPath = Path.Combine(_logFolderPath, "does-not-exist");
-        var currentLogFilePath = Path.Combine(missingFolderPath, "celbridge_20260101_000000.log");
+        var currentLogFilePath = Path.Combine(missingFolderPath, "celbridge_20260101T000000Z.log");
 
         var sweep = () => LogFileRetention.DeleteOldLogFiles(missingFolderPath, currentLogFilePath, retainedFileCount: 0);
 

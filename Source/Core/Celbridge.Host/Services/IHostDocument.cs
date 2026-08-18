@@ -40,6 +40,7 @@ public static class DocumentRpcMethods
     public const string ContentLoaded = "document/contentLoaded";
     public const string RequestState = "document/requestState";
     public const string RestoreState = "document/restoreState";
+    public const string WriteReport = "document/writeReport";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -80,6 +81,14 @@ public interface IHostDocument
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.Save)]
     Task<SaveResult> SaveAsync(string content);
+
+    /// <summary>
+    /// Writes a report document into the project's reports folder and returns the resource key it
+    /// opens by. The content is a serialized report; the caller owns its id, and the previous report
+    /// under that id is rotated into history.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.WriteReport)]
+    Task<WriteReportResult> WriteReportAsync(string reportJson);
 
     /// <summary>
     /// Called when the document content has changed in the WebView.

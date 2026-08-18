@@ -11,7 +11,7 @@ internal static class ResourceReferenceIndexTestHelper
     {
         var index = Substitute.For<IResourceReferenceIndex>();
         index.ReferencedTargets.Returns(Array.Empty<ResourceKey>());
-        index.GetReferencers(Arg.Any<ResourceKey>()).Returns(Array.Empty<ResourceKey>());
+        index.GetReferencers(Arg.Any<ResourceKey>()).Returns(Array.Empty<ResourceReferenceSite>());
 
         return index;
     }
@@ -23,9 +23,15 @@ internal static class ResourceReferenceIndexTestHelper
             target,
         };
 
+        // The position is immaterial to the tests that use this; each referencer is stubbed as one
+        // reference at the top of its file.
+        var sites = referencers
+            .Select(referencer => new ResourceReferenceSite(referencer, Line: 1, Column: 1))
+            .ToArray();
+
         var index = Empty();
         index.ReferencedTargets.Returns(referencedTargets);
-        index.GetReferencers(target).Returns(referencers);
+        index.GetReferencers(target).Returns(sites);
 
         return index;
     }

@@ -1,0 +1,9 @@
+[package]
+name = "celbridge-report"
+title = "Report_Package_Name"
+
+[contributes]
+editors = ["report.editor.toml"]
+
+[permissions]
+tools = ["document.open", "explorer.select"]

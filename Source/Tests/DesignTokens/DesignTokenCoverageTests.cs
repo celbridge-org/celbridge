@@ -66,6 +66,7 @@ public class DesignTokenCoverageTests
         "--cel-divider-subtle",
         "--cel-document-min-height",
         "--cel-document-min-width",
+        "--cel-error-text",
         "--cel-expander-content-bg",
         "--cel-expander-header-bg",
         "--cel-font-mono",

@@ -1,0 +1,35 @@
+<UserControl
+  x:Class="Celbridge.WorkspaceUI.Views.WorkspaceToast"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Celbridge.WorkspaceUI.Views"
+  xmlns:services="using:Celbridge.UserInterface.Services"
+  HorizontalAlignment="Right"
+  VerticalAlignment="Bottom"
+  IsHitTestVisible="{x:Bind ViewModel.IsToastVisible, Mode=OneWay}">
+
+  <UserControl.Resources>
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+  </UserControl.Resources>
+
+  <!-- Overlaid on the workspace surfaces, so a notification takes no width or height from the panels.
+       Capped so a long line wraps rather than spanning the window. An InfoBar is drawn to be docked
+       full width, bounded by the surface it sits against, so floating in a corner it carries its own
+       border and the flyout corner radius. -->
+  <InfoBar x:Name="ToastInfoBar"
+           MaxWidth="{StaticResource WorkspaceToastMaxWidth}"
+           BorderThickness="1"
+           BorderBrush="{ThemeResource SurfaceStrokeColorFlyoutBrush}"
+           CornerRadius="{ThemeResource OverlayCornerRadius}"
+           Severity="{x:Bind ViewModel.ToastSeverity, Mode=OneWay}"
+           IsOpen="{x:Bind ViewModel.IsToastVisible, Mode=OneWay}"
+           IsClosable="True"
+           Message="{x:Bind ViewModel.ToastMessage, Mode=OneWay}"
+           Closed="OnToastClosed">
+    <InfoBar.ActionButton>
+      <Button Content="{x:Bind ViewModel.ActionLabel, Mode=OneWay}"
+              Visibility="{x:Bind ViewModel.IsActionVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+              Click="{x:Bind ViewModel.OnActionClicked}"/>
+    </InfoBar.ActionButton>
+  </InfoBar>
+</UserControl>

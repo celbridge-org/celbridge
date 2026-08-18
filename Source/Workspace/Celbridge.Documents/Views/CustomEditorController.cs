@@ -6,7 +6,10 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Projects;
+using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
@@ -43,6 +46,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
+    private readonly IMessengerService _messengerService;
+    private readonly IProjectService _projectService;
+    private readonly IReportWriter _reportWriter;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
@@ -99,6 +105,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
     // and SetContentLoaded applies it once the JS client signals readiness.
     private string? _pendingEditorStateJson;
+    private string? _pendingLocation;
     private bool _isContentLoaded;
 
     // Save tracking state for async save coordination with WebView
@@ -145,6 +152,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _commandService = serviceProvider.GetRequiredService<ICommandService>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _dialogService = serviceProvider.GetRequiredService<IDialogService>();
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
+        _projectService = serviceProvider.GetRequiredService<IProjectService>();
+        _reportWriter = serviceProvider.GetRequiredService<IReportWriter>();
         _webViewFactory = serviceProvider.GetRequiredService<IWebViewFactory>();
         _webViewService = serviceProvider.GetRequiredService<IWebViewService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
@@ -397,6 +407,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _documentHandler = new CustomDocumentHandler(
             _viewModel,
             _logger,
+            _projectService,
+            _reportWriter,
             CreateDocumentMetadata,    // Callback to construct document metadata on demand
             CompleteSave);             // Callback to update state when saving has completed
 
@@ -405,6 +417,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var dialogHandler = new CustomDialogHandler(
             _dialogService,
             _stringLocalizer,
+            _messengerService,
             _viewModel);
 
         Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
@@ -572,6 +585,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _isContentLoaded = false;
         _pendingEditorStateJson = null;
+        _pendingLocation = null;
 
         TeardownWebViewState();
     }
@@ -758,13 +772,26 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _isContentLoaded = true;
 
-        if (_pendingEditorStateJson is null)
-        {
-            return;
-        }
+        var location = _pendingLocation;
+        _pendingLocation = null;
 
         var state = _pendingEditorStateJson;
         _pendingEditorStateJson = null;
+
+        // Applied in the order the opening caller issued them: navigate, then restore state.
+        if (location is not null)
+        {
+            var navigateResult = await NavigateToLocationAsync(location);
+            if (navigateResult.IsFailure)
+            {
+                _logger.LogWarning(navigateResult, "Failed to navigate to location after content loaded");
+            }
+        }
+
+        if (state is null)
+        {
+            return;
+        }
 
         try
         {
@@ -968,13 +995,22 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     /// <summary>
     /// Sends a navigate-to-location request to the editor. The location is a JSON object describing the target
-    /// line and column range. A null host or empty location is a no-op.
+    /// line and column range. An empty location is a no-op, and a request arriving before the editor has
+    /// loaded its content is held until it has.
     /// </summary>
     public async Task<Result> NavigateToLocationAsync(string location)
     {
-        if (Host is null ||
-            string.IsNullOrEmpty(location))
+        if (string.IsNullOrEmpty(location))
         {
+            return Result.Ok();
+        }
+
+        // Opening a document and navigating within it arrive together, but the WebView connects
+        // asynchronously, so on a first open the editor is not there to receive this yet.
+        if (!_isContentLoaded ||
+            Host is null)
+        {
+            _pendingLocation = location;
             return Result.Ok();
         }
 

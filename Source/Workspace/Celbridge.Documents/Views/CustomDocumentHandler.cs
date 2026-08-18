@@ -1,17 +1,22 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Host;
 using Celbridge.Logging;
+using Celbridge.Projects;
+using Celbridge.Reports;
+using Celbridge.Utilities;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDocument RPC methods for contribution document views.
-/// Manages document initialization, loading, saving, and change tracking.
+/// Manages document initialization, loading, saving, change tracking, and report writing.
 /// </summary>
 internal sealed class CustomDocumentHandler : IHostDocument
 {
     private readonly CustomDocumentViewModel _viewModel;
     private readonly ILogger _logger;
+    private readonly IProjectService _projectService;
+    private readonly IReportWriter _reportWriter;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
 
@@ -30,11 +35,15 @@ internal sealed class CustomDocumentHandler : IHostDocument
     public CustomDocumentHandler(
         CustomDocumentViewModel viewModel,
         ILogger logger,
+        IProjectService projectService,
+        IReportWriter reportWriter,
         Func<DocumentMetadata> createMetadata,
         Func<bool> completeSave)
     {
         _viewModel = viewModel;
         _logger = logger;
+        _projectService = projectService;
+        _reportWriter = reportWriter;
         _createMetadata = createMetadata;
         _completeSave = completeSave;
     }
@@ -90,6 +99,42 @@ internal sealed class CustomDocumentHandler : IHostDocument
             SaveResultTcs?.TrySetResult(failResult);
             return new SaveResult(false, exception.Message);
         }
+    }
+
+    public async Task<WriteReportResult> WriteReportAsync(string reportJson)
+    {
+        var currentProject = _projectService.CurrentProject;
+        if (currentProject is null)
+        {
+            throw new InvalidOperationException("No project is loaded.");
+        }
+
+        var parseResult = ReportSerializer.Deserialize(reportJson);
+        if (parseResult.IsFailure)
+        {
+            throw new ArgumentException(parseResult.MessageChain, nameof(reportJson));
+        }
+
+        var report = parseResult.Value;
+
+        // The id names a file and the glob that prunes its history, so it is checked before anything
+        // touches the disk rather than left to fail inside the write.
+        if (!ReportLocation.IsValidReportId(report.Id))
+        {
+            throw new ArgumentException(
+                $"Invalid report id: '{report.Id}'. Expected lowercase letters, digits, hyphens and dots.",
+                nameof(reportJson));
+        }
+
+        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectFilePath);
+        if (writeResult.IsFailure)
+        {
+            throw new InvalidOperationException(writeResult.MessageChain);
+        }
+
+        var reportResource = writeResult.Value;
+
+        return new WriteReportResult(reportResource.ToString());
     }
 
     public void OnDocumentChanged()
