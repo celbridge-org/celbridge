@@ -10,8 +10,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for the notification half of the editor bridge. A contribution's only route to the user is
-/// through here, so what it accepts and what it refuses is the contract.
+/// Tests for the toast half of the editor bridge. A contribution's only route to the user is through
+/// here, so what it accepts and what it refuses is the contract.
 /// </summary>
 [TestFixture]
 public class CustomDialogHandlerTests
@@ -45,9 +45,9 @@ public class CustomDialogHandlerTests
     [TestCase("warning", ReportSeverity.Warning)]
     [TestCase("error", ReportSeverity.Error)]
     [TestCase("Error", ReportSeverity.Error)]
-    public async Task ARecognisedSeverity_RaisesTheNotification(string severity, ReportSeverity expected)
+    public async Task ARecognisedSeverity_ShowsTheToast(string severity, ReportSeverity expected)
     {
-        await _handler.NotifyAsync(severity, "9 of 40 tilesets failed to convert");
+        await _handler.ToastAsync(severity, "9 of 40 tilesets failed to convert");
 
         _sentMessages.Should().HaveCount(1);
         _sentMessages[0].Severity.Should().Be(expected);
@@ -58,7 +58,7 @@ public class CustomDialogHandlerTests
     public async Task AnUnknownSeverity_IsRefusedRatherThanDowngraded()
     {
         // Showing an intended error as information is the worse failure, so the editor is told.
-        var act = async () => await _handler.NotifyAsync("critical", "something went wrong");
+        var act = async () => await _handler.ToastAsync("critical", "something went wrong");
 
         await act.Should().ThrowAsync<ArgumentException>();
 
@@ -68,7 +68,47 @@ public class CustomDialogHandlerTests
     [Test]
     public async Task AnEmptyMessage_IsRefused()
     {
-        var act = async () => await _handler.NotifyAsync("info", "   ");
+        var act = async () => await _handler.ToastAsync("info", "   ");
+
+        await act.Should().ThrowAsync<ArgumentException>();
+
+        _sentMessages.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ANamedResource_BecomesTheToastsAction()
+    {
+        await _handler.ToastAsync(
+            "error",
+            "config.json has a syntax error",
+            "project:config.json",
+            "Open config.json",
+            line: 42,
+            column: 7);
+
+        _sentMessages.Should().HaveCount(1);
+
+        var action = _sentMessages[0].Action;
+        action.Should().NotBeNull();
+        action!.Resource.ToString().Should().Be("project:config.json");
+        action.Label.Should().Be("Open config.json");
+        action.Line.Should().Be(42);
+        action.Column.Should().Be(7);
+    }
+
+    [Test]
+    public async Task NoResource_LeavesTheToastWithoutAnAction()
+    {
+        await _handler.ToastAsync("info", "Conversion complete");
+
+        _sentMessages.Should().HaveCount(1);
+        _sentMessages[0].Action.Should().BeNull();
+    }
+
+    [Test]
+    public async Task AResourceThatEscapesTheProject_IsRefused()
+    {
+        var act = async () => await _handler.ToastAsync("info", "done", "project:../outside.json");
 
         await act.Should().ThrowAsync<ArgumentException>();
 

@@ -27,9 +27,9 @@
            Message="{x:Bind ViewModel.ToastMessage, Mode=OneWay}"
            Closed="OnToastClosed">
     <InfoBar.ActionButton>
-      <Button Content="{x:Bind ViewModel.ViewReportText}"
+      <Button Content="{x:Bind ViewModel.ActionLabel, Mode=OneWay}"
               Visibility="{x:Bind ViewModel.IsActionVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-              Click="{x:Bind ViewModel.OnViewReportClicked}"/>
+              Click="{x:Bind ViewModel.OnActionClicked}"/>
     </InfoBar.ActionButton>
   </InfoBar>
 </UserControl>

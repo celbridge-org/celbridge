@@ -47,6 +47,11 @@ public record PickFileResult(string? Path);
 public record AlertResult();
 
 /// <summary>
-/// Result of the dialog/notify request.
+/// Result of the dialog/toast request.
 /// </summary>
-public record NotifyResult();
+public record ToastResult();
+
+/// <summary>
+/// Result of the document/writeReport request, carrying the resource key the written report opens by.
+/// </summary>
+public record WriteReportResult(string Resource);

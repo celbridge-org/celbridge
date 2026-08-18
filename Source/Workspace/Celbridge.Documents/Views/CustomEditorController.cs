@@ -8,6 +8,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Projects;
+using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
@@ -45,6 +47,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
     private readonly IMessengerService _messengerService;
+    private readonly IProjectService _projectService;
+    private readonly IReportWriter _reportWriter;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
@@ -149,6 +153,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _dialogService = serviceProvider.GetRequiredService<IDialogService>();
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
+        _projectService = serviceProvider.GetRequiredService<IProjectService>();
+        _reportWriter = serviceProvider.GetRequiredService<IReportWriter>();
         _webViewFactory = serviceProvider.GetRequiredService<IWebViewFactory>();
         _webViewService = serviceProvider.GetRequiredService<IWebViewService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
@@ -401,6 +407,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _documentHandler = new CustomDocumentHandler(
             _viewModel,
             _logger,
+            _projectService,
+            _reportWriter,
             CreateDocumentMetadata,    // Callback to construct document metadata on demand
             CompleteSave);             // Callback to update state when saving has completed
 

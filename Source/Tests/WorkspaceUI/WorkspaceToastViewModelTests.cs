@@ -219,11 +219,11 @@ public class WorkspaceToastViewModelTests
     }
 
     [Test]
-    public void ViewReport_OpensTheReportAndDismissesTheToast()
+    public void TheAction_OpensItsDocumentAndDismissesTheToast()
     {
         SendLoadNotification(ReportSeverity.Warning, issueCount: 3);
 
-        _viewModel.OnViewReportClicked();
+        _viewModel.OnActionClicked();
 
         _commandService.Received(1).Execute(
             Arg.Any<Action<IOpenDocumentCommand>>(),
@@ -249,7 +249,7 @@ public class WorkspaceToastViewModelTests
         // The editor resolved its own text, so nothing composes it from a localization key here.
         var message = new EditorNotificationMessage(ReportSeverity.Warning, "9 of 40 tilesets failed to convert")
         {
-            ReportResource = new ResourceKey("logs:reports/acme-tiles-convert.report")
+            Action = new OpenDocumentAction(new ResourceKey("logs:reports/acme-tiles-convert.report"))
         };
 
         _editorHandler!.Invoke(this, message);
@@ -278,6 +278,30 @@ public class WorkspaceToastViewModelTests
         _editorHandler!.Invoke(this, new EditorNotificationMessage(ReportSeverity.Warning, "conversion finished with warnings"));
 
         _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Error);
+    }
+
+    [Test]
+    public void AnEditorAction_CarriesItsOwnLabel()
+    {
+        // The editor's action can open anything, so it says what it opens rather than inheriting the
+        // host's wording for a report.
+        var message = new EditorNotificationMessage(ReportSeverity.Error, "config.json has a syntax error")
+        {
+            Action = new OpenDocumentAction(new ResourceKey("project:config.json"), "Open config.json", 42, 7)
+        };
+
+        _editorHandler!.Invoke(this, message);
+
+        _viewModel.IsActionVisible.Should().BeTrue();
+        _viewModel.ActionLabel.Should().Be("Open config.json");
+    }
+
+    [Test]
+    public void AHostNotification_LabelsItsActionForTheReportItOpens()
+    {
+        SendLoadNotification(ReportSeverity.Warning, issueCount: 3);
+
+        _viewModel.ActionLabel.Should().Be("Toast_ViewReportButton");
     }
 
     private void SendOperationFailure(ResourceOperationType operationType, params string[] failedItems)

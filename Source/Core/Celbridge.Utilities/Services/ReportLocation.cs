@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Path = System.IO.Path;
@@ -17,6 +18,25 @@ public static class ReportLocation
     // The logs: root name, which the resource layer owns. Repeated here because it sits above this
     // project and cannot be referenced from it.
     private const string LogsRootName = "logs";
+
+    // Groups of lowercase letters and digits, separated by single hyphens or dots. A package
+    // qualifies a generic kind with its own name, so the dotted form an editor id takes is allowed.
+    private static readonly Regex ReportIdRegex = new(@"^[a-z0-9]+([-.][a-z0-9]+)*$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Returns true if the id can serve as a report id. It becomes a file name, a history file name,
+    /// and the glob that prunes that history, so a separator, a "..", or a glob metacharacter in one
+    /// would reach outside the reports folder or match the wrong files.
+    /// </summary>
+    public static bool IsValidReportId(string? reportId)
+    {
+        if (string.IsNullOrEmpty(reportId))
+        {
+            return false;
+        }
+
+        return ReportIdRegex.IsMatch(reportId);
+    }
 
     /// <summary>
     /// The folder reports are written to for the project at the given path.

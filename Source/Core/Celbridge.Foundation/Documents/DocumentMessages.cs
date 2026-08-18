@@ -65,7 +65,7 @@ public record EditorNotificationMessage(
     string Message)
 {
     /// <summary>
-    /// The report a View Report action opens, or the empty key when the editor named none.
+    /// The document the notification's action opens, or null when the editor offered none.
     /// </summary>
-    public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;
+    public OpenDocumentAction? Action { get; init; }
 }

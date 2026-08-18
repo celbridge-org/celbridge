@@ -9,7 +9,7 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDialog RPC methods for contribution document views.
-/// Provides image picking, file picking, alert dialogs, and workspace notifications.
+/// Provides image picking, file picking, alert dialogs, and workspace toasts.
 /// </summary>
 internal sealed class CustomDialogHandler : IHostDialog
 {
@@ -85,13 +85,19 @@ internal sealed class CustomDialogHandler : IHostDialog
         return new AlertResult();
     }
 
-    public async Task<NotifyResult> NotifyAsync(string severity, string message)
+    public async Task<ToastResult> ToastAsync(
+        string severity,
+        string message,
+        string? resource = null,
+        string? label = null,
+        int line = 0,
+        int column = 0)
     {
         await Task.CompletedTask;
 
         if (string.IsNullOrWhiteSpace(message))
         {
-            throw new ArgumentException("Notification message is empty.", nameof(message));
+            throw new ArgumentException("Toast message is empty.", nameof(message));
         }
 
         // A value this build does not know is a mistake in the editor rather than a newer severity to
@@ -99,14 +105,40 @@ internal sealed class CustomDialogHandler : IHostDialog
         if (!TryParseSeverity(severity, out var parsedSeverity))
         {
             throw new ArgumentException(
-                $"Unknown notification severity: '{severity}'. Expected 'info', 'warning' or 'error'.",
+                $"Unknown toast severity: '{severity}'. Expected 'info', 'warning' or 'error'.",
                 nameof(severity));
         }
 
-        var notification = new EditorNotificationMessage(parsedSeverity, message);
+        var action = ComposeAction(resource, label, line, column);
+
+        var notification = new EditorNotificationMessage(parsedSeverity, message)
+        {
+            Action = action
+        };
         _messengerService.Send(notification);
 
-        return new NotifyResult();
+        return new ToastResult();
+    }
+
+    private static OpenDocumentAction? ComposeAction(string? resource, string? label, int line, int column)
+    {
+        if (string.IsNullOrEmpty(resource))
+        {
+            return null;
+        }
+
+        if (!ResourceKey.TryCreate(resource, out var actionResource))
+        {
+            throw new ArgumentException($"Invalid resource: '{resource}'.", nameof(resource));
+        }
+
+        if (line < 0 ||
+            column < 0)
+        {
+            throw new ArgumentException("Line and column cannot be negative.", nameof(line));
+        }
+
+        return new OpenDocumentAction(actionResource, label, line, column);
     }
 
     private static bool TryParseSeverity(string severity, out ReportSeverity parsedSeverity)

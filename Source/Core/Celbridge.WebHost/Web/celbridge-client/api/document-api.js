@@ -132,6 +132,27 @@ export class DocumentAPI {
     }
 
     /**
+     * Writes a report document into the project's reports folder and returns the resource key it
+     * opens by, ready to hand to `dialog.toast` as its action.
+     *
+     * The report's `id` names the kind of report, not the run: the current one always sits at that
+     * name, and writing a new one moves the previous into history. Pick an id that will not collide
+     * with another package or with the host's own — qualifying it with your package name is the
+     * simple way.
+     *
+     * @param {Object} report - A report document. Required: `id` (lowercase letters, digits, hyphens
+     *   and dots), `title`, `severity`, `summary`, and `sections`.
+     * @returns {Promise<string>} - The resource key the written report opens by.
+     */
+    async writeReport(report) {
+        const result = await this.#transport.request('document/writeReport', {
+            reportJson: JSON.stringify(report)
+        });
+
+        return result.resource;
+    }
+
+    /**
      * Registers a handler for state restore requests from the host.
      * The handler receives a previously saved state string and should restore the editor to that state.
      * @param {Function} handler - Called with the state string to restore.

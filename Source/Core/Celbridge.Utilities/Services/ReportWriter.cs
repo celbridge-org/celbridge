@@ -51,6 +51,61 @@ internal sealed class ReportCodeConverter : JsonConverter<ReportCode>
     }
 }
 
+/// <summary>
+/// The serialized form of a report. Owns the JSON settings so writing a report and reading one back
+/// cannot disagree about the encoding.
+/// </summary>
+public static class ReportSerializer
+{
+    private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
+
+    /// <summary>
+    /// Serializes a report to its file content.
+    /// </summary>
+    public static string Serialize(ReportDocument report)
+    {
+        return JsonSerializer.Serialize(report, SerializerOptions);
+    }
+
+    /// <summary>
+    /// Parses report file content. Fails rather than throwing on anything that is not a report this
+    /// build can render, since the content can come from a contribution.
+    /// </summary>
+    public static Result<ReportDocument> Deserialize(string content)
+    {
+        try
+        {
+            var report = JsonSerializer.Deserialize<ReportDocument>(content, SerializerOptions);
+            if (report is null)
+            {
+                return Result<ReportDocument>.Fail("Report content is null.");
+            }
+
+            return report;
+        }
+        catch (JsonException ex)
+        {
+            return Result<ReportDocument>.Fail($"Report content could not be parsed: {ex.Message}");
+        }
+    }
+
+    private static JsonSerializerOptions CreateSerializerOptions()
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = true
+        };
+
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        options.Converters.Add(new ReportResourceKeyConverter());
+        options.Converters.Add(new ReportCodeConverter());
+
+        return options;
+    }
+}
+
 public sealed class ReportWriter : IReportWriter
 {
     /// <summary>
@@ -63,8 +118,6 @@ public sealed class ReportWriter : IReportWriter
     /// Sub-folder holding the superseded reports for every id.
     /// </summary>
     public const string HistoryFolderName = "history";
-
-    private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger<ReportWriter> _logger;
@@ -79,9 +132,10 @@ public sealed class ReportWriter : IReportWriter
 
     public async Task<Result<string>> WriteReportAsync(ReportDocument report, string folderPath)
     {
-        if (string.IsNullOrWhiteSpace(report.Id))
+        if (!ReportLocation.IsValidReportId(report.Id))
         {
-            return Result<string>.Fail("Report id is empty.");
+            return Result<string>.Fail(
+                $"Invalid report id: '{report.Id}'. Expected lowercase letters, digits, hyphens and dots.");
         }
 
         var createFolderResult = await _fileSystem.CreateFolderAsync(folderPath);
@@ -95,7 +149,7 @@ public sealed class ReportWriter : IReportWriter
 
         await ArchiveCurrentReportAsync(report, filePath, folderPath);
 
-        var content = JsonSerializer.Serialize(report, SerializerOptions);
+        var content = ReportSerializer.Serialize(report);
 
         var writeResult = await _fileSystem.WriteAllTextAsync(filePath, content);
         if (writeResult.IsFailure)
@@ -212,21 +266,5 @@ public sealed class ReportWriter : IReportWriter
                 _logger.LogWarning(deleteResult, $"Failed to delete stale report: '{staleReport.FullPath}'");
             }
         }
-    }
-
-    private static JsonSerializerOptions CreateSerializerOptions()
-    {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            WriteIndented = true
-        };
-
-        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-        options.Converters.Add(new ReportResourceKeyConverter());
-        options.Converters.Add(new ReportCodeConverter());
-
-        return options;
     }
 }

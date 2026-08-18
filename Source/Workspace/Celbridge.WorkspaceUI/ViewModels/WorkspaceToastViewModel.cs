@@ -3,6 +3,7 @@ using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Resources;
+using Celbridge.Utilities;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Controls;
@@ -18,9 +19,9 @@ public record WorkspaceNotification(
     string Message)
 {
     /// <summary>
-    /// The report a View Report action opens, or the empty key when the producer wrote none.
+    /// The document the notification's action opens, or null when the producer offered none.
     /// </summary>
-    public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;
+    public OpenDocumentAction? Action { get; init; }
 }
 
 /// <summary>
@@ -49,7 +50,8 @@ public partial class WorkspaceToastViewModel : ObservableObject
     [ObservableProperty]
     private bool _isActionVisible;
 
-    public string ViewReportText => _stringLocalizer.GetString("Toast_ViewReportButton");
+    [ObservableProperty]
+    private string _actionLabel = string.Empty;
 
     public WorkspaceToastViewModel(
         IMessengerService messengerService,
@@ -91,7 +93,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
 
         return new WorkspaceNotification(message.Severity, text)
         {
-            ReportResource = message.ReportResource
+            Action = message.Action
         };
     }
 
@@ -103,7 +105,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
 
         // The report's severity is the notification's. The project loaded either way — a version the
         // application cannot open never reaches the workspace at all.
-        return Compose(summary.Severity, messageKey, summary.Resource, summary.IssueCount);
+        return Compose(summary.Severity, messageKey, ComposeReportAction(summary.Resource), summary.IssueCount);
     }
 
     private WorkspaceNotification ComposeOperationNotification(ResourceOperationFailedMessage message)
@@ -118,7 +120,11 @@ public partial class WorkspaceToastViewModel : ObservableObject
                 ? "Toast_ReferencesNotUpdated_One"
                 : "Toast_ReferencesNotUpdated_Many";
 
-            return Compose(ReportSeverity.Warning, skippedKey, message.ReportResource, skippedCount);
+            return Compose(
+                ReportSeverity.Warning,
+                skippedKey,
+                ComposeReportAction(message.ReportResource),
+                skippedCount);
         }
 
         var baseKey = message.OperationType switch
@@ -143,7 +149,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
             return Compose(
                 ReportSeverity.Error,
                 $"{baseKey}_Single",
-                message.ReportResource,
+                ComposeReportAction(message.ReportResource),
                 failedResource.Resource.ResourceName,
                 reason);
         }
@@ -151,7 +157,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
         return Compose(
             ReportSeverity.Error,
             $"{baseKey}_Multiple",
-            message.ReportResource,
+            ComposeReportAction(message.ReportResource),
             failedResources.Count);
     }
 
@@ -168,17 +174,31 @@ public partial class WorkspaceToastViewModel : ObservableObject
         return text.Substring(0, lineBreakIndex).Trim();
     }
 
+    // A host producer's action always opens the report it just wrote, and always says so, so the label
+    // is the host's own rather than one the producer has to supply.
+    private OpenDocumentAction? ComposeReportAction(ResourceKey reportResource)
+    {
+        if (reportResource.IsEmpty)
+        {
+            return null;
+        }
+
+        var label = _stringLocalizer.GetString("Toast_ViewReportButton");
+
+        return new OpenDocumentAction(reportResource, label);
+    }
+
     private WorkspaceNotification Compose(
         ReportSeverity severity,
         string messageKey,
-        ResourceKey reportResource,
+        OpenDocumentAction? action,
         params object[] arguments)
     {
         var text = _stringLocalizer.GetString(messageKey, arguments);
 
         return new WorkspaceNotification(severity, text)
         {
-            ReportResource = reportResource
+            Action = action
         };
     }
 
@@ -195,9 +215,12 @@ public partial class WorkspaceToastViewModel : ObservableObject
 
         _current = notification;
 
+        var action = notification.Action;
+
         ToastSeverity = ResolveToastSeverity(notification.Severity);
         ToastMessage = notification.Message;
-        IsActionVisible = !notification.ReportResource.IsEmpty;
+        ActionLabel = action?.Label ?? _stringLocalizer.GetString("Toast_ViewReportButton");
+        IsActionVisible = action is not null;
         IsToastVisible = true;
     }
 
@@ -211,18 +234,22 @@ public partial class WorkspaceToastViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Opens the report behind the current notification and dismisses it, since the report now carries
-    /// everything the line was summarising.
+    /// Opens the document behind the current notification and dismisses it, since what the line was
+    /// summarising is now on screen.
     /// </summary>
-    public void OnViewReportClicked()
+    public void OnActionClicked()
     {
-        var reportResource = _current?.ReportResource ?? ResourceKey.Empty;
-        if (reportResource.IsEmpty)
+        var action = _current?.Action;
+        if (action is null)
         {
             return;
         }
 
-        _commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportResource);
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = action.Resource;
+            command.Location = DocumentLocation.Compose(action.Line, action.Column);
+        });
 
         OnToastDismissed();
     }
