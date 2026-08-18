@@ -1,4 +1,5 @@
 using Celbridge.UserInterface;
+using Celbridge.WebHost;
 
 // The Uno SDK's implicit global usings include System.Windows.Input, which on the Windows head also
 // contains a FocusManager type, so the bare name is ambiguous there.
@@ -13,11 +14,15 @@ namespace Celbridge.WorkspaceUI.Services;
 public class PanelFocusTracker
 {
     private readonly IFocusService _focusService;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private bool _isStarted;
 
-    public PanelFocusTracker(IFocusService focusService)
+    public PanelFocusTracker(
+        IFocusService focusService,
+        IWebViewFocusRegistry webViewFocusRegistry)
     {
         _focusService = focusService;
+        _webViewFocusRegistry = webViewFocusRegistry;
     }
 
     public void Start()
@@ -42,7 +47,6 @@ public class PanelFocusTracker
         // tree rebuild, returning focus after an inline edit) must not be reclassified as the user
         // moving panels. FocusState cannot carry that distinction because Uno reports programmatic
         // focus back as Pointer, so restoration call sites declare themselves through FocusIntent.
-        // Web surfaces report their real focus through the web-view focus registry, not here.
         if (FocusIntent.IsRestorationInProgress)
         {
             return;
@@ -50,6 +54,15 @@ public class PanelFocusTracker
 
         // A deliberate grant is holding the panel against the tail of the gesture that triggered it.
         if (FocusIntent.IsPanelClaimSuppressed)
+        {
+            return;
+        }
+
+        // A hosted surface reports through the registry, which alone can supply the callback that releases
+        // the surface later. On the packaged Windows head the web view also takes managed focus, and a
+        // report classified from the visual tree here would carry no such callback, so it would read as
+        // managed chrome claiming the keyboard and release the surface that had just taken it.
+        if (_webViewFocusRegistry.IsRegisteredSurface(element))
         {
             return;
         }

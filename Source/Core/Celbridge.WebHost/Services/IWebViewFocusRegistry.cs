@@ -48,6 +48,13 @@ public interface IWebViewFocusRegistry
     void GrantFocus(WebView2 webView);
 
     /// <summary>
+    /// Whether the element is a web surface registered here. The registry reports a hosted surface's focus
+    /// itself, carrying the release callback that a report classified from the visual tree cannot supply, so
+    /// an observer of managed focus asks this before reporting an element as its own claim.
+    /// </summary>
+    bool IsRegisteredSurface(DependencyObject element);
+
+    /// <summary>
     /// Whether a hosted web surface's focus report is current. The reconciler derives the desired focus
     /// state from this.
     /// </summary>
