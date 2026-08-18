@@ -1,3 +1,4 @@
+using Celbridge.Tests.Localization;
 using System.Text.Json;
 using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
@@ -38,7 +39,10 @@ public class ProjectLoadReporterTests
 
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
         var reportWriter = new ReportWriter(_fileSystem, MigrationTestHelper.CreateMockLogger<ReportWriter>());
-        _reporter = new ProjectLoadReporter(reportWriter, MigrationTestHelper.CreateMockLogger<ProjectLoadReporter>());
+        _reporter = new ProjectLoadReporter(
+            reportWriter,
+            MigrationTestHelper.CreateMockLogger<ProjectLoadReporter>(),
+            new TestLocalizerService());
     }
 
     [TearDown]

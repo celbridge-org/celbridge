@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Celbridge.Reports;
 using Celbridge.Tests.Architecture;
+using Celbridge.Tests.Localization;
 
 namespace Celbridge.Tests.Reports;
 
@@ -77,6 +78,24 @@ public class ReportCodeCoverageTests
             var reference = $"{entry.Group}.{entry.Name}";
             producerSource.Should().Contain(reference,
                 $"{entry.Descriptor.Code} is declared but no producer emits it");
+        }
+    }
+
+    [Test]
+    public void EveryDescriptorMessageResolvesToAHostString()
+    {
+        // A template is looked up as a key and used verbatim when nothing matches, which is what lets a
+        // contribution supply its own wording. The host's own descriptors are keys, so one with no entry
+        // would render its key name in the report rather than failing anywhere.
+        var strings = TestLocalizerService.LoadStrings();
+        strings.Should().NotBeEmpty("the application's en-US Resources.resw should be readable");
+
+        foreach (var entry in GetCatalogEntries())
+        {
+            var template = entry.Descriptor.MessageTemplate;
+
+            strings.Should().ContainKey(template,
+                $"{entry.Descriptor.Code} names a key with no entry in Resources.resw");
         }
     }
 
