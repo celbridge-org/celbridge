@@ -156,6 +156,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
+    public bool IsRegisteredSurface(DependencyObject element)
+    {
+        return element is WebView2 webView
+            && webView.CoreWebView2 is not null
+            && _registrations.ContainsKey(webView.CoreWebView2);
+    }
+
     public bool HasFocusedSurface => _focusedRegistration is not null;
 
     public void FocusFocusedSurface()
