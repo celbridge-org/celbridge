@@ -178,6 +178,61 @@ public class ResourceOperationNotifierTests
     }
 
     [Test]
+    public async Task ASummaryOfSeveralFailures_ReadsAsOneSentenceForTheOperation()
+    {
+        var failedResources = new List<FailedResource>
+        {
+            new FailedResource(new ResourceKey("a.txt"), "the file is locked"),
+            new FailedResource(new ResourceKey("b.txt"), "the file is locked")
+        };
+
+        await _notifier.NotifyFailuresAsync(ResourceOperationType.Delete, failedResources);
+
+        var report = ReadReport("delete-resources.report");
+        report.GetProperty("summary").GetString()
+            .Should().Be("2 resources could not be deleted.");
+    }
+
+    [Test]
+    public async Task ASummaryOfFailuresAndStaleReferences_ReadsAsASentenceForEach()
+    {
+        var failedResources = new List<FailedResource>
+        {
+            new FailedResource(new ResourceKey("notes.txt"), "the file is locked")
+        };
+
+        var skippedReferencers = new List<SkippedReferencer>
+        {
+            new SkippedReferencer(new ResourceKey("index.json"), ReferencerSkipReason.ReadOnly, "read-only")
+        };
+
+        await _notifier.NotifyFailuresAsync(ResourceOperationType.Move, failedResources, skippedReferencers);
+
+        var report = ReadReport("move-resources.report");
+        report.GetProperty("summary").GetString()
+            .Should().Be("1 resource could not be moved. 1 reference was left pointing at the old location.");
+    }
+
+    [Test]
+    public async Task ASummaryOfStaleReferencesAlone_SaysTheOperationItselfCompleted()
+    {
+        var skippedReferencers = new List<SkippedReferencer>
+        {
+            new SkippedReferencer(new ResourceKey("a.json"), ReferencerSkipReason.ReadOnly, "read-only"),
+            new SkippedReferencer(new ResourceKey("b.json"), ReferencerSkipReason.ReadOnly, "read-only")
+        };
+
+        await _notifier.NotifyFailuresAsync(
+            ResourceOperationType.Move,
+            Array.Empty<FailedResource>(),
+            skippedReferencers);
+
+        var report = ReadReport("move-resources.report");
+        report.GetProperty("summary").GetString()
+            .Should().Be("The operation completed. 2 references were left pointing at the old location.");
+    }
+
+    [Test]
     public async Task AnOperationThatCannotBatch_WritesNoReportHoweverManyFailed()
     {
         // Archiving names one source and one archive, so there is no id for its history to group by.

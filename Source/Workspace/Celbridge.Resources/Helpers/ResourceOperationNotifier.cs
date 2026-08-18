@@ -1,3 +1,4 @@
+using System.Globalization;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Reports;
@@ -7,13 +8,20 @@ namespace Celbridge.Resources.Helpers;
 
 // How an operation that failed on more than one resource reports itself: the id its history is kept
 // under, the title the reader sees, the finding every failed resource is an occurrence of, and the
-// verb the summary line reads. Only the operations that can fail on more than one resource have one,
-// because a report holding a single row says nothing the notification did not.
+// sentences its summary line is written from. Only the operations that can fail on more than one
+// resource have one, because a report holding a single row says nothing the notification did not.
 internal partial record ResourceOperationReportKind(
     string Id,
     string Title,
     ReportFindingDescriptor FailureDescriptor,
-    string FailureVerb);
+    ResourceOperationSummary FailureSummary);
+
+// Whole sentences taking the count as {0}, rather than a participle the summary line splices into a
+// sentence it builds itself. A bare verb carries no number agreement and no word order, so it is not
+// something a translation of this wording could be written against.
+internal record ResourceOperationSummary(
+    string SingleFailure,
+    string MultipleFailures);
 
 /// <summary>
 /// Tells the user what a resource operation could not do. One failure is fully expressed by the
@@ -21,6 +29,11 @@ internal partial record ResourceOperationReportKind(
 /// </summary>
 public sealed class ResourceOperationNotifier
 {
+    // Stale references read the same whichever operation left them, so these are not per-operation.
+    private const string OperationCompleted = "The operation completed.";
+    private const string SingleStaleReference = "{0} reference was left pointing at the old location.";
+    private const string MultipleStaleReferences = "{0} references were left pointing at the old location.";
+
     private readonly ILogger<ResourceOperationNotifier> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
@@ -197,34 +210,44 @@ public sealed class ResourceOperationNotifier
         };
     }
 
+    // One sentence per fact, joined by a space. Conjoining them into a single sentence would fix the
+    // conjunction and the clause order of one language in code rather than in the wording itself.
     private static string ComposeSummaryLine(
         ResourceOperationReportKind reportKind,
         int failedCount,
         int skippedCount)
     {
-        var staleClause = ComposeStaleClause(skippedCount);
+        var sentences = new List<string>();
 
-        if (failedCount == 0)
+        if (failedCount > 0)
         {
-            return $"The operation completed, but {staleClause}.";
+            var failureTemplate = failedCount == 1
+                ? reportKind.FailureSummary.SingleFailure
+                : reportKind.FailureSummary.MultipleFailures;
+
+            sentences.Add(ComposeSentence(failureTemplate, failedCount));
+        }
+        else
+        {
+            sentences.Add(OperationCompleted);
         }
 
-        var resourceLabel = failedCount == 1 ? "resource" : "resources";
-        var failedClause = $"{failedCount} {resourceLabel} could not be {reportKind.FailureVerb}";
-
-        if (skippedCount == 0)
+        if (skippedCount > 0)
         {
-            return $"{failedClause}.";
+            var staleTemplate = skippedCount == 1
+                ? SingleStaleReference
+                : MultipleStaleReferences;
+
+            sentences.Add(ComposeSentence(staleTemplate, skippedCount));
         }
 
-        return $"{failedClause}, and {staleClause}.";
+        return string.Join(" ", sentences);
     }
 
-    private static string ComposeStaleClause(int skippedCount)
+    // Invariant culture, matching the finding messages composed alongside these in the same report.
+    private static string ComposeSentence(string template, int count)
     {
-        var referenceLabel = skippedCount == 1 ? "reference was" : "references were";
-
-        return $"{skippedCount} {referenceLabel} left pointing at the old location";
+        return string.Format(CultureInfo.InvariantCulture, template, count);
     }
 
     // Null for every other operation, because they act on one resource at a time and so can never
@@ -234,25 +257,43 @@ public sealed class ResourceOperationNotifier
         switch (operationType)
         {
             case ResourceOperationType.Copy:
+            {
+                var summary = new ResourceOperationSummary(
+                    "{0} resource could not be copied.",
+                    "{0} resources could not be copied.");
+
                 return new ResourceOperationReportKind(
                     "copy-resources",
                     "Copy Resources",
                     ReportFindingCatalog.Resource.CopyFailed,
-                    "copied");
+                    summary);
+            }
 
             case ResourceOperationType.Move:
+            {
+                var summary = new ResourceOperationSummary(
+                    "{0} resource could not be moved.",
+                    "{0} resources could not be moved.");
+
                 return new ResourceOperationReportKind(
                     "move-resources",
                     "Move Resources",
                     ReportFindingCatalog.Resource.MoveFailed,
-                    "moved");
+                    summary);
+            }
 
             case ResourceOperationType.Delete:
+            {
+                var summary = new ResourceOperationSummary(
+                    "{0} resource could not be deleted.",
+                    "{0} resources could not be deleted.");
+
                 return new ResourceOperationReportKind(
                     "delete-resources",
                     "Delete Resources",
                     ReportFindingCatalog.Resource.DeleteFailed,
-                    "deleted");
+                    summary);
+            }
 
             default:
                 return null;
