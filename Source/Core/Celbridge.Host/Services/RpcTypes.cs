@@ -45,3 +45,8 @@ public record PickFileResult(string? Path);
 /// Result of the dialog/alert request.
 /// </summary>
 public record AlertResult();
+
+/// <summary>
+/// Result of the dialog/notify request.
+/// </summary>
+public record NotifyResult();

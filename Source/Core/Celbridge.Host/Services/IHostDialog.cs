@@ -7,6 +7,7 @@ public static class DialogRpcMethods
     public const string PickImage = "dialog/pickImage";
     public const string PickFile = "dialog/pickFile";
     public const string Alert = "dialog/alert";
+    public const string Notify = "dialog/notify";
 }
 
 /// <summary>
@@ -31,4 +32,12 @@ public interface IHostDialog
     /// </summary>
     [JsonRpcMethod(DialogRpcMethods.Alert)]
     Task<AlertResult> AlertAsync(string title, string message);
+
+    /// <summary>
+    /// Raises a workspace notification. Severity is "info", "warning" or "error"; the message is one
+    /// line, already localized by the caller. Best effort: returning means the host took the
+    /// notification, not that the user saw it.
+    /// </summary>
+    [JsonRpcMethod(DialogRpcMethods.Notify)]
+    Task<NotifyResult> NotifyAsync(string severity, string message);
 }

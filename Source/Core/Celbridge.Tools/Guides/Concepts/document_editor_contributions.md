@@ -246,6 +246,22 @@ const list = createCardList({
 
 Prefer this over a delimited text field (`a | b | c` per line) for anything Celbridge-specific: it removes a syntax the user has to learn and a parser you have to maintain. The exception is a setting whose data has a canonical text form elsewhere — command-line arguments, `requirements.txt` entries, `KEY=value` environment pairs — where a plain textarea is the better control, because it lets the user paste from the file the data already lives in.
 
+## Telling the user something
+
+`client.dialog.notify(severity, message)` raises the workspace toast — the same single-line notification the host uses for a project load or a failed batch operation.
+
+```javascript
+await client.dialog.notify('warning', t('MyEditor_ConvertedWithWarnings', failed.length));
+```
+
+`severity` is `'info'`, `'warning'` or `'error'`. Anything else is rejected rather than downgraded, so a typo surfaces as an error instead of quietly showing your failure as information. `message` is one line you have already localized; only its first line is shown.
+
+**It resolves when the host has taken the notification, not when the user has seen it.** One notification is on screen at a time, a newer one replaces the current one, and anything below an error is dropped while an error is still showing. Nothing auto-dismisses. Treat the call as best effort and never as an acknowledgement.
+
+This sits under `dialog` alongside `alert`, but it is the opposite kind of call: `alert` blocks until the user answers, `notify` tells them and returns. Reach for `alert` only when the user genuinely cannot continue without responding.
+
+Use it for an outcome the user should know about but did not ask a question about — a conversion that finished with failures, a long operation that completed. **One operation raises one notification**, whatever it found: a loop that notifies per item will have every line but the last replaced before anyone reads it. When there is per-item detail worth reading, say it once here and put the detail where the user can go through it at their own pace.
+
 ## Edit verbs (optional)
 
 The macOS Edit menu and the in-window menu route the standard verbs (copy, cut, paste, selectAll, undo, redo) to the focused editor. Wire two things to participate; skip both and the menu greys out for your editor and the shortcut falls through to your own key handling unchanged.

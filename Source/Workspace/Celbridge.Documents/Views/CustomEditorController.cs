@@ -6,6 +6,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Packages;
 using Celbridge.Server;
 using Celbridge.UserInterface;
@@ -43,6 +44,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
+    private readonly IMessengerService _messengerService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
@@ -146,6 +148,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _commandService = serviceProvider.GetRequiredService<ICommandService>();
         _stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         _dialogService = serviceProvider.GetRequiredService<IDialogService>();
+        _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
         _webViewFactory = serviceProvider.GetRequiredService<IWebViewFactory>();
         _webViewService = serviceProvider.GetRequiredService<IWebViewService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
@@ -406,6 +409,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var dialogHandler = new CustomDialogHandler(
             _dialogService,
             _stringLocalizer,
+            _messengerService,
             _viewModel);
 
         Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);

@@ -1,5 +1,6 @@
 using Celbridge.Messaging;
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Resources;
@@ -24,6 +25,7 @@ public class WorkspaceToastViewModelTests
 
     private MessageHandler<object, ProjectLoadNotificationMessage>? _loadHandler;
     private MessageHandler<object, ResourceOperationFailedMessage>? _operationHandler;
+    private MessageHandler<object, EditorNotificationMessage>? _editorHandler;
 
     private WorkspaceToastViewModel _viewModel = null!;
 
@@ -47,6 +49,12 @@ public class WorkspaceToastViewModelTests
                 Arg.Any<object>(),
                 Arg.Any<MessageHandler<object, ResourceOperationFailedMessage>>()))
             .Do(call => _operationHandler = call.Arg<MessageHandler<object, ResourceOperationFailedMessage>>());
+
+        _messengerService
+            .When(service => service.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, EditorNotificationMessage>>()))
+            .Do(call => _editorHandler = call.Arg<MessageHandler<object, EditorNotificationMessage>>());
 
         // The view model marshals onto the UI thread; run inline so the assertions see the result.
         _dispatcher.TryEnqueue(Arg.Any<Action>()).Returns(call =>
@@ -233,6 +241,43 @@ public class WorkspaceToastViewModelTests
             issueCount);
 
         _loadHandler!.Invoke(this, new ProjectLoadNotificationMessage(summary));
+    }
+
+    [Test]
+    public void AnEditorNotification_ShowsTheTextTheEditorWrote()
+    {
+        // The editor resolved its own text, so nothing composes it from a localization key here.
+        var message = new EditorNotificationMessage(ReportSeverity.Warning, "9 of 40 tilesets failed to convert")
+        {
+            ReportResource = new ResourceKey("logs:reports/acme-tiles-convert.report")
+        };
+
+        _editorHandler!.Invoke(this, message);
+
+        _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Warning);
+        _viewModel.ToastMessage.Should().Be("9 of 40 tilesets failed to convert");
+        _viewModel.IsActionVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public void AnEditorNotification_IsCutToOneLine()
+    {
+        var message = new EditorNotificationMessage(ReportSeverity.Error, "Conversion failed\nsprites/hero.png: unsupported bit depth");
+
+        _editorHandler!.Invoke(this, message);
+
+        _viewModel.ToastMessage.Should().Be("Conversion failed");
+    }
+
+    [Test]
+    public void AnEditorWarning_DoesNotDisplaceAnError()
+    {
+        // A contribution gets the same replacement policy the host's own notifications get.
+        SendOperationFailure(ResourceOperationType.Delete, "notes.txt");
+
+        _editorHandler!.Invoke(this, new EditorNotificationMessage(ReportSeverity.Warning, "conversion finished with warnings"));
+
+        _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Error);
     }
 
     private void SendOperationFailure(ResourceOperationType operationType, params string[] failedItems)

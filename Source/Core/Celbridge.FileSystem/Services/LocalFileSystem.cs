@@ -167,6 +167,15 @@ public sealed class LocalFileSystem : ILocalFileSystem
             // for every consumer.
             var directoryInfo = new DirectoryInfo(path);
 
+            // Probed rather than left to the enumeration, which throws DirectoryNotFoundException.
+            // Asking about a folder that does not exist yet is routine here — a project acquires its
+            // reports, trash and package folders lazily — so it reports as a failed result rather than
+            // as an exception the debugger breaks on once per call.
+            if (!directoryInfo.Exists)
+            {
+                return Result<IReadOnlyList<FileSystemEntry>>.Fail($"Folder does not exist: '{path}'");
+            }
+
             // FileSystemInfo.Attributes is also populated from the directory walk,
             // so the portable read-only flag costs no extra stat per item.
             var folderInfos = directoryInfo.EnumerateDirectories(pattern, searchOption).OrderBy(folder => folder.FullName, StringComparer.Ordinal);

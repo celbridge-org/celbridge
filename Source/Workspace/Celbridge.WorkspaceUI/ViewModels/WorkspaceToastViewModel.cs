@@ -64,6 +64,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
 
         _messengerService.Register<ProjectLoadNotificationMessage>(this, OnProjectLoadNotification);
         _messengerService.Register<ResourceOperationFailedMessage>(this, OnResourceOperationFailed);
+        _messengerService.Register<EditorNotificationMessage>(this, OnEditorNotification);
     }
 
     private void OnProjectLoadNotification(object recipient, ProjectLoadNotificationMessage message)
@@ -75,6 +76,23 @@ public partial class WorkspaceToastViewModel : ObservableObject
     private void OnResourceOperationFailed(object recipient, ResourceOperationFailedMessage message)
     {
         _dispatcher.TryEnqueue(() => Show(ComposeOperationNotification(message)));
+    }
+
+    private void OnEditorNotification(object recipient, EditorNotificationMessage message)
+    {
+        // Raised from a WebView's RPC handler, which does not run on the UI thread.
+        _dispatcher.TryEnqueue(() => Show(ComposeEditorNotification(message)));
+    }
+
+    // The editor resolved the text, so it is shown as written rather than composed from a key.
+    private static WorkspaceNotification ComposeEditorNotification(EditorNotificationMessage message)
+    {
+        var text = ToSingleLine(message.Message);
+
+        return new WorkspaceNotification(message.Severity, text)
+        {
+            ReportResource = message.ReportResource
+        };
     }
 
     private WorkspaceNotification ComposeLoadNotification(ProjectLoadReportSummary summary)
@@ -120,7 +138,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
         if (failedResources.Count == 1)
         {
             var failedResource = failedResources[0];
-            var reason = SummarizeReason(failedResource.Message);
+            var reason = ToSingleLine(failedResource.Message);
 
             return Compose(
                 ReportSeverity.Error,
@@ -137,17 +155,17 @@ public partial class WorkspaceToastViewModel : ObservableObject
             failedResources.Count);
     }
 
-    // A failure reason is an outer-first chain of messages over several lines. The first line is the
-    // summary, and the rest is what the report is for.
-    private static string SummarizeReason(string reason)
+    // A toast is one line. A failure reason is an outer-first chain over several lines, and an editor
+    // can pass anything, so both are cut to their first line and the rest is what a report is for.
+    private static string ToSingleLine(string text)
     {
-        var lineBreakIndex = reason.IndexOf('\n');
+        var lineBreakIndex = text.IndexOf('\n');
         if (lineBreakIndex < 0)
         {
-            return reason.Trim();
+            return text.Trim();
         }
 
-        return reason.Substring(0, lineBreakIndex).Trim();
+        return text.Substring(0, lineBreakIndex).Trim();
     }
 
     private WorkspaceNotification Compose(
