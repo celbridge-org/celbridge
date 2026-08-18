@@ -30,6 +30,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceClassifier, ResourceClassifier>();
         services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();
         services.AddTransient<CreateResourceHelper>();
+        services.AddTransient<ResourceOperationNotifier>();
 
         //
         // Register commands

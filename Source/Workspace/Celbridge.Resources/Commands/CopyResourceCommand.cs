@@ -33,9 +33,9 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         Array.Empty<FailedResource>());
 
     private readonly ILogger<CopyResourceCommand> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
+    private readonly ResourceOperationNotifier _operationNotifier;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.Operations;
@@ -43,14 +43,14 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     public CopyResourceCommand(
         ILogger<CopyResourceCommand> logger,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        ICommandService commandService,
+        ResourceOperationNotifier operationNotifier)
     {
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
+        _operationNotifier = operationNotifier;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -148,21 +148,16 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         if (failedResources.Count > 0)
         {
-            // ResourceOperationFailedMessage is a UI display channel and takes
-            // a list of strings for the toast/banner. Convert from typed keys
-            // to display names at this boundary; the structured CopyCommandResult
-            // above keeps the typed list (with reasons) for programmatic callers.
-            var failedDisplayNames = failedResources.Select(r => r.Resource.ResourceName).ToList();
-            var failedList = string.Join(", ", failedDisplayNames);
+            var failedList = string.Join(", ", failedResources.Select(r => r.Resource.ResourceName));
             _logger.LogWarning($"CopyResourceCommand completed with failures: {failedList}");
-
-            // Notify the UI about the failure
-            var operationType = TransferMode == DataTransferMode.Copy
-                ? ResourceOperationType.Copy
-                : ResourceOperationType.Move;
-            var failedMessage = new ResourceOperationFailedMessage(operationType, failedDisplayNames);
-            _messengerService.Send(failedMessage);
         }
+
+        // A move that left references stale did not finish either, so it is reported alongside the
+        // resources that failed outright rather than only reaching a programmatic caller.
+        var operationType = TransferMode == DataTransferMode.Copy
+            ? ResourceOperationType.Copy
+            : ResourceOperationType.Move;
+        await _operationNotifier.NotifyFailuresAsync(operationType, failedResources, aggregatedSkipped);
 
         // Per-resource failures are a partial-batch outcome reported through
         // ResultValue.FailedResources (each with its reason), not a command

@@ -217,52 +217,58 @@
     <value>Failed to delete file '{0}'</value>
   </data>
   <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
-    <value>Failed to delete: {0}</value>
+    <value>Could not delete '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Delete_Multiple" xml:space="preserve">
-    <value>Failed to delete {0} items</value>
+    <value>Could not delete {0} resources</value>
   </data>
   <data name="Toast_OperationFailed_Copy_Single" xml:space="preserve">
-    <value>Failed to copy: {0}</value>
+    <value>Could not copy '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Copy_Multiple" xml:space="preserve">
-    <value>Failed to copy {0} items</value>
+    <value>Could not copy {0} resources</value>
   </data>
   <data name="Toast_OperationFailed_Move_Single" xml:space="preserve">
-    <value>Failed to move: {0}</value>
+    <value>Could not move '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Move_Multiple" xml:space="preserve">
-    <value>Failed to move {0} items</value>
+    <value>Could not move {0} resources</value>
   </data>
   <data name="Toast_OperationFailed_Rename_Single" xml:space="preserve">
-    <value>Failed to rename: {0}</value>
+    <value>Could not rename '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Rename_Multiple" xml:space="preserve">
-    <value>Failed to rename {0} items</value>
+    <value>Could not rename {0} resources</value>
   </data>
   <data name="Toast_OperationFailed_Create_Single" xml:space="preserve">
-    <value>Failed to create: {0}</value>
+    <value>Could not create '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Create_Multiple" xml:space="preserve">
-    <value>Failed to create {0} items</value>
+    <value>Could not create {0} resources</value>
   </data>
   <data name="Toast_OperationFailed_Archive_Single" xml:space="preserve">
-    <value>Failed to create archive: {0}</value>
+    <value>Could not create the archive for '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Archive_Multiple" xml:space="preserve">
-    <value>Failed to create archive for {0} items</value>
+    <value>Could not create the archive for {0} resources</value>
   </data>
   <data name="Toast_OperationFailed_Extract_Single" xml:space="preserve">
-    <value>Failed to extract archive: {0}</value>
+    <value>Could not extract '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Extract_Multiple" xml:space="preserve">
-    <value>Failed to extract {0} archives</value>
+    <value>Could not extract {0} archives</value>
   </data>
   <data name="Toast_OperationFailed_Unknown_Single" xml:space="preserve">
-    <value>Operation failed: {0}</value>
+    <value>The operation failed on '{0}': {1}</value>
   </data>
   <data name="Toast_OperationFailed_Unknown_Multiple" xml:space="preserve">
-    <value>Operation failed on {0} items</value>
+    <value>The operation failed on {0} resources</value>
+  </data>
+  <data name="Toast_ReferencesNotUpdated_One" xml:space="preserve">
+    <value>One reference still points at the old location</value>
+  </data>
+  <data name="Toast_ReferencesNotUpdated_Many" xml:space="preserve">
+    <value>{0} references still point at the old location</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
@@ -727,12 +733,6 @@ Open with default application instead?</value>
   </data>
   <data name="NotificationBar_MigrationErrorTitle" xml:space="preserve">
     <value>Project Migration Error</value>
-  </data>
-  <data name="NotificationBar_PackageLoadErrorTitle" xml:space="preserve">
-    <value>Package Load Error</value>
-  </data>
-  <data name="NotificationBar_PackageLoadErrorMessage" xml:space="preserve">
-    <value>One or more packages failed to load. See the project load report for details.</value>
   </data>
   <data name="NotificationBar_ProjectCheckFindingsTitle" xml:space="preserve">
     <value>Project Check Findings</value>

@@ -141,12 +141,73 @@ public class WorkspaceToastViewModelTests
     }
 
     [Test]
-    public void AnOperationFailure_OffersNoReportAction()
+    public void AOneResourceFailure_NamesItAndItsReasonWithNoReportAction()
     {
-        // Resource operations do not write a report yet, so there is nothing for the action to open.
+        // One failure is fully expressed by the line, so the operation wrote no report for the action
+        // to open.
         SendOperationFailure(ResourceOperationType.Delete, "notes.txt");
 
+        _viewModel.ToastMessage.Should().Contain("notes.txt");
+        _viewModel.ToastMessage.Should().Contain("the file is locked");
         _viewModel.IsActionVisible.Should().BeFalse();
+    }
+
+    [Test]
+    public void AOneResourceFailure_ShowsOnlyTheFirstLineOfItsReason()
+    {
+        // A failure reason is an outer-first chain over several lines. The rest of it is what the
+        // report the reader can open is for.
+        var failedResources = new List<FailedResource>
+        {
+            new FailedResource(new ResourceKey("project:notes.txt"), "Could not delete the file\nThe process cannot access the file")
+        };
+
+        SendOperationFailure(ResourceOperationType.Delete, failedResources, ResourceKey.Empty);
+
+        _viewModel.ToastMessage.Should().Contain("Could not delete the file");
+        _viewModel.ToastMessage.Should().NotContain("The process cannot access the file");
+    }
+
+    [Test]
+    public void SeveralResourceFailures_CountThemAndPointAtTheReport()
+    {
+        var failedResources = new List<FailedResource>
+        {
+            new FailedResource(new ResourceKey("project:notes.txt"), "the file is locked"),
+            new FailedResource(new ResourceKey("project:data.json"), "permission denied")
+        };
+
+        SendOperationFailure(
+            ResourceOperationType.Delete,
+            failedResources,
+            new ResourceKey("logs:reports/delete-resources.report"));
+
+        _viewModel.ToastMessage.Should().Contain("Toast_OperationFailed_Delete_Multiple");
+        _viewModel.ToastMessage.Should().Contain("2");
+        _viewModel.IsActionVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public void AMoveThatOnlyLeftReferencesStale_IsAWarningNotAFailure()
+    {
+        // The move ran; what it could not finish was rewriting the references into what it moved.
+        var message = new ResourceOperationFailedMessage(
+            ResourceOperationType.Move,
+            Array.Empty<FailedResource>())
+        {
+            SkippedReferencers = new List<SkippedReferencer>
+            {
+                new SkippedReferencer(new ResourceKey("project:a.json"), ReferencerSkipReason.ReadOnly, "read-only"),
+                new SkippedReferencer(new ResourceKey("project:b.json"), ReferencerSkipReason.ReadOnly, "read-only")
+            },
+            ReportResource = new ResourceKey("logs:reports/move-resources.report")
+        };
+
+        _operationHandler!.Invoke(this, message);
+
+        _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Warning);
+        _viewModel.ToastMessage.Should().Contain("Toast_ReferencesNotUpdated_Many");
+        _viewModel.IsActionVisible.Should().BeTrue();
     }
 
     [Test]
@@ -176,7 +237,22 @@ public class WorkspaceToastViewModelTests
 
     private void SendOperationFailure(ResourceOperationType operationType, params string[] failedItems)
     {
-        var message = new ResourceOperationFailedMessage(operationType, failedItems.ToList());
+        var failedResources = failedItems
+            .Select(item => new FailedResource(new ResourceKey($"project:{item}"), "the file is locked"))
+            .ToList();
+
+        SendOperationFailure(operationType, failedResources, ResourceKey.Empty);
+    }
+
+    private void SendOperationFailure(
+        ResourceOperationType operationType,
+        IReadOnlyList<FailedResource> failedResources,
+        ResourceKey reportResource)
+    {
+        var message = new ResourceOperationFailedMessage(operationType, failedResources)
+        {
+            ReportResource = reportResource
+        };
 
         _operationHandler!.Invoke(this, message);
     }

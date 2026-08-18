@@ -75,9 +75,24 @@ public record ResourceKeyChangedMessage(ResourceKey SourceResource, ResourceKey 
 public record SelectedResourceChangedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a resource operation fails.
+/// A message sent when a resource operation could not do everything it was asked to, naming each
+/// resource that failed with its reason.
 /// </summary>
-public record ResourceOperationFailedMessage(ResourceOperationType OperationType, List<string> FailedItems);
+public record ResourceOperationFailedMessage(
+    ResourceOperationType OperationType,
+    IReadOnlyList<FailedResource> FailedResources)
+{
+    /// <summary>
+    /// References into the moved resources that the operation could not rewrite, leaving them stale.
+    /// Empty for every operation other than a move.
+    /// </summary>
+    public IReadOnlyList<SkippedReferencer> SkippedReferencers { get; init; } = Array.Empty<SkippedReferencer>();
+
+    /// <summary>
+    /// The report holding the per-item detail, or the empty key when the operation wrote none.
+    /// </summary>
+    public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;
+}
 
 /// <summary>
 /// Broadcast when a resource has appeared at the given key. Fired by the

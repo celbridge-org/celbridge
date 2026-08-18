@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -20,9 +21,9 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>());
 
     private readonly ILogger<DeleteResourceCommand> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
+    private readonly ResourceOperationNotifier _operationNotifier;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.Operations;
@@ -31,14 +32,14 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ResourceOperationNotifier operationNotifier)
     {
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _dialogService = dialogService;
+        _operationNotifier = operationNotifier;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -172,7 +173,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         // IResourceOperationService preserves undo and cascades the paired
         // sidecar alongside the parent.
         var resourceResults = new List<DeleteResourceResult>(Resources.Count);
-        var failedItems = new List<string>();
+        var failedResources = new List<FailedResource>();
 
         using (var batch = ResourceOperationService.BeginBatch())
         {
@@ -199,20 +200,21 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                         DeleteResourceOutcome.IOFailure,
                         SidecarOutcome.NotPresent,
                         FailureMessage: infoResult.MessageChain));
-                    failedItems.Add(resource.ResourceName);
+                    failedResources.Add(new FailedResource(resource, infoResult.MessageChain));
                     continue;
                 }
                 var info = infoResult.Value;
 
                 if (info.Kind == StorageItemKind.NotFound)
                 {
+                    var notFoundMessage = $"Resource does not exist: '{resource}'";
                     _logger.LogWarning($"Cannot delete resource because it does not exist: '{resource}'");
                     resourceResults.Add(new DeleteResourceResult(
                         resource,
                         DeleteResourceOutcome.NotFound,
                         SidecarOutcome.NotPresent,
-                        FailureMessage: $"Resource does not exist: '{resource}'"));
-                    failedItems.Add(resource.ResourceName);
+                        FailureMessage: notFoundMessage));
+                    failedResources.Add(new FailedResource(resource, notFoundMessage));
                     continue;
                 }
 
@@ -227,7 +229,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                         classification.Outcome,
                         SidecarOutcome.NotPresent,
                         FailureMessage: classification.Message));
-                    failedItems.Add(resource.ResourceName);
+                    failedResources.Add(new FailedResource(resource, classification.Message));
                     continue;
                 }
 
@@ -247,7 +249,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         // but at least one resource failed mechanically". A human (or agent)
         // reading BatchOutcome should not have to inspect ResourceResults to learn
         // whether the batch was actually clean.
-        var batchOutcome = failedItems.Count == 0
+        var batchOutcome = failedResources.Count == 0
             ? DeleteBatchOutcome.DeletedAll
             : DeleteBatchOutcome.DeletedSome;
 
@@ -256,14 +258,9 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             resourceResults,
             externalReferencers);
 
-        if (failedItems.Count > 0)
-        {
-            // Notify the UI about per-resource failures via the toast/banner
-            // channel so the user gets a visible signal even if the calling
-            // surface ignores ResultValue.
-            var message = new ResourceOperationFailedMessage(ResourceOperationType.Delete, failedItems);
-            _messengerService.Send(message);
-        }
+        // Notify the user about per-resource failures so they get a visible signal even if the
+        // calling surface ignores ResultValue.
+        await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Delete, failedResources);
 
         // The command itself succeeded — the batch ran end-to-end (the policy
         // gate cleared, every resource was attempted). Per-resource failures

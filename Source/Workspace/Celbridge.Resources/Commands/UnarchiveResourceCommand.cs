@@ -20,17 +20,17 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
     };
 
     private readonly ILogger<UnarchiveResourceCommand> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ResourceOperationNotifier _operationNotifier;
 
     public UnarchiveResourceCommand(
         ILogger<UnarchiveResourceCommand> logger,
-        IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ResourceOperationNotifier operationNotifier)
     {
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _operationNotifier = operationNotifier;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -38,10 +38,14 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         var result = await ExecuteExtractAsync();
         if (result.IsFailure)
         {
-            var archiveName = ArchiveResource.ResourceName;
-            var failedItems = new List<string> { archiveName };
-            _messengerService.Send(new ResourceOperationFailedMessage(ResourceOperationType.Extract, failedItems));
+            var failedResources = new List<FailedResource>
+            {
+                new FailedResource(ArchiveResource, result.MessageChain)
+            };
+
+            await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Extract, failedResources);
         }
+
         return result;
     }
 

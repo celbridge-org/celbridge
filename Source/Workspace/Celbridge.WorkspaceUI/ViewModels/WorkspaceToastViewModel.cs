@@ -90,6 +90,19 @@ public partial class WorkspaceToastViewModel : ObservableObject
 
     private WorkspaceNotification ComposeOperationNotification(ResourceOperationFailedMessage message)
     {
+        var failedResources = message.FailedResources;
+        if (failedResources.Count == 0)
+        {
+            // The operation ran; what it could not finish was rewriting the references into the
+            // resources it moved, which leaves them pointing at the old location.
+            var skippedCount = message.SkippedReferencers.Count;
+            var skippedKey = skippedCount == 1
+                ? "Toast_ReferencesNotUpdated_One"
+                : "Toast_ReferencesNotUpdated_Many";
+
+            return Compose(ReportSeverity.Warning, skippedKey, message.ReportResource, skippedCount);
+        }
+
         var baseKey = message.OperationType switch
         {
             ResourceOperationType.Delete => "Toast_OperationFailed_Delete",
@@ -102,14 +115,39 @@ public partial class WorkspaceToastViewModel : ObservableObject
             _ => "Toast_OperationFailed_Unknown"
         };
 
-        // One failure names what failed; several are a count, since a list of names does not fit one line.
-        var failedItems = message.FailedItems;
-        if (failedItems.Count == 1)
+        // One failure carries its reason, which is all a report would have said. Several are a count,
+        // since neither the names nor the reasons fit one line and the report holds both.
+        if (failedResources.Count == 1)
         {
-            return Compose(ReportSeverity.Error, $"{baseKey}_Single", ResourceKey.Empty, failedItems[0]);
+            var failedResource = failedResources[0];
+            var reason = SummarizeReason(failedResource.Message);
+
+            return Compose(
+                ReportSeverity.Error,
+                $"{baseKey}_Single",
+                message.ReportResource,
+                failedResource.Resource.ResourceName,
+                reason);
         }
 
-        return Compose(ReportSeverity.Error, $"{baseKey}_Multiple", ResourceKey.Empty, failedItems.Count);
+        return Compose(
+            ReportSeverity.Error,
+            $"{baseKey}_Multiple",
+            message.ReportResource,
+            failedResources.Count);
+    }
+
+    // A failure reason is an outer-first chain of messages over several lines. The first line is the
+    // summary, and the rest is what the report is for.
+    private static string SummarizeReason(string reason)
+    {
+        var lineBreakIndex = reason.IndexOf('\n');
+        if (lineBreakIndex < 0)
+        {
+            return reason.Trim();
+        }
+
+        return reason.Substring(0, lineBreakIndex).Trim();
     }
 
     private WorkspaceNotification Compose(
