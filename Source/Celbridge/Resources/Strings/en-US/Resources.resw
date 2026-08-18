@@ -1534,4 +1534,205 @@ Open with default application instead?</value>
   <data name="DocumentTab_ReopenWith" xml:space="preserve">
     <value>Reopen with...</value>
   </data>
+  <data name="Report_Finding_Project_MigrationNotReached" xml:space="preserve">
+    <value>Migration step was not reached.</value>
+  </data>
+  <data name="Report_Finding_Project_UpgradeCancelled" xml:space="preserve">
+    <value>The upgrade was cancelled, so the project was not loaded.</value>
+  </data>
+  <data name="Report_Finding_Project_MigrationFailed" xml:space="preserve">
+    <value>Migration failed.</value>
+  </data>
+  <data name="Report_Finding_Project_LoadFailed" xml:space="preserve">
+    <value>Project load failed.</value>
+  </data>
+  <data name="Report_Finding_Project_ConfigEntrySkipped" xml:space="preserve">
+    <value>Config entry skipped: {0}</value>
+  </data>
+  <data name="Report_Finding_Package_PackageLoadFailed" xml:space="preserve">
+    <value>Package failed to load: {0}</value>
+  </data>
+  <data name="Report_Finding_Package_EditorSkipped" xml:space="preserve">
+    <value>Editor skipped: {0}</value>
+  </data>
+  <data name="Report_Finding_Package_EditorDegraded" xml:space="preserve">
+    <value>Editor degraded: {0}</value>
+  </data>
+  <data name="Report_Finding_Resource_OrphanSidecar" xml:space="preserve">
+    <value>Orphan .cel file: no resource it describes.</value>
+  </data>
+  <data name="Report_Finding_Resource_BrokenSidecar" xml:space="preserve">
+    <value>Broken .cel file: could not be parsed.</value>
+  </data>
+  <data name="Report_Finding_Resource_MissingReference" xml:space="preserve">
+    <value>References a missing resource.</value>
+  </data>
+  <data name="Report_Finding_Resource_CopyFailed" xml:space="preserve">
+    <value>Could not be copied.</value>
+  </data>
+  <data name="Report_Finding_Resource_MoveFailed" xml:space="preserve">
+    <value>Could not be moved.</value>
+  </data>
+  <data name="Report_Finding_Resource_DeleteFailed" xml:space="preserve">
+    <value>Could not be deleted.</value>
+  </data>
+  <data name="Report_Finding_Resource_ReferenceNotUpdated" xml:space="preserve">
+    <value>Reference to the moved resource was not updated.</value>
+  </data>
+  <data name="Report_Action_OpenResource" xml:space="preserve">
+    <value>Open {0}</value>
+  </data>
+  <data name="Report_ResourceOperation_Title_Copy" xml:space="preserve">
+    <value>Copy Resources</value>
+  </data>
+  <data name="Report_ResourceOperation_Title_Move" xml:space="preserve">
+    <value>Move Resources</value>
+  </data>
+  <data name="Report_ResourceOperation_Title_Delete" xml:space="preserve">
+    <value>Delete Resources</value>
+  </data>
+  <data name="Report_ResourceOperation_Section_Resources" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="Report_ResourceOperation_Section_References" xml:space="preserve">
+    <value>References</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Copy_One" xml:space="preserve">
+    <value>{0} resource could not be copied.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Copy_Many" xml:space="preserve">
+    <value>{0} resources could not be copied.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Move_One" xml:space="preserve">
+    <value>{0} resource could not be moved.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Move_Many" xml:space="preserve">
+    <value>{0} resources could not be moved.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Delete_One" xml:space="preserve">
+    <value>{0} resource could not be deleted.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Delete_Many" xml:space="preserve">
+    <value>{0} resources could not be deleted.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_Completed" xml:space="preserve">
+    <value>The operation completed.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_StaleReferences_One" xml:space="preserve">
+    <value>{0} reference was left pointing at the old location.</value>
+  </data>
+  <data name="Report_ResourceOperation_Summary_StaleReferences_Many" xml:space="preserve">
+    <value>{0} references were left pointing at the old location.</value>
+  </data>
+  <data name="Report_ProjectLoad_Title" xml:space="preserve">
+    <value>Project Load</value>
+  </data>
+  <data name="Report_ProjectLoad_Section_Summary" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="Report_ProjectLoad_Section_Load" xml:space="preserve">
+    <value>Load</value>
+  </data>
+  <data name="Report_ProjectLoad_Section_Configuration" xml:space="preserve">
+    <value>Configuration ({0})</value>
+  </data>
+  <data name="Report_ProjectLoad_Section_Packages" xml:space="preserve">
+    <value>Packages</value>
+  </data>
+  <data name="Report_ProjectLoad_Section_Sidecars" xml:space="preserve">
+    <value>Sidecar files</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_Project" xml:space="preserve">
+    <value>Project</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_Resources" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_ResourcesValue" xml:space="preserve">
+    <value>{0} files in {1} folders</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_PackagesLoaded" xml:space="preserve">
+    <value>Packages loaded</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_PackagesLoadedValue" xml:space="preserve">
+    <value>{0} bundled, {1} project</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_EditorsResolved" xml:space="preserve">
+    <value>Editors resolved</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_ProjectVersion" xml:space="preserve">
+    <value>Project version</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_ApplicationVersion" xml:space="preserve">
+    <value>Application version</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_MigrationStatus" xml:space="preserve">
+    <value>Migration status</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_Outcome" xml:space="preserve">
+    <value>Outcome</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_LoadDuration" xml:space="preserve">
+    <value>Load duration</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_LoadDurationValue" xml:space="preserve">
+    <value>{0} ms</value>
+  </data>
+  <data name="Report_ProjectLoad_Outcome_InProgress" xml:space="preserve">
+    <value>In progress</value>
+  </data>
+  <data name="Report_ProjectLoad_Outcome_Loaded" xml:space="preserve">
+    <value>Loaded</value>
+  </data>
+  <data name="Report_ProjectLoad_Outcome_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Report_ProjectLoad_Summary_NoIssues" xml:space="preserve">
+    <value>The project loaded with no issues.</value>
+  </data>
+  <data name="Report_ProjectLoad_Summary_Issues_One" xml:space="preserve">
+    <value>The project loaded with {0} issue.</value>
+  </data>
+  <data name="Report_ProjectLoad_Summary_Issues_Many" xml:space="preserve">
+    <value>The project loaded with {0} issues.</value>
+  </data>
+  <data name="Report_CheckReferences_Title" xml:space="preserve">
+    <value>Check References</value>
+  </data>
+  <data name="Report_CheckReferences_Section_Summary" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="Report_CheckReferences_Section_MissingReferences" xml:space="preserve">
+    <value>Missing references</value>
+  </data>
+  <data name="Report_CheckReferences_Fact_ReferencedResources" xml:space="preserve">
+    <value>Referenced resources</value>
+  </data>
+  <data name="Report_CheckReferences_Fact_MissingResources" xml:space="preserve">
+    <value>Missing resources</value>
+  </data>
+  <data name="Report_CheckReferences_Fact_BrokenReferences" xml:space="preserve">
+    <value>Broken references</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_NothingToCheck" xml:space="preserve">
+    <value>No resource references were found to check.</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_AllFound_One" xml:space="preserve">
+    <value>The referenced resource was found.</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_AllFound_Many" xml:space="preserve">
+    <value>All {0} referenced resources were found.</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_Broken_OneRef_OneResource" xml:space="preserve">
+    <value>{0} reference points at {1} missing resource.</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_Broken_OneRef_ManyResources" xml:space="preserve">
+    <value>{0} reference points at {1} missing resources.</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_Broken_ManyRefs_OneResource" xml:space="preserve">
+    <value>{0} references point at {1} missing resource.</value>
+  </data>
+  <data name="Report_CheckReferences_Summary_Broken_ManyRefs_ManyResources" xml:space="preserve">
+    <value>{0} references point at {1} missing resources.</value>
+  </data>
 </root>

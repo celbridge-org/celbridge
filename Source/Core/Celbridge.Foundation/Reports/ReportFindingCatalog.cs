@@ -3,7 +3,8 @@ namespace Celbridge.Reports;
 /// <summary>
 /// The catalog of every finding the host can report, declared once and grouped by area. The source
 /// of truth for what finding codes exist. A code is never reused or renumbered: reports persist on
-/// disk, so a recycled code silently changes what an old report said.
+/// disk, so a recycled code silently changes what an old report said. Each message template is a
+/// localization key resolved against the host's resources when the finding is built.
 /// </summary>
 public static class ReportFindingCatalog
 {
@@ -19,19 +20,19 @@ public static class ReportFindingCatalog
     public static class Project
     {
         public static readonly ReportFindingDescriptor MigrationNotReached =
-            new(new ReportCode("CEL_PROJECT_001"), "Migration step was not reached.", ReportSeverity.Error);
+            new(new ReportCode("CEL_PROJECT_001"), "Report_Finding_Project_MigrationNotReached", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor UpgradeCancelled =
-            new(new ReportCode("CEL_PROJECT_002"), "The upgrade was cancelled, so the project was not loaded.", ReportSeverity.Warning);
+            new(new ReportCode("CEL_PROJECT_002"), "Report_Finding_Project_UpgradeCancelled", ReportSeverity.Warning);
 
         public static readonly ReportFindingDescriptor MigrationFailed =
-            new(new ReportCode("CEL_PROJECT_003"), "Migration failed.", ReportSeverity.Error);
+            new(new ReportCode("CEL_PROJECT_003"), "Report_Finding_Project_MigrationFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor LoadFailed =
-            new(new ReportCode("CEL_PROJECT_004"), "Project load failed.", ReportSeverity.Error);
+            new(new ReportCode("CEL_PROJECT_004"), "Report_Finding_Project_LoadFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor ConfigEntrySkipped =
-            new(new ReportCode("CEL_PROJECT_005"), "Config entry skipped: {0}", ReportSeverity.Warning);
+            new(new ReportCode("CEL_PROJECT_005"), "Report_Finding_Project_ConfigEntrySkipped", ReportSeverity.Warning);
     }
 
     /// <summary>
@@ -40,13 +41,13 @@ public static class ReportFindingCatalog
     public static class Package
     {
         public static readonly ReportFindingDescriptor PackageLoadFailed =
-            new(new ReportCode("CEL_PACKAGE_001"), "Package failed to load: {0}", ReportSeverity.Error);
+            new(new ReportCode("CEL_PACKAGE_001"), "Report_Finding_Package_PackageLoadFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor EditorSkipped =
-            new(new ReportCode("CEL_PACKAGE_002"), "Editor skipped: {0}", ReportSeverity.Error);
+            new(new ReportCode("CEL_PACKAGE_002"), "Report_Finding_Package_EditorSkipped", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor EditorDegraded =
-            new(new ReportCode("CEL_PACKAGE_003"), "Editor degraded: {0}", ReportSeverity.Warning);
+            new(new ReportCode("CEL_PACKAGE_003"), "Report_Finding_Package_EditorDegraded", ReportSeverity.Warning);
     }
 
     /// <summary>
@@ -56,24 +57,24 @@ public static class ReportFindingCatalog
     public static class Resource
     {
         public static readonly ReportFindingDescriptor OrphanSidecar =
-            new(new ReportCode("CEL_RESOURCE_001"), "Orphan .cel file: no resource it describes.", ReportSeverity.Warning);
+            new(new ReportCode("CEL_RESOURCE_001"), "Report_Finding_Resource_OrphanSidecar", ReportSeverity.Warning);
 
         public static readonly ReportFindingDescriptor BrokenSidecar =
-            new(new ReportCode("CEL_RESOURCE_002"), "Broken .cel file: could not be parsed.", ReportSeverity.Warning);
+            new(new ReportCode("CEL_RESOURCE_002"), "Report_Finding_Resource_BrokenSidecar", ReportSeverity.Warning);
 
         public static readonly ReportFindingDescriptor MissingReference =
-            new(new ReportCode("CEL_RESOURCE_003"), "References a missing resource.", ReportSeverity.Warning);
+            new(new ReportCode("CEL_RESOURCE_003"), "Report_Finding_Resource_MissingReference", ReportSeverity.Warning);
 
         public static readonly ReportFindingDescriptor CopyFailed =
-            new(new ReportCode("CEL_RESOURCE_004"), "Could not be copied.", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_004"), "Report_Finding_Resource_CopyFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor MoveFailed =
-            new(new ReportCode("CEL_RESOURCE_005"), "Could not be moved.", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_005"), "Report_Finding_Resource_MoveFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor DeleteFailed =
-            new(new ReportCode("CEL_RESOURCE_006"), "Could not be deleted.", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_006"), "Report_Finding_Resource_DeleteFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor ReferenceNotUpdated =
-            new(new ReportCode("CEL_RESOURCE_007"), "Reference to the moved resource was not updated.", ReportSeverity.Warning);
+            new(new ReportCode("CEL_RESOURCE_007"), "Report_Finding_Resource_ReferenceNotUpdated", ReportSeverity.Warning);
     }
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Celbridge.Localization;
 using Celbridge.Reports;
 
 namespace Celbridge.Utilities;
@@ -9,12 +10,18 @@ namespace Celbridge.Utilities;
 public static class ReportFinding
 {
     /// <summary>
-    /// Builds an occurrence of a finding: the descriptor's message composed with the arguments, at
-    /// the descriptor's default severity.
+    /// Builds an occurrence of a finding: the descriptor's message localized and composed with the
+    /// arguments, at the descriptor's default severity.
     /// </summary>
-    public static ReportItem Create(ReportFindingDescriptor descriptor, params object[] arguments)
+    public static ReportItem Create(
+        ILocalizerService localizerService,
+        ReportFindingDescriptor descriptor,
+        params object[] arguments)
     {
-        var message = ComposeMessage(descriptor.MessageTemplate, arguments);
+        // The template is looked up as a key and returned unchanged when nothing matches, so a host
+        // descriptor naming a key is localized and a contribution's literal wording passes through.
+        var template = localizerService.GetString(descriptor.MessageTemplate);
+        var message = ComposeMessage(template, arguments);
 
         return new ReportItem(descriptor.DefaultSeverity, message)
         {

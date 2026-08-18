@@ -1,4 +1,4 @@
-using System.Globalization;
+using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Reports;
@@ -12,14 +12,14 @@ namespace Celbridge.Resources.Helpers;
 // resource have one, because a report holding a single row says nothing the notification did not.
 internal partial record ResourceOperationReportKind(
     string Id,
-    string Title,
+    string TitleKey,
     ReportFindingDescriptor FailureDescriptor,
-    ResourceOperationSummary FailureSummary);
+    ResourceOperationSummaryKeys FailureSummary);
 
-// Whole sentences taking the count as {0}, rather than a participle the summary line splices into a
-// sentence it builds itself. A bare verb carries no number agreement and no word order, so it is not
-// something a translation of this wording could be written against.
-internal record ResourceOperationSummary(
+// Keys naming whole sentences that take the count, rather than a participle the summary line splices
+// into a sentence it builds itself. A bare verb carries no number agreement and no word order, so it
+// is not something a translation could be written against.
+internal record ResourceOperationSummaryKeys(
     string SingleFailure,
     string MultipleFailures);
 
@@ -30,25 +30,31 @@ internal record ResourceOperationSummary(
 public sealed class ResourceOperationNotifier
 {
     // Stale references read the same whichever operation left them, so these are not per-operation.
-    private const string OperationCompleted = "The operation completed.";
-    private const string SingleStaleReference = "{0} reference was left pointing at the old location.";
-    private const string MultipleStaleReferences = "{0} references were left pointing at the old location.";
+    private const string OperationCompletedKey = "Report_ResourceOperation_Summary_Completed";
+    private const string SingleStaleReferenceKey = "Report_ResourceOperation_Summary_StaleReferences_One";
+    private const string MultipleStaleReferencesKey = "Report_ResourceOperation_Summary_StaleReferences_Many";
+    private const string ResourcesSectionKey = "Report_ResourceOperation_Section_Resources";
+    private const string ReferencesSectionKey = "Report_ResourceOperation_Section_References";
+    private const string OpenResourceActionKey = "Report_Action_OpenResource";
 
     private readonly ILogger<ResourceOperationNotifier> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IReportWriter _reportWriter;
+    private readonly ILocalizerService _localizerService;
 
     public ResourceOperationNotifier(
         ILogger<ResourceOperationNotifier> logger,
         IMessengerService messengerService,
         IProjectService projectService,
-        IReportWriter reportWriter)
+        IReportWriter reportWriter,
+        ILocalizerService localizerService)
     {
         _logger = logger;
         _messengerService = messengerService;
         _projectService = projectService;
         _reportWriter = reportWriter;
+        _localizerService = localizerService;
     }
 
     /// <summary>
@@ -122,7 +128,7 @@ public sealed class ResourceOperationNotifier
         return writeResult.Value;
     }
 
-    private static ReportDocument BuildReport(
+    private ReportDocument BuildReport(
         ResourceOperationReportKind reportKind,
         IReadOnlyList<FailedResource> failedResources,
         IReadOnlyList<SkippedReferencer> skippedReferencers)
@@ -147,14 +153,14 @@ public sealed class ResourceOperationNotifier
 
         return new ReportDocument(
             reportKind.Id,
-            reportKind.Title,
+            _localizerService.GetString(reportKind.TitleKey),
             DateTimeOffset.UtcNow,
             severity,
             summary,
             sections);
     }
 
-    private static ReportSection BuildFailedResourcesSection(
+    private ReportSection BuildFailedResourcesSection(
         ResourceOperationReportKind reportKind,
         IReadOnlyList<FailedResource> failedResources)
     {
@@ -163,7 +169,7 @@ public sealed class ResourceOperationNotifier
         var items = new List<ReportItem>(failedResources.Count);
         foreach (var failedResource in failedResources)
         {
-            var item = ReportFinding.Create(descriptor) with
+            var item = ReportFinding.Create(_localizerService, descriptor) with
             {
                 Resource = failedResource.Resource,
                 Detail = failedResource.Message,
@@ -173,15 +179,17 @@ public sealed class ResourceOperationNotifier
             items.Add(item);
         }
 
-        return new ReportSection("Resources", ReportSectionKind.Findings, ReportSeverity.Error, items);
+        var title = _localizerService.GetString(ResourcesSectionKey);
+
+        return new ReportSection(title, ReportSectionKind.Findings, ReportSeverity.Error, items);
     }
 
-    private static ReportSection BuildStaleReferencesSection(IReadOnlyList<SkippedReferencer> skippedReferencers)
+    private ReportSection BuildStaleReferencesSection(IReadOnlyList<SkippedReferencer> skippedReferencers)
     {
         var items = new List<ReportItem>(skippedReferencers.Count);
         foreach (var skippedReferencer in skippedReferencers)
         {
-            var item = ReportFinding.Create(ReportFindingCatalog.Resource.ReferenceNotUpdated) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Resource.ReferenceNotUpdated) with
             {
                 Resource = skippedReferencer.Resource,
                 Detail = skippedReferencer.Message,
@@ -191,15 +199,19 @@ public sealed class ResourceOperationNotifier
             items.Add(item);
         }
 
-        return new ReportSection("References", ReportSectionKind.Findings, ReportSeverity.Warning, items);
+        var title = _localizerService.GetString(ReferencesSectionKey);
+
+        return new ReportSection(title, ReportSectionKind.Findings, ReportSeverity.Warning, items);
     }
 
     // No location: the failure is about the resource as a whole, not a position inside it. A failure
     // usually leaves its resource in place, so the row opens it; where it does not, the open reports
     // the resource as missing and the row still says what failed and why.
-    private static IReadOnlyList<ReportAction> ComposeOpenActions(ResourceKey resource)
+    private IReadOnlyList<ReportAction> ComposeOpenActions(ResourceKey resource)
     {
-        var action = new ReportAction(ReportActionKind.OpenResource, $"Open {resource.ResourceName}")
+        var label = _localizerService.GetString(OpenResourceActionKey, resource.ResourceName);
+
+        var action = new ReportAction(ReportActionKind.OpenResource, label)
         {
             Resource = resource
         };
@@ -212,7 +224,7 @@ public sealed class ResourceOperationNotifier
 
     // One sentence per fact, joined by a space. Conjoining them into a single sentence would fix the
     // conjunction and the clause order of one language in code rather than in the wording itself.
-    private static string ComposeSummaryLine(
+    private string ComposeSummaryLine(
         ResourceOperationReportKind reportKind,
         int failedCount,
         int skippedCount)
@@ -221,33 +233,27 @@ public sealed class ResourceOperationNotifier
 
         if (failedCount > 0)
         {
-            var failureTemplate = failedCount == 1
+            var failureKey = failedCount == 1
                 ? reportKind.FailureSummary.SingleFailure
                 : reportKind.FailureSummary.MultipleFailures;
 
-            sentences.Add(ComposeSentence(failureTemplate, failedCount));
+            sentences.Add(_localizerService.GetString(failureKey, failedCount));
         }
         else
         {
-            sentences.Add(OperationCompleted);
+            sentences.Add(_localizerService.GetString(OperationCompletedKey));
         }
 
         if (skippedCount > 0)
         {
-            var staleTemplate = skippedCount == 1
-                ? SingleStaleReference
-                : MultipleStaleReferences;
+            var staleKey = skippedCount == 1
+                ? SingleStaleReferenceKey
+                : MultipleStaleReferencesKey;
 
-            sentences.Add(ComposeSentence(staleTemplate, skippedCount));
+            sentences.Add(_localizerService.GetString(staleKey, skippedCount));
         }
 
         return string.Join(" ", sentences);
-    }
-
-    // Invariant culture, matching the finding messages composed alongside these in the same report.
-    private static string ComposeSentence(string template, int count)
-    {
-        return string.Format(CultureInfo.InvariantCulture, template, count);
     }
 
     // Null for every other operation, because they act on one resource at a time and so can never
@@ -258,39 +264,39 @@ public sealed class ResourceOperationNotifier
         {
             case ResourceOperationType.Copy:
             {
-                var summary = new ResourceOperationSummary(
-                    "{0} resource could not be copied.",
-                    "{0} resources could not be copied.");
+                var summary = new ResourceOperationSummaryKeys(
+                    "Report_ResourceOperation_Summary_Copy_One",
+                    "Report_ResourceOperation_Summary_Copy_Many");
 
                 return new ResourceOperationReportKind(
                     "copy-resources",
-                    "Copy Resources",
+                    "Report_ResourceOperation_Title_Copy",
                     ReportFindingCatalog.Resource.CopyFailed,
                     summary);
             }
 
             case ResourceOperationType.Move:
             {
-                var summary = new ResourceOperationSummary(
-                    "{0} resource could not be moved.",
-                    "{0} resources could not be moved.");
+                var summary = new ResourceOperationSummaryKeys(
+                    "Report_ResourceOperation_Summary_Move_One",
+                    "Report_ResourceOperation_Summary_Move_Many");
 
                 return new ResourceOperationReportKind(
                     "move-resources",
-                    "Move Resources",
+                    "Report_ResourceOperation_Title_Move",
                     ReportFindingCatalog.Resource.MoveFailed,
                     summary);
             }
 
             case ResourceOperationType.Delete:
             {
-                var summary = new ResourceOperationSummary(
-                    "{0} resource could not be deleted.",
-                    "{0} resources could not be deleted.");
+                var summary = new ResourceOperationSummaryKeys(
+                    "Report_ResourceOperation_Summary_Delete_One",
+                    "Report_ResourceOperation_Summary_Delete_Many");
 
                 return new ResourceOperationReportKind(
                     "delete-resources",
-                    "Delete Resources",
+                    "Report_ResourceOperation_Title_Delete",
                     ReportFindingCatalog.Resource.DeleteFailed,
                     summary);
             }

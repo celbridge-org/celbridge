@@ -1,3 +1,4 @@
+using Celbridge.Tests.Localization;
 using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Messaging;
@@ -94,7 +95,8 @@ public class CheckReferencesCommandTests
             _projectService,
             _commandService,
             _reportWriter,
-            Substitute.For<ILogger<CheckReferencesCommand>>());
+            Substitute.For<ILogger<CheckReferencesCommand>>(),
+            new TestLocalizerService());
     }
 
     [TearDown]

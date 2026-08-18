@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Reports;
@@ -24,19 +25,22 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
     private readonly ICommandService _commandService;
     private readonly IReportWriter _reportWriter;
     private readonly ILogger<CheckReferencesCommand> _logger;
+    private readonly ILocalizerService _localizerService;
 
     public CheckReferencesCommand(
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         ICommandService commandService,
         IReportWriter reportWriter,
-        ILogger<CheckReferencesCommand> logger)
+        ILogger<CheckReferencesCommand> logger,
+        ILocalizerService localizerService)
     {
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _commandService = commandService;
         _reportWriter = reportWriter;
         _logger = logger;
+        _localizerService = localizerService;
     }
 
     public bool OpenReport { get; set; }
@@ -141,7 +145,7 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
         });
     }
 
-    private static ReportDocument BuildReport(CheckReferencesReport checkReport)
+    private ReportDocument BuildReport(CheckReferencesReport checkReport)
     {
         var summarySection = BuildSummarySection(checkReport);
 
@@ -161,28 +165,30 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
 
         return new ReportDocument(
             ReportId,
-            "Check References",
+            _localizerService.GetString("Report_CheckReferences_Title"),
             DateTimeOffset.UtcNow,
             severity,
             summary,
             sections);
     }
 
-    private static ReportSection BuildSummarySection(CheckReferencesReport checkReport)
+    private ReportSection BuildSummarySection(CheckReferencesReport checkReport)
     {
         // The scan walks referenced resources, and each one can be named by any number of references,
         // so the counts are labelled by what they actually count.
         var items = new List<ReportItem>
         {
-            CreateFact("Referenced resources", checkReport.CheckedTargetCount.ToString()),
-            CreateFact("Missing resources", CountMissingTargets(checkReport).ToString()),
-            CreateFact("Broken references", checkReport.BrokenReferences.Count.ToString())
+            CreateFact("Report_CheckReferences_Fact_ReferencedResources", checkReport.CheckedTargetCount.ToString()),
+            CreateFact("Report_CheckReferences_Fact_MissingResources", CountMissingTargets(checkReport).ToString()),
+            CreateFact("Report_CheckReferences_Fact_BrokenReferences", checkReport.BrokenReferences.Count.ToString())
         };
 
-        return new ReportSection("Summary", ReportSectionKind.Facts, ReportSeverity.Info, items);
+        var title = _localizerService.GetString("Report_CheckReferences_Section_Summary");
+
+        return new ReportSection(title, ReportSectionKind.Facts, ReportSeverity.Info, items);
     }
 
-    private static ReportSection? BuildFindingsSection(CheckReferencesReport checkReport)
+    private ReportSection? BuildFindingsSection(CheckReferencesReport checkReport)
     {
         if (checkReport.BrokenReferences.Count == 0)
         {
@@ -195,7 +201,9 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             var site = brokenReference.Site;
             var location = new ReportSourceLocation(site.Line, site.Column);
 
-            var action = new ReportAction(ReportActionKind.OpenResource, $"Open {site.Source.ResourceName}")
+            var label = _localizerService.GetString("Report_Action_OpenResource", site.Source.ResourceName);
+
+            var action = new ReportAction(ReportActionKind.OpenResource, label)
             {
                 Resource = site.Source,
                 Location = location
@@ -209,7 +217,7 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             // No detail: every occurrence says the same thing as the descriptor's message, and what a
             // lexical scan can and cannot tell apart belongs to the finding kind rather than to each
             // place it was found.
-            var item = ReportFinding.Create(ReportFindingCatalog.Resource.MissingReference) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Resource.MissingReference) with
             {
                 Resource = site.Source,
                 Target = brokenReference.MissingTarget,
@@ -219,38 +227,57 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
             items.Add(item);
         }
 
-        return new ReportSection("Missing references", ReportSectionKind.Findings, ReportSeverity.Warning, items);
+        var title = _localizerService.GetString("Report_CheckReferences_Section_MissingReferences");
+
+        return new ReportSection(title, ReportSectionKind.Findings, ReportSeverity.Warning, items);
     }
 
-    private static ReportItem CreateFact(string label, string value)
+    private ReportItem CreateFact(string labelKey, string value)
     {
-        return new ReportItem(ReportSeverity.Info, label)
+        return new ReportItem(ReportSeverity.Info, _localizerService.GetString(labelKey))
         {
             Value = value
         };
     }
 
-    private static string ComposeSummaryLine(CheckReferencesReport checkReport)
+    private string ComposeSummaryLine(CheckReferencesReport checkReport)
     {
         var checkedCount = checkReport.CheckedTargetCount;
         if (checkedCount == 0)
         {
-            return "No resource references were found to check.";
+            return _localizerService.GetString("Report_CheckReferences_Summary_NothingToCheck");
         }
 
         var brokenCount = checkReport.BrokenReferences.Count;
         if (brokenCount == 0)
         {
-            var checkedLabel = checkedCount == 1 ? "resource" : "resources";
+            var allFoundKey = checkedCount == 1
+                ? "Report_CheckReferences_Summary_AllFound_One"
+                : "Report_CheckReferences_Summary_AllFound_Many";
 
-            return $"All {checkedCount} referenced {checkedLabel} were found.";
+            return _localizerService.GetString(allFoundKey, checkedCount);
         }
 
+        // Both counts vary, and a language can inflect either, so each combination is its own sentence
+        // rather than a noun picked per count and dropped into a shared one.
         var missingCount = CountMissingTargets(checkReport);
-        var referenceLabel = brokenCount == 1 ? "reference" : "references";
-        var missingLabel = missingCount == 1 ? "resource" : "resources";
+        var brokenKey = ResolveBrokenSummaryKey(brokenCount, missingCount);
 
-        return $"{brokenCount} {referenceLabel} point at {missingCount} missing {missingLabel}.";
+        return _localizerService.GetString(brokenKey, brokenCount, missingCount);
+    }
+
+    private static string ResolveBrokenSummaryKey(int brokenCount, int missingCount)
+    {
+        if (brokenCount == 1)
+        {
+            return missingCount == 1
+                ? "Report_CheckReferences_Summary_Broken_OneRef_OneResource"
+                : "Report_CheckReferences_Summary_Broken_OneRef_ManyResources";
+        }
+
+        return missingCount == 1
+            ? "Report_CheckReferences_Summary_Broken_ManyRefs_OneResource"
+            : "Report_CheckReferences_Summary_Broken_ManyRefs_ManyResources";
     }
 
     // A missing resource is usually named by more than one reference, so the two counts differ.

@@ -1,3 +1,4 @@
+using Celbridge.Tests.Localization;
 using System.Text.Json;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
@@ -51,7 +52,8 @@ public class ResourceOperationNotifierTests
             Substitute.For<ILogger<ResourceOperationNotifier>>(),
             _messengerService,
             projectService,
-            reportWriter);
+            reportWriter,
+            new TestLocalizerService());
     }
 
     [TearDown]

@@ -1,3 +1,4 @@
+using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Reports;
@@ -20,6 +21,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     // read or open.
     private readonly IReportWriter _reportWriter;
     private readonly ILogger<ProjectLoadReporter> _logger;
+    private readonly ILocalizerService _localizerService;
 
     private string _projectFilePath = string.Empty;
     private DateTimeOffset? _loadStartedAt;
@@ -37,10 +39,12 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
     public ProjectLoadReporter(
         IReportWriter reportWriter,
-        ILogger<ProjectLoadReporter> logger)
+        ILogger<ProjectLoadReporter> logger,
+        ILocalizerService localizerService)
     {
         _reportWriter = reportWriter;
         _logger = logger;
+        _localizerService = localizerService;
     }
 
     public void BeginLoad(string projectFilePath)
@@ -165,7 +169,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         return new ReportDocument(
             ReportId,
-            "Project Load",
+            _localizerService.GetString("Report_ProjectLoad_Title"),
             generatedAt,
             severity,
             summary,
@@ -177,55 +181,71 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         var items = new List<ReportItem>();
 
         var projectName = Path.GetFileNameWithoutExtension(_projectFilePath);
-        items.Add(CreateFact("Project", projectName));
+        items.Add(CreateFact("Report_ProjectLoad_Fact_Project", projectName));
 
         if (_fileResourceCount is int fileCount
             && _folderResourceCount is int folderCount)
         {
-            items.Add(CreateFact("Resources", $"{fileCount} files in {folderCount} folders"));
+            var resourceCounts = _localizerService.GetString(
+                "Report_ProjectLoad_Fact_ResourcesValue", fileCount, folderCount);
+
+            items.Add(CreateFact("Report_ProjectLoad_Fact_Resources", resourceCounts));
         }
 
         if (_packageReport is PackageDiscoveryReport packageReport)
         {
-            var packageCounts = $"{packageReport.BundledPackageCount} bundled, {packageReport.ProjectPackageCount} project";
-            items.Add(CreateFact("Packages loaded", packageCounts));
-            items.Add(CreateFact("Editors resolved", packageReport.ResolvedEditorCount.ToString()));
+            var packageCounts = _localizerService.GetString(
+                "Report_ProjectLoad_Fact_PackagesLoadedValue",
+                packageReport.BundledPackageCount,
+                packageReport.ProjectPackageCount);
+
+            items.Add(CreateFact("Report_ProjectLoad_Fact_PackagesLoaded", packageCounts));
+            items.Add(CreateFact("Report_ProjectLoad_Fact_EditorsResolved", packageReport.ResolvedEditorCount.ToString()));
         }
 
         if (_migrationResult is MigrationResult migrationResult)
         {
             if (!string.IsNullOrEmpty(migrationResult.OldVersion))
             {
-                items.Add(CreateFact("Project version", migrationResult.OldVersion));
+                items.Add(CreateFact("Report_ProjectLoad_Fact_ProjectVersion", migrationResult.OldVersion));
             }
             if (!string.IsNullOrEmpty(migrationResult.NewVersion))
             {
-                items.Add(CreateFact("Application version", migrationResult.NewVersion));
+                items.Add(CreateFact("Report_ProjectLoad_Fact_ApplicationVersion", migrationResult.NewVersion));
             }
 
-            items.Add(CreateFact("Migration status", migrationResult.Status.ToString()));
+            items.Add(CreateFact("Report_ProjectLoad_Fact_MigrationStatus", migrationResult.Status.ToString()));
         }
 
-        items.Add(CreateFact("Outcome", ResolveOutcomeText()));
+        items.Add(CreateFact("Report_ProjectLoad_Fact_Outcome", ResolveOutcomeText()));
 
         if (_loadCompletedAt is DateTimeOffset completedAt
             && _loadStartedAt is DateTimeOffset startedAt)
         {
             var durationMilliseconds = (completedAt - startedAt).TotalMilliseconds;
-            items.Add(CreateFact("Load duration", $"{durationMilliseconds:F0} ms"));
+            var duration = _localizerService.GetString(
+                "Report_ProjectLoad_Fact_LoadDurationValue", $"{durationMilliseconds:F0}");
+
+            items.Add(CreateFact("Report_ProjectLoad_Fact_LoadDuration", duration));
         }
 
-        return new ReportSection("Summary", ReportSectionKind.Facts, ReportSeverity.Info, items);
+        var title = _localizerService.GetString("Report_ProjectLoad_Section_Summary");
+
+        return new ReportSection(title, ReportSectionKind.Facts, ReportSeverity.Info, items);
     }
 
     private string ResolveOutcomeText()
     {
         if (_loadCompletedAt is null)
         {
-            return "In progress";
+            return _localizerService.GetString("Report_ProjectLoad_Outcome_InProgress");
         }
 
-        return _loadSucceeded ? "Loaded" : "Failed";
+        var outcomeKey = _loadSucceeded
+            ? "Report_ProjectLoad_Outcome_Loaded"
+            : "Report_ProjectLoad_Outcome_Failed";
+
+        return _localizerService.GetString(outcomeKey);
     }
 
     private ReportSection? BuildLoadIssuesSection()
@@ -242,14 +262,16 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
                 return null;
             }
 
-            items.Add(ReportFinding.Create(ReportFindingCatalog.Project.MigrationNotReached));
+            items.Add(ReportFinding.Create(_localizerService, ReportFindingCatalog.Project.MigrationNotReached));
 
-            return new ReportSection("Load", ReportSectionKind.Findings, ReportSeverity.Error, items);
+            var loadTitle = _localizerService.GetString("Report_ProjectLoad_Section_Load");
+
+            return new ReportSection(loadTitle, ReportSectionKind.Findings, ReportSeverity.Error, items);
         }
 
         if (_userCancelledUpgrade)
         {
-            items.Add(ReportFinding.Create(ReportFindingCatalog.Project.UpgradeCancelled));
+            items.Add(ReportFinding.Create(_localizerService, ReportFindingCatalog.Project.UpgradeCancelled));
         }
 
         if (_migrationResult.OperationResult.IsFailure)
@@ -267,7 +289,9 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return null;
         }
 
-        return new ReportSection("Load", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
+        var title = _localizerService.GetString("Report_ProjectLoad_Section_Load");
+
+        return new ReportSection(title, ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
     private ReportSection? BuildConfigurationSection()
@@ -282,7 +306,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         var items = new List<ReportItem>();
         foreach (var entryError in _configEntryErrors)
         {
-            var item = ReportFinding.Create(ReportFindingCatalog.Project.ConfigEntrySkipped, entryError.EntryName) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Project.ConfigEntrySkipped, entryError.EntryName) with
             {
                 Detail = NormaliseDetail(entryError.Message)
             };
@@ -290,7 +314,9 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             items.Add(item);
         }
 
-        return new ReportSection($"Configuration ({projectFileName})", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
+        var title = _localizerService.GetString("Report_ProjectLoad_Section_Configuration", projectFileName);
+
+        return new ReportSection(title, ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
     private ReportSection? BuildPackagesSection()
@@ -309,7 +335,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
                 ? failure.Folder
                 : $"{failure.PackageName} ({failure.Folder})";
 
-            var item = ReportFinding.Create(ReportFindingCatalog.Package.PackageLoadFailed, location) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Package.PackageLoadFailed, location) with
             {
                 Value = failure.Reason.ToString(),
                 Detail = NormaliseDetail(failure.Detail)
@@ -320,7 +346,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         foreach (var failure in report.ResolvedEditorFailures)
         {
-            var item = ReportFinding.Create(ReportFindingCatalog.Package.EditorSkipped, failure.EditorId) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Package.EditorSkipped, failure.EditorId) with
             {
                 Detail = NormaliseDetail(failure.Detail)
             };
@@ -330,7 +356,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         foreach (var warning in report.ResolvedEditorWarnings)
         {
-            var item = ReportFinding.Create(ReportFindingCatalog.Package.EditorDegraded, warning.EditorId) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Package.EditorDegraded, warning.EditorId) with
             {
                 Detail = NormaliseDetail(warning.Detail)
             };
@@ -343,7 +369,9 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return null;
         }
 
-        return new ReportSection("Packages", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
+        var title = _localizerService.GetString("Report_ProjectLoad_Section_Packages");
+
+        return new ReportSection(title, ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
     private ReportSection? BuildSidecarSection()
@@ -362,7 +390,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         foreach (var orphanFile in orphanFiles)
         {
-            var item = ReportFinding.Create(ReportFindingCatalog.Resource.OrphanSidecar) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Resource.OrphanSidecar) with
             {
                 Resource = orphanFile,
                 Actions = CreateOpenResourceActions(orphanFile)
@@ -377,7 +405,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
 
         foreach (var brokenFile in brokenFiles)
         {
-            var item = ReportFinding.Create(ReportFindingCatalog.Resource.BrokenSidecar) with
+            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Resource.BrokenSidecar) with
             {
                 Resource = brokenFile,
                 Actions = CreateOpenResourceActions(brokenFile)
@@ -391,12 +419,16 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             return null;
         }
 
-        return new ReportSection("Sidecar files", ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
+        var title = _localizerService.GetString("Report_ProjectLoad_Section_Sidecars");
+
+        return new ReportSection(title, ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
     }
 
-    private static IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
+    private IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
     {
-        var action = new ReportAction(ReportActionKind.OpenResource, $"Open {resource.ResourceName}")
+        var label = _localizerService.GetString("Report_Action_OpenResource", resource.ResourceName);
+
+        var action = new ReportAction(ReportActionKind.OpenResource, label)
         {
             Resource = resource
         };
@@ -407,15 +439,15 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         };
     }
 
-    private static ReportItem CreateFact(string label, string value)
+    private ReportItem CreateFact(string labelKey, string value)
     {
-        return new ReportItem(ReportSeverity.Info, label)
+        return new ReportItem(ReportSeverity.Info, _localizerService.GetString(labelKey))
         {
             Value = value
         };
     }
 
-    private static ReportItem CreateResultItem(ReportFindingDescriptor descriptor, Result result)
+    private ReportItem CreateResultItem(ReportFindingDescriptor descriptor, Result result)
     {
         var detail = result.MessageChain;
         if (string.IsNullOrEmpty(detail))
@@ -423,23 +455,25 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             detail = result.DiagnosticReport;
         }
 
-        return ReportFinding.Create(descriptor) with
+        return ReportFinding.Create(_localizerService, descriptor) with
         {
             Detail = NormaliseDetail(detail)
         };
     }
 
-    private static string ComposeSummaryLine(ReportSeverity severity, IReadOnlyList<ReportSection> sections)
+    private string ComposeSummaryLine(ReportSeverity severity, IReadOnlyList<ReportSection> sections)
     {
         if (severity == ReportSeverity.Info)
         {
-            return "The project loaded with no issues.";
+            return _localizerService.GetString("Report_ProjectLoad_Summary_NoIssues");
         }
 
         var issueCount = CountIssues(sections);
-        var issueLabel = issueCount == 1 ? "issue" : "issues";
+        var summaryKey = issueCount == 1
+            ? "Report_ProjectLoad_Summary_Issues_One"
+            : "Report_ProjectLoad_Summary_Issues_Many";
 
-        return $"The project loaded with {issueCount} {issueLabel}.";
+        return _localizerService.GetString(summaryKey, issueCount);
     }
 
     private static int CountIssues(IReadOnlyList<ReportSection> sections)
