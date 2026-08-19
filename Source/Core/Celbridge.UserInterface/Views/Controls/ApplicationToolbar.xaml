@@ -63,16 +63,15 @@
                                     Margin="0,0,8,0"/>
 
             <!-- Settings Button - positioned at the right edge of the toolbar -->
-            <ToggleButton x:Name="SettingsButton"
-                          AutomationProperties.AutomationId="settings-button"
-                          Grid.Column="5"
-                          Style="{StaticResource IconToggleButtonStyle}"
-                          VerticalAlignment="Center"
-                          Margin="0,0,4,0"
-                          Click="SettingsButton_Click">
+            <ic:IconToggleButton x:Name="SettingsButton"
+                                 AutomationProperties.AutomationId="settings-button"
+                                 Grid.Column="5"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,4,0"
+                                 Click="SettingsButton_Click">
                 <ic:Icon Symbol="Settings"
                          FontSize="{StaticResource IconSizeMedium}"/>
-            </ToggleButton>
+            </ic:IconToggleButton>
         </Grid>
   </Grid>
 </UserControl>

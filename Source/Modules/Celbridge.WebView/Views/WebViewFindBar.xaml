@@ -20,41 +20,32 @@
                      VerticalAlignment="Center"
                      KeyDown="FindTextBox_KeyDown"
                      TextChanged="FindTextBox_TextChanged" />
-            <!-- The checked state is the control's whole purpose, so it takes the shared selected-toggle
-                 treatment rather than the flat icon-button style, which would hide it. -->
-            <ToggleButton x:Name="MatchCaseButton"
-                          Style="{StaticResource IconToggleButtonStyle}"
-                          Padding="0"
-                          MinWidth="32"
-                          MinHeight="32"
-                          VerticalAlignment="Center"
-                          Click="MatchCaseButton_Click">
+            <controls:IconToggleButton x:Name="MatchCaseButton"
+                                       VerticalAlignment="Center"
+                                       Click="MatchCaseButton_Click">
                 <controls:Icon Symbol="MatchCase" FontSize="{StaticResource IconSizeMedium}" />
-            </ToggleButton>
+            </controls:IconToggleButton>
             <TextBlock x:Name="MatchSummaryText"
                        Style="{StaticResource SupportingTextStyle}"
                        VerticalAlignment="Center"
                        MinWidth="56"
                        Margin="4,0"
                        Visibility="Collapsed" />
-            <Button x:Name="FindPreviousButton"
-                    Style="{StaticResource IconButtonStyle}"
-                    VerticalAlignment="Center"
-                    Click="FindPreviousButton_Click">
+            <controls:IconButton x:Name="FindPreviousButton"
+                                 VerticalAlignment="Center"
+                                 Click="FindPreviousButton_Click">
                 <controls:Icon Symbol="ChevronUp" FontSize="{StaticResource IconSizeMedium}" />
-            </Button>
-            <Button x:Name="FindNextButton"
-                    Style="{StaticResource IconButtonStyle}"
-                    VerticalAlignment="Center"
-                    Click="FindNextButton_Click">
+            </controls:IconButton>
+            <controls:IconButton x:Name="FindNextButton"
+                                 VerticalAlignment="Center"
+                                 Click="FindNextButton_Click">
                 <controls:Icon Symbol="ChevronDown" FontSize="{StaticResource IconSizeMedium}" />
-            </Button>
-            <Button x:Name="FindCloseButton"
-                    Style="{StaticResource IconButtonStyle}"
-                    VerticalAlignment="Center"
-                    Click="FindCloseButton_Click">
+            </controls:IconButton>
+            <controls:IconButton x:Name="FindCloseButton"
+                                 VerticalAlignment="Center"
+                                 Click="FindCloseButton_Click">
                 <controls:Icon Symbol="Close" FontSize="{StaticResource IconSizeMedium}" />
-            </Button>
+            </controls:IconButton>
         </StackPanel>
     </Border>
 </UserControl>

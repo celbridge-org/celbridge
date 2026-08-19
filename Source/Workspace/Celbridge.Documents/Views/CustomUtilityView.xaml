@@ -20,12 +20,11 @@
                               ShowFocusIndicator="False">
             <controls:PanelHeader.ToolbarContent>
                 <!-- Docks the utility into a document tab, reusing the same live WebView. -->
-                <Button x:Name="OpenAsDocumentButton"
-                        Style="{StaticResource IconButtonStyle}"
-                        Click="OpenAsDocumentButton_Click">
+                <icons:IconButton x:Name="OpenAsDocumentButton"
+                                  Click="OpenAsDocumentButton_Click">
                     <icons:Icon Symbol="Dock"
                                 FontSize="{StaticResource IconSizeMedium}"/>
-                </Button>
+                </icons:IconButton>
             </controls:PanelHeader.ToolbarContent>
         </controls:PanelHeader>
 

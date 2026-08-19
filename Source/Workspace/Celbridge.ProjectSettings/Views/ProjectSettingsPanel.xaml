@@ -42,21 +42,19 @@
 
         <StackPanel Orientation="Horizontal" Spacing="4">
 
-          <ToggleButton Tag="0"
-                        Style="{StaticResource IconToggleButtonStyle}"
-                        IsChecked="{x:Bind ViewModel.IsInformationSection, Mode=OneWay}"
-                        Click="NavTab_Click"
-                        ToolTipService.ToolTip="{x:Bind InformationHeader}"
-                        ToolTipService.Placement="Bottom">
+          <icon:IconToggleButton Tag="0"
+                                 IsChecked="{x:Bind ViewModel.IsInformationSection, Mode=OneWay}"
+                                 Click="NavTab_Click"
+                                 ToolTipService.ToolTip="{x:Bind InformationHeader}"
+                                 ToolTipService.Placement="Bottom">
             <icon:Icon IconName="bs-info-circle" FontSize="18"/>
-          </ToggleButton>
+          </icon:IconToggleButton>
 
-          <ToggleButton Tag="1"
-                        Style="{StaticResource IconToggleButtonStyle}"
-                        IsChecked="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay}"
-                        Click="NavTab_Click"
-                        ToolTipService.ToolTip="{x:Bind PackagesHeader}"
-                        ToolTipService.Placement="Bottom">
+          <icon:IconToggleButton Tag="1"
+                                 IsChecked="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay}"
+                                 Click="NavTab_Click"
+                                 ToolTipService.ToolTip="{x:Bind PackagesHeader}"
+                                 ToolTipService.Placement="Bottom">
             <Grid>
               <icon:Icon IconName="bs-box-seam" FontSize="18"/>
 
@@ -71,34 +69,31 @@
                        ToolTipService.Placement="Bottom"
                        Visibility="{x:Bind ViewModel.HasPackagesSectionIssues, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </Grid>
-          </ToggleButton>
+          </icon:IconToggleButton>
 
-          <ToggleButton Tag="2"
-                        Style="{StaticResource IconToggleButtonStyle}"
-                        IsChecked="{x:Bind ViewModel.IsPagesSection, Mode=OneWay}"
-                        Click="NavTab_Click"
-                        ToolTipService.ToolTip="{x:Bind PagesHeader}"
-                        ToolTipService.Placement="Bottom">
+          <icon:IconToggleButton Tag="2"
+                                 IsChecked="{x:Bind ViewModel.IsPagesSection, Mode=OneWay}"
+                                 Click="NavTab_Click"
+                                 ToolTipService.ToolTip="{x:Bind PagesHeader}"
+                                 ToolTipService.Placement="Bottom">
             <icon:Icon IconName="bs-globe" FontSize="18"/>
-          </ToggleButton>
+          </icon:IconToggleButton>
 
-          <ToggleButton Tag="3"
-                        Style="{StaticResource IconToggleButtonStyle}"
-                        IsChecked="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay}"
-                        Click="NavTab_Click"
-                        ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
-                        ToolTipService.Placement="Bottom">
+          <icon:IconToggleButton Tag="3"
+                                 IsChecked="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay}"
+                                 Click="NavTab_Click"
+                                 ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
+                                 ToolTipService.Placement="Bottom">
             <icon:Icon IconName="bs-file-earmark" FontSize="18"/>
-          </ToggleButton>
+          </icon:IconToggleButton>
 
-          <ToggleButton Tag="4"
-                        Style="{StaticResource IconToggleButtonStyle}"
-                        IsChecked="{x:Bind ViewModel.IsFeatureFlagsSection, Mode=OneWay}"
-                        Click="NavTab_Click"
-                        ToolTipService.ToolTip="{x:Bind FeatureFlagsHeader}"
-                        ToolTipService.Placement="Bottom">
+          <icon:IconToggleButton Tag="4"
+                                 IsChecked="{x:Bind ViewModel.IsFeatureFlagsSection, Mode=OneWay}"
+                                 Click="NavTab_Click"
+                                 ToolTipService.ToolTip="{x:Bind FeatureFlagsHeader}"
+                                 ToolTipService.Placement="Bottom">
             <icon:Icon IconName="bs-flag" FontSize="18"/>
-          </ToggleButton>
+          </icon:IconToggleButton>
 
         </StackPanel>
 

@@ -45,27 +45,24 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
-                    <Button x:Name="BackButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
-                            ToolTipService.ToolTip="{x:Bind BackTooltipString}"
-                            Click="BackButton_Click">
+                    <controls:IconButton x:Name="BackButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.CanGoBack, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind BackTooltipString}"
+                                         Click="BackButton_Click">
                         <controls:Icon Symbol="Back" FontSize="{StaticResource IconSizeMedium}" />
-                    </Button>
-                    <Button x:Name="ForwardButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="{x:Bind ViewModel.CanGoForward, Mode=OneWay}"
-                            ToolTipService.ToolTip="{x:Bind ForwardTooltipString}"
-                            Click="ForwardButton_Click">
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="ForwardButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.CanGoForward, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind ForwardTooltipString}"
+                                         Click="ForwardButton_Click">
                         <controls:Icon Symbol="Forward" FontSize="{StaticResource IconSizeMedium}" />
-                    </Button>
-                    <Button x:Name="ReloadOrStopButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="{x:Bind ViewModel.IsReloadOrStopEnabled, Mode=OneWay}"
-                            Click="ReloadOrStopButton_Click">
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="ReloadOrStopButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.IsReloadOrStopEnabled, Mode=OneWay}"
+                                         Click="ReloadOrStopButton_Click">
                         <Grid>
                             <controls:Icon Symbol="Refresh"
                                            FontSize="{StaticResource IconSizeMedium}"
@@ -74,15 +71,14 @@
                                            FontSize="{StaticResource IconSizeMedium}"
                                            Visibility="{x:Bind ViewModel.IsNavigating, Mode=OneWay}" />
                         </Grid>
-                    </Button>
-                    <Button x:Name="HomeButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="{x:Bind ViewModel.IsHomeUrlValid, Mode=OneWay}"
-                            ToolTipService.ToolTip="{x:Bind HomeTooltipString}"
-                            Click="HomeButton_Click">
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="HomeButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.IsHomeUrlValid, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind HomeTooltipString}"
+                                         Click="HomeButton_Click">
                         <controls:Icon Symbol="Home" FontSize="{StaticResource IconSizeMedium}" />
-                    </Button>
+                    </controls:IconButton>
                 </StackPanel>
 
                 <TextBox x:Name="AddressTextBox"
@@ -98,11 +94,10 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
-                    <Button x:Name="DownloadIndicatorButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            Visibility="{x:Bind ViewModel.IsDownloadIndicatorVisible, Mode=OneWay}"
-                            Click="DownloadIndicatorButton_Click">
+                    <controls:IconButton x:Name="DownloadIndicatorButton"
+                                         VerticalAlignment="Center"
+                                         Visibility="{x:Bind ViewModel.IsDownloadIndicatorVisible, Mode=OneWay}"
+                                         Click="DownloadIndicatorButton_Click">
                         <Grid>
                             <ProgressRing Width="16"
                                           Height="16"
@@ -117,22 +112,20 @@
                                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                            Visibility="{x:Bind ViewModel.IsDownloadFailed, Mode=OneWay}" />
                         </Grid>
-                    </Button>
-                    <Button x:Name="OpenInBrowserButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            IsEnabled="{x:Bind ViewModel.CanOpenInBrowser, Mode=OneWay}"
-                            ToolTipService.ToolTip="{x:Bind OpenInBrowserTooltipString}"
-                            Click="OpenInBrowserButton_Click">
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="OpenInBrowserButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.CanOpenInBrowser, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind OpenInBrowserTooltipString}"
+                                         Click="OpenInBrowserButton_Click">
                         <controls:Icon Symbol="Reveal" FontSize="{StaticResource IconSizeMedium}" />
-                    </Button>
-                    <Button x:Name="SettingsButton"
-                            Style="{StaticResource IconButtonStyle}"
-                            VerticalAlignment="Center"
-                            ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
-                            Click="SettingsButton_Click">
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="SettingsButton"
+                                         VerticalAlignment="Center"
+                                         ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
+                                         Click="SettingsButton_Click">
                         <controls:Icon Symbol="Sliders" FontSize="{StaticResource IconSizeMedium}" />
-                    </Button>
+                    </controls:IconButton>
                 </StackPanel>
             </Grid>
         </Border>
@@ -193,14 +186,13 @@
                                Margin="12,0,0,0"
                                VerticalAlignment="Center" />
 
-                    <Button Grid.Column="1"
-                            Style="{StaticResource IconButtonStyle}"
-                            Margin="0,0,8,0"
-                            VerticalAlignment="Center"
-                            ToolTipService.ToolTip="{x:Bind CloseSettingsTooltipString}"
-                            Click="CloseSettingsButton_Click">
+                    <controls:IconButton Grid.Column="1"
+                                         Margin="0,0,8,0"
+                                         VerticalAlignment="Center"
+                                         ToolTipService.ToolTip="{x:Bind CloseSettingsTooltipString}"
+                                         Click="CloseSettingsButton_Click">
                         <controls:Icon Symbol="Close" FontSize="{StaticResource IconSizeMedium}" />
-                    </Button>
+                    </controls:IconButton>
                 </Grid>
 
                 <ScrollViewer Grid.Row="1" Padding="12,0,12,12">

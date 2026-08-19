@@ -390,8 +390,9 @@
           "xamlBrush": "ButtonHoverBackgroundBrush",
           "css": "--cel-button-hover-bg",
           "light": "#E2E3E5",
-          "dark": "#383A3E",
-          "published": true
+          "dark": "#43464B",
+          "published": true,
+          "darkComment": "A wider step off chrome than the light theme takes. The same numeric distance separates two dark tones far less than two light ones, and at the light pair's step a hover over chrome is barely there."
         },
 
         "button-active-background": {
@@ -400,7 +401,7 @@
           "xamlBrush": "ButtonActiveBackgroundBrush",
           "css": "--cel-button-active-bg",
           "light": "#CFD1D4",
-          "dark": "#43464B",
+          "dark": "#53565C",
           "published": true,
           "comment": "A surface that is on screen while its panel is unfocused. A step beyond hover, so a button already showing its surface still reads as the selected one under the pointer."
         }

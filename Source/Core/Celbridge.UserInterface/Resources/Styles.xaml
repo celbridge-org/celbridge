@@ -75,11 +75,11 @@
     <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
   </Style>
 
-  <!-- The flat icon button: a transparent hit target that tints on hover and press and dims when disabled,
-       taking the shared button tones. Sized from its content down to a 32px square floor, which an icon at
-       the IconSize tokens above lands on exactly. Pair it with VerticalAlignment="Center" where the parent
-       would otherwise stretch it. -->
-  <Style x:Key="IconButtonStyle" TargetType="Button">
+  <!-- IconButton's appearance: a transparent hit target that tints on hover and press and dims when
+       disabled, taking the shared button tones. Sized from its content down to a 32px square floor, which an
+       icon at the IconSize tokens above lands on exactly. Pair the control with VerticalAlignment="Center"
+       where the parent would otherwise stretch it. -->
+  <Style TargetType="controls:IconButton">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
@@ -91,7 +91,7 @@
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
       <Setter.Value>
-        <ControlTemplate TargetType="Button">
+        <ControlTemplate TargetType="controls:IconButton">
           <ContentPresenter x:Name="ContentPresenter"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
@@ -137,10 +137,10 @@
     </Setter>
   </Style>
 
-  <!-- The flat icon toggle: IconButtonStyle with a checked state, which fills the button with the accent and
-       puts its content in the tone chosen to read against it. The accent is reserved for this, so a control
-       with no selected state never takes it. -->
-  <Style x:Key="IconToggleButtonStyle" TargetType="ToggleButton">
+  <!-- IconToggleButton's appearance: IconButton's, plus a checked state that fills the button with the
+       accent and puts its content in the tone chosen to read against it. The accent is reserved for this, so
+       a control with no selected state never takes it. -->
+  <Style TargetType="controls:IconToggleButton">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
@@ -152,7 +152,7 @@
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
       <Setter.Value>
-        <ControlTemplate TargetType="ToggleButton">
+        <ControlTemplate TargetType="controls:IconToggleButton">
           <ContentPresenter x:Name="ContentPresenter"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
