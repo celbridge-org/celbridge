@@ -6,6 +6,11 @@ namespace Celbridge.UserInterface;
 public record MainWindowActivatedMessage();
 
 /// <summary>
+/// Sent when the main window has been deactivated (i.e. another application took the keyboard).
+/// </summary>
+public record MainWindowDeactivatedMessage();
+
+/// <summary>
 /// Sent when the active application page changes.
 /// </summary>
 public record ActivePageChangedMessage(ApplicationPage ActivePage);

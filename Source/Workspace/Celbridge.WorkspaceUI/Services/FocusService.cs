@@ -18,6 +18,10 @@ public class FocusService : IFocusService
     // native panel taking focus would otherwise leave a WebView editor's DOM caret active.
     private Action? _releaseFocusedSurface;
 
+    // Identifies the surface that release callback belongs to. Two surfaces in the same panel that both carry
+    // no edit target (two .webview documents) are otherwise indistinguishable from one surface re-reporting.
+    private IFocusSurface? _focusedSurface;
+
     public FocusService(
         IMessengerService messengerService,
         ILogger<FocusService> logger)
@@ -34,15 +38,19 @@ public class FocusService : IFocusService
 
     public IEditTarget? EditTarget => _editTarget;
 
-    public void OnFocusReceived(WorkspacePanelId panel, IEditTarget? target = null, Action? onReleaseFocus = null)
+    public void OnFocusReceived(FocusClaim claim)
     {
+        var panel = claim.Panel;
+        var target = claim.EditTarget;
+
         if (panel != _focusedPanel)
         {
             var previousPanel = _focusedPanel;
             var releasePreviousFocus = _releaseFocusedSurface;
 
             _focusedPanel = panel;
-            _releaseFocusedSurface = onReleaseFocus;
+            _releaseFocusedSurface = claim.ReleaseFocus;
+            _focusedSurface = claim.Surface;
 
             // The edit context follows edit intent, not the caret. A claim carrying a target replaces it; a
             // target-less claim (chrome focus, or None) preserves the last editing surface so Edit commands
@@ -78,7 +86,8 @@ public class FocusService : IFocusService
             var releasePreviousFocus = _releaseFocusedSurface;
 
             _editTarget = target;
-            _releaseFocusedSurface = onReleaseFocus;
+            _releaseFocusedSurface = claim.ReleaseFocus;
+            _focusedSurface = claim.Surface;
 
             releasePreviousFocus?.Invoke();
 
@@ -97,16 +106,31 @@ public class FocusService : IFocusService
             _editTarget = target;
         }
 
-        if (onReleaseFocus is not null)
+        if (claim.Kind == FocusClaimKind.WebSurface)
         {
-            _releaseFocusedSurface = onReleaseFocus;
+            // The surface re-reporting its own focus is not a move off it, so it adopts the newer callback
+            // and keeps its caret. A different surface in the same panel is a move, even though neither the
+            // panel nor the edit target changed: two .webview documents both claim Documents and carry no
+            // edit target, so only the identity separates the two cases.
+            var releasePreviousSurface = _releaseFocusedSurface;
+            var isSameSurface = ReferenceEquals(claim.Surface, _focusedSurface);
+
+            _releaseFocusedSurface = claim.ReleaseFocus;
+            _focusedSurface = claim.Surface;
+
+            if (!isSameSurface)
+            {
+                releasePreviousSurface?.Invoke();
+
+                _logger.LogDebug("Released the previous web surface in {Panel} to another surface", panel);
+            }
+
             return;
         }
 
-        // A claim with no release callback comes from a managed control rather than a hosted surface, so
-        // managed chrome has taken the keyboard inside the panel a web surface holds it for: the URL bar
-        // and the find bar both sit in the Documents panel. That is a move off the surface even though the
-        // panel is unchanged, so release it. Without this the surface stays the focused one and focus
+        // Managed chrome has taken the keyboard inside the panel a web surface holds it for: the URL bar and
+        // the find bar both sit in the Documents panel. That is a move off the surface even though the panel
+        // is unchanged, so release it. Without this the surface stays the focused one and focus
         // reconciliation hands the keyboard straight back, leaving the chrome unfocusable.
         var releaseFocusedSurface = _releaseFocusedSurface;
         if (releaseFocusedSurface is null)
@@ -115,6 +139,7 @@ public class FocusService : IFocusService
         }
 
         _releaseFocusedSurface = null;
+        _focusedSurface = null;
         releaseFocusedSurface.Invoke();
 
         _logger.LogDebug("Released the focused surface in {Panel} to managed chrome", panel);
@@ -122,7 +147,8 @@ public class FocusService : IFocusService
 
     public void ClearFocus()
     {
-        OnFocusReceived(WorkspacePanelId.None);
+        var claim = FocusClaim.None();
+        OnFocusReceived(claim);
     }
 
     public void ClearEditTarget(IEditTarget target)

@@ -4,8 +4,9 @@ using Celbridge.UserInterface.Services;
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// Broadcasts window activation on the packaged WinUI head, so services can refresh state that may have
-/// changed while the application was in the background.
+/// Broadcasts window activation and deactivation on the packaged WinUI head, so services can refresh state
+/// that may have changed while the application was in the background, and can tell the application losing the
+/// keyboard from focus moving within it.
 /// </summary>
 internal sealed class WindowActivationMonitor : IWindowActivationMonitor
 {
@@ -30,9 +31,14 @@ internal sealed class WindowActivationMonitor : IWindowActivationMonitor
         if (activationState == WindowActivationState.PointerActivated
             || activationState == WindowActivationState.CodeActivated)
         {
-            var message = new MainWindowActivatedMessage();
-            _messengerService.Send(message);
+            var activatedMessage = new MainWindowActivatedMessage();
+            _messengerService.Send(activatedMessage);
+
+            return;
         }
+
+        var deactivatedMessage = new MainWindowDeactivatedMessage();
+        _messengerService.Send(deactivatedMessage);
     }
 }
 #endif
