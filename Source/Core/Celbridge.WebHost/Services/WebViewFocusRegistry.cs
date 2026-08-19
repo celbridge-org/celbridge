@@ -156,7 +156,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    public bool IsRegisteredSurface(DependencyObject element)
+    public bool IsRegisteredWebSurface(DependencyObject element)
     {
         return element is WebView2 webView
             && webView.CoreWebView2 is not null
@@ -251,7 +251,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     {
         _focusedRegistration = registration;
         registration.OnFocusGained?.Invoke();
-        _focusService.OnFocusReceived(registration.Panel, registration.EditTarget, () => ReleaseSurface(registration));
+        Action releaseFocus = () => ReleaseSurface(registration);
+        var claim = FocusClaim.FromWebSurface(registration.Panel, registration.EditTarget, releaseFocus);
+        _focusService.OnFocusReceived(claim);
 
         // Applied here rather than only on the grant path so every claim converges, however it arrived: a
         // click landing inside a native web view reports through the monitor without any managed focus

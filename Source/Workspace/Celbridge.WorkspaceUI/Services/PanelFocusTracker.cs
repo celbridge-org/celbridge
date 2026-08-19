@@ -58,11 +58,11 @@ public class PanelFocusTracker
             return;
         }
 
-        // A hosted surface reports through the registry, which alone can supply the callback that releases
+        // A web surface reports through the registry, which alone can supply the callback that releases
         // the surface later. On the packaged Windows head the web view also takes managed focus, and a
         // report classified from the visual tree here would carry no such callback, so it would read as
         // managed chrome claiming the keyboard and release the surface that had just taken it.
-        if (_webViewFocusRegistry.IsRegisteredSurface(element))
+        if (_webViewFocusRegistry.IsRegisteredWebSurface(element))
         {
             return;
         }
@@ -120,6 +120,7 @@ public class PanelFocusTracker
 
         // The focus service treats a repeated report for the current panel and target as a no-op,
         // so intra-panel focus moves do not spam it.
-        _focusService.OnFocusReceived(panel, editTarget);
+        var claim = FocusClaim.FromManagedControl(panel, editTarget);
+        _focusService.OnFocusReceived(claim);
     }
 }

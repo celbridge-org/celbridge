@@ -24,7 +24,8 @@ public class FocusServiceTests
     {
         var target = Substitute.For<IEditTarget>();
 
-        _focusService.OnFocusReceived(WorkspacePanelId.Explorer, target);
+        var claim = FocusClaim.FromManagedControl(WorkspacePanelId.Explorer, target);
+        _focusService.OnFocusReceived(claim);
 
         _focusService.FocusedPanel.Should().Be(WorkspacePanelId.Explorer);
         _focusService.EditTarget.Should().Be(target);
@@ -34,9 +35,11 @@ public class FocusServiceTests
     public void OnFocusReceived_DifferentPanel_ReleasesPreviousSurface()
     {
         var released = false;
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, onReleaseFocus: () => released = true);
+        var surfaceClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, null, () => released = true);
+        _focusService.OnFocusReceived(surfaceClaim);
 
-        _focusService.OnFocusReceived(WorkspacePanelId.Explorer);
+        var explorerClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Explorer);
+        _focusService.OnFocusReceived(explorerClaim);
 
         released.Should().BeTrue();
     }
@@ -46,12 +49,14 @@ public class FocusServiceTests
     {
         var releaseCount = 0;
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, target, () => releaseCount++);
+        var surfaceClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, () => releaseCount++);
+        _focusService.OnFocusReceived(surfaceClaim);
 
-        // Only a hosted surface supplies a release callback, so a claim without one is managed chrome in the
-        // same panel (the URL bar, the find bar) taking the keyboard off that surface. The edit context still
-        // follows the surface, so Edit commands keep routing to it.
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents);
+        // A managed control claiming the panel a surface holds is chrome (the URL bar, the find bar) taking
+        // the keyboard off that surface. The edit context still follows the surface, so Edit commands keep
+        // routing to it.
+        var chromeClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Documents);
+        _focusService.OnFocusReceived(chromeClaim);
 
         releaseCount.Should().Be(1);
         _focusService.EditTarget.Should().Be(target);
@@ -62,12 +67,32 @@ public class FocusServiceTests
     {
         var releaseCount = 0;
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, target, () => releaseCount++);
+        var surfaceClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, () => releaseCount++);
+        _focusService.OnFocusReceived(surfaceClaim);
 
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents);
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents);
+        var chromeClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Documents);
+        _focusService.OnFocusReceived(chromeClaim);
+        _focusService.OnFocusReceived(chromeClaim);
 
         releaseCount.Should().Be(1);
+    }
+
+    [Test]
+    public void OnFocusReceived_SameSurfaceReclaims_DoesNotReleaseIt()
+    {
+        var releaseCount = 0;
+        var target = Substitute.For<IEditTarget>();
+        var firstClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, () => releaseCount++);
+        _focusService.OnFocusReceived(firstClaim);
+
+        // A surface reporting its own focus again is not a move off it, so its caret is left alone. The
+        // packaged Windows head reports twice for one click, because a web surface takes managed focus
+        // there as well as native focus.
+        var secondClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, () => releaseCount++);
+        _focusService.OnFocusReceived(secondClaim);
+
+        releaseCount.Should().Be(0);
+        _focusService.EditTarget.Should().Be(target);
     }
 
     [Test]
@@ -75,9 +100,11 @@ public class FocusServiceTests
     {
         var firstTarget = Substitute.For<IEditTarget>();
         var secondTarget = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, firstTarget);
+        var firstClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Documents, firstTarget);
+        _focusService.OnFocusReceived(firstClaim);
 
-        _focusService.OnFocusReceived(WorkspacePanelId.Explorer, secondTarget);
+        var secondClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Explorer, secondTarget);
+        _focusService.OnFocusReceived(secondClaim);
 
         _focusService.EditTarget.Should().Be(secondTarget);
     }
@@ -86,11 +113,13 @@ public class FocusServiceTests
     public void OnFocusReceived_NewPanelWithoutTarget_PreservesEditTarget()
     {
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, target);
+        var documentsClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Documents, target);
+        _focusService.OnFocusReceived(documentsClaim);
 
         // A panel that claims focus without an edit target (e.g. Search) leaves the last editing surface in
         // place, so Edit commands still route there.
-        _focusService.OnFocusReceived(WorkspacePanelId.Search);
+        var searchClaim = FocusClaim.FromManagedControl(WorkspacePanelId.Search);
+        _focusService.OnFocusReceived(searchClaim);
 
         _focusService.FocusedPanel.Should().Be(WorkspacePanelId.Search);
         _focusService.EditTarget.Should().Be(target);
@@ -101,7 +130,8 @@ public class FocusServiceTests
     {
         var released = false;
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, target, () => released = true);
+        var surfaceClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, () => released = true);
+        _focusService.OnFocusReceived(surfaceClaim);
 
         // A chrome interaction (e.g. a toolbar click) clears panel focus and releases the caret, but the edit
         // context must survive so the Edit menu still routes to the console after the toolbar takes focus.
@@ -117,7 +147,8 @@ public class FocusServiceTests
     {
         var releaseCount = 0;
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, target, () => releaseCount++);
+        var surfaceClaim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, () => releaseCount++);
+        _focusService.OnFocusReceived(surfaceClaim);
 
         _focusService.ClearFocus();
         _focusService.ClearFocus();
@@ -129,7 +160,8 @@ public class FocusServiceTests
     public void ClearEditTarget_MatchingTarget_ClearsIt()
     {
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, target);
+        var claim = FocusClaim.FromManagedControl(WorkspacePanelId.Documents, target);
+        _focusService.OnFocusReceived(claim);
 
         _focusService.ClearEditTarget(target);
 
@@ -141,7 +173,8 @@ public class FocusServiceTests
     {
         var currentTarget = Substitute.For<IEditTarget>();
         var tornDownTarget = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(WorkspacePanelId.Documents, currentTarget);
+        var claim = FocusClaim.FromManagedControl(WorkspacePanelId.Documents, currentTarget);
+        _focusService.OnFocusReceived(claim);
 
         // A surface that already lost the edit context tearing down must not wipe the newer target.
         _focusService.ClearEditTarget(tornDownTarget);
