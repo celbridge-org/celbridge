@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:views="using:Celbridge.UserInterface.Views">
+    xmlns:local="using:Celbridge.UserInterface.Views">
 
   <StackPanel Orientation="Horizontal"
               VerticalAlignment="Stretch">
@@ -66,7 +66,7 @@
 
     <!-- Siblings of the navigation rather than its PaneCustomContent, whose presenter clamps its content to
          the pane's item height, short of the chrome buttons around it. -->
-    <views:ProjectSwitcher x:Name="ProjectSwitcher"
+    <local:ProjectSwitcher x:Name="ProjectSwitcher"
                            VerticalAlignment="Center"/>
 
     <controls:ProjectHealthButton x:Name="ProjectHealthButton"

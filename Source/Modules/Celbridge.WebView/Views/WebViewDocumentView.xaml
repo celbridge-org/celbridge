@@ -1,9 +1,9 @@
-<views:DocumentView
+<documents:DocumentView
     x:Class="Celbridge.WebView.Views.WebViewDocumentView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-    xmlns:views="using:Celbridge.Documents.Views"
+    xmlns:documents="using:Celbridge.Documents.Views"
     xmlns:local="using:Celbridge.WebView.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     DataContext="{x:Bind ViewModel}">
@@ -270,4 +270,4 @@
             </Grid>
         </Border>
     </Grid>
-</views:DocumentView>
+</documents:DocumentView>

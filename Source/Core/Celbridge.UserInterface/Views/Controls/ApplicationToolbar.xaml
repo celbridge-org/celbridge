@@ -2,9 +2,9 @@
     x:Class="Celbridge.UserInterface.Views.ApplicationToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:ic="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:Celbridge.UserInterface.Views"
+    xmlns:local="using:Celbridge.UserInterface.Views"
     xmlns:services="using:Celbridge.UserInterface.Services">
 
     <UserControl.Resources>
@@ -41,37 +41,37 @@
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center" />
 
-            <controls:NavigationToolbar x:Name="NavigationToolbar"
-                                        Grid.Column="1"/>
+            <local:NavigationToolbar x:Name="NavigationToolbar"
+                                     Grid.Column="1"/>
 
             <!-- Save Icon - positioned to the left of layout toolbar -->
-            <ic:Icon x:Name="SaveIcon"
-                      Grid.Column="3"
-                      Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                      HorizontalAlignment="Right"
-                      VerticalAlignment="Center"
-                      Margin="0,0,16,0"
-                      Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
-                      FontSize="{StaticResource IconSizeMedium}"
-                      Symbol="Save"/>
+            <controls:Icon x:Name="SaveIcon"
+                           Grid.Column="3"
+                           Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="0,0,16,0"
+                           Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
+                           FontSize="{StaticResource IconSizeMedium}"
+                           Symbol="Save"/>
 
             <!-- Layout Toolbar - positioned on the right side of the toolbar -->
-            <controls:LayoutToolbar x:Name="LayoutToolbar"
-                                    Grid.Column="4"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Stretch"
-                                    Margin="0,0,8,0"/>
+            <local:LayoutToolbar x:Name="LayoutToolbar"
+                                 Grid.Column="4"
+                                 HorizontalAlignment="Right"
+                                 VerticalAlignment="Stretch"
+                                 Margin="0,0,8,0"/>
 
             <!-- Settings Button - positioned at the right edge of the toolbar -->
-            <ic:IconToggleButton x:Name="SettingsButton"
-                                 AutomationProperties.AutomationId="settings-button"
-                                 Grid.Column="5"
-                                 VerticalAlignment="Center"
-                                 Margin="0,0,4,0"
-                                 Click="SettingsButton_Click">
-                <ic:Icon Symbol="Settings"
-                         FontSize="{StaticResource IconSizeMedium}"/>
-            </ic:IconToggleButton>
+            <controls:IconToggleButton x:Name="SettingsButton"
+                                       AutomationProperties.AutomationId="settings-button"
+                                       Grid.Column="5"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,4,0"
+                                       Click="SettingsButton_Click">
+                <controls:Icon Symbol="Settings"
+                               FontSize="{StaticResource IconSizeMedium}"/>
+            </controls:IconToggleButton>
         </Grid>
   </Grid>
 </UserControl>

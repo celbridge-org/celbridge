@@ -2,10 +2,10 @@
     x:Class="Celbridge.UserInterface.Views.Controls.FileIcon"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:ui_services="using:Celbridge.UserInterface.Services">
+    xmlns:services="using:Celbridge.UserInterface.Services">
 
     <UserControl.Resources>
-        <ui_services:FontFamilyConverter x:Key="FontFamilyConverter" />
+        <services:FontFamilyConverter x:Key="FontFamilyConverter" />
     </UserControl.Resources>
 
     <!-- Foreground and FontSize are set in code-behind, not bound: the colour is passed through the
