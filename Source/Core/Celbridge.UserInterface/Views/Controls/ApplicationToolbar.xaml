@@ -22,55 +22,57 @@
             <RowDefinition x:Name="ToolbarRow"/>
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="AppIconColumn" Width="48"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition x:Name="CaptionButtonsColumn" Width="0"/>
-        </Grid.ColumnDefinitions>
+        <Grid x:Name="ToolbarContent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="AppIconColumn" Width="32"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition x:Name="CaptionButtonsColumn" Width="0"/>
+            </Grid.ColumnDefinitions>
 
-        <Image x:Name="AppIconImage"
-               Source="ms-appx:///Assets/Images/title_icon.png"
-               Width="28" Height="28"
-               Margin="0"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center" />
+            <Image x:Name="AppIconImage"
+                   Source="ms-appx:///Assets/Images/title_icon.png"
+                   Width="{StaticResource AppIconSize}"
+                   Height="{StaticResource AppIconSize}"
+                   Margin="0"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
 
-        <controls:NavigationToolbar x:Name="NavigationToolbar"
-                                    Grid.Column="1"/>
+            <controls:NavigationToolbar x:Name="NavigationToolbar"
+                                        Grid.Column="1"/>
 
-        <!-- Save Icon - positioned to the left of layout toolbar -->
-        <ic:Icon x:Name="SaveIcon"
-                  Grid.Column="3"
-                  Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                  HorizontalAlignment="Right"
-                  VerticalAlignment="Center"
-                  Margin="0,0,16,0"
-                  Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
-                  FontSize="18"
-                  Symbol="Save"/>
+            <!-- Save Icon - positioned to the left of layout toolbar -->
+            <ic:Icon x:Name="SaveIcon"
+                      Grid.Column="3"
+                      Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                      Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
+                      FontSize="{StaticResource IconSizeMedium}"
+                      Symbol="Save"/>
 
-        <!-- Layout Toolbar - positioned on the right side of the toolbar -->
-        <controls:LayoutToolbar x:Name="LayoutToolbar"
-                                Grid.Column="4"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Stretch"
-                                Margin="0,0,8,0"/>
+            <!-- Layout Toolbar - positioned on the right side of the toolbar -->
+            <controls:LayoutToolbar x:Name="LayoutToolbar"
+                                    Grid.Column="4"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Stretch"
+                                    Margin="0,0,8,0"/>
 
-        <!-- Settings Button - positioned at the right edge of the toolbar -->
-        <Button x:Name="SettingsButton"
-                AutomationProperties.AutomationId="settings-button"
-                Grid.Column="5"
-                Click="SettingsButton_Click"
-                Background="Transparent"
-                BorderThickness="0"
-                Padding="12,8"
-                VerticalAlignment="Stretch">
-            <ic:Icon Symbol="Settings"
-                     FontSize="{StaticResource IconSizeMedium}"/>
-        </Button>
+            <!-- Settings Button - positioned at the right edge of the toolbar -->
+            <ToggleButton x:Name="SettingsButton"
+                          AutomationProperties.AutomationId="settings-button"
+                          Grid.Column="5"
+                          Style="{StaticResource IconToggleButtonStyle}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,4,0"
+                          Click="SettingsButton_Click">
+                <ic:Icon Symbol="Settings"
+                         FontSize="{StaticResource IconSizeMedium}"/>
+            </ToggleButton>
+        </Grid>
   </Grid>
 </UserControl>

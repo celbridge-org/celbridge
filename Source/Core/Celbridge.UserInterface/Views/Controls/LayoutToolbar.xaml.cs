@@ -292,11 +292,6 @@ public sealed partial class LayoutToolbar : UserControl
         e.Handled = true;
     }
 
-    private void PanelLayoutButton_Click(object sender, RoutedEventArgs e)
-    {
-        PanelLayoutFlyout.ShowAt(PanelLayoutButton);
-    }
-
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         _commandService.Execute<ISetLayoutCommand>(command =>

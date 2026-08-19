@@ -42,7 +42,7 @@
          surface the header sits in, so it is set in code-behind rather than declared here. -->
     <Button x:Name="CollapseButton"
             Grid.Column="4"
-            Style="{StaticResource TransparentIconButtonStyle}"
+            Style="{StaticResource IconButtonStyle}"
             ToolTipService.ToolTip="{x:Bind CollapseButtonTooltip}"
             Margin="0,0,8,0"
             VerticalAlignment="Center"

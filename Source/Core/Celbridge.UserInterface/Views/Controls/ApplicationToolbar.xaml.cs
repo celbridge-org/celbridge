@@ -1,4 +1,7 @@
+using Celbridge.Messaging;
 using Celbridge.Navigation;
+using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Celbridge.Platform;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Microsoft.UI.Dispatching;
@@ -15,9 +18,10 @@ public sealed partial class ApplicationToolbar : UserControl
     /// The height of the toolbar strip. It occupies the row above the page content on every head, so the
     /// window minimum is composed from it as well.
     /// </summary>
-    public const double ToolbarHeight = 48;
+    public const double ToolbarHeight = 40;
 
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IMessengerService _messengerService;
     private DispatcherQueueTimer? _layoutChangedTimer;
 
     /// <summary>
@@ -35,6 +39,9 @@ public sealed partial class ApplicationToolbar : UserControl
 
         ToolbarRow.Height = new Microsoft.UI.Xaml.GridLength(ToolbarHeight);
 
+        // The app icon column spans the utility rail below it, keeping the mark over that column's buttons.
+        AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(WorkspaceConstants.UtilityPanelRailWidth);
+
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (platformInfo.ReservesWindowCaptionButtons)
         {
@@ -44,6 +51,7 @@ public sealed partial class ApplicationToolbar : UserControl
         }
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         ViewModel = ServiceLocator.AcquireService<TitleBarViewModel>();
 
         this.DataContext = ViewModel;
@@ -57,6 +65,8 @@ public sealed partial class ApplicationToolbar : UserControl
         ViewModel.OnLoaded();
 
         ApplyTooltips();
+
+        _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
@@ -74,6 +84,8 @@ public sealed partial class ApplicationToolbar : UserControl
     private void OnApplicationToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.OnUnloaded();
+
+        _messengerService.UnregisterAll(this);
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
@@ -165,6 +177,11 @@ public sealed partial class ApplicationToolbar : UserControl
         {
             _layoutChangedTimer.Start();
         }
+    }
+
+    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
+    {
+        SettingsButton.IsChecked = message.ActivePage == ApplicationPage.Settings;
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)

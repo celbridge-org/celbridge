@@ -47,7 +47,14 @@ public class DesignTokenCoverageTests
         "--cel-document-min-height",
         // The native side paints match highlighting with SearchMatchHighlightBrush. The web name carries
         // the same value for a package rendering its own results.
-        "--cel-search-highlight"
+        "--cel-search-highlight",
+        // The workspace rail drops a selected button to this tone while its panel is unfocused, drawn from
+        // ButtonActiveBackgroundBrush. An editor's own rail deliberately holds its accent fill for as long as
+        // the surface is open, so nothing on the web side takes the tone.
+        "--cel-button-active-bg",
+        // Every host command icon is the medium step. The larger name stays for a package whose surface
+        // wants a more prominent glyph than the host chrome uses.
+        "--cel-icon-size-large"
     ];
 
     // The CSS names packages outside this repository are written against. Renaming or removing one breaks
@@ -56,6 +63,8 @@ public class DesignTokenCoverageTests
     [
         "--cel-accent",
         "--cel-accent-text",
+        "--cel-button-active-bg",
+        "--cel-button-hover-bg",
         "--cel-caution",
         "--cel-chrome-bg",
         "--cel-content-bg",
@@ -86,6 +95,7 @@ public class DesignTokenCoverageTests
         "--cel-panel-inset",
         "--cel-radius-card",
         "--cel-radius-control",
+        "--cel-rail-button-size",
         "--cel-rail-item-size",
         "--cel-rail-width",
         "--cel-search-highlight",

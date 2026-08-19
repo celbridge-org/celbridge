@@ -15,12 +15,6 @@
 
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 
-    <!-- A tappable navigation tab: transparent background for hit-testing, bottom-aligned. -->
-    <Style x:Key="NavTabStyle" TargetType="Grid">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="VerticalAlignment" Value="Bottom"/>
-    </Style>
-
   </UserControl.Resources>
 
   <Grid Background="Transparent">
@@ -37,9 +31,9 @@
                           Tapped="PanelHeader_Tapped"
                           Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
 
-    <!-- Icon tab strip plus the active section name. Each tab is an icon with a tooltip (shown below the
-         icon) carrying its label. The accent underline sits in a fixed-height slot that is always present,
-         so selecting a tab shows the bar without shifting the icons. -->
+    <!-- Icon tab strip plus the active section name. Each tab is an icon toggle with a tooltip (shown below
+         the icon) carrying its label, taking the same selected treatment as every other toggle in the
+         application. -->
     <Border Grid.Row="1"
             BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,0,0,1"
@@ -48,83 +42,63 @@
 
         <StackPanel Orientation="Horizontal" Spacing="4">
 
-          <Grid Tag="0" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
-                ToolTipService.ToolTip="{x:Bind InformationHeader}"
-                ToolTipService.Placement="Bottom">
-            <StackPanel>
-              <icon:Icon IconName="bs-info-circle" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
-              <Grid Height="2" Margin="0,5,0,0">
-                <Border CornerRadius="1"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Visibility="{x:Bind ViewModel.IsInformationSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-              </Grid>
-            </StackPanel>
-          </Grid>
+          <ToggleButton Tag="0"
+                        Style="{StaticResource IconToggleButtonStyle}"
+                        IsChecked="{x:Bind ViewModel.IsInformationSection, Mode=OneWay}"
+                        Click="NavTab_Click"
+                        ToolTipService.ToolTip="{x:Bind InformationHeader}"
+                        ToolTipService.Placement="Bottom">
+            <icon:Icon IconName="bs-info-circle" FontSize="18"/>
+          </ToggleButton>
 
-          <Grid Tag="1" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
-                ToolTipService.ToolTip="{x:Bind PackagesHeader}"
-                ToolTipService.Placement="Bottom">
-            <StackPanel>
-              <Grid Margin="10,2,10,0">
-                <icon:Icon IconName="bs-box-seam" FontSize="18" HorizontalAlignment="Center"/>
+          <ToggleButton Tag="1"
+                        Style="{StaticResource IconToggleButtonStyle}"
+                        IsChecked="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay}"
+                        Click="NavTab_Click"
+                        ToolTipService.ToolTip="{x:Bind PackagesHeader}"
+                        ToolTipService.Placement="Bottom">
+            <Grid>
+              <icon:Icon IconName="bs-box-seam" FontSize="18"/>
 
-                <!-- Reports that the section has something to look at; the detail is on the package. -->
-                <Ellipse Width="6"
-                         Height="6"
-                         Margin="0,-1,-7,0"
-                         HorizontalAlignment="Right"
-                         VerticalAlignment="Top"
-                         Fill="{ThemeResource SystemFillColorCautionBrush}"
-                         ToolTipService.ToolTip="{x:Bind ViewModel.PackagesSectionIssuesTooltip}"
-                         ToolTipService.Placement="Bottom"
-                         Visibility="{x:Bind ViewModel.HasPackagesSectionIssues, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-              </Grid>
-              <Grid Height="2" Margin="0,5,0,0">
-                <Border CornerRadius="1"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Visibility="{x:Bind ViewModel.IsPackagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-              </Grid>
-            </StackPanel>
-          </Grid>
+              <!-- Reports that the section has something to look at; the detail is on the package. -->
+              <Ellipse Width="6"
+                       Height="6"
+                       Margin="0,-2,-7,0"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Top"
+                       Fill="{ThemeResource SystemFillColorCautionBrush}"
+                       ToolTipService.ToolTip="{x:Bind ViewModel.PackagesSectionIssuesTooltip}"
+                       ToolTipService.Placement="Bottom"
+                       Visibility="{x:Bind ViewModel.HasPackagesSectionIssues, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
+          </ToggleButton>
 
-          <Grid Tag="2" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
-                ToolTipService.ToolTip="{x:Bind PagesHeader}"
-                ToolTipService.Placement="Bottom">
-            <StackPanel>
-              <icon:Icon IconName="bs-globe" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
-              <Grid Height="2" Margin="0,5,0,0">
-                <Border CornerRadius="1"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Visibility="{x:Bind ViewModel.IsPagesSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-              </Grid>
-            </StackPanel>
-          </Grid>
+          <ToggleButton Tag="2"
+                        Style="{StaticResource IconToggleButtonStyle}"
+                        IsChecked="{x:Bind ViewModel.IsPagesSection, Mode=OneWay}"
+                        Click="NavTab_Click"
+                        ToolTipService.ToolTip="{x:Bind PagesHeader}"
+                        ToolTipService.Placement="Bottom">
+            <icon:Icon IconName="bs-globe" FontSize="18"/>
+          </ToggleButton>
 
-          <Grid Tag="3" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
-                ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
-                ToolTipService.Placement="Bottom">
-            <StackPanel>
-              <icon:Icon IconName="bs-file-earmark" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
-              <Grid Height="2" Margin="0,5,0,0">
-                <Border CornerRadius="1"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Visibility="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-              </Grid>
-            </StackPanel>
-          </Grid>
+          <ToggleButton Tag="3"
+                        Style="{StaticResource IconToggleButtonStyle}"
+                        IsChecked="{x:Bind ViewModel.IsFileEditorsSection, Mode=OneWay}"
+                        Click="NavTab_Click"
+                        ToolTipService.ToolTip="{x:Bind FileEditorsHeader}"
+                        ToolTipService.Placement="Bottom">
+            <icon:Icon IconName="bs-file-earmark" FontSize="18"/>
+          </ToggleButton>
 
-          <Grid Tag="4" Tapped="NavTab_Tapped" Style="{StaticResource NavTabStyle}"
-                ToolTipService.ToolTip="{x:Bind FeatureFlagsHeader}"
-                ToolTipService.Placement="Bottom">
-            <StackPanel>
-              <icon:Icon IconName="bs-flag" FontSize="18" HorizontalAlignment="Center" Margin="10,2,10,0"/>
-              <Grid Height="2" Margin="0,5,0,0">
-                <Border CornerRadius="1"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        Visibility="{x:Bind ViewModel.IsFeatureFlagsSection, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-              </Grid>
-            </StackPanel>
-          </Grid>
+          <ToggleButton Tag="4"
+                        Style="{StaticResource IconToggleButtonStyle}"
+                        IsChecked="{x:Bind ViewModel.IsFeatureFlagsSection, Mode=OneWay}"
+                        Click="NavTab_Click"
+                        ToolTipService.ToolTip="{x:Bind FeatureFlagsHeader}"
+                        ToolTipService.Placement="Bottom">
+            <icon:Icon IconName="bs-flag" FontSize="18"/>
+          </ToggleButton>
 
         </StackPanel>
 

@@ -20,7 +20,8 @@
         <Grid Grid.Column="0"
               Background="{ThemeResource ChromeBackgroundBrush}">
 
-            <StackPanel Orientation="Vertical"
+            <StackPanel x:Name="RailButtons"
+                        Orientation="Vertical"
                         ui:FocusTracking.PreservePanelFocus="True">
 
                 <StackPanel x:Name="RailItems" Orientation="Vertical">
@@ -36,9 +37,10 @@
         </Grid>
 
         <!-- Content area for the selected panel. Carved out of the field like a document section, so a custom
-             utility looks the same docked into a document tab. The splitter supplies the channel on the
-             right. The bottom meets the application border and is left flush. Margin and corners are set in
-             code-behind from GutterSize and PanelCornerRadius. -->
+             utility looks the same docked into a document tab. It meets the rail directly on the left, where
+             the gap the rail leaves around its buttons is the channel the user sees. The splitter supplies the
+             channel on the right. The bottom meets the application border and is left flush. Margin and
+             corners are set in code-behind from GutterSize and PanelCornerRadius. -->
         <Grid x:Name="ContentArea"
               Grid.Column="1"
               Background="{ThemeResource ContentBackgroundBrush}"

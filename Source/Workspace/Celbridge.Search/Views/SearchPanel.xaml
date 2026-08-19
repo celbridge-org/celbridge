@@ -54,7 +54,7 @@
       <Button Grid.Row="0"
               Grid.Column="0"
               AutomationProperties.AutomationId="search-replace-toggle-button"
-              Style="{StaticResource TransparentIconButtonStyle}"
+              Style="{StaticResource IconButtonStyle}"
               Command="{x:Bind ViewModel.ToggleReplaceModeCommand}"
               Width="24"
               Height="32"
@@ -89,6 +89,7 @@
       <Button Grid.Row="0"
               Grid.Column="2"
               AutomationProperties.AutomationId="search-history-button"
+              Style="{StaticResource IconButtonStyle}"
               Padding="4,0"
               Margin="0"
               VerticalAlignment="Stretch"
@@ -112,6 +113,7 @@
       <Button Grid.Row="0"
               Grid.Column="3"
               AutomationProperties.AutomationId="search-run-button"
+              Style="{StaticResource IconButtonStyle}"
               Command="{x:Bind ViewModel.ExecuteSearchCommand}"
               Padding="8,0"
               Margin="4,0,0,0"
@@ -142,6 +144,7 @@
         <!-- Replace History dropdown button -->
         <Button Grid.Column="1"
                 AutomationProperties.AutomationId="search-replace-history-button"
+                Style="{StaticResource IconButtonStyle}"
                 Padding="4,0"
                 Margin="0"
                 VerticalAlignment="Stretch"
@@ -164,6 +167,7 @@
         <!-- Replace All button -->
         <Button Grid.Column="2"
                 AutomationProperties.AutomationId="search-replace-all-button"
+                Style="{StaticResource IconButtonStyle}"
                 Command="{x:Bind ViewModel.ReplaceAllCommand}"
                 Padding="8,0"
                 Margin="4,0,0,0"
@@ -186,6 +190,7 @@
                 HorizontalAlignment="Center">
       <!-- Match Case toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.MatchCase, Mode=TwoWay}"
+                    Style="{StaticResource IconToggleButtonStyle}"
                     AutomationProperties.AutomationId="search-match-case-button"
                     ToolTipService.ToolTip="{x:Bind ViewModel.MatchCaseTooltip, Mode=OneWay}"
                     Padding="8,6"
@@ -196,6 +201,7 @@
 
       <!-- Whole Word toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.WholeWord, Mode=TwoWay}"
+                    Style="{StaticResource IconToggleButtonStyle}"
                     AutomationProperties.AutomationId="search-whole-word-button"
                     ToolTipService.ToolTip="{x:Bind ViewModel.WholeWordTooltip, Mode=OneWay}"
                     Padding="8,6"
@@ -207,10 +213,9 @@
       <!-- Collapse All button -->
       <Button Command="{x:Bind ViewModel.CollapseAllCommand}"
               AutomationProperties.AutomationId="search-collapse-results-button"
+              Style="{StaticResource IconButtonStyle}"
               ToolTipService.ToolTip="{x:Bind ViewModel.CollapseAllTooltip, Mode=OneWay}"
               IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
-              Background="Transparent"
-              BorderThickness="1"
               Padding="8,6"
               MinWidth="36"
               MinHeight="32">
@@ -350,7 +355,7 @@
                         <TextBlock Grid.Column="1"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTipService.ToolTip="{x:Bind LineText}">
-                          <Run Text="{x:Bind TextBeforeMatch}"/><Run Text="{x:Bind MatchedText}" 
+                          <Run Text="{x:Bind TextBeforeMatch}"/><Run Text="{x:Bind MatchedText}"
                                Foreground="{ThemeResource SearchMatchHighlightBrush}"/><Run Text="{x:Bind TextAfterMatch}"/>
                         </TextBlock>
 

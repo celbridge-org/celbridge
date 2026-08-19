@@ -56,15 +56,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         get
         {
-            double gutterSize = (double)Application.Current.Resources["GutterSize"];
-
             // The content area is carved out like a document section, so it composes from the same floor.
             var contentChrome = new Size(
                 ContentArea.BorderThickness.Left + ContentArea.BorderThickness.Right,
                 ContentArea.BorderThickness.Top + ContentArea.BorderThickness.Bottom);
             double contentMinimumWidth = WorkspaceMinimumSize.ComposeSection(contentChrome).Width;
 
-            return WorkspaceMinimumSize.ComposeAdjacent(RailColumn.Width.Value, contentMinimumWidth, gutterSize);
+            return RailColumn.Width.Value + contentMinimumWidth;
         }
     }
 
@@ -87,9 +85,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         SetBottomEdgePresented(false);
 
         RailColumn.Width = new GridLength(WorkspaceConstants.UtilityPanelRailWidth);
-
-        double gutterSize = (double)Application.Current.Resources["GutterSize"];
-        ContentArea.Margin = new Thickness(gutterSize, gutterSize, 0, 0);
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();

@@ -17,6 +17,9 @@ public sealed partial class UtilityButton : UserControl
     // The currently running attention flash, if any. Kept so a repeated flash restarts cleanly.
     private Storyboard? _attentionStoryboard;
 
+    // Whether the pointer is over the cell. Combines with the selection inputs to pick the visual state.
+    private bool _isPointerOver;
+
     public event EventHandler<RoutedEventArgs>? Click;
 
     public static readonly DependencyProperty IsSelectedProperty = DependencyProperty.Register(
@@ -57,8 +60,8 @@ public sealed partial class UtilityButton : UserControl
     }
 
     /// <summary>
-    /// Colors the selection indicator to show whether the shown utility has focus: the accent color when true,
-    /// a neutral grey when false. Only meaningful while IsSelected is true.
+    /// Fills the button with the accent color to show that the shown utility has focus, and with a neutral
+    /// tone when it does not. Only meaningful while IsSelected is true.
     /// </summary>
     public bool IsFocused
     {
@@ -131,20 +134,37 @@ public sealed partial class UtilityButton : UserControl
     private void UpdateSelectionVisualState()
     {
         string state;
-        if (!IsSelected)
-        {
-            state = "Unselected";
-        }
-        else if (IsFocused)
+        if (IsSelected
+            && IsFocused)
         {
             state = "SelectedFocused";
         }
-        else
+        else if (IsSelected)
         {
             state = "SelectedUnfocused";
         }
+        else if (_isPointerOver)
+        {
+            state = "UnselectedPointerOver";
+        }
+        else
+        {
+            state = "Unselected";
+        }
 
         VisualStateManager.GoToState(this, state, false);
+    }
+
+    private void ButtonElement_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOver = true;
+        UpdateSelectionVisualState();
+    }
+
+    private void ButtonElement_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOver = false;
+        UpdateSelectionVisualState();
     }
 
     private void ButtonElement_Click(object sender, RoutedEventArgs e)

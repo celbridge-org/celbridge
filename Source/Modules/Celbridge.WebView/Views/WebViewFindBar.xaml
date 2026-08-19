@@ -20,9 +20,10 @@
                      VerticalAlignment="Center"
                      KeyDown="FindTextBox_KeyDown"
                      TextChanged="FindTextBox_TextChanged" />
-            <!-- Keeps the default ToggleButton chrome: the checked state is the control's whole
-                 purpose, so the flat icon-button style would hide it. -->
+            <!-- The checked state is the control's whole purpose, so it takes the shared selected-toggle
+                 treatment rather than the flat icon-button style, which would hide it. -->
             <ToggleButton x:Name="MatchCaseButton"
+                          Style="{StaticResource IconToggleButtonStyle}"
                           Padding="0"
                           MinWidth="32"
                           MinHeight="32"
@@ -37,19 +38,19 @@
                        Margin="4,0"
                        Visibility="Collapsed" />
             <Button x:Name="FindPreviousButton"
-                    Style="{StaticResource TransparentIconButtonStyle}"
+                    Style="{StaticResource IconButtonStyle}"
                     VerticalAlignment="Center"
                     Click="FindPreviousButton_Click">
                 <controls:Icon Symbol="ChevronUp" FontSize="{StaticResource IconSizeMedium}" />
             </Button>
             <Button x:Name="FindNextButton"
-                    Style="{StaticResource TransparentIconButtonStyle}"
+                    Style="{StaticResource IconButtonStyle}"
                     VerticalAlignment="Center"
                     Click="FindNextButton_Click">
                 <controls:Icon Symbol="ChevronDown" FontSize="{StaticResource IconSizeMedium}" />
             </Button>
             <Button x:Name="FindCloseButton"
-                    Style="{StaticResource TransparentIconButtonStyle}"
+                    Style="{StaticResource IconButtonStyle}"
                     VerticalAlignment="Center"
                     Click="FindCloseButton_Click">
                 <controls:Icon Symbol="Close" FontSize="{StaticResource IconSizeMedium}" />

@@ -76,7 +76,6 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
     {
         InitializeComponent();
 
-        DocumentAreaGutterRow.Height = new GridLength(GutterSize);
 
         // The stored sizes arrive with the workspace settings, so the resizable surfaces open at their
         // defaults until then.

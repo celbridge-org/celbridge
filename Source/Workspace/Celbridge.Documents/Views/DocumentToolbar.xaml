@@ -16,7 +16,7 @@
     <!-- The chevron points towards the edge the area collapses into, which depends on the area, so it is
          set in code-behind rather than declared here. -->
     <Button x:Name="CollapseAreaButton"
-            Style="{StaticResource TransparentIconButtonStyle}"
+            Style="{StaticResource IconButtonStyle}"
             ToolTipService.Placement="Bottom"
             VerticalAlignment="Center"
             Click="CollapseAreaButton_Click">

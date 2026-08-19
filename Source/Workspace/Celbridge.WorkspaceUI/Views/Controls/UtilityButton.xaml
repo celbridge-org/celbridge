@@ -5,52 +5,86 @@
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     IsTabStop="False">
 
-    <Grid Height="48">
+    <!-- One rail cell. The rail column carries the whole band across to the panel, so the square button
+         centred in a square cell is what holds the channel open, and the gap it leaves either side matches
+         the gap above and below it. -->
+    <Grid Height="40">
         <VisualStateManager.VisualStateGroups>
+            <!-- One group rather than separate selection and pointer groups: a selected button keeps its own
+                 tone under the pointer, so the states are the four the two inputs actually produce. -->
             <VisualStateGroup x:Name="SelectionStates">
                 <VisualState x:Name="Unselected" />
-                <VisualState x:Name="SelectedUnfocused">
+                <VisualState x:Name="UnselectedPointerOver">
                     <VisualState.Setters>
-                        <!-- Selected but the utility panel is unfocused: show the capsule in its base grey. -->
-                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
+                        <Setter Target="ButtonFill.Background" Value="{ThemeResource ButtonHoverBackgroundBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="SelectedUnfocused">
+                    <!-- Selected but the utility panel is unfocused: a neutral fill, still reading as the
+                         surface on screen. -->
+                    <VisualState.Setters>
+                        <Setter Target="ButtonFill.Background" Value="{ThemeResource ButtonActiveBackgroundBrush}" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="SelectedFocused">
+                    <!-- Selected and focused: the accent fills the button, with the glyph in the tone chosen
+                         to read against it. ThemeResource keeps both correct across a theme switch. -->
                     <VisualState.Setters>
-                        <!-- Selected and focused: swap the capsule to the accent color. ThemeResource keeps
-                             both tones correct across a light/dark theme switch. -->
-                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
-                        <Setter Target="SelectionIndicator.Background" Value="{ThemeResource NavigationViewSelectionIndicatorForeground}" />
+                        <Setter Target="ButtonFill.Background" Value="{ThemeResource AccentBrush}" />
+                        <Setter Target="IconElement.Foreground" Value="{ThemeResource AccentTextBrush}" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
-        <!-- Full-cell transparent click target. Hover and pressed visuals come from the default Button
-             template; it carries no content so it cannot bias the icon's position. -->
-        <Button x:Name="ButtonElement"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                Padding="0"
+        <!-- The fill behind the glyph, carrying hover and selection. Not hit-testable, so it never blocks the
+             click target above it. -->
+        <Border x:Name="ButtonFill"
+                Width="32"
+                Height="32"
+                CornerRadius="6"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
                 Background="Transparent"
-                BorderThickness="0"
-                CornerRadius="4"
-                IsTabStop="False"
-                Click="ButtonElement_Click" />
+                IsHitTestVisible="False" />
 
         <!-- Attention flash overlay, pulsed to the accent color by FlashAttention (e.g. when this utility is
              undocked and the button becomes available again). Behind the icon and not hit-testable. -->
         <Border x:Name="AttentionOverlay"
-                Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
-                CornerRadius="4"
-                Margin="4,2,4,2"
+                Width="32"
+                Height="32"
+                CornerRadius="6"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{ThemeResource AccentBrush}"
                 Opacity="0"
                 IsHitTestVisible="False" />
 
-        <!-- Icon centered in the full rail width, above the button but passing clicks through to it. Sized
-             to the icon so the pip aligns to the glyph's corner. -->
-        <Grid Width="{StaticResource IconSizeLarge}"
-              Height="{StaticResource IconSizeLarge}"
+        <!-- Click target over the whole cell, so the channel either side of the button stays clickable. Its
+             own fills are cleared to transparent because ButtonFill draws every state. -->
+        <Button x:Name="ButtonElement"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Padding="0"
+                BorderThickness="0"
+                IsTabStop="False"
+                PointerEntered="ButtonElement_PointerEntered"
+                PointerExited="ButtonElement_PointerExited"
+                Click="ButtonElement_Click">
+            <Button.Resources>
+                <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+                <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+                <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+            </Button.Resources>
+        </Button>
+
+        <!-- Icon centered in the cell, above the button but passing clicks through to it. Sized to the icon so
+             the pip aligns to the glyph's corner. -->
+        <Grid Width="{StaticResource IconSizeMedium}"
+              Height="{StaticResource IconSizeMedium}"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
               IsHitTestVisible="False">
@@ -61,7 +95,7 @@
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center">
                 <controls:Icon x:Name="IconElement"
-                               FontSize="{StaticResource IconSizeLarge}"
+                               FontSize="{StaticResource IconSizeMedium}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
             </Viewbox>
@@ -76,19 +110,5 @@
                      Fill="{ThemeResource SystemFillColorCautionBrush}"
                      Visibility="Collapsed" />
         </Grid>
-
-        <!-- Tall capsule on the left edge, shown when this rail item is the selected surface. Grey by default
-             (selected but unfocused); the SelectedFocused state swaps it to the accent color. Stretches to the
-             top and bottom of the cell with an even 2px inset on the left, top and bottom, and not hit-testable
-             so the whole cell stays clickable. -->
-        <Border x:Name="SelectionIndicator"
-                Width="3"
-                CornerRadius="1.5"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Stretch"
-                Margin="2,2,0,2"
-                IsHitTestVisible="False"
-                Background="{ThemeResource TextFillColorTertiaryBrush}"
-                Visibility="Collapsed" />
     </Grid>
 </UserControl>

@@ -3,13 +3,23 @@
                     xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
   <!-- Shared icon sizes. Reference these instead of literal FontSize values to keep icon sizing consistent.
-       Medium is the default for command icons; Small and Large are the denser and more prominent steps. -->
+       Medium is the size every command icon takes, in the application toolbar, the panel headers and the
+       utility rail alike; Small is the denser step. -->
   <x:Double x:Key="IconSizeSmall">16</x:Double>
   <x:Double x:Key="IconSizeMedium">18</x:Double>
-  <x:Double x:Key="IconSizeLarge">22</x:Double>
 
   <!-- The channel between two panels. A splitter's grab area takes this size, which is what holds the gap
        open, so any layout that reserves a matching gap reads the same value rather than repeating it. -->
+  <!-- The app icon is a filled mark rather than a line glyph, so it reads smaller than a command icon
+       set to the same box. It takes its own size, chosen to sit optically level with them. -->
+  <x:Double x:Key="AppIconSize">22</x:Double>
+
+  <!-- WinUI sizes its top-mode navigation pane from this key, and centres the pane's items in it. Left at
+       the framework's 48 the pane overhangs the shorter application toolbar, dropping the items below the
+       icons beside them. Mirrors ApplicationToolbar.ToolbarHeight; keep the two in sync when either
+       changes. -->
+  <x:Double x:Key="NavigationViewTopPaneHeight">40</x:Double>
+
   <x:Double x:Key="GutterSize">7</x:Double>
 
   <!-- The widest the workspace notification toast can grow to. It is an overlay, so this caps how much
@@ -65,19 +75,18 @@
     <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
   </Style>
 
-  <!-- A flat icon button: a transparent hit target that tints on hover and press, and dims when disabled.
-       Carries the same four-pixel corner radius as the app's default-templated buttons, because replacing
-       the control template drops the framework's own rounding. Size its icon content from the IconSize
-       tokens above. Applies to Button only, so a ToggleButton keeps its own chrome and stays legible when
-       checked. -->
-  <Style x:Key="TransparentIconButtonStyle" TargetType="Button">
+  <!-- The flat icon button: a transparent hit target that tints on hover and press and dims when disabled,
+       taking the shared button tones. Sized from its content down to a 32px square floor, which an icon at
+       the IconSize tokens above lands on exactly. Pair it with VerticalAlignment="Center" where the parent
+       would otherwise stretch it. -->
+  <Style x:Key="IconButtonStyle" TargetType="Button">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
     <Setter Property="MinWidth" Value="32"/>
     <Setter Property="MinHeight" Value="32"/>
     <Setter Property="Padding" Value="0"/>
-    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="CornerRadius" Value="6"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -100,7 +109,7 @@
                   <Storyboard>
                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
                                                    Storyboard.TargetProperty="Background">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemListLowColor}"/>
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonHoverBackgroundBrush}"/>
                     </ObjectAnimationUsingKeyFrames>
                   </Storyboard>
                 </VisualState>
@@ -108,7 +117,7 @@
                   <Storyboard>
                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
                                                    Storyboard.TargetProperty="Background">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemListMediumColor}"/>
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
                     </ObjectAnimationUsingKeyFrames>
                   </Storyboard>
                 </VisualState>
@@ -117,6 +126,103 @@
                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
                                                    Storyboard.TargetProperty="Opacity">
                       <DiscreteObjectKeyFrame KeyTime="0" Value="0.5"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </ContentPresenter>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The flat icon toggle: IconButtonStyle with a checked state, which fills the button with the accent and
+       puts its content in the tone chosen to read against it. The accent is reserved for this, so a control
+       with no selected state never takes it. -->
+  <Style x:Key="IconToggleButtonStyle" TargetType="ToggleButton">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="MinWidth" Value="32"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <ContentPresenter x:Name="ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal"/>
+                <VisualState x:Name="PointerOver">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Background">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonHoverBackgroundBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Background">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Opacity">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="0.5"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
+                <VisualState x:Name="Checked">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Background">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Foreground">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentTextBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
+                <VisualState x:Name="CheckedPointerOver">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Background">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Foreground">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentTextBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
+                <VisualState x:Name="CheckedPressed">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Background">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Foreground">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentTextBrush}"/>
                     </ObjectAnimationUsingKeyFrames>
                   </Storyboard>
                 </VisualState>
@@ -150,7 +256,7 @@
                   <Storyboard>
                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="LayoutRoot"
                                                    Storyboard.TargetProperty="Background">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemListLowColor}"/>
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonHoverBackgroundBrush}"/>
                     </ObjectAnimationUsingKeyFrames>
                   </Storyboard>
                 </VisualState>
@@ -158,7 +264,7 @@
                   <Storyboard>
                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="LayoutRoot"
                                                    Storyboard.TargetProperty="Background">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SystemListMediumColor}"/>
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
                     </ObjectAnimationUsingKeyFrames>
                   </Storyboard>
                 </VisualState>

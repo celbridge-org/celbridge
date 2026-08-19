@@ -63,7 +63,6 @@ public sealed partial class ProjectSwitcher : UserControl
 
         ApplyTooltips();
 
-        _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
     }
 
@@ -258,22 +257,7 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        UpdateActiveIndicator(ApplicationPage.Workspace);
         UpdateWorkspaceTooltip();
-    }
-
-    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
-    {
-        UpdateActiveIndicator(message.ActivePage);
-    }
-
-    private void UpdateActiveIndicator(ApplicationPage activePage)
-    {
-        // The switcher is a custom button rather than a nav item, so its active underline is driven directly
-        // from the active page.
-        WorkspaceActiveIndicator.Visibility = activePage == ApplicationPage.Workspace
-            ? Visibility.Visible
-            : Visibility.Collapsed;
     }
 
     private void WorkspaceButton_Click(object sender, RoutedEventArgs e)

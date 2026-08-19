@@ -53,18 +53,16 @@ public static class WorkspaceMinimumSize
         if (visibleSurfaces.HasFlag(WorkspaceSurface.UtilityPanel))
         {
             // The panel's content area is carved out like a section and draws the same edge down each side, so
-            // it holds the same width floor. What the panel adds is the rail beside it.
-            utilityPanelMinimumWidth = ComposeAdjacent(
-                WorkspaceConstants.UtilityPanelRailWidth,
-                sectionMinimum.Width,
-                gutterSize);
+            // it holds the same width floor. What the panel adds is the rail beside it, which meets the content
+            // directly: the channel the user sees is the gap the rail leaves around its buttons.
+            utilityPanelMinimumWidth = WorkspaceConstants.UtilityPanelRailWidth + sectionMinimum.Width;
         }
 
         double documentAreasWidth = ComposeAdjacent(sectionMinimum.Width, sideMinimumWidth, gutterSize);
         double width = ComposeAdjacent(utilityPanelMinimumWidth, documentAreasWidth, gutterSize);
         double documentAreasHeight = ComposeAdjacent(sectionMinimum.Height, bottomMinimumHeight, gutterSize);
 
-        return new Size(width, documentAreasHeight + gutterSize);
+        return new Size(width, documentAreasHeight);
     }
 
     /// <summary>

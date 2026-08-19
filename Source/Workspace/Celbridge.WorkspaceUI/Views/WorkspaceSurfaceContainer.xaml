@@ -27,9 +27,10 @@
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
-      <!-- Sets the document areas down from the title bar so their top corners read, while the Utility
-           Panel runs up into it. Sized from GutterSize in code-behind to match the channels between areas. -->
-      <RowDefinition x:Name="DocumentAreaGutterRow"/>
+      <!-- Kept as a row so the surfaces below it stay on their own row indices. The application toolbar
+           carries the channel above them within its own strip, so this takes no height. -->
+      <RowDefinition x:Name="DocumentAreaGutterRow"
+                     Height="0"/>
       <RowDefinition x:Name="MainAreaRow"
                      Height="*"/>
       <RowDefinition Height="Auto"/>

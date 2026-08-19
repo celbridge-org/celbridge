@@ -10,7 +10,7 @@
        follow a theme change; a brush read from Application.Current.Resources would not. -->
   <Button x:Name="HealthButton"
           AutomationProperties.AutomationId="project-health-button"
-          Style="{StaticResource TransparentIconButtonStyle}"
+          Style="{StaticResource IconButtonStyle}"
           VerticalAlignment="Center"
           Click="HealthButton_Click">
     <Grid>
