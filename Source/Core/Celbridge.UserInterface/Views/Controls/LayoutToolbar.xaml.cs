@@ -365,10 +365,17 @@ public sealed partial class LayoutToolbar : UserControl
 
         if (alignment == _layoutService.BottomAreaAlignment)
         {
-            // Clicking the active option unchecked it and changes nothing, so no message comes back to
-            // put it right.
+            // Clicking the active option unchecked it, and the alignment itself does not change, so no
+            // message comes back to put the button right.
             UpdateBottomAreaAlignmentButtons();
-            return;
+
+            if (_layoutService.IsBottomAreaVisible)
+            {
+                return;
+            }
+
+            // The area is hidden, so the click still has something to do: bring it into view at the
+            // alignment already chosen.
         }
 
         _commandService.Execute<ISetBottomAreaAlignmentCommand>(command =>
