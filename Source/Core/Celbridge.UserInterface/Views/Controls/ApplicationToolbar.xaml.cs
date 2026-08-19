@@ -1,9 +1,6 @@
-using Celbridge.Messaging;
-using Celbridge.Navigation;
-using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using Celbridge.Platform;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 using Microsoft.UI.Dispatching;
 
 namespace Celbridge.UserInterface.Views;
@@ -20,8 +17,6 @@ public sealed partial class ApplicationToolbar : UserControl
     /// </summary>
     public const double ToolbarHeight = 40;
 
-    private readonly IStringLocalizer _stringLocalizer;
-    private readonly IMessengerService _messengerService;
     private DispatcherQueueTimer? _layoutChangedTimer;
 
     /// <summary>
@@ -39,7 +34,6 @@ public sealed partial class ApplicationToolbar : UserControl
 
         ToolbarRow.Height = new Microsoft.UI.Xaml.GridLength(ToolbarHeight);
 
-        // The app icon column spans the utility rail below it, keeping the mark over that column's buttons.
         AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(WorkspaceConstants.UtilityPanelRailWidth);
 
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
@@ -50,8 +44,6 @@ public sealed partial class ApplicationToolbar : UserControl
             CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(144);
         }
 
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         ViewModel = ServiceLocator.AcquireService<TitleBarViewModel>();
 
         this.DataContext = ViewModel;
@@ -64,15 +56,10 @@ public sealed partial class ApplicationToolbar : UserControl
     {
         ViewModel.OnLoaded();
 
-        ApplyTooltips();
-
-        _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
-
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         LayoutToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
         NavigationToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
-        SettingsButton.SizeChanged += OnInteractiveElement_SizeChanged;
 
         // A host that derives window-chrome regions from the toolbar (the Windows TitleBar wrapper)
         // recomputes them when the layout shifts, e.g. on window maximize/restore.
@@ -85,12 +72,9 @@ public sealed partial class ApplicationToolbar : UserControl
     {
         ViewModel.OnUnloaded();
 
-        _messengerService.UnregisterAll(this);
-
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         NavigationToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
-        SettingsButton.SizeChanged -= OnInteractiveElement_SizeChanged;
         this.LayoutUpdated -= OnApplicationToolbar_LayoutUpdated;
 
         if (_layoutChangedTimer is not null)
@@ -113,7 +97,6 @@ public sealed partial class ApplicationToolbar : UserControl
 
         candidates.AddRange(NavigationToolbar.GetInteractiveElements());
         candidates.AddRange(LayoutToolbar.GetInteractiveElements());
-        candidates.Add(SettingsButton);
 
         var elements = new List<FrameworkElement>();
         foreach (var candidate in candidates)
@@ -127,13 +110,6 @@ public sealed partial class ApplicationToolbar : UserControl
         }
 
         return elements;
-    }
-
-    private void ApplyTooltips()
-    {
-        var settingsTooltip = _stringLocalizer.GetString("TitleBar_SettingsTooltip");
-        ToolTipService.SetToolTip(SettingsButton, settingsTooltip);
-        ToolTipService.SetPlacement(SettingsButton, PlacementMode.Bottom);
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -177,16 +153,6 @@ public sealed partial class ApplicationToolbar : UserControl
         {
             _layoutChangedTimer.Start();
         }
-    }
-
-    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
-    {
-        SettingsButton.IsChecked = message.ActivePage == ApplicationPage.Settings;
-    }
-
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.NavigateToPage(NavigationConstants.SettingsTag);
     }
 
     private void RaiseInteractiveLayoutChanged()

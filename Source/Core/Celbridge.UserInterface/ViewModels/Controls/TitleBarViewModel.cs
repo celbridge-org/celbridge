@@ -1,5 +1,4 @@
 using Celbridge.Documents;
-using Celbridge.Navigation;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
@@ -10,7 +9,6 @@ namespace Celbridge.UserInterface.ViewModels.Controls;
 public partial class TitleBarViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
-    private readonly INavigationService _navigationService;
 
     [ObservableProperty]
     private bool _isSaving;
@@ -18,12 +16,9 @@ public partial class TitleBarViewModel : ObservableObject
     [ObservableProperty]
     private bool _isWorkspaceActive;
 
-    public TitleBarViewModel(
-        IMessengerService messengerService,
-        INavigationService navigationService)
+    public TitleBarViewModel(IMessengerService messengerService)
     {
         _messengerService = messengerService;
-        _navigationService = navigationService;
     }
 
     public void OnLoaded()
@@ -51,14 +46,6 @@ public partial class TitleBarViewModel : ObservableObject
     private void OnPendingDocumentSaveMessage(object recipient, PendingDocumentSaveMessage message)
     {
         IsSaving = message.PendingSaveCount > 0;
-    }
-
-    /// <summary>
-    /// Navigates to a top-level page using the navigation tag.
-    /// </summary>
-    public void NavigateToPage(string tag)
-    {
-        _navigationService.NavigateToPage(tag);
     }
 }
 

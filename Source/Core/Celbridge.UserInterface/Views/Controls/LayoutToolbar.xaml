@@ -115,11 +115,10 @@
                             </controls:IconToggleButton>
                         </StackPanel>
 
-                        <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
+                        <MenuFlyoutSeparator/>
 
                         <!-- Reset Layout Button -->
-                        <Button x:Name="ResetLayoutButton"
-                                Click="ResetLayoutButton_Click"
+                        <Button Click="ResetLayoutButton_Click"
                                 HorizontalAlignment="Stretch">
                             <TextBlock x:Name="ResetLayoutButtonText"/>
                         </Button>

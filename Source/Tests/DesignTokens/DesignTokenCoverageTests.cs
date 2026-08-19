@@ -93,6 +93,7 @@ public class DesignTokenCoverageTests
         "--cel-panel-edge",
         "--cel-panel-header-height",
         "--cel-panel-inset",
+        "--cel-radius-button",
         "--cel-radius-card",
         "--cel-radius-control",
         "--cel-rail-button-size",

@@ -127,7 +127,7 @@ Core tokens:
 | `--cel-panel-edge` | The outline of a region carved out of the chrome surface. Stronger than a divider, so the carve reads as an object. |
 | `--cel-accent` | Accent color (hardcoded per theme; the CSS `AccentColor` keyword renders transparent in WebView2). |
 | `--cel-error-text`, `--cel-warning-text`, `--cel-search-highlight` | Semantic status colors. |
-| `--cel-radius-control`, `--cel-radius-card` | Corner radii for controls and larger cards. |
+| `--cel-radius-control`, `--cel-radius-button`, `--cel-radius-card` | Corner radii for controls, flat icon buttons, and larger cards. |
 | `--cel-page-zoom` | The scale the web engine applied on top of the host's own, carrying the Windows accessibility text size. See below. |
 
 Most editors can ignore `--cel-page-zoom`. On Windows the web engine folds the accessibility text size into the scale it renders at, so a CSS pixel in a WebView is larger than a device-independent pixel in the native chrome, and a box declared at 40px lands taller than the 40px XAML panel header beside it. Text is unaffected, because both stacks grow it by the same factor, and so is any box sized by its content. Only a fixed pixel dimension diverges. Where one has to line up with the native chrome, divide it: `height: calc(40px / var(--cel-page-zoom, 1))`. The tokens that mirror a native dimension already do this. A plain `40px` elsewhere is fine and stays consistent with everything else on the page.

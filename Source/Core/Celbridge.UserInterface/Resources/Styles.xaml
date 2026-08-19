@@ -8,11 +8,13 @@
   <x:Double x:Key="IconSizeSmall">16</x:Double>
   <x:Double x:Key="IconSizeMedium">18</x:Double>
 
-  <!-- The channel between two panels. A splitter's grab area takes this size, which is what holds the gap
-       open, so any layout that reserves a matching gap reads the same value rather than repeating it. -->
   <!-- The app icon is a filled mark rather than a line glyph, so it reads smaller than a command icon
        set to the same box. It takes its own size, chosen to sit optically level with them. -->
   <x:Double x:Key="AppIconSize">22</x:Double>
+
+  <!-- Rounding on a flat icon button, taken by IconButton, IconToggleButton and the utility rail's own
+       button fill. Mirrored by the cel-radius-button design token. -->
+  <CornerRadius x:Key="IconButtonCornerRadius">6</CornerRadius>
 
   <!-- WinUI sizes its top-mode navigation pane from this key, and centres the pane's items in it. Left at
        the framework's 48 the pane overhangs the shorter application toolbar, dropping the items below the
@@ -20,6 +22,8 @@
        changes. -->
   <x:Double x:Key="NavigationViewTopPaneHeight">40</x:Double>
 
+  <!-- The channel between two panels. A splitter's grab area takes this size, which is what holds the gap
+       open, so any layout that reserves a matching gap reads the same value rather than repeating it. -->
   <x:Double x:Key="GutterSize">7</x:Double>
 
   <!-- The widest the workspace notification toast can grow to. It is an overlay, so this caps how much
@@ -75,84 +79,25 @@
     <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
   </Style>
 
-  <!-- IconButton's appearance: a transparent hit target that tints on hover and press and dims when
-       disabled, taking the shared button tones. Sized from its content down to a 32px square floor, which an
-       icon at the IconSize tokens above lands on exactly. Pair the control with VerticalAlignment="Center"
-       where the parent would otherwise stretch it. -->
-  <Style TargetType="controls:IconButton">
+  <!-- The shared appearance of a flat icon button: a transparent hit target that tints on hover and press,
+       dims when disabled, and fills with the accent while checked, with its content in the tone chosen to
+       read against it. Sized from its content down to a 32px square floor, which an icon at the IconSize
+       tokens above lands on exactly. Targets ButtonBase so IconButton and IconToggleButton take one
+       template rather than a copy each; a plain button never enters the checked states. Pair either control
+       with VerticalAlignment="Center" where the parent would otherwise stretch it. -->
+  <Style x:Key="IconButtonBaseStyle" TargetType="ButtonBase">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
     <Setter Property="MinWidth" Value="32"/>
     <Setter Property="MinHeight" Value="32"/>
     <Setter Property="Padding" Value="0"/>
-    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="CornerRadius" Value="{StaticResource IconButtonCornerRadius}"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
       <Setter.Value>
-        <ControlTemplate TargetType="controls:IconButton">
-          <ContentPresenter x:Name="ContentPresenter"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}"
-                            Content="{TemplateBinding Content}"
-                            ContentTemplate="{TemplateBinding ContentTemplate}"
-                            Padding="{TemplateBinding Padding}"
-                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}">
-            <VisualStateManager.VisualStateGroups>
-              <VisualStateGroup x:Name="CommonStates">
-                <VisualState x:Name="Normal"/>
-                <VisualState x:Name="PointerOver">
-                  <Storyboard>
-                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
-                                                   Storyboard.TargetProperty="Background">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonHoverBackgroundBrush}"/>
-                    </ObjectAnimationUsingKeyFrames>
-                  </Storyboard>
-                </VisualState>
-                <VisualState x:Name="Pressed">
-                  <Storyboard>
-                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
-                                                   Storyboard.TargetProperty="Background">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
-                    </ObjectAnimationUsingKeyFrames>
-                  </Storyboard>
-                </VisualState>
-                <VisualState x:Name="Disabled">
-                  <Storyboard>
-                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
-                                                   Storyboard.TargetProperty="Opacity">
-                      <DiscreteObjectKeyFrame KeyTime="0" Value="0.5"/>
-                    </ObjectAnimationUsingKeyFrames>
-                  </Storyboard>
-                </VisualState>
-              </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
-          </ContentPresenter>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
-  </Style>
-
-  <!-- IconToggleButton's appearance: IconButton's, plus a checked state that fills the button with the
-       accent and puts its content in the tone chosen to read against it. The accent is reserved for this, so
-       a control with no selected state never takes it. -->
-  <Style TargetType="controls:IconToggleButton">
-    <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="BorderBrush" Value="Transparent"/>
-    <Setter Property="BorderThickness" Value="0"/>
-    <Setter Property="MinWidth" Value="32"/>
-    <Setter Property="MinHeight" Value="32"/>
-    <Setter Property="Padding" Value="0"/>
-    <Setter Property="CornerRadius" Value="6"/>
-    <Setter Property="HorizontalContentAlignment" Value="Center"/>
-    <Setter Property="VerticalContentAlignment" Value="Center"/>
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="controls:IconToggleButton">
+        <ControlTemplate TargetType="ButtonBase">
           <ContentPresenter x:Name="ContentPresenter"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
@@ -226,6 +171,22 @@
                     </ObjectAnimationUsingKeyFrames>
                   </Storyboard>
                 </VisualState>
+                <VisualState x:Name="CheckedDisabled">
+                  <Storyboard>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Background">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Foreground">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentTextBrush}"/>
+                    </ObjectAnimationUsingKeyFrames>
+                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ContentPresenter"
+                                                   Storyboard.TargetProperty="Opacity">
+                      <DiscreteObjectKeyFrame KeyTime="0" Value="0.5"/>
+                    </ObjectAnimationUsingKeyFrames>
+                  </Storyboard>
+                </VisualState>
               </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>
           </ContentPresenter>
@@ -233,6 +194,11 @@
       </Setter.Value>
     </Setter>
   </Style>
+
+  <Style TargetType="controls:IconButton" BasedOn="{StaticResource IconButtonBaseStyle}"/>
+
+  <!-- The accent fill is reserved for a checked toggle, so a control with no selected state never takes it. -->
+  <Style TargetType="controls:IconToggleButton" BasedOn="{StaticResource IconButtonBaseStyle}"/>
 
   <!-- A project row in a menu. The path goes on a second line rather than in a column beside the name: a
        path long enough to fill the menu squeezes a single-line row's name down to nothing. The padding and

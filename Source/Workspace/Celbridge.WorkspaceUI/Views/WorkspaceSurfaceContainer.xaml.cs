@@ -14,14 +14,14 @@ namespace Celbridge.WorkspaceUI.Views;
 /// </summary>
 public sealed partial class WorkspaceSurfaceContainer : UserControl
 {
-    // Positions in the workspace grid that the Bottom area's alignment moves things between. The Utility
-    // Panel starts a row above the document areas because it runs up into the title bar, so the surfaces
-    // that stop above the Bottom area each have their own full and shortened span.
+    // Positions in the workspace grid that the Bottom area's alignment moves things between. A surface
+    // beside the document areas runs the full height of the grid, and shortens to the Main area row alone
+    // once the Bottom area runs underneath it.
     private const int UtilityPanelColumnIndex = 0;
     private const int MainAreaColumnIndex = 2;
-    private const int UtilityPanelHostRowSpan = 4;
-    private const int UtilityPanelSplitterRowSpan = 3;
-    private const int SideAreaRowSpan = 3;
+    private const int BottomAreaRowIndex = 2;
+    private const int FullHeightRowSpan = 3;
+    private const int AboveBottomAreaRowSpan = 1;
 
     private readonly UtilityPanel _utilityPanel;
 
@@ -75,7 +75,6 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
     public WorkspaceSurfaceContainer()
     {
         InitializeComponent();
-
 
         // The stored sizes arrive with the workspace settings, so the resizable surfaces open at their
         // defaults until then.
@@ -340,11 +339,13 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         Grid.SetColumn(BottomAreaSplitter, bottomColumn);
         Grid.SetColumnSpan(BottomAreaSplitter, bottomColumnSpan);
 
-        Grid.SetRowSpan(UtilityPanelHost, spansUtilityPanel ? 2 : UtilityPanelHostRowSpan);
-        Grid.SetRowSpan(UtilityPanelSplitter, spansUtilityPanel ? 1 : UtilityPanelSplitterRowSpan);
+        int utilityPanelRowSpan = spansUtilityPanel ? AboveBottomAreaRowSpan : FullHeightRowSpan;
+        Grid.SetRowSpan(UtilityPanelHost, utilityPanelRowSpan);
+        Grid.SetRowSpan(UtilityPanelSplitter, utilityPanelRowSpan);
 
-        Grid.SetRowSpan(SideAreaGrid, spansSideArea ? 1 : SideAreaRowSpan);
-        Grid.SetRowSpan(SideAreaSplitter, spansSideArea ? 1 : SideAreaRowSpan);
+        int sideAreaRowSpan = spansSideArea ? AboveBottomAreaRowSpan : FullHeightRowSpan;
+        Grid.SetRowSpan(SideAreaGrid, sideAreaRowSpan);
+        Grid.SetRowSpan(SideAreaSplitter, sideAreaRowSpan);
 
         // The panel meets the application border until the Bottom area runs under it, which puts a
         // gutter below it to draw an edge against.
@@ -369,7 +370,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         _bottomAreaSplitterHelper = new SplitterHelper(
             RootGrid,
             GridResizeMode.Rows,
-            3,
+            BottomAreaRowIndex,
             minSizeFunc: () => CreateComposer().BottomAreaMinimumHeight,
             invertDelta: true,
             maxSizeFunc: () => CreateComposer().AvailableBottomAreaHeight)

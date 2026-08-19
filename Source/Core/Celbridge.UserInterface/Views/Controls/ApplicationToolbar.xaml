@@ -22,56 +22,44 @@
             <RowDefinition x:Name="ToolbarRow"/>
         </Grid.RowDefinitions>
 
-        <Grid x:Name="ToolbarContent">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="AppIconColumn" Width="32"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition x:Name="CaptionButtonsColumn" Width="0"/>
-            </Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions>
+            <!-- Sized from WorkspaceConstants in code-behind, so the column spans the utility rail below
+                 it and the app icon sits over that rail's buttons. -->
+            <ColumnDefinition x:Name="AppIconColumn"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition x:Name="CaptionButtonsColumn" Width="0"/>
+        </Grid.ColumnDefinitions>
 
-            <Image x:Name="AppIconImage"
-                   Source="ms-appx:///Assets/Images/title_icon.png"
-                   Width="{StaticResource AppIconSize}"
-                   Height="{StaticResource AppIconSize}"
-                   Margin="0"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
+        <Image x:Name="AppIconImage"
+               Source="ms-appx:///Assets/Images/title_icon.png"
+               Width="{StaticResource AppIconSize}"
+               Height="{StaticResource AppIconSize}"
+               Margin="0"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
 
-            <local:NavigationToolbar x:Name="NavigationToolbar"
-                                     Grid.Column="1"/>
+        <local:NavigationToolbar x:Name="NavigationToolbar"
+                                 Grid.Column="1"/>
 
-            <!-- Save Icon - positioned to the left of layout toolbar -->
-            <controls:Icon x:Name="SaveIcon"
-                           Grid.Column="3"
-                           Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Center"
-                           Margin="0,0,16,0"
-                           Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
-                           FontSize="{StaticResource IconSizeMedium}"
-                           Symbol="Save"/>
+        <!-- Save Icon - positioned to the left of layout toolbar -->
+        <controls:Icon x:Name="SaveIcon"
+                       Grid.Column="3"
+                       Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Margin="0,0,16,0"
+                       Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
+                       FontSize="{StaticResource IconSizeMedium}"
+                       Symbol="Save"/>
 
-            <!-- Layout Toolbar - positioned on the right side of the toolbar -->
-            <local:LayoutToolbar x:Name="LayoutToolbar"
-                                 Grid.Column="4"
-                                 HorizontalAlignment="Right"
-                                 VerticalAlignment="Stretch"
-                                 Margin="0,0,8,0"/>
-
-            <!-- Settings Button - positioned at the right edge of the toolbar -->
-            <controls:IconToggleButton x:Name="SettingsButton"
-                                       AutomationProperties.AutomationId="settings-button"
-                                       Grid.Column="5"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,4,0"
-                                       Click="SettingsButton_Click">
-                <controls:Icon Symbol="Settings"
-                               FontSize="{StaticResource IconSizeMedium}"/>
-            </controls:IconToggleButton>
-        </Grid>
-  </Grid>
+        <!-- Layout Toolbar - positioned on the right side of the toolbar -->
+        <local:LayoutToolbar x:Name="LayoutToolbar"
+                             Grid.Column="4"
+                             HorizontalAlignment="Right"
+                             VerticalAlignment="Stretch"
+                             Margin="0,0,8,0"/>
+    </Grid>
 </UserControl>

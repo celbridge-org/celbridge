@@ -81,6 +81,14 @@
           "css": "--cel-radius-card",
           "value": "8px",
           "published": true
+        },
+
+        "radius-button": {
+          "targets": ["css"],
+          "css": "--cel-radius-button",
+          "value": "6px",
+          "published": true,
+          "comment": "Rounding on a flat icon button, mirroring the IconButtonCornerRadius resource in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes. A step beyond the control radius, which a button carrying no border reads better at."
         }
       }
     },

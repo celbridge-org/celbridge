@@ -17,10 +17,14 @@ public class XamlNamespacePrefixTests
         @"xmlns:(?<prefix>\w+)=""using:(?<namespace>[\w.]+)""",
         RegexOptions.Compiled);
 
+    // Every XAML file is read once for the fixture rather than once per test.
+    private static readonly Lazy<IReadOnlyList<PrefixDeclaration>> Declarations =
+        new(ReadDeclarations);
+
     [Test]
     public void EveryPrefix_NamesOneNamespace()
     {
-        var declarations = ReadDeclarations();
+        var declarations = Declarations.Value;
 
         var offenders = declarations
             .Where(declaration => !RelativePrefixes.Contains(declaration.Prefix))
@@ -36,7 +40,7 @@ public class XamlNamespacePrefixTests
     [Test]
     public void EveryNamespace_TakesOnePrefix()
     {
-        var declarations = ReadDeclarations();
+        var declarations = Declarations.Value;
 
         var offenders = declarations
             .Where(declaration => !RelativePrefixes.Contains(declaration.Prefix))
