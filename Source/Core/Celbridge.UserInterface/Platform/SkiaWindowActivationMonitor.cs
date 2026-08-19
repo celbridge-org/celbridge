@@ -4,8 +4,9 @@ using Celbridge.UserInterface.Services;
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// Broadcasts window activation on the Skia desktop heads, so services can refresh state that may have
-/// changed while the application was in the background.
+/// Broadcasts window activation and deactivation on the Skia desktop heads, so services can refresh state
+/// that may have changed while the application was in the background, and can tell the application losing the
+/// keyboard from focus moving within it.
 /// </summary>
 internal sealed class SkiaWindowActivationMonitor : IWindowActivationMonitor
 {
@@ -30,9 +31,14 @@ internal sealed class SkiaWindowActivationMonitor : IWindowActivationMonitor
         if (activationState == Windows.UI.Core.CoreWindowActivationState.PointerActivated
             || activationState == Windows.UI.Core.CoreWindowActivationState.CodeActivated)
         {
-            var message = new MainWindowActivatedMessage();
-            _messengerService.Send(message);
+            var activatedMessage = new MainWindowActivatedMessage();
+            _messengerService.Send(activatedMessage);
+
+            return;
         }
+
+        var deactivatedMessage = new MainWindowDeactivatedMessage();
+        _messengerService.Send(deactivatedMessage);
     }
 }
 #endif

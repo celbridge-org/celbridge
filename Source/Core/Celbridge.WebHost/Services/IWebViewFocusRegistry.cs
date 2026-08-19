@@ -18,7 +18,7 @@ public sealed record WebViewFocusRegistration(
     IEditTarget? EditTarget,
     Action ReleaseFocus,
     Func<Task>? GrantDomFocus = null,
-    Action? OnFocusGained = null);
+    Action? OnFocusGained = null) : IFocusSurface;
 
 /// <summary>
 /// The single integration point for hosted web-surface focus on the Skia heads, where WebView and host focus

@@ -1,9 +1,13 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// What took the keyboard. A claim naming the panel a web surface already holds means opposite things
-/// depending on this: a managed control taking it moves the keyboard off that surface, while the surface
-/// re-reporting its own focus does not.
+/// The identity of a surface that can hold the keyboard. Compared by reference only, so the focus service can
+/// tell one surface from another without knowing what a surface is.
+/// </summary>
+public interface IFocusSurface;
+
+/// <summary>
+/// What took the keyboard.
 /// </summary>
 public enum FocusClaimKind
 {
@@ -22,7 +26,7 @@ public enum FocusClaimKind
 
 /// <summary>
 /// A report that something has taken the keyboard: what took it, the panel it belongs to, the edit target it
-/// offers, and for a web surface the callback that drops its caret once focus moves on.
+/// offers, and for a web surface its identity and the callback that drops its caret once focus moves on.
 /// </summary>
 public sealed record FocusClaim
 {
@@ -30,11 +34,13 @@ public sealed record FocusClaim
         FocusClaimKind kind,
         WorkspacePanelId panel,
         IEditTarget? editTarget,
+        IFocusSurface? surface,
         Action? releaseFocus)
     {
         Kind = kind;
         Panel = panel;
         EditTarget = editTarget;
+        Surface = surface;
         ReleaseFocus = releaseFocus;
     }
 
@@ -54,6 +60,12 @@ public sealed record FocusClaim
     public IEditTarget? EditTarget { get; }
 
     /// <summary>
+    /// Which web surface is claiming, so a claim from a second surface in the same panel can be told from the
+    /// holding surface re-reporting its own focus. Null for a managed control.
+    /// </summary>
+    public IFocusSurface? Surface { get; }
+
+    /// <summary>
     /// Drops the claiming surface's caret once focus moves off it. Null for a managed control, which has no
     /// caret of its own to drop.
     /// </summary>
@@ -64,19 +76,34 @@ public sealed record FocusClaim
     /// </summary>
     public static FocusClaim FromManagedControl(WorkspacePanelId panel, IEditTarget? editTarget = null)
     {
-        return new FocusClaim(FocusClaimKind.ManagedControl, panel, editTarget, releaseFocus: null);
+        return new FocusClaim(FocusClaimKind.ManagedControl, panel, editTarget, surface: null, releaseFocus: null);
     }
 
     /// <summary>
-    /// A claim by a web surface. The release callback is required rather than optional: supplying it
-    /// is what allows the surface to be released when focus later moves off it.
+    /// A claim by a web surface. The identity and release callback are required rather than optional:
+    /// supplying them is what lets the surface be recognised on a later claim and released when focus moves
+    /// off it.
     /// </summary>
     public static FocusClaim FromWebSurface(
         WorkspacePanelId panel,
         IEditTarget? editTarget,
+        IFocusSurface surface,
         Action releaseFocus)
     {
-        return new FocusClaim(FocusClaimKind.WebSurface, panel, editTarget, releaseFocus);
+        return new FocusClaim(FocusClaimKind.WebSurface, panel, editTarget, surface, releaseFocus);
+    }
+
+    /// <summary>
+    /// A claim by nothing at all, for focus leaving the workspace panels entirely.
+    /// </summary>
+    public static FocusClaim None()
+    {
+        return new FocusClaim(
+            FocusClaimKind.ManagedControl,
+            WorkspacePanelId.None,
+            editTarget: null,
+            surface: null,
+            releaseFocus: null);
     }
 }
 
