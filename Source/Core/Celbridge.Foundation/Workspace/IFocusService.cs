@@ -13,7 +13,9 @@ public enum FocusClaimKind
     ManagedControl,
 
     /// <summary>
-    /// A web surface, reporting through the web-view focus registry.
+    /// A web surface, reporting through the web-view focus registry. The surface rather than the web view
+    /// control: on macOS that control never takes focus at all, the native web view inside it becomes the
+    /// window's first responder instead.
     /// </summary>
     WebSurface
 }
