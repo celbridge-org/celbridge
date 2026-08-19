@@ -10,42 +10,29 @@
   <StackPanel Orientation="Horizontal"
               Spacing="0"
               HorizontalAlignment="Left">
-    <StackPanel.Resources>
-      <!-- Button theme resources are overridden on the parent to give all child buttons the same hover behaviour -->
-      <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-      <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource SystemListLowColor}" />
-      <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource SystemListMediumColor}" />
-      <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
-      <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
-      <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
-    </StackPanel.Resources>
-
-    <Button x:Name="NewFileButton"
-            AutomationProperties.AutomationId="new-file-button"
-            ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
-            Padding="6"
-            Click="NewFileButton_Click">
+    <controls:IconButton x:Name="NewFileButton"
+                         AutomationProperties.AutomationId="new-file-button"
+                         ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
+                         Click="NewFileButton_Click">
       <controls:Icon
                 Symbol="FileAdd"
                 FontSize="{StaticResource IconSizeMedium}" />
-    </Button>
-    <Button x:Name="NewFolderButton"
-            AutomationProperties.AutomationId="new-folder-button"
-            ToolTipService.ToolTip="{x:Bind NewFolderTooltipString}"
-            Padding="6"
-            Click="NewFolderButton_Click">
+    </controls:IconButton>
+    <controls:IconButton x:Name="NewFolderButton"
+                         AutomationProperties.AutomationId="new-folder-button"
+                         ToolTipService.ToolTip="{x:Bind NewFolderTooltipString}"
+                         Click="NewFolderButton_Click">
       <controls:Icon
                 Symbol="FolderAdd"
                 FontSize="{StaticResource IconSizeMedium}" />
-    </Button>
-    <Button x:Name="CollapseFoldersButton"
-            AutomationProperties.AutomationId="collapse-folders-button"
-            ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
-            Padding="6"
-            Click="CollapseFoldersButton_Click">
+    </controls:IconButton>
+    <controls:IconButton x:Name="CollapseFoldersButton"
+                         AutomationProperties.AutomationId="collapse-folders-button"
+                         ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
+                         Click="CollapseFoldersButton_Click">
       <controls:Icon
                 Symbol="Collapse"
                 FontSize="{StaticResource IconSizeMedium}" />
-    </Button>
+    </controls:IconButton>
   </StackPanel>
 </UserControl>

@@ -1,6 +1,6 @@
-using Celbridge.Navigation;
 using Celbridge.Platform;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 using Microsoft.UI.Dispatching;
 
 namespace Celbridge.UserInterface.Views;
@@ -15,9 +15,8 @@ public sealed partial class ApplicationToolbar : UserControl
     /// The height of the toolbar strip. It occupies the row above the page content on every head, so the
     /// window minimum is composed from it as well.
     /// </summary>
-    public const double ToolbarHeight = 48;
+    public const double ToolbarHeight = 40;
 
-    private readonly IStringLocalizer _stringLocalizer;
     private DispatcherQueueTimer? _layoutChangedTimer;
 
     /// <summary>
@@ -35,6 +34,8 @@ public sealed partial class ApplicationToolbar : UserControl
 
         ToolbarRow.Height = new Microsoft.UI.Xaml.GridLength(ToolbarHeight);
 
+        AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(WorkspaceConstants.UtilityPanelRailWidth);
+
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (platformInfo.ReservesWindowCaptionButtons)
         {
@@ -43,7 +44,6 @@ public sealed partial class ApplicationToolbar : UserControl
             CaptionButtonsColumn.Width = new Microsoft.UI.Xaml.GridLength(144);
         }
 
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<TitleBarViewModel>();
 
         this.DataContext = ViewModel;
@@ -56,13 +56,10 @@ public sealed partial class ApplicationToolbar : UserControl
     {
         ViewModel.OnLoaded();
 
-        ApplyTooltips();
-
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         LayoutToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
         NavigationToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
-        SettingsButton.SizeChanged += OnInteractiveElement_SizeChanged;
 
         // A host that derives window-chrome regions from the toolbar (the Windows TitleBar wrapper)
         // recomputes them when the layout shifts, e.g. on window maximize/restore.
@@ -78,7 +75,6 @@ public sealed partial class ApplicationToolbar : UserControl
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         NavigationToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
-        SettingsButton.SizeChanged -= OnInteractiveElement_SizeChanged;
         this.LayoutUpdated -= OnApplicationToolbar_LayoutUpdated;
 
         if (_layoutChangedTimer is not null)
@@ -101,7 +97,6 @@ public sealed partial class ApplicationToolbar : UserControl
 
         candidates.AddRange(NavigationToolbar.GetInteractiveElements());
         candidates.AddRange(LayoutToolbar.GetInteractiveElements());
-        candidates.Add(SettingsButton);
 
         var elements = new List<FrameworkElement>();
         foreach (var candidate in candidates)
@@ -115,13 +110,6 @@ public sealed partial class ApplicationToolbar : UserControl
         }
 
         return elements;
-    }
-
-    private void ApplyTooltips()
-    {
-        var settingsTooltip = _stringLocalizer.GetString("TitleBar_SettingsTooltip");
-        ToolTipService.SetToolTip(SettingsButton, settingsTooltip);
-        ToolTipService.SetPlacement(SettingsButton, PlacementMode.Bottom);
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -165,11 +153,6 @@ public sealed partial class ApplicationToolbar : UserControl
         {
             _layoutChangedTimer.Start();
         }
-    }
-
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.NavigateToPage(NavigationConstants.SettingsTag);
     }
 
     private void RaiseInteractiveLayoutChanged()

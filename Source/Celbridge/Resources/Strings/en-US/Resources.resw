@@ -1115,9 +1115,6 @@ Open with default application instead?</value>
   <data name="FullScreenToolbar_ExitPresentationHint" xml:space="preserve">
     <value>To exit Presentation mode, choose Window &gt; Exit Presentation</value>
   </data>
-  <data name="TitleBar_SettingsTooltip" xml:space="preserve">
-    <value>Open Application Settings</value>
-  </data>
   <data name="TitleBar_WorkspaceTooltip" xml:space="preserve">
     <value>Workspace</value>
   </data>

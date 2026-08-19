@@ -8,11 +8,10 @@
   <!-- Collapsed while the current load found nothing: an indicator that is always lit stops being
        looked at. Each severity is its own element so its foreground can stay a ThemeResource and
        follow a theme change; a brush read from Application.Current.Resources would not. -->
-  <Button x:Name="HealthButton"
-          AutomationProperties.AutomationId="project-health-button"
-          Style="{StaticResource TransparentIconButtonStyle}"
-          VerticalAlignment="Center"
-          Click="HealthButton_Click">
+  <controls:IconButton x:Name="HealthButton"
+                       AutomationProperties.AutomationId="project-health-button"
+                       VerticalAlignment="Center"
+                       Click="HealthButton_Click">
     <Grid>
       <controls:Icon x:Name="WarningIcon"
                      Symbol="Warning"
@@ -25,5 +24,5 @@
                      Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                      Visibility="Collapsed"/>
     </Grid>
-  </Button>
+  </controls:IconButton>
 </UserControl>

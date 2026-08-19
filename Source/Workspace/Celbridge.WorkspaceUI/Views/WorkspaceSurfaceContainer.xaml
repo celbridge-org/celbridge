@@ -27,9 +27,6 @@
     </Grid.ColumnDefinitions>
 
     <Grid.RowDefinitions>
-      <!-- Sets the document areas down from the title bar so their top corners read, while the Utility
-           Panel runs up into it. Sized from GutterSize in code-behind to match the channels between areas. -->
-      <RowDefinition x:Name="DocumentAreaGutterRow"/>
       <RowDefinition x:Name="MainAreaRow"
                      Height="*"/>
       <RowDefinition Height="Auto"/>
@@ -38,7 +35,7 @@
 
     <Grid x:Name="UtilityPanelHost"
           Grid.Row="0"
-          Grid.RowSpan="4"
+          Grid.RowSpan="3"
           Grid.Column="0"
           layout:WorkspaceLayout.Surface="UtilityPanel"
           AutomationProperties.AutomationId="explorer-panel"
@@ -47,7 +44,7 @@
     <!-- Sits in its own gutter column rather than docked inside the Utility Panel, so the boundary reads
          the same as the ones between document areas. It draws nothing at rest. -->
     <controls:Splitter x:Name="UtilityPanelSplitter"
-                       Grid.Row="1"
+                       Grid.Row="0"
                        Grid.RowSpan="3"
                        Grid.Column="1"
                        Orientation="Vertical"/>
@@ -55,7 +52,7 @@
     <!-- The document-area grids carry the Documents focus-tracking identity, which is why it is declared
          here per host and not on an ancestor: the Utility Panel shares this tree and keeps its own. -->
     <Grid x:Name="MainAreaGrid"
-          Grid.Row="1"
+          Grid.Row="0"
           Grid.Column="2"
           ui:FocusTracking.Panel="Documents"
           AutomationProperties.AutomationId="main-area"/>
@@ -63,25 +60,25 @@
     <!-- The splitters draw nothing at rest. They only sit in the gutter to resize it, and light up with the
          accent line on hover and drag. -->
     <controls:Splitter x:Name="BottomAreaSplitter"
-                       Grid.Row="2"
+                       Grid.Row="1"
                        Grid.Column="2"
                        Orientation="Horizontal"/>
 
     <Grid x:Name="BottomAreaGrid"
-          Grid.Row="3"
+          Grid.Row="2"
           Grid.Column="2"
           layout:WorkspaceLayout.Surface="BottomArea"
           ui:FocusTracking.Panel="Documents"
           AutomationProperties.AutomationId="bottom-area"/>
 
     <controls:Splitter x:Name="SideAreaSplitter"
-                       Grid.Row="1"
+                       Grid.Row="0"
                        Grid.RowSpan="3"
                        Grid.Column="3"
                        Orientation="Vertical"/>
 
     <Grid x:Name="SideAreaGrid"
-          Grid.Row="1"
+          Grid.Row="0"
           Grid.RowSpan="3"
           Grid.Column="4"
           layout:WorkspaceLayout.Surface="SideArea"

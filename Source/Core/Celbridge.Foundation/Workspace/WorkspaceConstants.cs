@@ -32,10 +32,10 @@ public static class WorkspaceConstants
     public const double SectionTabStripHeight = 40;
 
     /// <summary>
-    /// Width of the icon rail down the side of the Utility Panel. Mirrored by the --cel-rail-width design
-    /// token.
+    /// Width of the icon rail down the side of the Utility Panel. Spans the whole band across to the panel
+    /// beside it, which its buttons are centred in. Mirrored by the --cel-rail-width design token.
     /// </summary>
-    public const double UtilityPanelRailWidth = 50;
+    public const double UtilityPanelRailWidth = 40;
 
     /// <summary>
     /// Default width of the Utility Panel.

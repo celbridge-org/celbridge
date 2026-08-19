@@ -15,13 +15,12 @@
               Margin="8, 0, 8, 0">
     <!-- The chevron points towards the edge the area collapses into, which depends on the area, so it is
          set in code-behind rather than declared here. -->
-    <Button x:Name="CollapseAreaButton"
-            Style="{StaticResource TransparentIconButtonStyle}"
-            ToolTipService.Placement="Bottom"
-            VerticalAlignment="Center"
-            Click="CollapseAreaButton_Click">
+    <controls:IconButton x:Name="CollapseAreaButton"
+                         ToolTipService.Placement="Bottom"
+                         VerticalAlignment="Center"
+                         Click="CollapseAreaButton_Click">
       <controls:Icon x:Name="CollapseAreaIcon"
                      FontSize="{StaticResource IconSizeMedium}"/>
-    </Button>
+    </controls:IconButton>
   </StackPanel>
 </UserControl>

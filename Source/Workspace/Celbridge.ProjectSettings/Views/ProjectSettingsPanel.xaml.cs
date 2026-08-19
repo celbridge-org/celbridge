@@ -69,15 +69,19 @@ public sealed partial class ProjectSettingsPanel : UserControl, IProjectSettings
         FocusPanel();
     }
 
-    private void NavTab_Tapped(object sender, TappedRoutedEventArgs e)
+    private void NavTab_Click(object sender, RoutedEventArgs e)
     {
         FocusPanel();
 
-        if (sender is FrameworkElement element
-            && element.Tag is string tag
+        if (sender is ToggleButton toggle
+            && toggle.Tag is string tag
             && int.TryParse(tag, out var index))
         {
             ViewModel.SelectedSectionIndex = index;
+
+            // The click has already toggled this one. Selecting the section is what decides the state, so it
+            // is put back: clicking the section already showing must leave it checked, not clear it.
+            toggle.IsChecked = true;
         }
     }
 }

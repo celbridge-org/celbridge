@@ -86,21 +86,18 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdateWorkspaceControlsVisibility()
     {
-        // Panel toggles, layout-mode radios, and the reset button only make sense on the Workspace page.
-        // The Full Screen toggle stays available everywhere because it is a window-level concern.
+        // Everything this toolbar offers acts on the workspace surfaces, so the whole toolbar goes away off
+        // the Workspace page rather than leaving a layout button whose flyout has nothing left to show.
         var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
 
+        PanelLayoutButton.Visibility = visibility;
         PanelToggleButtons.Visibility = visibility;
-        ResetLayoutSeparator.Visibility = visibility;
-        ResetLayoutButton.Visibility = visibility;
 
-        WindowModeHeader.Visibility = visibility;
-        DefaultModeRadio.Visibility = visibility;
-        FocusModeRadio.Visibility = visibility;
-        PresentationModeRadio.Visibility = visibility;
-
-        BottomAreaAlignmentHeader.Visibility = visibility;
-        BottomAreaAlignmentButtons.Visibility = visibility;
+        if (!_isOnWorkspacePage)
+        {
+            // The button carrying the flyout is gone, so an open flyout would be left over the new page.
+            PanelLayoutFlyout.Hide();
+        }
     }
 
     private void ApplyTooltips()
@@ -290,11 +287,6 @@ public sealed partial class LayoutToolbar : UserControl
     private void Button_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         e.Handled = true;
-    }
-
-    private void PanelLayoutButton_Click(object sender, RoutedEventArgs e)
-    {
-        PanelLayoutFlyout.ShowAt(PanelLayoutButton);
     }
 
     private void ResetLayoutButton_Click(object sender, RoutedEventArgs e)

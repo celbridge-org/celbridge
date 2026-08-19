@@ -22,7 +22,7 @@
           BorderThickness="0"
           CornerRadius="4"
           Padding="8,0,0,0"
-          VerticalAlignment="Stretch"
+          VerticalAlignment="Center"
           VerticalContentAlignment="Stretch"
           Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
 
@@ -86,7 +86,8 @@
       </MenuFlyout>
     </FlyoutBase.AttachedFlyout>
 
-    <Grid>
+    <!-- Sized to a utility rail button, which the button takes as its own height. -->
+    <Grid Height="32">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="Auto"/>
@@ -98,8 +99,10 @@
                   Orientation="Horizontal"
                   Spacing="8"
                   VerticalAlignment="Center">
+        <!-- A filled tile reads larger than a line glyph on the same box, so it sits a step under the
+             command icon size beside it. -->
         <controls:ProjectAvatar ProjectName="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
-                                Size="20"
+                                Size="18"
                                 VerticalAlignment="Center"/>
         <TextBlock Text="{x:Bind ViewModel.ProjectTitle, Mode=OneWay}"
                    VerticalAlignment="Center"/>
@@ -120,18 +123,6 @@
                        FontSize="12"
                        VerticalAlignment="Center"/>
       </Button>
-
-      <!-- Accent underline shown while the workspace is the current page, echoing the nav tabs'
-           selection indicator. The bottom margin lifts it to match the inset the NavigationView gives
-           its own top-mode indicator. Toggled from code-behind. -->
-      <Border x:Name="WorkspaceActiveIndicator"
-              Grid.ColumnSpan="2"
-              Height="3"
-              VerticalAlignment="Bottom"
-              Margin="0,0,0,5"
-              CornerRadius="1.5"
-              Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
-              Visibility="Collapsed"/>
     </Grid>
   </Button>
 </UserControl>

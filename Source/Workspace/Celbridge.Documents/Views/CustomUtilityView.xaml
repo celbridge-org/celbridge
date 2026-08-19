@@ -2,8 +2,8 @@
     x:Class="Celbridge.Documents.Views.CustomUtilityView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:Celbridge.WorkspaceUI.Views"
-    xmlns:icons="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:workspace="using:Celbridge.WorkspaceUI.Views"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="Transparent"
@@ -15,19 +15,18 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <controls:PanelHeader x:Name="PanelHeaderControl"
-                              Grid.Row="0"
-                              ShowFocusIndicator="False">
-            <controls:PanelHeader.ToolbarContent>
+        <workspace:PanelHeader x:Name="PanelHeaderControl"
+                               Grid.Row="0"
+                               ShowFocusIndicator="False">
+            <workspace:PanelHeader.ToolbarContent>
                 <!-- Docks the utility into a document tab, reusing the same live WebView. -->
-                <Button x:Name="OpenAsDocumentButton"
-                        Style="{StaticResource TransparentIconButtonStyle}"
-                        Click="OpenAsDocumentButton_Click">
-                    <icons:Icon Symbol="Dock"
-                                FontSize="{StaticResource IconSizeMedium}"/>
-                </Button>
-            </controls:PanelHeader.ToolbarContent>
-        </controls:PanelHeader>
+                <controls:IconButton x:Name="OpenAsDocumentButton"
+                                     Click="OpenAsDocumentButton_Click">
+                    <controls:Icon Symbol="Dock"
+                                   FontSize="{StaticResource IconSizeMedium}"/>
+                </controls:IconButton>
+            </workspace:PanelHeader.ToolbarContent>
+        </workspace:PanelHeader>
 
         <Grid x:Name="CustomWebViewContainer"
               Grid.Row="1"

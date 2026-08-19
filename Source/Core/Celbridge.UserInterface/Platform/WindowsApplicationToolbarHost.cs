@@ -17,12 +17,11 @@ internal sealed class WindowsApplicationToolbarHost : IApplicationToolbarHost
         window.ExtendsContentIntoTitleBar = true;
         window.SetTitleBar(titleBar);
 
-        // Taller caption buttons (48px instead of 32px) so the system minimize/maximize/close buttons
-        // match the increased title-bar height.
+        // The standard caption button height, which the toolbar strip is sized to match.
         var appWindow = window.AppWindow;
         if (appWindow?.TitleBar != null)
         {
-            appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
+            appWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Standard;
         }
 
         return titleBar;

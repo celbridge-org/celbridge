@@ -4,7 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
   xmlns:services="using:Celbridge.UserInterface.Services"
-  xmlns:icon="using:Celbridge.UserInterface.Views.Controls">
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
   <UserControl.Resources>
 
@@ -103,12 +103,12 @@
               <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <icon:Icon Grid.Column="0"
-                       IconName="{x:Bind IconName}"
-                       FontSize="16"
-                       VerticalAlignment="Center"
-                       Margin="0,0,8,0"
-                       Visibility="{x:Bind HasIcon, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <controls:Icon Grid.Column="0"
+                           IconName="{x:Bind IconName}"
+                           FontSize="16"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Visibility="{x:Bind HasIcon, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Text="{x:Bind DisplayName}" Style="{StaticResource ListItemTitleTextStyle}"/>
@@ -173,7 +173,7 @@
               <Button Style="{StaticResource RevealManifestButtonStyle}"
                       Command="{x:Bind RevealManifestCommand}"
                       ToolTipService.ToolTip="{x:Bind RevealManifestTooltip}">
-                <icon:Icon Symbol="Reveal" FontSize="14"/>
+                <controls:Icon Symbol="Reveal" FontSize="14"/>
               </Button>
             </StackPanel>
           </Grid>
@@ -207,14 +207,14 @@
             </StackPanel>
 
             <!-- Shown when a contribution inside the expander has dropped configuration. -->
-            <icon:Icon Grid.Column="1"
-                       Symbol="Warning"
-                       FontSize="16"
-                       Margin="8,0,8,0"
-                       VerticalAlignment="Center"
-                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                       ToolTipService.ToolTip="{x:Bind IssuesTooltip}"
-                       Visibility="{x:Bind HasIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <controls:Icon Grid.Column="1"
+                           Symbol="Warning"
+                           FontSize="16"
+                           Margin="8,0,8,0"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                           ToolTipService.ToolTip="{x:Bind IssuesTooltip}"
+                           Visibility="{x:Bind HasIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
           </Grid>
         </Expander.Header>
 
@@ -259,7 +259,7 @@
               <Button Style="{StaticResource RevealManifestButtonStyle}"
                       Command="{x:Bind RevealManifestCommand}"
                       ToolTipService.ToolTip="{x:Bind RevealManifestTooltip}">
-                <icon:Icon Symbol="Reveal" FontSize="14"/>
+                <controls:Icon Symbol="Reveal" FontSize="14"/>
               </Button>
             </StackPanel>
           </Grid>

@@ -61,7 +61,6 @@ Title bar:
 - `community-button` — the Community page button.
 - `workspace-button` — the Workspace button (only resolves while a project is loaded).
 - `panel-layout-button` — the layout-mode selector (Default, Focus, Presentation).
-- `settings-button` — the app Settings button.
 - `explorer-toggle-button` — the button that shows or hides the Explorer panel.
 - `bottom-area-toggle-button` — the button that shows or hides the Bottom document area.
 - `side-area-toggle-button` — the button that shows or hides the Side document area.

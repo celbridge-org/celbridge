@@ -40,15 +40,14 @@
 
     <!-- Collapse Button. The chevron points towards the edge the panel collapses into, which depends on the
          surface the header sits in, so it is set in code-behind rather than declared here. -->
-    <Button x:Name="CollapseButton"
-            Grid.Column="4"
-            Style="{StaticResource TransparentIconButtonStyle}"
-            ToolTipService.ToolTip="{x:Bind CollapseButtonTooltip}"
-            Margin="0,0,8,0"
-            VerticalAlignment="Center"
-            Click="CollapseButton_Click">
+    <controls:IconButton x:Name="CollapseButton"
+                         Grid.Column="4"
+                         ToolTipService.ToolTip="{x:Bind CollapseButtonTooltip}"
+                         Margin="0,0,8,0"
+                         VerticalAlignment="Center"
+                         Click="CollapseButton_Click">
       <controls:Icon x:Name="CollapseButtonIcon"
                      FontSize="{StaticResource IconSizeMedium}" />
-    </Button>
+    </controls:IconButton>
   </Grid>
 </UserControl>

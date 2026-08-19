@@ -107,7 +107,7 @@ button.cel-accent:hover {
     filter: brightness(1.08);
 }
 
-/* Transparent icon button, mirroring TransparentIconButtonStyle in Styles.xaml: a rounded square hit target
+/* Transparent icon button, mirroring the IconButton control in Styles.xaml: a rounded square hit target
    that shows a subtle fill on hover. The square size, corner radius and icon scale come from the tokens. */
 .cel-icon-button {
     display: inline-flex;
@@ -119,13 +119,13 @@ button.cel-accent:hover {
     font-size: var(--cel-icon-size-medium);
     background: transparent;
     border: none;
-    border-radius: var(--cel-radius-control);
+    border-radius: var(--cel-radius-button);
     color: var(--cel-text-primary);
     cursor: pointer;
 }
 
 .cel-icon-button:hover {
-    background: var(--cel-control-hover-bg);
+    background: var(--cel-button-hover-bg);
 }
 
 /* Text-level defaults. Links, code, placeholders, and selection pick up the theme so real content reads as
@@ -475,9 +475,9 @@ hr {
 }
 
 /* Vertical icon rail, mirroring the workspace utility rail (UtilityPanel.xaml and UtilityButton.xaml): a
-   fixed-width strip of icon cells with a hover fill, an edge capsule marking the surface on screen, and
+   fixed-width strip of square buttons, each filling with a hover or selection tone, and
    hairline separators between groups. An editor uses it as an inspector rail down the right of its content,
-   with .cel-rail-right moving the border and the capsules to that edge:
+   with .cel-rail-right moving the border to that edge:
      <div class="cel-rail cel-rail-right">
        <button class="cel-rail-button selected" type="button" title="Settings">
          <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>
@@ -485,9 +485,9 @@ hr {
        <div class="cel-rail-separator"></div>
        <button class="cel-rail-button" type="button" title="Run tests"><i class="bi bi-play-fill"></i></button>
      </div>
-   Add `selected` to the button whose surface is showing. Unlike the workspace rail, whose capsule dims while
-   its panel is unfocused, an editor rail's capsule stays accent for as long as the surface is open: with
-   several rails and panels on screen at once, "this panel is open" is the more useful signal. */
+   Add `selected` to the button whose surface is showing. Unlike the workspace rail, whose fill drops to a
+   neutral tone while its panel is unfocused, an editor rail's fill stays accent for as long as the surface is
+   open: with several rails and panels on screen at once, "this panel is open" is the more useful signal. */
 .cel-rail {
     flex: 0 0 var(--cel-rail-width);
     display: flex;
@@ -509,55 +509,43 @@ hr {
     background: var(--cel-divider);
 }
 
+/* A square button centred in the rail, so the gap it leaves either side matches the gap above and below it,
+   and the fill it takes when hovered or selected is the whole button. The cell pitch is the button plus those
+   gaps, which is what --cel-rail-item-size names. */
 .cel-rail-button {
     position: relative;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: var(--cel-rail-item-size);
+    width: var(--cel-rail-button-size);
+    height: var(--cel-rail-button-size);
+    margin: calc((var(--cel-rail-item-size) - var(--cel-rail-button-size)) / 2) auto;
     padding: 0;
-    font-size: var(--cel-icon-size-large);
+    font-size: var(--cel-icon-size-medium);
     line-height: 1;
     background: transparent;
     border: none;
-    border-radius: var(--cel-radius-control);
+    border-radius: var(--cel-radius-button);
     color: var(--cel-text-primary);
     cursor: pointer;
 }
 
 .cel-rail-button:hover {
-    background: var(--cel-control-hover-bg);
+    background: var(--cel-button-hover-bg);
 }
 
-/* Tall capsule on the rail's outer edge, inset evenly from the top and bottom of the cell. */
-.cel-rail-button::before {
-    content: "";
-    position: absolute;
-    top: 2px;
-    bottom: 2px;
-    left: 2px;
-    width: 3px;
-    border-radius: 1.5px;
+.cel-rail-button.selected {
     background: var(--cel-accent);
-    opacity: 0;
+    color: var(--cel-accent-text);
 }
 
-.cel-rail-right .cel-rail-button::before {
-    left: auto;
-    right: 2px;
-}
-
-.cel-rail-button.selected::before {
-    opacity: 1;
-}
-
-/* Caution pip on the glyph's corner, positioned off the centred 22px icon box the way the native rail
+/* Caution pip on the glyph's corner, positioned off the centred icon box the way the native rail
    button's pip is. */
 .cel-rail-pip {
     position: absolute;
-    top: 10px;
-    right: 9px;
+    top: 4px;
+    right: 2px;
     width: 6px;
     height: 6px;
     border-radius: 50%;

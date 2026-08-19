@@ -95,12 +95,13 @@ public class WorkspaceMinimumSizeTests
 
         var minimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(WorkspaceSurface.All, GutterSize);
 
-        // The Utility Panel, the Main area and the Side area across, with a channel between each pair.
-        double utilityPanelWidth = WorkspaceConstants.UtilityPanelRailWidth + GutterSize + sectionWidth;
+        // The Utility Panel, the Main area and the Side area across, with a channel between each pair. The
+        // panel's own rail meets its content directly, so no channel is counted between those two.
+        double utilityPanelWidth = WorkspaceConstants.UtilityPanelRailWidth + sectionWidth;
         minimumSize.Width.Should().Be(utilityPanelWidth + GutterSize + sectionWidth + GutterSize + sectionWidth);
 
-        // The Main area above the Bottom area, and the channel above them both.
-        minimumSize.Height.Should().Be(GutterSize + sectionHeight + GutterSize + sectionHeight);
+        // The Main area above the Bottom area. The application toolbar carries the channel above them.
+        minimumSize.Height.Should().Be(sectionHeight + GutterSize + sectionHeight);
     }
 
     [Test]

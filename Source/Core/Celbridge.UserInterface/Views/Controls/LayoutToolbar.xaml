@@ -12,15 +12,12 @@
                 VerticalAlignment="Stretch">
         
         <!-- Panel Layout Button with Flyout -->
-        <Button x:Name="PanelLayoutButton"
-                AutomationProperties.AutomationId="panel-layout-button"
-                Click="PanelLayoutButton_Click"
-                DoubleTapped="Button_DoubleTapped"
-                Margin="0, 0, 2, 0"
-                Padding="6,8"
-                VerticalAlignment="Stretch"
-                Background="Transparent"
-                BorderThickness="0">
+        <!-- A plain button, not a toggle: an open flyout is a passing state, not a selection. -->
+        <controls:IconButton x:Name="PanelLayoutButton"
+                             AutomationProperties.AutomationId="panel-layout-button"
+                             VerticalAlignment="Center"
+                             DoubleTapped="Button_DoubleTapped"
+                             Margin="0,0,2,0">
             <Button.Flyout>
                 <Flyout x:Name="PanelLayoutFlyout" Placement="Bottom">
                     <StackPanel Width="250" Spacing="8">
@@ -89,44 +86,39 @@
                         <StackPanel x:Name="BottomAreaAlignmentButtons"
                                     Orientation="Horizontal"
                                     Spacing="4">
-                            <ToggleButton x:Name="AlignBottomAreaLeftButton"
-                                          Click="BottomAreaAlignmentButton_Click"
-                                          Padding="8,6"
-                                          MinWidth="36"
-                                          MinHeight="32">
+                            <controls:IconToggleButton x:Name="AlignBottomAreaLeftButton"
+                                                       Click="BottomAreaAlignmentButton_Click"
+                                                       Padding="8,6"
+                                                       MinWidth="36">
                                 <icons:BottomAreaAlignmentIcon Alignment="Left"/>
-                            </ToggleButton>
+                            </controls:IconToggleButton>
 
-                            <ToggleButton x:Name="AlignBottomAreaCenterButton"
-                                          Click="BottomAreaAlignmentButton_Click"
-                                          Padding="8,6"
-                                          MinWidth="36"
-                                          MinHeight="32">
+                            <controls:IconToggleButton x:Name="AlignBottomAreaCenterButton"
+                                                       Click="BottomAreaAlignmentButton_Click"
+                                                       Padding="8,6"
+                                                       MinWidth="36">
                                 <icons:BottomAreaAlignmentIcon Alignment="Center"/>
-                            </ToggleButton>
+                            </controls:IconToggleButton>
 
-                            <ToggleButton x:Name="AlignBottomAreaRightButton"
-                                          Click="BottomAreaAlignmentButton_Click"
-                                          Padding="8,6"
-                                          MinWidth="36"
-                                          MinHeight="32">
+                            <controls:IconToggleButton x:Name="AlignBottomAreaRightButton"
+                                                       Click="BottomAreaAlignmentButton_Click"
+                                                       Padding="8,6"
+                                                       MinWidth="36">
                                 <icons:BottomAreaAlignmentIcon Alignment="Right"/>
-                            </ToggleButton>
+                            </controls:IconToggleButton>
 
-                            <ToggleButton x:Name="AlignBottomAreaJustifyButton"
-                                          Click="BottomAreaAlignmentButton_Click"
-                                          Padding="8,6"
-                                          MinWidth="36"
-                                          MinHeight="32">
+                            <controls:IconToggleButton x:Name="AlignBottomAreaJustifyButton"
+                                                       Click="BottomAreaAlignmentButton_Click"
+                                                       Padding="8,6"
+                                                       MinWidth="36">
                                 <icons:BottomAreaAlignmentIcon Alignment="Justify"/>
-                            </ToggleButton>
+                            </controls:IconToggleButton>
                         </StackPanel>
 
-                        <MenuFlyoutSeparator x:Name="ResetLayoutSeparator"/>
+                        <MenuFlyoutSeparator/>
 
                         <!-- Reset Layout Button -->
-                        <Button x:Name="ResetLayoutButton"
-                                Click="ResetLayoutButton_Click"
+                        <Button Click="ResetLayoutButton_Click"
                                 HorizontalAlignment="Stretch">
                             <TextBlock x:Name="ResetLayoutButtonText"/>
                         </Button>
@@ -134,47 +126,38 @@
                 </Flyout>
             </Button.Flyout>
             <icons:PanelLayoutIcon x:Name="PanelLayoutIcon"/>
-        </Button>
+        </controls:IconButton>
         
         <!-- Panel Toggle Buttons -->
         <StackPanel x:Name="PanelToggleButtons"
                     Orientation="Horizontal"
                     VerticalAlignment="Stretch">
-            <Button x:Name="ToggleUtilityPanelButton"
-                    AutomationProperties.AutomationId="explorer-toggle-button"
-                    Click="ToggleUtilityPanelButton_Click"
-                    DoubleTapped="Button_DoubleTapped"
-                    Margin="2,0"
-                    Padding="6,8"
-                    VerticalAlignment="Stretch"
-                    Background="Transparent"
-                    BorderThickness="0">
+            <controls:IconButton x:Name="ToggleUtilityPanelButton"
+                                 AutomationProperties.AutomationId="explorer-toggle-button"
+                                 VerticalAlignment="Center"
+                                 Click="ToggleUtilityPanelButton_Click"
+                                 DoubleTapped="Button_DoubleTapped"
+                                 Margin="2,0">
                 <icons:UtilityPanelIcon x:Name="UtilityPanelIcon"/>
-            </Button>
+            </controls:IconButton>
             
-            <Button x:Name="ToggleBottomAreaButton"
-                    AutomationProperties.AutomationId="bottom-area-toggle-button"
-                    Click="ToggleBottomAreaButton_Click"
-                    DoubleTapped="Button_DoubleTapped"
-                    Margin="2,0"
-                    Padding="6,8"
-                    VerticalAlignment="Stretch"
-                    Background="Transparent"
-                    BorderThickness="0">
+            <controls:IconButton x:Name="ToggleBottomAreaButton"
+                                 AutomationProperties.AutomationId="bottom-area-toggle-button"
+                                 VerticalAlignment="Center"
+                                 Click="ToggleBottomAreaButton_Click"
+                                 DoubleTapped="Button_DoubleTapped"
+                                 Margin="2,0">
                 <icons:BottomAreaIcon x:Name="BottomAreaIcon"/>
-            </Button>
+            </controls:IconButton>
             
-            <Button x:Name="ToggleSideAreaButton"
-                    AutomationProperties.AutomationId="side-area-toggle-button"
-                    Click="ToggleSideAreaButton_Click"
-                    DoubleTapped="Button_DoubleTapped"
-                    Margin="2,0"
-                    Padding="6,8"
-                    VerticalAlignment="Stretch"
-                    Background="Transparent"
-                    BorderThickness="0">
+            <controls:IconButton x:Name="ToggleSideAreaButton"
+                                 AutomationProperties.AutomationId="side-area-toggle-button"
+                                 VerticalAlignment="Center"
+                                 Click="ToggleSideAreaButton_Click"
+                                 DoubleTapped="Button_DoubleTapped"
+                                 Margin="2,0">
                 <icons:SideAreaIcon x:Name="SideAreaIcon"/>
-            </Button>
+            </controls:IconButton>
         </StackPanel>
         
     </StackPanel>

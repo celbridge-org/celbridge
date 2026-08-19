@@ -70,7 +70,8 @@ public sealed partial class NavigationToolbar : UserControl
             MainMenuButton,
             HomeNavItem,
             CommunityNavItem,
-            ProjectSwitcher
+            ProjectSwitcher,
+            ProjectHealthButton
         };
 
         return elements;

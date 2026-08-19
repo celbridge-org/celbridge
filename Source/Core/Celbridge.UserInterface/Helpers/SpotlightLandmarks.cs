@@ -39,7 +39,6 @@ internal static class SpotlightLandmarks
             new("community-button", null),
             new("workspace-button", null),
             new("panel-layout-button", null),
-            new("settings-button", null),
             new("explorer-toggle-button", null),
             new("bottom-area-toggle-button", null),
             new("side-area-toggle-button", null),

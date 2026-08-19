@@ -81,6 +81,14 @@
           "css": "--cel-radius-card",
           "value": "8px",
           "published": true
+        },
+
+        "radius-button": {
+          "targets": ["css"],
+          "css": "--cel-radius-button",
+          "value": "6px",
+          "published": true,
+          "comment": "Rounding on a flat icon button, mirroring the IconButtonCornerRadius resource in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes. A step beyond the control radius, which a button carrying no border reads better at."
         }
       }
     },
@@ -131,18 +139,25 @@
     },
 
     {
-      "comment": "Vertical icon rail sizing, mirroring the workspace utility rail (WorkspaceConstants.UtilityPanelRailWidth, which sizes the panel's rail column, and UtilityButton.xaml's 48px cell). Keep the three in sync when either changes.",
+      "comment": "Vertical icon rail sizing, mirroring the workspace utility rail (WorkspaceConstants.UtilityPanelRailWidth, which sizes the panel's rail column, and UtilityButton.xaml's cell and button). The column carries the whole band up to the panel beside it, with no gutter between the two, so the square button centred in a square cell is what holds the channel open. Keep the three in sync when any changes.",
       "tokens": {
         "rail-width": {
           "targets": ["css"],
           "css": "--cel-rail-width",
-          "value": "calc(50px / var(--cel-page-zoom))",
+          "value": "calc(40px / var(--cel-page-zoom))",
           "published": true
         },
         "rail-item-size": {
           "targets": ["css"],
           "css": "--cel-rail-item-size",
-          "value": "calc(48px / var(--cel-page-zoom))",
+          "value": "calc(40px / var(--cel-page-zoom))",
+          "published": true
+        },
+
+        "rail-button-size": {
+          "targets": ["css"],
+          "css": "--cel-rail-button-size",
+          "value": "calc(32px / var(--cel-page-zoom))",
           "published": true
         }
       }
@@ -269,14 +284,18 @@
           "comment": "The subtle translucent divider (WinUI DividerBrush), used for hairline rules within a surface."
         },
         "accent": {
-          "targets": ["css"],
+          "targets": ["xaml", "css"],
+          "xaml": "AccentColor",
+          "xamlBrush": "AccentBrush",
           "css": "--cel-accent",
           "light": "#0078D4",
           "dark": "#60CDFF",
           "published": true
         },
         "accent-text": {
-          "targets": ["css"],
+          "targets": ["xaml", "css"],
+          "xaml": "AccentTextColor",
+          "xamlBrush": "AccentTextBrush",
           "css": "--cel-accent-text",
           "light": "#FFFFFF",
           "dark": "#000000",
@@ -366,6 +385,33 @@
           "light": "#E5E5E5",
           "dark": "#323335",
           "published": true
+        }
+      }
+    },
+
+    {
+      "comment": "The states a flat button takes under the pointer, wherever it sits: the utility rail, the application toolbar, a panel toolbar. One pair rather than one per surface, so every flat button in the application reads the same. Chosen to carry against both chrome and the content canvas, which the WinUI list tones do not: they land within a few units of a light surface and leave the hover invisible there.",
+      "tokens": {
+        "button-hover-background": {
+          "targets": ["xaml", "css"],
+          "xaml": "ButtonHoverBackgroundColor",
+          "xamlBrush": "ButtonHoverBackgroundBrush",
+          "css": "--cel-button-hover-bg",
+          "light": "#E2E3E5",
+          "dark": "#43464B",
+          "published": true,
+          "darkComment": "A wider step off chrome than the light theme takes. The same numeric distance separates two dark tones far less than two light ones, and at the light pair's step a hover over chrome is barely there."
+        },
+
+        "button-active-background": {
+          "targets": ["xaml", "css"],
+          "xaml": "ButtonActiveBackgroundColor",
+          "xamlBrush": "ButtonActiveBackgroundBrush",
+          "css": "--cel-button-active-bg",
+          "light": "#CFD1D4",
+          "dark": "#53565C",
+          "published": true,
+          "comment": "A surface that is on screen while its panel is unfocused. A step beyond hover, so a button already showing its surface still reads as the selected one under the pointer."
         }
       }
     },
