@@ -1,6 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
+using Windows.Foundation;
 
 namespace Celbridge.WebHost;
 
@@ -20,8 +21,56 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // another surface or panel (via the wrapped release callback in Report), and on Unregister.
     private WebViewFocusRegistration? _focusedRegistration;
 
+    // The web message handler per surface. The CoreWebView2 handed to the event is a different managed
+    // projection of the same native object than the one the WebView2 property returns, so it cannot be used
+    // to find the registration. Each surface gets a handler closing over the key it registered under.
+    private readonly Dictionary<CoreWebView2, TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs>> _webMessageHandlers = new();
+
     // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
     private IFocusReconciler? _focusReconciler;
+
+    // The JSON-RPC method the injected listener reports the loss under. The input namespace and the past
+    // tense match the notifications the page already sends its host. A well formed notification rather
+    // than a bare string because every registered surface also has a host channel reading the same web
+    // message event, and that channel logs an error for anything it cannot deserialize. StreamJsonRpc drops
+    // a notification naming a method nothing implements, so the channel ignores this one quietly.
+    private const string FocusLostMethod = "input/focusLost";
+
+    // Reports the surface losing the keyboard, which the managed layer cannot see: on the packaged Windows
+    // head the web content lives in its own child window, so a click on the caption or on any non-focusable
+    // region moves the keyboard off it without moving managed focus at all. Injected at document start
+    // through the adapter seam rather than carried by the client bundle, so a page we did not author reports
+    // its losses too.
+    private const string FocusLostScript = """
+        (function () {
+            if (window.__celbridgeFocusLostInstalled) {
+                return;
+            }
+            window.__celbridgeFocusLostInstalled = true;
+
+            // macOS injects into every frame, and only the top document's focus stands for the surface.
+            if (window.top !== window) {
+                return;
+            }
+
+            var notification = JSON.stringify({ jsonrpc: '2.0', method: 'input/focusLost' });
+
+            window.addEventListener('blur', function () {
+                // Focus moving into an iframe of this same page also blurs the top window, and the document
+                // still reports focus in that case, so settle on the next task before deciding it left.
+                setTimeout(function () {
+                    if (document.hasFocus()) {
+                        return;
+                    }
+
+                    var webView = window.chrome && window.chrome.webview;
+                    if (webView) {
+                        webView.postMessage(notification);
+                    }
+                }, 0);
+            });
+        })();
+        """;
 
     // A grant for a surface that had not registered yet, applied when that web view registers. A freshly
     // opened document is activated before its web view finishes initializing. Dropped when the user moves
@@ -54,6 +103,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         if (_registrations.ContainsKey(coreWebView))
         {
             registration.WebView.GotFocus -= OnWebViewGotFocus;
+            coreWebView.NavigationCompleted -= OnNavigationCompleted;
+            RemoveWebMessageHandler(coreWebView);
         }
 
         _registrations[coreWebView] = registration;
@@ -62,6 +113,16 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // that raise no DOM focus event. The native monitor is the macOS equivalent; a no-op elsewhere.
         registration.WebView.GotFocus += OnWebViewGotFocus;
         _webViewFocusMonitor.Register(coreWebView, () => OnNativeFocusSignal(coreWebView));
+
+        // The focus-lost signal comes back through the page rather than either of the gain paths above,
+        // because neither the managed nor the native layer observes the keyboard leaving the web content.
+        TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> webMessageHandler =
+            (_, args) => OnWebMessageReceived(coreWebView, args);
+        _webMessageHandlers[coreWebView] = webMessageHandler;
+        coreWebView.WebMessageReceived += webMessageHandler;
+
+        coreWebView.NavigationCompleted += OnNavigationCompleted;
+        _ = InstallFocusLostScriptAsync(coreWebView);
 
         if (!ReferenceEquals(_pendingGrant, registration.WebView))
         {
@@ -103,6 +164,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
 
         registration.WebView.GotFocus -= OnWebViewGotFocus;
+        coreWebView.NavigationCompleted -= OnNavigationCompleted;
+        RemoveWebMessageHandler(coreWebView);
         _webViewFocusMonitor.Unregister(coreWebView);
 
         // Invalidate the edit context on teardown so a closed editor cannot leave the Edit menu enabled. The
@@ -145,6 +208,103 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         {
             Report(registration);
         }
+    }
+
+    private async Task InstallFocusLostScriptAsync(CoreWebView2 coreWebView)
+    {
+        try
+        {
+            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView, FocusLostScript);
+
+            // Document-start injection reaches the next navigation, not the current one, and a surface
+            // registers once its content has already loaded. Run the listener against the document showing
+            // now as well; installing twice is a no-op.
+            await _webViewAdapter.ReinjectDocumentStartScriptAsync(coreWebView, FocusLostScript);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to install the focus-lost listener");
+        }
+    }
+
+    // Document-start injection is unavailable on the Windows Skia head, which re-delivers after each
+    // navigation instead. The listener guards against installing twice, so re-delivery is a no-op on the
+    // heads whose injected script already survived the navigation.
+    private async void OnNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        try
+        {
+            await _webViewAdapter.ReinjectDocumentStartScriptAsync(sender, FocusLostScript);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to re-install the focus-lost listener after a navigation");
+        }
+    }
+
+    private void RemoveWebMessageHandler(CoreWebView2 coreWebView)
+    {
+        if (_webMessageHandlers.Remove(coreWebView, out var webMessageHandler))
+        {
+            coreWebView.WebMessageReceived -= webMessageHandler;
+        }
+    }
+
+    private void OnWebMessageReceived(CoreWebView2 coreWebView, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        // This handler runs on the UI thread alongside the host channel reading the same event, so an
+        // escaping exception would be fatal. A malformed web message must never crash the host.
+        try
+        {
+            if (!_registrations.TryGetValue(coreWebView, out var registration))
+            {
+                return;
+            }
+
+            // Read as JSON rather than through TryGetWebMessageAsString, which throws on the macOS WKWebView
+            // head where a message arrives as JSON rather than a string. That would cost a thrown exception
+            // per message per surface, only to reach a discriminator. The marker carries no character JSON
+            // escaping touches, so it matches whichever shape the message takes.
+            var message = e.WebMessageAsJson;
+            if (string.IsNullOrEmpty(message)
+                || !message.Contains(FocusLostMethod, StringComparison.Ordinal))
+            {
+                // Every message the surface sends its host arrives here as well, so the marker is matched
+                // before parsing rather than deserializing the whole RPC stream twice.
+                return;
+            }
+
+            OnFocusLost(registration);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read a web message while watching for focus loss");
+        }
+    }
+
+    // The keyboard has left the page. Only the surface holding focus can lose it, and a click that moves
+    // focus elsewhere claims the new panel before this arrives, so a loss that is still current on the
+    // next turn of the UI thread is one that left focus nowhere.
+    private void OnFocusLost(WebViewFocusRegistration registration)
+    {
+        if (!ReferenceEquals(_focusedRegistration, registration))
+        {
+            return;
+        }
+
+        var departingRegistration = registration;
+
+        registration.WebView.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!ReferenceEquals(_focusedRegistration, departingRegistration))
+            {
+                return;
+            }
+
+            _logger.LogDebug("The focused web surface reported that the keyboard left it");
+
+            _focusService.ClearFocus();
+        });
     }
 
     private void OnNativeFocusSignal(CoreWebView2 coreWebView)
