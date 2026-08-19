@@ -59,23 +59,6 @@
                             </StackPanel>
                         </RadioButton>
 
-                        <!-- Full Screen toggle. Separate from the layout modes (fullscreen is orthogonal
-                             to chrome level). Windows only; macOS uses the native title-bar control, so
-                             this is collapsed on non-Windows in code-behind. -->
-                        <ToggleButton x:Name="FullScreenToggle"
-                                      Click="FullScreenToggle_Click"
-                                      HorizontalAlignment="Stretch"
-                                      HorizontalContentAlignment="Left"
-                                      Background="Transparent"
-                                      BorderThickness="0">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <controls:Icon
-                                          Symbol="FullScreen"
-                                          FontSize="{StaticResource IconSizeMedium}"/>
-                                <TextBlock x:Name="FullScreenLabel"/>
-                            </StackPanel>
-                        </ToggleButton>
-
                         <!-- Bottom Panel Alignment. The options are mutually exclusive and each one is
                              described in its tooltip, so they read as a row of glyphs rather than four
                              labelled rows. The flyout deliberately stays open on a click, so the user can
@@ -116,6 +99,21 @@
                         </StackPanel>
 
                         <MenuFlyoutSeparator/>
+
+                        <!-- Full Screen sits with Reset Layout rather than with the layout modes, which it is
+                             orthogonal to. It keeps toggle chrome so the accent fill shows while full screen
+                             is on. Windows only; macOS uses the native title-bar control, so this is
+                             collapsed in code-behind. -->
+                        <ToggleButton x:Name="FullScreenToggle"
+                                      Click="FullScreenToggle_Click"
+                                      HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <controls:Icon
+                                          Symbol="FullScreen"
+                                          FontSize="{StaticResource IconSizeMedium}"/>
+                                <TextBlock x:Name="FullScreenLabel"/>
+                            </StackPanel>
+                        </ToggleButton>
 
                         <!-- Reset Layout Button -->
                         <Button Click="ResetLayoutButton_Click"
