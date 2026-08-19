@@ -197,8 +197,11 @@
 
   <Style TargetType="controls:IconButton" BasedOn="{StaticResource IconButtonBaseStyle}"/>
 
-  <!-- The accent fill is reserved for a checked toggle, so a control with no selected state never takes it. -->
-  <Style TargetType="controls:IconToggleButton" BasedOn="{StaticResource IconButtonBaseStyle}"/>
+  <!-- The accent fill is reserved for a checked toggle, so a control with no selected state never takes it.
+       The checked tone is named here rather than in code so it resolves against the theme in force. -->
+  <Style TargetType="controls:IconToggleButton" BasedOn="{StaticResource IconButtonBaseStyle}">
+    <Setter Property="CheckedForeground" Value="{ThemeResource AccentTextBrush}"/>
+  </Style>
 
   <!-- A project row in a menu. The path goes on a second line rather than in a column beside the name: a
        path long enough to fill the menu squeezes a single-line row's name down to nothing. The padding and
