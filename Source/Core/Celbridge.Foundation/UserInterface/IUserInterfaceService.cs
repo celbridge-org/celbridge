@@ -1,3 +1,5 @@
+using Celbridge.Settings;
+
 namespace Celbridge.UserInterface;
 
 /// <summary>
@@ -34,4 +36,9 @@ public interface IUserInterfaceService
     /// Applies the currently selected theme to the UserInterface.
     /// </summary>
     void ApplyCurrentTheme();
+
+    /// <summary>
+    /// Selects the application colour theme, persisting it and applying it immediately.
+    /// </summary>
+    void SetTheme(ApplicationColorTheme theme);
 }

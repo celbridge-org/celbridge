@@ -58,6 +58,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<ISetLayoutCommand, SetLayoutCommand>();
+        services.AddTransient<ISetThemeCommand, SetThemeCommand>();
         services.AddTransient<IAlertCommand, AlertCommand>();
         services.AddTransient<IConfirmActionCommand, ConfirmActionCommand>();
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
@@ -76,6 +77,7 @@ public static class ServiceConfiguration
         services.AddTransient<NavigationToolbarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
         services.AddTransient<ApplicationMenuViewModel>();
+        services.AddTransient<ViewMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();
         services.AddTransient<ConfirmationDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();

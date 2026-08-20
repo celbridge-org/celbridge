@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
@@ -22,39 +23,83 @@ public partial class SettingsPageViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
 
     public IReadOnlyList<ThemeOption> ThemeOptions { get; }
 
     [ObservableProperty]
     private ThemeOption? _selectedTheme;
 
+    private bool _isReflectingStoredTheme;
+
     public SettingsPageViewModel(
         ISettingsService settingsService,
         IStringLocalizer stringLocalizer,
-        IUserInterfaceService userInterfaceService)
+        ICommandService commandService,
+        IMessengerService messengerService)
     {
         _settingsService = settingsService;
         _stringLocalizer = stringLocalizer;
-        _userInterfaceService = userInterfaceService;
+        _commandService = commandService;
+        _messengerService = messengerService;
 
         ThemeOptions = BuildThemeOptions();
 
-        // Assign the backing field rather than the property so reflecting the stored theme in the combo box
-        // does not run the changed handler, which would redundantly persist and re-apply the current theme.
+        ReflectStoredTheme();
+    }
+
+    public void OnLoaded()
+    {
+        // The View menu can change the theme while this page is open, so follow it rather than showing the
+        // value read at construction.
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
+
+        ReflectStoredTheme();
+    }
+
+    public void OnUnloaded()
+    {
+        _messengerService.UnregisterAll(this);
+    }
+
+    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    {
+        // The message carries the resolved light or dark theme, which cannot distinguish System from a
+        // fixed theme that happens to match it. The stored setting can, so read that instead.
+        ReflectStoredTheme();
+    }
+
+    private void ReflectStoredTheme()
+    {
         var storedTheme = _settingsService.Get(SettingCatalog.Application.Theme);
-        _selectedTheme = ThemeOptions.FirstOrDefault(themeOption => themeOption.Theme == storedTheme);
+        var storedOption = ThemeOptions.FirstOrDefault(themeOption => themeOption.Theme == storedTheme);
+
+        // Reflecting the stored theme in the combo box must not run the changed handler, which would
+        // dispatch a command to re-apply the theme that was just applied.
+        _isReflectingStoredTheme = true;
+        try
+        {
+            SelectedTheme = storedOption;
+        }
+        finally
+        {
+            _isReflectingStoredTheme = false;
+        }
     }
 
     partial void OnSelectedThemeChanged(ThemeOption? value)
     {
-        if (value is null)
+        if (value is null
+            || _isReflectingStoredTheme)
         {
             return;
         }
 
-        _settingsService.Set(SettingCatalog.Application.Theme, value.Theme);
-        _userInterfaceService.ApplyCurrentTheme();
+        _commandService.Execute<ISetThemeCommand>(command =>
+        {
+            command.Theme = value.Theme;
+        });
     }
 
     private List<ThemeOption> BuildThemeOptions()

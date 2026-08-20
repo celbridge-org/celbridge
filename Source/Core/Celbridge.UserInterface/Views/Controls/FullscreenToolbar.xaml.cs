@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.Views;
 /// A minimal strip shown at the top of the screen in Presentation mode, where the application toolbar is
 /// hidden. On platforms without a native menu bar it is revealed whenever the mouse moves near the top
 /// edge, and clicking it switches to the Focus layout. On platforms with a native menu bar the exit lives
-/// in the Window menu instead, so the strip is a non-interactive hint that points there and is shown only
+/// in the View menu instead, so the strip is a non-interactive hint that points there and is shown only
 /// when Presentation mode is entered.
 /// </summary>
 public sealed partial class FullscreenToolbar : UserControl
