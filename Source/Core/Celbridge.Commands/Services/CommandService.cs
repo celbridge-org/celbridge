@@ -32,6 +32,13 @@ public class CommandService : ICommandService
 
     private static readonly TimeSpan WatchdogWarningInterval = TimeSpan.FromSeconds(5);
 
+    // How long the command loop parks when the queue is empty. Enqueuing a command signals
+    // _commandEnqueued, so this interval only bounds how often the application update ticks,
+    // not how quickly a command starts.
+    private static readonly TimeSpan IdleTickInterval = TimeSpan.FromMilliseconds(16);
+
+    private readonly SemaphoreSlim _commandEnqueued = new(0, 1);
+
     public CommandService(
         IServiceProvider serviceProvider,
         ICommandLogger logger,
@@ -316,7 +323,18 @@ public class CommandService : ICommandService
                 }
             }
 
-            await Task.Delay(1);
+            bool queueIsEmpty;
+            lock (_lock)
+            {
+                queueIsEmpty = _commandQueue.Count == 0;
+            }
+
+            // Park until a command arrives so an idle app does no work between ticks. A pending
+            // command skips the wait entirely, so a burst still drains at full speed.
+            if (queueIsEmpty)
+            {
+                await _commandEnqueued.WaitAsync(IdleTickInterval);
+            }
         }
     }
 
@@ -326,6 +344,13 @@ public class CommandService : ICommandService
     // and repeats it while the operation stays blocked so a permanent hang keeps reporting itself.
     private async Task<Result> ExecuteWithWatchdogAsync(Task<Result> operation, string operationName)
     {
+        // The application update completes synchronously on almost every tick, so allocating the
+        // watchdog timer and cancellation source before checking would dominate the idle cost.
+        if (operation.IsCompleted)
+        {
+            return await operation;
+        }
+
         using var watchdogCancellation = new CancellationTokenSource();
         var startElapsed = _stopwatch.Elapsed;
 
@@ -364,6 +389,19 @@ public class CommandService : ICommandService
             }
 
             _commandQueue.Add(new QueuedCommand(command));
+        }
+
+        // Wake the command loop if it is parked. The semaphore is capped at one permit, so a
+        // release while one is already pending would throw rather than queue a redundant wake.
+        if (_commandEnqueued.CurrentCount == 0)
+        {
+            try
+            {
+                _commandEnqueued.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+            }
         }
 
         return Result.Ok();
