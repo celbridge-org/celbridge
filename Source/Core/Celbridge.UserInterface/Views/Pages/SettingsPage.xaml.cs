@@ -22,5 +22,21 @@ public sealed partial class SettingsPage : Page
         ViewModel = ServiceLocator.AcquireService<SettingsPageViewModel>();
 
         this.InitializeComponent();
+
+        Loaded += OnSettingsPage_Loaded;
+        Unloaded += OnSettingsPage_Unloaded;
+    }
+
+    private void OnSettingsPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OnLoaded();
+    }
+
+    private void OnSettingsPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OnUnloaded();
+
+        Loaded -= OnSettingsPage_Loaded;
+        Unloaded -= OnSettingsPage_Unloaded;
     }
 }

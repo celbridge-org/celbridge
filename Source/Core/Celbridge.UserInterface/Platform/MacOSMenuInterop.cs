@@ -55,6 +55,22 @@ internal enum MacKeyModifier
 }
 
 /// <summary>
+/// The display state of a Command item at the moment its menu is about to be shown: whether the item can
+/// be chosen, and whether it carries a check mark. Selector items are validated by AppKit instead.
+/// </summary>
+internal sealed record MacMenuItemState(bool IsEnabled, bool IsChecked)
+{
+    public static readonly MacMenuItemState Enabled = new(true, false);
+
+    public static readonly MacMenuItemState Disabled = new(false, false);
+
+    /// <summary>
+    /// An enabled item that shows a check mark while it represents the current selection.
+    /// </summary>
+    public static MacMenuItemState Checkable(bool isChecked) => new(true, isChecked);
+}
+
+/// <summary>
 /// One top-level menu in the menubar. IsWindowMenu marks the menu AppKit manages as the standard Window
 /// menu (it appends the open-window list and the standard items).
 /// </summary>
@@ -93,8 +109,8 @@ internal static class MacOSMenuInterop
     // Invoked with the tag of the Command item the user chose.
     private static Action<long>? _onCommand;
 
-    // Invoked with a Command item's tag to decide whether it is currently enabled.
-    private static Func<long, bool>? _onValidate;
+    // Invoked with a Command item's tag to decide how the item should currently be displayed.
+    private static Func<long, MacMenuItemState>? _onQueryState;
 
     // Each dynamic submenu's NSMenu pointer mapped to the provider that rebuilds its items on open. AppKit
     // hands the NSMenu back in menuNeedsUpdate:, so the pointer is the lookup key.
@@ -122,10 +138,10 @@ internal static class MacOSMenuInterop
     /// <summary>
     /// Builds the menubar from the given menus and installs it as the application's main menu. The first
     /// menu is the application menu (its title is replaced by the app name). onCommand runs a chosen Command
-    /// item by tag. onValidate decides, by tag, whether a Command item is currently enabled. Returns false
+    /// item by tag. onQueryState decides, by tag, how a Command item is currently displayed. Returns false
     /// off macOS or if the AppKit application cannot be reached.
     /// </summary>
-    public static bool Install(IReadOnlyList<MacMenu> menus, Action<long> onCommand, Func<long, bool> onValidate)
+    public static bool Install(IReadOnlyList<MacMenu> menus, Action<long> onCommand, Func<long, MacMenuItemState> onQueryState)
     {
         if (!OperatingSystem.IsMacOS())
         {
@@ -145,7 +161,7 @@ internal static class MacOSMenuInterop
         }
 
         _onCommand = onCommand;
-        _onValidate = onValidate;
+        _onQueryState = onQueryState;
         EnsureCommandTarget();
 
         var mainMenu = CreateMenu("MainMenu");
@@ -302,13 +318,20 @@ internal static class MacOSMenuInterop
 
     private static byte HandleValidateMenuItem(IntPtr self, IntPtr selector, IntPtr menuItem)
     {
-        // Runs on the AppKit main thread before a menu shows (and before a key equivalent fires). Defaults
-        // to enabled on any failure. Never let an exception cross back into native code.
+        // Runs on the AppKit main thread before a menu shows (and before a key equivalent fires). AppKit
+        // takes the enabled state from the return value, and the check mark has to be written onto the item
+        // here, as this is the only point at which it is known to be up to date. Defaults to enabled and
+        // unchecked on any failure. Never let an exception cross back into native code.
         try
         {
             var tag = SendMessageReturnNint(menuItem, GetSelector("tag"));
-            var enabled = _onValidate?.Invoke(tag) ?? true;
-            return enabled ? (byte)1 : (byte)0;
+            var state = _onQueryState?.Invoke(tag) ?? MacMenuItemState.Enabled;
+
+            // NSControlStateValueOn is 1 and NSControlStateValueOff is 0.
+            nint controlState = state.IsChecked ? 1 : 0;
+            SendMessageVoid(menuItem, GetSelector("setState:"), controlState);
+
+            return state.IsEnabled ? (byte)1 : (byte)0;
         }
         catch
         {

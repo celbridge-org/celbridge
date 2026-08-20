@@ -2,6 +2,8 @@ using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.Platform;
+using Celbridge.Settings;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -16,6 +18,7 @@ public class MainMenu
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly MenuFlyout _menuFlyout;
+    private readonly ViewMenuViewModel _viewMenuViewModel;
 
     public ApplicationMenuViewModel ViewModel { get; }
 
@@ -23,6 +26,7 @@ public class MainMenu
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
+        _viewMenuViewModel = ServiceLocator.AcquireService<ViewMenuViewModel>();
 
         _menuFlyout = menuFlyout;
 
@@ -41,13 +45,15 @@ public class MainMenu
     {
         _menuFlyout.Items.Clear();
 
-        // The File and Edit groups mirror the macOS menu bar (see MacOSMainMenu), folded into submenus so the
+        // The named groups mirror the macOS menu bar (see MacOSMainMenu), folded into submenus so the
         // hamburger reads the same way on Windows and Linux. Single app-level commands stay flat below them.
         _menuFlyout.Items.Add(CreateFileSubItem());
 
         // Edit verbs route to the focused surface through the edit-intent command; enable state reflects what
         // that surface can currently do.
         _menuFlyout.Items.Add(CreateEditSubItem());
+
+        _menuFlyout.Items.Add(CreateViewSubItem());
 
         _menuFlyout.Items.Add(new MenuFlyoutSeparator());
 
@@ -217,6 +223,129 @@ public class MainMenu
         AddEditItem("Menu_SelectAll", EditIntent.SelectAll);
 
         return editSubItem;
+    }
+
+    private MenuFlyoutSubItem CreateViewSubItem()
+    {
+        // Everything here except the theme acts on the workspace surfaces.
+        var isWorkspaceLoaded = _viewMenuViewModel.IsWorkspaceLoaded;
+
+        // Unlike the File submenu, the items here carry no icons: a check mark and an icon share the same
+        // leading column, so the submenu gives that column over to the check glyph.
+        var viewSubItem = new MenuFlyoutSubItem
+        {
+            Text = _stringLocalizer.GetString("Menu_View")
+        };
+
+        void AddLayoutModeItem(string labelKey, LayoutMode layoutMode)
+        {
+            var isCurrentMode = _viewMenuViewModel.LayoutMode == layoutMode;
+
+            var modeItem = CreateToggleMenuItem(
+                label: _stringLocalizer.GetString(labelKey),
+                isChecked: isCurrentMode,
+                isEnabled: isWorkspaceLoaded,
+                onClick: (sender, e) => _viewMenuViewModel.SetLayoutMode(layoutMode));
+
+            viewSubItem.Items.Add(modeItem);
+        }
+
+        AddLayoutModeItem("LayoutToolbar_DefaultLabel", LayoutMode.Default);
+        AddLayoutModeItem("LayoutToolbar_FocusLabel", LayoutMode.Focus);
+        AddLayoutModeItem("LayoutToolbar_PresentationLabel", LayoutMode.Presentation);
+
+        viewSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        void AddSurfaceItem(string labelKey, WorkspaceSurface surface)
+        {
+            var isVisible = _viewMenuViewModel.IsSurfaceVisible(surface);
+
+            var surfaceItem = CreateToggleMenuItem(
+                label: _stringLocalizer.GetString(labelKey),
+                isChecked: isVisible,
+                isEnabled: isWorkspaceLoaded,
+                onClick: (sender, e) => _viewMenuViewModel.SetSurfaceVisibility(surface, !isVisible));
+
+            viewSubItem.Items.Add(surfaceItem);
+        }
+
+        AddSurfaceItem("Menu_UtilityPanel", WorkspaceSurface.UtilityPanel);
+        AddSurfaceItem("Menu_BottomArea", WorkspaceSurface.BottomArea);
+        AddSurfaceItem("Menu_SideArea", WorkspaceSurface.SideArea);
+
+        viewSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        // Full Screen and Reset Layout act on the window as a whole rather than on one surface, so they
+        // group together as they do in the layout flyout. Where the platform supplies fullscreen through
+        // the window chrome the app offers no toggle of its own (see LayoutToolbar, which hides the same
+        // control).
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (!platformInfo.HasNativeFullScreenAffordance)
+        {
+            var fullScreenItem = CreateToggleMenuItem(
+                label: _stringLocalizer.GetString("LayoutToolbar_FullScreen"),
+                isChecked: _viewMenuViewModel.IsFullScreen,
+                isEnabled: true,
+                onClick: (sender, e) => _viewMenuViewModel.ToggleFullScreen());
+
+            viewSubItem.Items.Add(fullScreenItem);
+        }
+
+        var resetLayoutItem = new MenuFlyoutItem
+        {
+            Text = _stringLocalizer.GetString("LayoutToolbar_ResetLayoutButton"),
+            IsEnabled = isWorkspaceLoaded
+        };
+        resetLayoutItem.Click += (sender, e) => _viewMenuViewModel.ResetLayout();
+        viewSubItem.Items.Add(resetLayoutItem);
+
+        viewSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        viewSubItem.Items.Add(CreateThemeSubItem());
+
+        return viewSubItem;
+    }
+
+    private MenuFlyoutSubItem CreateThemeSubItem()
+    {
+        var themeSubItem = new MenuFlyoutSubItem
+        {
+            Text = _stringLocalizer.GetString("Menu_Theme")
+        };
+
+        // The stored theme can be System as well as a fixed Light or Dark, so all three are offered rather
+        // than a single toggle. Mirrors the Settings page theme options.
+        var currentTheme = _viewMenuViewModel.Theme;
+
+        foreach (var theme in Enum.GetValues<ApplicationColorTheme>())
+        {
+            var themeItem = CreateToggleMenuItem(
+                label: _stringLocalizer.GetString("Theme_" + theme),
+                isChecked: theme == currentTheme,
+                isEnabled: true,
+                onClick: (sender, e) => _viewMenuViewModel.SetTheme(theme));
+
+            themeSubItem.Items.Add(themeItem);
+        }
+
+        return themeSubItem;
+    }
+
+    private ToggleMenuFlyoutItem CreateToggleMenuItem(
+        string label,
+        bool isChecked,
+        bool isEnabled,
+        RoutedEventHandler onClick)
+    {
+        var menuItem = new ToggleMenuFlyoutItem
+        {
+            Text = label,
+            IsChecked = isChecked,
+            IsEnabled = isEnabled
+        };
+        menuItem.Click += onClick;
+
+        return menuItem;
     }
 
     private void ExecuteCreateResource(ResourceType resourceType)

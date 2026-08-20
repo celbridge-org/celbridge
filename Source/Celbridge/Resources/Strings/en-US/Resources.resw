@@ -1113,7 +1113,7 @@ Open with default application instead?</value>
     <value>Exit Presentation</value>
   </data>
   <data name="FullScreenToolbar_ExitPresentationHint" xml:space="preserve">
-    <value>To exit Presentation mode, choose Window &gt; Exit Presentation</value>
+    <value>To exit Presentation mode, choose another layout from the View menu</value>
   </data>
   <data name="TitleBar_WorkspaceTooltip" xml:space="preserve">
     <value>Workspace</value>
@@ -1166,6 +1166,24 @@ Open with default application instead?</value>
   <data name="Menu_File" xml:space="preserve">
     <value>File</value>
   </data>
+  <data name="Menu_View" xml:space="preserve">
+    <value>View</value>
+  </data>
+  <data name="Menu_UtilityPanel" xml:space="preserve">
+    <value>Left Panel</value>
+  </data>
+  <data name="Menu_BottomArea" xml:space="preserve">
+    <value>Bottom Panel</value>
+  </data>
+  <data name="Menu_SideArea" xml:space="preserve">
+    <value>Right Panel</value>
+  </data>
+  <data name="Menu_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Menu_EnterFullScreen" xml:space="preserve">
+    <value>Enter Full Screen</value>
+  </data>
   <data name="Menu_Edit" xml:space="preserve">
     <value>Edit</value>
   </data>
@@ -1201,9 +1219,6 @@ Open with default application instead?</value>
   </data>
   <data name="Menu_BringAllToFront" xml:space="preserve">
     <value>Bring All to Front</value>
-  </data>
-  <data name="Menu_ExitPresentation" xml:space="preserve">
-    <value>Exit Presentation</value>
   </data>
   <data name="Menu_Help" xml:space="preserve">
     <value>Help</value>

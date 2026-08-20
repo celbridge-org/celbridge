@@ -1,15 +1,15 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Settings;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// Defines and installs Celbridge's native macOS menubar. Mirrors the in-window hamburger menu's project
-/// commands (dispatched to the same ApplicationMenuViewModel) and adds the standard App, Edit, and Window menus
-/// macOS users expect. macOS-only. Call once at startup on the UI thread.
+/// Defines and installs Celbridge's native macOS menubar, dispatching to the same view models as the in-window
+/// hamburger menu. macOS-only. Call once at startup on the UI thread.
 /// </summary>
 internal static class MacOSMainMenu
 {
@@ -27,8 +27,17 @@ internal static class MacOSMainMenu
     private const long TagNewFolder = 12;
     private const long TagShowLogs = 13;
     private const long TagFind = 14;
-    private const long TagExitPresentation = 15;
-    private const long TagCheckReferences = 16;
+    private const long TagCheckReferences = 15;
+    private const long TagLayoutDefault = 16;
+    private const long TagLayoutFocus = 17;
+    private const long TagLayoutPresentation = 18;
+    private const long TagUtilityPanel = 19;
+    private const long TagBottomArea = 20;
+    private const long TagSideArea = 21;
+    private const long TagResetLayout = 22;
+    private const long TagThemeSystem = 23;
+    private const long TagThemeLight = 24;
+    private const long TagThemeDark = 25;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -115,6 +124,32 @@ internal static class MacOSMainMenu
             }
         };
 
+        // The layout modes carry check marks rather than being separate enter and exit commands, so
+        // Presentation mode always has a visible way out here. The in-window reveal strip cannot serve as
+        // one on macOS, because the menu bar and title bar auto-reveal over it in native fullscreen.
+        var viewMenu = new MacMenu
+        {
+            Title = Text("Menu_View"),
+            Items = new List<MacMenuItem>
+            {
+                MacMenuItem.Command(Text("LayoutToolbar_DefaultLabel"), TagLayoutDefault),
+                MacMenuItem.Command(Text("LayoutToolbar_FocusLabel"), TagLayoutFocus),
+                MacMenuItem.Command(Text("LayoutToolbar_PresentationLabel"), TagLayoutPresentation),
+                MacMenuItem.Separator(),
+                MacMenuItem.Command(Text("Menu_UtilityPanel"), TagUtilityPanel),
+                MacMenuItem.Command(Text("Menu_BottomArea"), TagBottomArea),
+                MacMenuItem.Command(Text("Menu_SideArea"), TagSideArea),
+                MacMenuItem.Separator(),
+                // Full Screen and Reset Layout act on the window as a whole rather than on one
+                // surface, so they group together as they do in the layout flyout. macOS owns fullscreen,
+                // so it is a responder-chain Selector reaching the window rather than a command of ours.
+                MacMenuItem.Selector(Text("Menu_EnterFullScreen"), "toggleFullScreen:", "f", MacKeyModifier.Command | MacKeyModifier.Control),
+                MacMenuItem.Command(Text("LayoutToolbar_ResetLayoutButton"), TagResetLayout),
+                MacMenuItem.Separator(),
+                MacMenuItem.Submenu(Text("Menu_Theme"), BuildThemeItems)
+            }
+        };
+
         var windowMenu = new MacMenu
         {
             Title = Text("Menu_Window"),
@@ -123,10 +158,6 @@ internal static class MacOSMainMenu
             {
                 MacMenuItem.Selector(Text("Menu_Minimize"), "performMiniaturize:", "m"),
                 MacMenuItem.Selector(Text("Menu_Zoom"), "performZoom:"),
-                MacMenuItem.Separator(),
-                // The only way out of Presentation mode on macOS. The in-window reveal strip cannot be
-                // used there because the menu bar and title bar auto-reveal over it in native fullscreen.
-                MacMenuItem.Command(Text("Menu_ExitPresentation"), TagExitPresentation),
                 MacMenuItem.Separator(),
                 MacMenuItem.Selector(Text("Menu_BringAllToFront"), "arrangeInFront:")
             }
@@ -146,11 +177,12 @@ internal static class MacOSMainMenu
             appMenu,
             fileMenu,
             editMenu,
+            viewMenu,
             windowMenu,
             helpMenu
         };
 
-        return MacOSMenuInterop.Install(menus, OnCommand, Validate);
+        return MacOSMenuInterop.Install(menus, OnCommand, QueryState);
     }
 
     private static IReadOnlyList<MacMenuItem> BuildRecentProjectItems()
@@ -165,7 +197,7 @@ internal static class MacOSMainMenu
 
         if (recentProjects.Count == 0)
         {
-            // A single disabled placeholder (greyed by Validate) when there is no history, matching the
+            // A single disabled placeholder (greyed by QueryState) when there is no history, matching the
             // in-window menu's disabled Open Recent entry.
             var noRecentItem = MacMenuItem.Command(stringLocalizer.GetString("Menu_NoRecentProjects"), TagNoRecentProjects);
             items.Add(noRecentItem);
@@ -189,6 +221,20 @@ internal static class MacOSMainMenu
         return items;
     }
 
+    private static IReadOnlyList<MacMenuItem> BuildThemeItems()
+    {
+        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+
+        var items = new List<MacMenuItem>
+        {
+            MacMenuItem.Command(stringLocalizer.GetString("Theme_System"), TagThemeSystem),
+            MacMenuItem.Command(stringLocalizer.GetString("Theme_Light"), TagThemeLight),
+            MacMenuItem.Command(stringLocalizer.GetString("Theme_Dark"), TagThemeDark)
+        };
+
+        return items;
+    }
+
     private static IFindableDocument? GetActiveFindableDocument()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
@@ -200,13 +246,13 @@ internal static class MacOSMainMenu
         return workspaceWrapper.WorkspaceService.DocumentsService.GetActiveFindableDocument();
     }
 
-    private static bool Validate(long tag)
+    private static MacMenuItemState QueryState(long tag)
     {
-        // The standard Edit verbs are responder-chain Selector items (see the Edit menu in Install), so
-        // AppKit handles their enable state. This validation only covers the Command items below.
+        // The standard Edit verbs and Full Screen are responder-chain Selector items (see Install), so
+        // AppKit handles their state. This only covers the Command items below.
 
         // Reload and Close act on the open project, so they are enabled only while a workspace is loaded.
-        // Every other command is always available. Mirrors the hamburger menu's IsWorkspaceLoaded gating.
+        // Every other project command is always available. Mirrors the hamburger menu's gating.
         switch (tag)
         {
             case TagReloadProject:
@@ -214,20 +260,91 @@ internal static class MacOSMainMenu
             case TagNewFile:
             case TagNewFolder:
             case TagCheckReferences:
-                return ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
+                return WorkspaceCommandState();
 
             case TagFind:
-                return GetActiveFindableDocument()?.CanFind ?? false;
+                return FindCommandState();
 
-            case TagExitPresentation:
-                return ServiceLocator.AcquireService<IWindowModeService>().LayoutMode == LayoutMode.Presentation;
+            case TagLayoutDefault:
+                return LayoutModeState(LayoutMode.Default);
+
+            case TagLayoutFocus:
+                return LayoutModeState(LayoutMode.Focus);
+
+            case TagLayoutPresentation:
+                return LayoutModeState(LayoutMode.Presentation);
+
+            case TagUtilityPanel:
+                return SurfaceState(WorkspaceSurface.UtilityPanel);
+
+            case TagBottomArea:
+                return SurfaceState(WorkspaceSurface.BottomArea);
+
+            case TagSideArea:
+                return SurfaceState(WorkspaceSurface.SideArea);
+
+            case TagResetLayout:
+                return WorkspaceCommandState();
+
+            case TagThemeSystem:
+                return ThemeState(ApplicationColorTheme.System);
+
+            case TagThemeLight:
+                return ThemeState(ApplicationColorTheme.Light);
+
+            case TagThemeDark:
+                return ThemeState(ApplicationColorTheme.Dark);
 
             case TagNoRecentProjects:
-                return false;
+                return MacMenuItemState.Disabled;
 
             default:
-                return true;
+                return MacMenuItemState.Enabled;
         }
+    }
+
+    private static MacMenuItemState FindCommandState()
+    {
+        var canFind = GetActiveFindableDocument()?.CanFind ?? false;
+
+        return canFind ? MacMenuItemState.Enabled : MacMenuItemState.Disabled;
+    }
+
+    private static MacMenuItemState WorkspaceCommandState()
+    {
+        var isWorkspaceLoaded = ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
+
+        return isWorkspaceLoaded ? MacMenuItemState.Enabled : MacMenuItemState.Disabled;
+    }
+
+    private static MacMenuItemState LayoutModeState(LayoutMode layoutMode)
+    {
+        var viewModel = GetViewMenuViewModel();
+        if (!viewModel.IsWorkspaceLoaded)
+        {
+            return MacMenuItemState.Disabled;
+        }
+
+        return MacMenuItemState.Checkable(viewModel.LayoutMode == layoutMode);
+    }
+
+    private static MacMenuItemState SurfaceState(WorkspaceSurface surface)
+    {
+        var viewModel = GetViewMenuViewModel();
+        if (!viewModel.IsWorkspaceLoaded)
+        {
+            return MacMenuItemState.Disabled;
+        }
+
+        return MacMenuItemState.Checkable(viewModel.IsSurfaceVisible(surface));
+    }
+
+    private static MacMenuItemState ThemeState(ApplicationColorTheme theme)
+    {
+        // The theme applies to the whole application, so it stays available with no project open.
+        var viewModel = GetViewMenuViewModel();
+
+        return MacMenuItemState.Checkable(viewModel.Theme == theme);
     }
 
     private static void OnCommand(long tag)
@@ -309,13 +426,44 @@ internal static class MacOSMainMenu
                 GetActiveFindableDocument()?.TryBeginFind();
                 break;
 
-            case TagExitPresentation:
-                // Focus keeps the side panels hidden while restoring the application toolbar, so the user
-                // can pick their next layout from there.
-                ServiceLocator.AcquireService<ICommandService>().Execute<ISetLayoutCommand>(command =>
-                {
-                    command.Transition = LayoutTransition.Focus;
-                });
+            case TagLayoutDefault:
+                GetViewMenuViewModel().SetLayoutMode(LayoutMode.Default);
+                break;
+
+            case TagLayoutFocus:
+                GetViewMenuViewModel().SetLayoutMode(LayoutMode.Focus);
+                break;
+
+            case TagLayoutPresentation:
+                GetViewMenuViewModel().SetLayoutMode(LayoutMode.Presentation);
+                break;
+
+            case TagUtilityPanel:
+                ToggleSurface(WorkspaceSurface.UtilityPanel);
+                break;
+
+            case TagBottomArea:
+                ToggleSurface(WorkspaceSurface.BottomArea);
+                break;
+
+            case TagSideArea:
+                ToggleSurface(WorkspaceSurface.SideArea);
+                break;
+
+            case TagResetLayout:
+                GetViewMenuViewModel().ResetLayout();
+                break;
+
+            case TagThemeSystem:
+                GetViewMenuViewModel().SetTheme(ApplicationColorTheme.System);
+                break;
+
+            case TagThemeLight:
+                GetViewMenuViewModel().SetTheme(ApplicationColorTheme.Light);
+                break;
+
+            case TagThemeDark:
+                GetViewMenuViewModel().SetTheme(ApplicationColorTheme.Dark);
                 break;
 
             case TagClearRecentProjects:
@@ -327,6 +475,19 @@ internal static class MacOSMainMenu
                 commandService.Execute<IOpenBrowserCommand>(command => command.URL = WebsiteUrl);
                 break;
         }
+    }
+
+    private static ViewMenuViewModel GetViewMenuViewModel()
+    {
+        return ServiceLocator.AcquireService<ViewMenuViewModel>();
+    }
+
+    private static void ToggleSurface(WorkspaceSurface surface)
+    {
+        var viewModel = GetViewMenuViewModel();
+        var isVisible = viewModel.IsSurfaceVisible(surface);
+
+        viewModel.SetSurfaceVisibility(surface, !isVisible);
     }
 
     private static void ShowAboutPanel()

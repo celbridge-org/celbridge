@@ -194,6 +194,12 @@ public class UserInterfaceService : IUserInterfaceService
         ApplyCurrentTheme();
     }
 
+    public void SetTheme(ApplicationColorTheme theme)
+    {
+        _settingsService.Set(SettingCatalog.Application.Theme, theme);
+        ApplyCurrentTheme();
+    }
+
     public void ApplyCurrentTheme()
     {
         var theme = _settingsService.Get(SettingCatalog.Application.Theme);
