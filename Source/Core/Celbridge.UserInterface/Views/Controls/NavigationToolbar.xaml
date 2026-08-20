@@ -24,11 +24,11 @@
       </Button.Flyout>
     </controls:IconButton>
 
-    <!-- Width sized to its two items: a top-mode NavigationView otherwise reserves a pane's worth of width
+    <!-- Width sized to its single item: a top-mode NavigationView otherwise reserves a pane's worth of width
          whatever it holds, which pushes everything after it into the middle of the toolbar. Goes away with
-         the Home and Community items. -->
+         the Home item. -->
     <NavigationView x:Name="PageNavigation"
-                    Width="160"
+                    Width="80"
                     HorizontalAlignment="Left"
                     IsPaneToggleButtonVisible="False"
                     IsBackButtonVisible="Collapsed"
@@ -49,14 +49,6 @@
                                 AutomationProperties.AutomationId="home-button"
                                 Tag="Home">
                 <controls:Icon Symbol="Home"
-                               FontSize="{StaticResource IconSizeMedium}"/>
-            </NavigationViewItem>
-
-            <!-- Community -->
-            <NavigationViewItem x:Name="CommunityNavItem"
-                                AutomationProperties.AutomationId="community-button"
-                                Tag="Community">
-                <controls:Icon Symbol="People"
                                FontSize="{StaticResource IconSizeMedium}"/>
             </NavigationViewItem>
 

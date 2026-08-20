@@ -23,10 +23,5 @@ public enum ApplicationPage
     /// <summary>
     /// The settings page for configuring the application.
     /// </summary>
-    Settings,
-
-    /// <summary>
-    /// The community page for accessing forums and community content.
-    /// </summary>
-    Community
+    Settings
 }

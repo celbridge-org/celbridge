@@ -20,7 +20,16 @@
         <Grid Grid.Column="0"
               Background="{ThemeResource ChromeBackgroundBrush}">
 
-            <StackPanel Orientation="Vertical"
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- Absorbs the height between the two groups. It collapses to nothing before the groups
+                     overlap, so a short window leaves them meeting rather than drawn on top of each other. -->
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0"
+                        Orientation="Vertical"
                         ui:FocusTracking.PreservePanelFocus="True">
 
                 <StackPanel x:Name="RailItems" Orientation="Vertical">
@@ -33,6 +42,14 @@
                 <rail:UtilityButton x:Name="ProjectSettingsButton"
                                     Margin="0,16,0,0" />
             </StackPanel>
+
+            <!-- The community links, built from the link catalog in code-behind. Pinned to the bottom of the
+                 rail, away from the surface buttons above: these open a document elsewhere in the layout
+                 rather than selecting the surface beside the rail. -->
+            <StackPanel x:Name="CommunityItems"
+                        Grid.Row="2"
+                        Orientation="Vertical"
+                        ui:FocusTracking.PreservePanelFocus="True" />
         </Grid>
 
         <!-- Content area for the selected panel. Carved out of the field like a document section, so a custom

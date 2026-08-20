@@ -16,11 +16,6 @@ public static class NavigationConstants
     public const string SettingsTag = "Settings";
 
     /// <summary>
-    /// Tag for the Community page.
-    /// </summary>
-    public const string CommunityTag = "Community";
-
-    /// <summary>
     /// Tag for the Workspace page.
     /// </summary>
     public const string WorkspaceTag = "Workspace";

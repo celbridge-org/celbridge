@@ -107,11 +107,6 @@ public static class ServiceConfiguration
             ApplicationPage.Home);
                 
         navigationService.RegisterPage(
-            NavigationConstants.CommunityTag, 
-            typeof(CommunityPage), 
-            ApplicationPage.Community);
-
-        navigationService.RegisterPage(
             NavigationConstants.SettingsTag,
             typeof(SettingsPage),
             ApplicationPage.Settings);

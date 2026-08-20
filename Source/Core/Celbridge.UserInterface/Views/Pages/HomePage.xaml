@@ -16,6 +16,8 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="30"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <Grid.ColumnDefinitions>
@@ -63,8 +65,27 @@
 
     </StackPanel>
 
-    <!-- Recent section -->
+    <!-- Community section. The workspace reaches these pages from the Utility Panel rail, so this is where
+         they are available with no project loaded. -->
     <StackPanel Grid.Row="5"
+                Grid.Column="1">
+      <TextBlock Text="{x:Bind CommunityString}"
+                 FontSize="18"
+                 Margin="0,0,0,12"/>
+
+      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                       Command="{x:Bind ViewModel.ShowForumCommand}"
+                       ToolTipService.ToolTip="{x:Bind ForumTooltipString}">
+        <StackPanel Orientation="Horizontal">
+          <controls:Icon Symbol="Chat"/>
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind ForumString}"/>
+        </StackPanel>
+      </HyperlinkButton>
+    </StackPanel>
+
+    <!-- Recent section -->
+    <StackPanel Grid.Row="7"
                 Grid.Column="1"
                 Spacing="2">
 

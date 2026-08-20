@@ -144,9 +144,6 @@
   <data name="TitleBar_HomeTooltip" xml:space="preserve">
     <value>Home</value>
   </data>
-  <data name="TitleBar_CommunityTooltip" xml:space="preserve">
-    <value>Community</value>
-  </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project Folder</value>
   </data>
@@ -703,6 +700,15 @@ Open with default application instead?</value>
   </data>
   <data name="HomePage_NewProjectTooltip" xml:space="preserve">
     <value>Create a New Project</value>
+  </data>
+  <data name="HomePage_Community" xml:space="preserve">
+    <value>Community</value>
+  </data>
+  <data name="HomePage_Forum" xml:space="preserve">
+    <value>Forum</value>
+  </data>
+  <data name="HomePage_ForumTooltip" xml:space="preserve">
+    <value>Open the community forum in your browser</value>
   </data>
   <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
@@ -1345,6 +1351,9 @@ Open with default application instead?</value>
   </data>
   <data name="UtilityPanel_ProjectSettingsTooltip" xml:space="preserve">
     <value>Project Settings</value>
+  </data>
+  <data name="UtilityPanel_ForumTooltip" xml:space="preserve">
+    <value>Forum</value>
   </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
     <value>Open as document</value>

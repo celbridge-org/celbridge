@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Community;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Packages;
@@ -13,6 +14,11 @@ using Microsoft.Extensions.Localization;
 using Windows.Foundation;
 
 namespace Celbridge.WorkspaceUI.Views;
+
+/// <summary>
+/// Pairs a community link with the rail button that opens it.
+/// </summary>
+internal sealed record CommunityRailButton(CommunityLink Link, UtilityButton Button);
 
 public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 {
@@ -39,6 +45,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Docked utilities (utility id -> the document resource its WebView is docked into). A docked utility's rail
     // click activates its document tab instead of showing the panel surface.
     private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
+
+    // The community link buttons, kept so their tooltips can be applied once the panel loads. They are not rail
+    // items: they never select a surface, so they carry no selection, focus, or docked state.
+    private readonly List<CommunityRailButton> _communityButtons = new();
 
     // Selection is persisted only after RestoreSelectedUtility runs, so the constructor's default selection and
     // the restore itself do not overwrite the saved selection before it is read.
@@ -105,6 +115,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         DataContext = ViewModel;
 
         InitializeBuiltInButtons();
+        InitializeCommunityButtons();
 
         // Show the Explorer surface by default
         ShowSurface(BuiltInUtilityIds.Explorer);
@@ -145,6 +156,27 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _focusActions[BuiltInUtilityIds.Explorer] = ExplorerPanel.FocusPanel;
         _focusActions[BuiltInUtilityIds.Search] = SearchPanel.FocusSearchInput;
         _focusActions[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsPanel.FocusPanel;
+    }
+
+    private void InitializeCommunityButtons()
+    {
+        foreach (var link in CommunityLinks.All)
+        {
+            var railButton = new UtilityButton();
+            railButton.SetIcon(link.Icon);
+            railButton.SetAutomationId(link.LandmarkId);
+
+            railButton.Click += (sender, e) => OpenCommunityLink(link);
+
+            CommunityItems.Children.Add(railButton);
+
+            _communityButtons.Add(new CommunityRailButton(link, railButton));
+        }
+    }
+
+    private void OpenCommunityLink(CommunityLink link)
+    {
+        _commandService.Execute<IOpenCommunityLinkCommand>(command => command.LinkId = link.LinkId);
     }
 
     // Binds a rail button's visual state to its item view model.
@@ -226,6 +258,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         var projectSettingsTooltip = _stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
         ProjectSettingsButton.SetTooltip(projectSettingsTooltip);
+
+        foreach (var communityButton in _communityButtons)
+        {
+            var communityTooltip = _stringLocalizer.GetString(communityButton.Link.TooltipKey);
+            communityButton.Button.SetTooltip(communityTooltip);
+        }
     }
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)

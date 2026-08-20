@@ -69,7 +69,6 @@ public sealed partial class NavigationToolbar : UserControl
         {
             MainMenuButton,
             HomeNavItem,
-            CommunityNavItem,
             ProjectSwitcher,
             ProjectHealthButton
         };
@@ -84,16 +83,11 @@ public sealed partial class NavigationToolbar : UserControl
         ToolTipService.SetPlacement(MainMenuButton, PlacementMode.Bottom);
         AutomationProperties.SetName(MainMenuButton, mainMenuTooltip);
 
-        // Home and Community carry only an icon in their Content, so give assistive technology an explicit name.
+        // Home carries only an icon in its Content, so give assistive technology an explicit name.
         var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
         ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
         ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
         AutomationProperties.SetName(HomeNavItem, homeTooltip);
-
-        var communityTooltip = _stringLocalizer.GetString("TitleBar_CommunityTooltip");
-        ToolTipService.SetToolTip(CommunityNavItem, communityTooltip);
-        ToolTipService.SetPlacement(CommunityNavItem, PlacementMode.Bottom);
-        AutomationProperties.SetName(CommunityNavItem, communityTooltip);
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
@@ -116,9 +110,6 @@ public sealed partial class NavigationToolbar : UserControl
             {
                 case ApplicationPage.Home:
                     PageNavigation.SelectedItem = HomeNavItem;
-                    break;
-                case ApplicationPage.Community:
-                    PageNavigation.SelectedItem = CommunityNavItem;
                     break;
                 case ApplicationPage.Workspace:
                     // The project switcher is custom content, not a nav item, so no menu item is selected here.
