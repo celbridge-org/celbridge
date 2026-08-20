@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1353,7 +1353,7 @@ Open with default application instead?</value>
     <value>Project Settings</value>
   </data>
   <data name="UtilityPanel_ForumTooltip" xml:space="preserve">
-    <value>Forum</value>
+    <value>Community Forum</value>
   </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
     <value>Open as document</value>
