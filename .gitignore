@@ -418,6 +418,9 @@ solution-config.props
 
 .idea/
 
+# Junie (JetBrains AI agent) workspace config, including its generated MCP server list
+.junie/
+
 # Celbridge temp files
 .celbridge/
 
