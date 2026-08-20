@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build Celbridge packages and copy wheels to Celbridge.Python Assets folder."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -10,6 +11,11 @@ from pathlib import Path
 # with anything older, and the interpreter running this script is not always the newest one installed
 # (on macOS it is usually the system Python), so a newer one is looked up when this one is too old.
 MINIMUM_PYTHON = (3, 10)
+
+# Zip entries record the time each file was packaged, so two builds of identical sources differ byte
+# for byte and the committed wheel shows as modified after every rebuild. Pinning SOURCE_DATE_EPOCH
+# makes the wheel reproducible. The value is arbitrary because nothing reads these timestamps.
+WHEEL_TIMESTAMP = "1704067200"  # 2024-01-01T00:00:00Z
 
 CANDIDATE_INTERPRETERS = [
     "python3.13",
@@ -50,6 +56,21 @@ def find_interpreter():
     return None
 
 
+def normalize_line_endings(pkg_dir):
+    """Rewrite any CRLF source file in the package as LF, returning the paths that were changed."""
+    normalized = []
+
+    for path in sorted(pkg_dir.rglob("*.py")):
+        content = path.read_bytes()
+        if b"\r\n" not in content:
+            continue
+
+        path.write_bytes(content.replace(b"\r\n", b"\n"))
+        normalized.append(path)
+
+    return normalized
+
+
 def build_wheel(interpreter, pkg_dir):
     """Build a wheel for the given package."""
     dist = pkg_dir / "dist"
@@ -77,6 +98,15 @@ def main():
     root = Path(__file__).parent
     packages = [root / "packages/celbridge"]
     assets = root / "Assets/Python"
+
+    # A wheel stores each source file as raw bytes, so a source with CRLF on disk puts CRLF inside
+    # the wheel. .gitattributes only applies eol=lf when a file is checked out, so a working tree
+    # older than that rule still holds CRLF and produces a different wheel from the same commit.
+    # Normalising here keeps the wheel identical regardless of the checkout it was built from.
+    os.environ.setdefault("SOURCE_DATE_EPOCH", WHEEL_TIMESTAMP)
+    for pkg in packages:
+        for path in normalize_line_endings(pkg):
+            print(f"Converted {path.name} from CRLF to LF")
 
     # Flushed because pip writes straight to the same stream, so an unflushed line lands after its output.
     print(f"Building wheels with {interpreter}...", flush=True)
