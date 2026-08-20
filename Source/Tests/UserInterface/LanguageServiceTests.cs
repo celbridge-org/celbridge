@@ -86,6 +86,18 @@ public class LanguageServiceTests
     }
 
     [Test]
+    public void ApplyStoredLanguage_FollowingTheOperatingSystem_KeepsItsCultureVerbatim()
+    {
+        // Narrowing en-US to en would break resource lookup outright: resources fall back from the specific
+        // to the neutral, never the other way, and the only native resource file is en-US.
+        var systemCulture = CultureInfo.CurrentUICulture;
+
+        _languageService.ApplyStoredLanguage();
+
+        CultureInfo.CurrentUICulture.Name.Should().Be(systemCulture.Name);
+    }
+
+    [Test]
     public void ApplyStoredLanguage_WithAnUnknownLanguage_FallsBackAndWarnsOnce()
     {
         _storedLanguage = "not-a-language";

@@ -11,8 +11,11 @@ public class LanguageService : ILanguageService
     private readonly IMessengerService _messengerService;
     private readonly ILogger<LanguageService> _logger;
 
-    // The language the operating system started us in, captured before anything overrides the culture, so
-    // clearing the stored choice can return to it.
+    // The culture the operating system started us in, captured before anything overrides it, so clearing the
+    // stored choice returns exactly what was there rather than an approximation of it.
+    private readonly CultureInfo _systemCulture;
+
+    // Its two-letter code, which is what a hosted page loads its strings by (localization/en.json).
     private readonly string _systemLanguage;
 
     private string _currentLanguage;
@@ -26,7 +29,8 @@ public class LanguageService : ILanguageService
         _messengerService = messengerService;
         _logger = logger;
 
-        _systemLanguage = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        _systemCulture = CultureInfo.CurrentUICulture;
+        _systemLanguage = _systemCulture.TwoLetterISOLanguageName;
         _currentLanguage = _systemLanguage;
     }
 
@@ -56,7 +60,13 @@ public class LanguageService : ILanguageService
     {
         _currentLanguage = ResolveLanguage(language);
 
-        var culture = CultureInfo.GetCultureInfo(_currentLanguage);
+        // Following the operating system restores its culture verbatim rather than the two-letter code:
+        // resources fall back from the specific to the neutral and never the other way, so narrowing en-US
+        // to en would stop an en-US resource file resolving at all.
+        var culture = _currentLanguage == _systemLanguage
+            ? _systemCulture
+            : CultureInfo.GetCultureInfo(_currentLanguage);
+
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         CultureInfo.CurrentUICulture = culture;
     }
