@@ -202,6 +202,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
         var registration = new WebViewFocusRegistration(
             webView,
+            FileResource.ToString(),
             WorkspacePanelId.Documents,
             EditTarget: editTarget,
             ReleaseFocus: releaseFocus,

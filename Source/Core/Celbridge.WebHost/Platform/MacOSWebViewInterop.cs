@@ -294,7 +294,61 @@ public static class MacOSWebViewInterop
             return;
         }
 
+        // Re-applying this when the web view already holds first responder would resign and re-establish it.
+        // The page reports that pair as a blur like any other, and the native focus guard observes the resign
+        // as a fresh one and reconciles in response, looping.
+        if (IsWebViewFirstResponder(webView))
+        {
+            return;
+        }
+
         SendMessageVoid(window, GetSelector("makeFirstResponder:"), webView);
+    }
+
+    /// <summary>
+    /// Whether the native WKWebView still holds its window's first responder, directly or through one of its
+    /// descendant views. The first responder is the keyboard target on macOS, so this is what the platform
+    /// says about where keys go, independent of what the page believes.
+    /// </summary>
+    public static bool IsWebViewFirstResponder(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var window = SendMessage(webView, GetSelector("window"));
+        if (window == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var firstResponder = SendMessage(window, GetSelector("firstResponder"));
+        if (firstResponder == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        // The responder is the window itself when no view holds it, and only a view answers superview.
+        var isView = SendMessageReturnBool(firstResponder, GetSelector("isKindOfClass:"), GetClass("NSView"));
+        if (!isView)
+        {
+            return false;
+        }
+
+        // WebKit puts the responder on a view inside the web view rather than the web view itself, so walk up.
+        var view = firstResponder;
+        while (view != IntPtr.Zero)
+        {
+            if (view == webView)
+            {
+                return true;
+            }
+
+            view = SendMessage(view, GetSelector("superview"));
+        }
+
+        return false;
     }
 
     /// <summary>

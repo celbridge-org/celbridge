@@ -10,10 +10,12 @@ namespace Celbridge.WebHost;
 /// that hosts none (an external .webview document). ReleaseFocus drops the surface's DOM caret when focus leaves
 /// it (the JS blur). GrantDomFocus is the optional DOM-side focus the grant path applies after native focus (the
 /// console focuses its terminal input; document editors have none yet). OnFocusGained is an optional side effect
-/// run when the surface gains focus (a document reports itself as the active document).
+/// run when the surface gains focus (a document reports itself as the active document). SurfaceName names
+/// the surface in focus diagnostics, so two surfaces of the same kind can be told apart in a log.
 /// </summary>
 public sealed record WebViewFocusRegistration(
     WebView2 WebView,
+    string SurfaceName,
     WorkspacePanelId Panel,
     IEditTarget? EditTarget,
     Action ReleaseFocus,

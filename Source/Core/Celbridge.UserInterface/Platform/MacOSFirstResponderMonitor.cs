@@ -97,6 +97,8 @@ internal static class MacOSFirstResponderMonitor
 
     private static void OnResignedToContentView()
     {
+        _logger?.LogTrace("Native first responder resigned to the window content view");
+
         // Queued below Uno's own focus work rather than merely deferred past this call. A resign arrives
         // before the focus change it accompanies has been reported: a click resigns the first responder
         // during AppKit's mouse handling, and Uno raises the matching GotFocus a step later, so a normal

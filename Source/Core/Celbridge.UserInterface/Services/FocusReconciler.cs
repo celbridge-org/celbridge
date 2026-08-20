@@ -1,3 +1,4 @@
+using Celbridge.Logging;
 using Celbridge.WebHost;
 
 namespace Celbridge.UserInterface.Services;
@@ -10,15 +11,18 @@ public class FocusReconciler : IFocusReconciler
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IManagedFocus _managedFocus;
     private readonly IHostWindowFocus _hostWindowFocus;
+    private readonly ILogger<FocusReconciler> _logger;
 
     public FocusReconciler(
         IWebViewFocusRegistry webViewFocusRegistry,
         IManagedFocus managedFocus,
-        IHostWindowFocus hostWindowFocus)
+        IHostWindowFocus hostWindowFocus,
+        ILogger<FocusReconciler> logger)
     {
         _webViewFocusRegistry = webViewFocusRegistry;
         _managedFocus = managedFocus;
         _hostWindowFocus = hostWindowFocus;
+        _logger = logger;
     }
 
     public void Reconcile()
@@ -26,6 +30,11 @@ public class FocusReconciler : IFocusReconciler
         var desiredFocus = FocusDerivation.Derive(
             _webViewFocusRegistry.HasFocusedSurface,
             _managedFocus.IsPopupHoldingFocus);
+
+        _logger.LogTrace(
+            "Focus reconcile: focus web surface {FocusWebSurface}, yield managed focus {YieldManagedFocus}",
+            desiredFocus.FocusWebSurface,
+            desiredFocus.YieldManagedFocus);
 
         if (desiredFocus.YieldManagedFocus)
         {

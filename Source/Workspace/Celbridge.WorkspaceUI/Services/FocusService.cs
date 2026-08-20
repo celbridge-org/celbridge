@@ -65,10 +65,11 @@ public class FocusService : IFocusService
             releasePreviousFocus?.Invoke();
 
             _logger.LogTrace(
-                "Panel focus {PreviousPanel} -> {Panel}, edit target {EditTarget}",
+                "Panel focus {PreviousPanel} -> {Panel}, edit target {EditTarget}, claimed by {Claim}",
                 previousPanel,
                 panel,
-                _editTarget?.GetType().Name ?? "none");
+                _editTarget?.GetType().Name ?? "none",
+                DescribeClaim(claim));
 
             var message = new PanelFocusChangedMessage(panel);
             _messengerService.Send(message);
@@ -92,9 +93,10 @@ public class FocusService : IFocusService
             releasePreviousFocus?.Invoke();
 
             _logger.LogDebug(
-                "Edit target changed within {Panel} to {EditTarget}",
+                "Edit target changed within {Panel} to {EditTarget}, claimed by {Claim}",
                 panel,
-                _editTarget.GetType().Name);
+                _editTarget.GetType().Name,
+                DescribeClaim(claim));
 
             return;
         }
@@ -114,6 +116,7 @@ public class FocusService : IFocusService
             // edit target, so only the identity separates the two cases.
             var releasePreviousSurface = _releaseFocusedSurface;
             var isSameSurface = ReferenceEquals(claim.Surface, _focusedSurface);
+            var previousSurfaceName = _focusedSurface?.SurfaceName ?? "none";
 
             _releaseFocusedSurface = claim.ReleaseFocus;
             _focusedSurface = claim.Surface;
@@ -122,7 +125,11 @@ public class FocusService : IFocusService
             {
                 releasePreviousSurface?.Invoke();
 
-                _logger.LogDebug("Released the previous web surface in {Panel} to another surface", panel);
+                _logger.LogDebug(
+                    "Released the previous web surface {PreviousSurface} in {Panel} to {Surface}",
+                    previousSurfaceName,
+                    panel,
+                    claim.Surface?.SurfaceName ?? "none");
             }
 
             return;
@@ -138,11 +145,16 @@ public class FocusService : IFocusService
             return;
         }
 
+        var releasedSurfaceName = _focusedSurface?.SurfaceName ?? "none";
+
         _releaseFocusedSurface = null;
         _focusedSurface = null;
         releaseFocusedSurface.Invoke();
 
-        _logger.LogDebug("Released the focused surface in {Panel} to managed chrome", panel);
+        _logger.LogDebug(
+            "Released the focused surface {Surface} in {Panel} to managed chrome",
+            releasedSurfaceName,
+            panel);
     }
 
     public void ClearFocus()
@@ -180,6 +192,17 @@ public class FocusService : IFocusService
         {
             focusHandler.Invoke();
         }
+    }
+
+    // How a claim reads in a focus log: what took the keyboard, and for a web surface which one.
+    private static string DescribeClaim(FocusClaim claim)
+    {
+        if (claim.Kind == FocusClaimKind.ManagedControl)
+        {
+            return claim.Panel == WorkspacePanelId.None ? "nothing" : "managed control";
+        }
+
+        return $"web surface {claim.Surface?.SurfaceName ?? "unnamed"}";
     }
 
     private void OnWorkspacePageDeactivated(object recipient, WorkspacePageDeactivatedMessage message)

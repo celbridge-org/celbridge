@@ -7,7 +7,10 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class FocusServiceTests
 {
-    private sealed class TestFocusSurface : IFocusSurface;
+    private sealed class TestFocusSurface : IFocusSurface
+    {
+        public string SurfaceName => "test surface";
+    }
 
     private IMessengerService _messengerService = null!;
     private ILogger<FocusService> _logger = null!;

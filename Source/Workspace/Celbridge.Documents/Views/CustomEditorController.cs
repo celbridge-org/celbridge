@@ -533,6 +533,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         var registration = new WebViewFocusRegistration(
             WebView,
+            _viewModel.FileResource.ToString(),
             _focusContext.Panel,
             EditTarget: this,
             ReleaseFocus: ReleaseFocus,
@@ -1025,7 +1026,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             var endColumn = root.TryGetProperty("endColumn", out var endColProp) ? endColProp.GetInt32() : 0;
 
             await Host.Rpc.NotifyWithParameterObjectAsync(
-                "editor/navigateToLocation",
+                EditorRpcMethods.NavigateToLocation,
                 new { lineNumber, column, endLineNumber, endColumn });
 
             return Result.Ok();
@@ -1138,7 +1139,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         try
         {
-            var selectedText = await host.Rpc.InvokeAsync<string?>("editor/getSelectedText");
+            var selectedText = await host.Rpc.InvokeAsync<string?>(EditorRpcMethods.GetSelectedText);
             if (string.IsNullOrEmpty(selectedText))
             {
                 return;
@@ -1148,7 +1149,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
             if (deleteSelection)
             {
-                await host.Rpc.NotifyWithParameterObjectAsync("editor/insertText", new { text = string.Empty });
+                await host.Rpc.NotifyWithParameterObjectAsync(EditorRpcMethods.InsertText, new { text = string.Empty });
             }
         }
         catch (Exception ex)
@@ -1174,7 +1175,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             }
 
             var text = await dataPackageView.GetTextAsync();
-            await host.Rpc.NotifyWithParameterObjectAsync("editor/insertText", new { text });
+            await host.Rpc.NotifyWithParameterObjectAsync(EditorRpcMethods.InsertText, new { text });
         }
         catch (Exception ex)
         {

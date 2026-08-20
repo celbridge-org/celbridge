@@ -62,6 +62,11 @@ public class ManagedFocus : IManagedFocus
 
         // Focus is refused outright unless the placeholder is a tab stop, so it becomes one only for the
         // moment it takes focus: a zero-sized stop left in the tab order would strand a Tab press.
+        // Moving managed focus makes Uno resign the native first responder, so the page holding the caret
+        // sees a blur here. Logged because that blur is indistinguishable, at the page, from the user
+        // clicking away.
+        _logger.LogTrace("Yielding managed focus to the placeholder");
+
         placeholder.IsTabStop = true;
         var focused = placeholder.Focus(FocusState.Programmatic);
         placeholder.IsTabStop = false;

@@ -51,6 +51,29 @@ internal static class ArchitectureHelpers
         }
     }
 
+    /// <summary>
+    /// Enumerates first-party web source files under the Source folder, excluding build output, third-party
+    /// bundles, and web test suites.
+    /// </summary>
+    public static IEnumerable<string> EnumerateProductionWebFiles(string sourceFolder)
+    {
+        foreach (var filePath in EnumerateProductionSourceFiles(sourceFolder, "*.js"))
+        {
+            if (filePath.EndsWith(".min.js", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var segments = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (segments.Any(segment => segment is "node_modules" or "min" or "lib" or "vendor" or "dist" or "tests"))
+            {
+                continue;
+            }
+
+            yield return filePath;
+        }
+    }
+
     private static bool IsGeneratedOrBuildOutput(string filePath)
     {
         var segments = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

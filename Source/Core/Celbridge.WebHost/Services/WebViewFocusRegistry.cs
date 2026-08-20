@@ -45,12 +45,19 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
     private IFocusReconciler? _focusReconciler;
 
-    // The JSON-RPC method the injected listener reports the loss under. The input namespace and the past
-    // tense match the notifications the page already sends its host. A well formed notification rather
-    // than a bare string because every registered surface also has a host channel reading the same web
+    // The JSON-RPC methods the injected listener reports focus changes under. The input namespace and the
+    // past tense match the notifications the page already sends its host. Well formed notifications rather
+    // than bare strings because every registered surface also has a host channel reading the same web
     // message event, and that channel logs an error for anything it cannot deserialize. StreamJsonRpc drops
-    // a notification naming a method nothing implements, so the channel ignores this one quietly.
+    // a notification naming a method nothing implements, so the channel ignores these quietly.
+    private const string FocusMethodPrefix = "input/focus";
     private const string FocusLostMethod = "input/focusLost";
+    private const string FocusGainedMethod = "input/focusGained";
+
+    // A blur the page recovered from before the host was told. Reported only so a log shows how often the
+    // guard fires: focus reconciliation resigns and restores the surface's native focus in one gesture, and
+    // that pair reaches the page as a blur followed by a focus.
+    private const string FocusRetainedMethod = "input/focusRetained";
 
     // Reports the surface losing the keyboard, which the managed layer cannot see: on the packaged Windows
     // head the web content lives in its own child window, so a click on the caption or on any non-focusable
@@ -70,26 +77,34 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
                 return;
             }
 
-            var notification = JSON.stringify({ jsonrpc: '2.0', method: 'input/focusLost' });
+            function report(method) {
+                var notification = JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: method,
+                    params: { path: window.location.pathname }
+                });
+
+                // The same two native bridges the client transport posts over: chrome.webview on the
+                // WebView2 heads, and the Uno WKWebView message handler on macOS, where chrome.webview
+                // is absent. Both surface on the host as CoreWebView2.WebMessageReceived.
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage(notification);
+                } else if (window.webkit
+                    && window.webkit.messageHandlers
+                    && window.webkit.messageHandlers.unoWebView) {
+                    window.webkit.messageHandlers.unoWebView.postMessage(notification);
+                }
+            }
+
+            window.addEventListener('focus', function () {
+                report('input/focusGained');
+            });
 
             window.addEventListener('blur', function () {
                 // Focus moving into an iframe of this same page also blurs the top window, and the document
                 // still reports focus in that case, so settle on the next task before deciding it left.
                 setTimeout(function () {
-                    if (document.hasFocus()) {
-                        return;
-                    }
-
-                    // The same two native bridges the client transport posts over: chrome.webview on the
-                    // WebView2 heads, and the Uno WKWebView message handler on macOS, where chrome.webview
-                    // is absent. Both surface on the host as CoreWebView2.WebMessageReceived.
-                    if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(notification);
-                    } else if (window.webkit
-                        && window.webkit.messageHandlers
-                        && window.webkit.messageHandlers.unoWebView) {
-                        window.webkit.messageHandlers.unoWebView.postMessage(notification);
-                    }
+                    report(document.hasFocus() ? 'input/focusRetained' : 'input/focusLost');
                 }, 0);
             });
         })();
@@ -113,8 +128,15 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _messengerService = messengerService;
         _logger = logger;
 
-        _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => _isHostWindowActive = true);
-        _messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => _isHostWindowActive = false);
+        _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(true));
+        _messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(false));
+    }
+
+    private void OnHostWindowActivationChanged(bool isActive)
+    {
+        _isHostWindowActive = isActive;
+
+        _logger.LogDebug("Host window {Activation}", isActive ? "activated" : "deactivated");
     }
 
     public void Register(WebViewFocusRegistration registration)
@@ -221,6 +243,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         _pendingGrant = null;
 
+        _logger.LogDebug("Focus granted to web surface {Surface}", registration.SurfaceName);
+
         // Reporting applies the claim, which also releases the previously focused surface immediately
         // rather than waiting for the JS focus round trip that a surface with no DOM-side grant never
         // produces. The optional DOM-side focus then places the caret.
@@ -304,13 +328,30 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             // Every message the surface sends its host arrives here too, including editor content, so the
             // marker only pre-filters: matching it decides whether to parse, never whether to act.
             if (string.IsNullOrEmpty(message)
-                || !message.Contains(FocusLostMethod, StringComparison.Ordinal)
-                || !IsFocusLostNotification(message))
+                || !message.Contains(FocusMethodPrefix, StringComparison.Ordinal))
             {
                 return;
             }
 
-            OnFocusLost(registration);
+            var notification = ReadFocusNotification(message);
+            if (notification is null)
+            {
+                return;
+            }
+
+            if (notification.Method == FocusLostMethod)
+            {
+                OnFocusLost(registration);
+                return;
+            }
+
+            // The gain and the recovered blur are diagnostics: the page's own view of where the keyboard is,
+            // which is the only signal that distinguishes a caret the user lost from one the host took away.
+            _logger.LogDebug(
+                "Web surface {Surface} reported {Report} for {Path}",
+                registration.SurfaceName,
+                notification.Method == FocusGainedMethod ? "the keyboard arriving" : "a blur it recovered from",
+                notification.Path ?? "an unnamed page");
         }
         catch (Exception ex)
         {
@@ -318,8 +359,12 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    // Whether the message really is the focus-lost notification rather than content that merely mentions it.
-    internal static bool IsFocusLostNotification(string message)
+    // A focus notification the injected listener posted, once it has been told apart from page content that
+    // merely mentions the method name.
+    internal sealed record FocusNotification(string Method, string? Path);
+
+    // Reads the notification the injected listener posted, or null for any other message.
+    internal static FocusNotification? ReadFocusNotification(string message)
     {
         try
         {
@@ -330,31 +375,52 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             // string literal. The macOS head hands over the envelope itself.
             if (root.ValueKind != JsonValueKind.String)
             {
-                return HasFocusLostMethod(root);
+                return ReadFocusEnvelope(root);
             }
 
             var envelope = root.GetString();
             if (string.IsNullOrEmpty(envelope))
             {
-                return false;
+                return null;
             }
 
             using var envelopeDocument = JsonDocument.Parse(envelope);
 
-            return HasFocusLostMethod(envelopeDocument.RootElement);
+            return ReadFocusEnvelope(envelopeDocument.RootElement);
         }
         catch (JsonException)
         {
-            return false;
+            return null;
         }
     }
 
-    private static bool HasFocusLostMethod(JsonElement element)
+    private static FocusNotification? ReadFocusEnvelope(JsonElement element)
     {
-        return element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty("method", out var method)
-            && method.ValueKind == JsonValueKind.String
-            && method.GetString() == FocusLostMethod;
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty("method", out var methodElement)
+            || methodElement.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var method = methodElement.GetString();
+        if (method != FocusLostMethod
+            && method != FocusGainedMethod
+            && method != FocusRetainedMethod)
+        {
+            return null;
+        }
+
+        string? path = null;
+        if (element.TryGetProperty("params", out var parameters)
+            && parameters.ValueKind == JsonValueKind.Object
+            && parameters.TryGetProperty("path", out var pathElement)
+            && pathElement.ValueKind == JsonValueKind.String)
+        {
+            path = pathElement.GetString();
+        }
+
+        return new FocusNotification(method, path);
     }
 
     // The keyboard has left the page. A page can only ever report this for itself, so an untrusted document
@@ -366,29 +432,78 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // back with them.
         if (!_isHostWindowActive)
         {
+            _logger.LogDebug(
+                "Ignored a focus loss from {Surface}: the host window is not active",
+                registration.SurfaceName);
             return;
         }
 
-        // The surface must still hold focus both when the report arrives and one turn of the UI thread later.
-        // The first check drops a report that raced past a release (the user left the surface and came back
-        // while it was in flight); the second gives a click that moves focus elsewhere the chance to claim its
-        // new panel first, so what is left is a loss that put focus nowhere.
+        // The surface must still hold focus both when the report arrives and once the work the blur arrived
+        // alongside has drained. The first check drops a report that raced past a release (the user left the
+        // surface and came back while it was in flight); the deferred checks below decide the rest.
         if (!ReferenceEquals(_focusedRegistration, registration))
         {
+            _logger.LogDebug(
+                "Ignored a focus loss from {Surface}: it no longer holds focus",
+                registration.SurfaceName);
             return;
         }
 
-        registration.WebView.DispatcherQueue.TryEnqueue(() =>
-        {
-            if (!ReferenceEquals(_focusedRegistration, registration))
+        // Queued below the focus reconcile, which the resign that caused this blur queues at the same
+        // priority and therefore ahead of it. Reading the settled state is what separates a blur the host
+        // caused from one the user did.
+        registration.WebView.DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
             {
-                return;
-            }
+                if (!ReferenceEquals(_focusedRegistration, registration))
+                {
+                    _logger.LogDebug(
+                        "Ignored a focus loss from {Surface}: another surface claimed focus first",
+                        registration.SurfaceName);
+                    return;
+                }
 
-            _logger.LogDebug("The focused web surface reported that the keyboard left it");
+                if (HoldsPlatformKeyboardFocus(registration))
+                {
+                    _logger.LogDebug(
+                        "Ignored a focus loss from {Surface}: the platform still routes the keyboard to it",
+                        registration.SurfaceName);
+                    return;
+                }
 
-            _focusService.ClearFocus();
-        });
+                _logger.LogDebug(
+                    "The focused web surface {Surface} reported that the keyboard left it",
+                    registration.SurfaceName);
+
+                _focusService.ClearFocus();
+            });
+    }
+
+    // Whether the platform still routes the keyboard to the surface. Focus reconciliation resigns and
+    // re-asserts native focus in one gesture, because Uno resigns the first responder on every managed focus
+    // change, and the page reports that pair as a blur like any other. Only the platform can tell the two
+    // apart. False off macOS, where the managed focus the other heads move is itself the signal.
+    private bool HoldsPlatformKeyboardFocus(WebViewFocusRegistration registration)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        var coreWebView = registration.WebView.CoreWebView2;
+        if (coreWebView is null)
+        {
+            return false;
+        }
+
+        if (!Platform.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView, out var nativeHandle, out var detail))
+        {
+            _logger.LogWarning("Could not read the focused web surface's native focus: {Detail}", detail);
+            return false;
+        }
+
+        return Platform.MacOSWebViewInterop.IsWebViewFirstResponder(nativeHandle);
     }
 
     private void OnNativeFocusSignal(CoreWebView2 coreWebView)
@@ -416,6 +531,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         {
             return;
         }
+
+        _logger.LogTrace("Applying platform focus to web surface {Surface}", registration.SurfaceName);
 
         // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
         // (the page's caret is exactly where the user put it and must not move).
@@ -493,6 +610,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     private void Report(WebViewFocusRegistration registration)
     {
+        _logger.LogTrace("Web surface {Surface} reported focus", registration.SurfaceName);
+
         _focusedRegistration = registration;
         registration.OnFocusGained?.Invoke();
         Action releaseFocus = () => ReleaseSurface(registration);

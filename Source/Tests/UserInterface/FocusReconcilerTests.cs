@@ -9,6 +9,7 @@ public class FocusReconcilerTests
     private IWebViewFocusRegistry _webViewFocusRegistry = null!;
     private IManagedFocus _managedFocus = null!;
     private IHostWindowFocus _hostWindowFocus = null!;
+    private ILogger<FocusReconciler> _logger = null!;
     private FocusReconciler _focusReconciler = null!;
 
     [SetUp]
@@ -17,7 +18,8 @@ public class FocusReconcilerTests
         _webViewFocusRegistry = Substitute.For<IWebViewFocusRegistry>();
         _managedFocus = Substitute.For<IManagedFocus>();
         _hostWindowFocus = Substitute.For<IHostWindowFocus>();
-        _focusReconciler = new FocusReconciler(_webViewFocusRegistry, _managedFocus, _hostWindowFocus);
+        _logger = Substitute.For<ILogger<FocusReconciler>>();
+        _focusReconciler = new FocusReconciler(_webViewFocusRegistry, _managedFocus, _hostWindowFocus, _logger);
     }
 
     [Test]
