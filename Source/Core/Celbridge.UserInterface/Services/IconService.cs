@@ -66,6 +66,7 @@ public class IconService : IIconService
         { IconSymbol.Save, "bs-floppy" },
         { IconSymbol.ExitFullScreen, "bs-fullscreen-exit" },
         { IconSymbol.People, "bs-people" },
+        { IconSymbol.Chat, "bs-chat-dots" },
         { IconSymbol.Upload, "bs-upload" },
         { IconSymbol.ChevronDown, "bs-chevron-down" },
         { IconSymbol.ChevronLeft, "bs-chevron-left" },

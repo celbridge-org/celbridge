@@ -1,5 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.Community;
 using Celbridge.Dialog;
+using Celbridge.Explorer;
 using Celbridge.FilePicker;
 using Celbridge.Navigation;
 using Celbridge.Projects;
@@ -55,6 +57,17 @@ public partial class HomePageViewModel : ObservableObject
     private async Task OpenProjectAsync()
     {
         await _mainMenuUtils.ShowOpenProjectDialogAsync();
+    }
+
+    [RelayCommand]
+    private void ShowForum()
+    {
+        // No workspace is loaded on the Home page, so there is nowhere to dock a web view document. The
+        // rail button opens the forum in the app; here it opens in the user's browser.
+        _commandService.Execute<IOpenBrowserCommand>(command =>
+        {
+            command.URL = CommunityLinks.Forum.Url;
+        });
     }
 
     public async Task OpenProjectAsync(string projectFilePath)

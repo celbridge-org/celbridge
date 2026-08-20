@@ -88,7 +88,7 @@ public class ProjectUnloader
         // unloaded callback of the Workspace Page, and there are multiple code paths to consider.
 
         // The workspace page uses NavigationCacheMode.Required, so it stays loaded in memory
-        // even when the user navigates to other pages like Home or Community.
+        // even when the user navigates to other pages like Home or Settings.
         // We need to ensure proper cleanup of the workspace page.
 
         // Navigate to the Workspace page first to make it the active/visible page.

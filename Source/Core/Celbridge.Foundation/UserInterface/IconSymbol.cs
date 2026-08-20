@@ -35,6 +35,7 @@ public enum IconSymbol
     Save,
     ExitFullScreen,
     People,
+    Chat,
     Upload,
     ChevronDown,
     ChevronLeft,

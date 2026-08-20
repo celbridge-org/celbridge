@@ -22,6 +22,7 @@ Utility Panel rail (the icon strip on the far left that switches the primary pan
 
 - `explorer-utility-button` — the Explorer icon in the rail.
 - `search-utility-button` — the Search icon in the rail.
+- `forum-utility-button` — the Forum icon, in the community group at the bottom of the rail.
 
 Explorer toolbar (its buttons are revealed automatically when spotlighted):
 
@@ -58,7 +59,6 @@ Splitting has no landmark: it is driven from the document tab context menu rathe
 Title bar:
 
 - `home-button` — the Home page button.
-- `community-button` — the Community page button.
 - `workspace-button` — the Workspace button (only resolves while a project is loaded).
 - `panel-layout-button` — the layout-mode selector (Default, Focus, Presentation).
 - `explorer-toggle-button` — the button that shows or hides the Explorer panel.

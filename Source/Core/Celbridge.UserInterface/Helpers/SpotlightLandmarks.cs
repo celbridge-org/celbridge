@@ -1,3 +1,4 @@
+using Celbridge.Community;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -36,7 +37,6 @@ internal static class SpotlightLandmarks
             new("bottom-area-close-button", WorkspaceSurface.BottomArea),
             new("side-area-close-button", WorkspaceSurface.SideArea),
             new("home-button", null),
-            new("community-button", null),
             new("workspace-button", null),
             new("panel-layout-button", null),
             new("explorer-toggle-button", null),
@@ -49,6 +49,13 @@ internal static class SpotlightLandmarks
         foreach (var landmark in BuiltInLandmarks)
         {
             registry.RegisterLandmark(landmark);
+        }
+
+        // The community rail buttons are built from the link catalog, so their landmarks are derived from it
+        // rather than listed above.
+        foreach (var link in CommunityLinks.All)
+        {
+            registry.RegisterLandmark(new LandmarkDescriptor(link.LandmarkId, WorkspaceSurface.UtilityPanel));
         }
     }
 }
