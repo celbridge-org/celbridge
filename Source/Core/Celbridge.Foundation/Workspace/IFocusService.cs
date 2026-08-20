@@ -4,7 +4,13 @@ namespace Celbridge.Workspace;
 /// The identity of a surface that can hold the keyboard. Compared by reference only, so the focus service can
 /// tell one surface from another without knowing what a surface is.
 /// </summary>
-public interface IFocusSurface;
+public interface IFocusSurface
+{
+    /// <summary>
+    /// Names the surface in focus diagnostics, so a log line says which surface a claim or a loss came from.
+    /// </summary>
+    string SurfaceName { get; }
+}
 
 /// <summary>
 /// What took the keyboard.

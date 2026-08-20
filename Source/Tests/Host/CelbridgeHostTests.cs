@@ -29,7 +29,16 @@ public class CelbridgeHostTests
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
         _channel = new MockHostChannel();
-        _host = new CelbridgeHost(_channel);
+        _host = new CelbridgeHost(_channel, new StubHostLog());
+    }
+
+    // The host registers a log target for every page it hosts, so constructing one needs somewhere for the
+    // page's diagnostics to go. These tests do not assert on them.
+    private sealed class StubHostLog : IHostLog
+    {
+        public void OnLog(string? level, string? message)
+        {
+        }
     }
 
     [TearDown]
@@ -91,24 +100,4 @@ public class CelbridgeHostTests
         _channel.SentMessages[0].Should().Contain("preserveViewState");
     }
 
-    [Test]
-    public async Task NotifyLocalizationUpdatedAsync_SendsCorrectMethodWithStrings()
-    {
-        // Arrange
-        _host.StartListening();
-        var strings = new Dictionary<string, string>
-        {
-            { "key1", "value1" },
-            { "key2", "value2" }
-        };
-
-        // Act
-        await _host.NotifyLocalizationUpdatedAsync(strings);
-
-        // Assert
-        _channel.SentMessages.Should().HaveCount(1);
-        _channel.SentMessages[0].Should().Contain("localization/updated");
-        _channel.SentMessages[0].Should().Contain("key1");
-        _channel.SentMessages[0].Should().Contain("value1");
-    }
 }

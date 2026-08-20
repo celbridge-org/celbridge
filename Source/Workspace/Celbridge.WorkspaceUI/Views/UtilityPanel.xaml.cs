@@ -211,6 +211,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, ExplorerPanel.FocusPanel);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, SearchPanel.FocusSearchInput);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.ProjectSettings, ProjectSettingsPanel.FocusPanel);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, FocusActiveCustomUtility);
 
         // The utility panels drop their own header focus indicator and show focus on the selected rail button
         // instead, so feed panel focus changes into the view model to colour the indicator accordingly.
@@ -230,6 +231,17 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, null);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, null);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.ProjectSettings, null);
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, null);
+    }
+
+    // The CustomUtility panel is whichever contributed utility the rail has selected, so the handler resolves
+    // it when it is called rather than one being registered per utility.
+    private void FocusActiveCustomUtility()
+    {
+        if (_focusActions.TryGetValue(ActiveUtilityId, out var focusContent))
+        {
+            focusContent();
+        }
     }
 
     private void OnPackagesInitialized(object recipient, PackagesInitializedMessage message)

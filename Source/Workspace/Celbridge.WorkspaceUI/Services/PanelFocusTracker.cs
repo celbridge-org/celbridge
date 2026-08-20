@@ -1,3 +1,4 @@
+using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 
@@ -15,14 +16,17 @@ public class PanelFocusTracker
 {
     private readonly IFocusService _focusService;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
+    private readonly ILogger<PanelFocusTracker> _logger;
     private bool _isStarted;
 
     public PanelFocusTracker(
         IFocusService focusService,
-        IWebViewFocusRegistry webViewFocusRegistry)
+        IWebViewFocusRegistry webViewFocusRegistry,
+        ILogger<PanelFocusTracker> logger)
     {
         _focusService = focusService;
         _webViewFocusRegistry = webViewFocusRegistry;
+        _logger = logger;
     }
 
     public void Start()
@@ -117,6 +121,11 @@ public class PanelFocusTracker
         {
             return;
         }
+
+        _logger.LogTrace(
+            "Managed focus moved to {Element}, classified as {Panel}",
+            element.GetType().Name,
+            panel);
 
         // The focus service treats a repeated report for the current panel and target as a no-op,
         // so intra-panel focus moves do not spam it.

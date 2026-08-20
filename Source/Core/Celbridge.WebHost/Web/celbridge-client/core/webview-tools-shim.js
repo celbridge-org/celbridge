@@ -111,6 +111,31 @@
         }
     }
 
+    // Reports a crash to the host's application log. The ring buffer below only reaches an agent that is
+    // attached and asks for it, so without this a page that dies takes the reason with it. Prefers the
+    // page's live transport, which the client exposes for injected scripts like this one, and falls back to
+    // the native bridges for a page that never loaded the client.
+    function reportToHostLog(message, stack) {
+        try {
+            var envelope = JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'host/log',
+                params: { level: 'error', message: stack ? message + '\n' + stack : message }
+            });
+            if (typeof globalThis.__hostSendMessage === 'function') {
+                globalThis.__hostSendMessage(envelope);
+            } else if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(envelope);
+            } else if (window.webkit
+                && window.webkit.messageHandlers
+                && window.webkit.messageHandlers.unoWebView) {
+                window.webkit.messageHandlers.unoWebView.postMessage(envelope);
+            }
+        } catch (_) {
+            // Reporting a crash must never cause one.
+        }
+    }
+
     // Capture uncaught errors and unhandled promise rejections as synthetic
     // 'error'-level entries. Stack traces are preserved when the runtime
     // provides one.
@@ -120,6 +145,7 @@
             var message = (event && event.message) || (err && err.message) || 'uncaught error';
             var stack = (err && err.stack) || null;
             pushConsoleEntry('error', [message], stack);
+            reportToHostLog(message, stack);
         });
         window.addEventListener('unhandledrejection', function (event) {
             var reason = event && event.reason;
@@ -132,6 +158,7 @@
                 message = stringifyArg(reason);
             }
             pushConsoleEntry('error', ['unhandled rejection: ' + message], stack);
+            reportToHostLog('unhandled rejection: ' + message, stack);
         });
     }
 

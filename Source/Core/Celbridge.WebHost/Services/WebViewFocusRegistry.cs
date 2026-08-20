@@ -1,11 +1,10 @@
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
-using Windows.Foundation;
 
 namespace Celbridge.WebHost;
 
@@ -15,6 +14,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusMonitor _webViewFocusMonitor;
     private readonly IMessengerService _messengerService;
+    private readonly IWebSurfaceMessageDispatcher _messageDispatcher;
     private readonly ILogger<WebViewFocusRegistry> _logger;
 
     // Keyed by CoreWebView2, the stable surface identity shared with the native monitor. Accessed only on the UI
@@ -25,11 +25,6 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // The surface whose focus report is current. Cleared when the focus service releases it in favour of
     // another surface or panel (via the wrapped release callback in Report), and on Unregister.
     private WebViewFocusRegistration? _focusedRegistration;
-
-    // The web message handler per surface. The CoreWebView2 handed to the event is a different managed
-    // projection of the same native object than the one the WebView2 property returns, so it cannot be used
-    // to find the registration. Each surface gets a handler closing over the key it registered under.
-    private readonly Dictionary<CoreWebView2, TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs>> _webMessageHandlers = new();
 
     // Which surfaces already carry the focus-lost listener. Document-start scripts live as long as the
     // CoreWebView2 and cannot be removed on every head, so installing once per surface rather than once per
@@ -42,22 +37,23 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // the surface: alt-tabbing away must leave the caret where the user put it.
     private bool _isHostWindowActive = true;
 
+    // Whether a modal dialog currently holds the keyboard. A dialog blurs the page exactly as a click on
+    // another panel does, and only the host knows which it was.
+    private bool _isModalDialogOpen;
+
     // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
     private IFocusReconciler? _focusReconciler;
-
-    // The JSON-RPC method the injected listener reports the loss under. The input namespace and the past
-    // tense match the notifications the page already sends its host. A well formed notification rather
-    // than a bare string because every registered surface also has a host channel reading the same web
-    // message event, and that channel logs an error for anything it cannot deserialize. StreamJsonRpc drops
-    // a notification naming a method nothing implements, so the channel ignores this one quietly.
-    private const string FocusLostMethod = "input/focusLost";
 
     // Reports the surface losing the keyboard, which the managed layer cannot see: on the packaged Windows
     // head the web content lives in its own child window, so a click on the caption or on any non-focusable
     // region moves the keyboard off it without moving managed focus at all. Injected at document start
     // through the adapter seam rather than carried by the client bundle, so a page we did not author reports
     // its losses too.
-    private const string FocusLostScript = """
+    //
+    // Interpolated so the method names come from the same constants the host dispatches on: this script is a
+    // third client of the web channel, and one written as a string literal is invisible to the contract tests
+    // that keep the other two in step.
+    private static readonly string FocusLostScript = $$"""
         (function () {
             if (window.__celbridgeFocusLostInstalled) {
                 return;
@@ -70,26 +66,108 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
                 return;
             }
 
-            var notification = JSON.stringify({ jsonrpc: '2.0', method: 'input/focusLost' });
+            // The native bridges the host reads focus signals from: chrome.webview on the WebView2 heads,
+            // and the Uno WKWebView message handler on macOS, where chrome.webview is absent. Both surface
+            // on the host as CoreWebView2.WebMessageReceived, which is where the focus registry listens.
+            function postToNativeBridge(envelope) {
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage(envelope);
+                } else if (window.webkit
+                    && window.webkit.messageHandlers
+                    && window.webkit.messageHandlers.unoWebView) {
+                    window.webkit.messageHandlers.unoWebView.postMessage(envelope);
+                }
+            }
+
+            // Diagnostics prefer the page's own live transport, which the client exposes for injected
+            // scripts, because a page can be left without a native bridge. Focus loss cannot use it: only
+            // the native bus reaches the registry that knows which surface reported.
+            function postDiagnostic(envelope) {
+                if (typeof globalThis.__hostSendMessage === 'function') {
+                    globalThis.__hostSendMessage(envelope);
+                    return;
+                }
+
+                postToNativeBridge(envelope);
+            }
+
+            function report(level, message) {
+                postDiagnostic(JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: '{{LogRpcMethods.Log}}',
+                    params: { level: level, message: message + ' (' + window.location.pathname + ')' }
+                }));
+            }
+
+            function log(message) {
+                report('debug', message);
+            }
+
+            // Whether this page can still reach the host over the native message bus. A surface can be left
+            // without one: the host removes the handler on every Unloaded to stop Uno registering a second
+            // one, and relies on Uno's next Loaded to put it back, which does not always come.
+            function hasNativeBridge() {
+                if (window.chrome && window.chrome.webview) {
+                    return true;
+                }
+
+                return !!(window.webkit
+                    && window.webkit.messageHandlers
+                    && window.webkit.messageHandlers.unoWebView);
+            }
+
+            // Reported on first use rather than at install: this script runs at document start, before the
+            // client has exposed the transport, so an absent bridge at that moment has no way to say so and
+            // the sample would only ever contain the surfaces that are fine.
+            var reportedBridgeState = false;
+
+            function reportBridgeStateOnce() {
+                if (reportedBridgeState) {
+                    return;
+                }
+
+                reportedBridgeState = true;
+
+                var present = hasNativeBridge();
+                report(
+                    present || document.hidden ? 'debug' : 'warn',
+                    'native message bridge ' + (present ? 'present' : 'absent'));
+            }
+
+            // Counted because a page can receive more than one focus event for a single gesture (the host
+            // makes the view the first responder, and an editor's own DOM grant focuses an element after
+            // it). Without the count the repeats read as the host logging the same event twice.
+            var focusCount = 0;
+
+            window.addEventListener('focus', function () {
+                reportBridgeStateOnce();
+                focusCount++;
+                log('the page took the keyboard (focus event ' + focusCount + ')');
+            });
 
             window.addEventListener('blur', function () {
+                reportBridgeStateOnce();
+
                 // Focus moving into an iframe of this same page also blurs the top window, and the document
                 // still reports focus in that case, so settle on the next task before deciding it left.
                 setTimeout(function () {
                     if (document.hasFocus()) {
+                        log('the page blurred but still holds the keyboard');
                         return;
                     }
 
-                    // The same two native bridges the client transport posts over: chrome.webview on the
-                    // WebView2 heads, and the Uno WKWebView message handler on macOS, where chrome.webview
-                    // is absent. Both surface on the host as CoreWebView2.WebMessageReceived.
-                    if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(notification);
-                    } else if (window.webkit
-                        && window.webkit.messageHandlers
-                        && window.webkit.messageHandlers.unoWebView) {
-                        window.webkit.messageHandlers.unoWebView.postMessage(notification);
+                    // A hidden surface has no bridge by design: the host removes the handler when the
+                    // surface is unloaded, and whatever replaced it on screen claims focus itself. Only a
+                    // surface the user can still see is a departure the host needed to hear about.
+                    if (!hasNativeBridge()) {
+                        report(
+                            document.hidden ? 'debug' : 'warn',
+                            'focus loss not delivered, no native message bridge (surface '
+                                + (document.hidden ? 'hidden' : 'visible') + ')');
+                        return;
                     }
+
+                    postToNativeBridge(JSON.stringify({ jsonrpc: '2.0', method: '{{InputRpcMethods.FocusLost}}' }));
                 }, 0);
             });
         })();
@@ -105,16 +183,32 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         IWebViewAdapter webViewAdapter,
         IWebViewFocusMonitor webViewFocusMonitor,
         IMessengerService messengerService,
+        IWebSurfaceMessageDispatcher messageDispatcher,
         ILogger<WebViewFocusRegistry> logger)
     {
         _focusService = focusService;
         _webViewAdapter = webViewAdapter;
         _webViewFocusMonitor = webViewFocusMonitor;
         _messengerService = messengerService;
+        _messageDispatcher = messageDispatcher;
         _logger = logger;
 
-        _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => _isHostWindowActive = true);
-        _messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => _isHostWindowActive = false);
+        // Claimed here rather than at the composition root because the registry both owns what a focus loss
+        // means and attaches the surfaces that report one, so it cannot attach a surface without first
+        // having registered its interest.
+        _messageDispatcher.AddHandler(InputRpcMethods.FocusLost, OnFocusLostMessage);
+
+        _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(true));
+        _messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(false));
+        _messengerService.Register<ModalDialogOpenedMessage>(this, (_, _) => _isModalDialogOpen = true);
+        _messengerService.Register<ModalDialogClosedMessage>(this, (_, _) => _isModalDialogOpen = false);
+    }
+
+    private void OnHostWindowActivationChanged(bool isActive)
+    {
+        _isHostWindowActive = isActive;
+
+        _logger.LogDebug("Host window {Activation}", isActive ? "activated" : "deactivated");
     }
 
     public void Register(WebViewFocusRegistration registration)
@@ -128,9 +222,16 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         // A pooled WebView reacquired for a new surface keeps its CoreWebView2, so drop the previous
         // registration's subscriptions before replacing it.
-        if (_registrations.ContainsKey(coreWebView))
+        var replacesFocusedSurface = false;
+        if (_registrations.TryGetValue(coreWebView, out var previousRegistration))
         {
             DetachSurfaceHandlers(registration.WebView, coreWebView);
+
+            // A live surface can be re-registered under a new contract without the user ever moving focus
+            // off it: docking a utility between the Utility Panel and a document tab re-points the same web
+            // view at a different panel. The keyboard never left, so the model has to follow the surface to
+            // its new panel rather than go on naming the old one.
+            replacesFocusedSurface = ReferenceEquals(_focusedRegistration, previousRegistration);
         }
 
         _registrations[coreWebView] = registration;
@@ -142,10 +243,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         // The focus-lost signal comes back through the page rather than either of the gain paths above,
         // because neither the managed nor the native layer observes the keyboard leaving the web content.
-        TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> webMessageHandler =
-            (_, args) => OnWebMessageReceived(coreWebView, args);
-        _webMessageHandlers[coreWebView] = webMessageHandler;
-        coreWebView.WebMessageReceived += webMessageHandler;
+        // It arrives over the message bus, which the surface joins here for as long as it is registered.
+        _messageDispatcher.Attach(coreWebView, registration.SurfaceName);
 
         coreWebView.NavigationCompleted += OnNavigationCompleted;
 
@@ -153,6 +252,15 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         {
             _surfacesWithFocusLostScript.Add(coreWebView, new object());
             _ = InstallFocusLostScriptAsync(coreWebView);
+        }
+
+        if (replacesFocusedSurface)
+        {
+            // Granted rather than merely reported: the new registration is a different surface identity to
+            // the focus service, so reporting it releases the old one, and releasing drops the page's caret.
+            // The grant puts it back, which is what a redock should leave behind anyway.
+            GrantFocus(registration.WebView);
+            return;
         }
 
         if (!ReferenceEquals(_pendingGrant, registration.WebView))
@@ -189,13 +297,19 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             _pendingGrant = null;
         }
 
-        if (ReferenceEquals(_focusedRegistration, registration))
+        var torndownSurfaceHeldFocus = ReferenceEquals(_focusedRegistration, registration);
+        if (torndownSurfaceHeldFocus)
         {
             _focusedRegistration = null;
         }
 
         DetachSurfaceHandlers(registration.WebView, coreWebView);
         _webViewFocusMonitor.Unregister(coreWebView);
+
+        if (torndownSurfaceHeldFocus)
+        {
+            ClearFocusUnlessAnotherSurfaceClaims(registration);
+        }
 
         // Invalidate the edit context on teardown so a closed editor cannot leave the Edit menu enabled. The
         // focus service keeps a newer target that has replaced this one.
@@ -220,6 +334,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
 
         _pendingGrant = null;
+
+        _logger.LogDebug("Focus granted to web surface {Surface}", registration.SurfaceName);
 
         // Reporting applies the claim, which also releases the previously focused surface immediately
         // rather than waiting for the JS focus round trip that a surface with no DOM-side grant never
@@ -279,82 +395,50 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         webView.GotFocus -= OnWebViewGotFocus;
         coreWebView.NavigationCompleted -= OnNavigationCompleted;
 
-        if (_webMessageHandlers.Remove(coreWebView, out var webMessageHandler))
-        {
-            coreWebView.WebMessageReceived -= webMessageHandler;
-        }
+        _messageDispatcher.Detach(coreWebView);
     }
 
-    private void OnWebMessageReceived(CoreWebView2 coreWebView, CoreWebView2WebMessageReceivedEventArgs e)
+    // The surface holding the keyboard has been torn down, so nothing holds it any more. Deferred rather
+    // than applied here because closing a document activates the next one, which claims focus a step later:
+    // clearing now would take the caret straight back off it. If nothing has claimed by then, the focus model
+    // is left naming a panel whose surface is gone, and the focus indicator would show a caret nobody has.
+    private void ClearFocusUnlessAnotherSurfaceClaims(WebViewFocusRegistration registration)
     {
-        // This handler runs on the UI thread alongside the host channel reading the same event, so an
-        // escaping exception would be fatal. A malformed web message must never crash the host.
-        try
+        var dispatcherQueue = registration.WebView.DispatcherQueue;
+        if (dispatcherQueue is null)
         {
-            if (!_registrations.TryGetValue(coreWebView, out var registration))
-            {
-                return;
-            }
+            return;
+        }
 
-            // Read as JSON rather than through TryGetWebMessageAsString, which throws on the macOS WKWebView
-            // head where a message arrives as JSON rather than a string. That would cost a thrown exception
-            // per message per surface, only to reach a discriminator.
-            var message = e.WebMessageAsJson;
+        // Deferred twice. Closing a document tears its surface down before it selects the next one, so a
+        // single hop would run while the replacement's own grant was still queued behind it, and focus would
+        // be seen to leave the panel and come straight back. The second hop puts this behind everything the
+        // close queued.
+        dispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => dispatcherQueue.TryEnqueue(
+                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                () =>
+                {
+                    if (_focusedRegistration is not null)
+                    {
+                        return;
+                    }
 
-            // Every message the surface sends its host arrives here too, including editor content, so the
-            // marker only pre-filters: matching it decides whether to parse, never whether to act.
-            if (string.IsNullOrEmpty(message)
-                || !message.Contains(FocusLostMethod, StringComparison.Ordinal)
-                || !IsFocusLostNotification(message))
-            {
-                return;
-            }
+                    _logger.LogDebug(
+                        "Cleared focus after the focused web surface {Surface} was torn down",
+                        registration.SurfaceName);
 
+                    _focusService.ClearFocus();
+                }));
+    }
+
+    private void OnFocusLostMessage(WebSurfaceMessage message)
+    {
+        if (_registrations.TryGetValue(message.Surface, out var registration))
+        {
             OnFocusLost(registration);
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to read a web message while watching for focus loss");
-        }
-    }
-
-    // Whether the message really is the focus-lost notification rather than content that merely mentions it.
-    internal static bool IsFocusLostNotification(string message)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(message);
-            var root = document.RootElement;
-
-            // The page posts the envelope as a JS string, so the WebView2 heads deliver it wrapped in a JSON
-            // string literal. The macOS head hands over the envelope itself.
-            if (root.ValueKind != JsonValueKind.String)
-            {
-                return HasFocusLostMethod(root);
-            }
-
-            var envelope = root.GetString();
-            if (string.IsNullOrEmpty(envelope))
-            {
-                return false;
-            }
-
-            using var envelopeDocument = JsonDocument.Parse(envelope);
-
-            return HasFocusLostMethod(envelopeDocument.RootElement);
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private static bool HasFocusLostMethod(JsonElement element)
-    {
-        return element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty("method", out var method)
-            && method.ValueKind == JsonValueKind.String
-            && method.GetString() == FocusLostMethod;
     }
 
     // The keyboard has left the page. A page can only ever report this for itself, so an untrusted document
@@ -366,29 +450,88 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // back with them.
         if (!_isHostWindowActive)
         {
+            _logger.LogDebug(
+                "Ignored a focus loss from {Surface}: the host window is not active",
+                registration.SurfaceName);
             return;
         }
 
-        // The surface must still hold focus both when the report arrives and one turn of the UI thread later.
-        // The first check drops a report that raced past a release (the user left the surface and came back
-        // while it was in flight); the second gives a click that moves focus elsewhere the chance to claim its
-        // new panel first, so what is left is a loss that put focus nowhere.
+        // The dialog took the keyboard, not another panel. Keeping the surface focused is what lets the
+        // dialog hand the keyboard back to it on the way out.
+        if (_isModalDialogOpen)
+        {
+            _logger.LogDebug(
+                "Ignored a focus loss from {Surface}: a modal dialog holds the keyboard",
+                registration.SurfaceName);
+            return;
+        }
+
+        // The surface must still hold focus both when the report arrives and once the work the blur arrived
+        // alongside has drained. The first check drops a report that raced past a release (the user left the
+        // surface and came back while it was in flight); the deferred checks below decide the rest.
         if (!ReferenceEquals(_focusedRegistration, registration))
         {
+            _logger.LogDebug(
+                "Ignored a focus loss from {Surface}: it no longer holds focus",
+                registration.SurfaceName);
             return;
         }
 
-        registration.WebView.DispatcherQueue.TryEnqueue(() =>
-        {
-            if (!ReferenceEquals(_focusedRegistration, registration))
+        // Queued below the focus reconcile, which the resign that caused this blur queues at the same
+        // priority and therefore ahead of it. Reading the settled state is what separates a blur the host
+        // caused from one the user did.
+        registration.WebView.DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
             {
-                return;
-            }
+                if (!ReferenceEquals(_focusedRegistration, registration))
+                {
+                    _logger.LogDebug(
+                        "Ignored a focus loss from {Surface}: another surface claimed focus first",
+                        registration.SurfaceName);
+                    return;
+                }
 
-            _logger.LogDebug("The focused web surface reported that the keyboard left it");
+                if (HoldsPlatformKeyboardFocus(registration))
+                {
+                    _logger.LogDebug(
+                        "Ignored a focus loss from {Surface}: the platform still routes the keyboard to it",
+                        registration.SurfaceName);
+                    return;
+                }
 
-            _focusService.ClearFocus();
-        });
+                _logger.LogDebug(
+                    "The focused web surface {Surface} reported that the keyboard left it",
+                    registration.SurfaceName);
+
+                _focusService.ClearFocus();
+            });
+    }
+
+    // Whether the platform still routes the keyboard to the surface. Focus reconciliation resigns and
+    // re-asserts native focus in one gesture, because Uno resigns the first responder on every managed focus
+    // change, and the page reports that pair as a blur like any other. Only the platform can tell the two
+    // apart. False off macOS, where the managed focus the other heads move is itself the signal.
+    private bool HoldsPlatformKeyboardFocus(WebViewFocusRegistration registration)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        var coreWebView = registration.WebView.CoreWebView2;
+        if (coreWebView is null)
+        {
+            return false;
+        }
+
+        if (!Platform.MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView, out var nativeHandle, out var detail))
+        {
+            _logger.LogWarning("Could not read the focused web surface's native focus: {Detail}", detail);
+            return false;
+        }
+
+        return Platform.MacOSWebViewInterop.IsWebViewFirstResponder(nativeHandle);
     }
 
     private void OnNativeFocusSignal(CoreWebView2 coreWebView)
@@ -416,6 +559,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         {
             return;
         }
+
+        _logger.LogTrace("Applying platform focus to web surface {Surface}", registration.SurfaceName);
 
         // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
         // (the page's caret is exactly where the user put it and must not move).
@@ -493,8 +638,19 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     private void Report(WebViewFocusRegistration registration)
     {
+        _logger.LogTrace("Web surface {Surface} reported focus", registration.SurfaceName);
+
+        var wasAlreadyFocused = ReferenceEquals(_focusedRegistration, registration);
         _focusedRegistration = registration;
-        registration.OnFocusGained?.Invoke();
+
+        // Gaining focus is not the same as re-reporting focus already held, and only the first runs the
+        // surface's side effect. A document's side effect makes it the active document, and the active
+        // document changing is itself what carries the keyboard to it, so a side effect on every report
+        // would leave the two driving each other without end.
+        if (!wasAlreadyFocused)
+        {
+            registration.OnFocusGained?.Invoke();
+        }
         Action releaseFocus = () => ReleaseSurface(registration);
         var claim = FocusClaim.FromWebSurface(
             registration.Panel,

@@ -376,12 +376,9 @@ public class DocumentLayoutStore
 
         // Always delegate to the panel, even when the stored value is empty or invalid. The panel
         // restores this document when it is still open, and otherwise falls back so that any open
-        // documents leave exactly one active document.
+        // documents leave exactly one active document. The restored document is selected but not focused:
+        // opening a project is not a request to type into whatever was open last.
         DocumentsPanel.ActiveDocument = activeDocument;
-
-        // Read back rather than reusing the local: the panel falls back to another open document when the
-        // stored one is gone, and it is whatever ended up active that takes the keyboard.
-        DocumentsPanel.FocusActiveDocument();
     }
 
     private async Task OpenDefaultReadmeAsync()

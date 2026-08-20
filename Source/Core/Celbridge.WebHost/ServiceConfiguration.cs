@@ -10,6 +10,9 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IWebViewService, WebViewService>();
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
+        services.AddSingleton<IWebSurfaceLog, WebSurfaceLog>();
+        services.AddSingleton<WebSurfaceLogListener>();
+        services.AddSingleton<IWebSurfaceMessageDispatcher, WebSurfaceMessageDispatcher>();
         services.AddSingleton<IWebViewFocusRegistry, WebViewFocusRegistry>();
         services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
@@ -25,12 +28,17 @@ public static class ServiceConfiguration
 
     /// <summary>
     /// Instantiates the WebViewFactory early so it can pre-warm the WebView2 pool in the background while
-    /// the application starts up.
+    /// the application starts up, and opens the diagnostic plane's native message bus entrance.
     /// </summary>
     public static void Initialize()
     {
         // Force early instantiation of WebViewFactory to start pre-warming the WebView2 pool
         var webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         Guard.IsNotNull(webViewFactory);
+
+        // Registered before any surface attaches, so no page's diagnostics are dropped for want of a handler.
+        var messageDispatcher = ServiceLocator.AcquireService<IWebSurfaceMessageDispatcher>();
+        var logListener = ServiceLocator.AcquireService<WebSurfaceLogListener>();
+        logListener.Start(messageDispatcher);
     }
 }

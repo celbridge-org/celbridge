@@ -7,11 +7,18 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class FocusServiceTests
 {
-    private sealed class TestFocusSurface : IFocusSurface;
+    private sealed class TestFocusSurface : IFocusSurface
+    {
+        public string SurfaceName => "test surface";
+    }
 
     private IMessengerService _messengerService = null!;
     private ILogger<FocusService> _logger = null!;
     private FocusService _focusService = null!;
+
+    // The handler the service registered for workspace deactivation, captured so a test can raise it without
+    // a real messenger.
+    private MessageHandler<object, WorkspacePageDeactivatedMessage> _workspaceDeactivatedHandler = null!;
 
     // The web surface most tests report from. Claims are compared by surface identity, so a test that needs
     // two distinct surfaces creates its own.
@@ -21,6 +28,12 @@ public class FocusServiceTests
     public void SetUp()
     {
         _messengerService = Substitute.For<IMessengerService>();
+        _messengerService
+            .When(messenger => messenger.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, WorkspacePageDeactivatedMessage>>()))
+            .Do(call => _workspaceDeactivatedHandler = call.Arg<MessageHandler<object, WorkspacePageDeactivatedMessage>>());
+
         _logger = Substitute.For<ILogger<FocusService>>();
         _focusService = new FocusService(_messengerService, _logger);
         _surface = new TestFocusSurface();
@@ -212,5 +225,22 @@ public class FocusServiceTests
         _focusService.ClearEditTarget(tornDownTarget);
 
         _focusService.EditTarget.Should().Be(currentTarget);
+    }
+
+    [Test]
+    public void WorkspaceDeactivated_ClearsPanelFocusAndTheEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        var releaseFocus = Substitute.For<Action>();
+        var claim = FocusClaim.FromWebSurface(WorkspacePanelId.Documents, target, _surface, releaseFocus);
+        _focusService.OnFocusReceived(claim);
+
+        // This service outlives the workspace, so a target left behind would keep the Edit menu pointing at
+        // an editor that no longer exists.
+        _workspaceDeactivatedHandler.Invoke(this, new WorkspacePageDeactivatedMessage());
+
+        _focusService.FocusedPanel.Should().Be(WorkspacePanelId.None);
+        _focusService.EditTarget.Should().BeNull();
+        releaseFocus.Received(1).Invoke();
     }
 }

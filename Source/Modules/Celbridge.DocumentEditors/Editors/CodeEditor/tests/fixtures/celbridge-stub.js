@@ -18,7 +18,6 @@ const celbridge = {
     document: {
         notifyChanged: () => {},
         notifyContentLoaded: () => {},
-        notifyClientReady: () => {},
         save: async () => {},
         load: async () => ({})
     },

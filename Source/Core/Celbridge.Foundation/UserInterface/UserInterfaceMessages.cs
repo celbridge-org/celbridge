@@ -11,6 +11,18 @@ public record MainWindowActivatedMessage();
 public record MainWindowDeactivatedMessage();
 
 /// <summary>
+/// Sent when a modal dialog takes the keyboard, and again when it gives it back. A hosted web surface sees
+/// the dialog opening as an ordinary blur and cannot tell it from the user clicking away, so the surface
+/// that had the keyboard keeps it for as long as the dialog holds it.
+/// </summary>
+public record ModalDialogOpenedMessage();
+
+/// <summary>
+/// Sent when a modal dialog closes and the keyboard can return to the surface that had it.
+/// </summary>
+public record ModalDialogClosedMessage();
+
+/// <summary>
 /// Sent when the active application page changes.
 /// </summary>
 public record ActivePageChangedMessage(ApplicationPage ActivePage);

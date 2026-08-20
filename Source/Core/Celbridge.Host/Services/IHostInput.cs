@@ -6,10 +6,6 @@ public static class InputRpcMethods
 {
     public const string KeyboardShortcut = "input/keyboardShortcut";
     public const string LinkClicked = "input/linkClicked";
-    public const string EditorScrollChanged = "input/scrollChanged";
-    public const string PreviewScrollChanged = "input/previewScrollChanged";
-    public const string OpenResource = "input/openResource";
-    public const string OpenExternal = "input/openExternal";
 
     // Host to client. Asks the WebView to release its DOM focus.
     public const string ReleaseFocus = "input/releaseFocus";
@@ -26,6 +22,11 @@ public static class InputRpcMethods
 
     // Client to host. Reports which edit verbs the editor can currently perform.
     public const string EditAvailabilityChanged = "input/editAvailabilityChanged";
+
+    // Client to host. Reports that the keyboard has left the page. Sent by a listener the host injects into
+    // every hosted surface, so it arrives over the native web message bus rather than the RPC channel: the
+    // page it comes from may have no client library at all.
+    public const string FocusLost = "input/focusLost";
 }
 
 /// <summary>
@@ -44,32 +45,6 @@ public interface IHostInput
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.LinkClicked)]
     void OnLinkClicked(string href) { }
-
-    /// <summary>
-    /// Called when the scroll position changes in the editor.
-    /// </summary>
-    [JsonRpcMethod(InputRpcMethods.EditorScrollChanged)]
-    void OnScrollPositionChanged(double scrollPercentage) { }
-
-    /// <summary>
-    /// Called when the scroll position changes in a preview pane.
-    /// </summary>
-    [JsonRpcMethod(InputRpcMethods.PreviewScrollChanged)]
-    void OnPreviewScrollChanged(double scrollPercentage) { }
-
-    /// <summary>
-    /// Called when a local resource link is clicked in the WebView.
-    /// Host resolves the href relative to the current document folder and opens the resource.
-    /// </summary>
-    [JsonRpcMethod(InputRpcMethods.OpenResource)]
-    void OnOpenResource(string href) { }
-
-    /// <summary>
-    /// Called when an external URL is clicked in the WebView.
-    /// Host opens the URL in the default browser.
-    /// </summary>
-    [JsonRpcMethod(InputRpcMethods.OpenExternal)]
-    void OnOpenExternal(string href) { }
 
     /// <summary>
     /// Called when a WebView editor reports which edit verbs it can currently perform, so the host can
