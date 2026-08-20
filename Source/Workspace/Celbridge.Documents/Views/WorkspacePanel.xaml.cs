@@ -462,14 +462,20 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     private void UpdateTabStripVisibility(LayoutMode layoutMode)
     {
-        // In Presentation mode, hide the tab strip and toolbar to show only the document content.
-        // In all other modes, show the tab strip and toolbar.
+        // In Presentation mode, hide the tab strip to show only the document content.
         bool showTabStrip = layoutMode != LayoutMode.Presentation;
         SectionContainer.UpdateTabStripVisibility(showTabStrip);
 
+        // The toolbar carries the collapse button, which only means something while the area sits beside
+        // the others. Focus and Presentation give it the whole panel, so there is no edge left to collapse
+        // into and the button is hidden rather than left offering an action it cannot perform.
+        var toolbarVisibility = layoutMode == LayoutMode.Default
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         foreach (var toolbar in _areaToolbars.Values)
         {
-            toolbar.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
+            toolbar.Visibility = toolbarVisibility;
         }
     }
 
