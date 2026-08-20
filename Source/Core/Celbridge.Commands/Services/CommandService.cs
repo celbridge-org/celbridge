@@ -23,7 +23,8 @@ public class CommandService : ICommandService
 
     private readonly List<QueuedCommand> _commandQueue = new();
 
-    private object _lock = new object();
+    // The single monitor guarding _commandQueue. Every read and write of the queue takes it.
+    private readonly object _lock = new();
 
     private readonly Stopwatch _stopwatch = new();
     private double _lastWorkspaceUpdateTime = 0;
@@ -212,10 +213,6 @@ public class CommandService : ICommandService
         {
             if (_stopped)
             {
-                lock (_commandQueue)
-                {
-                    _commandQueue.Clear();
-                }
                 _stopped = false;
                 break;
             }
