@@ -98,7 +98,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         Unloaded += WorkspacePanel_Unloaded;
     }
 
-    private void OnActiveDocumentChanged(ResourceKey documentResource)
+    private void OnActiveDocumentChanged(ResourceKey documentResource, ActiveDocumentChangeReason reason)
     {
         if (_isShuttingDown)
         {
@@ -113,6 +113,16 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         ViewModel.OnActiveDocumentChanged(documentResource);
+
+        // The keyboard follows the active document, so every path that changes it carries focus without
+        // having to remember to: opening, closing onto the next tab, moving a tab between sections. A
+        // restore is the exception, because the user did not ask for it. An empty resource means the last
+        // document closed, and the surface that held focus reports its own teardown.
+        if (reason == ActiveDocumentChangeReason.Activated
+            && !documentResource.IsEmpty)
+        {
+            FocusActivatedDocument(documentResource);
+        }
     }
 
     private void OnSectionDocumentsLayoutChanged(DocumentSectionView sectionView, List<ResourceKey> documents)
@@ -192,9 +202,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         _ = HandleDroppedFiles(targetSectionView, resources, insertionSlot);
     }
 
-    // The insertion slot is where the drop landed in the target section's tab order. The open is awaited
-    // so focus can transfer to the resulting document once its view exists. The command queue serializes
-    // the opens either way, so this does not change the order documents open in.
+    // The insertion slot is where the drop landed in the target section's tab order. Each branch below makes
+    // the dropped document the active one, which is what carries the keyboard to it.
     private async Task HandleDroppedFiles(DocumentSectionView targetSectionView, List<IResource> resources, int insertionSlot)
     {
         if (_isShuttingDown)
@@ -204,7 +213,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         var targetSection = targetSectionView.Section;
         int droppedFileOffset = 0;
-        ResourceKey? documentToFocus = null;
 
         foreach (var resource in resources)
         {
@@ -248,24 +256,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                     command.TargetTabIndex = slot;
                 });
             }
-
-            documentToFocus = fileResourceKey;
-        }
-
-        // On the pointer-drag head, dropping a resource into the document area is a deliberate move into that
-        // area, so hand keyboard focus to the resulting document, matching a tab click. The built-in
-        // drag-and-drop head (where the coordinator is absent) keeps its own focus behaviour. Skipped when
-        // nothing opened (a folder-only drop).
-        if (_resourceDragCoordinator is not null
-            && documentToFocus is ResourceKey keyToFocus)
-        {
-            FocusActivatedDocument(keyToFocus);
         }
     }
 
-    // Gives the active document keyboard focus where no interaction carries focus to it: a workspace restore
-    // selecting its tab, and a layout-mode change that collapses the panels. Without this the panel that holds
-    // the keyboard keeps it while the document looks focused.
+    // Gives the active document keyboard focus without the active document changing, which is what normally
+    // carries it: a layout-mode change collapses the panels while the keyboard is still on one of them.
     public void FocusActiveDocument()
     {
         var activeDocument = ActiveDocument;
@@ -336,6 +331,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         // Listen for requests to flash a document tab (e.g. when a utility is surfaced or a document reopened)
         _messengerService.Register<FlashDocumentMessage>(this, OnFlashDocumentRequested);
+
+        // Register how this panel takes keyboard focus, so the focus service can hand it back after an
+        // interaction moves it away transiently. Without it a modal dialog raised over a document leaves the
+        // keyboard nowhere when it closes.
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.Documents, FocusActiveDocument);
 
         // Apply the current layout mode. It survives a project switch, so a workspace can load straight
         // into Focus or Presentation.
@@ -423,6 +423,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         UnregisterAsResourceDropTarget();
         ViewModel.SurfaceSizeChanged -= OnStoredSurfaceSizeChanged;
         ViewModel.OnViewUnloaded();
+        _focusService.SetPanelFocusHandler(WorkspacePanelId.Documents, null);
         _messengerService.UnregisterAll(this);
     }
 
@@ -699,11 +700,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 await NavigateToLocation(fileResource, effectiveOptions.Location);
             }
 
-            if (effectiveOptions.Activate)
-            {
-                FocusActivatedDocument(fileResource);
-            }
-
             return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
         }
 
@@ -785,11 +781,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         if (!string.IsNullOrEmpty(effectiveOptions.EditorStateJson))
         {
             await documentView.RestoreEditorStateAsync(effectiveOptions.EditorStateJson);
-        }
-
-        if (effectiveOptions.Activate)
-        {
-            FocusActivatedDocument(fileResource);
         }
 
         return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
@@ -1012,6 +1003,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // / active-document tracking, so the new tab would be selected within
         // its section but not surfaced as the workspace's active document.
         SectionContainer.ActivateDocument(fileResource, location.SectionView.Section);
+
         return Result.Ok();
     }
 

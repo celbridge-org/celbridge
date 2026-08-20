@@ -36,7 +36,6 @@ public static class DocumentRpcMethods
     public const string RequestSave = "document/requestSave";
     public const string ExternalChange = "document/externalChange";
     public const string ImportComplete = "document/importComplete";
-    public const string ClientReady = "document/clientReady";
     public const string ContentLoaded = "document/contentLoaded";
     public const string RequestState = "document/requestState";
     public const string RestoreState = "document/restoreState";
@@ -97,16 +96,11 @@ public interface IHostDocument
     void OnDocumentChanged() { }
 
     /// <summary>
-    /// Called when an import operation completes in the WebView.
+    /// Called when an editor finishes importing binary content, reporting whether the import succeeded and
+    /// why it failed. A failed import leaves the editor showing nothing, so the failure must reach the user.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ImportComplete)]
     void OnImportComplete(bool success, string? error = null) { }
-
-    /// <summary>
-    /// Called when the JavaScript client has finished initializing and is ready for communication.
-    /// </summary>
-    [JsonRpcMethod(DocumentRpcMethods.ClientReady)]
-    void OnClientReady() { }
 
     /// <summary>
     /// Called every time the editor has finished loading (or reloading) content and is ready for edits.

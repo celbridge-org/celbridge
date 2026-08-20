@@ -89,12 +89,19 @@ public class DialogService : IDialogService
     {
         SetProgressDialogSuppressed(true);
         using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
+
+        // A hosted web surface reports the dialog taking the keyboard as an ordinary blur, which would
+        // otherwise clear the focused panel and leave nothing for the refocus below to return to.
+        _messengerService.Send(new ModalDialogOpenedMessage());
+
         try
         {
             return await showDialog();
         }
         finally
         {
+            _messengerService.Send(new ModalDialogClosedMessage());
+
             SetProgressDialogSuppressed(false);
 
             // A modal dialog moves keyboard focus into itself; on the Skia heads closing it does not

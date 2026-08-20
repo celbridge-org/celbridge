@@ -19,15 +19,21 @@ public class CelbridgeHost : IDisposable
     public JsonRpc Rpc { get; }
 
     /// <summary>
-    /// Creates a new CelbridgeHost with the specified channel.
+    /// Creates a new CelbridgeHost with the specified channel, logging what the page reports through the
+    /// given target.
     /// </summary>
-    public CelbridgeHost(IHostChannel channel)
+    public CelbridgeHost(IHostChannel channel, IHostLog logTarget)
     {
         _rpcHandler = new RpcMessageHandler(channel);
         Rpc = new JsonRpc(_rpcHandler);
 
         // Ensure RPC method handlers run on the UI thread
         Rpc.SynchronizationContext = SynchronizationContext.Current;
+
+        // The diagnostic plane is part of hosting a page rather than a feature a host opts into, so it is
+        // registered here and the target is required: an editor author cannot host a page that has no way to
+        // report what went wrong in it.
+        AddLocalRpcTarget<IHostLog>(logTarget);
     }
 
     /// <summary>

@@ -30,8 +30,9 @@ public interface IDocumentsPanel
     double MinimumHeight { get; }
 
     /// <summary>
-    /// Gives the active document keyboard focus, for the paths that make a document active without an
-    /// interaction that carries focus to it: a workspace restore and a layout-mode change.
+    /// Gives the active document keyboard focus without changing which document is active. Changing the
+    /// active document already carries the keyboard to it, so this is for the paths that move focus while
+    /// the active document stays put, such as a layout-mode change that collapses the panels.
     /// </summary>
     void FocusActiveDocument();
 

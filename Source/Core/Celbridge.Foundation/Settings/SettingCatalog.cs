@@ -16,6 +16,11 @@ public static class SettingCatalog
     {
         public static readonly SettingDescriptor<ApplicationColorTheme> Theme =
             new("Application.Theme", SettingScope.Application, ApplicationColorTheme.System);
+
+        // Empty follows the operating system's language, which is what an installation has until someone
+        // chooses otherwise.
+        public static readonly SettingDescriptor<string> Language =
+            new("Application.Language", SettingScope.Application, string.Empty);
     }
 
     /// <summary>

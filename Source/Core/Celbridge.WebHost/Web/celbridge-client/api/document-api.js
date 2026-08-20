@@ -103,14 +103,6 @@ export class DocumentAPI {
     }
 
     /**
-     * Notifies the host that the JavaScript client has fully initialized.
-     * Call this after the editor is ready to receive RPC commands.
-     */
-    notifyClientReady() {
-        this.#transport.notify('document/clientReady', {});
-    }
-
-    /**
      * Notifies the host that document content has been loaded and the editor is ready for edits.
      * Call this after content has been set in the editor (e.g., after setValue in Monaco).
      * @param {string} [reason] - One of ContentLoadedReason.Initial (default) or

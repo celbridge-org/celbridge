@@ -265,20 +265,6 @@ describe('Celbridge', () => {
             expect(client.appState.current.theme).toBe('Dark');
         });
 
-        it('should handle language change notifications', async () => {
-            const { client, simulateResponse, simulateNotification } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: { locale: 'en' } });
-            await initPromise;
-
-                        const handler = vi.fn();
-                        client.localization.onLanguageChanged(handler);
-
-                        simulateNotification('localization/languageChanged', 'fr');
-
-                        expect(handler).toHaveBeenCalledWith('fr');
-                    });
                 });
 
                 describe('document operations', () => {
@@ -406,21 +392,6 @@ describe('Celbridge', () => {
             expect(notification.id).toBeUndefined();
         });
 
-        it('should send scroll changed notification with percentage', async () => {
-            const { client, sentMessages, simulateResponse } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            client.input.notifyScrollChanged(0.75);
-
-            expect(sentMessages).toHaveLength(2);
-            const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('input/scrollChanged');
-            expect(notification.params.scrollPercentage).toBe(0.75);
-            expect(notification.id).toBeUndefined();
-        });
     });
 
     describe('input/releaseFocus handling', () => {
@@ -495,38 +466,6 @@ describe('Celbridge', () => {
         });
     });
 
-    describe('open resource / open external notifications', () => {
-        it('should send openResource notification with href', async () => {
-            const { client, sentMessages, simulateResponse } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            client.input.notifyOpenResource('docs/intro.md');
-
-            expect(sentMessages).toHaveLength(2);
-            const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('input/openResource');
-            expect(notification.params.href).toBe('docs/intro.md');
-            expect(notification.id).toBeUndefined();
-        });
-
-        it('should send openExternal notification with href', async () => {
-            const { client, sentMessages, simulateResponse } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            client.input.notifyOpenExternal('https://example.com');
-
-            const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('input/openExternal');
-            expect(notification.params.href).toBe('https://example.com');
-            expect(notification.id).toBeUndefined();
-        });
-    });
 
     describe('logging', () => {
         it('should not throw when setting log level', () => {

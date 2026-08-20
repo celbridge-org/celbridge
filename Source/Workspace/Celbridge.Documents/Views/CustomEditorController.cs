@@ -5,6 +5,7 @@ using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
+using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
@@ -54,6 +55,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly IWebViewService _webViewService;
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
+    private readonly IWebSurfaceLog _webSurfaceLog;
+    private readonly ILanguageService _languageService;
 
     private readonly CustomDocumentViewModel _viewModel;
 
@@ -159,8 +162,25 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _webViewService = serviceProvider.GetRequiredService<IWebViewService>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
+        _webSurfaceLog = ServiceLocator.AcquireService<IWebSurfaceLog>();
+        _languageService = ServiceLocator.AcquireService<ILanguageService>();
 
         _viewModel.ReloadRequested += ViewModel_ReloadRequested;
+
+        _messengerService.Register<LanguageChangedMessage>(this, OnLanguageChanged);
+    }
+
+    private void OnLanguageChanged(object recipient, LanguageChangedMessage message)
+    {
+        var host = Host;
+        if (host is null)
+        {
+            return;
+        }
+
+        // Fire and forget: an editor that fails to re-localize keeps working in the previous language, which
+        // is not worth failing a language change over.
+        _ = host.NotifyLanguageChangedAsync(message.Language);
     }
 
     /// <summary>
@@ -391,7 +411,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
         _hostChannelTeardown = hostChannelSetup.Teardown;
         var connectionToken = hostChannelSetup.ConnectionToken;
-        Host = new CelbridgeHost(hostChannelSetup.Channel);
+        var logTarget = new WebSurfaceLogTarget(_viewModel.FileResource.ToString(), _webSurfaceLog);
+        Host = new CelbridgeHost(hostChannelSetup.Channel, logTarget);
 
         // A reconnected transport (e.g. after an OS suspend dropped the socket) may have lost messages
         // that were in transit when the previous socket died, so resync the editor on every rebind.
@@ -560,12 +581,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        // Drop the old registration first so the registry never holds a stale host identity.
-        if (WebView.CoreWebView2 is not null)
-        {
-            _webViewFocusRegistry.Unregister(WebView.CoreWebView2);
-        }
-
+        // The registration is replaced rather than dropped and remade: unregistering means the surface is
+        // going away, which releases the keyboard it is holding, and a redock is the one case where a live
+        // surface changes panel without the user moving focus off it.
         if (!ReferenceEquals(newContainer, _webViewContainer))
         {
             _webViewContainer.Children.Remove(WebView);
@@ -583,6 +601,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     public void Teardown()
     {
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
+        _messengerService.Unregister<LanguageChangedMessage>(this);
 
         _isContentLoaded = false;
         _pendingEditorStateJson = null;
@@ -748,7 +767,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private DocumentMetadata CreateDocumentMetadata()
     {
-        var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        var locale = _languageService.CurrentLanguage;
 
         var metaData = new DocumentMetadata(
             _viewModel.FilePath,

@@ -100,9 +100,6 @@ async function initialize() {
         return;
     }
 
-    log('initialize: notifying client ready');
-    celbridge.document.notifyClientReady();
-
     // Host-to-editor notification for navigate-to-location. A dedicated
     // `editor/*` namespace keeps it distinct from the generic `document/*`
     // lifecycle (initialize, load, save, state).

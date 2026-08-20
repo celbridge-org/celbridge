@@ -7,25 +7,12 @@ namespace Celbridge.Tests.Architecture;
 /// method one side stops honouring leaves no trace at runtime: an unimplemented host method has a default
 /// interface body that accepts the call and does nothing, and a method the host never declares is dropped as
 /// expected control flow. These tests compare the two sides, so a half-wired method fails the build rather
-/// than failing silently in a package author's editor.
+/// than failing silently in a package author's editor. A method that is not honoured yet has no way to be
+/// excused: wire it up or delete it.
 /// </summary>
 [TestFixture]
 public class WebChannelContractTests
 {
-    // Wire names one side does not honour, each recorded with the decision behind it. An entry here is a
-    // documented gap, not a suppression: wire the method up or delete it, then remove the entry.
-    private static readonly Dictionary<string, string> KnownContractGaps = new(StringComparer.Ordinal)
-    {
-        ["document/clientReady"] = "The client announces itself; the host declares the method but no editor acts on it.",
-        ["document/importComplete"] = "The client reports the end of an import; the host declares the method but no editor acts on it.",
-        ["input/scrollChanged"] = "The client reports editor scroll position; nothing consumes it (scroll sync was never finished).",
-        ["input/openResource"] = "The client asks the host to open a project resource; no host implementer, so the call is discarded.",
-        ["input/openExternal"] = "The client asks the host to open a URL in the browser; no host implementer, so the call is discarded.",
-        ["input/previewScrollChanged"] = "Declared for preview scroll sync that was never built: no caller and no implementer.",
-        ["localization/updated"] = "The host sends this name; the client listens for localization/languageChanged, so neither side hears the other.",
-        ["localization/languageChanged"] = "The client listens for this name; the host sends localization/updated, so neither side hears the other.",
-    };
-
     // A wire name: a lower camel namespace, a slash, and a lower camel method.
     private const string WireNamePattern = @"[a-z][A-Za-z]*/[a-z][A-Za-z]*";
 
@@ -37,7 +24,6 @@ public class WebChannelContractTests
 
         var undeclared = webUsages.Keys
             .Where(method => !declaredMethods.Contains(method))
-            .Where(method => !KnownContractGaps.ContainsKey(method))
             .Select(method => $"{method} (used by {webUsages[method]})")
             .OrderBy(entry => entry, StringComparer.Ordinal)
             .ToList();
@@ -59,11 +45,6 @@ public class WebChannelContractTests
             // A member declared without a body must be implemented for the solution to compile. Only a
             // default body can be left unimplemented, and that is the case that fails silently.
             if (!declaration.HasDefaultBody)
-            {
-                continue;
-            }
-
-            if (KnownContractGaps.ContainsKey(declaration.WireName))
             {
                 continue;
             }
@@ -91,7 +72,6 @@ public class WebChannelContractTests
 
         var unhandled = CollectHostSentMethods(declaredMethods)
             .Where(method => !webMentions.Contains(method))
-            .Where(method => !KnownContractGaps.ContainsKey(method))
             .OrderBy(method => method, StringComparer.Ordinal)
             .ToList();
 

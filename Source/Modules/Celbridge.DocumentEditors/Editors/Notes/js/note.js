@@ -463,29 +463,6 @@ editor.on('transaction', ({ transaction }) => {
 // Theme needs no JS here: the celbridge client mirrors the effective theme onto html[data-theme],
 // which note.css keys off.
 
-// Handle language changes (for future runtime language switching)
-client.localization.onLanguageChanged(async (locale) => {
-    // Reload localization from the package's own localization folder, addressed relative to the
-    // page so it resolves against the page's origin on every head (loopback or virtual host).
-    try {
-        const response = await fetch(`localization/${locale}.json`);
-        if (response.ok) {
-            const { setStrings } = await import('/assets/celbridge-client/localization.js');
-            const strings = await response.json();
-            setStrings(strings);
-
-            // Update the TipTap placeholder text dynamically
-            const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
-            if (placeholderExt) {
-                placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
-                editor.view.dispatch(editor.state.tr);
-            }
-        }
-    } catch (e) {
-        console.warn('[Note] Failed to reload localization:', e);
-    }
-});
-
 // Initialize the client and load content
 async function initializeEditor() {
     try {

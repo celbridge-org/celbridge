@@ -244,8 +244,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
                 // The HTML viewer renders loopback project content and supports the webview_* MCP tools.
                 await TryInjectToolBridgeShimAsync();
 
+                var webSurfaceLog = ServiceLocator.AcquireService<IWebSurfaceLog>();
+                var logTarget = new WebSurfaceLogTarget(FileResource.ToString(), webSurfaceLog);
+
                 _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
-                _host = new CelbridgeHost(_hostChannel);
+                _host = new CelbridgeHost(_hostChannel, logTarget);
                 _host.AddLocalRpcTarget<IHostInput>(this);
                 _host.StartListening();
 

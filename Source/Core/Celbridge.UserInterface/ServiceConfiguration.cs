@@ -29,6 +29,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
+        services.AddSingleton<ILanguageService, LanguageService>();
         services.AddSingleton<IManagedFocus, ManagedFocus>();
         services.AddSingleton<IOverlayInputSuppressor, OverlayInputSuppressor>();
         services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
@@ -59,6 +60,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<ISetLayoutCommand, SetLayoutCommand>();
         services.AddTransient<ISetThemeCommand, SetThemeCommand>();
+        services.AddTransient<ISetLanguageCommand, SetLanguageCommand>();
         services.AddTransient<IAlertCommand, AlertCommand>();
         services.AddTransient<IConfirmActionCommand, ConfirmActionCommand>();
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
@@ -90,6 +92,11 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
+        // Before anything looks a string up: the native user interface resolves its strings as it is built,
+        // so the stored language has to be in force by then.
+        var languageService = ServiceLocator.AcquireService<ILanguageService>();
+        languageService.ApplyStoredLanguage();
+
         var navigationService = ServiceLocator.AcquireService<INavigationService>() as NavigationService;
         Guard.IsNotNull(navigationService);
 

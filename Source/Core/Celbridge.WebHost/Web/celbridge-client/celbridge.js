@@ -7,6 +7,7 @@ import { DialogAPI } from './api/dialog-api.js';
 import { InputAPI } from './api/input-api.js';
 import { createAppStateStore, createViewStateStore } from './core/state-store.js';
 import { LocalizationAPI } from './api/localization-api.js';
+import { LogAPI } from './api/log-api.js';
 import { ToolsAPI } from './api/tools-api.js';
 
 /**
@@ -59,6 +60,12 @@ export class Celbridge {
      * @type {LocalizationAPI}
      */
     localization;
+
+    /**
+     * Application log API. Writes diagnostics into the host's log, named by this surface.
+     * @type {LogAPI}
+     */
+    log;
 
     /**
      * Host capability proxy (`cel.*`) and raw tool dispatch (`list`, `call`).
@@ -128,6 +135,7 @@ export class Celbridge {
         this.#appState = createAppStateStore(this.#transport);
         this.#viewState = createViewStateStore(this.#transport);
         this.localization = new LocalizationAPI(this.#transport);
+        this.log = new LogAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
         // Release the active element when the host signals that focus moved to another panel. Wired

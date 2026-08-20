@@ -146,4 +146,16 @@ internal sealed class CustomDocumentHandler : IHostDocument
     {
         ContentLoaded?.Invoke(reason);
     }
+
+    public void OnImportComplete(bool success, string? error = null)
+    {
+        if (success)
+        {
+            return;
+        }
+
+        var detail = string.IsNullOrEmpty(error) ? "no detail reported" : error;
+
+        _logger.LogError($"Editor failed to import '{_viewModel.FileResource}': {detail}");
+    }
 }

@@ -8,6 +8,24 @@ namespace Celbridge.Documents.Views;
 public record DocumentTabLocation(DocumentSectionView SectionView, DocumentTab Tab);
 
 /// <summary>
+/// Why the active document changed. Restoring a session is the one change the user did not ask for, so it is
+/// the one that does not carry the keyboard to the document it selects.
+/// </summary>
+public enum ActiveDocumentChangeReason
+{
+    /// <summary>
+    /// The user or a command made this document active: opening it, clicking its tab, moving it between
+    /// sections, or closing the document that was active before it.
+    /// </summary>
+    Activated,
+
+    /// <summary>
+    /// The workspace restored the document that was active when the project was last open.
+    /// </summary>
+    Restored
+}
+
+/// <summary>
 /// Owns the document sections and the documents in them: which section holds which tab, which document is
 /// active, what takes over when one closes, and moving tabs between sections. The geometry of the areas the
 /// sections are laid out in belongs to DocumentAreaLayout, which this creates and exposes.
@@ -21,10 +39,10 @@ public sealed partial class DocumentSectionContainer
     private ResourceKey _activeDocument = ResourceKey.Empty;
 
     /// <summary>
-    /// Event raised when the active document changes.
-    /// This is the document that should be inspected.
+    /// Event raised when the active document changes. This is the document that should be inspected, and
+    /// unless it was restored, the document the keyboard follows.
     /// </summary>
-    public event Action<ResourceKey>? ActiveDocumentChanged;
+    public event Action<ResourceKey, ActiveDocumentChangeReason>? ActiveDocumentChanged;
 
     /// <summary>
     /// Event raised when the open documents in any section change.
@@ -147,7 +165,7 @@ public sealed partial class DocumentSectionContainer
 
         UpdateTabSelectionIndicators();
 
-        ActiveDocumentChanged?.Invoke(_activeDocument);
+        ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Activated);
     }
 
     /// <summary>
@@ -177,7 +195,7 @@ public sealed partial class DocumentSectionContainer
             }
 
             UpdateTabSelectionIndicators();
-            ActiveDocumentChanged?.Invoke(_activeDocument);
+            ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Activated);
         }
         else
         {
@@ -185,7 +203,7 @@ public sealed partial class DocumentSectionContainer
             _activeDocument = ResourceKey.Empty;
             _activeSection = DocumentSection.MainLeft;
             UpdateTabSelectionIndicators();
-            ActiveDocumentChanged?.Invoke(_activeDocument);
+            ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Activated);
         }
     }
 
@@ -290,7 +308,7 @@ public sealed partial class DocumentSectionContainer
         }
 
         UpdateTabSelectionIndicators();
-        ActiveDocumentChanged?.Invoke(_activeDocument);
+        ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Restored);
     }
 
     /// <summary>
@@ -372,7 +390,7 @@ public sealed partial class DocumentSectionContainer
         _areaLayout.ReconcileAreaSplit(sourceSectionView.Section.GetArea());
 
         UpdateTabSelectionIndicators();
-        ActiveDocumentChanged?.Invoke(_activeDocument);
+        ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Activated);
 
         // Flash the tab at its new section so the address change stands out.
         tab.FlashAttentionDeferred();
