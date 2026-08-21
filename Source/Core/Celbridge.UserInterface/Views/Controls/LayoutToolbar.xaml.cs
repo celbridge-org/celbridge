@@ -74,13 +74,22 @@ public sealed partial class LayoutToolbar : UserControl
     /// </summary>
     internal IReadOnlyList<FrameworkElement> GetInteractiveElements()
     {
-        var elements = new List<FrameworkElement>
+        var elements = new List<FrameworkElement>();
+
+        // A collapsed control keeps the size and position it was last measured at, so visibility rather
+        // than size is what says whether it is still on screen. The toggles are collapsed by their
+        // container, which leaves their own bounds untouched.
+        if (PanelLayoutButton.Visibility == Visibility.Visible)
         {
-            PanelLayoutButton,
-            ToggleUtilityPanelButton,
-            ToggleBottomAreaButton,
-            ToggleSideAreaButton
-        };
+            elements.Add(PanelLayoutButton);
+        }
+
+        if (PanelToggleButtons.Visibility == Visibility.Visible)
+        {
+            elements.Add(ToggleUtilityPanelButton);
+            elements.Add(ToggleBottomAreaButton);
+            elements.Add(ToggleSideAreaButton);
+        }
 
         return elements;
     }
