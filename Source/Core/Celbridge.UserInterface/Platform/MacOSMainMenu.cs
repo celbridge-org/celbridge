@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Settings;
@@ -250,6 +251,15 @@ internal static class MacOSMainMenu
     {
         // The standard Edit verbs and Full Screen are responder-chain Selector items (see Install), so
         // AppKit handles their state. This only covers the Command items below.
+
+        // An in-window dialog covers the hamburger menu but leaves the menu bar live, so every command
+        // here stays pickable while one is open. Grey the whole bar out for the dialog's lifetime,
+        // leaving Quit alone. AppKit re-asks on each open, so this needs no invalidation.
+        if (tag != TagQuit &&
+            ServiceLocator.AcquireService<IDialogService>().IsDialogOpen)
+        {
+            return MacMenuItemState.Disabled;
+        }
 
         // Reload and Close act on the open project, so they are enabled only while a workspace is loaded.
         // Every other project command is always available. Mirrors the hamburger menu's gating.

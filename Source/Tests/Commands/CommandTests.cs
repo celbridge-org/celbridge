@@ -1,5 +1,6 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Logging.Services;
 using Celbridge.Messaging.Services;
 using Celbridge.Messaging;
@@ -69,6 +70,8 @@ public class CommandTests
 {
     private ServiceProvider? _serviceProvider;
     private ICommandService? _commandService;
+    private ISettingsService? _settingsService;
+    private IDialogService? _dialogService;
 
     [SetUp]
     public void Setup()
@@ -83,9 +86,14 @@ public class CommandTests
 
         // The command loop flushes application settings each tick; a substitute is
         // enough since these tests do not exercise settings persistence.
-        var settingsService = Substitute.For<ISettingsService>();
-        settingsService.FlushAsync().Returns(Task.FromResult(Result.Ok()));
-        services.AddSingleton(settingsService);
+        _settingsService = Substitute.For<ISettingsService>();
+        _settingsService.FlushAsync().Returns(Task.FromResult(Result.Ok()));
+        services.AddSingleton(_settingsService);
+
+        // The command loop holds its dequeue while a dialog is open.
+        _dialogService = Substitute.For<IDialogService>();
+        _dialogService.IsDialogOpen.Returns(false);
+        services.AddSingleton(_dialogService);
         services.AddTransient<TestCommand>();
         services.AddTransient<ThrowingTestCommand>();
         services.AddTransient<SuppressLogTestCommand>();
@@ -235,5 +243,78 @@ public class CommandTests
         Guard.IsNotNull(capturedCommand);
         capturedCommand.ExecuteComplete.Should().BeTrue();
         capturedCommand.CommandFlags.HasFlag(CommandFlags.SuppressCommandLog).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Execute_QueuedCommandWaitsUntilTheDialogCloses()
+    {
+        Guard.IsNotNull(_commandService);
+        Guard.IsNotNull(_dialogService);
+
+        _dialogService.IsDialogOpen.Returns(true);
+
+        TestCommand? queuedCommand = null;
+        _commandService.Execute<TestCommand>(command =>
+        {
+            queuedCommand = command;
+        });
+        Guard.IsNotNull(queuedCommand);
+
+        // Long enough for the loop to tick many times over the held queue.
+        await Task.Delay(300);
+
+        queuedCommand.ExecuteComplete.Should().BeFalse("a queued command must not run while a dialog is open");
+
+        _dialogService.IsDialogOpen.Returns(false);
+
+        for (int i = 0; i < 20; i++)
+        {
+            if (queuedCommand.ExecuteComplete)
+            {
+                break;
+            }
+            await Task.Delay(50);
+        }
+
+        queuedCommand.ExecuteComplete.Should().BeTrue("closing the dialog must release the queue");
+    }
+
+    [Test]
+    public async Task ExecuteImmediate_RunsWhileADialogIsOpen()
+    {
+        // The settings dialog runs its own commands this way. Enqueuing them under the gate would
+        // leave them pending until the dialog closed, and deadlock the ones that are awaited.
+        Guard.IsNotNull(_commandService);
+        Guard.IsNotNull(_dialogService);
+
+        _dialogService.IsDialogOpen.Returns(true);
+
+        TestCommand? immediateCommand = null;
+        var executionTask = _commandService.ExecuteImmediate<TestCommand>(command =>
+        {
+            immediateCommand = command;
+        });
+
+        var completedTask = await Task.WhenAny(executionTask, Task.Delay(TimeSpan.FromSeconds(5)));
+        completedTask.Should().BeSameAs(executionTask, "ExecuteImmediate must not wait on the queue gate");
+
+        Guard.IsNotNull(immediateCommand);
+        immediateCommand.ExecuteComplete.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task UpdateApplication_KeepsTickingWhileADialogIsOpen()
+    {
+        // Only the dequeue is gated. The application update carries on so deferred settings writes and
+        // document auto-saves still reach disk while the dialog is up.
+        Guard.IsNotNull(_dialogService);
+        Guard.IsNotNull(_settingsService);
+
+        _dialogService.IsDialogOpen.Returns(true);
+        _settingsService.ClearReceivedCalls();
+
+        await Task.Delay(300);
+
+        await _settingsService.ReceivedWithAnyArgs().FlushAsync();
     }
 }

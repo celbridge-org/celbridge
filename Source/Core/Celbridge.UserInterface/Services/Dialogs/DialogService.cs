@@ -22,9 +22,8 @@ public class DialogService : IDialogService
     private bool _suppressProgressDialog;
     private List<IProgressDialogToken> _progressDialogTokens = [];
 
-    // Only one dialog can be on screen at a time, and the settings dialog stays up until the user closes
-    // it. The macOS menu bar stays live while it is open, so the Settings item can be picked again.
-    private bool _isSettingsDialogOpen;
+    // Read by the command loop, which does not run on the UI thread that writes it.
+    private volatile bool _isDialogOpen;
 
     public DialogService(
         ILogger<DialogService> logger,
@@ -43,8 +42,16 @@ public class DialogService : IDialogService
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
+    public bool IsDialogOpen => _isDialogOpen;
+
     public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
+        if (IsDialogOpen)
+        {
+            RefuseSecondDialog();
+            return;
+        }
+
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
         _answerScheduler.OnDialogShown(DialogKind.Alert);
         await ShowDialogAsync(async () =>
@@ -56,6 +63,11 @@ public class DialogService : IDialogService
 
     public async Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, ConfirmationDialogOptions? options = null)
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         var dialog = _dialogFactory.CreateConfirmationDialog(titleText, messageText, options);
         _answerScheduler.OnDialogShown(DialogKind.Confirmation);
         var showResult = await ShowDialogAsync(dialog.ShowDialogAsync);
@@ -77,13 +89,13 @@ public class DialogService : IDialogService
 
     public async Task ShowSettingsDialogAsync()
     {
-        if (_isSettingsDialogOpen)
+        if (IsDialogOpen)
         {
+            RefuseSecondDialog();
             return;
         }
 
         var dialog = _dialogFactory.CreateSettingsDialog();
-        _isSettingsDialogOpen = true;
 
         try
         {
@@ -98,10 +110,17 @@ public class DialogService : IDialogService
             // Callers start this without awaiting it, so a failure here has nowhere else to surface.
             _logger.LogError(exception, "Failed to show the settings dialog");
         }
-        finally
-        {
-            _isSettingsDialogOpen = false;
-        }
+    }
+
+    // Logs and fails a request to show a dialog while another one is on screen. The command queue and the
+    // macOS menu bar are both held while a dialog is open, so this should be unreachable. It is the
+    // backstop that turns whatever slips through into a diagnosable failure rather than a ContentDialog
+    // throw.
+    private Result.FailureResult RefuseSecondDialog([CallerMemberName] string dialogName = "")
+    {
+        _logger.LogError("Cannot show dialog '{DialogName}' because another dialog is already open", dialogName);
+
+        return Result.Fail($"Cannot show dialog '{dialogName}' because another dialog is already open.");
     }
 
     private void ReleaseProgressDialog(IProgressDialogToken token)
@@ -122,6 +141,7 @@ public class DialogService : IDialogService
 
     private async Task<T> ShowDialogAsync<T>(Func<Task<T>> showDialog, [CallerMemberName] string dialogName = "")
     {
+        _isDialogOpen = true;
         SetProgressDialogSuppressed(true);
         using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
 
@@ -135,6 +155,9 @@ public class DialogService : IDialogService
         }
         finally
         {
+            // Cleared first so the command queue starts draining as the dialog comes down.
+            _isDialogOpen = false;
+
             _messengerService.Send(new ModalDialogClosedMessage());
 
             SetProgressDialogSuppressed(false);
@@ -188,12 +211,22 @@ public class DialogService : IDialogService
 
     public async Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync()
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         var dialog = _dialogFactory.CreateNewProjectDialog();
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
     public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null)
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator, submitButtonKey);
         _answerScheduler.OnDialogShown(DialogKind.InputText);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
@@ -201,6 +234,11 @@ public class DialogService : IDialogService
 
     public async Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null)
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         var dialog = _dialogFactory.CreateSecretInputDialog(titleText, headerText, submitButtonKey);
         _answerScheduler.OnDialogShown(DialogKind.SecretInput);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
@@ -208,12 +246,22 @@ public class DialogService : IDialogService
 
     public async Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         var dialog = _dialogFactory.CreateNewFileDialog(defaultFileName, selectionRange, validator);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
     public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result<ResourceKey>.Fail("Cannot show resource picker: no project is currently loaded.");
@@ -226,6 +274,11 @@ public class DialogService : IDialogService
 
     public async Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
         var dialog = _dialogFactory.CreateChoiceDialog(titleText, messageText, options, defaultIndex, checkbox, primaryButtonText, secondaryButtonText);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
