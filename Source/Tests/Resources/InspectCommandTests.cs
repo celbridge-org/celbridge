@@ -56,7 +56,7 @@ public class InspectCommandTests
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var resourceFileSystem = new LocalResourceFileSystem(

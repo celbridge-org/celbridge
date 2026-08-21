@@ -32,7 +32,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
     {
         await Task.CompletedTask;
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             ResultValue = new UtilitiesStateSnapshot(Array.Empty<UtilityInfo>());
             return Result.Ok();

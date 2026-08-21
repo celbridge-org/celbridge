@@ -30,7 +30,7 @@ public class UtilityService : IUtilityService, IDisposable
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         _serviceProvider = serviceProvider;
         _logger = logger;

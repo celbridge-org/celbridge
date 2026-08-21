@@ -50,7 +50,7 @@ public class ResourceService : IResourceService, IDisposable
         ILocalFileSystem fileSystem)
     {
         // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         _logger = logger;
         _commandService = commandService;

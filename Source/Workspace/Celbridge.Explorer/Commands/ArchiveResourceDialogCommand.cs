@@ -42,7 +42,7 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
 
     private async Task<Result> ShowArchiveResourceDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Failed to show create archive dialog because workspace is not loaded");
         }

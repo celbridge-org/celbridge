@@ -103,7 +103,7 @@ public partial class FileTools
     private async Task<Result<string>> ComputeFileHashAsync(ResourceKey resourceKey)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("No project is loaded.");
         }

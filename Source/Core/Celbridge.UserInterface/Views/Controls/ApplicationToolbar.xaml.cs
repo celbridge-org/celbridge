@@ -59,7 +59,7 @@ public sealed partial class ApplicationToolbar : UserControl
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
         LayoutToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
-        NavigationToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
+        ProjectToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
 
         // A host that derives window-chrome regions from the toolbar (the Windows TitleBar wrapper)
         // recomputes them when the layout shifts, e.g. on window maximize/restore.
@@ -74,7 +74,7 @@ public sealed partial class ApplicationToolbar : UserControl
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
-        NavigationToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
+        ProjectToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         this.LayoutUpdated -= OnApplicationToolbar_LayoutUpdated;
 
         if (_layoutChangedTimer is not null)
@@ -95,7 +95,7 @@ public sealed partial class ApplicationToolbar : UserControl
     {
         var candidates = new List<FrameworkElement>();
 
-        candidates.AddRange(NavigationToolbar.GetInteractiveElements());
+        candidates.AddRange(ProjectToolbar.GetInteractiveElements());
         candidates.AddRange(LayoutToolbar.GetInteractiveElements());
 
         var elements = new List<FrameworkElement>();
@@ -114,7 +114,7 @@ public sealed partial class ApplicationToolbar : UserControl
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ViewModel.IsWorkspaceActive))
+        if (e.PropertyName == nameof(ViewModel.IsWorkspaceLoaded))
         {
             RaiseInteractiveLayoutChanged();
         }

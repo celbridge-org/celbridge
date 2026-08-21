@@ -18,7 +18,7 @@ public class UndoService : IUndoService
 
     public Result Undo()
     {
-        if (_workspaceWrapper.IsWorkspacePageLoaded)
+        if (_workspaceWrapper.IsWorkspaceLoaded)
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var resourceOpService = workspaceService.ResourceService.Operations;
@@ -46,7 +46,7 @@ public class UndoService : IUndoService
 
     public Result Redo()
     {
-        if (_workspaceWrapper.IsWorkspacePageLoaded)
+        if (_workspaceWrapper.IsWorkspaceLoaded)
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var resourceOpService = workspaceService.ResourceService.Operations;

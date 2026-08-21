@@ -29,7 +29,7 @@ public static class ServiceConfiguration
         services.AddTransient<IWorkspaceService, WorkspaceService>();
 
         // The application shell creates one view per project and tears it down when the project unloads.
-        services.AddTransient<IWorkspaceView, WorkspacePage>();
+        services.AddTransient<IWorkspaceView, WorkspaceView>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
 
@@ -44,7 +44,7 @@ public static class ServiceConfiguration
         // Register view models
         //
 
-        services.AddTransient<WorkspacePageViewModel>();
+        services.AddTransient<WorkspaceViewModel>();
         services.AddTransient<UtilityPanelViewModel>();
         services.AddTransient<WorkspaceToastViewModel>();
 

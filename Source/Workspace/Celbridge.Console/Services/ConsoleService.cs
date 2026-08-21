@@ -13,7 +13,7 @@ public class ConsoleService : IConsoleService, IDisposable
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         ProcessOwner = serviceProvider.AcquireService<IConsoleProcessOwner>();
         Sessions = serviceProvider.AcquireService<IConsoleSessionService>();

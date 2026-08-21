@@ -26,7 +26,7 @@ public class OpenCommunityLinkCommand : CommandBase, IOpenCommunityLinkCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail($"Failed to open community link '{LinkId}' because no workspace is loaded");
         }

@@ -51,7 +51,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
     private async Task<Result> ExecuteExtractAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Workspace is not loaded");
         }

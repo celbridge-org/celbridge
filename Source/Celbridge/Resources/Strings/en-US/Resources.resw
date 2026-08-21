@@ -360,10 +360,10 @@
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>
   </data>
-  <data name="HomePage_NewProject" xml:space="preserve">
+  <data name="Home_NewProject" xml:space="preserve">
     <value>New Project</value>
   </data>
-  <data name="HomePage_OpenProject" xml:space="preserve">
+  <data name="Home_OpenProject" xml:space="preserve">
     <value>Open Project</value>
   </data>
   <data name="MainMenu_NewProject" xml:space="preserve">
@@ -387,10 +387,10 @@
   <data name="MainMenu_ShowLog" xml:space="preserve">
     <value>Show Log</value>
   </data>
-  <data name="HomePage_Start" xml:space="preserve">
+  <data name="Home_Start" xml:space="preserve">
     <value>Start</value>
   </data>
-  <data name="HomePage_Recent" xml:space="preserve">
+  <data name="Home_Recent" xml:space="preserve">
     <value>Recent</value>
   </data>
   <data name="Settings_Application_Theme" xml:space="preserve">
@@ -635,25 +635,25 @@ Open with default application instead?</value>
   <data name="ResourceTree_Run" xml:space="preserve">
     <value>Run</value>
   </data>
-  <data name="HomePage_NewProjectTooltip" xml:space="preserve">
+  <data name="Home_NewProjectTooltip" xml:space="preserve">
     <value>Create a New Project</value>
   </data>
-  <data name="HomePage_Community" xml:space="preserve">
+  <data name="Home_Community" xml:space="preserve">
     <value>Community</value>
   </data>
-  <data name="HomePage_Learn" xml:space="preserve">
+  <data name="Home_Learn" xml:space="preserve">
     <value>Learn</value>
   </data>
-  <data name="HomePage_LearnTooltip" xml:space="preserve">
+  <data name="Home_LearnTooltip" xml:space="preserve">
     <value>Open the Celbridge documentation in your browser</value>
   </data>
-  <data name="HomePage_Forum" xml:space="preserve">
+  <data name="Home_Forum" xml:space="preserve">
     <value>Forum</value>
   </data>
-  <data name="HomePage_ForumTooltip" xml:space="preserve">
+  <data name="Home_ForumTooltip" xml:space="preserve">
     <value>Open the community forum in your browser</value>
   </data>
-  <data name="HomePage_OpenProjectTooltip" xml:space="preserve">
+  <data name="Home_OpenProjectTooltip" xml:space="preserve">
     <value>Open an Existing Project</value>
   </data>
   <data name="DocumentToolbar_CollapseAreaTooltip" xml:space="preserve">
@@ -1199,7 +1199,7 @@ Open with default application instead?</value>
   <data name="Validation_FileNameRequired" xml:space="preserve">
     <value>A file name is required</value>
   </data>
-  <data name="WorkspacePage_LoadingProject" xml:space="preserve">
+  <data name="Workspace_LoadingProject" xml:space="preserve">
     <value>Loading {0}</value>
   </data>
   <data name="Template_Empty_Name" xml:space="preserve">

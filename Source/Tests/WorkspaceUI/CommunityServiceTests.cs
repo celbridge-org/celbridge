@@ -84,8 +84,8 @@ public class CommunityServiceTests
     [Test]
     public async Task WriteLinkDocumentAsync_FailsWhenNoWorkspaceIsLoaded()
     {
-        // Seeding happens mid-load, so this guards on the workspace service rather than on the page having
-        // finished loading, which is still false at that point.
+        // Seeding happens mid-load, so this guards on the workspace service rather than on the load having
+        // finished, which is still false at that point.
         _workspaceWrapper.HasWorkspaceService.Returns(false);
 
         var service = CreateService();
@@ -97,12 +97,12 @@ public class CommunityServiceTests
     }
 
     [Test]
-    public async Task WriteLinkDocumentAsync_SucceedsWhileTheWorkspacePageIsStillLoading()
+    public async Task WriteLinkDocumentAsync_SucceedsWhileTheWorkspaceViewIsStillLoading()
     {
-        // The seed runs partway through the workspace load, when the workspace service exists but the page
-        // has not finished loading. Guarding on the page instead dropped every seed, and the link's document
-        // was then missing when the layout restore looked for it.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        // The seed runs partway through the workspace load, when the workspace service exists but the load
+        // has not finished. Guarding on the load instead dropped every seed, and the link's document was
+        // then missing when the layout restore looked for it.
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var service = CreateService();
 

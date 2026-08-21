@@ -109,7 +109,7 @@ public class RunMenuOption : IMenuOption<ExplorerMenuContext>, ISubMenuOption<Ex
             return false;
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return false;
         }

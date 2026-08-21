@@ -16,7 +16,7 @@ public class ApplicationShell : IApplicationShell
 
     private Panel? _contentArea;
     private CurrentWorkspace? _currentWorkspace;
-    private HomePage? _homePage;
+    private HomeView? _homeView;
 
     public ApplicationShell(
         ILogger<ApplicationShell> logger,
@@ -110,28 +110,28 @@ public class ApplicationShell : IApplicationShell
     {
         Guard.IsNotNull(_contentArea);
 
-        if (_homePage is not null)
+        if (_homeView is not null)
         {
             return;
         }
 
         // Home reads the recent projects as it is built, so it is rebuilt each time rather than kept and
         // shown again.
-        var homePage = new HomePage();
-        _contentArea.Children.Add(homePage);
-        _homePage = homePage;
+        var homeView = new HomeView();
+        _contentArea.Children.Add(homeView);
+        _homeView = homeView;
     }
 
     private void HideHome()
     {
-        if (_homePage is null)
+        if (_homeView is null)
         {
             return;
         }
 
         Guard.IsNotNull(_contentArea);
 
-        _contentArea.Children.Remove(_homePage);
-        _homePage = null;
+        _contentArea.Children.Remove(_homeView);
+        _homeView = null;
     }
 }

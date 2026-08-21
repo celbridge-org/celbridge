@@ -8,13 +8,13 @@ using Celbridge.WorkspaceUI.ViewModels;
 
 namespace Celbridge.WorkspaceUI.Views;
 
-public sealed partial class WorkspacePage : Page, IWorkspaceView
+public sealed partial class WorkspaceView : UserControl, IWorkspaceView
 {
-    private readonly Logging.ILogger<WorkspacePage> _logger;
+    private readonly Logging.ILogger<WorkspaceView> _logger;
     private readonly IPlatformInfo _platformInfo;
     private readonly IResourceDragCoordinator _resourceDragCoordinator;
 
-    public WorkspacePageViewModel ViewModel { get; }
+    public WorkspaceViewModel ViewModel { get; }
 
     // Loaded can be raised more than once for one view, and the initialization below awaits, so a second
     // raise would otherwise start a duplicate workspace load.
@@ -26,22 +26,22 @@ public sealed partial class WorkspacePage : Page, IWorkspaceView
     // workspace.
     private WorkspaceToast? _workspaceToast;
 
-    public WorkspacePage()
+    public WorkspaceView()
     {
         InitializeComponent();
 
-        ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
+        ViewModel = ServiceLocator.AcquireService<WorkspaceViewModel>();
 
-        _logger = ServiceLocator.AcquireService<Logging.ILogger<WorkspacePage>>();
+        _logger = ServiceLocator.AcquireService<Logging.ILogger<WorkspaceView>>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _resourceDragCoordinator = ServiceLocator.AcquireService<IResourceDragCoordinator>();
 
         DataContext = ViewModel;
 
-        Loaded += WorkspacePage_Loaded;
+        Loaded += WorkspaceView_Loaded;
     }
 
-    private async void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
+    private async void WorkspaceView_Loaded(object sender, RoutedEventArgs e)
     {
         if (_initialized)
         {
@@ -50,7 +50,7 @@ public sealed partial class WorkspacePage : Page, IWorkspaceView
 
         _initialized = true;
 
-        ViewModel.LoadProjectCancellationToken = LoadCancellation;
+        ViewModel.LoadCancellation = LoadCancellation;
 
         // Bring the per-project store online before the panels bind, so they restore
         // this project's panel sizes instead of racing the asynchronous workspace load.
@@ -103,6 +103,6 @@ public sealed partial class WorkspacePage : Page, IWorkspaceView
         _workspaceToast?.Cleanup();
         _workspaceToast = null;
 
-        await ViewModel.OnWorkspacePageUnloadedAsync();
+        await ViewModel.OnWorkspaceViewUnloadedAsync();
     }
 }

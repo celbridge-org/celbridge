@@ -254,7 +254,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     public void ScheduleResourceUpdate()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
@@ -299,7 +299,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return;
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
@@ -311,7 +311,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         {
             try
             {
-                if (!_workspaceWrapper.IsWorkspacePageLoaded)
+                if (!_workspaceWrapper.IsWorkspaceLoaded)
                 {
                     return;
                 }

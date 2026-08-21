@@ -42,7 +42,7 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
 
     private async Task<Result> ShowUnarchiveResourceDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Failed to show extract archive dialog because workspace is not loaded");
         }

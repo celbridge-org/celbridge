@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
-public sealed partial class NavigationToolbar : UserControl
+public sealed partial class ProjectToolbar : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -13,7 +13,7 @@ public sealed partial class NavigationToolbar : UserControl
 
     private string HomeTitleString => _stringLocalizer.GetString("TitleBar_HomeTitle");
 
-    public NavigationToolbar()
+    public ProjectToolbar()
     {
         this.InitializeComponent();
 
@@ -25,11 +25,11 @@ public sealed partial class NavigationToolbar : UserControl
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(MainMenuFlyout);
 
-        Loaded += OnNavigationToolbar_Loaded;
-        Unloaded += OnNavigationToolbar_Unloaded;
+        Loaded += OnProjectToolbar_Loaded;
+        Unloaded += OnProjectToolbar_Unloaded;
     }
 
-    private void OnNavigationToolbar_Loaded(object sender, RoutedEventArgs e)
+    private void OnProjectToolbar_Loaded(object sender, RoutedEventArgs e)
     {
         // macOS surfaces these commands through the native menubar, so the in-window hamburger menu is
         // shown only on platforms without one (Windows, Linux).
@@ -48,12 +48,12 @@ public sealed partial class NavigationToolbar : UserControl
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
-    private void OnNavigationToolbar_Unloaded(object sender, RoutedEventArgs e)
+    private void OnProjectToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
         _mainMenu?.OnUnloaded();
 
-        Loaded -= OnNavigationToolbar_Loaded;
-        Unloaded -= OnNavigationToolbar_Unloaded;
+        Loaded -= OnProjectToolbar_Loaded;
+        Unloaded -= OnProjectToolbar_Unloaded;
 
         _messengerService.UnregisterAll(this);
     }
@@ -94,7 +94,7 @@ public sealed partial class NavigationToolbar : UserControl
     private void UpdateHomeTitleVisibility()
     {
         // The switcher occupies this slot while a project is loaded, and collapses itself when none is.
-        HomeTitle.Visibility = _workspaceWrapper.IsWorkspacePageLoaded
+        HomeTitle.Visibility = _workspaceWrapper.IsWorkspaceLoaded
             ? Visibility.Collapsed
             : Visibility.Visible;
     }

@@ -60,7 +60,7 @@ public class OpenCommunityLinkCommandTests
         workspaceService.DocumentsService.Returns(_documentsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
     }
 

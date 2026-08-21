@@ -35,7 +35,7 @@ public partial class PackageTools
     public async partial Task<CallToolResult> Status(bool refresh = false)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             return ToolResponse.Error("No project is loaded. Open a project before checking package status.");
         }

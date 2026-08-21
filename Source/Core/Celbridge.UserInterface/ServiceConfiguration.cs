@@ -9,7 +9,7 @@ using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.UserInterface.ViewModels.Dialogs;
 using Celbridge.WebHost;
-using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.UserInterface.ViewModels;
 using Celbridge.UserInterface.Views;
 using Celbridge.Workspace;
 
@@ -72,7 +72,7 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<MainPageViewModel>();
-        services.AddTransient<HomePageViewModel>();
+        services.AddTransient<HomeViewModel>();
         services.AddTransient<SettingsDialogViewModel>();
         services.AddTransient<WorkshopSettingsViewModel>();
         services.AddTransient<PrivacySettingsViewModel>();

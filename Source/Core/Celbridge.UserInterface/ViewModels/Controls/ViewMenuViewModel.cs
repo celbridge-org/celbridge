@@ -34,7 +34,7 @@ public class ViewMenuViewModel
     /// Whether a workspace is loaded. The layout commands all act on the workspace surfaces, so they are
     /// unavailable on the other pages.
     /// </summary>
-    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
+    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspaceLoaded;
 
     public LayoutMode LayoutMode => _windowModeService.LayoutMode;
 

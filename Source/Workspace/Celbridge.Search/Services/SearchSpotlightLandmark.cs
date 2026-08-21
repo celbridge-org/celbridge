@@ -27,7 +27,7 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
     {
         await Task.CompletedTask;
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Cannot reveal the Search landmark: no workspace is loaded.");
         }
@@ -51,7 +51,7 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
     {
         if (!_revealReplace ||
             _replaceModeWasEnabled ||
-            !_workspaceWrapper.IsWorkspacePageLoaded)
+            !_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }

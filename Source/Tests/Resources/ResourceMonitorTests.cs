@@ -81,7 +81,7 @@ public class ResourceMonitorTests
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
         // Keep the project-tree registry debounce dormant; tests assert on
         // messages, which are dispatched before the debounce is scheduled.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _monitorFactory = new FakeFileSystemMonitorFactory();
 
@@ -196,7 +196,7 @@ public class ResourceMonitorTests
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         resourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
         var monitor = InitializeAndGetProjectMonitor();
 
@@ -212,7 +212,7 @@ public class ResourceMonitorTests
     {
         // Desynchronization also schedules a rescan, which fires on the debounce after this test returns.
         _workspaceWrapper.WorkspaceService.ResourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
         var monitor = InitializeAndGetProjectMonitor();
 
@@ -228,7 +228,7 @@ public class ResourceMonitorTests
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         resourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
         InitializeAndGetProjectMonitor();
 
@@ -246,7 +246,7 @@ public class ResourceMonitorTests
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         resourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
         InitializeAndGetProjectMonitor();
 

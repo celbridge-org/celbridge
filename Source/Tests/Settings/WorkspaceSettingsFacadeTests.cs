@@ -59,7 +59,7 @@ public class WorkspaceSettingsFacadeTests
         workspaceService.WorkspaceSettings.Returns(workspaceSettingsService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.HasWorkspaceService.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
@@ -130,7 +130,7 @@ public class WorkspaceSettingsFacadeTests
         // Mirrors the page-load race: a panel SizeChanged event writes through the
         // facade before the workspace store has been acquired.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var settingsService = new SettingsService(
             new NullLogger<SettingsService>(),

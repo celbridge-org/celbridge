@@ -91,7 +91,7 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
     public static async void NewFile(string sourcePath, ResourceKey destResource)
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             throw new InvalidOperationException("Failed to create resource because workspace is not loaded");
         }
@@ -120,7 +120,7 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
     public static void NewFolder(string sourcePath, ResourceKey destResource)
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             throw new InvalidOperationException("Failed to create resource because workspace is not loaded");
         }
