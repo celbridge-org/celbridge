@@ -84,7 +84,7 @@ public class CreateWebViewDialogCommand : CommandBase, ICreateWebViewDialogComma
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Failed to show the new web view document dialog because workspace is not loaded");
         }

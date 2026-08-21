@@ -51,7 +51,7 @@ public class DialogServiceAnswerTests
         // The ResourcePicker happy path requires a loaded workspace; the
         // dialog itself is a substitute that completes immediately so the
         // schedule-fires-broadcast contract is what we test here.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         var fakeResourcePicker = Substitute.For<IResourcePickerDialog>();
         fakeResourcePicker.ShowDialogAsync().Returns(Task.FromResult(Result<ResourceKey>.Fail("cancelled")));
         _dialogFactory.CreateResourcePickerDialog(

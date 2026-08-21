@@ -45,7 +45,7 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
         // selected folder, falling back to the project root. The toolbar and context-menu callers always
         // supply DestFolderResource explicitly, so this only fills the gap for the menu entry points.
         if (DestFolderResource.IsEmpty
-            && _workspaceWrapper.IsWorkspacePageLoaded)
+            && _workspaceWrapper.IsWorkspaceLoaded)
         {
             DestFolderResource = ResolveDefaultDestinationFolder();
         }
@@ -93,7 +93,7 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
 
     private async Task<Result> ShowNewFileDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail($"Failed to show new file dialog because workspace is not loaded");
         }
@@ -151,7 +151,7 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
 
     private async Task<Result> ShowNewFolderDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail($"Failed to show new folder dialog because workspace is not loaded");
         }

@@ -32,7 +32,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     // Returns Empty before the workspace page is loaded, when the documents panel does not exist yet.
     public ResourceKey ActiveDocument =>
-        _workspaceWrapper.IsWorkspacePageLoaded
+        _workspaceWrapper.IsWorkspaceLoaded
             ? DocumentsPanel.ActiveDocument
             : ResourceKey.Empty;
 
@@ -55,7 +55,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         ITextBinarySniffer textBinarySniffer)
     {
         // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         _serviceProvider = serviceProvider;
         _messengerService = messengerService;
@@ -319,7 +319,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public IFindableDocument? GetActiveFindableDocument()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return null;
         }

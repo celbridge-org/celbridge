@@ -424,7 +424,7 @@ public class CommandService : ICommandService
         // Updating the workspace systems is a subset of the application update that
         // runs only when a workspace is loaded.
         var now = _stopwatch.Elapsed.TotalSeconds;
-        if (_workspaceWrapper.IsWorkspacePageLoaded &&
+        if (_workspaceWrapper.IsWorkspaceLoaded &&
             _lastWorkspaceUpdateTime != 0)
         {
             var deltaTime = now - _lastWorkspaceUpdateTime;

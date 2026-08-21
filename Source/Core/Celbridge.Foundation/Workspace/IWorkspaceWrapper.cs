@@ -8,22 +8,22 @@ namespace Celbridge.Workspace;
 public interface IWorkspaceWrapper
 {
     /// <summary>
-    /// Returns true if the workspace page is currently loaded.
+    /// Returns true once the workspace has finished loading.
     /// </summary>
-    bool IsWorkspacePageLoaded { get; }
+    bool IsWorkspaceLoaded { get; }
 
     /// <summary>
     /// Returns true while a workspace service is present, from its creation early in the load through
-    /// unload. This spans a wider window than IsWorkspacePageLoaded, which becomes true only once the page
-    /// finishes loading, so it is the correct signal for reaching the workspace during the load sequence.
+    /// unload. This spans a wider window than IsWorkspaceLoaded, which becomes true only once the load
+    /// finishes, so it is the correct signal for reaching the workspace during the load sequence.
     /// </summary>
     bool HasWorkspaceService { get; }
 
     /// <summary>
     /// Returns the workspace service for the current loaded project.
-    /// This property is populated prior to the workspace page UI loading, so it can be accessed while the workspace 
-    /// is in the process of loading. Attempting to access this property when no workspace service is present throws 
-    /// an InvalidOperationException.
+    /// This property is populated before the workspace view loads, so it can be accessed while the workspace
+    /// is in the process of loading. Attempting to access this property when no workspace service is present
+    /// throws an InvalidOperationException.
     /// </summary>
     IWorkspaceService WorkspaceService { get; }
 }

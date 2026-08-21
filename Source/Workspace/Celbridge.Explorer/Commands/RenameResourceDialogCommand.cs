@@ -40,7 +40,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
     private async Task<Result> ShowRenameResourceDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
         }

@@ -25,7 +25,7 @@ public class WorkspaceWrapper : IWorkspaceWrapper
 
     private void OnWorkspaceLoadedMessage(object recipient, WorkspaceLoadedMessage message)
     {
-        IsWorkspacePageLoaded = true;
+        IsWorkspaceLoaded = true;
     }
 
     private void OnWorkspaceUnloadedMessage(object recipient, WorkspaceUnloadedMessage message)
@@ -33,10 +33,10 @@ public class WorkspaceWrapper : IWorkspaceWrapper
         // Clear the reference to the workspace service when the workspace is unloaded.
         Guard.IsNotNull(_workspaceService);
         _workspaceService = null;
-        IsWorkspacePageLoaded = false;
+        IsWorkspaceLoaded = false;
     }
 
-    public bool IsWorkspacePageLoaded { get; private set; }
+    public bool IsWorkspaceLoaded { get; private set; }
 
     public bool HasWorkspaceService => _workspaceService is not null;
 

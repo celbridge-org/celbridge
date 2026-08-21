@@ -241,7 +241,7 @@ public class ProjectLoader : IProjectLoader
             }
 
             // If already loaded, complete immediately
-            if (_workspaceWrapper.IsWorkspacePageLoaded)
+            if (_workspaceWrapper.IsWorkspaceLoaded)
             {
                 return Result.Ok();
             }

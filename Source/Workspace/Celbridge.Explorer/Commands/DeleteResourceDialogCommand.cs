@@ -40,7 +40,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 
     private async Task<Result> ShowDeleteResourceDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail($"Failed to show delete resource dialog because workspace is not loaded");
         }

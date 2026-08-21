@@ -31,7 +31,7 @@ public partial class ExplorerTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             return ToolResponse.Error("Workspace is not loaded.");
         }

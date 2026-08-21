@@ -50,7 +50,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
 
-        IsWorkspaceLoaded = _workspaceWrapper.IsWorkspacePageLoaded;
+        IsWorkspaceLoaded = _workspaceWrapper.IsWorkspaceLoaded;
     }
 
     public void OnUnloaded()

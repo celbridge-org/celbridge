@@ -24,7 +24,7 @@ public sealed class WorkspaceSettingsService : IWorkspaceSettingsService, IDispo
         {
             var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
             // Only the workspace service is allowed to instantiate this service
-            Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+            Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
         }
     }
 

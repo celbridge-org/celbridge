@@ -53,7 +53,7 @@ public class GetWritableStateTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
     }
 
     [Test]

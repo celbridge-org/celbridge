@@ -238,7 +238,7 @@ internal static class MacOSMainMenu
     private static IFindableDocument? GetActiveFindableDocument()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             return null;
         }
@@ -312,7 +312,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState WorkspaceCommandState()
     {
-        var isWorkspaceLoaded = ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspacePageLoaded;
+        var isWorkspaceLoaded = ServiceLocator.AcquireService<IWorkspaceWrapper>().IsWorkspaceLoaded;
 
         return isWorkspaceLoaded ? MacMenuItemState.Enabled : MacMenuItemState.Disabled;
     }

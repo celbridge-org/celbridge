@@ -68,7 +68,7 @@ public class DocumentsServiceTests
 
         // The service guards that the workspace page is not yet loaded during construction.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _stringLocalizer["OpenWithDialog_DefaultFormat", Arg.Any<object[]>()]

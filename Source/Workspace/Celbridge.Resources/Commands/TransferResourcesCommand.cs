@@ -33,7 +33,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Workspace is not loaded");
         }

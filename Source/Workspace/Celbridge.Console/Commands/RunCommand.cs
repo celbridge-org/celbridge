@@ -27,7 +27,7 @@ public class RunCommand : CommandBase, IRunCommand
     {
         await Task.CompletedTask;
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Workspace not loaded");
         }

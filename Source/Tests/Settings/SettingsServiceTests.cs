@@ -29,7 +29,7 @@ public class SettingsServiceTests
         _settingsStore = new FakeSettingsStore();
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
@@ -128,7 +128,7 @@ public class SettingsServiceTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.WorkspaceSettings.Returns(settingsService);
 
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         _workspaceWrapper.HasWorkspaceService.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
     }
