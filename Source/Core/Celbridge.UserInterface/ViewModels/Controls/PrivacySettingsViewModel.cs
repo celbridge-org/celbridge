@@ -91,7 +91,9 @@ public partial class PrivacySettingsViewModel : ObservableObject
         IsClearing = true;
         ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Privacy_Clearing"));
 
-        var clearResult = await _commandService.ExecuteAsync<IClearBrowsingDataCommand>();
+        // The settings dialog holds the command queue while it is open, so an enqueued command would
+        // never run and this await would never return.
+        var clearResult = await _commandService.ExecuteImmediate<IClearBrowsingDataCommand>();
 
         IsClearing = false;
 

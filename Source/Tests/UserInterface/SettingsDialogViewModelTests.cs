@@ -15,7 +15,8 @@ namespace Celbridge.Tests.UserInterface;
 /// <summary>
 /// Unit tests for the Settings dialog view model. The stored theme is read through the real SettingsService
 /// over an in-memory settings store fake. Selecting a theme dispatches ISetThemeCommand rather than writing
-/// the setting here, so that is asserted against a substitute command service. A real MessengerService
+/// the setting here, so that is asserted against a substitute command service. The dispatch goes through
+/// ExecuteImmediate because the dialog holds the command queue while it is open. A real MessengerService
 /// carries the theme-changed broadcast the dialog follows.
 /// </summary>
 [TestFixture]
@@ -44,6 +45,12 @@ public class SettingsDialogViewModelTests
             workspaceWrapper);
 
         _commandService = Substitute.For<ICommandService>();
+        _commandService.ExecuteImmediate<ISetThemeCommand>(
+                Arg.Any<Action<ISetThemeCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Result.Ok()));
+
         _messengerService = new MessengerService();
 
         var stringLocalizer = Substitute.For<IStringLocalizer>();
@@ -51,6 +58,7 @@ public class SettingsDialogViewModelTests
             callInfo => new LocalizedString(callInfo.Arg<string>(), callInfo.Arg<string>()));
 
         _viewModel = new SettingsDialogViewModel(
+            new NullLogger<SettingsDialogViewModel>(),
             _settingsService,
             stringLocalizer,
             _commandService,
@@ -83,7 +91,7 @@ public class SettingsDialogViewModelTests
 
         _viewModel.SelectedTheme = darkOption;
 
-        _commandService.Received(1).Execute<ISetThemeCommand>(
+        _commandService.Received(1).ExecuteImmediate<ISetThemeCommand>(
             Arg.Is<Action<ISetThemeCommand>?>(configure => ConfiguresTheme(configure, ApplicationColorTheme.Dark)),
             Arg.Any<string>(),
             Arg.Any<int>());
@@ -94,7 +102,7 @@ public class SettingsDialogViewModelTests
     {
         // Reflecting the stored theme in the combo box must not run the changed handler; construction
         // happened in Setup, so no command should have been dispatched.
-        _commandService.DidNotReceive().Execute<ISetThemeCommand>(
+        _commandService.DidNotReceive().ExecuteImmediate<ISetThemeCommand>(
             Arg.Any<Action<ISetThemeCommand>?>(),
             Arg.Any<string>(),
             Arg.Any<int>());
@@ -114,7 +122,7 @@ public class SettingsDialogViewModelTests
 
         // Following the change must not dispatch a command of its own, which would loop back through the
         // theme service.
-        _commandService.DidNotReceive().Execute<ISetThemeCommand>(
+        _commandService.DidNotReceive().ExecuteImmediate<ISetThemeCommand>(
             Arg.Any<Action<ISetThemeCommand>?>(),
             Arg.Any<string>(),
             Arg.Any<int>());

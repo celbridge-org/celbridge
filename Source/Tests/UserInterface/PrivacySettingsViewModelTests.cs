@@ -54,7 +54,7 @@ public class PrivacySettingsViewModelTests
 
         viewModel.IsConfirmingClear.Should().BeTrue();
         viewModel.IsClearButtonVisible.Should().BeFalse();
-        _commandService.DidNotReceive().ExecuteAsync<IClearBrowsingDataCommand>(
+        _commandService.DidNotReceive().ExecuteImmediate<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
     }
 
@@ -68,7 +68,7 @@ public class PrivacySettingsViewModelTests
 
         viewModel.IsConfirmingClear.Should().BeFalse();
 
-        await _commandService.Received(1).ExecuteAsync<IClearBrowsingDataCommand>(
+        await _commandService.Received(1).ExecuteImmediate<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
         viewModel.StatusSeverity.Should().Be(StatusSeverity.Success);
         viewModel.StatusMessage.Should().Be("Settings_Privacy_Cleared");
@@ -85,7 +85,7 @@ public class PrivacySettingsViewModelTests
 
         viewModel.IsConfirmingClear.Should().BeFalse();
         viewModel.IsClearButtonVisible.Should().BeTrue();
-        _commandService.DidNotReceive().ExecuteAsync<IClearBrowsingDataCommand>(
+        _commandService.DidNotReceive().ExecuteImmediate<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
         viewModel.IsStatusVisible.Should().BeFalse();
     }
@@ -118,7 +118,7 @@ public class PrivacySettingsViewModelTests
 
     private void StubClearResult(Result result)
     {
-        _commandService.ExecuteAsync<IClearBrowsingDataCommand>(
+        _commandService.ExecuteImmediate<IClearBrowsingDataCommand>(
                 Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>())
             .Returns(Task.FromResult(result));
     }

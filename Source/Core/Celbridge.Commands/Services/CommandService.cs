@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Resources;
@@ -18,6 +19,7 @@ public class CommandService : ICommandService
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IDialogService _dialogService;
 
     private record QueuedCommand(IExecutableCommand Command);
 
@@ -46,7 +48,8 @@ public class CommandService : ICommandService
         ILogSerializer logSerializer,
         IMessengerService messengerService,
         ISettingsService settingsService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IDialogService dialogService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -54,6 +57,7 @@ public class CommandService : ICommandService
         _messengerService = messengerService;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
+        _dialogService = dialogService;
     }
 
     public Result Execute<T>(
@@ -225,12 +229,19 @@ public class CommandService : ICommandService
                 _logger.LogError(updateResult, "Failed to update application");
             }
 
+            // An open dialog is the user being asked a question, so the queue waits for the answer. Only
+            // the dequeue waits: the application update above keeps ticking, so document auto-save and
+            // settings flushes carry on while the dialog is up. Anything the dialog itself needs to run
+            // goes through ExecuteImmediate, which does not touch the queue.
+            bool dialogIsOpen = _dialogService.IsDialogOpen;
+
             // Find the first command that is ready to execute
             IExecutableCommand? command = null;
 
             lock (_lock)
             {
-                if (_commandQueue.Count > 0)
+                if (!dialogIsOpen &&
+                    _commandQueue.Count > 0)
                 {
                     var item = _commandQueue[0];
                     command = item.Command;
@@ -327,8 +338,11 @@ public class CommandService : ICommandService
             }
 
             // Park until a command arrives so an idle app does no work between ticks. A pending
-            // command skips the wait entirely, so a burst still drains at full speed.
-            if (queueIsEmpty)
+            // command skips the wait entirely, so a burst still drains at full speed. A queue held by an
+            // open dialog parks on the same interval rather than spinning, since closing the dialog does
+            // not signal the semaphore.
+            if (queueIsEmpty ||
+                _dialogService.IsDialogOpen)
             {
                 await _commandEnqueued.WaitAsync(IdleTickInterval);
             }

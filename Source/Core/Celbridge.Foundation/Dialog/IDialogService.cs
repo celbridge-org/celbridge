@@ -21,6 +21,12 @@ public enum DialogKind
 public interface IDialogService
 {
     /// <summary>
+    /// True while a modal dialog is on screen. The progress dialog is not counted, because it is raised
+    /// by the commands that are running rather than shown in place of them.
+    /// </summary>
+    bool IsDialogOpen { get; }
+
+    /// <summary>
     /// Display an Alert Dialog with configurable title and message text.
     /// </summary>
     Task ShowAlertDialogAsync(string titleText, string messageText);

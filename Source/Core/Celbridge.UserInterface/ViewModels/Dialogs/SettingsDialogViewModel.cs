@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Logging;
 using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.ViewModels.Dialogs;
@@ -21,6 +22,7 @@ public sealed class ThemeOption
 
 public partial class SettingsDialogViewModel : ObservableObject
 {
+    private readonly ILogger<SettingsDialogViewModel> _logger;
     private readonly ISettingsService _settingsService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
@@ -34,11 +36,13 @@ public partial class SettingsDialogViewModel : ObservableObject
     private bool _isReflectingStoredTheme;
 
     public SettingsDialogViewModel(
+        ILogger<SettingsDialogViewModel> logger,
         ISettingsService settingsService,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IMessengerService messengerService)
     {
+        _logger = logger;
         _settingsService = settingsService;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
@@ -96,10 +100,22 @@ public partial class SettingsDialogViewModel : ObservableObject
             return;
         }
 
-        _commandService.Execute<ISetThemeCommand>(command =>
+        _ = ApplyThemeAsync(value.Theme);
+    }
+
+    // This dialog holds the command queue while it is open, so the theme is applied off the queue.
+    // Enqueuing it would leave the choice unapplied until the dialog closed.
+    private async Task ApplyThemeAsync(ApplicationColorTheme theme)
+    {
+        var setThemeResult = await _commandService.ExecuteImmediate<ISetThemeCommand>(command =>
         {
-            command.Theme = value.Theme;
+            command.Theme = theme;
         });
+
+        if (setThemeResult.IsFailure)
+        {
+            _logger.LogError(setThemeResult, "Failed to set the application theme");
+        }
     }
 
     private List<ThemeOption> BuildThemeOptions()
