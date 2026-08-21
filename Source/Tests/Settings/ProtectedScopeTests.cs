@@ -27,7 +27,7 @@ public class ProtectedScopeTests
         _credentialStore = new FakeCredentialStore();
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _settingsService = new SettingsService(
             new NullLogger<SettingsService>(),

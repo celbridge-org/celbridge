@@ -40,7 +40,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
     private async Task<Result> ShowDuplicateResourceDialogAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail($"Failed to show duplicate resource dialog because workspace is not loaded");
         }

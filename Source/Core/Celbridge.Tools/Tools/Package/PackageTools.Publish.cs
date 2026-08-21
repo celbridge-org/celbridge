@@ -44,7 +44,7 @@ public partial class PackageTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             return ToolResponse.Error("No project is loaded. Open a project before publishing a package.");
         }

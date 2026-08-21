@@ -50,7 +50,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         // (DialogService.ShowResourcePickerDialogAsync) already short-circuit
         // with a user-facing error in that case; the guard here is a
         // belt-and-braces safety net against a future caller that forgets.
-        Guard.IsTrue(_workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         _registry = workspaceService.ResourceService.Registry;

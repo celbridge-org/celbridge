@@ -69,7 +69,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var stringLocalizer = Substitute.For<IStringLocalizer>();
@@ -148,7 +148,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var stringLocalizer = Substitute.For<IStringLocalizer>();
@@ -216,7 +216,7 @@ public class GetUtilitiesStateCommandTests
         workspaceService.UtilityService.Returns(utilityService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var stringLocalizer = Substitute.For<IStringLocalizer>();
@@ -249,7 +249,7 @@ public class GetUtilitiesStateCommandTests
     public async Task Execute_NoWorkspaceLoaded_ReturnsEmptyList()
     {
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var command = new GetUtilitiesStateCommand(
             workspaceWrapper,

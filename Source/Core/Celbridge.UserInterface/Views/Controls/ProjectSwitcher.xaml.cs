@@ -162,7 +162,7 @@ public sealed partial class ProjectSwitcher : UserControl
         // The row names the open project rather than commanding anything, so clicking it just dismisses the
         // menu and hands focus back to the document the user came from.
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
+        if (!workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }

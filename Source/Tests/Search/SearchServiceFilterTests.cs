@@ -34,7 +34,7 @@ public class SearchServiceFilterTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         // Wire a real LocalResourceFileSystem so size + existence probes hit disk through the gateway.
         var resourceFileSystem = new LocalResourceFileSystem(

@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface.ViewModels.Pages;
+namespace Celbridge.UserInterface.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject
 {

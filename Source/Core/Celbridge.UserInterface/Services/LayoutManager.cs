@@ -40,7 +40,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
     // The typed workspace settings facade, or null when no workspace is loaded.
     // Panel layout is Workspace-scoped, so it has no meaning outside a project.
     private IBindableWorkspaceSettings? WorkspaceSettings =>
-        _workspaceWrapper.IsWorkspacePageLoaded
+        _workspaceWrapper.IsWorkspaceLoaded
             ? _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings
             : null;
 

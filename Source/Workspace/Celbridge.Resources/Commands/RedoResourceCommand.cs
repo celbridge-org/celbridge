@@ -16,7 +16,7 @@ public class RedoResourceCommand : CommandBase, IRedoResourceCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Workspace is not loaded");
         }

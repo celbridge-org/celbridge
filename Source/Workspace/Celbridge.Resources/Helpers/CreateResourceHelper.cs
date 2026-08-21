@@ -34,7 +34,7 @@ public class CreateResourceHelper
         string sourcePath,
         ResourceKey destResource)
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Failed to create resource because workspace is not loaded");
         }

@@ -40,7 +40,7 @@ public class LayoutManagerTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
         workspaceService.BindableWorkspaceSettings.Returns(_workspaceSettings);
 

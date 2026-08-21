@@ -1,7 +1,7 @@
 using Celbridge.Logging;
 using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
-using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.UserInterface.ViewModels;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.WebHost;
 using Celbridge.Workspace;

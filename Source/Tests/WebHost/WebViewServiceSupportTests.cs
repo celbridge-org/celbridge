@@ -27,7 +27,7 @@ public class WebViewServiceSupportTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(_workspaceService);
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
         _documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
         _packageService.GetContributingPackage(Arg.Any<EditorId>()).Returns((Package?)null);
@@ -79,7 +79,7 @@ public class WebViewServiceSupportTests
     {
         // Without a workspace there can be no open documents, so the resource
         // cannot be supported.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var support = _webViewService.GetWebViewToolSupport(new ResourceKey("any.html"));
 

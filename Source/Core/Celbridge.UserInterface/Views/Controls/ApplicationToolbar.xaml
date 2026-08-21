@@ -41,13 +41,13 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <local:NavigationToolbar x:Name="NavigationToolbar"
+        <local:ProjectToolbar x:Name="ProjectToolbar"
                                  Grid.Column="1"/>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
         <controls:Icon x:Name="SaveIcon"
                        Grid.Column="3"
-                       Visibility="{x:Bind ViewModel.IsWorkspaceActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                       Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                        HorizontalAlignment="Right"
                        VerticalAlignment="Center"
                        Margin="0,0,16,0"

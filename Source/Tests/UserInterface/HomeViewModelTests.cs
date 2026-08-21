@@ -5,7 +5,7 @@ using Celbridge.FileSystem;
 using Celbridge.Projects;
 using Celbridge.Tests.Helpers;
 using Celbridge.UserInterface.Services;
-using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.UserInterface.ViewModels;
 
 namespace Celbridge.Tests.UserInterface;
 
@@ -15,7 +15,7 @@ namespace Celbridge.Tests.UserInterface;
 /// list that drops the current project would hide the project the user just closed.
 /// </summary>
 [TestFixture]
-public class HomePageViewModelTests
+public class HomeViewModelTests
 {
     // RecentProject splits the path into a folder and a name and requires both, so the separators have to
     // be the running platform's. These tests run on Linux in CI.
@@ -44,7 +44,7 @@ public class HomePageViewModelTests
             .Should().Equal(RecentProjectPath);
     }
 
-    private HomePageViewModel CreateViewModel()
+    private HomeViewModel CreateViewModel()
     {
         var dialogService = Substitute.For<IDialogService>();
         var filePickerService = Substitute.For<IFilePickerService>();
@@ -55,8 +55,8 @@ public class HomePageViewModelTests
             filePickerService,
             commandService);
 
-        return new HomePageViewModel(
-            new NullLogger<HomePageViewModel>(),
+        return new HomeViewModel(
+            new NullLogger<HomeViewModel>(),
             commandService,
             _projectService,
             filePickerService,

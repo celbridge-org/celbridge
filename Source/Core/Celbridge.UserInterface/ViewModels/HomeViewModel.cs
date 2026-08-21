@@ -6,11 +6,11 @@ using Celbridge.FilePicker;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Services;
 
-namespace Celbridge.UserInterface.ViewModels.Pages;
+namespace Celbridge.UserInterface.ViewModels;
 
-public partial class HomePageViewModel : ObservableObject
+public partial class HomeViewModel : ObservableObject
 {
-    private readonly Logging.ILogger<HomePageViewModel> _logger;
+    private readonly Logging.ILogger<HomeViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
@@ -18,8 +18,8 @@ public partial class HomePageViewModel : ObservableObject
     private readonly ILocalFileSystem _fileSystem;
     private readonly MainMenuUtils _mainMenuUtils;
 
-    public HomePageViewModel(
-        Logging.ILogger<HomePageViewModel> logger,
+    public HomeViewModel(
+        Logging.ILogger<HomeViewModel> logger,
         ICommandService commandService,
         IProjectService projectService,
         IFilePickerService filePickerService,

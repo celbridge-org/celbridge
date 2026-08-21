@@ -54,7 +54,7 @@ public class ResourceNameValidator : IResourceNameValidator
         // name that lands inside the namespace. Folders are not gated — the
         // reservation is about the file extension.
         if (!ValidateAsFolder
-            && _workspaceWrapper.IsWorkspacePageLoaded
+            && _workspaceWrapper.IsWorkspaceLoaded
             && _workspaceWrapper.WorkspaceService.ResourceService.Sidecars.IsSidecarFileName(input))
         {
             isValid = false;
@@ -97,7 +97,7 @@ public class ResourceNameValidator : IResourceNameValidator
         if (isValid
             && ParentFolder is not null
             && !string.IsNullOrWhiteSpace(input)
-            && _workspaceWrapper.IsWorkspacePageLoaded)
+            && _workspaceWrapper.IsWorkspaceLoaded)
         {
             var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
             var parentFolderKey = resourceService.Registry.GetResourceKey(ParentFolder);

@@ -214,7 +214,7 @@ public class DialogService : IDialogService
 
     public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result<ResourceKey>.Fail("Cannot show resource picker: no project is currently loaded.");
         }

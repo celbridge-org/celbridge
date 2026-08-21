@@ -89,7 +89,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
 
     private async Task<Result> ExecuteArchiveAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Workspace is not loaded");
         }

@@ -37,9 +37,9 @@ public class SearchServiceTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Guard.IsFalse(IsWorkspacePageLoaded) in the SearchService constructor requires false at creation time.
+        // Guard.IsFalse(IsWorkspaceLoaded) in the SearchService constructor requires false at creation time.
         // NSubstitute returns false for bool by default, but we set it explicitly for clarity.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         // A real LocalResourceFileSystem against the temp folder so tests that
         // place files under _tempFolder can be probed and read end-to-end.
@@ -57,7 +57,7 @@ public class SearchServiceTests
             Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>());
 
         // After construction, the workspace is "loaded" so SearchAsync proceeds past its early return.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
     }
 
     [TearDown]

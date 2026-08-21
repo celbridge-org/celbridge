@@ -155,7 +155,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// </summary>
     public bool HasMultipleCompatibleEditors()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return false;
         }

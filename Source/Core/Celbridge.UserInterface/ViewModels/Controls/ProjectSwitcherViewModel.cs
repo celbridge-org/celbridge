@@ -15,7 +15,7 @@ public partial class ProjectSwitcherViewModel : ObservableObject
     [ObservableProperty]
     private string _projectFilePath = string.Empty;
 
-    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspacePageLoaded;
+    public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspaceLoaded;
 
     public ProjectSwitcherViewModel(
         IMessengerService messengerService,

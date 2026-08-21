@@ -62,7 +62,7 @@ public class SearchService : ISearchService, IDisposable
         ISpotlightService spotlightService)
     {
         // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -144,7 +144,7 @@ public class SearchService : ISearchService, IDisposable
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
@@ -373,7 +373,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceResult(false, 0);
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return new ReplaceResult(false, 0);
         }
@@ -447,7 +447,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceMatchResult(false);
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return new ReplaceMatchResult(false);
         }
@@ -521,7 +521,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceAllResult(0, 0, 0, false);
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return new ReplaceAllResult(0, 0, 0, false);
         }
@@ -572,7 +572,7 @@ public class SearchService : ISearchService, IDisposable
         var emptyReplaceTerms = new List<string>();
         var emptyHistory = new SearchHistory(emptySearchTerms, emptyReplaceTerms);
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return emptyHistory;
         }
@@ -604,7 +604,7 @@ public class SearchService : ISearchService, IDisposable
             return;
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
@@ -635,7 +635,7 @@ public class SearchService : ISearchService, IDisposable
             return;
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
@@ -661,7 +661,7 @@ public class SearchService : ISearchService, IDisposable
 
     public async Task ClearHistoryAsync()
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }

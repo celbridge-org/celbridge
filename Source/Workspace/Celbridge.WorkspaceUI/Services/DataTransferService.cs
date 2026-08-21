@@ -19,7 +19,7 @@ public class DataTransferService : IDataTransferService, IDisposable
         IFileClipboard fileClipboard)
     {
         // Only the workspace service is allowed to instantiate this service
-        Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
+        Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         _messengerService = messengerService;
         _commandService = commandService;
@@ -76,7 +76,7 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail("Clipboard content does not contain a resource");
         }
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result<IResourceTransfer>.Fail("Workspace is not loaded");
         }
@@ -150,7 +150,7 @@ public class DataTransferService : IDataTransferService, IDisposable
 
     public async Task<Result> PasteClipboardResources(ResourceKey destFolderResource)
     {
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Failed to paste resource items because no workspace is loaded");
         }

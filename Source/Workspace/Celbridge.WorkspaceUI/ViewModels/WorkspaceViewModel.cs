@@ -10,9 +10,9 @@ using System.Diagnostics;
 
 namespace Celbridge.WorkspaceUI.ViewModels;
 
-using IWorkspaceLogger = Logging.ILogger<WorkspacePageViewModel>;
+using IWorkspaceLogger = Logging.ILogger<WorkspaceViewModel>;
 
-public partial class WorkspacePageViewModel : ObservableObject
+public partial class WorkspaceViewModel : ObservableObject
 {
     private readonly IWorkspaceLogger _logger;
     private readonly IMessengerService _messengerService;
@@ -25,9 +25,9 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly WorkspaceLoader _workspaceLoader;
 
-    public CancellationTokenSource? LoadProjectCancellationToken { get; set; }
+    public CancellationTokenSource? LoadCancellation { get; set; }
 
-    public WorkspacePageViewModel(
+    public WorkspaceViewModel(
         IWorkspaceLogger logger,
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
@@ -55,7 +55,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public async Task OnWorkspacePageUnloadedAsync()
+    public async Task OnWorkspaceViewUnloadedAsync()
     {
         // Best-effort: persist editor state while the editors are still alive, then close the panels. A
         // failure here (e.g. the project folder was deleted while the project was open) must not prevent the
@@ -74,7 +74,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to save workspace state during page unload");
+            _logger.LogError(exception, "Failed to save workspace state during teardown");
         }
 
         // Tear down and dispose the workspace. Guarded so the unload notification is still sent on failure.
@@ -93,7 +93,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Workspace teardown failed during page unload");
+            _logger.LogError(exception, "Workspace teardown failed");
         }
 
         // Notify listeners that the workspace has been unloaded. This must always be sent, even after a
@@ -112,7 +112,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     {
         // Show the progress dialog with the project name
         var projectName = _projectService.CurrentProject?.ProjectName ?? string.Empty;
-        var loadingProjectString = _stringLocalizer.GetString("WorkspacePage_LoadingProject", projectName);
+        var loadingProjectString = _stringLocalizer.GetString("Workspace_LoadingProject", projectName);
         using var progressDialogToken = _dialogService.AcquireProgressDialog(loadingProjectString);
 
         // Time how long it takes to open the workspace
@@ -126,13 +126,13 @@ public partial class WorkspacePageViewModel : ObservableObject
             _logger.LogError(loadResult, "Failed to load workspace");
 
             // Notify the waiting LoadProject async method that a failure has occured via the cancellation token.
-            if (LoadProjectCancellationToken is not null)
+            if (LoadCancellation is not null)
             {
-                LoadProjectCancellationToken.Cancel();
+                LoadCancellation.Cancel();
             }
         }
 
-        LoadProjectCancellationToken = null;
+        LoadCancellation = null;
 
         // Log how long it took to open the workspace
         stopWatch.Stop();

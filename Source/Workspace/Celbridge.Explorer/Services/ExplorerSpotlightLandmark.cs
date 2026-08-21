@@ -20,7 +20,7 @@ public sealed class ExplorerSpotlightLandmark : ISpotlightLandmark
     {
         await Task.CompletedTask;
 
-        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result.Fail("Cannot reveal the Explorer landmark: no workspace is loaded.");
         }

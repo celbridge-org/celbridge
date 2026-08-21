@@ -15,7 +15,7 @@ public partial class TitleBarViewModel : ObservableObject
     private bool _isSaving;
 
     [ObservableProperty]
-    private bool _isWorkspaceActive;
+    private bool _isWorkspaceLoaded;
 
     public TitleBarViewModel(
         IMessengerService messengerService,
@@ -31,7 +31,7 @@ public partial class TitleBarViewModel : ObservableObject
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
         _messengerService.Register<PendingDocumentSaveMessage>(this, OnPendingDocumentSaveMessage);
 
-        IsWorkspaceActive = _workspaceWrapper.IsWorkspacePageLoaded;
+        IsWorkspaceLoaded = _workspaceWrapper.IsWorkspaceLoaded;
     }
 
     public void OnUnloaded()
@@ -41,12 +41,12 @@ public partial class TitleBarViewModel : ObservableObject
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        IsWorkspaceActive = true;
+        IsWorkspaceLoaded = true;
     }
 
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
-        IsWorkspaceActive = false;
+        IsWorkspaceLoaded = false;
     }
 
     private void OnPendingDocumentSaveMessage(object recipient, PendingDocumentSaveMessage message)

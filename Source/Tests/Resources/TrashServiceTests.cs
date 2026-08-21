@@ -45,7 +45,7 @@ public class TrashServiceTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var sidecarService = new SidecarService(_workspaceWrapper);
         resourceService.Sidecars.Returns(sidecarService);
