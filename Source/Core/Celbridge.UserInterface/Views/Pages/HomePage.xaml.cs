@@ -7,8 +7,6 @@ public sealed partial class HomePage : Page
 {
     private IStringLocalizer _stringLocalizer;
 
-    private string TitleString => _stringLocalizer.GetString("HomePage_Title");
-    private string SubtitleString => _stringLocalizer.GetString("HomePage_Subtitle");
     private string StartString => _stringLocalizer.GetString("HomePage_Start");
     private string NewProjectString => _stringLocalizer.GetString("HomePage_NewProject");
     private string NewProjectTooltipString => _stringLocalizer.GetString("HomePage_NewProjectTooltip");

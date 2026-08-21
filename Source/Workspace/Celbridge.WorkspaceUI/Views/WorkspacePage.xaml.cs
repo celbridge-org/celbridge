@@ -104,7 +104,5 @@ public sealed partial class WorkspacePage : Page, IWorkspaceView
         _workspaceToast = null;
 
         await ViewModel.OnWorkspacePageUnloadedAsync();
-
-        Loaded -= WorkspacePage_Loaded;
     }
 }

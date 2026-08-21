@@ -45,13 +45,9 @@ public class ProjectUnloader
         _logger.LogInformation("Unloading project '{ProjectName}'", projectName);
 
         // The shell destroys the workspace view rather than caching it, so this completes once the
-        // workspace has finished tearing down.
+        // workspace has finished tearing down. The view is gone either way, so the rest of the unload runs
+        // even on a failure rather than leaving the project current with nothing on screen.
         var closeResult = await _applicationShell.CloseWorkspaceAsync();
-        if (closeResult.IsFailure)
-        {
-            return Result.Fail($"Failed to close the workspace for project '{projectName}'")
-                .WithErrors(closeResult);
-        }
 
         // Health describes the load that is ending, so it goes with the project rather than lingering
         // on the switcher while no project is open.
@@ -65,7 +61,14 @@ public class ProjectUnloader
         // so the next StartAsync call binds to the same port.
         await _serverService.StopAsync();
 
+        if (closeResult.IsFailure)
+        {
+            return Result.Fail($"Failed to close the workspace for project '{projectName}'")
+                .WithErrors(closeResult);
+        }
+
         _logger.LogInformation("Project '{ProjectName}' unloaded successfully", projectName);
+
         return Result.Ok();
     }
 }

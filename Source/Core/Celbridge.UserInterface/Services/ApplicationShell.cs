@@ -4,13 +4,18 @@ using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
 
+/// <summary>
+/// The workspace the shell is showing, paired with the element it is added to the content area as.
+/// </summary>
+internal sealed record CurrentWorkspace(IWorkspaceView View, UIElement Element);
+
 public class ApplicationShell : IApplicationShell
 {
     private readonly ILogger<ApplicationShell> _logger;
     private readonly IServiceProvider _serviceProvider;
 
     private Panel? _contentArea;
-    private IWorkspaceView? _workspaceView;
+    private CurrentWorkspace? _currentWorkspace;
     private HomePage? _homePage;
 
     public ApplicationShell(
@@ -43,7 +48,7 @@ public class ApplicationShell : IApplicationShell
             return Result.Fail("Failed to show the workspace because the shell has no content area.");
         }
 
-        if (_workspaceView is not null)
+        if (_currentWorkspace is not null)
         {
             return Result.Fail("Failed to show the workspace because a workspace is already showing.");
         }
@@ -59,7 +64,7 @@ public class ApplicationShell : IApplicationShell
         // Assigned before the view enters the visual tree, because the workspace load starts from its
         // Loaded event.
         workspaceView.LoadCancellation = loadCancellation;
-        _workspaceView = workspaceView;
+        _currentWorkspace = new CurrentWorkspace(workspaceView, viewElement);
 
         HideHome();
 
@@ -70,21 +75,22 @@ public class ApplicationShell : IApplicationShell
 
     public async Task<Result> CloseWorkspaceAsync()
     {
-        if (_workspaceView is null)
+        if (_currentWorkspace is null)
         {
             // No workspace is showing, so the shell is already in the requested state.
             return Result.Ok();
         }
 
-        var workspaceView = _workspaceView;
-        _workspaceView = null;
+        var currentWorkspace = _currentWorkspace;
+        _currentWorkspace = null;
 
         // Teardown runs while the view is still in the visual tree, so the editors it saves state from are
-        // still alive.
+        // still alive. The view comes out whether it succeeded or not: the caller is unloading the project
+        // the workspace belongs to, so leaving it on screen would be worse than losing what it failed to save.
         var teardownResult = Result.Ok();
         try
         {
-            await workspaceView.TeardownAsync();
+            await currentWorkspace.View.TeardownAsync();
         }
         catch (Exception exception)
         {
@@ -92,10 +98,8 @@ public class ApplicationShell : IApplicationShell
             teardownResult = Result.Fail("Failed to tear down the workspace");
         }
 
-        if (workspaceView is UIElement viewElement)
-        {
-            _contentArea?.Children.Remove(viewElement);
-        }
+        Guard.IsNotNull(_contentArea);
+        _contentArea.Children.Remove(currentWorkspace.Element);
 
         ShowHome();
 
@@ -125,7 +129,9 @@ public class ApplicationShell : IApplicationShell
             return;
         }
 
-        _contentArea?.Children.Remove(_homePage);
+        Guard.IsNotNull(_contentArea);
+
+        _contentArea.Children.Remove(_homePage);
         _homePage = null;
     }
 }

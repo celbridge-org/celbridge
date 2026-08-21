@@ -11,6 +11,8 @@ public sealed partial class NavigationToolbar : UserControl
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private MainMenu? _mainMenu;
 
+    private string HomeTitleString => _stringLocalizer.GetString("TitleBar_HomeTitle");
+
     public NavigationToolbar()
     {
         this.InitializeComponent();
@@ -40,7 +42,7 @@ public sealed partial class NavigationToolbar : UserControl
         }
 
         ApplyTooltips();
-        UpdateWordmarkVisibility();
+        UpdateHomeTitleVisibility();
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
@@ -81,18 +83,18 @@ public sealed partial class NavigationToolbar : UserControl
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        UpdateWordmarkVisibility();
+        UpdateHomeTitleVisibility();
     }
 
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
-        UpdateWordmarkVisibility();
+        UpdateHomeTitleVisibility();
     }
 
-    private void UpdateWordmarkVisibility()
+    private void UpdateHomeTitleVisibility()
     {
         // The switcher occupies this slot while a project is loaded, and collapses itself when none is.
-        Wordmark.Visibility = _workspaceWrapper.IsWorkspacePageLoaded
+        HomeTitle.Visibility = _workspaceWrapper.IsWorkspacePageLoaded
             ? Visibility.Collapsed
             : Visibility.Visible;
     }

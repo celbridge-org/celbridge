@@ -155,7 +155,11 @@ public class ProjectLoader : IProjectLoader
 
             // The view may already have been created when the load failed, so take it back down. No project
             // is loaded, so the shell shows Home.
-            await _applicationShell.CloseWorkspaceAsync();
+            var closeResult = await _applicationShell.CloseWorkspaceAsync();
+            if (closeResult.IsFailure)
+            {
+                _logger.LogError(closeResult, "Failed to close the workspace after the project load failed");
+            }
 
             await ShowLoadFailedAlertAsync(projectFilePath);
 

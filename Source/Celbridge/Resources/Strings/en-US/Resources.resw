@@ -390,12 +390,6 @@
   <data name="HomePage_Start" xml:space="preserve">
     <value>Start</value>
   </data>
-  <data name="HomePage_Title" xml:space="preserve">
-    <value>Celbridge</value>
-  </data>
-  <data name="HomePage_Subtitle" xml:space="preserve">
-    <value>We are the makers</value>
-  </data>
   <data name="HomePage_Recent" xml:space="preserve">
     <value>Recent</value>
   </data>
@@ -1048,6 +1042,9 @@ Open with default application instead?</value>
   </data>
   <data name="FullScreenToolbar_ExitPresentationHint" xml:space="preserve">
     <value>To exit Presentation mode, choose another layout from the View menu</value>
+  </data>
+  <data name="TitleBar_HomeTitle" xml:space="preserve">
+    <value>Celbridge</value>
   </data>
   <data name="TitleBar_MainMenuTooltip" xml:space="preserve">
     <value>Main menu</value>

@@ -25,9 +25,9 @@
     </controls:IconButton>
 
     <!-- Shown in place of the project switcher while no project is loaded, so the toolbar strip keeps the same
-         geometry in both states. A product name, so it is not localized. -->
-    <TextBlock x:Name="Wordmark"
-               Text="Celbridge"
+         geometry in both states. -->
+    <TextBlock x:Name="HomeTitle"
+               Text="{x:Bind HomeTitleString}"
                Margin="8,0,0,0"
                VerticalAlignment="Center"/>
 

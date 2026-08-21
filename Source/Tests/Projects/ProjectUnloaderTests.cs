@@ -8,8 +8,7 @@ namespace Celbridge.Tests.Projects;
 
 /// <summary>
 /// Covers ProjectUnloader's workspace teardown: the successful unload, the early-out when no project is
-/// loaded, and the teardown failure that fails the unload rather than disposing a project whose workspace
-/// is still alive.
+/// loaded, and the teardown failure, which is reported without stopping the unload it is part of.
 /// </summary>
 [TestFixture]
 public class ProjectUnloaderTests
@@ -65,14 +64,17 @@ public class ProjectUnloaderTests
     }
 
     [Test]
-    public async Task UnloadProject_WhenWorkspaceFailsToClose_Fails()
+    public async Task UnloadProject_WhenWorkspaceFailsToClose_ReportsTheFailureAndStillUnloads()
     {
         _applicationShell.CloseWorkspaceAsync().Returns(Result.Fail("Teardown failed"));
 
         var result = await _projectUnloader.UnloadProjectAsync();
 
         Assert.That(result.IsFailure, Is.True);
-        _projectService.DidNotReceive().ClearCurrentProject();
-        await _serverService.DidNotReceive().StopAsync();
+
+        // The shell takes the view down whether the teardown succeeded or not, so stopping here would leave
+        // the project current with no workspace on screen.
+        _projectService.Received(1).ClearCurrentProject();
+        await _serverService.Received(1).StopAsync();
     }
 }

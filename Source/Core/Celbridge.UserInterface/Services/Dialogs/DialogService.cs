@@ -10,6 +10,7 @@ namespace Celbridge.UserInterface.Services.Dialogs;
 
 public class DialogService : IDialogService
 {
+    private readonly ILogger<DialogService> _logger;
     private readonly IDialogFactory _dialogFactory;
     private readonly IFocusService _focusService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -32,6 +33,7 @@ public class DialogService : IDialogService
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService)
     {
+        _logger = logger;
         _dialogFactory = dialogFactory;
         _focusService = focusService;
         _workspaceWrapper = workspaceWrapper;
@@ -90,6 +92,11 @@ public class DialogService : IDialogService
                 await dialog.ShowDialogAsync();
                 return true;
             });
+        }
+        catch (Exception exception)
+        {
+            // Callers start this without awaiting it, so a failure here has nowhere else to surface.
+            _logger.LogError(exception, "Failed to show the settings dialog");
         }
         finally
         {
