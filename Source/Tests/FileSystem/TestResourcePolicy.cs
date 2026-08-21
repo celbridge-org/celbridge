@@ -32,7 +32,7 @@ internal static class TestResourcePolicy
         public Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult) => throw new NotImplementedException();
         public Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(IReadOnlyList<EditorContribution> discoveredContributions, bool persistNormalizedConfig) => throw new NotImplementedException();
         public void ClearCurrentProject() => throw new NotImplementedException();
-        public List<RecentProject> GetRecentProjects() => throw new NotImplementedException();
+        public List<RecentProject> GetRecentProjects(bool excludeCurrentProject) => throw new NotImplementedException();
         public void ClearRecentProjects() => throw new NotImplementedException();
     }
 }

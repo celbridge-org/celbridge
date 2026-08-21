@@ -45,10 +45,10 @@ public interface IProjectService
     void ClearCurrentProject();
 
     /// <summary>
-    /// Returns the list of recent projects that still exist on disk,
-    /// excluding the currently opened project.
+    /// Returns the recent projects that still exist on disk, most recently opened first. Excluding the
+    /// current project suits menus that list the open project separately.
     /// </summary>
-    List<RecentProject> GetRecentProjects();
+    List<RecentProject> GetRecentProjects(bool excludeCurrentProject);
 
     /// <summary>
     /// Clears the list of recently opened projects.

@@ -128,7 +128,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
     /// </summary>
     public List<RecentProject> GetRecentProjects()
     {
-        return _projectService.GetRecentProjects();
+        return _projectService.GetRecentProjects(excludeCurrentProject: true);
     }
 
     /// <summary>
