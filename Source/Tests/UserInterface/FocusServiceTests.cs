@@ -16,9 +16,9 @@ public class FocusServiceTests
     private ILogger<FocusService> _logger = null!;
     private FocusService _focusService = null!;
 
-    // The handler the service registered for workspace deactivation, captured so a test can raise it without
-    // a real messenger.
-    private MessageHandler<object, WorkspacePageDeactivatedMessage> _workspaceDeactivatedHandler = null!;
+    // The handler the service registered for workspace unload, captured so a test can raise it without a
+    // real messenger.
+    private MessageHandler<object, WorkspaceUnloadedMessage> _workspaceUnloadedHandler = null!;
 
     // The web surface most tests report from. Claims are compared by surface identity, so a test that needs
     // two distinct surfaces creates its own.
@@ -31,8 +31,8 @@ public class FocusServiceTests
         _messengerService
             .When(messenger => messenger.Register(
                 Arg.Any<object>(),
-                Arg.Any<MessageHandler<object, WorkspacePageDeactivatedMessage>>()))
-            .Do(call => _workspaceDeactivatedHandler = call.Arg<MessageHandler<object, WorkspacePageDeactivatedMessage>>());
+                Arg.Any<MessageHandler<object, WorkspaceUnloadedMessage>>()))
+            .Do(call => _workspaceUnloadedHandler = call.Arg<MessageHandler<object, WorkspaceUnloadedMessage>>());
 
         _logger = Substitute.For<ILogger<FocusService>>();
         _focusService = new FocusService(_messengerService, _logger);
@@ -228,7 +228,7 @@ public class FocusServiceTests
     }
 
     [Test]
-    public void WorkspaceDeactivated_ClearsPanelFocusAndTheEditTarget()
+    public void WorkspaceUnloaded_ClearsPanelFocusAndTheEditTargetWithoutReleasingTheSurface()
     {
         var target = Substitute.For<IEditTarget>();
         var releaseFocus = Substitute.For<Action>();
@@ -237,10 +237,12 @@ public class FocusServiceTests
 
         // This service outlives the workspace, so a target left behind would keep the Edit menu pointing at
         // an editor that no longer exists.
-        _workspaceDeactivatedHandler.Invoke(this, new WorkspacePageDeactivatedMessage());
+        _workspaceUnloadedHandler.Invoke(this, new WorkspaceUnloadedMessage());
 
         _focusService.FocusedPanel.Should().Be(WorkspacePanelId.None);
         _focusService.EditTarget.Should().BeNull();
-        releaseFocus.Received(1).Invoke();
+
+        // The surface went with the workspace, so the release callback would reach into a torn-down web view.
+        releaseFocus.DidNotReceive().Invoke();
     }
 }

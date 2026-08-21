@@ -6,27 +6,27 @@ using Celbridge.Settings.Services;
 using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Settings;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.ViewModels.Pages;
+using Celbridge.UserInterface.ViewModels.Dialogs;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for the Settings page view model. The stored theme is read through the real SettingsService
+/// Unit tests for the Settings dialog view model. The stored theme is read through the real SettingsService
 /// over an in-memory settings store fake. Selecting a theme dispatches ISetThemeCommand rather than writing
 /// the setting here, so that is asserted against a substitute command service. A real MessengerService
-/// carries the theme-changed broadcast the page follows.
+/// carries the theme-changed broadcast the dialog follows.
 /// </summary>
 [TestFixture]
-public class SettingsPageViewModelTests
+public class SettingsDialogViewModelTests
 {
     private FakeSettingsStore _settingsStore = null!;
     private FakeCredentialStore _credentialStore = null!;
     private SettingsService _settingsService = null!;
     private ICommandService _commandService = null!;
     private IMessengerService _messengerService = null!;
-    private SettingsPageViewModel _viewModel = null!;
+    private SettingsDialogViewModel _viewModel = null!;
 
     [SetUp]
     public void Setup()
@@ -50,7 +50,7 @@ public class SettingsPageViewModelTests
         stringLocalizer[Arg.Any<string>()].Returns(
             callInfo => new LocalizedString(callInfo.Arg<string>(), callInfo.Arg<string>()));
 
-        _viewModel = new SettingsPageViewModel(
+        _viewModel = new SettingsDialogViewModel(
             _settingsService,
             stringLocalizer,
             _commandService,
@@ -103,9 +103,9 @@ public class SettingsPageViewModelTests
     [Test]
     public void ThemeChangedElsewhere_UpdatesTheSelectionWithoutDispatching()
     {
-        // The View menu offers the same themes, so a change made there while this page is open has to be
+        // The View menu offers the same themes, so a change made there while this dialog is open has to be
         // reflected here rather than leaving a stale selection.
-        _viewModel.OnLoaded();
+        _viewModel.OnOpened();
 
         _settingsService.Set(SettingCatalog.Application.Theme, ApplicationColorTheme.Light);
         _messengerService.Send(new ThemeChangedMessage(UserInterfaceTheme.Light));
@@ -121,10 +121,10 @@ public class SettingsPageViewModelTests
     }
 
     [Test]
-    public void AfterUnloading_ThemeChangesAreNoLongerFollowed()
+    public void AfterClosing_ThemeChangesAreNoLongerFollowed()
     {
-        _viewModel.OnLoaded();
-        _viewModel.OnUnloaded();
+        _viewModel.OnOpened();
+        _viewModel.OnClosed();
 
         _settingsService.Set(SettingCatalog.Application.Theme, ApplicationColorTheme.Light);
         _messengerService.Send(new ThemeChangedMessage(UserInterfaceTheme.Light));

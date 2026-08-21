@@ -21,6 +21,10 @@ public class DialogService : IDialogService
     private bool _suppressProgressDialog;
     private List<IProgressDialogToken> _progressDialogTokens = [];
 
+    // Only one dialog can be on screen at a time, and the settings dialog stays up until the user closes
+    // it. The macOS menu bar stays live while it is open, so the Settings item can be picked again.
+    private bool _isSettingsDialogOpen;
+
     public DialogService(
         ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
@@ -67,6 +71,30 @@ public class DialogService : IDialogService
 
         UpdateProgressDialog();
         return token;
+    }
+
+    public async Task ShowSettingsDialogAsync()
+    {
+        if (_isSettingsDialogOpen)
+        {
+            return;
+        }
+
+        var dialog = _dialogFactory.CreateSettingsDialog();
+        _isSettingsDialogOpen = true;
+
+        try
+        {
+            await ShowDialogAsync(async () =>
+            {
+                await dialog.ShowDialogAsync();
+                return true;
+            });
+        }
+        finally
+        {
+            _isSettingsDialogOpen = false;
+        }
     }
 
     private void ReleaseProgressDialog(IProgressDialogToken token)

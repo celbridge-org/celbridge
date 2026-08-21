@@ -1,7 +1,7 @@
 using Celbridge.Community;
 using Celbridge.DataTransfer;
-using Celbridge.Navigation;
 using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Commands;
 using Celbridge.WorkspaceUI.Platform;
 using Celbridge.WorkspaceUI.Services;
@@ -27,6 +27,9 @@ public static class ServiceConfiguration
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IBindableWorkspaceSettings, BindableWorkspaceSettings>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
+
+        // The application shell creates one view per project and tears it down when the project unloads.
+        services.AddTransient<IWorkspaceView, WorkspacePage>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
 
@@ -61,15 +64,6 @@ public static class ServiceConfiguration
 
     public static void Initialize()
     {
-        var navigationService = ServiceLocator.AcquireService<INavigationService>() as UserInterface.Services.NavigationService;
-        Guard.IsNotNull(navigationService);
-
-        // Register the WorkspacePage with the NavigationService
-        navigationService.RegisterPage(
-            NavigationConstants.WorkspaceTag,
-            typeof(WorkspacePage),
-            ApplicationPage.Workspace);
-
         // Track managed focus changes for the lifetime of the app. Reports are no-ops until a
         // workspace is active.
         var panelFocusTracker = ServiceLocator.AcquireService<PanelFocusTracker>();

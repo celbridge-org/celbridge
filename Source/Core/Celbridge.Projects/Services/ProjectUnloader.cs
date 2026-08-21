@@ -1,48 +1,36 @@
 using Celbridge.Logging;
-using Celbridge.Navigation;
 using Celbridge.Server;
-using Celbridge.Workspace;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Projects.Services;
 
 /// <summary>
-/// Handles the complete workflow of unloading a project, including workspace page cleanup
-/// and navigation orchestration.
+/// Handles the complete workflow of unloading a project, including tearing the workspace down.
 /// </summary>
 public class ProjectUnloader
 {
-    private const string EmptyPageTag = "Empty";
-
-    private const int PollIntervalMs = 50;
-
-    // Settable so tests can exercise the timeout without waiting the full bound.
-    internal int UnloadTimeoutMs { get; set; } = 30000;
-
     private readonly ILogger<ProjectUnloader> _logger;
     private readonly IProjectService _projectService;
-    private readonly INavigationService _navigationService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IApplicationShell _applicationShell;
     private readonly IServerService _serverService;
     private readonly IProjectHealthService _projectHealthService;
 
     public ProjectUnloader(
         ILogger<ProjectUnloader> logger,
         IProjectService projectService,
-        INavigationService navigationService,
-        IWorkspaceWrapper workspaceWrapper,
+        IApplicationShell applicationShell,
         IServerService serverService,
         IProjectHealthService projectHealthService)
     {
         _logger = logger;
         _projectService = projectService;
-        _navigationService = navigationService;
-        _workspaceWrapper = workspaceWrapper;
+        _applicationShell = applicationShell;
         _serverService = serverService;
         _projectHealthService = projectHealthService;
     }
 
     /// <summary>
-    /// Unloads the current project, handling workspace page cleanup and navigation.
+    /// Unloads the current project, tearing the workspace down before the project it belongs to goes away.
     /// </summary>
     public async Task<Result> UnloadProjectAsync()
     {
@@ -56,14 +44,13 @@ public class ProjectUnloader
         var projectName = currentProject.ProjectName;
         _logger.LogInformation("Unloading project '{ProjectName}'", projectName);
 
-        // Handle workspace page cleanup if it's loaded
-        if (_workspaceWrapper.IsWorkspacePageLoaded)
+        // The shell destroys the workspace view rather than caching it, so this completes once the
+        // workspace has finished tearing down.
+        var closeResult = await _applicationShell.CloseWorkspaceAsync();
+        if (closeResult.IsFailure)
         {
-            var cleanupResult = await CleanupWorkspacePageAsync();
-            if (cleanupResult.IsFailure)
-            {
-                return cleanupResult;
-            }
+            return Result.Fail($"Failed to close the workspace for project '{projectName}'")
+                .WithErrors(closeResult);
         }
 
         // Health describes the load that is ending, so it goes with the project rather than lingering
@@ -79,61 +66,6 @@ public class ProjectUnloader
         await _serverService.StopAsync();
 
         _logger.LogInformation("Project '{ProjectName}' unloaded successfully", projectName);
-        return Result.Ok();
-    }
-
-    private async Task<Result> CleanupWorkspacePageAsync()
-    {
-        // The logic here is complicated because we need to teardown the workspace in the
-        // unloaded callback of the Workspace Page, and there are multiple code paths to consider.
-
-        // The workspace page uses NavigationCacheMode.Required, so it stays loaded in memory
-        // even when the user navigates to other pages like Home or Settings.
-        // We need to ensure proper cleanup of the workspace page.
-
-        // Navigate to the Workspace page first to make it the active/visible page.
-        // This is necessary because OnNavigatingFrom (which handles cleanup) only runs
-        // when navigating away from the currently visible page.
-        var navResult = _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag);
-        if (navResult.IsFailure)
-        {
-            return Result.Fail("Failed to navigate to workspace page for cleanup")
-                .WithErrors(navResult);
-        }
-
-        // Give the UI enough time to complete the navigation and render.
-        // This ensures the Workspace page is fully active before we navigate away.
-        await Task.Delay(100);
-
-        // Signal that the workspace page should perform cleanup when it unloads.
-        // This must be called AFTER navigating to the Workspace page, because
-        // NavigateToPage clears the cleanup flag after each navigation.
-        _navigationService.RequestWorkspacePageCleanup();
-
-        // Now navigate to the empty page to trigger OnNavigatingFrom on the WorkspacePage,
-        // which will disable caching and allow proper cleanup on unload.
-        navResult = _navigationService.NavigateToPage(EmptyPageTag);
-        if (navResult.IsFailure)
-        {
-            return Result.Fail("Failed to navigate to empty page for workspace cleanup")
-                .WithErrors(navResult);
-        }
-
-        // Wait until the workspace is fully unloaded. The wait is bounded so a teardown failure fails
-        // this command instead of blocking the command queue forever. The healthy path can take tens of
-        // seconds when many open editors each hit their state-save timeout.
-        var elapsedMs = 0;
-        while (_workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            if (elapsedMs >= UnloadTimeoutMs)
-            {
-                return Result.Fail($"The workspace page did not unload within {UnloadTimeoutMs}ms");
-            }
-
-            await Task.Delay(PollIntervalMs);
-            elapsedMs += PollIntervalMs;
-        }
-
         return Result.Ok();
     }
 }

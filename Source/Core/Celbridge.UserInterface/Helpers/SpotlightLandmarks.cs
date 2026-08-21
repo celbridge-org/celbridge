@@ -36,7 +36,6 @@ internal static class SpotlightLandmarks
             new("document-tab-strip", null),
             new("bottom-area-close-button", WorkspaceSurface.BottomArea),
             new("side-area-close-button", WorkspaceSurface.SideArea),
-            new("home-button", null),
             new("workspace-button", null),
             new("panel-layout-button", null),
             new("explorer-toggle-button", null),

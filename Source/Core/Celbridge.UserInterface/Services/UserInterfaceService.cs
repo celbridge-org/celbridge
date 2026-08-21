@@ -20,14 +20,12 @@ public class UserInterfaceService : IUserInterfaceService
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
-    private ApplicationPage _activePage = ApplicationPage.None;
     private ThemeHelper? _themeHelper;
     private Helpers.WindowStateHelper? _windowStateHelper;
     private double _publishedRasterizationScale;
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
-    public ApplicationPage ActivePage => _activePage;
 
     public UserInterfaceService(
         ILogger<UserInterfaceService> logger,
@@ -245,15 +243,5 @@ public class UserInterfaceService : IUserInterfaceService
 
         // Update titlebar buttons
         _themeHelper?.UpdateTitleBar(UserInterfaceTheme);
-    }
-
-    public void SetActivePage(ApplicationPage page)
-    {
-        if (_activePage != page)
-        {
-            _activePage = page;
-            var message = new ActivePageChangedMessage(page);
-            _messengerService.Send(message);
-        }
     }
 }

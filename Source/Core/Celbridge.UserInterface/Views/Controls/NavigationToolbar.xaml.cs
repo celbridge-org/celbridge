@@ -1,7 +1,5 @@
-using Celbridge.Navigation;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
-using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
@@ -10,9 +8,8 @@ public sealed partial class NavigationToolbar : UserControl
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private MainMenu? _mainMenu;
-
-    public NavigationToolbarViewModel ViewModel { get; }
 
     public NavigationToolbar()
     {
@@ -20,9 +17,7 @@ public sealed partial class NavigationToolbar : UserControl
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        ViewModel = ServiceLocator.AcquireService<NavigationToolbarViewModel>();
-
-        this.DataContext = ViewModel;
+        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         // The menu opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
@@ -45,9 +40,10 @@ public sealed partial class NavigationToolbar : UserControl
         }
 
         ApplyTooltips();
+        UpdateWordmarkVisibility();
 
-        _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     private void OnNavigationToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -68,7 +64,6 @@ public sealed partial class NavigationToolbar : UserControl
         var elements = new List<FrameworkElement>
         {
             MainMenuButton,
-            HomeNavItem,
             ProjectSwitcher,
             ProjectHealthButton
         };
@@ -82,64 +77,23 @@ public sealed partial class NavigationToolbar : UserControl
         ToolTipService.SetToolTip(MainMenuButton, mainMenuTooltip);
         ToolTipService.SetPlacement(MainMenuButton, PlacementMode.Bottom);
         AutomationProperties.SetName(MainMenuButton, mainMenuTooltip);
-
-        // Home carries only an icon in its Content, so give assistive technology an explicit name.
-        var homeTooltip = _stringLocalizer.GetString("TitleBar_HomeTooltip");
-        ToolTipService.SetToolTip(HomeNavItem, homeTooltip);
-        ToolTipService.SetPlacement(HomeNavItem, PlacementMode.Bottom);
-        AutomationProperties.SetName(HomeNavItem, homeTooltip);
     }
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        UpdateNavigationSelection(ApplicationPage.Workspace);
+        UpdateWordmarkVisibility();
     }
 
-    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
-        UpdateNavigationSelection(message.ActivePage);
+        UpdateWordmarkVisibility();
     }
 
-    private void UpdateNavigationSelection(ApplicationPage activePage)
+    private void UpdateWordmarkVisibility()
     {
-        PageNavigation.SelectionChanged -= PageNavigation_SelectionChanged;
-
-        try
-        {
-            switch (activePage)
-            {
-                case ApplicationPage.Home:
-                    PageNavigation.SelectedItem = HomeNavItem;
-                    break;
-                case ApplicationPage.Workspace:
-                    // The project switcher is custom content, not a nav item, so no menu item is selected here.
-                    PageNavigation.SelectedItem = null;
-                    break;
-                case ApplicationPage.Settings:
-                    PageNavigation.SelectedItem = null;
-                    break;
-                default:
-                    PageNavigation.SelectedItem = null;
-                    break;
-            }
-        }
-        finally
-        {
-            PageNavigation.SelectionChanged += PageNavigation_SelectionChanged;
-        }
-    }
-
-    private void PageNavigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
-    {
-        if (args.SelectedItem is NavigationViewItem selectedItem)
-        {
-            var tag = selectedItem.Tag?.ToString();
-            if (string.IsNullOrEmpty(tag))
-            {
-                return;
-            }
-
-            ViewModel.NavigateToPage(tag);
-        }
+        // The switcher occupies this slot while a project is loaded, and collapses itself when none is.
+        Wordmark.Visibility = _workspaceWrapper.IsWorkspacePageLoaded
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 }

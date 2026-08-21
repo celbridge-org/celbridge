@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.Navigation;
 using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Views.Controls;
@@ -61,7 +60,7 @@ public class MainMenu
             iconSymbol: IconSymbol.Settings,
             label: _stringLocalizer.GetString("MainMenu_Settings"),
             isEnabled: true,
-            onClick: (sender, e) => ViewModel.NavigateToSettings());
+            onClick: (sender, e) => ViewModel.ShowSettings());
         _menuFlyout.Items.Add(settingsItem);
 
         _menuFlyout.Items.Add(new MenuFlyoutSeparator());

@@ -24,6 +24,11 @@ public interface IDialogFactory
     IProgressDialog CreateProgressDialog();
 
     /// <summary>
+    /// Create a Settings Dialog for the application settings.
+    /// </summary>
+    ISettingsDialog CreateSettingsDialog();
+
+    /// <summary>
     /// Create a New Project Dialog with template selection.
     /// </summary>
     INewProjectDialog CreateNewProjectDialog();

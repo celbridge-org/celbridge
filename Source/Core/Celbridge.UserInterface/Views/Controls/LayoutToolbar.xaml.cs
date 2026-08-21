@@ -12,9 +12,9 @@ public sealed partial class LayoutToolbar : UserControl
     private readonly ICommandService _commandService;
     private readonly IWindowModeService _windowModeService;
     private readonly ILayoutService _layoutService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private bool _isUpdatingUI = false;
-    private bool _isOnWorkspacePage = false;
 
     public LayoutToolbar()
     {
@@ -33,6 +33,7 @@ public sealed partial class LayoutToolbar : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
+        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         // The flyout opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
@@ -57,8 +58,8 @@ public sealed partial class LayoutToolbar : UserControl
         _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
         _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
         _messengerService.Register<BottomAreaAlignmentChangedMessage>(this, OnBottomAreaAlignmentChanged);
-        _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     private void LayoutToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -86,16 +87,18 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdateWorkspaceControlsVisibility()
     {
-        // Everything this toolbar offers acts on the workspace surfaces, so the whole toolbar goes away off
-        // the Workspace page rather than leaving a layout button whose flyout has nothing left to show.
-        var visibility = _isOnWorkspacePage ? Visibility.Visible : Visibility.Collapsed;
+        // Everything this toolbar offers acts on the workspace surfaces, so the whole toolbar goes away
+        // while no workspace is loaded rather than leaving a layout button whose flyout has nothing to show.
+        bool isWorkspaceLoaded = _workspaceWrapper.IsWorkspacePageLoaded;
+
+        var visibility = isWorkspaceLoaded ? Visibility.Visible : Visibility.Collapsed;
 
         PanelLayoutButton.Visibility = visibility;
         PanelToggleButtons.Visibility = visibility;
 
-        if (!_isOnWorkspacePage)
+        if (!isWorkspaceLoaded)
         {
-            // The button carrying the flyout is gone, so an open flyout would be left over the new page.
+            // The button carrying the flyout is gone, so an open flyout would be left over Home.
             PanelLayoutFlyout.Hide();
         }
     }
@@ -163,13 +166,12 @@ public sealed partial class LayoutToolbar : UserControl
         BottomAreaAlignmentHeader.Text = _stringLocalizer.GetString("LayoutToolbar_BottomPanelLabel");
     }
 
-    private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
         UpdateWorkspaceControlsVisibility();
     }
 
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         UpdateWorkspaceControlsVisibility();
     }

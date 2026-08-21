@@ -1,8 +1,8 @@
 using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Navigation;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -10,7 +10,7 @@ namespace Celbridge.Projects.Services;
 
 /// <summary>
 /// Handles the complete workflow of loading a project, including migration checks,
-/// upgrade confirmation dialogs, error alerts, and navigation.
+/// upgrade confirmation dialogs, error alerts, and showing the workspace.
 /// </summary>
 public class ProjectLoader : IProjectLoader
 {
@@ -18,7 +18,7 @@ public class ProjectLoader : IProjectLoader
     private readonly IProjectMigrationService _migrationService;
     private readonly IProjectService _projectService;
     private readonly IDialogService _dialogService;
-    private readonly INavigationService _navigationService;
+    private readonly IApplicationShell _applicationShell;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
@@ -30,7 +30,7 @@ public class ProjectLoader : IProjectLoader
         IProjectMigrationService migrationService,
         IProjectService projectService,
         IDialogService dialogService,
-        INavigationService navigationService,
+        IApplicationShell applicationShell,
         ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
@@ -41,7 +41,7 @@ public class ProjectLoader : IProjectLoader
         _migrationService = migrationService;
         _projectService = projectService;
         _dialogService = dialogService;
-        _navigationService = navigationService;
+        _applicationShell = applicationShell;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
@@ -50,9 +50,8 @@ public class ProjectLoader : IProjectLoader
     }
 
     /// <summary>
-    /// Loads a project with full migration support, user dialogs, and navigation.
-    /// Handles the complete workflow including upgrade confirmation, error alerts,
-    /// and navigating to the workspace or home page as appropriate.
+    /// Loads a project with full migration support, user dialogs, and error alerts. Shows the workspace on
+    /// success; a load that does not happen leaves the shell showing Home.
     /// </summary>
     public async Task<Result> LoadProjectAsync(string projectFilePath)
     {
@@ -99,7 +98,6 @@ public class ProjectLoader : IProjectLoader
                     _logger.LogInformation($"User cancelled project upgrade for '{projectName}'");
                     _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: true);
                     _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
-                    _navigationService.NavigateToPage(NavigationConstants.HomeTag);
                     return Result.Ok(); // Not a failure - user chose to cancel
                 }
 
@@ -128,7 +126,6 @@ public class ProjectLoader : IProjectLoader
                 _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
 
                 await ShowLoadFailedAlertAsync(projectFilePath);
-                _navigationService.NavigateToPage(NavigationConstants.HomeTag);
 
                 return Result.Fail($"Failed to load project: '{projectFilePath}'")
                     .WithErrors(migrationResult.OperationResult);
@@ -156,8 +153,11 @@ public class ProjectLoader : IProjectLoader
         {
             _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
 
+            // The view may already have been created when the load failed, so take it back down. No project
+            // is loaded, so the shell shows Home.
+            await _applicationShell.CloseWorkspaceAsync();
+
             await ShowLoadFailedAlertAsync(projectFilePath);
-            _navigationService.NavigateToPage(NavigationConstants.HomeTag);
 
             return Result.Fail($"Failed to load project: '{projectFilePath}'")
                 .WithErrors(loadResult);
@@ -214,7 +214,6 @@ public class ProjectLoader : IProjectLoader
         }
 
         var loadPageCancellationToken = new CancellationTokenSource();
-        _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag, loadPageCancellationToken);
 
         // Use TaskCompletionSource for event-based waiting instead of polling
         var workspaceLoadedTcs = new TaskCompletionSource<bool>();
@@ -224,10 +223,19 @@ public class ProjectLoader : IProjectLoader
             workspaceLoadedTcs.TrySetResult(true);
         }
 
+        // Registered before the view is created, so a load that completes while this method is still
+        // running cannot be missed.
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         try
         {
+            var showResult = await _applicationShell.ShowWorkspaceAsync(loadPageCancellationToken);
+            if (showResult.IsFailure)
+            {
+                return Result.Fail("Failed to show the workspace")
+                    .WithErrors(showResult);
+            }
+
             // If already loaded, complete immediately
             if (_workspaceWrapper.IsWorkspacePageLoaded)
             {

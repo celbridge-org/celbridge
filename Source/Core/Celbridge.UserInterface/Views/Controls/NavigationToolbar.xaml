@@ -24,40 +24,13 @@
       </Button.Flyout>
     </controls:IconButton>
 
-    <!-- Width sized to its single item: a top-mode NavigationView otherwise reserves a pane's worth of width
-         whatever it holds, which pushes everything after it into the middle of the toolbar. Goes away with
-         the Home item. -->
-    <NavigationView x:Name="PageNavigation"
-                    Width="80"
-                    HorizontalAlignment="Left"
-                    IsPaneToggleButtonVisible="False"
-                    IsBackButtonVisible="Collapsed"
-                    IsSettingsVisible="False"
-                    PaneDisplayMode="Top"
-                    Background="Transparent"
-                    SelectionChanged="PageNavigation_SelectionChanged">
+    <!-- Shown in place of the project switcher while no project is loaded, so the toolbar strip keeps the same
+         geometry in both states. A product name, so it is not localized. -->
+    <TextBlock x:Name="Wordmark"
+               Text="Celbridge"
+               Margin="8,0,0,0"
+               VerticalAlignment="Center"/>
 
-        <NavigationView.MenuItems>
-            <!-- Main Menu is added programmatically -->
-
-            <!-- The page glyphs sit in the item Content rather than the Icon slot: the Icon slot renders inside
-                 the presenter's IconBox Viewbox, which scales to a fixed box and ignores FontSize, so Content is
-                 the only place the shared command icon size takes effect in top mode. -->
-
-            <!-- Home -->
-            <NavigationViewItem x:Name="HomeNavItem"
-                                AutomationProperties.AutomationId="home-button"
-                                Tag="Home">
-                <controls:Icon Symbol="Home"
-                               FontSize="{StaticResource IconSizeMedium}"/>
-            </NavigationViewItem>
-
-        </NavigationView.MenuItems>
-
-    </NavigationView>
-
-    <!-- Siblings of the navigation rather than its PaneCustomContent, whose presenter clamps its content to
-         the pane's item height, short of the chrome buttons around it. -->
     <local:ProjectSwitcher x:Name="ProjectSwitcher"
                            VerticalAlignment="Center"/>
 

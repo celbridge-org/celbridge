@@ -58,8 +58,7 @@ Splitting has no landmark: it is driven from the document tab context menu rathe
 
 Title bar:
 
-- `home-button` — the Home page button.
-- `workspace-button` — the Workspace button (only resolves while a project is loaded).
+- `workspace-button` — the project switcher, which opens the project menu (only resolves while a project is loaded).
 - `panel-layout-button` — the layout-mode selector (Default, Focus, Presentation).
 - `explorer-toggle-button` — the button that shows or hides the Explorer panel.
 - `bottom-area-toggle-button` — the button that shows or hides the Bottom document area.

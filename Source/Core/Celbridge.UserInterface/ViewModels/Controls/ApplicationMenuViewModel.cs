@@ -1,5 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Navigation;
+using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
@@ -15,7 +15,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly INavigationService _navigationService;
+    private readonly IDialogService _dialogService;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
@@ -28,7 +28,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
     public ApplicationMenuViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
-        INavigationService navigationService,
+        IDialogService dialogService,
         ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
@@ -37,7 +37,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
-        _navigationService = navigationService;
+        _dialogService = dialogService;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
@@ -101,14 +101,11 @@ public partial class ApplicationMenuViewModel : ObservableObject
 
         // Clear the previous project setting so it won't auto-load next time
         _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
-
-        // Navigate to home page
-        _navigationService.NavigateToPage(NavigationConstants.HomeTag);
     }
 
-    public void NavigateToSettings()
+    public void ShowSettings()
     {
-        _navigationService.NavigateToPage(NavigationConstants.SettingsTag);
+        _ = _dialogService.ShowSettingsDialogAsync();
     }
 
     public void ExitApplication()

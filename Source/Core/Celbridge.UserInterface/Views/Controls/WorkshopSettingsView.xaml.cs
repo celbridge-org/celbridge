@@ -1,11 +1,11 @@
+using System.ComponentModel;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Microsoft.UI.Dispatching;
 
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The Workshop connection section of the Settings page: URL and Author fields,
-/// the Workshop Key entry, and a status bar. Composed onto SettingsPage.
+/// The Workshop connection section of the settings dialog.
 /// </summary>
 public sealed partial class WorkshopSettingsView : UserControl
 {
@@ -20,6 +20,10 @@ public sealed partial class WorkshopSettingsView : UserControl
     private string WorkshopUrlString => _stringLocalizer.GetString("Settings_Workshop_Url");
     private string WorkshopUrlTooltipString => _stringLocalizer.GetString("Settings_Workshop_UrlTooltip");
     private string WorkshopKeyString => _stringLocalizer.GetString("Settings_Workshop_Key");
+    private string KeyTooltipString => _stringLocalizer.GetString("Settings_Workshop_KeyTooltip");
+    private string SaveKeyString => _stringLocalizer.GetString("Settings_Workshop_KeySaveButton");
+    private string KeyRemoveMessageString => _stringLocalizer.GetString("Settings_Workshop_KeyRemoveMessage");
+    private string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
     private string AuthorString => _stringLocalizer.GetString("Settings_Workshop_Author");
     private string AuthorTooltipString => _stringLocalizer.GetString("Settings_Workshop_AuthorTooltip");
     private string AuthorPlaceholderString => _stringLocalizer.GetString("Settings_Workshop_AuthorPlaceholder");
@@ -57,6 +61,8 @@ public sealed partial class WorkshopSettingsView : UserControl
 
         WorkshopUrlTextBox.TextChanged += ConnectionField_Changed;
         AuthorTextBox.TextChanged += ConnectionField_Changed;
+
+        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -66,6 +72,8 @@ public sealed partial class WorkshopSettingsView : UserControl
 
         WorkshopUrlTextBox.TextChanged -= ConnectionField_Changed;
         AuthorTextBox.TextChanged -= ConnectionField_Changed;
+
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
         if (_autoSaveTimer is not null)
         {
@@ -79,6 +87,43 @@ public sealed partial class WorkshopSettingsView : UserControl
             _autoSaveTimer.Stop();
             _autoSaveTimer.Tick -= AutoSaveTimer_Tick;
             _autoSaveTimer = null;
+        }
+    }
+
+    // The password box is not bound, so the view clears and focuses it as the entry row appears. The
+    // secret is never held anywhere the XAML can read it back.
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ViewModel.IsKeyEditVisible)
+            || !ViewModel.IsKeyEditVisible)
+        {
+            return;
+        }
+
+        WorkshopKeyPasswordBox.Password = string.Empty;
+        WorkshopKeyPasswordBox.Focus(FocusState.Programmatic);
+    }
+
+    private void WorkshopKeyPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        ViewModel.KeyInput = WorkshopKeyPasswordBox.Password;
+    }
+
+    private void WorkshopKeyPasswordBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter
+            && ViewModel.SaveWorkshopKeyCommand.CanExecute(null)
+            && ViewModel.IsSaveKeyEnabled)
+        {
+            ViewModel.SaveWorkshopKeyCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            ViewModel.CancelChangeWorkshopKeyCommand.Execute(null);
+            e.Handled = true;
         }
     }
 

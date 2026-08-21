@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.Navigation;
 using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Pages;
@@ -10,28 +9,25 @@ using Windows.System;
 
 namespace Celbridge.UserInterface.Views;
 
-public partial class MainPage : Page
+/// <summary>
+/// The window's root view. Which base view fills its content area is the application shell's business.
+/// </summary>
+public class MainPage : Page
 {
     public MainPageViewModel ViewModel { get; private set; }
 
     private IUserInterfaceService _userInterfaceService;
     private IMessengerService _messengerService;
-    private INavigationService _navigationService;
     private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
     private Grid _contentArea;
-    private readonly Dictionary<Type, Page> _pageCache = new();
-    private Page? _currentPage;
     private FrameworkElement? _titleBar;
 
     public MainPage()
     {
-        InitializeComponent();
-
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _navigationService = ServiceLocator.AcquireService<INavigationService>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
@@ -100,10 +96,12 @@ public partial class MainPage : Page
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
-        // Register the navigation handler
-        var navigationService = _navigationService as NavigationService;
-        Guard.IsNotNull(navigationService);
-        navigationService.SetNavigateHandler(NavigateToPage);
+        // Hand the shell the area it shows the base view in. It shows Home until a project loads.
+        // Setting it up is not part of IApplicationShell, which is about which base view is showing rather
+        // than where it is shown.
+        var applicationShell = ServiceLocator.AcquireService<IApplicationShell>() as ApplicationShell;
+        Guard.IsNotNull(applicationShell);
+        applicationShell.SetContentArea(_contentArea);
 
         ViewModel.OnMainPage_Loaded();
 
@@ -200,75 +198,5 @@ public partial class MainPage : Page
 
         var shortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         return shortcutService.HandleShortcut(key, control, shift, alt);
-    }
-
-    public Result NavigateToPage(Type pageType, object? parameter = null)
-    {
-        if (_currentPage?.GetType() == pageType)
-        {
-            // Already at the requested page, so just early out.
-            return Result.Ok();
-        }
-
-        // If workspace cleanup was requested, mark the current page for removal
-        if (_currentPage != null && _navigationService.IsWorkspacePageCleanupPending)
-        {
-            _currentPage.NavigationCacheMode = NavigationCacheMode.Disabled;
-        }
-
-        // Handle current page teardown
-        if (_currentPage != null)
-        {
-            if (_currentPage.NavigationCacheMode == NavigationCacheMode.Disabled)
-            {
-                // Page was marked for cleanup, remove from cache and visual tree
-                _pageCache.Remove(_currentPage.GetType());
-                _contentArea.Children.Remove(_currentPage);
-            }
-            else if (_pageCache.ContainsKey(_currentPage.GetType()))
-            {
-                // Cached page: hide but keep in visual tree so it receives theme updates
-                _currentPage.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                // Non-cached page: remove from visual tree
-                _contentArea.Children.Remove(_currentPage);
-            }
-        }
-
-        // Get or create target page
-        if (!_pageCache.TryGetValue(pageType, out var page))
-        {
-            try
-            {
-                page = (Page)Activator.CreateInstance(pageType)!;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create page of type {PageType}", pageType);
-                return Result.Fail($"Failed to create page of type {pageType}");
-            }
-
-            // Cache pages that request caching
-            if (page.NavigationCacheMode == NavigationCacheMode.Required ||
-                page.NavigationCacheMode == NavigationCacheMode.Enabled)
-            {
-                _pageCache[pageType] = page;
-            }
-        }
-
-        // Add to visual tree if not already there
-        if (!_contentArea.Children.Contains(page))
-        {
-            _contentArea.Children.Add(page);
-        }
-
-        // Pass the navigation parameter via Tag so the page can read it in its Loaded handler
-        page.Tag = parameter;
-
-        page.Visibility = Visibility.Visible;
-        _currentPage = page;
-        return Result.Ok();
     }
 }

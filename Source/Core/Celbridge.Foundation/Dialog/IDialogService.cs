@@ -16,7 +16,7 @@ public enum DialogKind
 }
 
 /// <summary>
-/// Manages the display of modal dialogs to the user.
+/// Manages the display of modal dialogs to the user. Only one dialog can be on screen at a time.
 /// </summary>
 public interface IDialogService
 {
@@ -39,6 +39,11 @@ public interface IDialogService
     /// Dispose the token to release it. The progress dialog is hidden when all tokens are released.
     /// </summary>
     IProgressDialogToken AcquireProgressDialog(string titleText);
+
+    /// <summary>
+    /// Display the Settings Dialog for the application settings.
+    /// </summary>
+    Task ShowSettingsDialogAsync();
 
     /// <summary>
     /// Display a New Project Dialog with template selection.

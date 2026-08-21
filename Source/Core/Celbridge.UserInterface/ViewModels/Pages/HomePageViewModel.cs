@@ -3,7 +3,6 @@ using Celbridge.Community;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.FilePicker;
-using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Services;
 
@@ -20,7 +19,6 @@ public partial class HomePageViewModel : ObservableObject
     private readonly MainMenuUtils _mainMenuUtils;
 
     public HomePageViewModel(
-        INavigationService navigationService,
         Logging.ILogger<HomePageViewModel> logger,
         ICommandService commandService,
         IProjectService projectService,

@@ -374,7 +374,7 @@ internal static class MacOSMainMenu
                 break;
 
             case TagSettings:
-                viewModel.NavigateToSettings();
+                viewModel.ShowSettings();
                 break;
 
             case TagQuit:

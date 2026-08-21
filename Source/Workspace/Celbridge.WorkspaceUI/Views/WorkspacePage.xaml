@@ -7,7 +7,6 @@
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:layout="using:Celbridge.WorkspaceUI"
   xmlns:vm="using:Celbridge.WorkspaceUI.ViewModels"
-  NavigationCacheMode="Required"
   DataContext="{x:Bind ViewModel}">
 
   <!-- The workspace surfaces and the splitters between them are laid out by the workspace panel, which

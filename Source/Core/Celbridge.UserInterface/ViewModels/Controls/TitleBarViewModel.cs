@@ -9,6 +9,7 @@ namespace Celbridge.UserInterface.ViewModels.Controls;
 public partial class TitleBarViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     [ObservableProperty]
     private bool _isSaving;
@@ -16,16 +17,21 @@ public partial class TitleBarViewModel : ObservableObject
     [ObservableProperty]
     private bool _isWorkspaceActive;
 
-    public TitleBarViewModel(IMessengerService messengerService)
+    public TitleBarViewModel(
+        IMessengerService messengerService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public void OnLoaded()
     {
-        _messengerService.Register<WorkspacePageActivatedMessage>(this, OnWorkspacePageActivated);
-        _messengerService.Register<WorkspacePageDeactivatedMessage>(this, OnWorkspacePageDeactivated);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
         _messengerService.Register<PendingDocumentSaveMessage>(this, OnPendingDocumentSaveMessage);
+
+        IsWorkspaceActive = _workspaceWrapper.IsWorkspacePageLoaded;
     }
 
     public void OnUnloaded()
@@ -33,12 +39,12 @@ public partial class TitleBarViewModel : ObservableObject
         _messengerService.UnregisterAll(this);
     }
 
-    private void OnWorkspacePageActivated(object recipient, WorkspacePageActivatedMessage message)
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         IsWorkspaceActive = true;
     }
 
-    private void OnWorkspacePageDeactivated(object recipient, WorkspacePageDeactivatedMessage message)
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         IsWorkspaceActive = false;
     }
