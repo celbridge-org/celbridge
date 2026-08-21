@@ -42,7 +42,9 @@ public partial class HomePageViewModel : ObservableObject
     {
         // Home is built while the project it replaces is still closing, so excluding the open project here
         // would drop the one the user just closed.
-        RecentProjects.AddRange(_projectService.GetRecentProjects(excludeCurrentProject: false));
+        var recentProjects = _projectService.GetRecentProjects(excludeCurrentProject: false);
+
+        RecentProjects.AddRange(recentProjects);
     }
 
     public List<RecentProject> RecentProjects = new();
