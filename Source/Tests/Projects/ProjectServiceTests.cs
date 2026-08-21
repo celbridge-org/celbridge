@@ -13,9 +13,9 @@ namespace Celbridge.Tests.Projects;
 [TestFixture]
 public class ProjectServiceTests
 {
-    private const string NewestProject = @"C:\Projects\Newest\Newest.celbridge";
-    private const string DeletedProject = @"C:\Projects\Deleted\Deleted.celbridge";
-    private const string OldestProject = @"C:\Projects\Oldest\Oldest.celbridge";
+    private static readonly string NewestProject = MakeProjectFilePath("Newest");
+    private static readonly string DeletedProject = MakeProjectFilePath("Deleted");
+    private static readonly string OldestProject = MakeProjectFilePath("Oldest");
 
     private ISettingsService _settingsService = null!;
     private ILocalFileSystem _fileSystem = null!;
@@ -77,6 +77,13 @@ public class ProjectServiceTests
         // first entry outright would hide the project the user just closed.
         recentProjects.Select(recentProject => recentProject.ProjectFilePath)
             .Should().Equal(NewestProject, OldestProject);
+    }
+
+    // RecentProject splits the path into a folder and a name and requires both, so the separators have to
+    // be the running platform's. These tests run on Linux in CI.
+    private static string MakeProjectFilePath(string projectName)
+    {
+        return Path.Combine(Path.GetTempPath(), projectName, $"{projectName}.celbridge");
     }
 
     private void StubStoredProjects(params string[] projectFilePaths)

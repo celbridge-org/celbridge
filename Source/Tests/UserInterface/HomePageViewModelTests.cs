@@ -17,7 +17,10 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class HomePageViewModelTests
 {
-    private const string RecentProjectPath = @"C:\Projects\Recent\Recent.celbridge";
+    // RecentProject splits the path into a folder and a name and requires both, so the separators have to
+    // be the running platform's. These tests run on Linux in CI.
+    private static readonly string RecentProjectPath =
+        Path.Combine(Path.GetTempPath(), "Recent", "Recent.celbridge");
 
     private IProjectService _projectService = null!;
 
