@@ -13,7 +13,7 @@ namespace Celbridge.Tests.UserInterface;
 /// rather than the state of any WebView.
 /// </summary>
 [TestFixture]
-public class PrivacySettingsViewModelTests
+public class WebViewSettingsViewModelTests
 {
     private ICommandService _commandService = null!;
     private IWebViewService _webViewService = null!;
@@ -42,7 +42,7 @@ public class PrivacySettingsViewModelTests
 
         viewModel.IsClearEnabled.Should().BeFalse();
         viewModel.IsStatusVisible.Should().BeTrue();
-        viewModel.StatusMessage.Should().Be("Settings_Privacy_ClearUnavailable");
+        viewModel.StatusMessage.Should().Be("Settings_WebView_ClearUnavailable");
     }
 
     [Test]
@@ -71,7 +71,7 @@ public class PrivacySettingsViewModelTests
         await _commandService.Received(1).ExecuteImmediate<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
         viewModel.StatusSeverity.Should().Be(StatusSeverity.Success);
-        viewModel.StatusMessage.Should().Be("Settings_Privacy_Cleared");
+        viewModel.StatusMessage.Should().Be("Settings_WebView_Cleared");
         viewModel.IsClearEnabled.Should().BeTrue();
     }
 
@@ -101,16 +101,16 @@ public class PrivacySettingsViewModelTests
         await viewModel.ConfirmClearBrowsingDataCommand.ExecuteAsync(null);
 
         viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
-        viewModel.StatusMessage.Should().Be("Settings_Privacy_ClearFailed");
+        viewModel.StatusMessage.Should().Be("Settings_WebView_ClearFailed");
 
         // A failed clear must not leave the button stuck disabled, so the user can retry.
         viewModel.IsClearEnabled.Should().BeTrue();
     }
 
-    private PrivacySettingsViewModel CreateViewModel()
+    private WebViewSettingsViewModel CreateViewModel()
     {
-        return new PrivacySettingsViewModel(
-            new NullLogger<PrivacySettingsViewModel>(),
+        return new WebViewSettingsViewModel(
+            new NullLogger<WebViewSettingsViewModel>(),
             _commandService,
             _webViewService,
             _stringLocalizer);

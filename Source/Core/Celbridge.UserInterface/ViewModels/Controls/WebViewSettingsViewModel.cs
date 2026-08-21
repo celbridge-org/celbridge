@@ -3,9 +3,9 @@ using Celbridge.WebHost;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
-public partial class PrivacySettingsViewModel : ObservableObject
+public partial class WebViewSettingsViewModel : ObservableObject
 {
-    private readonly Logging.ILogger<PrivacySettingsViewModel> _logger;
+    private readonly Logging.ILogger<WebViewSettingsViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IStringLocalizer _stringLocalizer;
 
@@ -28,7 +28,7 @@ public partial class PrivacySettingsViewModel : ObservableObject
 
     /// <summary>
     /// True when this platform can clear browsing data at all. Fixed for the session, so there is nothing
-    /// to refresh when the settings page is displayed.
+    /// to refresh when the section is shown.
     /// </summary>
     public bool IsClearAvailable { get; }
 
@@ -42,8 +42,8 @@ public partial class PrivacySettingsViewModel : ObservableObject
     /// </summary>
     public bool IsClearButtonVisible => !IsConfirmingClear;
 
-    public PrivacySettingsViewModel(
-        Logging.ILogger<PrivacySettingsViewModel> logger,
+    public WebViewSettingsViewModel(
+        Logging.ILogger<WebViewSettingsViewModel> logger,
         ICommandService commandService,
         IWebViewService webViewService,
         IStringLocalizer stringLocalizer)
@@ -55,7 +55,7 @@ public partial class PrivacySettingsViewModel : ObservableObject
         IsClearAvailable = webViewService.CanClearBrowsingData;
         if (!IsClearAvailable)
         {
-            ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Privacy_ClearUnavailable"));
+            ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_WebView_ClearUnavailable"));
         }
     }
 
@@ -89,7 +89,7 @@ public partial class PrivacySettingsViewModel : ObservableObject
 
         IsConfirmingClear = false;
         IsClearing = true;
-        ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Privacy_Clearing"));
+        ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_WebView_Clearing"));
 
         // The settings dialog holds the command queue while it is open, so an enqueued command would
         // never run and this await would never return.
@@ -100,11 +100,11 @@ public partial class PrivacySettingsViewModel : ObservableObject
         if (clearResult.IsFailure)
         {
             _logger.LogError(clearResult, "Failed to clear the browsing data");
-            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Privacy_ClearFailed"));
+            ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_WebView_ClearFailed"));
             return;
         }
 
-        ShowStatus(StatusSeverity.Success, _stringLocalizer.GetString("Settings_Privacy_Cleared"));
+        ShowStatus(StatusSeverity.Success, _stringLocalizer.GetString("Settings_WebView_Cleared"));
     }
 
     private void ShowStatus(StatusSeverity severity, string message)

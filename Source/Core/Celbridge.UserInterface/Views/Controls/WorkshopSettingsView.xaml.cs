@@ -15,8 +15,6 @@ public sealed partial class WorkshopSettingsView : UserControl
 
     private DispatcherQueueTimer? _autoSaveTimer;
 
-    private string WorkshopSectionString => _stringLocalizer.GetString("Settings_Workshop_SectionHeader");
-    private string WorkshopDescriptionString => _stringLocalizer.GetString("Settings_Workshop_Description");
     private string WorkshopUrlString => _stringLocalizer.GetString("Settings_Workshop_Url");
     private string WorkshopUrlTooltipString => _stringLocalizer.GetString("Settings_Workshop_UrlTooltip");
     private string WorkshopKeyString => _stringLocalizer.GetString("Settings_Workshop_Key");
@@ -41,6 +39,9 @@ public sealed partial class WorkshopSettingsView : UserControl
 
         this.InitializeComponent();
 
+        // The dialog swaps the selected section in and out of its content host, so these fire each time
+        // the user comes back to this section rather than once per dialog. They stay attached for the
+        // lifetime of the control.
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -67,9 +68,6 @@ public sealed partial class WorkshopSettingsView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= OnLoaded;
-        Unloaded -= OnUnloaded;
-
         WorkshopUrlTextBox.TextChanged -= ConnectionField_Changed;
         AuthorTextBox.TextChanged -= ConnectionField_Changed;
 

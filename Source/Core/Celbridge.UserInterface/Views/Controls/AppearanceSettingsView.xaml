@@ -1,0 +1,29 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.AppearanceSettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    HorizontalAlignment="Left">
+
+  <StackPanel Spacing="24"
+              HorizontalAlignment="Left">
+
+    <Grid ColumnSpacing="24">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="160"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBlock Text="{x:Bind ApplicationThemeString}"
+                 VerticalAlignment="Center"/>
+
+      <ComboBox Grid.Column="1"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                ItemsSource="{x:Bind ViewModel.ThemeOptions}"
+                SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}"
+                DisplayMemberPath="DisplayName"/>
+    </Grid>
+
+  </StackPanel>
+</UserControl>

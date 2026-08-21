@@ -1,5 +1,5 @@
 <UserControl
-    x:Class="Celbridge.UserInterface.Views.PrivacySettingsView"
+    x:Class="Celbridge.UserInterface.Views.WebViewSettingsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
@@ -13,16 +13,6 @@
 
   <StackPanel Spacing="24"
               HorizontalAlignment="Left">
-
-    <StackPanel Spacing="4">
-      <TextBlock FontSize="24"
-                 FontWeight="SemiBold"
-                 Text="{x:Bind PrivacySectionString}"/>
-      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                 TextWrapping="Wrap"
-                 MaxWidth="784"
-                 Text="{x:Bind PrivacyDescriptionString}"/>
-    </StackPanel>
 
     <StackPanel Spacing="8">
       <Button Content="{x:Bind ClearBrowsingDataString}"

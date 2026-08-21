@@ -94,7 +94,7 @@ Both are gitignored. Never edit them: change the token source and rebuild. `Celb
 - Do not use special characters like arrows or emojis in code comments
 - Use full stops rather than semicolons in comment and documentation prose. This applies to English text only, not C# statement terminators
 - Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
-- Localized strings for the Settings page follow `Settings_<Group>_<Element>`, mirroring the descriptor groups defined in `SettingCatalog.cs` (the `SettingCatalog` catalog class). Strings shown elsewhere keep their existing `Section_Element` conventions
+- Localized strings for the settings dialog follow `Settings_<Category>_<Element>`, where the category is the one the string appears under in the dialog rail (Appearance, Workshop, Web View), not the `SettingCatalog.cs` descriptor group. The two mostly coincide, but the categories are a presentation grouping: Appearance shows `SettingCatalog.Application.Theme`, and Web View has no catalog group at all. Strings shown elsewhere keep their existing `Section_Element` conventions
 - Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
 - Place `Dispose` implementation at the end of a class; declare all private fields at the top
 - Split multi-condition `if` statements so each clause is on its own line, with the logical operator (`&&`, `||`) at the end of the preceding line

@@ -4,25 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:converters="using:Celbridge.UserInterface.Converters"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    HorizontalAlignment="Left">
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <UserControl.Resources>
     <converters:StatusSeverityConverter x:Key="StatusSeverityConverter"/>
   </UserControl.Resources>
 
-  <StackPanel Spacing="24"
-              HorizontalAlignment="Left">
-
-    <StackPanel Spacing="4">
-      <TextBlock FontSize="24"
-                 FontWeight="SemiBold"
-                 Text="{x:Bind WorkshopSectionString}"/>
-      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                 TextWrapping="Wrap"
-                 MaxWidth="784"
-                 Text="{x:Bind WorkshopDescriptionString}"/>
-    </StackPanel>
+  <StackPanel Spacing="24">
 
     <ContentControl IsEnabled="{x:Bind ViewModel.IsStoreAvailable, Mode=OneWay}"
                     IsTabStop="False">
@@ -35,7 +23,7 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="160"/>
-          <ColumnDefinition Width="600"/>
+          <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <TextBlock Text="{x:Bind AuthorString}"
