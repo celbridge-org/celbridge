@@ -29,9 +29,9 @@ public class FocusService : IFocusService
         _messengerService = messengerService;
         _logger = logger;
 
-        // Leaving the workspace for another page clears panel focus, so returning shows no focused panel
-        // until the user clicks or tabs into one.
-        _messengerService.Register<WorkspacePageDeactivatedMessage>(this, OnWorkspacePageDeactivated);
+        // This service outlives the workspace, so the state it holds about the workspace's surfaces is
+        // dropped when that workspace goes away.
+        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     public WorkspacePanelId FocusedPanel => _focusedPanel;
@@ -140,17 +140,19 @@ public class FocusService : IFocusService
         return $"web surface {claim.Surface?.SurfaceName ?? "unnamed"}";
     }
 
-    private void OnWorkspacePageDeactivated(object recipient, WorkspacePageDeactivatedMessage message)
+    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
-        // The destination page will take focus; clearing here makes the workspace deterministically show no
-        // focused panel on return, rather than depending on whether that page grabs focus.
-        ClearFocus();
+        // The surfaces went with the workspace, so the release callback is dropped rather than invoked:
+        // there is no caret left to drop, and calling it would reach into a torn-down web view.
+        _releaseFocusedSurface = null;
+        _focusedSurface = null;
 
         // ClearFocus preserves the edit context on purpose, so Edit commands still reach the last editing
         // surface while focus sits on chrome. A workspace going away takes its surfaces with it, so the
-        // target is dropped outright here: this service outlives the workspace, and the Edit menu asks it
-        // what can be edited.
+        // target is dropped outright here: the Edit menu asks this service what can be edited.
         _editTarget = null;
+
+        ClearFocus();
 
         // The interaction state the tracker consults is dropped on the same boundary, so a hold or an open
         // popup left behind by the outgoing workspace cannot suppress focus reporting in the next one.

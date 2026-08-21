@@ -5,9 +5,6 @@
     xmlns:local="using:Celbridge.UserInterface.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <Grid x:Name="LayoutRoot" RowDefinitions="Auto, *">
-        <Frame x:Name="ContentFrame"
-               Grid.Row="1"
-               Background="{ThemeResource ChromeBackgroundBrush}" />
-    </Grid>
+    <!-- Kept for the generated InitializeComponent, which the root Frame's navigation to this type needs. -->
+    <Grid />
 </Page>

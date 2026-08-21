@@ -11,9 +11,8 @@
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
 
-  <!-- A custom button styled as a prominent, distinct control rather than a nav tab. Clicking it navigates to
-       the workspace; the nested chevron button opens the recent-projects switcher, its Tapped handled so it
-       never triggers the navigation click. -->
+  <!-- A custom button styled as a prominent, distinct control rather than a nav tab. Clicking anywhere on it
+       opens the project menu. -->
   <Button x:Name="WorkspaceButton"
           AutomationProperties.AutomationId="workspace-button"
           Click="WorkspaceButton_Click"
@@ -26,8 +25,8 @@
           VerticalContentAlignment="Stretch"
           Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
 
-    <!-- Attached to the whole button (not the chevron) so it drops down aligned to the button's left edge.
-         Every item after the recent projects header is rebuilt each time the menu opens. -->
+    <!-- Attached to the whole button so it drops down aligned to the button's left edge. Every item after
+         the recent projects header is rebuilt each time the menu opens. -->
     <FlyoutBase.AttachedFlyout>
       <MenuFlyout x:Name="ProjectMenuFlyout"
                   Placement="BottomEdgeAlignedLeft">
@@ -93,8 +92,7 @@
         <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
-      <!-- Project avatar and name, so the button carries the same identity as the menu rows. Clicking this
-           area navigates to the workspace. -->
+      <!-- Project avatar and name, so the button carries the same identity as the menu rows. -->
       <StackPanel Grid.Column="0"
                   Orientation="Horizontal"
                   Spacing="8"
@@ -108,21 +106,12 @@
                    VerticalAlignment="Center"/>
       </StackPanel>
 
-      <!-- Project menu chevron. Fills the right of the button (full height, out to the right edge)
-           so the whole right side is an easy target for opening the menu. Its Tapped is handled so
-           it never triggers the button's navigation. -->
-      <Button x:Name="ProjectMenuButton"
-              Grid.Column="1"
-              AutomationProperties.AutomationId="project-menu-button"
-              Background="Transparent"
-              BorderThickness="0"
-              Padding="6,0,8,0"
-              VerticalAlignment="Stretch"
-              Tapped="ProjectMenuButton_Tapped">
-        <controls:Icon Symbol="ChevronDown"
-                       FontSize="12"
-                       VerticalAlignment="Center"/>
-      </Button>
+      <!-- Part of the button rather than a target of its own. -->
+      <controls:Icon Grid.Column="1"
+                     Symbol="ChevronDown"
+                     FontSize="12"
+                     Margin="6,0,8,0"
+                     VerticalAlignment="Center"/>
     </Grid>
   </Button>
 </UserControl>

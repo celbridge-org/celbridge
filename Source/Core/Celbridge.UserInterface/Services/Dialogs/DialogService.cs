@@ -10,6 +10,7 @@ namespace Celbridge.UserInterface.Services.Dialogs;
 
 public class DialogService : IDialogService
 {
+    private readonly ILogger<DialogService> _logger;
     private readonly IDialogFactory _dialogFactory;
     private readonly IFocusService _focusService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -21,6 +22,10 @@ public class DialogService : IDialogService
     private bool _suppressProgressDialog;
     private List<IProgressDialogToken> _progressDialogTokens = [];
 
+    // Only one dialog can be on screen at a time, and the settings dialog stays up until the user closes
+    // it. The macOS menu bar stays live while it is open, so the Settings item can be picked again.
+    private bool _isSettingsDialogOpen;
+
     public DialogService(
         ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
@@ -28,6 +33,7 @@ public class DialogService : IDialogService
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService)
     {
+        _logger = logger;
         _dialogFactory = dialogFactory;
         _focusService = focusService;
         _workspaceWrapper = workspaceWrapper;
@@ -67,6 +73,35 @@ public class DialogService : IDialogService
 
         UpdateProgressDialog();
         return token;
+    }
+
+    public async Task ShowSettingsDialogAsync()
+    {
+        if (_isSettingsDialogOpen)
+        {
+            return;
+        }
+
+        var dialog = _dialogFactory.CreateSettingsDialog();
+        _isSettingsDialogOpen = true;
+
+        try
+        {
+            await ShowDialogAsync(async () =>
+            {
+                await dialog.ShowDialogAsync();
+                return true;
+            });
+        }
+        catch (Exception exception)
+        {
+            // Callers start this without awaiting it, so a failure here has nowhere else to surface.
+            _logger.LogError(exception, "Failed to show the settings dialog");
+        }
+        finally
+        {
+            _isSettingsDialogOpen = false;
+        }
     }
 
     private void ReleaseProgressDialog(IProgressDialogToken token)

@@ -1,4 +1,3 @@
-using Celbridge.Dialog;
 using Celbridge.Packages;
 using Celbridge.Settings;
 using Celbridge.Settings.Services;
@@ -15,9 +14,9 @@ namespace Celbridge.Tests.UserInterface;
 /// <summary>
 /// Unit tests for the WorkshopSettingsView view model. The Workshop Key
 /// round-trips through the real SettingsService over an in-memory credential store fake.
-/// The secret is entered through a substitute IDialogService standing in for the
-/// masked input dialog. The non-secret URL and Author are ordinary settings, read
-/// back through the same service.
+/// The secret is entered and the removal confirmed in place, so the tests drive the key row's
+/// states directly. The non-secret URL and Author are ordinary settings, read back through the
+/// same service.
 /// </summary>
 [TestFixture]
 public class WorkshopSettingsViewModelTests
@@ -29,7 +28,6 @@ public class WorkshopSettingsViewModelTests
     private FakeCredentialStore _credentialStore = null!;
     private SettingsService _settingsService = null!;
     private IPackageApiClient _packageApiClient = null!;
-    private IDialogService _dialogService = null!;
     private WorkshopSettingsViewModel _viewModel = null!;
 
     [SetUp]
@@ -50,8 +48,6 @@ public class WorkshopSettingsViewModelTests
         _packageApiClient = Substitute.For<IPackageApiClient>();
         SetConnectionCheckOutcome(ConnectionCheckOutcome.Connected);
 
-        _dialogService = Substitute.For<IDialogService>();
-
         var stringLocalizer = Substitute.For<IStringLocalizer>();
         stringLocalizer[Arg.Any<string>()].Returns(
             callInfo => new LocalizedString(callInfo.Arg<string>(), callInfo.Arg<string>()));
@@ -60,7 +56,6 @@ public class WorkshopSettingsViewModelTests
             Substitute.For<ILogger<WorkshopSettingsViewModel>>(),
             _settingsService,
             _packageApiClient,
-            _dialogService,
             stringLocalizer);
     }
 
@@ -70,26 +65,11 @@ public class WorkshopSettingsViewModelTests
         _packageApiClient.CheckConnectionAsync().Returns(Task.FromResult(outcome));
     }
 
-    // Stubs the masked key dialog to return the given key, as if the user entered
-    // it and pressed Save.
-    private void SetKeyDialogResult(string key)
+    // Opens the key entry field and types the given key into it, as the user would.
+    private void EnterKey(string key)
     {
-        _dialogService.ShowSecretInputDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(Task.FromResult(Result<string>.Ok(key)));
-    }
-
-    // Stubs the masked key dialog as cancelled.
-    private void SetKeyDialogCancelled()
-    {
-        _dialogService.ShowSecretInputDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(Task.FromResult(Result<string>.Fail("cancelled")));
-    }
-
-    // Stubs the removal confirmation dialog with the given answer.
-    private void SetRemoveConfirmationResult(bool confirmed)
-    {
-        _dialogService.ShowConfirmationDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
-            .Returns(Task.FromResult(Result<bool>.Ok(confirmed)));
+        _viewModel.BeginChangeWorkshopKeyCommand.Execute(null);
+        _viewModel.KeyInput = key;
     }
 
     // Seeds a stored key (Protected scope) plus the non-secret URL and Author, as
@@ -194,11 +174,12 @@ public class WorkshopSettingsViewModelTests
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
         _viewModel.Author = "Ada Lovelace";
-        SetKeyDialogResult(TestWorkshopKey);
+        EnterKey(TestWorkshopKey);
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.StatusSeverity.Should().NotBe(StatusSeverity.Error);
+        _viewModel.IsKeyEditVisible.Should().BeFalse();
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
         _viewModel.StoredKeyDisplay.Should().Be("kpf_abc123_...");
 
@@ -210,12 +191,26 @@ public class WorkshopSettingsViewModelTests
     {
         SeedStoredConnection();
         await _viewModel.InitializeAsync();
-        SetKeyDialogCancelled();
+        EnterKey("kpf_a_replacement_key");
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        _viewModel.CancelChangeWorkshopKeyCommand.Execute(null);
 
+        _viewModel.IsKeyEditVisible.Should().BeFalse();
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
         GetStoredKey().Should().Be(TestWorkshopKey);
+    }
+
+    [Test]
+    public async Task ChangeKey_BlankEntry_CannotBeSaved()
+    {
+        await _viewModel.InitializeAsync();
+        EnterKey("   ");
+
+        _viewModel.IsSaveKeyEnabled.Should().BeFalse();
+
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
+
+        IsKeyStored().Should().BeFalse();
     }
 
     [Test]
@@ -223,9 +218,9 @@ public class WorkshopSettingsViewModelTests
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
-        SetKeyDialogResult("not-a-kpf-shaped-key");
+        EnterKey("not-a-kpf-shaped-key");
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.StatusSeverity.Should().NotBe(StatusSeverity.Error, "the prefix check is a typo guard, not a gate");
 
@@ -275,10 +270,10 @@ public class WorkshopSettingsViewModelTests
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
-        SetKeyDialogResult(TestWorkshopKey);
+        EnterKey(TestWorkshopKey);
         // Author left empty: the key saves, but publishing needs an author.
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Warning);
@@ -292,10 +287,10 @@ public class WorkshopSettingsViewModelTests
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
         _viewModel.Author = "Ada Lovelace";
-        SetKeyDialogResult(TestWorkshopKey);
+        EnterKey(TestWorkshopKey);
         SetConnectionCheckOutcome(ConnectionCheckOutcome.Connected);
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Success);
@@ -306,10 +301,10 @@ public class WorkshopSettingsViewModelTests
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
-        SetKeyDialogResult(TestWorkshopKey);
+        EnterKey(TestWorkshopKey);
         SetConnectionCheckOutcome(ConnectionCheckOutcome.Unauthorized);
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
 
         _viewModel.IsStatusVisible.Should().BeTrue();
         _viewModel.StatusSeverity.Should().Be(StatusSeverity.Error);
@@ -322,10 +317,10 @@ public class WorkshopSettingsViewModelTests
     {
         await _viewModel.InitializeAsync();
         _viewModel.WorkshopUrl = WorkshopUrl;
-        SetKeyDialogResult(TestWorkshopKey);
+        EnterKey(TestWorkshopKey);
         SetConnectionCheckOutcome(ConnectionCheckOutcome.Unreachable);
 
-        await _viewModel.ChangeWorkshopKeyCommand.ExecuteAsync(null);
+        await _viewModel.SaveWorkshopKeyCommand.ExecuteAsync(null);
 
         // Offline must not be reported as a bad key: the key is saved, and the
         // status is a soft warning rather than an error.
@@ -372,11 +367,14 @@ public class WorkshopSettingsViewModelTests
     {
         SeedStoredConnection(author: "Ada Lovelace");
         await _viewModel.InitializeAsync();
-        SetRemoveConfirmationResult(confirmed: true);
 
-        await _viewModel.RemoveWorkshopKeyCommand.ExecuteAsync(null);
+        _viewModel.BeginRemoveWorkshopKeyCommand.Execute(null);
+        _viewModel.IsRemoveConfirmVisible.Should().BeTrue();
+
+        _viewModel.ConfirmRemoveWorkshopKeyCommand.Execute(null);
 
         // Only the secret is removed.
+        _viewModel.IsRemoveConfirmVisible.Should().BeFalse();
         IsKeyStored().Should().BeFalse();
         _viewModel.StoredKeyDisplay.Should().BeEmpty();
         _viewModel.IsSetKeyVisible.Should().BeTrue();
@@ -394,10 +392,11 @@ public class WorkshopSettingsViewModelTests
     {
         SeedStoredConnection();
         await _viewModel.InitializeAsync();
-        SetRemoveConfirmationResult(confirmed: false);
+        _viewModel.BeginRemoveWorkshopKeyCommand.Execute(null);
 
-        await _viewModel.RemoveWorkshopKeyCommand.ExecuteAsync(null);
+        _viewModel.CancelRemoveWorkshopKeyCommand.Execute(null);
 
+        _viewModel.IsRemoveConfirmVisible.Should().BeFalse();
         _viewModel.IsStoredKeyVisible.Should().BeTrue();
         GetStoredKey().Should().Be(TestWorkshopKey);
     }

@@ -52,6 +52,12 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
+    public ISettingsDialog CreateSettingsDialog()
+    {
+        var dialog = new SettingsDialog();
+        return WithFocusGuard(dialog);
+    }
+
     public INewProjectDialog CreateNewProjectDialog()
     {
         var dialog = new NewProjectDialog();

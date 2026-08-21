@@ -1,4 +1,3 @@
-using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Workspace;
 
@@ -7,7 +6,6 @@ namespace Celbridge.UserInterface.ViewModels.Controls;
 public partial class ProjectSwitcherViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
-    private readonly INavigationService _navigationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
 
@@ -21,12 +19,10 @@ public partial class ProjectSwitcherViewModel : ObservableObject
 
     public ProjectSwitcherViewModel(
         IMessengerService messengerService,
-        INavigationService navigationService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService)
     {
         _messengerService = messengerService;
-        _navigationService = navigationService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
     }
@@ -68,10 +64,5 @@ public partial class ProjectSwitcherViewModel : ObservableObject
             ProjectTitle = string.Empty;
             ProjectFilePath = string.Empty;
         }
-    }
-
-    public void NavigateToWorkspace()
-    {
-        _navigationService.NavigateToPage(NavigationConstants.WorkspaceTag);
     }
 }

@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
 using Celbridge.WebHost;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
@@ -8,12 +7,15 @@ public partial class PrivacySettingsViewModel : ObservableObject
 {
     private readonly Logging.ILogger<PrivacySettingsViewModel> _logger;
     private readonly ICommandService _commandService;
-    private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsClearEnabled))]
     private bool _isClearing;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsClearButtonVisible))]
+    private bool _isConfirmingClear;
 
     [ObservableProperty]
     private bool _isStatusVisible;
@@ -35,16 +37,19 @@ public partial class PrivacySettingsViewModel : ObservableObject
     /// </summary>
     public bool IsClearEnabled => IsClearAvailable && !IsClearing;
 
+    /// <summary>
+    /// True when the Clear button is showing. It gives up the row to the confirmation while that is up.
+    /// </summary>
+    public bool IsClearButtonVisible => !IsConfirmingClear;
+
     public PrivacySettingsViewModel(
         Logging.ILogger<PrivacySettingsViewModel> logger,
         ICommandService commandService,
         IWebViewService webViewService,
-        IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _logger = logger;
         _commandService = commandService;
-        _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
 
         IsClearAvailable = webViewService.CanClearBrowsingData;
@@ -54,7 +59,26 @@ public partial class PrivacySettingsViewModel : ObservableObject
         }
     }
 
-    // Confirms the clear with the user and, on acceptance, runs it. Bound to the Clear Browsing Data button.
+    // Shows the confirmation in place of the Clear button. The clear cannot be undone, so it is confirmed
+    // rather than run on the first click.
+    [RelayCommand]
+    private void BeginClearBrowsingData()
+    {
+        if (!IsClearEnabled)
+        {
+            return;
+        }
+
+        IsConfirmingClear = true;
+    }
+
+    [RelayCommand]
+    private void CancelClearBrowsingData()
+    {
+        IsConfirmingClear = false;
+    }
+
+    // Runs the clear. Bound to the confirmation's Clear button.
     [RelayCommand]
     private async Task ConfirmClearBrowsingDataAsync()
     {
@@ -63,23 +87,7 @@ public partial class PrivacySettingsViewModel : ObservableObject
             return;
         }
 
-        var title = _stringLocalizer.GetString("Settings_Privacy_ClearDialogTitle");
-        var message = _stringLocalizer.GetString("Settings_Privacy_ClearDialogMessage");
-        var confirmButtonText = _stringLocalizer.GetString("Settings_Privacy_ClearConfirmButton");
-
-        var confirmOptions = new ConfirmationDialogOptions
-        {
-            PrimaryButtonText = confirmButtonText,
-            IsDestructive = true
-        };
-
-        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(title, message, confirmOptions);
-        if (confirmResult.IsFailure
-            || !confirmResult.Value)
-        {
-            return;
-        }
-
+        IsConfirmingClear = false;
         IsClearing = true;
         ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Privacy_Clearing"));
 

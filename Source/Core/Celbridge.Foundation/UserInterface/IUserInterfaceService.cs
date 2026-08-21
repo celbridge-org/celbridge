@@ -23,16 +23,6 @@ public interface IUserInterfaceService
     UserInterfaceTheme UserInterfaceTheme { get; set; }
 
     /// <summary>
-    /// The currently active application page.
-    /// </summary>
-    ApplicationPage ActivePage { get; }
-
-    /// <summary>
-    /// Sets the active application page and broadcasts an ActivePageChangedMessage.
-    /// </summary>
-    void SetActivePage(ApplicationPage page);
-
-    /// <summary>
     /// Applies the currently selected theme to the UserInterface.
     /// </summary>
     void ApplyCurrentTheme();

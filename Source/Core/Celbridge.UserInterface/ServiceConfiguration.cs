@@ -1,13 +1,13 @@
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Localization;
-using Celbridge.Navigation;
 using Celbridge.UserInterface.Commands;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.UserInterface.ViewModels.Dialogs;
 using Celbridge.WebHost;
 using Celbridge.UserInterface.ViewModels.Pages;
 using Celbridge.UserInterface.Views;
@@ -24,7 +24,6 @@ public static class ServiceConfiguration
         //
         services.AddSingleton<ILocalizerService, LocalizerService>();
         services.AddSingleton<IDialogFactory, DialogFactory>();
-        services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IIconService, IconService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
@@ -40,6 +39,7 @@ public static class ServiceConfiguration
         services.AddSingleton<ISpotlightService, SpotlightService>();
         services.AddSingleton<ISpotlightRegistry, SpotlightRegistry>();
         services.AddSingleton<IResourceDragCoordinator, ResourceDragCoordinator>();
+        services.AddSingleton<IApplicationShell, ApplicationShell>();
         services.AddSingleton<MainMenuUtils>();
 
         // LayoutManager is a single implementation that exposes two interfaces:
@@ -72,11 +72,10 @@ public static class ServiceConfiguration
 
         services.AddTransient<MainPageViewModel>();
         services.AddTransient<HomePageViewModel>();
-        services.AddTransient<SettingsPageViewModel>();
+        services.AddTransient<SettingsDialogViewModel>();
         services.AddTransient<WorkshopSettingsViewModel>();
         services.AddTransient<PrivacySettingsViewModel>();
         services.AddTransient<TitleBarViewModel>();
-        services.AddTransient<NavigationToolbarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
         services.AddTransient<ApplicationMenuViewModel>();
         services.AddTransient<ViewMenuViewModel>();
@@ -97,25 +96,8 @@ public static class ServiceConfiguration
         var languageService = ServiceLocator.AcquireService<ILanguageService>();
         languageService.ApplyStoredLanguage();
 
-        var navigationService = ServiceLocator.AcquireService<INavigationService>() as NavigationService;
-        Guard.IsNotNull(navigationService);
-
         // Seed the built-in spotlight landmarks into the runtime registry.
         var spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
         SpotlightLandmarks.Seed(spotlightRegistry);
-
-        // EmptyPage is used as a temporary navigation target when unloading workspaces
-        navigationService.RegisterPage("Empty", typeof(EmptyPage), ApplicationPage.None);
-        
-        // Register application pages
-        navigationService.RegisterPage(
-            NavigationConstants.HomeTag, 
-            typeof(HomePage), 
-            ApplicationPage.Home);
-                
-        navigationService.RegisterPage(
-            NavigationConstants.SettingsTag,
-            typeof(SettingsPage),
-            ApplicationPage.Settings);
     }
 }

@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Navigation;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 
@@ -13,7 +12,6 @@ public class AppActivationService : IAppActivationService
     private readonly ICommandService _commandService;
     private readonly ISettingsService _settingsService;
     private readonly ILocalFileSystem _fileSystem;
-    private readonly INavigationService _navigationService;
 
     // All access is on the UI thread: the macOS open-document callback, the Windows activation call, and the
     // MainPageLoadedMessage handler all run there.
@@ -25,14 +23,12 @@ public class AppActivationService : IAppActivationService
         IMessengerService messengerService,
         ICommandService commandService,
         ISettingsService settingsService,
-        ILocalFileSystem fileSystem,
-        INavigationService navigationService)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _commandService = commandService;
         _settingsService = settingsService;
         _fileSystem = fileSystem;
-        _navigationService = navigationService;
 
         messengerService.Register<MainPageLoadedMessage>(this, OnMainPageLoaded);
     }
@@ -76,14 +72,10 @@ public class AppActivationService : IAppActivationService
                 _pendingProjectFilePath = null;
             }
 
+            // With no project to open, the shell keeps showing Home.
             if (!string.IsNullOrEmpty(projectFilePath))
             {
                 LoadProject(projectFilePath);
-            }
-            else
-            {
-                // No project to open, so show the home page.
-                _navigationService.NavigateToPage(NavigationConstants.HomeTag);
             }
         }
         catch (Exception exception)
@@ -133,7 +125,7 @@ public class AppActivationService : IAppActivationService
 
     private static bool IsProjectFile(string filePath)
     {
-        var extension = System.IO.Path.GetExtension(filePath);
+        var extension = Path.GetExtension(filePath);
         return string.Equals(extension, ProjectConstants.ProjectFileExtension, StringComparison.OrdinalIgnoreCase);
     }
 }

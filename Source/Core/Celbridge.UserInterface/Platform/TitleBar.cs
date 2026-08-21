@@ -1,6 +1,10 @@
 #if WINDOWS
 using Celbridge.Logging;
 using Celbridge.UserInterface.Views;
+using Microsoft.UI.Input;
+using Microsoft.UI.Windowing;
+using Windows.Foundation;
+using Windows.Graphics;
 
 namespace Celbridge.UserInterface.Platform;
 
@@ -11,11 +15,14 @@ namespace Celbridge.UserInterface.Platform;
 /// </summary>
 public sealed class TitleBar : UserControl
 {
+    private readonly ILogger<TitleBar> _logger;
     private readonly ApplicationToolbar _applicationToolbar;
     private Window? _mainWindow;
 
     public TitleBar()
     {
+        _logger = ServiceLocator.AcquireService<ILogger<TitleBar>>();
+
         _applicationToolbar = new ApplicationToolbar();
 
         Content = _applicationToolbar;
@@ -62,38 +69,88 @@ public sealed class TitleBar : UserControl
                 return;
             }
 
-            var nonClientInputSource = Microsoft.UI.Input.InputNonClientPointerSource.GetForWindowId(appWindow.Id);
-            var scale = _mainWindow.Content.XamlRoot?.RasterizationScale ?? 1.0;
-            var rootContent = _mainWindow.Content;
-
-            var regions = new List<Windows.Graphics.RectInt32>();
-            foreach (var element in _applicationToolbar.GetPassthroughElements())
+            var captionButtonsLeftEdge = GetCaptionButtonsLeftEdge(appWindow);
+            if (captionButtonsLeftEdge is null)
             {
-                var transform = element.TransformToVisual(rootContent);
-                var position = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
-
-                var region = new Windows.Graphics.RectInt32(
-                    (int)(position.X * scale),
-                    (int)(position.Y * scale),
-                    (int)(element.ActualWidth * scale),
-                    (int)(element.ActualHeight * scale));
-                regions.Add(region);
+                // A minimized window reports a placeholder size and a negative inset, so there is nothing to
+                // measure against. The regions from the last real layout stay in place.
+                return;
             }
 
+            var regions = MeasurePassthroughRegions(captionButtonsLeftEdge.Value);
+
+            var nonClientInputSource = InputNonClientPointerSource.GetForWindowId(appWindow.Id);
             if (regions.Count > 0)
             {
-                nonClientInputSource.SetRegionRects(Microsoft.UI.Input.NonClientRegionKind.Passthrough, regions.ToArray());
+                nonClientInputSource.SetRegionRects(NonClientRegionKind.Passthrough, regions.ToArray());
             }
             else
             {
-                nonClientInputSource.ClearRegionRects(Microsoft.UI.Input.NonClientRegionKind.Passthrough);
+                nonClientInputSource.ClearRegionRects(NonClientRegionKind.Passthrough);
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
             // Best-effort region computation. Log at debug so an unexpected failure is not hidden.
-            ServiceLocator.AcquireService<ILogger<TitleBar>>().LogDebug(ex, "Failed to update title bar interactive regions");
+            _logger.LogDebug(exception, "Failed to update title bar interactive regions");
         }
+    }
+
+    private List<RectInt32> MeasurePassthroughRegions(int captionButtonsLeftEdge)
+    {
+        Guard.IsNotNull(_mainWindow);
+
+        var rootContent = _mainWindow.Content;
+        var scale = rootContent.XamlRoot?.RasterizationScale ?? 1.0;
+
+        var regions = new List<RectInt32>();
+
+        foreach (var element in _applicationToolbar.GetPassthroughElements())
+        {
+            var region = MeasureRegion(element, rootContent, scale);
+
+            // A region is only replaced on the next layout pass, so one that reaches into the caption
+            // buttons takes their input until something else moves. Elements measured part way through a
+            // layout change are the way that happens, so drop the region rather than trust the bounds.
+            if (region.X + region.Width > captionButtonsLeftEdge)
+            {
+                _logger.LogWarning(
+                    "Dropped the title bar passthrough region for {ElementName}, which reaches past the caption button edge at {CaptionButtonsLeftEdge}",
+                    element.Name,
+                    captionButtonsLeftEdge);
+                continue;
+            }
+
+            regions.Add(region);
+        }
+
+        return regions;
+    }
+
+    // The element's bounds in the window's physical pixels, which is what the non-client region API takes.
+    private static RectInt32 MeasureRegion(FrameworkElement element, UIElement rootContent, double scale)
+    {
+        var transform = element.TransformToVisual(rootContent);
+        var position = transform.TransformPoint(new Point(0, 0));
+
+        return new RectInt32(
+            (int)(position.X * scale),
+            (int)(position.Y * scale),
+            (int)(element.ActualWidth * scale),
+            (int)(element.ActualHeight * scale));
+    }
+
+    // Where the system caption buttons start, in the window's physical pixels. Null while the window has no
+    // real layout to measure, which the caller treats as nothing to update.
+    private static int? GetCaptionButtonsLeftEdge(AppWindow appWindow)
+    {
+        var inset = appWindow.TitleBar?.RightInset ?? 0;
+        if (inset <= 0)
+        {
+            return null;
+        }
+
+        return appWindow.Size.Width - inset;
     }
 }
 #endif

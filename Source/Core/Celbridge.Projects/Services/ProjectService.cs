@@ -193,7 +193,7 @@ public class ProjectService : IProjectService
         CurrentProject = null;
     }
 
-    public List<RecentProject> GetRecentProjects()
+    public List<RecentProject> GetRecentProjects(bool excludeCurrentProject)
     {
         var currentProjectPath = CurrentProject?.ProjectFilePath;
         var recentProjects = new List<RecentProject>();
@@ -208,8 +208,10 @@ public class ProjectService : IProjectService
                 continue;
             }
 
-            // Skip the currently opened project
-            if (currentProjectPath != null &&
+            // The open project is matched by path rather than by position. It is always the first stored
+            // entry while one is open, but nothing is open on the paths that ask to keep it.
+            if (excludeCurrentProject &&
+                currentProjectPath != null &&
                 string.Equals(projectFilePath, currentProjectPath, StringComparison.OrdinalIgnoreCase))
             {
                 continue;

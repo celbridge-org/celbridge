@@ -1,23 +1,20 @@
-using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Server;
 using Celbridge.Tests.Helpers;
-using Celbridge.Workspace;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Covers ProjectUnloader's workspace page cleanup wait: the successful unload, the early-out when no
-/// project is loaded, and the bounded timeout that fails the unload instead of blocking the command queue
-/// when the workspace page never unloads.
+/// Covers ProjectUnloader's workspace teardown: the successful unload, the early-out when no project is
+/// loaded, and the teardown failure, which is reported without stopping the unload it is part of.
 /// </summary>
 [TestFixture]
 public class ProjectUnloaderTests
 {
     private IProjectService _projectService = null!;
-    private INavigationService _navigationService = null!;
-    private IWorkspaceWrapper _workspaceWrapper = null!;
+    private IApplicationShell _applicationShell = null!;
     private IServerService _serverService = null!;
     private IProjectHealthService _projectHealthService = null!;
     private ProjectUnloader _projectUnloader = null!;
@@ -26,8 +23,7 @@ public class ProjectUnloaderTests
     public void Setup()
     {
         _projectService = Substitute.For<IProjectService>();
-        _navigationService = Substitute.For<INavigationService>();
-        _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _applicationShell = Substitute.For<IApplicationShell>();
         _serverService = Substitute.For<IServerService>();
         _projectHealthService = Substitute.For<IProjectHealthService>();
 
@@ -35,13 +31,12 @@ public class ProjectUnloaderTests
         project.ProjectName.Returns("TestProject");
         _projectService.CurrentProject.Returns(project);
 
-        _navigationService.NavigateToPage(Arg.Any<string>()).Returns(Result.Ok());
+        _applicationShell.CloseWorkspaceAsync().Returns(Result.Ok());
 
         _projectUnloader = new ProjectUnloader(
             new NullLogger<ProjectUnloader>(),
             _projectService,
-            _navigationService,
-            _workspaceWrapper,
+            _applicationShell,
             _serverService,
             _projectHealthService);
     }
@@ -54,30 +49,32 @@ public class ProjectUnloaderTests
         var result = await _projectUnloader.UnloadProjectAsync();
 
         Assert.That(result.IsSuccess, Is.True);
+        await _applicationShell.DidNotReceive().CloseWorkspaceAsync();
     }
 
     [Test]
-    public async Task UnloadProject_WhenWorkspacePageUnloads_Succeeds()
+    public async Task UnloadProject_WhenWorkspaceCloses_Succeeds()
     {
-        // The workspace page reports loaded until the second poll, then unloads.
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true, true, false);
-
         var result = await _projectUnloader.UnloadProjectAsync();
 
         Assert.That(result.IsSuccess, Is.True);
+        await _applicationShell.Received(1).CloseWorkspaceAsync();
         _projectService.Received(1).ClearCurrentProject();
         await _serverService.Received(1).StopAsync();
     }
 
     [Test]
-    public async Task UnloadProject_WhenWorkspacePageNeverUnloads_FailsAfterTimeout()
+    public async Task UnloadProject_WhenWorkspaceFailsToClose_ReportsTheFailureAndStillUnloads()
     {
-        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
-        _projectUnloader.UnloadTimeoutMs = 200;
+        _applicationShell.CloseWorkspaceAsync().Returns(Result.Fail("Teardown failed"));
 
         var result = await _projectUnloader.UnloadProjectAsync();
 
         Assert.That(result.IsFailure, Is.True);
-        _projectService.DidNotReceive().ClearCurrentProject();
+
+        // The shell takes the view down whether the teardown succeeded or not, so stopping here would leave
+        // the project current with no workspace on screen.
+        _projectService.Received(1).ClearCurrentProject();
+        await _serverService.Received(1).StopAsync();
     }
 }

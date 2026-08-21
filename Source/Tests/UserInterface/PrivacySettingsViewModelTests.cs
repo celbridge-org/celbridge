@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
 using Celbridge.Tests.Helpers;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.ViewModels.Controls;
@@ -9,15 +8,15 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for the Privacy section of the Settings page. The clear itself runs through the command
-/// service, so the tests assert what the view model asks for rather than the state of any WebView.
+/// Unit tests for the Privacy section of the Settings dialog. The clear is confirmed in place rather than
+/// through a dialog, and runs through the command service, so the tests assert what the view model asks for
+/// rather than the state of any WebView.
 /// </summary>
 [TestFixture]
 public class PrivacySettingsViewModelTests
 {
     private ICommandService _commandService = null!;
     private IWebViewService _webViewService = null!;
-    private IDialogService _dialogService = null!;
     private IStringLocalizer _stringLocalizer = null!;
 
     [SetUp]
@@ -25,14 +24,12 @@ public class PrivacySettingsViewModelTests
     {
         _commandService = Substitute.For<ICommandService>();
         _webViewService = Substitute.For<IWebViewService>();
-        _dialogService = Substitute.For<IDialogService>();
 
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _stringLocalizer[Arg.Any<string>()].Returns(
             callInfo => new LocalizedString(callInfo.Arg<string>(), callInfo.Arg<string>()));
 
         _webViewService.CanClearBrowsingData.Returns(true);
-        StubConfirmation(true);
         StubClearResult(Result.Ok());
     }
 
@@ -49,11 +46,27 @@ public class PrivacySettingsViewModelTests
     }
 
     [Test]
-    public async Task ConfirmedClear_RunsTheCommandAndReportsSuccess()
+    public void ClearButton_ShowsTheConfirmationInsteadOfClearing()
     {
         var viewModel = CreateViewModel();
 
+        viewModel.BeginClearBrowsingDataCommand.Execute(null);
+
+        viewModel.IsConfirmingClear.Should().BeTrue();
+        viewModel.IsClearButtonVisible.Should().BeFalse();
+        _commandService.DidNotReceive().ExecuteAsync<IClearBrowsingDataCommand>(
+            Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task ConfirmedClear_RunsTheCommandAndReportsSuccess()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.BeginClearBrowsingDataCommand.Execute(null);
+
         await viewModel.ConfirmClearBrowsingDataCommand.ExecuteAsync(null);
+
+        viewModel.IsConfirmingClear.Should().BeFalse();
 
         await _commandService.Received(1).ExecuteAsync<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
@@ -63,15 +76,16 @@ public class PrivacySettingsViewModelTests
     }
 
     [Test]
-    public async Task CancelledConfirmation_LeavesTheDataAlone()
+    public void CancelledConfirmation_LeavesTheDataAlone()
     {
-        StubConfirmation(false);
-
         var viewModel = CreateViewModel();
+        viewModel.BeginClearBrowsingDataCommand.Execute(null);
 
-        await viewModel.ConfirmClearBrowsingDataCommand.ExecuteAsync(null);
+        viewModel.CancelClearBrowsingDataCommand.Execute(null);
 
-        await _commandService.DidNotReceive().ExecuteAsync<IClearBrowsingDataCommand>(
+        viewModel.IsConfirmingClear.Should().BeFalse();
+        viewModel.IsClearButtonVisible.Should().BeTrue();
+        _commandService.DidNotReceive().ExecuteAsync<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
         viewModel.IsStatusVisible.Should().BeFalse();
     }
@@ -82,6 +96,7 @@ public class PrivacySettingsViewModelTests
         StubClearResult(Result.Fail("Clear failed"));
 
         var viewModel = CreateViewModel();
+        viewModel.BeginClearBrowsingDataCommand.Execute(null);
 
         await viewModel.ConfirmClearBrowsingDataCommand.ExecuteAsync(null);
 
@@ -98,15 +113,7 @@ public class PrivacySettingsViewModelTests
             new NullLogger<PrivacySettingsViewModel>(),
             _commandService,
             _webViewService,
-            _dialogService,
             _stringLocalizer);
-    }
-
-    private void StubConfirmation(bool confirmed)
-    {
-        _dialogService.ShowConfirmationDialogAsync(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
-            .Returns(Task.FromResult(Result<bool>.Ok(confirmed)));
     }
 
     private void StubClearResult(Result result)

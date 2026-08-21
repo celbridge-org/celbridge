@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
-using Celbridge.Navigation;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Reports;
@@ -206,14 +205,6 @@ public sealed partial class ProjectSwitcher : UserControl
         commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportResource);
     }
 
-    private void ProjectMenuButton_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        // Open the menu (anchored to the whole button so it aligns to the button's left edge) and mark the
-        // tap handled so it does not reach the button's own click. Opening it must never also navigate.
-        FlyoutBase.ShowAttachedFlyout(WorkspaceButton);
-        e.Handled = true;
-    }
-
     private async void OpenRecentProjectFromSwitcher(string projectFilePath)
     {
         if (_applicationMenuViewModel is null)
@@ -236,22 +227,13 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void ApplyTooltips()
     {
-        // The menu chevron carries only an icon, so give it a tooltip and an accessible name.
-        var projectMenuTooltip = _stringLocalizer.GetString("TitleBar_ProjectMenuTooltip");
-        ToolTipService.SetToolTip(ProjectMenuButton, projectMenuTooltip);
-        ToolTipService.SetPlacement(ProjectMenuButton, PlacementMode.Bottom);
-        AutomationProperties.SetName(ProjectMenuButton, projectMenuTooltip);
-
         UpdateWorkspaceTooltip();
     }
 
     private void UpdateWorkspaceTooltip()
     {
-        var tooltip = !string.IsNullOrEmpty(ViewModel.ProjectFilePath)
-            ? ViewModel.ProjectFilePath
-            : _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
-
-        ToolTipService.SetToolTip(WorkspaceButton, tooltip);
+        // The button is collapsed while no project is loaded, so the path is always set by the time it shows.
+        ToolTipService.SetToolTip(WorkspaceButton, ViewModel.ProjectFilePath);
         ToolTipService.SetPlacement(WorkspaceButton, PlacementMode.Bottom);
     }
 
@@ -262,18 +244,7 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void WorkspaceButton_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.NavigateToWorkspace();
-
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            return;
-        }
-
-        // Focus the active utility so the focus indicator returns to it rather than being dropped on the button.
-        // The command runs after this click, so the button does not take focus back.
-        var activeUtilityId = workspaceWrapper.WorkspaceService.UtilityPanel.ActiveUtilityId;
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-        commandService.Execute<IShowUtilityCommand>(command => command.UtilityId = activeUtilityId);
+        // Anchored to the whole button rather than to a chevron target, so it aligns to the button's left edge.
+        FlyoutBase.ShowAttachedFlyout(WorkspaceButton);
     }
 }

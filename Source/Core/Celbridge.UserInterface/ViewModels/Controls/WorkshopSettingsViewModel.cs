@@ -1,4 +1,3 @@
-using Celbridge.Dialog;
 using Celbridge.Packages;
 using Celbridge.Settings;
 
@@ -11,7 +10,6 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     private readonly Logging.ILogger<WorkshopSettingsViewModel> _logger;
     private readonly ISettingsService _settingsService;
     private readonly IPackageApiClient _packageApiClient;
-    private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
 
     [ObservableProperty]
@@ -33,6 +31,16 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     private bool _isStoredKeyVisible;
 
     [ObservableProperty]
+    private bool _isKeyEditVisible;
+
+    [ObservableProperty]
+    private bool _isRemoveConfirmVisible;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSaveKeyEnabled))]
+    private string _keyInput = string.Empty;
+
+    [ObservableProperty]
     private bool _isStatusVisible;
 
     [ObservableProperty]
@@ -42,6 +50,11 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     private StatusSeverity _statusSeverity;
 
     private bool _isKeyStored;
+
+    // The key row shows one of four things: the Set button, the stored hint with Change and Remove, the
+    // entry field, or the removal confirmation. These two pick between them.
+    private bool _isEditingKey;
+    private bool _isConfirmingRemove;
 
     // Bumped on each connection check so the result of a slow check that is
     // superseded by a newer save does not overwrite the newer status.
@@ -54,17 +67,20 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     /// </summary>
     public bool IsApplyingProgrammaticChange { get; private set; }
 
+    /// <summary>
+    /// True when the entered key can be saved. A blank field has nothing to store.
+    /// </summary>
+    public bool IsSaveKeyEnabled => !string.IsNullOrWhiteSpace(KeyInput);
+
     public WorkshopSettingsViewModel(
         Logging.ILogger<WorkshopSettingsViewModel> logger,
         ISettingsService settingsService,
         IPackageApiClient packageApiClient,
-        IDialogService dialogService,
         IStringLocalizer stringLocalizer)
     {
         _logger = logger;
         _settingsService = settingsService;
         _packageApiClient = packageApiClient;
-        _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
     }
 
@@ -110,7 +126,7 @@ public partial class WorkshopSettingsViewModel : ObservableObject
     /// <summary>
     /// Persists the non-secret Workshop URL and Author as ordinary settings. This is the auto-save path for
     /// field edits and does not verify the connection; the user tests the connection explicitly through
-    /// TestConnection. The Workshop Key is entered separately through ChangeWorkshopKey.
+    /// TestConnection. The Workshop Key is entered separately through the key row.
     /// </summary>
     public void SaveWorkshopConnection()
     {
@@ -141,28 +157,38 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         await ReportConnectionStatusAsync();
     }
 
+    // Shows the key entry field in place of the key row. Bound to both the Set and Change buttons.
     [RelayCommand]
-    private async Task ChangeWorkshopKeyAsync()
+    private void BeginChangeWorkshopKey()
     {
         if (!IsStoreAvailable)
         {
             return;
         }
 
-        var titleKey = _isKeyStored
-            ? "Settings_Workshop_KeyChangeDialogTitle"
-            : "Settings_Workshop_KeySetDialogTitle";
-        var title = _stringLocalizer.GetString(titleKey);
-        var header = _stringLocalizer.GetString("Settings_Workshop_KeyTooltip");
+        KeyInput = string.Empty;
+        _isConfirmingRemove = false;
+        _isEditingKey = true;
+        UpdateViewState();
+    }
 
-        var inputResult = await _dialogService.ShowSecretInputDialogAsync(title, header, "Settings_Workshop_KeySaveButton");
-        if (inputResult.IsFailure)
+    [RelayCommand]
+    private void CancelChangeWorkshopKey()
+    {
+        KeyInput = string.Empty;
+        _isEditingKey = false;
+        UpdateViewState();
+    }
+
+    [RelayCommand]
+    private async Task SaveWorkshopKeyAsync()
+    {
+        if (!IsStoreAvailable)
         {
-            // The user cancelled the dialog; leave any stored key untouched.
             return;
         }
 
-        var workshopKey = inputResult.Value.Trim();
+        var workshopKey = KeyInput.Trim();
         if (string.IsNullOrEmpty(workshopKey))
         {
             return;
@@ -171,11 +197,14 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         var setResult = StoreWorkshopKey(workshopKey);
         if (setResult.IsFailure)
         {
+            // The field keeps what was typed so the user can try again.
             _logger.LogError(setResult, "Failed to store the Workshop Key");
             ShowStatus(StatusSeverity.Error, _stringLocalizer.GetString("Settings_Workshop_ConnectionSaveFailed"));
             return;
         }
 
+        KeyInput = string.Empty;
+        _isEditingKey = false;
         _isKeyStored = true;
         RefreshStoredKeyDisplay();
         UpdateViewState();
@@ -183,26 +212,37 @@ public partial class WorkshopSettingsViewModel : ObservableObject
         await ReportConnectionStatusAsync();
     }
 
+    // Shows the removal confirmation in place of the key row. A removed key cannot be recovered, so it is
+    // confirmed rather than done on the first click.
     [RelayCommand]
-    private async Task RemoveWorkshopKeyAsync()
+    private void BeginRemoveWorkshopKey()
     {
-        var title = _stringLocalizer.GetString("Settings_Workshop_KeyRemoveTitle");
-        var message = _stringLocalizer.GetString("Settings_Workshop_KeyRemoveMessage");
-        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(
-            title,
-            message,
-            new ConfirmationDialogOptions { IsDestructive = true });
-        if (confirmResult.IsFailure
-            || !confirmResult.Value)
+        if (!IsStoreAvailable)
         {
             return;
         }
 
+        _isEditingKey = false;
+        _isConfirmingRemove = true;
+        UpdateViewState();
+    }
+
+    [RelayCommand]
+    private void CancelRemoveWorkshopKey()
+    {
+        _isConfirmingRemove = false;
+        UpdateViewState();
+    }
+
+    [RelayCommand]
+    private void ConfirmRemoveWorkshopKey()
+    {
         ClearWorkshopKey();
 
         // Only the secret is removed; the URL and Author stay as settings so a new
         // key can be entered without retyping them.
         _isKeyStored = false;
+        _isConfirmingRemove = false;
         StoredKeyDisplay = string.Empty;
 
         ShowStatus(StatusSeverity.Informational, _stringLocalizer.GetString("Settings_Workshop_KeyRemoved"));
@@ -315,9 +355,20 @@ public partial class WorkshopSettingsViewModel : ObservableObject
 
     private void UpdateViewState()
     {
-        IsSetKeyVisible = IsStoreAvailable &&
+        IsKeyEditVisible = IsStoreAvailable &&
+                           _isEditingKey;
+        IsRemoveConfirmVisible = IsStoreAvailable &&
+                                 _isConfirmingRemove;
+
+        // The Set button and the stored hint are the resting states, shown only when neither the entry
+        // field nor the removal confirmation has taken the row.
+        bool showKeyRow = IsStoreAvailable &&
+                          !_isEditingKey &&
+                          !_isConfirmingRemove;
+
+        IsSetKeyVisible = showKeyRow &&
                           !_isKeyStored;
-        IsStoredKeyVisible = IsStoreAvailable &&
+        IsStoredKeyVisible = showKeyRow &&
                              _isKeyStored;
     }
 

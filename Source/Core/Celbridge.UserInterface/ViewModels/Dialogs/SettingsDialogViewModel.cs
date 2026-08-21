@@ -1,7 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Settings;
 
-namespace Celbridge.UserInterface.ViewModels.Pages;
+namespace Celbridge.UserInterface.ViewModels.Dialogs;
 
 /// <summary>
 /// A selectable application colour theme paired with its localized display name, for the theme combo box.
@@ -19,7 +19,7 @@ public sealed class ThemeOption
     public string DisplayName { get; }
 }
 
-public partial class SettingsPageViewModel : ObservableObject
+public partial class SettingsDialogViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -33,7 +33,7 @@ public partial class SettingsPageViewModel : ObservableObject
 
     private bool _isReflectingStoredTheme;
 
-    public SettingsPageViewModel(
+    public SettingsDialogViewModel(
         ISettingsService settingsService,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
@@ -49,16 +49,16 @@ public partial class SettingsPageViewModel : ObservableObject
         ReflectStoredTheme();
     }
 
-    public void OnLoaded()
+    public void OnOpened()
     {
-        // The View menu can change the theme while this page is open, so follow it rather than showing the
-        // value read at construction.
+        // The View menu can change the theme while this dialog is open, so follow it rather than showing
+        // the value read at construction.
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
         ReflectStoredTheme();
     }
 
-    public void OnUnloaded()
+    public void OnClosed()
     {
         _messengerService.UnregisterAll(this);
     }

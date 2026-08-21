@@ -3,7 +3,6 @@ using Celbridge.Community;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.FilePicker;
-using Celbridge.Navigation;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Services;
 
@@ -20,7 +19,6 @@ public partial class HomePageViewModel : ObservableObject
     private readonly MainMenuUtils _mainMenuUtils;
 
     public HomePageViewModel(
-        INavigationService navigationService,
         Logging.ILogger<HomePageViewModel> logger,
         ICommandService commandService,
         IProjectService projectService,
@@ -42,7 +40,11 @@ public partial class HomePageViewModel : ObservableObject
 
     private void PopulateRecentProjects()
     {
-        RecentProjects.AddRange(_projectService.GetRecentProjects());
+        // Home is built while the project it replaces is still closing, so excluding the open project here
+        // would drop the one the user just closed.
+        var recentProjects = _projectService.GetRecentProjects(excludeCurrentProject: false);
+
+        RecentProjects.AddRange(recentProjects);
     }
 
     public List<RecentProject> RecentProjects = new();

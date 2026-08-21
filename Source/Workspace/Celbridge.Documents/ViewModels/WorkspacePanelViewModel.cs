@@ -52,7 +52,13 @@ public partial class WorkspacePanelViewModel : ObservableObject
 
     public void OnViewUnloaded()
     {
-        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettingsChanged;
+        // The workspace is torn down before its view leaves the visual tree, so on a project close the
+        // settings object this subscribed to has already gone with it.
+        if (_workspaceWrapper.HasWorkspaceService)
+        {
+            _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PropertyChanged -= OnWorkspaceSettingsChanged;
+        }
+
         _messengerService.UnregisterAll(this);
     }
 

@@ -16,8 +16,6 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="30"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="30"/>
-      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <Grid.ColumnDefinitions>
@@ -25,19 +23,8 @@
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
-    <!-- Title section -->
-    <StackPanel Grid.Row="1"
-                Grid.Column="1">
-      <TextBlock Text="{x:Bind TitleString}"
-                 FontSize="36"
-                 FontWeight="Bold"/>
-      <TextBlock Text="{x:Bind SubtitleString}"
-                 FontSize="22"
-                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-    </StackPanel>
-
     <!-- Start section -->
-    <StackPanel Grid.Row="3"
+    <StackPanel Grid.Row="1"
                 Grid.Column="1">
       <TextBlock Text="{x:Bind StartString}"
                  FontSize="18"
@@ -67,7 +54,7 @@
 
     <!-- Community section. The workspace reaches these pages from the Utility Panel rail, so this is where
          they are available with no project loaded. -->
-    <StackPanel Grid.Row="5"
+    <StackPanel Grid.Row="3"
                 Grid.Column="1">
       <TextBlock Text="{x:Bind CommunityString}"
                  FontSize="18"
@@ -85,7 +72,7 @@
     </StackPanel>
 
     <!-- Recent section -->
-    <StackPanel Grid.Row="7"
+    <StackPanel Grid.Row="5"
                 Grid.Column="1"
                 Spacing="2">
 

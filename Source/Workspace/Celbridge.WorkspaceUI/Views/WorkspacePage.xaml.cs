@@ -3,11 +3,12 @@ using Celbridge.Documents;
 using Celbridge.Platform;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.ViewModels;
 
 namespace Celbridge.WorkspaceUI.Views;
 
-public sealed partial class WorkspacePage : Page
+public sealed partial class WorkspacePage : Page, IWorkspaceView
 {
     private readonly Logging.ILogger<WorkspacePage> _logger;
     private readonly IPlatformInfo _platformInfo;
@@ -15,10 +16,14 @@ public sealed partial class WorkspacePage : Page
 
     public WorkspacePageViewModel ViewModel { get; }
 
+    // Loaded can be raised more than once for one view, and the initialization below awaits, so a second
+    // raise would otherwise start a duplicate workspace load.
     private bool _initialized = false;
 
-    // The workspace notification toast, kept so its messenger subscriptions can be torn down on page
-    // unload.
+    public CancellationTokenSource? LoadCancellation { get; set; }
+
+    // The workspace notification toast, kept so its messenger subscriptions can be torn down with the
+    // workspace.
     private WorkspaceToast? _workspaceToast;
 
     public WorkspacePage()
@@ -33,29 +38,19 @@ public sealed partial class WorkspacePage : Page
 
         DataContext = ViewModel;
 
-        // Enable caching so the page persists during navigation
-        NavigationCacheMode = NavigationCacheMode.Required;
-
         Loaded += WorkspacePage_Loaded;
-        Unloaded += WorkspacePage_Unloaded;
     }
 
     private async void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
-        // Only execute initialization if this is the first load or if we're rebuilding after cache clear
-        if (_initialized && NavigationCacheMode != NavigationCacheMode.Disabled)
+        if (_initialized)
         {
             return;
         }
 
-        // Mark initialized and restore caching up front so a second Loaded event
-        // raised during the awaited settings load cannot start a duplicate
-        // initialization.
         _initialized = true;
-        NavigationCacheMode = NavigationCacheMode.Required;
 
-        // Read the navigation parameter passed via Page.Tag by the navigation system
-        ViewModel.LoadProjectCancellationToken = Tag as CancellationTokenSource;
+        ViewModel.LoadProjectCancellationToken = LoadCancellation;
 
         // Bring the per-project store online before the panels bind, so they restore
         // this project's panel sizes instead of racing the asynchronous workspace load.
@@ -92,18 +87,9 @@ public sealed partial class WorkspacePage : Page
         _ = ViewModel.LoadWorkspaceAsync();
     }
 
-    private async void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
+    public async Task TeardownAsync()
     {
-        // Only perform cleanup if the cache has been disabled (intentional unload)
-        if (NavigationCacheMode == NavigationCacheMode.Disabled)
-        {
-            await PerformCleanupAsync();
-        }
-    }
-
-    private async Task PerformCleanupAsync()
-    {
-        // Cleanup owned by this page: its message subscriptions. The workspace teardown (save editor
+        // Cleanup owned by this view: its message subscriptions. The workspace teardown (save editor
         // state, shut down panels, dispose the workspace) is orchestrated by the view-model.
 
         // Unbind the shared resource drag coordinator from this workspace. Safe when it was never
@@ -118,8 +104,5 @@ public sealed partial class WorkspacePage : Page
         _workspaceToast = null;
 
         await ViewModel.OnWorkspacePageUnloadedAsync();
-
-        _initialized = false;
     }
-
 }

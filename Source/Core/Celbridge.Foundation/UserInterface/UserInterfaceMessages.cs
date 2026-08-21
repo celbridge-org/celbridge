@@ -23,11 +23,6 @@ public record ModalDialogOpenedMessage();
 public record ModalDialogClosedMessage();
 
 /// <summary>
-/// Sent when the active application page changes.
-/// </summary>
-public record ActivePageChangedMessage(ApplicationPage ActivePage);
-
-/// <summary>
 /// Sent when the main page has finished loading at startup.
 /// </summary>
 public record MainPageLoadedMessage();
