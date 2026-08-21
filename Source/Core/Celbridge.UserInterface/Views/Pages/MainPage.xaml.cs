@@ -12,7 +12,7 @@ namespace Celbridge.UserInterface.Views;
 /// <summary>
 /// The window's root view. Which base view fills its content area is the application shell's business.
 /// </summary>
-public class MainPage : Page
+public partial class MainPage : Page
 {
     public MainPageViewModel ViewModel { get; private set; }
 
@@ -26,6 +26,8 @@ public class MainPage : Page
 
     public MainPage()
     {
+        InitializeComponent();
+
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
