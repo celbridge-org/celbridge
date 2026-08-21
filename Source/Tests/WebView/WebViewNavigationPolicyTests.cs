@@ -1,5 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Explorer;
+using Celbridge.UserInterface;
 using Celbridge.WebView.Services;
 
 namespace Celbridge.Tests.WebView;

@@ -22,6 +22,7 @@ Utility Panel rail (the icon strip on the far left that switches the primary pan
 
 - `explorer-utility-button` — the Explorer icon in the rail.
 - `search-utility-button` — the Search icon in the rail.
+- `learn-utility-button` — the Learn icon, in the community group at the bottom of the rail.
 - `forum-utility-button` — the Forum icon, in the community group at the bottom of the rail.
 
 Explorer toolbar (its buttons are revealed automatically when spotlighted):

@@ -54,6 +54,7 @@ public enum IconSymbol
     Menu,
     Play,
     Examples,
+    Book,
     Link,
     Exit
 }

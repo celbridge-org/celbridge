@@ -49,11 +49,6 @@ public interface IExplorerService
     Task<Result> OpenApplication(ResourceKey resource);
 
     /// <summary>
-    /// Open the specified URL in the system default browser.
-    /// </summary>
-    Task<Result> OpenBrowser(string uRL);
-
-    /// <summary>
     /// Get an icon definition for the specified resource.
     /// </summary>
     IconDefinition GetIconForResource(ResourceKey resource);

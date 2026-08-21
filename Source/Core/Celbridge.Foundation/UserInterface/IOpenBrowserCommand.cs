@@ -1,6 +1,6 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Explorer;
+namespace Celbridge.UserInterface;
 
 /// <summary>
 /// Open a URL in the system default browser.

@@ -13,6 +13,8 @@ public sealed partial class HomePage : Page
     private string OpenProjectString => _stringLocalizer.GetString("HomePage_OpenProject");
     private string OpenProjectTooltipString => _stringLocalizer.GetString("HomePage_OpenProjectTooltip");
     private string CommunityString => _stringLocalizer.GetString("HomePage_Community");
+    private string LearnString => _stringLocalizer.GetString("HomePage_Learn");
+    private string LearnTooltipString => _stringLocalizer.GetString("HomePage_LearnTooltip");
     private string ForumString => _stringLocalizer.GetString("HomePage_Forum");
     private string ForumTooltipString => _stringLocalizer.GetString("HomePage_ForumTooltip");
     private string RecentString => _stringLocalizer.GetString("HomePage_Recent");
