@@ -4,7 +4,6 @@ using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
-using Windows.System;
 
 namespace Celbridge.Explorer.Services;
 
@@ -194,30 +193,6 @@ public class ExplorerService : IExplorerService, IDisposable
         {
             return Result.Fail($"Failed to open associated application for resource: {resource}")
                 .WithErrors(openResult);
-        }
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> OpenBrowser(string url)
-    {
-        try
-        {
-            var targetUrl = url.Trim();
-            if (!string.IsNullOrWhiteSpace(targetUrl)
-                && !targetUrl.StartsWith("http")
-                && !targetUrl.StartsWith("file"))
-            {
-                targetUrl = $"https://{targetUrl}";
-            }
-
-            var uri = new Uri(targetUrl);
-            await Launcher.LaunchUriAsync(uri);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to open url in system default browser: {url}")
-                .WithException(ex);
         }
 
         return Result.Ok();

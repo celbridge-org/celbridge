@@ -1,4 +1,5 @@
 using Celbridge.Community;
+using Celbridge.Tests.Localization;
 
 namespace Celbridge.Tests.WorkspaceUI;
 
@@ -38,6 +39,18 @@ public class CommunityLinkCatalogTests
         var documentNames = CommunityLinks.All.Select(link => link.DocumentName);
 
         documentNames.Should().OnlyHaveUniqueItems();
+    }
+
+    [Test]
+    public void All_EveryTooltipKeyHasALocalizedString()
+    {
+        // A key with no entry shows the raw key as the rail button tooltip.
+        var strings = TestLocalizerService.LoadStrings();
+
+        foreach (var link in CommunityLinks.All)
+        {
+            strings.Should().ContainKey(link.TooltipKey);
+        }
     }
 
     [Test]

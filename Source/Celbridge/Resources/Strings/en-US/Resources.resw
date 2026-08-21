@@ -641,6 +641,12 @@ Open with default application instead?</value>
   <data name="Home_Community" xml:space="preserve">
     <value>Community</value>
   </data>
+  <data name="Home_Learn" xml:space="preserve">
+    <value>Learn</value>
+  </data>
+  <data name="Home_LearnTooltip" xml:space="preserve">
+    <value>Open the Celbridge documentation in your browser</value>
+  </data>
   <data name="Home_Forum" xml:space="preserve">
     <value>Forum</value>
   </data>
@@ -1267,6 +1273,9 @@ Open with default application instead?</value>
   </data>
   <data name="UtilityPanel_ProjectSettingsTooltip" xml:space="preserve">
     <value>Project Settings</value>
+  </data>
+  <data name="UtilityPanel_LearnTooltip" xml:space="preserve">
+    <value>Learn</value>
   </data>
   <data name="UtilityPanel_ForumTooltip" xml:space="preserve">
     <value>Community Forum</value>

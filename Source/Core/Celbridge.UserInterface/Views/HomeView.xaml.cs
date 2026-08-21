@@ -13,6 +13,8 @@ public sealed partial class HomeView : UserControl
     private string OpenProjectString => _stringLocalizer.GetString("Home_OpenProject");
     private string OpenProjectTooltipString => _stringLocalizer.GetString("Home_OpenProjectTooltip");
     private string CommunityString => _stringLocalizer.GetString("Home_Community");
+    private string LearnString => _stringLocalizer.GetString("Home_Learn");
+    private string LearnTooltipString => _stringLocalizer.GetString("Home_LearnTooltip");
     private string ForumString => _stringLocalizer.GetString("Home_Forum");
     private string ForumTooltipString => _stringLocalizer.GetString("Home_ForumTooltip");
     private string RecentString => _stringLocalizer.GetString("Home_Recent");

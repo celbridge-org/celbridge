@@ -3,7 +3,7 @@ using Celbridge.UserInterface;
 namespace Celbridge.Community;
 
 /// <summary>
-/// A page on the Celbridge community site that the user can open as a web view document from the
+/// A page on the Celbridge website that the user can open as a web view document from the
 /// Utility Panel rail.
 /// </summary>
 public record CommunityLink
@@ -43,11 +43,23 @@ public record CommunityLink
 }
 
 /// <summary>
-/// The catalog of community site pages, declared once and surfaced as a group of buttons at the
+/// The catalog of Celbridge site pages, declared once and surfaced as a group of buttons at the
 /// bottom of the Utility Panel rail. The source of truth for what community links exist.
 /// </summary>
 public static class CommunityLinks
 {
+    /// <summary>
+    /// The Celbridge documentation site.
+    /// </summary>
+    public static readonly CommunityLink Learn = new()
+    {
+        LinkId = "learn",
+        DocumentName = "learn",
+        Url = "https://celbridge-org.github.io/celbridge-docs/",
+        Icon = IconSymbol.Book,
+        TooltipKey = "UtilityPanel_LearnTooltip"
+    };
+
     /// <summary>
     /// The community discussion forum.
     /// </summary>
@@ -65,6 +77,7 @@ public static class CommunityLinks
     /// </summary>
     public static readonly IReadOnlyList<CommunityLink> All = new List<CommunityLink>
     {
+        Learn,
         Forum
     };
 }

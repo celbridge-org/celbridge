@@ -61,6 +61,16 @@
                  Margin="0,0,0,12"/>
 
       <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
+                       Command="{x:Bind ViewModel.ShowLearnCommand}"
+                       ToolTipService.ToolTip="{x:Bind LearnTooltipString}">
+        <StackPanel Orientation="Horizontal">
+          <controls:Icon Symbol="Book"/>
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind LearnString}"/>
+        </StackPanel>
+      </HyperlinkButton>
+
+      <HyperlinkButton Foreground="{ThemeResource SystemAccentColor}"
                        Command="{x:Bind ViewModel.ShowForumCommand}"
                        ToolTipService.ToolTip="{x:Bind ForumTooltipString}">
         <StackPanel Orientation="Horizontal">

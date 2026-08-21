@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Community;
 using Celbridge.Dialog;
-using Celbridge.Explorer;
 using Celbridge.FilePicker;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Services;
@@ -62,13 +61,24 @@ public partial class HomeViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ShowLearn()
+    {
+        OpenCommunityLink(CommunityLinks.Learn);
+    }
+
+    [RelayCommand]
     private void ShowForum()
     {
-        // No workspace is loaded on the Home page, so there is nowhere to dock a web view document. The
-        // rail button opens the forum in the app; here it opens in the user's browser.
+        OpenCommunityLink(CommunityLinks.Forum);
+    }
+
+    // No workspace is loaded on the Home page, so there is nowhere to dock a web view document. The rail
+    // buttons open these pages in the app; here they open in the user's browser.
+    private void OpenCommunityLink(CommunityLink link)
+    {
         _commandService.Execute<IOpenBrowserCommand>(command =>
         {
-            command.URL = CommunityLinks.Forum.Url;
+            command.URL = link.Url;
         });
     }
 

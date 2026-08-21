@@ -3,7 +3,6 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Localization;
 using Celbridge.Logging;

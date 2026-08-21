@@ -48,7 +48,6 @@ public static class ServiceConfiguration
         services.AddTransient<ICollapseAllCommand, CollapseAllCommand>();
         services.AddTransient<IOpenFileManagerCommand, OpenFileManagerCommand>();
         services.AddTransient<IOpenApplicationCommand, OpenApplicationCommand>();
-        services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
 
         //
         // Register menu system

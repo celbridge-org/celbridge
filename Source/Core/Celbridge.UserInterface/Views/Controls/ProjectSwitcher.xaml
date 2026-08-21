@@ -16,7 +16,6 @@
   <Button x:Name="WorkspaceButton"
           AutomationProperties.AutomationId="workspace-button"
           Click="WorkspaceButton_Click"
-          ui:FocusTracking.PreservePanelFocus="True"
           Background="{ThemeResource NavigationViewItemBackgroundPointerOver}"
           BorderThickness="0"
           CornerRadius="4"
