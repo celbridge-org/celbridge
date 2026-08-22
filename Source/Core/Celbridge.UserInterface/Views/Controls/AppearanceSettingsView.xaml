@@ -15,6 +15,7 @@
       </Grid.ColumnDefinitions>
 
       <TextBlock Text="{x:Bind ApplicationThemeString}"
+                 Style="{StaticResource FieldLabelTextStyle}"
                  VerticalAlignment="Center"/>
 
       <ComboBox Grid.Column="1"

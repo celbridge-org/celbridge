@@ -4,17 +4,91 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:viewmodels="using:Celbridge.UserInterface.ViewModels.Dialogs"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Background="{ThemeResource ChromeBackgroundBrush}">
 
   <ContentDialog.Resources>
     <!-- The default caps size a dialog for a prompt, which the settings sections do not fit into. Scoped
-         here so the prompts keep the default. -->
-    <x:Double x:Key="ContentDialogMaxWidth">900</x:Double>
-    <x:Double x:Key="ContentDialogMaxHeight">720</x:Double>
+         here so the prompts keep the default. Held inside WindowMinimumSize.Authored* with room to spare,
+         so the application is still visible around the dialog at the smallest window the user can make. -->
+    <x:Double x:Key="ContentDialogMaxWidth">960</x:Double>
+    <x:Double x:Key="ContentDialogMaxHeight">580</x:Double>
 
     <!-- The title row and the content below it are separate parts of the template, so they are held to
-         one width here to line their edges up. -->
-    <x:Double x:Key="SettingsDialogContentWidth">860</x:Double>
+         one width here to line their edges up. It sits well inside the cap above, because a row wide
+         enough to reach it is clipped at the edge rather than laid out narrower. -->
+    <x:Double x:Key="SettingsDialogContentWidth">880</x:Double>
+
+    <!-- A rail row takes the selected treatment every other rail in the application uses: the accent fill
+         with its content in the tone that reads against it, over the flat button's hover and press tints.
+         The framework's own selection indicator is replaced rather than restyled. -->
+    <Style x:Key="SettingsRailItemStyle" TargetType="ListViewItem">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Padding" Value="12,0"/>
+      <Setter Property="Margin" Value="0,0,0,2"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListViewItem">
+            <Grid x:Name="ContentGrid"
+                  Padding="{TemplateBinding Padding}"
+                  Background="Transparent"
+                  CornerRadius="{StaticResource IconButtonCornerRadius}">
+              <ContentPresenter x:Name="ContentPresenter"
+                                VerticalAlignment="Center"/>
+
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal"/>
+
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters>
+                      <Setter Target="ContentGrid.Background" Value="{ThemeResource ButtonHoverBackgroundBrush}"/>
+                    </VisualState.Setters>
+                  </VisualState>
+
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters>
+                      <Setter Target="ContentGrid.Background" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
+                    </VisualState.Setters>
+                  </VisualState>
+
+                  <VisualState x:Name="Selected">
+                    <VisualState.Setters>
+                      <Setter Target="ContentGrid.Background" Value="{ThemeResource AccentBrush}"/>
+                      <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource AccentTextBrush}"/>
+                    </VisualState.Setters>
+                  </VisualState>
+
+                  <!-- The framework names the combined states pointer-first. A state it asks for that is
+                       not declared here leaves the previous one on screen, which reads as the highlight
+                       arriving late. -->
+                  <VisualState x:Name="PointerOverSelected">
+                    <VisualState.Setters>
+                      <Setter Target="ContentGrid.Background" Value="{ThemeResource AccentBrush}"/>
+                      <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource AccentTextBrush}"/>
+                    </VisualState.Setters>
+                  </VisualState>
+
+                  <VisualState x:Name="PressedSelected">
+                    <VisualState.Setters>
+                      <Setter Target="ContentGrid.Background" Value="{ThemeResource AccentBrush}"/>
+                      <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource AccentTextBrush}"/>
+                    </VisualState.Setters>
+                  </VisualState>
+
+                  <VisualState x:Name="PointerOverPressed">
+                    <VisualState.Setters>
+                      <Setter Target="ContentGrid.Background" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
+                    </VisualState.Setters>
+                  </VisualState>
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </ContentDialog.Resources>
 
   <!-- Closing is leaving rather than an action to commit, so it is an X in the title row instead of a
@@ -28,14 +102,12 @@
       </Grid.ColumnDefinitions>
 
       <TextBlock Text="{x:Bind TitleString}"
+                 Style="{StaticResource SectionHeadingTextStyle}"
                  VerticalAlignment="Center"/>
 
-      <!-- The title row has less horizontal room than the content below it, so the button is inset to
-           keep it clear of the dialog edge. -->
       <controls:IconButton x:Name="CloseButton"
                            Grid.Column="1"
                            AutomationProperties.AutomationId="settings-close-button"
-                           Margin="0,0,16,0"
                            VerticalAlignment="Center"
                            Click="CloseButton_Click">
         <controls:Icon Symbol="Close"
@@ -44,17 +116,27 @@
     </Grid>
   </ContentDialog.Title>
 
+  <!-- The rail sits on the chrome surface and the section is carved out of it, the same way a panel is
+       carved out of the workspace, with the gutter as the channel between them. -->
   <Grid Width="{StaticResource SettingsDialogContentWidth}"
-        Height="520"
-        ColumnSpacing="24">
+        Height="460"
+        ColumnSpacing="{StaticResource GutterSize}">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="180"/>
+      <ColumnDefinition Width="150"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
     <ListView ItemsSource="{x:Bind ViewModel.Sections}"
               SelectedItem="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}"
-              SelectionMode="Single">
+              SelectionMode="Single"
+              ItemContainerStyle="{StaticResource SettingsRailItemStyle}"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="0,10,0,0">
+      <ListView.ItemContainerTransitions>
+        <TransitionCollection/>
+      </ListView.ItemContainerTransitions>
+
       <ListView.ItemTemplate>
         <DataTemplate x:DataType="viewmodels:SettingsSection">
           <TextBlock Text="{x:Bind Label}"
@@ -64,29 +146,43 @@
       </ListView.ItemTemplate>
     </ListView>
 
-    <Grid Grid.Column="1"
-          RowSpacing="16">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="*"/>
-      </Grid.RowDefinitions>
+    <!-- Corners are set in code-behind from PanelCornerRadius, which is a Double. -->
+    <Border x:Name="SectionArea"
+            Grid.Column="1"
+            Background="{ThemeResource ContentBackgroundBrush}"
+            BorderBrush="{ThemeResource PanelEdgeBrush}"
+            BorderThickness="1">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-      <StackPanel Spacing="4">
-        <TextBlock Text="{x:Bind ViewModel.SelectedSection.Label, Mode=OneWay}"
-                   Style="{StaticResource SectionHeadingTextStyle}"/>
-        <TextBlock Text="{x:Bind ViewModel.SelectedSection.Description, Mode=OneWay}"
-                   Style="{StaticResource SupportingTextStyle}"
-                   TextWrapping="Wrap"/>
-      </StackPanel>
+        <!-- The section name and what it is for, closed by a rule, matching the band the Project Settings
+             panel puts above its sections. -->
+        <Border BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{x:Bind ViewModel.SelectedSection.Label, Mode=OneWay}"
+                       Style="{StaticResource SectionHeadingTextStyle}"/>
+            <TextBlock Text="{x:Bind ViewModel.SelectedSection.Description, Mode=OneWay}"
+                       Style="{StaticResource SupportingTextStyle}"
+                       TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
 
-      <ScrollViewer Grid.Row="1"
-                    VerticalScrollBarVisibility="Auto"
-                    HorizontalScrollMode="Disabled">
-        <ContentControl Content="{x:Bind ViewModel.SelectedSection.Content, Mode=OneWay}"
-                        HorizontalContentAlignment="Stretch"
-                        IsTabStop="False"/>
-      </ScrollViewer>
-    </Grid>
+        <ScrollViewer Grid.Row="1"
+                      Padding="16"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Disabled"
+                      HorizontalScrollBarVisibility="Disabled">
+          <ContentControl Content="{x:Bind ViewModel.SelectedSection.Content, Mode=OneWay}"
+                          HorizontalContentAlignment="Stretch"
+                          IsTabStop="False"/>
+        </ScrollViewer>
+      </Grid>
+    </Border>
 
   </Grid>
 </ContentDialog>

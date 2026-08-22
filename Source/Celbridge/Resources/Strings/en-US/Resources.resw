@@ -484,13 +484,13 @@
     <value>Web View</value>
   </data>
   <data name="Settings_WebView_Description" xml:space="preserve">
-    <value>How web content behaves. Every web page shown in Celbridge shares one set of cookies, cached credentials and site data.</value>
+    <value>How web content behaves.</value>
   </data>
   <data name="Settings_WebView_ClearBrowsingData" xml:space="preserve">
     <value>Clear Browsing Data</value>
   </data>
   <data name="Settings_WebView_ClearBrowsingDataHint" xml:space="preserve">
-    <value>Applies to every web page in the application, not just the current document.</value>
+    <value>Every web page in Celbridge shares one set of cookies, cached credentials and site data, so this clears them everywhere rather than just for the current document.</value>
   </data>
   <data name="Settings_WebView_ClearDialogMessage" xml:space="preserve">
     <value>Clear the cookies, cached credentials, site data and cache shared by every web page in Celbridge? You will be signed out of any sites you are signed in to. This cannot be undone.</value>

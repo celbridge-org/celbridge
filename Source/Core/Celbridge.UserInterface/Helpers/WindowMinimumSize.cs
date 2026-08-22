@@ -16,14 +16,16 @@ public static class WindowMinimumSize
     /// <summary>
     /// The smallest window width the application is usable in, in device-independent pixels. Authored rather
     /// than derived from the layout, because the application toolbar needs most of this width for its own
-    /// content and composes no minimum of its own.
+    /// content and composes no minimum of its own, and because the settings dialog is sized to sit inside
+    /// this with the application still visible around it.
     /// </summary>
-    public const int AuthoredWidth = 800;
+    public const int AuthoredWidth = 1080;
 
     /// <summary>
-    /// The smallest window height the application is usable in, in device-independent pixels.
+    /// The smallest window height the application is usable in, in device-independent pixels. Held short of
+    /// the width's reference so the window still fits a 1366x768 display with its taskbar.
     /// </summary>
-    public const int AuthoredHeight = 600;
+    public const int AuthoredHeight = 680;
 
     /// <summary>
     /// The window frame either side of the application content. Counted against the minimum window size, which

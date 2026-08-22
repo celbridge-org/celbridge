@@ -28,6 +28,9 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
 
         this.InitializeComponent();
 
+        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        SectionArea.CornerRadius = new CornerRadius(panelCornerRadius);
+
         // The close button carries no text, so the label it reports comes from here.
         var closeText = _stringLocalizer.GetString("DialogButton_Close");
         ToolTipService.SetToolTip(CloseButton, closeText);

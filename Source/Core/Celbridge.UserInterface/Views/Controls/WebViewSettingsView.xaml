@@ -29,15 +29,21 @@
               BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
               Background="{ThemeResource LayerFillColorDefaultBrush}">
         <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal"
-                      Spacing="8">
+          <!-- A Grid rather than a horizontal StackPanel, which measures its children unbounded along its
+               own axis so wrapping text never wraps. -->
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
             <controls:Icon Symbol="Warning"
                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            VerticalAlignment="Top"/>
-            <TextBlock Text="{x:Bind ClearConfirmMessageString}"
-                       TextWrapping="Wrap"
-                       MaxWidth="700"/>
-          </StackPanel>
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind ClearConfirmMessageString}"
+                       TextWrapping="Wrap"/>
+          </Grid>
 
           <StackPanel Orientation="Horizontal"
                       Spacing="8">
