@@ -26,7 +26,7 @@ internal sealed class SectionDragPreview
         _highlight = new Border
         {
             Background = CreateAccentHighlightBrush(),
-            BorderBrush = GetThemeBrush("AccentFillColorDefaultBrush", Microsoft.UI.Colors.DodgerBlue),
+            BorderBrush = GetThemeBrush("AccentBrush", Microsoft.UI.Colors.DodgerBlue),
             BorderThickness = new Thickness(1),
             IsHitTestVisible = false,
             Visibility = Visibility.Collapsed
@@ -35,7 +35,7 @@ internal sealed class SectionDragPreview
         _insertionIndicator = new Border
         {
             Width = IndicatorWidth,
-            Background = GetThemeBrush("AccentFillColorDefaultBrush", Microsoft.UI.Colors.DodgerBlue),
+            Background = GetThemeBrush("AccentBrush", Microsoft.UI.Colors.DodgerBlue),
             IsHitTestVisible = false,
             Visibility = Visibility.Collapsed
         };
@@ -199,7 +199,7 @@ internal sealed class SectionDragPreview
 
     private static Brush CreateAccentHighlightBrush()
     {
-        var color = GetThemeColor("AccentFillColorDefaultBrush", Microsoft.UI.Colors.DodgerBlue);
+        var color = GetThemeColor("AccentBrush", Microsoft.UI.Colors.DodgerBlue);
         color.A = 0x28;
 
         return new SolidColorBrush(color);

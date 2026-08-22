@@ -12,11 +12,12 @@
     </UserControl.Resources>
 
   <!-- A custom button styled as a prominent, distinct control rather than a nav tab. Clicking anywhere on it
-       opens the project menu. -->
+       opens the project menu. It rests on the tone a button takes under the pointer, which is what lifts it
+       off the chrome it sits on. -->
   <Button x:Name="WorkspaceButton"
           AutomationProperties.AutomationId="workspace-button"
           Click="WorkspaceButton_Click"
-          Background="{ThemeResource NavigationViewItemBackgroundPointerOver}"
+          Background="{ThemeResource ButtonHoverBackgroundBrush}"
           BorderThickness="0"
           CornerRadius="4"
           Padding="8,0,0,0"

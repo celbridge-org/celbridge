@@ -17,7 +17,7 @@ public class DesignTokenCoverageTests
         new(@"var\(\s*(--cel-[a-z0-9-]+)", RegexOptions.Compiled);
 
     private static readonly Regex XamlReferenceRegex =
-        new(@"\{ThemeResource\s+(\w+Color)\}", RegexOptions.Compiled);
+        new(@"\{ThemeResource\s+(\w+)\}", RegexOptions.Compiled);
 
     private static readonly string[] StyleFileExtensions =
     [
@@ -57,11 +57,36 @@ public class DesignTokenCoverageTests
         "--cel-icon-size-large"
     ];
 
+    // WinUI keys the chrome reads directly, each for a role the palette has nothing of its own to say
+    // about. Everything else has to resolve to a token, which is what stops a native control quietly
+    // reintroducing a colour the palette does not choose. A key naming a style or a metric rather than a
+    // colour sits here too, since the palette holds neither.
+    private static readonly string[] WinUiKeysReadDirectly =
+    [
+        "AccentButtonStyle",
+        "ApplicationPageBackgroundThemeBrush",
+        "CardBackgroundFillColorDefaultBrush",
+        "CardStrokeColorDefaultBrush",
+        "LayerFillColorDefaultBrush",
+        "OverlayCornerRadius",
+        "SubtleFillColorSecondaryBrush",
+        "SubtleFillColorTertiaryBrush",
+        "SubtleFillColorTransparentBrush",
+        "SurfaceStrokeColorFlyoutBrush",
+        "SystemFillColorCautionBrush",
+        "SystemFillColorCriticalBrush",
+        "SystemFillColorSuccessBrush",
+        "TextFillColorPrimaryBrush",
+        "TextFillColorSecondaryBrush"
+    ];
+
     // The CSS names packages outside this repository are written against. Renaming or removing one breaks
     // those packages, so it has to be a deliberate edit here rather than a side effect of a source change.
     private static readonly string[] PublishedTokenNames =
     [
         "--cel-accent",
+        "--cel-accent-hover",
+        "--cel-accent-pressed",
         "--cel-accent-text",
         "--cel-button-active-bg",
         "--cel-button-hover-bg",
@@ -130,13 +155,17 @@ public class DesignTokenCoverageTests
     }
 
     [Test]
-    public void EveryXamlColorReference_ResolvesToADeclaredToken()
+    public void EveryXamlThemeReference_ResolvesToATokenOrAnAllowedWinUiKey()
     {
         var source = LoadTokenSource();
 
         var declaredNames = source.Tokens
             .Where(token => token.EmitsXaml)
-            .Select(token => token.XamlColorKey!)
+            .SelectMany(token => token.XamlAliases
+                .Concat(token.XamlColorAliases)
+                .Append(token.XamlColorKey)
+                .Append(token.XamlBrushKey))
+            .OfType<string>()
             .ToHashSet();
 
         var references = FindReferences(["*.xaml"], XamlReferenceRegex);
@@ -144,14 +173,47 @@ public class DesignTokenCoverageTests
         references.Should().NotBeEmpty("the source tree paints its native chrome with the design tokens");
 
         var failures = references
-            // WinUI ships its own theme colours (SystemAccentColor and the SystemList family). They are
-            // not ours to declare, and their names all carry the System prefix.
-            .Where(reference => !reference.Name.StartsWith("System", StringComparison.Ordinal))
             .Where(reference => !declaredNames.Contains(reference.Name))
-            .Select(reference => $"{reference.Name} referenced in {reference.RelativePath} is not declared in DesignTokens.json")
+            .Where(reference => !WinUiKeysReadDirectly.Contains(reference.Name))
+            .Select(reference => $"{reference.Name} referenced in {reference.RelativePath} is neither declared in DesignTokens.json nor listed in WinUiKeysReadDirectly")
             .ToList();
 
         failures.Should().BeEmpty(string.Join(Environment.NewLine, failures));
+    }
+
+    [Test]
+    public void NoNativeSource_ReadsTheOperatingSystemAccent()
+    {
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var testsFolder = Path.Combine(sourceFolder, "Tests");
+
+        var offenders = new List<string>();
+
+        foreach (var filePath in EnumerateSourceFiles(sourceFolder, NativeFileExtensions))
+        {
+            if (filePath.StartsWith(testsFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // The generated dictionary declares the ramp, which is what stops the operating system
+            // supplying it, rather than a surface reading it.
+            if (Path.GetFileName(filePath) == "ColorTokens.xaml")
+            {
+                continue;
+            }
+
+            var content = File.ReadAllText(filePath);
+
+            if (content.Contains("SystemAccentColor", StringComparison.Ordinal))
+            {
+                offenders.Add(Path.GetRelativePath(sourceFolder, filePath));
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            "the accent is the application's own, so a surface reading SystemAccentColor would follow the "
+            + "operating system setting instead: " + string.Join(", ", offenders));
     }
 
     [Test]
@@ -197,6 +259,8 @@ public class DesignTokenCoverageTests
         var namesInUse = FindNamesInUse(candidateNames);
 
         var unused = xamlTokens
+            .Where(token => token.XamlAliases.Count == 0)
+            .Where(token => token.XamlColorAliases.Count == 0)
             .Where(token => !namesInUse.Contains(token.XamlColorKey!))
             .Where(token => token.XamlBrushKey is null || !namesInUse.Contains(token.XamlBrushKey))
             .Select(token => token.XamlBrushKey ?? token.XamlColorKey!)
@@ -204,7 +268,7 @@ public class DesignTokenCoverageTests
 
         unused.Should().BeEmpty(
             "a colour or brush nothing paints with is dead weight in the theme dictionaries, so give it a "
-            + "consumer or drop the token's XAML target: "
+            + "consumer, redirect a control key onto it, or drop the token's XAML target: "
             + string.Join(", ", unused));
     }
 

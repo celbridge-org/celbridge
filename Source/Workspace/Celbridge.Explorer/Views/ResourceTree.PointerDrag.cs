@@ -278,7 +278,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
 
     private static Windows.UI.Color GetAccentColor()
     {
-        if (Application.Current.Resources.TryGetValue("AccentFillColorDefaultBrush", out var resource) &&
+        if (Application.Current.Resources.TryGetValue("AccentBrush", out var resource) &&
             resource is SolidColorBrush brush)
         {
             return brush.Color;

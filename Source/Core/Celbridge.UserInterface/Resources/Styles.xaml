@@ -16,12 +16,6 @@
        button fill. Mirrored by the cel-radius-button design token. -->
   <CornerRadius x:Key="IconButtonCornerRadius">6</CornerRadius>
 
-  <!-- WinUI sizes its top-mode navigation pane from this key, and centres the pane's items in it. Left at
-       the framework's 48 the pane overhangs the shorter application toolbar, dropping the items below the
-       icons beside them. Mirrors ApplicationToolbar.ToolbarHeight; keep the two in sync when either
-       changes. -->
-  <x:Double x:Key="NavigationViewTopPaneHeight">40</x:Double>
-
   <!-- The channel between two panels. A splitter's grab area takes this size, which is what holds the gap
        open, so any layout that reserves a matching gap reads the same value rather than repeating it. -->
   <x:Double x:Key="GutterSize">7</x:Double>

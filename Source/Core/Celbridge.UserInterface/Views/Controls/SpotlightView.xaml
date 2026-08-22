@@ -16,9 +16,9 @@
     -->
     <TeachingTip.Resources>
       <StaticResource x:Key="TeachingTipBackgroundBrush"
-                      ResourceKey="AccentFillColorDefaultBrush"/>
+                      ResourceKey="AccentBrush"/>
       <StaticResource x:Key="TeachingTipTransientBackground"
-                      ResourceKey="AccentFillColorDefaultBrush"/>
+                      ResourceKey="AccentBrush"/>
     </TeachingTip.Resources>
   </TeachingTip>
 </UserControl>

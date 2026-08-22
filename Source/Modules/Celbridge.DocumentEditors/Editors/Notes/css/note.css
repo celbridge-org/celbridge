@@ -12,7 +12,7 @@
     --border-color: #e5e7eb;
     --hover-bg: #f3f4f6;
     --active-bg: #e5e7eb;
-    --accent-color: #3b82f6;
+    --accent-color: var(--cel-accent);
     --code-bg: #f1f3f5;
     --blockquote-border: #d1d5db;
     --link-color: #2563eb;
@@ -31,7 +31,6 @@
     --border-color: #404040;
     --hover-bg: #383838;
     --active-bg: #4a4a4a;
-    --accent-color: #569cd6;
     --code-bg: #2d2d2d;
     --blockquote-border: #555555;
     --link-color: #6ca4dc;
@@ -339,13 +338,12 @@ body {
 
 .popover-btn-primary {
     background: var(--accent-color);
-    color: white;
+    color: var(--cel-accent-text);
 }
 
 .popover-btn-primary:hover {
-    background: var(--accent-color);
-    filter: brightness(1.1);
-    color: white;
+    background: var(--cel-accent-hover);
+    color: var(--cel-accent-text);
 }
 
 .popover-btn-danger:hover {

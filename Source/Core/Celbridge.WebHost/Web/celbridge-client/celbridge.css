@@ -104,7 +104,13 @@ button.cel-accent {
 }
 
 button.cel-accent:hover {
-    filter: brightness(1.08);
+    background: var(--cel-accent-hover);
+    border-color: var(--cel-accent-hover);
+}
+
+button.cel-accent:active {
+    background: var(--cel-accent-pressed);
+    border-color: var(--cel-accent-pressed);
 }
 
 /* Transparent icon button, mirroring the IconButton control in Styles.xaml: a rounded square hit target

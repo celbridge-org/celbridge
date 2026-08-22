@@ -1,54 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- The colours themselves, and the brushes declared straight over them, are generated into
-       ColorTokens.xaml from Source/Core/Celbridge.DesignTokens/DesignTokens.json, which also generates the token sheet
-       served to WebView content. What stays here is the redirection of WinUI's own control keys onto that
-       palette: which native key takes which colour is a decision about the control, not a value in the
-       palette. App.xaml.cs merges both dictionaries. -->
-
-  <!-- WinUI paints a card with translucent white overlays and borders close enough to those fills to be
-       invisible, so a card's appearance depends on whatever sits behind it and cannot match the web cards.
-       Every fill and edge is overridden with an opaque value instead. The pointer-over and pressed brushes go
-       with them, or the outline drops out from under the pointer. Mirrors cel-expander in celbridge.css. -->
-  <SolidColorBrush x:Key="ExpanderHeaderBackground"
-                     Color="{ThemeResource CardHeaderBackgroundColor}" />
-
-  <SolidColorBrush x:Key="ExpanderBackground"
-                     Color="{ThemeResource CardHeaderBackgroundColor}" />
-
-  <SolidColorBrush x:Key="ExpanderContentBackground"
-                     Color="{ThemeResource CardContentBackgroundColor}" />
-
-  <SolidColorBrush x:Key="ExpanderBorderBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ExpanderBorderPointerOverBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ExpanderBorderPressedBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ExpanderHeaderBorderBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ExpanderHeaderBorderPointerOverBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ExpanderHeaderBorderPressedBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <SolidColorBrush x:Key="ExpanderContentBorderBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
-
-  <!-- Every dialog draws on the chrome surface, the same ground the settings dialog carves its section
-       out of. Redirected here rather than set per dialog so the prompts and the settings dialog cannot
-       drift apart. -->
-  <SolidColorBrush x:Key="ContentDialogBackground"
-                     Color="{ThemeResource ChromeBackgroundColor}" />
-
-  <SolidColorBrush x:Key="ContentDialogBorderBrush"
-                     Color="{ThemeResource PanelEdgeColor}" />
+  <!-- Anything taking a palette colour is generated into ColorTokens.xaml, the WinUI control keys redirected
+       onto the palette included: a redirect has to be declared once per theme, and only that dictionary has
+       the colours in scope. What stays here takes no palette colour. -->
 
   <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
   <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>

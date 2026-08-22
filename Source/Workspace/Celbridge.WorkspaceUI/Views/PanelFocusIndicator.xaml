@@ -10,5 +10,5 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Center"
             Opacity="0"
-            Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"/>
+            Background="{ThemeResource AccentBrush}"/>
 </UserControl>

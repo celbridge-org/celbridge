@@ -24,6 +24,19 @@ public sealed record DesignToken
     public string? XamlBrushKey { get; init; }
 
     /// <summary>
+    /// WinUI control keys that take this token's colour, each emitted as a brush of its own in both theme
+    /// dictionaries. Empty when no native control key redirects onto the token.
+    /// </summary>
+    public IReadOnlyList<string> XamlAliases { get; init; } = [];
+
+    /// <summary>
+    /// WinUI colour keys that take this token's value, each emitted as a Color of its own in both theme
+    /// dictionaries. Redirecting a colour reaches the brushes WinUI builds over it, including the ones its
+    /// own dictionaries alias with StaticResource, which a brush level redirect cannot reach.
+    /// </summary>
+    public IReadOnlyList<string> XamlColorAliases { get; init; } = [];
+
+    /// <summary>
     /// The declaration name in the generated stylesheet, or null when the token has no web counterpart.
     /// </summary>
     public string? CssPropertyName { get; init; }
