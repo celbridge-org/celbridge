@@ -1,158 +1,155 @@
-using Celbridge.Commands;
-using Celbridge.Messaging;
-using Celbridge.Messaging.Services;
 using Celbridge.Settings;
 using Celbridge.Settings.Services;
 using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Settings;
-using Celbridge.UserInterface;
 using Celbridge.UserInterface.ViewModels.Dialogs;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for the Settings dialog view model. The stored theme is read through the real SettingsService
-/// over an in-memory settings store fake. Selecting a theme dispatches ISetThemeCommand rather than writing
-/// the setting here, so that is asserted against a substitute command service. The dispatch goes through
-/// ExecuteImmediate because the dialog holds the command queue while it is open. A real MessengerService
-/// carries the theme-changed broadcast the dialog follows.
+/// Unit tests for the settings dialog's category rail. The selected category is persisted by key through
+/// the real SettingsService over an in-memory settings store fake, so a reordered rail can be exercised
+/// against a key stored by an earlier run. The categories carry stand-in content, since which control a
+/// category shows is the dialog's business rather than the view model's.
 /// </summary>
 [TestFixture]
 public class SettingsDialogViewModelTests
 {
-    private FakeSettingsStore _settingsStore = null!;
-    private FakeCredentialStore _credentialStore = null!;
     private SettingsService _settingsService = null!;
-    private ICommandService _commandService = null!;
-    private IMessengerService _messengerService = null!;
-    private SettingsDialogViewModel _viewModel = null!;
+
+    private static readonly SettingsSection Appearance =
+        new("Appearance", "bs-palette", "Appearance", "How Celbridge looks.", "appearance-content");
+
+    private static readonly SettingsSection Workshop =
+        new("Workshop", "bs-shop", "Workshop", "Connect to a Workshop.", "workshop-content");
+
+    private static readonly SettingsSection WebView =
+        new("WebView", "bs-globe", "Web View", "How web content behaves.", "webview-content");
 
     [SetUp]
     public void Setup()
     {
-        _settingsStore = new FakeSettingsStore();
-        _credentialStore = new FakeCredentialStore();
-
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _settingsService = new SettingsService(
             new NullLogger<SettingsService>(),
-            _settingsStore,
-            _credentialStore,
+            new FakeSettingsStore(),
+            new FakeCredentialStore(),
             workspaceWrapper);
-
-        _commandService = Substitute.For<ICommandService>();
-        _commandService.ExecuteImmediate<ISetThemeCommand>(
-                Arg.Any<Action<ISetThemeCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(Task.FromResult(Result.Ok()));
-
-        _messengerService = new MessengerService();
-
-        var stringLocalizer = Substitute.For<IStringLocalizer>();
-        stringLocalizer[Arg.Any<string>()].Returns(
-            callInfo => new LocalizedString(callInfo.Arg<string>(), callInfo.Arg<string>()));
-
-        _viewModel = new SettingsDialogViewModel(
-            new NullLogger<SettingsDialogViewModel>(),
-            _settingsService,
-            stringLocalizer,
-            _commandService,
-            _messengerService);
     }
 
     [Test]
-    public void ThemeOptions_CoverEveryThemeInOrder()
+    public void WithNothingStored_TheFirstCategoryIsSelected()
     {
-        var themes = _viewModel.ThemeOptions.Select(themeOption => themeOption.Theme);
+        var viewModel = CreateViewModel();
 
-        themes.Should().Equal(
-            ApplicationColorTheme.System,
-            ApplicationColorTheme.Light,
-            ApplicationColorTheme.Dark);
+        viewModel.SelectedSection.Should().Be(Appearance);
     }
 
     [Test]
-    public void SelectedTheme_InitialisesToStoredTheme()
+    public void SelectingACategory_PersistsItsKey()
     {
-        // The stored theme defaults to System when nothing has been set.
-        _viewModel.SelectedTheme.Should().NotBeNull();
-        _viewModel.SelectedTheme!.Theme.Should().Be(ApplicationColorTheme.System);
+        var viewModel = CreateViewModel();
+
+        viewModel.SelectedSection = WebView;
+
+        var storedKey = _settingsService.Get(SettingCatalog.Application.SettingsDialogSelectedSection);
+        storedKey.Should().Be("WebView");
     }
 
     [Test]
-    public void SelectingTheme_DispatchesSetThemeCommandWithThatTheme()
+    public void ReopeningTheDialog_RestoresTheStoredCategory()
     {
-        var darkOption = _viewModel.ThemeOptions.First(themeOption => themeOption.Theme == ApplicationColorTheme.Dark);
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
 
-        _viewModel.SelectedTheme = darkOption;
+        var viewModel = CreateViewModel();
 
-        _commandService.Received(1).ExecuteImmediate<ISetThemeCommand>(
-            Arg.Is<Action<ISetThemeCommand>?>(configure => ConfiguresTheme(configure, ApplicationColorTheme.Dark)),
-            Arg.Any<string>(),
-            Arg.Any<int>());
+        viewModel.SelectedSection.Should().Be(Workshop);
     }
 
     [Test]
-    public void InitialisingViewModel_DoesNotSetATheme()
+    public void AfterTheRailIsReordered_TheStoredKeyStillFindsItsCategory()
     {
-        // Reflecting the stored theme in the combo box must not run the changed handler; construction
-        // happened in Setup, so no command should have been dispatched.
-        _commandService.DidNotReceive().ExecuteImmediate<ISetThemeCommand>(
-            Arg.Any<Action<ISetThemeCommand>?>(),
-            Arg.Any<string>(),
-            Arg.Any<int>());
-    }
+        // The key rather than the position is what is persisted, so a category that has moved is still
+        // the one the returning user lands on.
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "WebView");
 
-    [Test]
-    public void ThemeChangedElsewhere_UpdatesTheSelectionWithoutDispatching()
-    {
-        // The View menu offers the same themes, so a change made there while this dialog is open has to be
-        // reflected here rather than leaving a stale selection.
-        _viewModel.OnOpened();
-
-        _settingsService.Set(SettingCatalog.Application.Theme, ApplicationColorTheme.Light);
-        _messengerService.Send(new ThemeChangedMessage(UserInterfaceTheme.Light));
-
-        _viewModel.SelectedTheme!.Theme.Should().Be(ApplicationColorTheme.Light);
-
-        // Following the change must not dispatch a command of its own, which would loop back through the
-        // theme service.
-        _commandService.DidNotReceive().ExecuteImmediate<ISetThemeCommand>(
-            Arg.Any<Action<ISetThemeCommand>?>(),
-            Arg.Any<string>(),
-            Arg.Any<int>());
-    }
-
-    [Test]
-    public void AfterClosing_ThemeChangesAreNoLongerFollowed()
-    {
-        _viewModel.OnOpened();
-        _viewModel.OnClosed();
-
-        _settingsService.Set(SettingCatalog.Application.Theme, ApplicationColorTheme.Light);
-        _messengerService.Send(new ThemeChangedMessage(UserInterfaceTheme.Light));
-
-        _viewModel.SelectedTheme!.Theme.Should().Be(ApplicationColorTheme.System);
-    }
-
-    /// <summary>
-    /// Runs a captured configure action against a stand-in command to see which theme it would set.
-    /// </summary>
-    private static bool ConfiguresTheme(Action<ISetThemeCommand>? configure, ApplicationColorTheme expectedTheme)
-    {
-        if (configure is null)
+        var reorderedSections = new List<SettingsSection>
         {
-            return false;
-        }
+            WebView,
+            Appearance,
+            Workshop,
+        };
 
-        var command = Substitute.For<ISetThemeCommand>();
-        configure(command);
+        var viewModel = new SettingsDialogViewModel(_settingsService);
+        viewModel.InitializeSections(reorderedSections);
 
-        return command.Theme == expectedTheme;
+        viewModel.SelectedSection.Should().Be(WebView);
+    }
+
+    [Test]
+    public void AnUnknownStoredKey_FallsBackWithoutOverwritingTheKey()
+    {
+        // Falling back is not the user choosing a category. Writing here would discard a key that may
+        // name a category this build simply does not have.
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Retired");
+
+        var viewModel = CreateViewModel();
+
+        viewModel.SelectedSection.Should().Be(Appearance);
+
+        var storedKey = _settingsService.Get(SettingCatalog.Application.SettingsDialogSelectedSection);
+        storedKey.Should().Be("Retired");
+    }
+
+    [Test]
+    public void ClearingTheSelection_PutsTheLastCategoryBack()
+    {
+        // A single-selection list still lets the user deselect, which would leave every binding in the
+        // content pane resolving to null and the dialog showing nothing.
+        var viewModel = CreateViewModel();
+        viewModel.SelectedSection = Workshop;
+
+        viewModel.SelectedSection = null;
+
+        viewModel.SelectedSection.Should().Be(Workshop);
+    }
+
+    [Test]
+    public void SelectingACategory_MarksOnlyThatOneSelected()
+    {
+        // The rail rows take their checked state from this flag, so exactly one may carry it.
+        var viewModel = CreateViewModel();
+
+        viewModel.SelectedSection = WebView;
+
+        viewModel.Sections.Where(section => section.IsSelected).Should().Equal(WebView);
+    }
+
+    [Test]
+    public void InitializeSections_RejectsAnEmptyRail()
+    {
+        var viewModel = new SettingsDialogViewModel(_settingsService);
+
+        var initialize = () => viewModel.InitializeSections(Array.Empty<SettingsSection>());
+
+        initialize.Should().Throw<InvalidOperationException>();
+    }
+
+    private SettingsDialogViewModel CreateViewModel()
+    {
+        var sections = new List<SettingsSection>
+        {
+            Appearance,
+            Workshop,
+            WebView,
+        };
+
+        var viewModel = new SettingsDialogViewModel(_settingsService);
+        viewModel.InitializeSections(sections);
+
+        return viewModel;
     }
 }

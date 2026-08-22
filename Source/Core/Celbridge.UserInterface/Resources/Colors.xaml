@@ -41,6 +41,15 @@
   <SolidColorBrush x:Key="ExpanderContentBorderBrush"
                      Color="{ThemeResource PanelEdgeColor}" />
 
+  <!-- Every dialog draws on the chrome surface, the same ground the settings dialog carves its section
+       out of. Redirected here rather than set per dialog so the prompts and the settings dialog cannot
+       drift apart. -->
+  <SolidColorBrush x:Key="ContentDialogBackground"
+                     Color="{ThemeResource ChromeBackgroundColor}" />
+
+  <SolidColorBrush x:Key="ContentDialogBorderBrush"
+                     Color="{ThemeResource PanelEdgeColor}" />
+
   <!-- Hack to get title bar color to work - see https://github.com/microsoft/microsoft-ui-xaml/issues/7125 -->
   <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" Opacity="0.5"/>
   <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent"/>

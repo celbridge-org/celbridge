@@ -1,141 +1,108 @@
-using Celbridge.Commands;
-using Celbridge.Logging;
 using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.ViewModels.Dialogs;
 
 /// <summary>
-/// A selectable application colour theme paired with its localized display name, for the theme combo box.
+/// One category in the settings dialog's rail: the stable key it is persisted under, the icon and label
+/// shown for it, the description of what it covers, the content shown while it is selected, and whether it
+/// is the selected one.
 /// </summary>
-public sealed class ThemeOption
+public sealed partial class SettingsSection : ObservableObject
 {
-    public ThemeOption(ApplicationColorTheme theme, string displayName)
+    public SettingsSection(string key, string iconName, string label, string description, object content)
     {
-        Theme = theme;
-        DisplayName = displayName;
+        Key = key;
+        IconName = iconName;
+        Label = label;
+        Description = description;
+        Content = content;
     }
 
-    public ApplicationColorTheme Theme { get; }
+    public string Key { get; }
 
-    public string DisplayName { get; }
+    public string IconName { get; }
+
+    public string Label { get; }
+
+    public string Description { get; }
+
+    public object Content { get; }
+
+    // Drives the rail row's checked state. Set by the view model so exactly one category carries it.
+    [ObservableProperty]
+    private bool _isSelected;
 }
 
+/// <summary>
+/// Coordinates the settings dialog's category rail. The categories themselves are self-contained views
+/// with their own view models, so this holds only which one is showing and where that is remembered.
+/// </summary>
 public partial class SettingsDialogViewModel : ObservableObject
 {
-    private readonly ILogger<SettingsDialogViewModel> _logger;
     private readonly ISettingsService _settingsService;
-    private readonly IStringLocalizer _stringLocalizer;
-    private readonly ICommandService _commandService;
-    private readonly IMessengerService _messengerService;
 
-    public IReadOnlyList<ThemeOption> ThemeOptions { get; }
+    // Persistence is enabled only once the restore has run, so selecting the remembered category does not
+    // immediately rewrite it.
+    private bool _sectionPersistenceEnabled;
+
+    // The category to fall back on when the rail reports no selection.
+    private SettingsSection? _lastSelectedSection;
 
     [ObservableProperty]
-    private ThemeOption? _selectedTheme;
+    private IReadOnlyList<SettingsSection> _sections = Array.Empty<SettingsSection>();
 
-    private bool _isReflectingStoredTheme;
+    [ObservableProperty]
+    private SettingsSection? _selectedSection;
 
-    public SettingsDialogViewModel(
-        ILogger<SettingsDialogViewModel> logger,
-        ISettingsService settingsService,
-        IStringLocalizer stringLocalizer,
-        ICommandService commandService,
-        IMessengerService messengerService)
+    public SettingsDialogViewModel(ISettingsService settingsService)
     {
-        _logger = logger;
         _settingsService = settingsService;
-        _stringLocalizer = stringLocalizer;
-        _commandService = commandService;
-        _messengerService = messengerService;
-
-        ThemeOptions = BuildThemeOptions();
-
-        ReflectStoredTheme();
     }
 
-    public void OnOpened()
+    /// <summary>
+    /// Supplies the categories to show, in rail order, and selects the one the user last had open. Called
+    /// by the dialog, which is the only place that can build each category's content.
+    /// </summary>
+    public void InitializeSections(IReadOnlyList<SettingsSection> sections)
     {
-        // The View menu can change the theme while this dialog is open, so follow it rather than showing
-        // the value read at construction.
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
+        Guard.IsTrue(sections.Count > 0);
 
-        ReflectStoredTheme();
+        _sectionPersistenceEnabled = false;
+        Sections = sections;
+
+        // An unrecognized or empty key lands on the first category, which is what a new installation gets.
+        var storedKey = _settingsService.Get(SettingCatalog.Application.SettingsDialogSelectedSection);
+        var storedSection = sections.FirstOrDefault(section => section.Key == storedKey);
+
+        SelectedSection = storedSection ?? sections[0];
+
+        _sectionPersistenceEnabled = true;
     }
 
-    public void OnClosed()
+    partial void OnSelectedSectionChanged(SettingsSection? value)
     {
-        _messengerService.UnregisterAll(this);
-    }
-
-    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
-    {
-        // The message carries the resolved light or dark theme, which cannot distinguish System from a
-        // fixed theme that happens to match it. The stored setting can, so read that instead.
-        ReflectStoredTheme();
-    }
-
-    private void ReflectStoredTheme()
-    {
-        var storedTheme = _settingsService.Get(SettingCatalog.Application.Theme);
-        var storedOption = ThemeOptions.FirstOrDefault(themeOption => themeOption.Theme == storedTheme);
-
-        // Reflecting the stored theme in the combo box must not run the changed handler, which would
-        // dispatch a command to re-apply the theme that was just applied.
-        _isReflectingStoredTheme = true;
-        try
+        if (value is null)
         {
-            SelectedTheme = storedOption;
+            // Nothing in the rail clears the selection, but the property is public: hold the invariant that
+            // a category is always showing rather than leaving it to callers.
+            SelectedSection = _lastSelectedSection;
+            return;
         }
-        finally
-        {
-            _isReflectingStoredTheme = false;
-        }
-    }
 
-    partial void OnSelectedThemeChanged(ThemeOption? value)
-    {
-        if (value is null
-            || _isReflectingStoredTheme)
+        foreach (var section in Sections)
+        {
+            section.IsSelected = ReferenceEquals(section, value);
+        }
+
+        _lastSelectedSection = value;
+
+        if (!_sectionPersistenceEnabled)
         {
             return;
         }
 
-        _ = ApplyThemeAsync(value.Theme);
-    }
-
-    // This dialog holds the command queue while it is open, so the theme is applied off the queue.
-    // Enqueuing it would leave the choice unapplied until the dialog closed.
-    private async Task ApplyThemeAsync(ApplicationColorTheme theme)
-    {
-        var setThemeResult = await _commandService.ExecuteImmediate<ISetThemeCommand>(command =>
-        {
-            command.Theme = theme;
-        });
-
-        if (setThemeResult.IsFailure)
-        {
-            _logger.LogError(setThemeResult, "Failed to set the application theme");
-        }
-    }
-
-    private List<ThemeOption> BuildThemeOptions()
-    {
-        var themeOptions = new List<ThemeOption>();
-
-        var themeValues = Enum.GetValues(typeof(ApplicationColorTheme));
-        foreach (ApplicationColorTheme theme in themeValues)
-        {
-            var stringKey = "Theme_" + Enum.GetName(typeof(ApplicationColorTheme), theme);
-            var displayName = _stringLocalizer.GetString(stringKey);
-            if (displayName is null)
-            {
-                throw new NotImplementedException("Cannot find localised string entry for '" + stringKey + "'");
-            }
-
-            var themeOption = new ThemeOption(theme, displayName);
-            themeOptions.Add(themeOption);
-        }
-
-        return themeOptions;
+        // The key rather than the position, so inserting or reordering a category does not land a
+        // returning user on a different one.
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, value.Key);
     }
 }

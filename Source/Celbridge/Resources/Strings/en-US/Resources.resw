@@ -279,8 +279,8 @@
   <data name="ResourceTree_EnterExtractFolderName" xml:space="preserve">
     <value>Enter a name for the destination folder:</value>
   </data>
-  <data name="Settings_Page_Title" xml:space="preserve">
-    <value>Application Settings</value>
+  <data name="Settings_DialogTitle" xml:space="preserve">
+    <value>Settings</value>
   </data>
   <data name="ResourceTree_EnterNewName" xml:space="preserve">
     <value>Enter a new name:</value>
@@ -393,7 +393,13 @@
   <data name="Home_Recent" xml:space="preserve">
     <value>Recent</value>
   </data>
-  <data name="Settings_Application_Theme" xml:space="preserve">
+  <data name="Settings_Appearance_SectionHeader" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings_Appearance_Description" xml:space="preserve">
+    <value>How Celbridge looks.</value>
+  </data>
+  <data name="Settings_Appearance_Theme" xml:space="preserve">
     <value>Application Theme</value>
   </data>
   <data name="Settings_Workshop_SectionHeader" xml:space="preserve">
@@ -474,34 +480,34 @@
   <data name="Settings_Workshop_ConnectionUnverified" xml:space="preserve">
     <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
   </data>
-  <data name="Settings_Privacy_SectionHeader" xml:space="preserve">
-    <value>Privacy</value>
+  <data name="Settings_WebView_SectionHeader" xml:space="preserve">
+    <value>Web View</value>
   </data>
-  <data name="Settings_Privacy_Description" xml:space="preserve">
-    <value>Every web page shown in Celbridge shares one set of cookies, cached credentials and site data.</value>
+  <data name="Settings_WebView_Description" xml:space="preserve">
+    <value>How web content behaves.</value>
   </data>
-  <data name="Settings_Privacy_ClearBrowsingData" xml:space="preserve">
+  <data name="Settings_WebView_ClearBrowsingData" xml:space="preserve">
     <value>Clear Browsing Data</value>
   </data>
-  <data name="Settings_Privacy_ClearBrowsingDataHint" xml:space="preserve">
-    <value>Applies to every web page in the application, not just the current document.</value>
+  <data name="Settings_WebView_ClearBrowsingDataHint" xml:space="preserve">
+    <value>Every web page in Celbridge shares one set of cookies, cached credentials and site data, so this clears them everywhere rather than just for the current document.</value>
   </data>
-  <data name="Settings_Privacy_ClearDialogMessage" xml:space="preserve">
+  <data name="Settings_WebView_ClearConfirmMessage" xml:space="preserve">
     <value>Clear the cookies, cached credentials, site data and cache shared by every web page in Celbridge? You will be signed out of any sites you are signed in to. This cannot be undone.</value>
   </data>
-  <data name="Settings_Privacy_ClearConfirmButton" xml:space="preserve">
+  <data name="Settings_WebView_ClearConfirmButton" xml:space="preserve">
     <value>Clear</value>
   </data>
-  <data name="Settings_Privacy_Clearing" xml:space="preserve">
+  <data name="Settings_WebView_Clearing" xml:space="preserve">
     <value>Clearing browsing data...</value>
   </data>
-  <data name="Settings_Privacy_Cleared" xml:space="preserve">
+  <data name="Settings_WebView_Cleared" xml:space="preserve">
     <value>Browsing data cleared.</value>
   </data>
-  <data name="Settings_Privacy_ClearFailed" xml:space="preserve">
+  <data name="Settings_WebView_ClearFailed" xml:space="preserve">
     <value>Failed to clear the browsing data.</value>
   </data>
-  <data name="Settings_Privacy_ClearUnavailable" xml:space="preserve">
+  <data name="Settings_WebView_ClearUnavailable" xml:space="preserve">
     <value>Clearing browsing data is not available on this platform yet.</value>
   </data>
   <data name="NewProjectDialog_CreateSubfolder" xml:space="preserve">

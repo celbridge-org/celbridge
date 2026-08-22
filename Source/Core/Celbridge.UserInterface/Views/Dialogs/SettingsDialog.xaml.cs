@@ -1,18 +1,18 @@
 using Celbridge.Dialog;
 using Celbridge.UserInterface.ViewModels.Dialogs;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The application settings dialog. Each section is a self-contained control composed into it.
+/// The application settings dialog. A rail of categories over a content pane, each category a
+/// self-contained control shown one at a time.
 /// </summary>
 public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
 
-    private string TitleString => _stringLocalizer.GetString("Settings_Page_Title");
-    private string CloseString => _stringLocalizer.GetString("DialogButton_Close");
-    private string ApplicationThemeString => _stringLocalizer.GetString("Settings_Application_Theme");
+    private string TitleString => _stringLocalizer.GetString("Settings_DialogTitle");
 
     public SettingsDialogViewModel ViewModel { get; }
 
@@ -25,22 +25,72 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
         ViewModel = ServiceLocator.AcquireService<SettingsDialogViewModel>();
+        ViewModel.InitializeSections(BuildSections());
 
         this.InitializeComponent();
+
+        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        SectionArea.CornerRadius = new CornerRadius(panelCornerRadius);
+
+        // The close button carries no text, so the label it reports comes from here.
+        var closeText = _stringLocalizer.GetString("DialogButton_Close");
+        ToolTipService.SetToolTip(CloseButton, closeText);
+        AutomationProperties.SetName(CloseButton, closeText);
 
         this.EnableThemeSync();
     }
 
+    private void RailButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton railButton
+            || railButton.DataContext is not SettingsSection section)
+        {
+            return;
+        }
+
+        ViewModel.SelectedSection = section;
+
+        // A toggle unchecks itself when clicked while already checked. The rail always has a category
+        // showing, so the row follows the view model rather than its own toggle.
+        railButton.IsChecked = section.IsSelected;
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Hide();
+    }
+
+    // The categories in rail order. The keys are persisted, so changing one drops the category a
+    // returning user had open.
+    private List<SettingsSection> BuildSections()
+    {
+        var sections = new List<SettingsSection>
+        {
+            new(
+                "Appearance",
+                "bs-palette",
+                _stringLocalizer.GetString("Settings_Appearance_SectionHeader"),
+                _stringLocalizer.GetString("Settings_Appearance_Description"),
+                new AppearanceSettingsView()),
+            new(
+                "Workshop",
+                "bs-shop",
+                _stringLocalizer.GetString("Settings_Workshop_SectionHeader"),
+                _stringLocalizer.GetString("Settings_Workshop_Description"),
+                new WorkshopSettingsView()),
+            new(
+                "WebView",
+                "bs-globe",
+                _stringLocalizer.GetString("Settings_WebView_SectionHeader"),
+                _stringLocalizer.GetString("Settings_WebView_Description"),
+                new WebViewSettingsView()),
+        };
+
+        return sections;
+    }
+
     public async Task ShowDialogAsync()
     {
-        ViewModel.OnOpened();
-        try
-        {
-            await ShowAsync();
-        }
-        finally
-        {
-            ViewModel.OnClosed();
-        }
+        await ShowAsync();
     }
 }

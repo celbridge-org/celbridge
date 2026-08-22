@@ -10,7 +10,7 @@ namespace Celbridge.Settings;
 public static class SettingCatalog
 {
     /// <summary>
-    /// Application-wide options surfaced on the Settings page.
+    /// Application-wide options surfaced in the settings dialog.
     /// </summary>
     public static class Application
     {
@@ -21,6 +21,11 @@ public static class SettingCatalog
         // chooses otherwise.
         public static readonly SettingDescriptor<string> Language =
             new("Application.Language", SettingScope.Application, string.Empty);
+
+        // The settings dialog category the user last viewed, as a stable section key. An empty or
+        // unrecognized key opens the first category.
+        public static readonly SettingDescriptor<string> SettingsDialogSelectedSection =
+            new("Application.SettingsDialogSelectedSection", SettingScope.Application, string.Empty);
     }
 
     /// <summary>

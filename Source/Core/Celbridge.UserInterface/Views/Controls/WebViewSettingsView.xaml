@@ -1,28 +1,16 @@
 <UserControl
-    x:Class="Celbridge.UserInterface.Views.PrivacySettingsView"
+    x:Class="Celbridge.UserInterface.Views.WebViewSettingsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:converters="using:Celbridge.UserInterface.Converters"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    HorizontalAlignment="Left">
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <UserControl.Resources>
     <converters:StatusSeverityConverter x:Key="StatusSeverityConverter"/>
   </UserControl.Resources>
 
-  <StackPanel Spacing="24"
-              HorizontalAlignment="Left">
-
-    <StackPanel Spacing="4">
-      <TextBlock FontSize="24"
-                 FontWeight="SemiBold"
-                 Text="{x:Bind PrivacySectionString}"/>
-      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                 TextWrapping="Wrap"
-                 MaxWidth="784"
-                 Text="{x:Bind PrivacyDescriptionString}"/>
-    </StackPanel>
+  <StackPanel Spacing="24">
 
     <StackPanel Spacing="8">
       <Button Content="{x:Bind ClearBrowsingDataString}"
@@ -32,22 +20,27 @@
               Command="{x:Bind ViewModel.BeginClearBrowsingDataCommand}"/>
 
       <Border Visibility="{x:Bind ViewModel.IsConfirmingClear, Mode=OneWay}"
-              MaxWidth="784"
               Padding="12"
               CornerRadius="4"
               BorderThickness="1"
               BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
               Background="{ThemeResource LayerFillColorDefaultBrush}">
         <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal"
-                      Spacing="8">
+          <!-- A Grid rather than a horizontal StackPanel, which measures its children unbounded along its
+               own axis so wrapping text never wraps. -->
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
             <controls:Icon Symbol="Warning"
                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            VerticalAlignment="Top"/>
-            <TextBlock Text="{x:Bind ClearConfirmMessageString}"
-                       TextWrapping="Wrap"
-                       MaxWidth="700"/>
-          </StackPanel>
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind ClearConfirmMessageString}"
+                       TextWrapping="Wrap"/>
+          </Grid>
 
           <StackPanel Orientation="Horizontal"
                       Spacing="8">
@@ -62,7 +55,6 @@
 
       <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                  TextWrapping="Wrap"
-                 MaxWidth="784"
                  Text="{x:Bind ClearBrowsingDataHintString}"/>
     </StackPanel>
 
@@ -70,7 +62,6 @@
              Severity="{x:Bind ViewModel.StatusSeverity, Mode=OneWay, Converter={StaticResource StatusSeverityConverter}}"
              Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
              IsClosable="False"
-             MaxWidth="784"
              HorizontalAlignment="Left"/>
 
   </StackPanel>

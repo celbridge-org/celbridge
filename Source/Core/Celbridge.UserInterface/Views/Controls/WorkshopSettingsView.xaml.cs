@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Celbridge.Logging;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Microsoft.UI.Dispatching;
 
@@ -11,12 +12,11 @@ public sealed partial class WorkshopSettingsView : UserControl
 {
     private static readonly TimeSpan AutoSaveDelay = TimeSpan.FromMilliseconds(500);
 
+    private readonly ILogger<WorkshopSettingsView> _logger;
     private readonly IStringLocalizer _stringLocalizer;
 
     private DispatcherQueueTimer? _autoSaveTimer;
 
-    private string WorkshopSectionString => _stringLocalizer.GetString("Settings_Workshop_SectionHeader");
-    private string WorkshopDescriptionString => _stringLocalizer.GetString("Settings_Workshop_Description");
     private string WorkshopUrlString => _stringLocalizer.GetString("Settings_Workshop_Url");
     private string WorkshopUrlTooltipString => _stringLocalizer.GetString("Settings_Workshop_UrlTooltip");
     private string WorkshopKeyString => _stringLocalizer.GetString("Settings_Workshop_Key");
@@ -36,18 +36,32 @@ public sealed partial class WorkshopSettingsView : UserControl
 
     public WorkshopSettingsView()
     {
+        _logger = ServiceLocator.AcquireService<ILogger<WorkshopSettingsView>>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         ViewModel = ServiceLocator.AcquireService<WorkshopSettingsViewModel>();
 
         this.InitializeComponent();
 
+        // The dialog swaps the selected section in and out of its content host, so these fire each time
+        // the user comes back to this section rather than once per dialog. They stay attached for the
+        // lifetime of the control.
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
 
+    // Runs each time the user returns to this section, so a throw here would otherwise escape an async
+    // void handler and take the process with it.
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        await ViewModel.InitializeAsync();
+        try
+        {
+            await ViewModel.InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to load the Workshop settings section");
+            return;
+        }
 
         // Wire auto-save only after the initial load has populated the fields, so
         // loading a stored connection does not trigger a save of its own values.
@@ -67,9 +81,6 @@ public sealed partial class WorkshopSettingsView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= OnLoaded;
-        Unloaded -= OnUnloaded;
-
         WorkshopUrlTextBox.TextChanged -= ConnectionField_Changed;
         AuthorTextBox.TextChanged -= ConnectionField_Changed;
 

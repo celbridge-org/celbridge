@@ -74,8 +74,9 @@ public static class ServiceConfiguration
         services.AddTransient<MainPageViewModel>();
         services.AddTransient<HomeViewModel>();
         services.AddTransient<SettingsDialogViewModel>();
+        services.AddTransient<AppearanceSettingsViewModel>();
         services.AddTransient<WorkshopSettingsViewModel>();
-        services.AddTransient<PrivacySettingsViewModel>();
+        services.AddTransient<WebViewSettingsViewModel>();
         services.AddTransient<TitleBarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
         services.AddTransient<ApplicationMenuViewModel>();

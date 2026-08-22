@@ -1,4 +1,4 @@
-﻿<ContentDialog
+<ContentDialog
   x:Class="Celbridge.UserInterface.Views.InputTextDialog"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -14,6 +14,7 @@
               MinWidth="400">
     <TextBox x:Name="InputTextBox"
              Header="{x:Bind ViewModel.HeaderText, Mode=OneWay}"
+             HeaderTemplate="{StaticResource FieldHeaderTemplate}"
              Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
              IsSpellCheckEnabled="False"
              AcceptsReturn="False"
