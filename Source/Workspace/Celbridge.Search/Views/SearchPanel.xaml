@@ -305,13 +305,13 @@
 
                   <!-- Match Count Badge -->
                   <Border Grid.Column="4"
-                          Background="{ThemeResource AccentFillColorDefaultBrush}"
+                          Background="{ThemeResource AccentBrush}"
                           CornerRadius="8"
                           Padding="6,1,6,2"
                           Margin="4,0,0,0"
                           VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind MatchCount}"
-                               Foreground="White"
+                               Foreground="{ThemeResource AccentTextBrush}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center"/>
                   </Border>

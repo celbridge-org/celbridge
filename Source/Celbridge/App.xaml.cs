@@ -60,8 +60,9 @@ public partial class App : Application
         // Load XAML resources
         Resources.Build(r => r
             .Merged(new XamlControlsResources())
-            // ColorTokens.xaml is generated from the design token source and holds the colours.
-            // Colors.xaml redirects WinUI's control keys onto them, so it merges after.
+            // ColorTokens.xaml is generated from the design token source and holds the colours, the
+            // brushes over them, and the WinUI control keys redirected onto them. Colors.xaml holds the
+            // hand written overrides that take no palette colour, so it merges after.
             .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/ColorTokens.xaml") })
             .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/Colors.xaml") })
             .Merged(new ResourceDictionary { Source = new Uri("ms-appx:///Celbridge.UserInterface/Resources/FileIcons.xaml") })

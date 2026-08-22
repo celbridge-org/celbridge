@@ -28,13 +28,47 @@ public static class DesignTokenSourceLoader
         var cssImports = ReadStringList(root, "cssImports");
         var groups = ReadGroups(root);
 
-        return new DesignTokenSource
+        var source = new DesignTokenSource
         {
             XamlHeader = xamlHeader,
             CssHeader = cssHeader,
             CssImports = cssImports,
             Groups = groups
         };
+
+        ValidateXamlKeysAreUnique(source);
+
+        return source;
+    }
+
+    // Every XAML key the generator emits shares one dictionary, so a key claimed twice would emit twice and
+    // leave which declaration wins up to the parser.
+    private static void ValidateXamlKeysAreUnique(DesignTokenSource source)
+    {
+        var claimedKeys = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var token in source.Tokens)
+        {
+            var keys = new List<string?>
+            {
+                token.XamlColorKey,
+                token.XamlBrushKey
+            };
+
+            keys.AddRange(token.XamlAliases);
+            keys.AddRange(token.XamlColorAliases);
+
+            foreach (var key in keys.OfType<string>())
+            {
+                if (claimedKeys.TryGetValue(key, out var owner))
+                {
+                    throw new InvalidDataException(
+                        $"Token '{token.Key}' declares the XAML key '{key}', which token '{owner}' already declares.");
+                }
+
+                claimedKeys.Add(key, token.Key);
+            }
+        }
     }
 
     private static IReadOnlyList<DesignTokenGroup> ReadGroups(JsonElement root)
@@ -116,6 +150,8 @@ public static class DesignTokenSourceLoader
             Key = key,
             XamlColorKey = targets.Contains(XamlTarget) ? xamlColorKey : null,
             XamlBrushKey = ReadOptionalString(element, "xamlBrush"),
+            XamlAliases = ReadStringList(element, "xamlAliases"),
+            XamlColorAliases = ReadStringList(element, "xamlColorAliases"),
             CssPropertyName = targets.Contains(CssTarget) ? cssPropertyName : null,
             ThemeInvariantValue = ReadOptionalString(element, "value"),
             LightValue = ReadOptionalString(element, "light"),
@@ -147,14 +183,19 @@ public static class DesignTokenSourceLoader
                 $"Token '{token.Key}' declares a 'value', so its per-theme values would be ignored.");
         }
 
-        if (token.XamlBrushKey is not null &&
-            !token.EmitsXaml)
-        {
-            throw new InvalidDataException($"Token '{token.Key}' declares a brush but does not target XAML.");
-        }
-
         if (!token.EmitsXaml)
         {
+            // Each of these emits into the theme dictionaries over the token's XAML colour, so none of them
+            // has anything to point at without that target.
+            var brushDeclared = token.XamlBrushKey is not null;
+            var aliasesDeclared = token.XamlAliases.Count > 0 || token.XamlColorAliases.Count > 0;
+
+            if (brushDeclared || aliasesDeclared)
+            {
+                throw new InvalidDataException(
+                    $"Token '{token.Key}' declares a XAML brush or alias but does not target XAML.");
+            }
+
             return;
         }
 

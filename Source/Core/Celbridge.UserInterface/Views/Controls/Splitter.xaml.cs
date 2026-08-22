@@ -136,7 +136,7 @@ public sealed partial class Splitter : UserControl
         _cursorController = ServiceLocator.AcquireService<ISplitterCursorController>();
 
         _normalBrush = (Brush)Application.Current.Resources["DividerBrush"];
-        _draggingBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+        _draggingBrush = (Brush)Application.Current.Resources["AccentBrush"];
 
         // The grab area is the gutter, so it takes the shared size unless this splitter was given one.
         if (ReadLocalValue(GrabAreaSizeProperty) == DependencyProperty.UnsetValue)

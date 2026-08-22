@@ -47,7 +47,7 @@
         <Grid Margin="0,-4,0,2">
             <!-- Attention flash overlay, pulsed to the accent color by FlashAttention. Behind the label and not hit-testable. -->
             <Border x:Name="AttentionOverlay"
-                    Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                    Background="{ThemeResource AccentBrush}"
                     CornerRadius="4"
                     Opacity="0"
                     IsHitTestVisible="False"
@@ -69,7 +69,7 @@
                                FontSize="16"
                                MinWidth="20"
                                Margin="0"
-                               Foreground="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                               Foreground="{ThemeResource AccentBrush}"
                                Visibility="{x:Bind ViewModel.IsUtility, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                 <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
@@ -83,7 +83,7 @@
             <Border x:Name="SelectionIndicator"
                     Height="3"
                     CornerRadius="1.5"
-                    Background="{ThemeResource NavigationViewSelectionIndicatorForeground}"
+                    Background="{ThemeResource AccentBrush}"
                     Visibility="Collapsed"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Bottom"

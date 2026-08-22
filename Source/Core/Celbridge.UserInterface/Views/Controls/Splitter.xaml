@@ -46,7 +46,7 @@
                  Fill="{ThemeResource DividerBrush}"/>
       <!-- Accent hover line - fades in on hover -->
       <Rectangle x:Name="HoverLine"
-                 Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                 Fill="{ThemeResource AccentBrush}"
                  Opacity="0"/>
     </Grid>
   </Border>

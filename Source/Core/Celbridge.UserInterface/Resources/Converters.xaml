@@ -8,9 +8,6 @@
     <!-- Converts a boolean value to a Visibility value (true = Visible, false = Collapsed) -->
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 
-    <!-- Converts a boolean value to an accent color brush (true = accent, false = transparent) -->
-    <services:BoolToAccentColorConverter x:Key="BoolToAccentColorConverter"/>
-
     <!-- Shortens an absolute path for display, replacing the user's home folder with a tilde -->
     <services:AbbreviatedPathConverter x:Key="AbbreviatedPathConverter"/>
 
