@@ -309,23 +309,24 @@
           ],
           "css": "--cel-accent",
           "light": "#0078D4",
-          "dark": "#60CDFF",
+          "dark": "#1F6FEB",
           "published": true,
-          "comment": "The accent is the application's own, not the one the operating system supplies. It carries meaning here, marking the selected category or the primary action, so it is held at a known contrast against the surfaces and the text drawn over it rather than left to a setting outside the application."
+          "comment": "The accent is the application's own, not the one the operating system supplies. It carries meaning here, marking the selected category or the primary action, so it is held at a known contrast against the surfaces and the text drawn over it rather than left to a setting outside the application.",
+          "darkComment": "A mid blue rather than a light one, so the same white sits over it as on the light theme. The cost is prominence: against the chrome surface it reads at about three to one, where a light accent reads at nearly eight."
         },
         "accent-hover": {
           "targets": ["css"],
           "css": "--cel-accent-hover",
           "light": "#006CBF",
-          "dark": "#73D3FF",
+          "dark": "#1B62CF",
           "published": true,
-          "comment": "The accent under the pointer, for the web surfaces. It steps away from the surface behind it, darker on light and lighter on dark, which is the direction the neutral button tones already take. The native side has no counterpart because WinUI derives its own hover from the accent ramp."
+          "comment": "The accent under the pointer, for the web surfaces. It darkens on both themes, which is the direction that protects the white over it. The native side has no counterpart because WinUI derives its own hover from the accent ramp."
         },
         "accent-pressed": {
           "targets": ["css"],
           "css": "--cel-accent-pressed",
           "light": "#0060AA",
-          "dark": "#86D9FF",
+          "dark": "#1854B3",
           "published": true,
           "comment": "A second step along the hover direction, so a press reads as further travel rather than a different colour."
         },
@@ -334,10 +335,9 @@
           "xaml": "AccentTextColor",
           "xamlBrush": "AccentTextBrush",
           "css": "--cel-accent-text",
-          "light": "#FFFFFF",
-          "dark": "#000000",
+          "value": "#FFFFFF",
           "published": true,
-          "comment": "Whatever is drawn over an accent fill. Black on the dark theme's accent rather than white: the dark accent is light enough that white over it reads at under two to one. WinUI holds the same pair for the text it draws over its own accent fills, so the two agree as long as the accent stays light on dark."
+          "comment": "Whatever is drawn over an accent fill. One value rather than a pair: both accents are dark enough to carry white, which is what choosing a mid blue on the dark theme buys. WinUI draws black over its own accent fills on the dark theme, so a native control the palette cannot reach reads black where ours read white."
         },
         "text-primary": {
           "targets": ["css"],
@@ -392,7 +392,7 @@
           "xamlBrush": "SelectionBackgroundBrush",
           "css": "--cel-selection-bg",
           "light": "#3C0078D4",
-          "dark": "#3C60CDFF",
+          "dark": "#3C1F6FEB",
           "published": true,
           "comment": "The wash over anything selected, whether that is a row in a list or a run of text. Translucent so it reads over whichever surface it lands on, and built from the accent of its own theme, so a selection and a focus ring are the same blue."
         }
