@@ -1,37 +1,7 @@
 using Celbridge.Settings;
+using Celbridge.UserInterface.Views.Controls;
 
 namespace Celbridge.UserInterface.ViewModels.Dialogs;
-
-/// <summary>
-/// One category in the settings dialog's rail: the stable key it is persisted under, the icon and label
-/// shown for it, the description of what it covers, the content shown while it is selected, and whether it
-/// is the selected one.
-/// </summary>
-public sealed partial class SettingsSection : ObservableObject
-{
-    public SettingsSection(string key, string iconName, string label, string description, object content)
-    {
-        Key = key;
-        IconName = iconName;
-        Label = label;
-        Description = description;
-        Content = content;
-    }
-
-    public string Key { get; }
-
-    public string IconName { get; }
-
-    public string Label { get; }
-
-    public string Description { get; }
-
-    public object Content { get; }
-
-    // Drives the rail row's checked state. Set by the view model so exactly one category carries it.
-    [ObservableProperty]
-    private bool _isSelected;
-}
 
 /// <summary>
 /// Coordinates the settings dialog's category rail. The categories themselves are self-contained views

@@ -3,6 +3,7 @@ using Celbridge.Settings.Services;
 using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Settings;
 using Celbridge.UserInterface.ViewModels.Dialogs;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.UserInterface;

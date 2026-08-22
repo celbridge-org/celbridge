@@ -1,6 +1,6 @@
 using Celbridge.Dialog;
 using Celbridge.UserInterface.ViewModels.Dialogs;
-using Microsoft.UI.Xaml.Controls.Primitives;
+using Celbridge.UserInterface.Views.Controls;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -29,30 +29,12 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
 
         this.InitializeComponent();
 
-        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
-        SectionArea.CornerRadius = new CornerRadius(panelCornerRadius);
-
         // The close button carries no text, so the label it reports comes from here.
         var closeText = _stringLocalizer.GetString("DialogButton_Close");
         ToolTipService.SetToolTip(CloseButton, closeText);
         AutomationProperties.SetName(CloseButton, closeText);
 
         this.EnableThemeSync();
-    }
-
-    private void RailButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton railButton
-            || railButton.DataContext is not SettingsSection section)
-        {
-            return;
-        }
-
-        ViewModel.SelectedSection = section;
-
-        // A toggle unchecks itself when clicked while already checked. The rail always has a category
-        // showing, so the row follows the view model rather than its own toggle.
-        railButton.IsChecked = section.IsSelected;
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
