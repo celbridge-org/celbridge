@@ -1,5 +1,6 @@
 using Celbridge.Dialog;
 using Celbridge.UserInterface.ViewModels.Dialogs;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -39,6 +40,21 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
         this.EnableThemeSync();
     }
 
+    private void RailButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton railButton
+            || railButton.DataContext is not SettingsSection section)
+        {
+            return;
+        }
+
+        ViewModel.SelectedSection = section;
+
+        // A toggle unchecks itself when clicked while already checked. The rail always has a category
+        // showing, so the row follows the view model rather than its own toggle.
+        railButton.IsChecked = section.IsSelected;
+    }
+
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Hide();
@@ -52,16 +68,19 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
         {
             new(
                 "Appearance",
+                "bs-palette",
                 _stringLocalizer.GetString("Settings_Appearance_SectionHeader"),
                 _stringLocalizer.GetString("Settings_Appearance_Description"),
                 new AppearanceSettingsView()),
             new(
                 "Workshop",
+                "bs-shop",
                 _stringLocalizer.GetString("Settings_Workshop_SectionHeader"),
                 _stringLocalizer.GetString("Settings_Workshop_Description"),
                 new WorkshopSettingsView()),
             new(
                 "WebView",
+                "bs-globe",
                 _stringLocalizer.GetString("Settings_WebView_SectionHeader"),
                 _stringLocalizer.GetString("Settings_WebView_Description"),
                 new WebViewSettingsView()),

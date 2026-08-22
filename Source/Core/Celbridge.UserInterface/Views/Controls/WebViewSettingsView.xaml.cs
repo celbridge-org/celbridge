@@ -11,7 +11,7 @@ public sealed partial class WebViewSettingsView : UserControl
 
     private string ClearBrowsingDataString => _stringLocalizer.GetString("Settings_WebView_ClearBrowsingData");
     private string ClearBrowsingDataHintString => _stringLocalizer.GetString("Settings_WebView_ClearBrowsingDataHint");
-    private string ClearConfirmMessageString => _stringLocalizer.GetString("Settings_WebView_ClearDialogMessage");
+    private string ClearConfirmMessageString => _stringLocalizer.GetString("Settings_WebView_ClearConfirmMessage");
     private string ClearConfirmButtonString => _stringLocalizer.GetString("Settings_WebView_ClearConfirmButton");
     private string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
 

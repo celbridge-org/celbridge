@@ -4,91 +4,28 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:viewmodels="using:Celbridge.UserInterface.ViewModels.Dialogs"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Background="{ThemeResource ChromeBackgroundBrush}">
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <ContentDialog.Resources>
     <!-- The default caps size a dialog for a prompt, which the settings sections do not fit into. Scoped
          here so the prompts keep the default. Held inside WindowMinimumSize.Authored* with room to spare,
          so the application is still visible around the dialog at the smallest window the user can make. -->
     <x:Double x:Key="ContentDialogMaxWidth">960</x:Double>
-    <x:Double x:Key="ContentDialogMaxHeight">580</x:Double>
+
+    <!-- The height cap leaves more room above the content than the chrome needs at the default text size,
+         so a title row and padding grown by the Windows text scale still fit rather than clipping the
+         fixed-height content below. -->
+    <x:Double x:Key="ContentDialogMaxHeight">620</x:Double>
 
     <!-- The title row and the content below it are separate parts of the template, so they are held to
          one width here to line their edges up. It sits well inside the cap above, because a row wide
          enough to reach it is clipped at the edge rather than laid out narrower. -->
     <x:Double x:Key="SettingsDialogContentWidth">880</x:Double>
 
-    <!-- A rail row takes the selected treatment every other rail in the application uses: the accent fill
-         with its content in the tone that reads against it, over the flat button's hover and press tints.
-         The framework's own selection indicator is replaced rather than restyled. -->
-    <Style x:Key="SettingsRailItemStyle" TargetType="ListViewItem">
-      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-      <Setter Property="Padding" Value="12,0"/>
-      <Setter Property="Margin" Value="0,0,0,2"/>
-      <Setter Property="MinHeight" Value="32"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="ListViewItem">
-            <Grid x:Name="ContentGrid"
-                  Padding="{TemplateBinding Padding}"
-                  Background="Transparent"
-                  CornerRadius="{StaticResource IconButtonCornerRadius}">
-              <ContentPresenter x:Name="ContentPresenter"
-                                VerticalAlignment="Center"/>
+    <!-- Fixed rather than sized to the category, so the dialog does not resize as the user moves down the
+         rail. Both extents are held here because they are chosen together against the window minimum. -->
+    <x:Double x:Key="SettingsDialogContentHeight">460</x:Double>
 
-              <VisualStateManager.VisualStateGroups>
-                <VisualStateGroup x:Name="CommonStates">
-                  <VisualState x:Name="Normal"/>
-
-                  <VisualState x:Name="PointerOver">
-                    <VisualState.Setters>
-                      <Setter Target="ContentGrid.Background" Value="{ThemeResource ButtonHoverBackgroundBrush}"/>
-                    </VisualState.Setters>
-                  </VisualState>
-
-                  <VisualState x:Name="Pressed">
-                    <VisualState.Setters>
-                      <Setter Target="ContentGrid.Background" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
-                    </VisualState.Setters>
-                  </VisualState>
-
-                  <VisualState x:Name="Selected">
-                    <VisualState.Setters>
-                      <Setter Target="ContentGrid.Background" Value="{ThemeResource AccentBrush}"/>
-                      <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource AccentTextBrush}"/>
-                    </VisualState.Setters>
-                  </VisualState>
-
-                  <!-- The framework names the combined states pointer-first. A state it asks for that is
-                       not declared here leaves the previous one on screen, which reads as the highlight
-                       arriving late. -->
-                  <VisualState x:Name="PointerOverSelected">
-                    <VisualState.Setters>
-                      <Setter Target="ContentGrid.Background" Value="{ThemeResource AccentBrush}"/>
-                      <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource AccentTextBrush}"/>
-                    </VisualState.Setters>
-                  </VisualState>
-
-                  <VisualState x:Name="PressedSelected">
-                    <VisualState.Setters>
-                      <Setter Target="ContentGrid.Background" Value="{ThemeResource AccentBrush}"/>
-                      <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource AccentTextBrush}"/>
-                    </VisualState.Setters>
-                  </VisualState>
-
-                  <VisualState x:Name="PointerOverPressed">
-                    <VisualState.Setters>
-                      <Setter Target="ContentGrid.Background" Value="{ThemeResource ButtonActiveBackgroundBrush}"/>
-                    </VisualState.Setters>
-                  </VisualState>
-                </VisualStateGroup>
-              </VisualStateManager.VisualStateGroups>
-            </Grid>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
   </ContentDialog.Resources>
 
   <!-- Closing is leaving rather than an action to commit, so it is an X in the title row instead of a
@@ -119,32 +56,37 @@
   <!-- The rail sits on the chrome surface and the section is carved out of it, the same way a panel is
        carved out of the workspace, with the gutter as the channel between them. -->
   <Grid Width="{StaticResource SettingsDialogContentWidth}"
-        Height="460"
+        Height="{StaticResource SettingsDialogContentHeight}"
         ColumnSpacing="{StaticResource GutterSize}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="150"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
-    <ListView ItemsSource="{x:Bind ViewModel.Sections}"
-              SelectedItem="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}"
-              SelectionMode="Single"
-              ItemContainerStyle="{StaticResource SettingsRailItemStyle}"
-              Background="Transparent"
-              BorderThickness="0"
-              Padding="0,10,0,0">
-      <ListView.ItemContainerTransitions>
-        <TransitionCollection/>
-      </ListView.ItemContainerTransitions>
-
-      <ListView.ItemTemplate>
+    <!-- The top padding drops the first row onto the section heading's line: it is the heading band's
+         inset less half the difference between a row's height and its text. Retune it if any of those
+         three change. -->
+    <ItemsControl ItemsSource="{x:Bind ViewModel.Sections, Mode=OneWay}"
+                  Padding="0,10,0,0">
+      <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="viewmodels:SettingsSection">
-          <TextBlock Text="{x:Bind Label}"
-                     TextWrapping="NoWrap"
-                     VerticalAlignment="Center"/>
+          <controls:IconToggleButton Style="{StaticResource RailButtonStyle}"
+                                     Margin="0,0,0,2"
+                                     IsChecked="{x:Bind IsSelected, Mode=OneWay}"
+                                     Click="RailButton_Click">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="10">
+              <controls:Icon IconName="{x:Bind IconName}"
+                             FontSize="{StaticResource IconSizeMedium}"
+                             VerticalAlignment="Center"/>
+              <TextBlock Text="{x:Bind Label}"
+                         TextWrapping="NoWrap"
+                         VerticalAlignment="Center"/>
+            </StackPanel>
+          </controls:IconToggleButton>
         </DataTemplate>
-      </ListView.ItemTemplate>
-    </ListView>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
 
     <!-- Corners are set in code-behind from PanelCornerRadius, which is a Double. -->
     <Border x:Name="SectionArea"
@@ -158,8 +100,7 @@
           <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- The section name and what it is for, closed by a rule, matching the band the Project Settings
-             panel puts above its sections. -->
+        <!-- Matches the band the Project Settings panel puts above its sections. -->
         <Border BorderBrush="{ThemeResource DividerBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="16">

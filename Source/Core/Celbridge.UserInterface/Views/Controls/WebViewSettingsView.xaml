@@ -4,15 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:converters="using:Celbridge.UserInterface.Converters"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    HorizontalAlignment="Left">
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <UserControl.Resources>
     <converters:StatusSeverityConverter x:Key="StatusSeverityConverter"/>
   </UserControl.Resources>
 
-  <StackPanel Spacing="24"
-              HorizontalAlignment="Left">
+  <StackPanel Spacing="24">
 
     <StackPanel Spacing="8">
       <Button Content="{x:Bind ClearBrowsingDataString}"
@@ -22,7 +20,6 @@
               Command="{x:Bind ViewModel.BeginClearBrowsingDataCommand}"/>
 
       <Border Visibility="{x:Bind ViewModel.IsConfirmingClear, Mode=OneWay}"
-              MaxWidth="784"
               Padding="12"
               CornerRadius="4"
               BorderThickness="1"
@@ -58,7 +55,6 @@
 
       <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                  TextWrapping="Wrap"
-                 MaxWidth="784"
                  Text="{x:Bind ClearBrowsingDataHintString}"/>
     </StackPanel>
 
@@ -66,7 +62,6 @@
              Severity="{x:Bind ViewModel.StatusSeverity, Mode=OneWay, Converter={StaticResource StatusSeverityConverter}}"
              Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
              IsClosable="False"
-             MaxWidth="784"
              HorizontalAlignment="Left"/>
 
   </StackPanel>

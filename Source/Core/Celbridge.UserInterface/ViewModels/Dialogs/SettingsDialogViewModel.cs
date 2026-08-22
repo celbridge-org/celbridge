@@ -3,10 +3,35 @@ using Celbridge.Settings;
 namespace Celbridge.UserInterface.ViewModels.Dialogs;
 
 /// <summary>
-/// One category in the settings dialog's rail: the stable key it is persisted under, the label and
-/// description shown for it, and the content shown while it is selected.
+/// One category in the settings dialog's rail: the stable key it is persisted under, the icon and label
+/// shown for it, the description of what it covers, the content shown while it is selected, and whether it
+/// is the selected one.
 /// </summary>
-public sealed partial record SettingsSection(string Key, string Label, string Description, object Content);
+public sealed partial class SettingsSection : ObservableObject
+{
+    public SettingsSection(string key, string iconName, string label, string description, object content)
+    {
+        Key = key;
+        IconName = iconName;
+        Label = label;
+        Description = description;
+        Content = content;
+    }
+
+    public string Key { get; }
+
+    public string IconName { get; }
+
+    public string Label { get; }
+
+    public string Description { get; }
+
+    public object Content { get; }
+
+    // Drives the rail row's checked state. Set by the view model so exactly one category carries it.
+    [ObservableProperty]
+    private bool _isSelected;
+}
 
 /// <summary>
 /// Coordinates the settings dialog's category rail. The categories themselves are self-contained views
@@ -20,7 +45,11 @@ public partial class SettingsDialogViewModel : ObservableObject
     // immediately rewrite it.
     private bool _sectionPersistenceEnabled;
 
-    public IReadOnlyList<SettingsSection> Sections { get; private set; } = Array.Empty<SettingsSection>();
+    // The category to fall back on when the rail reports no selection.
+    private SettingsSection? _lastSelectedSection;
+
+    [ObservableProperty]
+    private IReadOnlyList<SettingsSection> _sections = Array.Empty<SettingsSection>();
 
     [ObservableProperty]
     private SettingsSection? _selectedSection;
@@ -52,8 +81,22 @@ public partial class SettingsDialogViewModel : ObservableObject
 
     partial void OnSelectedSectionChanged(SettingsSection? value)
     {
-        if (value is null
-            || !_sectionPersistenceEnabled)
+        if (value is null)
+        {
+            // Nothing in the rail clears the selection, but the property is public: hold the invariant that
+            // a category is always showing rather than leaving it to callers.
+            SelectedSection = _lastSelectedSection;
+            return;
+        }
+
+        foreach (var section in Sections)
+        {
+            section.IsSelected = ReferenceEquals(section, value);
+        }
+
+        _lastSelectedSection = value;
+
+        if (!_sectionPersistenceEnabled)
         {
             return;
         }

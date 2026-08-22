@@ -1,4 +1,4 @@
-﻿<ContentDialog
+<ContentDialog
   x:Class="Celbridge.UserInterface.Views.NewFileDialog"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -19,6 +19,7 @@
     <!-- File name text box -->
     <TextBox x:Name="FileNameTextBox"
              Header="{x:Bind HeaderString}"
+             HeaderTemplate="{StaticResource FieldHeaderTemplate}"
              Text="{x:Bind ViewModel.FileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
              IsSpellCheckEnabled="False"
              AcceptsReturn="False"
@@ -27,6 +28,7 @@
     <!-- File type dropdown -->
     <ComboBox x:Name="FileTypeComboBox"
               Header="{x:Bind FileTypeString}"
+              HeaderTemplate="{StaticResource FieldHeaderTemplate}"
               HorizontalAlignment="Stretch"
               Margin="0,8,0,0"
               SelectedIndex="{x:Bind ViewModel.SelectedFileTypeIndex, Mode=TwoWay}">
