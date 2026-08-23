@@ -50,6 +50,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Packages\Celbridge.Packages.csproj" />
+    <ProjectReference Include="..\..\Workspace\Celbridge.ProjectSettings\Celbridge.ProjectSettings.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Resources\Celbridge.Resources.csproj" />
   </ItemGroup>
 

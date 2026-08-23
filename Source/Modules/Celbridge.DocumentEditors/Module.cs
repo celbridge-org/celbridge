@@ -1,5 +1,6 @@
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.ProjectSettings;
 using Celbridge.Resources;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -23,7 +24,7 @@ public class Module : IModule
         var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
         return
         [
-            new ProjectFileFactory(stringLocalizer),
+            new ProjectSettingsEditorFactory(stringLocalizer),
             new PackageManifestFactory(stringLocalizer),
             new EditorManifestFactory(stringLocalizer),
         ];

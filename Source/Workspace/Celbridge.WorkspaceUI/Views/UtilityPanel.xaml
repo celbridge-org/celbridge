@@ -38,7 +38,8 @@
                 </StackPanel>
 
                 <!-- Project Settings sits just below the utilities, set apart by a gap but still grouped with
-                     them for discoverability, rather than pinned to the far bottom of the rail. -->
+                     them for discoverability. It opens a document rather than selecting a surface, so it is
+                     not a rail item and carries no selection or focus state. -->
                 <rail:UtilityButton x:Name="ProjectSettingsButton"
                                     Margin="0,16,0,0" />
             </StackPanel>
@@ -71,11 +72,6 @@
                             VerticalContentAlignment="Stretch"
                             ui:FocusTracking.PreservePanelFocus="True" />
             <ContentControl x:Name="SearchPanelControl"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch"
-                            Visibility="Collapsed"
-                            ui:FocusTracking.PreservePanelFocus="True" />
-            <ContentControl x:Name="ProjectSettingsPanelControl"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch"
                             Visibility="Collapsed"

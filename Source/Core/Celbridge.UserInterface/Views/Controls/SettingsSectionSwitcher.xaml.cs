@@ -9,13 +9,20 @@ namespace Celbridge.UserInterface.Views.Controls;
 /// </summary>
 public sealed partial class SettingsSection : ObservableObject
 {
-    public SettingsSection(string key, string iconName, string label, string description, object content)
+    public SettingsSection(
+        string key,
+        string iconName,
+        string label,
+        string description,
+        object content,
+        string issueTooltip = "")
     {
         Key = key;
         IconName = iconName;
         Label = label;
         Description = description;
         Content = content;
+        IssueTooltip = issueTooltip;
     }
 
     public string Key { get; }
@@ -28,9 +35,19 @@ public sealed partial class SettingsSection : ObservableObject
 
     public object Content { get; }
 
+    /// <summary>
+    /// The tooltip shown on the section's issue pip. Empty for a section that never reports an issue.
+    /// </summary>
+    public string IssueTooltip { get; }
+
     // Drives the rail row's checked state. Set by the owning view model so exactly one section carries it.
     [ObservableProperty]
     private bool _isSelected;
+
+    // Raises a caution pip on the section's rail row, reporting that the section has something to look at.
+    // Set by the owning view model.
+    [ObservableProperty]
+    private bool _hasIssue;
 }
 
 /// <summary>
@@ -78,6 +95,23 @@ public sealed partial class SettingsSectionSwitcher : UserControl
             typeof(SettingsSectionSwitcher),
             new PropertyMetadata(null, OnSelectedSectionChanged));
 
+    /// <summary>
+    /// Content shown in the rail below the section rows, for a surface that carries an action belonging to
+    /// the whole surface rather than to one section.
+    /// </summary>
+    public object? RailFooter
+    {
+        get => GetValue(RailFooterProperty);
+        set => SetValue(RailFooterProperty, value);
+    }
+
+    public static readonly DependencyProperty RailFooterProperty =
+        DependencyProperty.Register(
+            nameof(RailFooter),
+            typeof(object),
+            typeof(SettingsSectionSwitcher),
+            new PropertyMetadata(null, OnRailFooterChanged));
+
     public SettingsSectionSwitcher()
     {
         this.InitializeComponent();
@@ -96,6 +130,12 @@ public sealed partial class SettingsSectionSwitcher : UserControl
     {
         var switcher = (SettingsSectionSwitcher)d;
         switcher.ApplySelection();
+    }
+
+    private static void OnRailFooterChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var switcher = (SettingsSectionSwitcher)d;
+        switcher.RailFooterPresenter.Content = e.NewValue;
     }
 
     // Realizes every section's content up front. Each gets its own scroll container, so a section keeps

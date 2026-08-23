@@ -1,6 +1,5 @@
 using Celbridge.Documents;
 using Celbridge.Explorer;
-using Celbridge.ProjectSettings;
 using Celbridge.Search;
 
 namespace Celbridge.Workspace;
@@ -19,11 +18,6 @@ public static class BuiltInUtilityIds
     /// The Search panel's utility id.
     /// </summary>
     public static readonly EditorId Search = EditorId.Create("celbridge", "search");
-
-    /// <summary>
-    /// The Project Settings panel's utility id.
-    /// </summary>
-    public static readonly EditorId ProjectSettings = EditorId.Create("celbridge", "project-settings");
 }
 
 /// <summary>
@@ -52,11 +46,6 @@ public interface IUtilityPanel
     /// Gets the Search Panel for searching within the project.
     /// </summary>
     ISearchPanel SearchPanel { get; }
-
-    /// <summary>
-    /// Gets the Project Settings Panel for editing the .celbridge project config.
-    /// </summary>
-    IProjectSettingsPanel ProjectSettingsPanel { get; }
 
     /// <summary>
     /// The utility id of the surface currently active in the rail. Empty when no rail surface is active.

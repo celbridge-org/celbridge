@@ -3,7 +3,7 @@ using Celbridge.Community;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Packages;
-using Celbridge.ProjectSettings;
+using Celbridge.Projects;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -35,6 +35,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private const string SearchLandmarkId = "search-utility-button";
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
 
+    // The editor the Project Settings button opens the project file with.
+    private static readonly EditorId ProjectSettingsEditorId = new("celbridge.project-file");
+
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
     // and focus state, which the buttons bind to.
@@ -56,7 +59,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public IExplorerPanel ExplorerPanel { get; }
     public ISearchPanel SearchPanel { get; }
-    public IProjectSettingsPanel ProjectSettingsPanel { get; }
 
     public UtilityPanelViewModel ViewModel { get; }
 
@@ -106,10 +108,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // Acquire panel views via DI and host them in ContentControls
         ExplorerPanel = ServiceLocator.AcquireService<IExplorerPanel>();
         SearchPanel = ServiceLocator.AcquireService<ISearchPanel>();
-        ProjectSettingsPanel = ServiceLocator.AcquireService<IProjectSettingsPanel>();
         ExplorerPanelControl.Content = ExplorerPanel as UIElement;
         SearchPanelControl.Content = SearchPanel as UIElement;
-        ProjectSettingsPanelControl.Content = ProjectSettingsPanel as UIElement;
 
         ViewModel = ServiceLocator.AcquireService<UtilityPanelViewModel>();
         DataContext = ViewModel;
@@ -140,22 +140,43 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         BindButton(SearchButton, searchItem);
         SearchButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Search);
 
-        var projectSettingsItem = ViewModel.AddItem(BuiltInUtilityIds.ProjectSettings, WorkspacePanelId.ProjectSettings);
-
+        // Project Settings opens a document rather than selecting a surface, so the button is a launcher
+        // like the community links: no rail item, no content host, no focus action.
         ProjectSettingsButton.SetIcon(IconSymbol.Sliders);
         ProjectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
-        BindButton(ProjectSettingsButton, projectSettingsItem);
-        ProjectSettingsButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.ProjectSettings);
+        ProjectSettingsButton.Click += (sender, e) => OpenProjectSettings();
 
         _buttons[BuiltInUtilityIds.Explorer] = ExplorerButton;
         _buttons[BuiltInUtilityIds.Search] = SearchButton;
-        _buttons[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsButton;
         _contentControls[BuiltInUtilityIds.Explorer] = ExplorerPanelControl;
         _contentControls[BuiltInUtilityIds.Search] = SearchPanelControl;
-        _contentControls[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsPanelControl;
         _focusActions[BuiltInUtilityIds.Explorer] = ExplorerPanel.FocusPanel;
         _focusActions[BuiltInUtilityIds.Search] = SearchPanel.FocusSearchInput;
-        _focusActions[BuiltInUtilityIds.ProjectSettings] = ProjectSettingsPanel.FocusPanel;
+    }
+
+    // Opens the Project Settings editor on the project file, naming the editor so the choice does not
+    // depend on extension resolution. Already open, the command activates its tab.
+    private void OpenProjectSettings()
+    {
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var project = projectService.CurrentProject;
+        if (project is null)
+        {
+            return;
+        }
+
+        // The project file sits at the project root, so its resource key is just the file name.
+        var projectFileName = Path.GetFileName(project.ProjectFilePath);
+        if (!ResourceKey.TryCreate(projectFileName, out var projectFileResource))
+        {
+            return;
+        }
+
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = projectFileResource;
+            command.EditorId = ProjectSettingsEditorId;
+        });
     }
 
     private void InitializeCommunityButtons()
@@ -210,7 +231,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // whichever is focused after a modal dialog closes or the resource tree rebuilds.
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, ExplorerPanel.FocusPanel);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, SearchPanel.FocusSearchInput);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.ProjectSettings, ProjectSettingsPanel.FocusPanel);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, FocusActiveCustomUtility);
 
         // The utility panels drop their own header focus indicator and show focus on the selected rail button
@@ -230,7 +250,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Unregister<PackagesInitializedMessage>(this);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, null);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, null);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.ProjectSettings, null);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, null);
     }
 
@@ -299,12 +318,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         if (!_contentControls.ContainsKey(utilityId))
         {
             return;
-        }
-
-        // Re-read the project config each time Project Settings is shown so it reflects the on-disk file.
-        if (utilityId == BuiltInUtilityIds.ProjectSettings)
-        {
-            ProjectSettingsPanel.Refresh();
         }
 
         // A lazy-load utility creates its WebView on first show. The surface is shown
@@ -561,8 +574,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         return !utilityId.IsEmpty
             && utilityId != BuiltInUtilityIds.Explorer
-            && utilityId != BuiltInUtilityIds.Search
-            && utilityId != BuiltInUtilityIds.ProjectSettings;
+            && utilityId != BuiltInUtilityIds.Search;
     }
 
     // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".

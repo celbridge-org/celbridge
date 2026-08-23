@@ -746,9 +746,6 @@ Open with default application instead?</value>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse All Folders</value>
   </data>
-  <data name="ProjectSettingsPanel_Title" xml:space="preserve">
-    <value>Project Settings</value>
-  </data>
   <data name="ProjectSettings_PackagesHeader" xml:space="preserve">
     <value>Packages</value>
   </data>

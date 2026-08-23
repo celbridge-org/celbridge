@@ -334,10 +334,15 @@
           "targets": ["xaml", "css"],
           "xaml": "AccentTextColor",
           "xamlBrush": "AccentTextBrush",
+          "xamlAliases": [
+            "AccentButtonForeground",
+            "AccentButtonForegroundPointerOver",
+            "AccentButtonForegroundPressed"
+          ],
           "css": "--cel-accent-text",
           "value": "#FFFFFF",
           "published": true,
-          "comment": "Whatever is drawn over an accent fill. One value rather than a pair: both accents are dark enough to carry white, which is what choosing a mid blue on the dark theme buys. WinUI draws black over its own accent fills on the dark theme, so a native control the palette cannot reach reads black where ours read white."
+          "comment": "Whatever is drawn over an accent fill. One value rather than a pair: both accents are dark enough to carry white, which is what choosing a mid blue on the dark theme buys. WinUI holds a fixed black-on-dark, white-on-light pair for text over its own accent fills, so anything left on its default reads black where ours read white. The accent button is redirected here because its style resolves AccentButtonForeground and the hover and press variants by key. Its disabled state is left alone, having no tone in this palette. What stays out of reach is a style binding TextOnAccentFillColorPrimaryBrush itself, which WinUI reaches through a StaticResource alias captured at parse time."
         },
         "text-primary": {
           "targets": ["css"],
