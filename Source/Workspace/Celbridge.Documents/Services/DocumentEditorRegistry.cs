@@ -10,7 +10,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
     // The resolution band a factory falls into, ordered highest priority first: placeholders
     // reserve their names ahead of everything, then declared editors in registration order,
-    // then built-ins in the pinned host order, then built-ins outside that list.
+    // then built-ins in their pinned order, then built-ins outside that list.
     private enum EditorRankBand
     {
         Placeholder,
@@ -19,7 +19,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         UnlistedBuiltIn,
     }
 
-    // A factory's resolution rank: its band first, then its position within the band (host order
+    // A factory's resolution rank: its band first, then its position within the band (the pinned order
     // for built-ins, registration order otherwise). Lower sorts first.
     private readonly record struct EditorRank(EditorRankBand Band, int SubOrder) : IComparable<EditorRank>
     {
@@ -314,9 +314,9 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         }
 
         var hostOrderIndex = -1;
-        for (int i = 0; i < BuiltInEditors.HostResolutionOrder.Count; i++)
+        for (int i = 0; i < BuiltInEditors.BuiltInResolutionOrder.Count; i++)
         {
-            if (BuiltInEditors.HostResolutionOrder[i] == factory.EditorId)
+            if (BuiltInEditors.BuiltInResolutionOrder[i] == factory.EditorId)
             {
                 hostOrderIndex = i;
                 break;

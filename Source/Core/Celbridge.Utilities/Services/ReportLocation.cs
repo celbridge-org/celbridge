@@ -39,15 +39,12 @@ public static class ReportLocation
     }
 
     /// <summary>
-    /// The folder reports are written to for the project at the given path.
+    /// The folder reports are written to, inside the given project data folder.
     /// </summary>
-    public static string ResolveFolderPath(string projectFilePath)
+    public static string ResolveFolderPath(string projectDataFolderPath)
     {
-        var projectFolder = Path.GetDirectoryName(projectFilePath) ?? string.Empty;
-
         return Path.Combine(
-            projectFolder,
-            ProjectConstants.CelbridgeFolder,
+            projectDataFolderPath,
             ProjectConstants.LogsFolder,
             ReportsFolderName);
     }
@@ -68,9 +65,9 @@ public static class ReportLocation
     public static async Task<Result<ResourceKey>> WriteReportAsync(
         IReportWriter reportWriter,
         ReportDocument report,
-        string projectFilePath)
+        string projectDataFolderPath)
     {
-        var reportsFolderPath = ResolveFolderPath(projectFilePath);
+        var reportsFolderPath = ResolveFolderPath(projectDataFolderPath);
 
         var writeResult = await reportWriter.WriteReportAsync(report, reportsFolderPath);
         if (writeResult.IsFailure)

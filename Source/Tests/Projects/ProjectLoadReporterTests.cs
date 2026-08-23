@@ -39,10 +39,13 @@ public class ProjectLoadReporterTests
 
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
         var reportWriter = new ReportWriter(_fileSystem, MigrationTestHelper.CreateMockLogger<ReportWriter>());
+        // No current project: the reports land in the default location, which is where a project that
+        // names no data folder keeps them.
         _reporter = new ProjectLoadReporter(
             reportWriter,
             MigrationTestHelper.CreateMockLogger<ProjectLoadReporter>(),
-            new TestLocalizerService());
+            new TestLocalizerService(),
+            Substitute.For<IProjectService>());
     }
 
     [TearDown]

@@ -9,17 +9,20 @@ public sealed class TrashService : ITrashService
     private readonly ILogger<TrashService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
 
     public TrashService(
         ILogger<TrashService> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _fileSystem = fileSystem;
     }
 
@@ -30,8 +33,7 @@ public sealed class TrashService : ITrashService
         _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
 
     private string TrashFolderPath => Path.Combine(
-        ResourceRegistry.ProjectFolderPath,
-        ProjectConstants.CelbridgeFolder,
+        _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.TrashFolder);
 
     public async Task<Result<TrashEntry>> MoveToTrashAsync(ResourceKey resource)

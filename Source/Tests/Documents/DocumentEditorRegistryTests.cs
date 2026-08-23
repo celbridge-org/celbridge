@@ -108,7 +108,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        // The code editor registers first, but the pinned host order places the
+        // The code editor registers first, but the pinned order places the
         // markdown editor ahead of it.
         var codeFactory = CreateMockFactory(BuiltInEditors.CodeEditorId.ToString(), ".md");
         var markdownFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");

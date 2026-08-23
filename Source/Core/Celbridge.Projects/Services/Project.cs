@@ -12,6 +12,9 @@ public record Project(
     bool ConfigIsHealthy,
     Result? ConfigLoadFailure) : IProject
 {
+    public string ProjectDataFolderPath =>
+        ProjectDataFolder.ResolvePath(ProjectFolderPath, Config.Celbridge.DataFolder);
+
     public bool IsProjectFile(ResourceKey resource)
     {
         // Path rather than ToString, which carries the "project:" root prefix.

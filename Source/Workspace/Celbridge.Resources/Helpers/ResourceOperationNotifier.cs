@@ -82,6 +82,11 @@ public sealed class ResourceOperationNotifier
             return;
         }
 
+        // Both surfaces below are read by a person, so a typed reason becomes a localized sentence here.
+        // The caller's own list keeps the operation's message, which is what a batch command returns to a
+        // programmatic caller.
+        failedResources = ResourceOperationFailureFormatter.Localize(failedResources, _localizerService);
+
         var reportResource = ResourceKey.Empty;
         if (itemCount > 1)
         {
@@ -118,7 +123,7 @@ public sealed class ResourceOperationNotifier
 
         var report = BuildReport(reportKind, failedResources, skippedReferencers);
 
-        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectFilePath);
+        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectDataFolderPath);
         if (writeResult.IsFailure)
         {
             _logger.LogWarning(writeResult, "Failed to write the resource operation report.");

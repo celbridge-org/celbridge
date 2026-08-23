@@ -35,8 +35,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private const string SearchLandmarkId = "search-utility-button";
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
 
-    // The editor the Project Settings button opens the project file with.
-    private static readonly EditorId ProjectSettingsEditorId = new("celbridge.project-file");
 
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
@@ -175,7 +173,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = projectFileResource;
-            command.EditorId = ProjectSettingsEditorId;
+            command.EditorId = BuiltInEditors.ProjectSettingsEditorId;
         });
     }
 

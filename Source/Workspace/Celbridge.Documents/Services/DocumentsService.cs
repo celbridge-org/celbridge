@@ -432,6 +432,22 @@ public class DocumentsService : IDocumentsService, IDisposable
         return new ExtensionEditorCandidates(candidates, defaultEditorId);
     }
 
+    public bool IsReservedFileType(string fileExtension)
+    {
+        // An exact match rather than the suffix walk: ".editor.toml" is reserved while ".toml" is an
+        // ordinary text file the user may reassign.
+        var factories = _documentEditorRegistry.GetFactoriesForExtension(fileExtension);
+        foreach (var factory in factories)
+        {
+            if (factory.ReservesFileType)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // The editor the resolution rules pick when the file has no per-file override: the
     // editor-associations entry if one matches, else the first non-placeholder supporting factory in
     // resolution order.

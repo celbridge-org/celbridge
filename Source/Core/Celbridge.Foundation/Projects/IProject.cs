@@ -21,6 +21,12 @@ public interface IProject
     string ProjectFolderPath { get; }
 
     /// <summary>
+    /// Returns the path to the folder this project's local data is written under. Sits inside the
+    /// hidden project folder, in the sub-folder the config names when it names one.
+    /// </summary>
+    string ProjectDataFolderPath { get; }
+
+    /// <summary>
     /// Gets the project configuration.
     /// </summary>
     public ProjectConfig Config { get; }

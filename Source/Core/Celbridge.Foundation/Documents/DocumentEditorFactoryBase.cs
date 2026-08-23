@@ -16,6 +16,8 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 
     public virtual bool IsPlaceholder => false;
 
+    public virtual bool ReservesFileType => IsPlaceholder;
+
     public virtual bool IsUtility => false;
 
     public virtual bool CanHandleResource(ResourceKey fileResource)

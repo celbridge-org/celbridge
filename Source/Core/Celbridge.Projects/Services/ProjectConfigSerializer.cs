@@ -38,6 +38,10 @@ public static class ProjectConfigSerializer
         {
             WriteKeyValue(builder, "description", RenderString(celbridge.Description));
         }
+        if (!string.IsNullOrEmpty(celbridge.DataFolder))
+        {
+            WriteKeyValue(builder, "data-folder", RenderString(celbridge.DataFolder));
+        }
         if (celbridge.EditorAssociations.Count > 0)
         {
             WriteKeyValue(builder, "editor-associations", RenderInlineTable(celbridge.EditorAssociations));

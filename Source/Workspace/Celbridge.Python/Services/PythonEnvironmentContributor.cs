@@ -19,7 +19,7 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
 
     public async Task ContributeAsync(ConsoleSessionContext context, IDictionary<string, string> environment)
     {
-        var hostEnvironment = await _launchService.BuildConsoleEnvironmentAsync(context.ProjectFolderPath);
+        var hostEnvironment = await _launchService.BuildConsoleEnvironmentAsync();
 
         foreach (var pair in hostEnvironment)
         {
@@ -27,7 +27,7 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
             if (pair.Key == "PATH")
             {
                 environment.TryGetValue("PATH", out var basePath);
-                environment["PATH"] = _launchService.BuildConsolePath(context.ProjectFolderPath, basePath);
+                environment["PATH"] = _launchService.BuildConsolePath(basePath);
                 continue;
             }
 

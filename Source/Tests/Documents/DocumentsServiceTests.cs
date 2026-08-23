@@ -179,6 +179,38 @@ public class DocumentsServiceTests
         pickList!.SelectedIndex.Should().Be(0);
     }
 
+    [Test]
+    public void IsReservedFileType_ExtensionClaimedByAReservingEditor_IsReserved()
+    {
+        // The Project Settings editor reserves .celbridge, so the File Types page leaves it out rather
+        // than offering to point it at a different editor.
+        var factory = CreateFactory(new EditorId("test.reserving-editor"), ".celbridge", "Reserving Editor");
+        factory.ReservesFileType.Returns(true);
+        _registry.RegisterFactory(factory);
+
+        _documentsService.IsReservedFileType(".celbridge").Should().BeTrue();
+    }
+
+    [Test]
+    public void IsReservedFileType_OrdinaryExtension_IsNotReserved()
+    {
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.md-editor"), ".md", "Markdown Editor"));
+
+        _documentsService.IsReservedFileType(".md").Should().BeFalse();
+    }
+
+    [Test]
+    public void IsReservedFileType_ParentOfAReservedMultiPartExtension_IsNotReserved()
+    {
+        // The reservation is on the exact extension: ".editor.toml" carries a package role while ".toml"
+        // is an ordinary text file the user may reassign.
+        var factory = CreateFactory(new EditorId("test.manifest"), ".editor.toml", "Editor Manifest");
+        factory.ReservesFileType.Returns(true);
+        _registry.RegisterFactory(factory);
+
+        _documentsService.IsReservedFileType(".toml").Should().BeFalse();
+    }
+
     private static IDocumentEditorFactory CreateFactory(
         EditorId editorId,
         string extension,

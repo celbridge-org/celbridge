@@ -22,6 +22,7 @@ Utility Panel rail (the icon strip on the far left that switches the primary pan
 
 - `explorer-utility-button` — the Explorer icon in the rail.
 - `search-utility-button` — the Search icon in the rail.
+- `project-settings-utility-button` — the Project Settings icon in the rail, which opens the project file as a document.
 - `learn-utility-button` — the Learn icon, in the community group at the bottom of the rail.
 - `forum-utility-button` — the Forum icon, in the community group at the bottom of the rail.
 
@@ -30,7 +31,6 @@ Explorer toolbar (its buttons are revealed automatically when spotlighted):
 - `new-file-button` — the new-file button in the Explorer toolbar.
 - `new-folder-button` — the new-folder button in the Explorer toolbar.
 - `collapse-folders-button` — the collapse-all-folders button in the Explorer toolbar.
-- `project-settings-button` — the project-settings button in the Explorer toolbar.
 
 Utilities (dynamic; the `{utilityId}` is the id `app_list_utilities` reports, e.g. `widget-picker-utility-button`):
 

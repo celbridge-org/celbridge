@@ -19,6 +19,9 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
 
+    // Resolved once at construction, so the unload clears exactly the folder the load created.
+    private readonly string _trashFolderPath;
+
     public IResourceRegistry Registry { get; }
     public IRootHandlerRegistry RootHandlers { get; }
     public IResourceMonitor Monitor { get; }
@@ -80,38 +83,38 @@ public class ResourceService : IResourceService, IDisposable
         Scanner = resourceScanner;
         Sidecars = sidecarService;
 
-        var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-        Registry.InitializeProjectRoot(projectFolderPath);
+        var project = _projectService.CurrentProject!;
+        Registry.InitializeProjectRoot(project.ProjectFolderPath);
 
-        // Build the .celbridge/ hidden folder layout: temp/, logs/, utils/, trash/.
-        // These need to exist before downstream services start reading or
-        // watching them.
-        var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
-        var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.TempFolder);
-        var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.LogsFolder);
-        var celbridgeUtilsFolder = Path.Combine(celbridgeFolder, ProjectConstants.UtilsFolder);
-        var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.TrashFolder);
+        // The backing folders are created here because downstream services start
+        // reading and watching them as soon as the workspace loads.
+        var projectDataFolder = project.ProjectDataFolderPath;
+        var tempFolder = Path.Combine(projectDataFolder, ProjectConstants.TempFolder);
+        var logsFolder = Path.Combine(projectDataFolder, ProjectConstants.LogsFolder);
+        var utilsFolder = Path.Combine(projectDataFolder, ProjectConstants.UtilsFolder);
+        var trashFolder = Path.Combine(projectDataFolder, ProjectConstants.TrashFolder);
+        _trashFolderPath = trashFolder;
 
         // temp:/ is wiped on every workspace load. The contract is that nothing
         // under temp: survives a reload; consumers needing persistence write
         // under project: instead.
-        TryDeleteFolder(celbridgeTempFolder);
-        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTempFolder));
-        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeLogsFolder));
+        TryDeleteFolder(tempFolder);
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(tempFolder));
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(logsFolder));
 
         // utils:/ is the persistent home for utility-document state, so it is
         // deliberately not wiped. The folder is created here so the watcher can
         // attach to it even before the first utility writes its state.
-        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeUtilsFolder));
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(utilsFolder));
 
         // Trash is cleared on every workspace load; undo history lives in memory only,
         // so previous-session trash content has no live handles.
-        TryDeleteFolder(celbridgeTrashFolder);
-        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTrashFolder));
+        TryDeleteFolder(trashFolder);
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(trashFolder));
 
-        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder));
-        rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder));
-        rootHandlerRegistry.RegisterRootHandler(new UtilsRootHandler(celbridgeUtilsFolder));
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(tempFolder));
+        rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(logsFolder));
+        rootHandlerRegistry.RegisterRootHandler(new UtilsRootHandler(utilsFolder));
 
         // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
         // the monitor looks up its registry through IWorkspaceWrapper, which is only populated
@@ -185,11 +188,7 @@ public class ResourceService : IResourceService, IDisposable
 
                 // Clean up the trash folder on project close.
                 // This ensures deleted files don't persist after the project is closed.
-                var trashFolderPath = Path.Combine(
-                    Registry.ProjectFolderPath,
-                    ProjectConstants.CelbridgeFolder,
-                    ProjectConstants.TrashFolder);
-                TryDeleteFolder(trashFolderPath);
+                TryDeleteFolder(_trashFolderPath);
             }
 
             _disposed = true;

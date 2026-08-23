@@ -1,5 +1,6 @@
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Projects;
 using Celbridge.ProjectSettings;
 using Celbridge.Resources;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,9 +23,10 @@ public class Module : IModule
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
         var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        var projectService = serviceProvider.GetRequiredService<IProjectService>();
         return
         [
-            new ProjectSettingsEditorFactory(stringLocalizer),
+            new ProjectSettingsEditorFactory(stringLocalizer, projectService),
             new PackageManifestFactory(stringLocalizer),
             new EditorManifestFactory(stringLocalizer),
         ];

@@ -207,6 +207,12 @@
   <data name="Policy_ReadOnly_Single" xml:space="preserve">
     <value>'{0}' is in a read-only location.</value>
   </data>
+  <data name="ProjectFile_CannotMoveOutOfProjectFolder" xml:space="preserve">
+    <value>The project folder is the folder this file sits in. Move the whole folder instead.</value>
+  </data>
+  <data name="ProjectFile_CannotChangeExtension" xml:space="preserve">
+    <value>The project file must keep its {0} extension.</value>
+  </data>
   <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
     <value>Could not delete '{0}': {1}</value>
   </data>
@@ -1418,8 +1424,8 @@ Open with default application instead?</value>
   <data name="DocumentEditor_HtmlViewer" xml:space="preserve">
     <value>HTML Viewer</value>
   </data>
-  <data name="DocumentEditor_ProjectFile" xml:space="preserve">
-    <value>Project File</value>
+  <data name="DocumentEditor_ProjectSettings" xml:space="preserve">
+    <value>Project Settings</value>
   </data>
   <data name="DocumentEditor_PackageManifest" xml:space="preserve">
     <value>Package Manifest</value>

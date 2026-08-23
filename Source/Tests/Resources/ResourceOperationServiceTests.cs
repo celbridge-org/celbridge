@@ -92,14 +92,16 @@ public class ResourceOperationServiceTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
+        _projectService = Substitute.For<IProjectService>();
+        StubCurrentProject("Acme.celbridge");
+
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
+            _projectService,
             TestFileSystem.CreateLocal());
         resourceService.Trash.Returns(_trashService);
-
-        _projectService = Substitute.For<IProjectService>();
 
         _operationService = new ResourceOperationService(
             Substitute.For<ILogger<ResourceOperationService>>(),
@@ -118,7 +120,7 @@ public class ResourceOperationServiceTests
             new ResourceKey("sub/Acme.celbridge"));
 
         result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("Move the whole folder instead");
+        result.FirstErrorMessage.Should().Contain("cannot be moved out of it");
     }
 
     [Test]
@@ -164,7 +166,7 @@ public class ResourceOperationServiceTests
     // instead of a stub's default answer.
     private void StubCurrentProject(string projectFileName)
     {
-        var projectFolderPath = Path.Combine(Path.GetTempPath(), "Acme");
+        var projectFolderPath = _tempFolder;
 
         var project = new Project(
             Path.Combine(projectFolderPath, projectFileName),

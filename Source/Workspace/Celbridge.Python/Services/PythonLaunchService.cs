@@ -66,7 +66,6 @@ internal static class ToolInstallPolicy
 /// the extra package dependencies.
 /// </summary>
 public sealed record PythonLaunchRequest(
-    string ProjectFolderPath,
     string PythonVersion,
     IReadOnlyList<string> Dependencies);
 
@@ -99,7 +98,7 @@ public interface IPythonLaunchService
     /// resolved child-process base PATH when null), so the installed celbridge-py command resolves in any
     /// console. Already-prepended input is returned unchanged.
     /// </summary>
-    string BuildConsolePath(string projectFolderPath, string? basePath);
+    string BuildConsolePath(string? basePath);
 
     /// <summary>
     /// Returns the host-integration environment every console shares (host ports, tool feature flags, the
@@ -107,7 +106,7 @@ public interface IPythonLaunchService
     /// creating the folders the variables point at. A celbridge-py launched from any console then behaves
     /// like a python console session.
     /// </summary>
-    Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync(string projectFolderPath);
+    Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync();
 }
 
 public sealed class PythonLaunchService : IPythonLaunchService
@@ -133,6 +132,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private readonly IPythonInstaller _pythonInstaller;
     private readonly ILocalFileSystem _fileSystem;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly ILogger<PythonLaunchService> _logger;
 
     // The login-shell PATH is app-global and costs a subprocess to resolve, so cache it for the app run.
@@ -151,6 +151,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         IPythonInstaller pythonInstaller,
         ILocalFileSystem fileSystem,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         ILogger<PythonLaunchService> logger)
     {
         _environmentService = environmentService;
@@ -160,8 +161,16 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _pythonInstaller = pythonInstaller;
         _fileSystem = fileSystem;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _logger = logger;
     }
+
+    // This project's uv caches, interpreter installs, tool install, and IPython profile, so one project
+    // reinstalling never disturbs another. Under the project data folder, so two configurations in one
+    // project folder each get their own.
+    private string ProjectPythonFolder => Path.Combine(
+        _projectService.CurrentProject!.ProjectDataFolderPath,
+        ProjectConstants.PythonFolder);
 
     public async Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request)
     {
@@ -170,9 +179,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var environmentInfo = _environmentService.GetEnvironmentInfo();
         var appVersion = environmentInfo.AppVersion;
 
-        // The per-project Python folder under .celbridge/ holds this project's uv caches, interpreter
-        // installs, tool install, and IPython profile, so one project reinstalling never disturbs another.
-        var projectPythonFolder = Path.Combine(request.ProjectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
+        var projectPythonFolder = ProjectPythonFolder;
 
         var installResult = await _pythonInstaller.InstallPythonAsync(appVersion);
         if (installResult.IsFailure)
@@ -261,10 +268,9 @@ public sealed class PythonLaunchService : IPythonLaunchService
         return result;
     }
 
-    public string BuildConsolePath(string projectFolderPath, string? basePath)
+    public string BuildConsolePath(string? basePath)
     {
-        var projectPythonFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
-        var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
+        var uvBinFolder = Path.Combine(ProjectPythonFolder, UVBinFolderName);
         var resolvedBase = string.IsNullOrEmpty(basePath) ? ResolveChildProcessBasePath() : basePath;
 
         return resolvedBase.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
@@ -272,9 +278,9 @@ public sealed class PythonLaunchService : IPythonLaunchService
             : uvBinFolder + Path.PathSeparator + resolvedBase;
     }
 
-    public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync(string projectFolderPath)
+    public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync()
     {
-        var projectPythonFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
+        var projectPythonFolder = ProjectPythonFolder;
 
         var uvPythonInstallDir = Path.Combine(projectPythonFolder, UVPythonInstallsFolderName);
         await _fileSystem.CreateFolderAsync(uvPythonInstallDir);
@@ -290,11 +296,11 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var environment = new Dictionary<string, string>
         {
             ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
-            ["PATH"] = BuildConsolePath(projectFolderPath, null),
+            ["PATH"] = BuildConsolePath(null),
             ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
             ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
             ["CELBRIDGE_WEB_ACCESS_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.WebAccessTools) ? "1" : "0",
-            ["CELBRIDGE_PROJECT_FOLDER"] = projectFolderPath,
+            ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
             ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
             ["CELBRIDGE_UV_CACHE_DIR"] = Path.Combine(projectPythonFolder, UVCacheFolderName),

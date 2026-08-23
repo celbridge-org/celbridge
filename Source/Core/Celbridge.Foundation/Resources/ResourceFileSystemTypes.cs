@@ -73,7 +73,14 @@ public record SkippedReferencer(
 /// </summary>
 public record FailedResource(
     ResourceKey Resource,
-    string Message);
+    string Message)
+{
+    /// <summary>
+    /// The typed reason when the failure carries one, so a user-facing surface can write it in the
+    /// user's language. Message stays as the operation reported it, for a programmatic caller.
+    /// </summary>
+    public Exception? Reason { get; init; }
+}
 
 /// <summary>
 /// Result of an integrity-aware move: the list of resources whose references

@@ -123,7 +123,7 @@ public sealed class CheckReferencesCommand : CommandBase, ICheckReferencesComman
 
         var report = BuildReport(checkReport);
 
-        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectFilePath);
+        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectDataFolderPath);
         if (writeResult.IsFailure)
         {
             _logger.LogWarning(writeResult, "Failed to write the check references report.");

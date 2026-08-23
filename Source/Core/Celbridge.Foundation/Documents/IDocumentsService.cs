@@ -134,6 +134,13 @@ public interface IDocumentsService
     ExtensionEditorCandidates GetEditorCandidatesForExtension(string fileExtension);
 
     /// <summary>
+    /// True when a registered editor reserves the extension for a role the application depends on. The
+    /// File Types page leaves these out, because pointing one at a different editor breaks the
+    /// application rather than customizing it.
+    /// </summary>
+    bool IsReservedFileType(string fileExtension);
+
+    /// <summary>
     /// Opens a file resource as a document in the documents panel.
     /// </summary>
     Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);

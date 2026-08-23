@@ -133,6 +133,13 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
 
         foreach (var extension in manifestCategoryByExtension.Keys.OrderBy(key => key, StringComparer.Ordinal))
         {
+            if (documentsService.IsReservedFileType(extension))
+            {
+                // Core file types carry a role the application depends on, so they are not the user's
+                // to reassign. The code editor claims them as text, which is what puts them here.
+                continue;
+            }
+
             var pick = documentsService.GetEditorCandidatesForExtension(extension);
             if (pick.Candidates.Count == 0)
             {

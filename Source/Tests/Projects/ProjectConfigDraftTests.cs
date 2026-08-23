@@ -52,6 +52,20 @@ public class ProjectConfigDraftTests
     }
 
     [Test]
+    public void Draft_PreservesTheDataFolder_AcrossAnUnrelatedEdit()
+    {
+        // The data folder has no editor surface, so an edit made through the Project Settings editor
+        // must carry it through the serialize rather than reset the project to the default folder.
+        var sourceConfig =
+            "[celbridge]\n" +
+            "data-folder = \"variant-a\"\n";
+
+        var config = ApplyAndParse(sourceConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));
+
+        config.Celbridge.DataFolder.Should().Be("variant-a");
+    }
+
+    [Test]
     public void Draft_SetPackageDisabled_AddsToDisabledPackages()
     {
         var config = ApplyAndParse(BaseConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));

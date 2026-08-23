@@ -68,6 +68,13 @@ public sealed record class CelbridgeSection
     public string? Description { get; init; }
 
     /// <summary>
+    /// Name of the folder under .celbridge/ holding this project's data. Empty, the default, puts that
+    /// data at the root of .celbridge/. A single relative path segment; anything else is rejected on
+    /// parse, because it builds filesystem paths inside a folder the resource layer reserves.
+    /// </summary>
+    public string DataFolder { get; init; } = string.Empty;
+
+    /// <summary>
     /// Package names the project has turned off. A discovered package not listed here contributes its
     /// default-active contributions. A listed package contributes nothing.
     /// </summary>

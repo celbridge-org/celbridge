@@ -30,8 +30,10 @@ public sealed class ProjectConfigDraft
         _editorAssociations = new Dictionary<string, string>(source.Celbridge.EditorAssociations, StringComparer.Ordinal);
         _features = new Dictionary<string, bool>(source.Features, StringComparer.Ordinal);
 
-        _projectVersion = source.Celbridge.ProjectVersion;
-        _description = source.Celbridge.Description;
+        // Coerced to empty because an unset key parses as null while the editor binds a text box to it.
+        // The serializer skips an empty value, so a field left alone still writes no key.
+        _projectVersion = source.Celbridge.ProjectVersion ?? string.Empty;
+        _description = source.Celbridge.Description ?? string.Empty;
         _ignoreFile = source.Resources.IgnoreFile;
     }
 

@@ -113,7 +113,7 @@ public class ResourceOperationService : IResourceOperationService
         var projectFileGateResult = GateProjectFileMove(source, dest);
         if (projectFileGateResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(projectFileGateResult.FirstErrorMessage);
+            return Result<MoveResult>.Fail(projectFileGateResult);
         }
 
         var infoResult = await ResourceFileSystem.GetInfoAsync(source);
@@ -166,7 +166,7 @@ public class ResourceOperationService : IResourceOperationService
         if (dest.Root != ResourceKey.DefaultRoot
             || dest.Path.Contains('/'))
         {
-            return Result.Fail("The project folder is the folder this file sits in. Move the whole folder instead.");
+            return Refuse(ProjectFileMoveRefusal.OutsideProjectFolder);
         }
 
         // The picker and file activation both find a project by its extension, so a rename that drops it
@@ -174,10 +174,19 @@ public class ResourceOperationService : IResourceOperationService
         var destExtension = Path.GetExtension(dest.Path);
         if (!string.Equals(destExtension, ProjectConstants.ProjectFileExtension, StringComparison.OrdinalIgnoreCase))
         {
-            return Result.Fail($"The project file must keep its {ProjectConstants.ProjectFileExtension} extension.");
+            return Refuse(ProjectFileMoveRefusal.ExtensionChanged);
         }
 
         return Result.Ok();
+    }
+
+    // The reason rides a typed error so the surface presenting it can write it in the user's language;
+    // the message carries the same reason for a log or an agent caller.
+    private static Result Refuse(ProjectFileMoveRefusal refusal)
+    {
+        var error = new ProjectFileMoveRefusedError(refusal);
+
+        return Result.Fail(error.Message).WithException(error);
     }
 
     public async Task<Result> DeleteAsync(ResourceKey resource)

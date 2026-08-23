@@ -32,7 +32,7 @@ public class HtmlViewerEditorFactoryTests
     [Test]
     public void Registry_HtmlExtensionResolvesToHtmlViewerByDefault_AndCodeEditorIsListedAsAlternate()
     {
-        // The HTML viewer sits ahead of the general code editor in the built-in host order, so it
+        // The HTML viewer sits ahead of the general code editor in the built-ins' pinned order, so it
         // is the default for .html even though the code editor registers first.
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
