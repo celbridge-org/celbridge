@@ -3,22 +3,45 @@ using Celbridge.Core;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// The shared dependencies a Project Settings section view model needs from the panel: the workspace and
-/// project services to read the reconciled config, the command service to queue config edits, and a
-/// callback each section invokes after writing an edit.
+/// The state and services the Project Settings sections share, supplied by the editor that owns them.
 /// </summary>
-public sealed record ProjectSettingsContext(
-    IWorkspaceWrapper WorkspaceWrapper,
-    IProjectService ProjectService,
-    ICommandService CommandService,
-    Action NotifyEdited)
+public sealed class ProjectSettingsContext
 {
+    private readonly Action _notifyEdited;
+
+    public ProjectSettingsContext(
+        IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
+        ICommandService commandService,
+        Action notifyEdited)
+    {
+        WorkspaceWrapper = workspaceWrapper;
+        ProjectService = projectService;
+        CommandService = commandService;
+        _notifyEdited = notifyEdited;
+    }
+
+    public IWorkspaceWrapper WorkspaceWrapper { get; }
+
+    public IProjectService ProjectService { get; }
+
+    public ICommandService CommandService { get; }
+
+    /// <summary>
+    /// The working copy the sections edit, replaced by the editor each time it loads the project file.
+    /// Null until the first load.
+    /// </summary>
+    public ProjectConfigDraft? Draft { get; set; }
+
+    public void NotifyEdited() => _notifyEdited();
+
     // The reconciled config (overrides only), falling back to the parsed config before reconcile. The
     // instance changes only when a discovery pass runs, so its identity signals whether a reload is needed.
     public ProjectConfig? GetConfig()
@@ -29,9 +52,9 @@ public sealed record ProjectSettingsContext(
 }
 
 /// <summary>
-/// Base for the three Project Settings section view models (Information, Packages, File Editors). Each
-/// section reads the reconciled config on Load and writes its edits through the shared command pipeline;
-/// the running workspace only reflects the edits after the panel's reload gesture.
+/// Base for the Project Settings section view models. Each section reads the reconciled config on Load
+/// and mutates the shared draft as the user edits; the draft reaches disk on the editor's save tick, and
+/// the running workspace only reflects it after a reload.
 /// </summary>
 public abstract class ProjectSettingsSectionViewModel : ObservableObject
 {
@@ -50,9 +73,19 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
 
     protected ProjectConfig? GetConfig() => _context.GetConfig();
 
-    protected void WriteEdits(params ProjectConfigEdit[] edits)
+    /// <summary>
+    /// Mutates the draft and reports the edit. A no-op before the editor has loaded a draft.
+    /// </summary>
+    protected void EditConfig(Action<ProjectConfigDraft> edit)
     {
-        _context.CommandService.Execute<IWriteProjectConfigCommand>(command => command.Edits = edits);
+        var draft = _context.Draft;
+        if (draft is null)
+        {
+            return;
+        }
+
+        edit(draft);
+
         _context.NotifyEdited();
     }
 

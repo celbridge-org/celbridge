@@ -11,7 +11,7 @@
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
                  MinHeight="54"
-                 Text="{x:Bind ViewModel.DescriptionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                 Text="{x:Bind ViewModel.DescriptionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
       </StackPanel>
       <StackPanel Spacing="2" ToolTipService.ToolTip="{x:Bind SchemaVersionTooltip}">
         <TextBlock Text="{x:Bind SchemaVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
@@ -20,12 +20,12 @@
       <StackPanel Spacing="2">
         <TextBlock Text="{x:Bind ProjectVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind ProjectVersionTooltip}"
-                 Text="{x:Bind ViewModel.ProjectVersionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                 Text="{x:Bind ViewModel.ProjectVersionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
       </StackPanel>
       <StackPanel Spacing="2">
         <TextBlock Text="{x:Bind IgnoreFileLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind IgnoreFileTooltip}"
-                 Text="{x:Bind ViewModel.IgnoreFileText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                 Text="{x:Bind ViewModel.IgnoreFileText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

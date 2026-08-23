@@ -1,7 +1,13 @@
 using Celbridge.Commands;
+using Celbridge.FileSystem;
+using Celbridge.Logging;
+using Celbridge.Messaging;
+using Celbridge.Resources;
 using Celbridge.Documents;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
+using Celbridge.Utilities;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
@@ -23,14 +29,30 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     private const string PackagesSectionKey = "Packages";
 
     private readonly ICommandService _commandService;
+    private readonly ILogger<ProjectSettingsEditorViewModel> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ISettingsService _settings;
     private readonly ProjectSettingsContext _context;
 
+    private readonly IProjectService _projectService;
+    private readonly IMessengerService _messengerService;
+    private readonly ILocalFileSystem _fileSystem;
+
     private bool _loaded;
+
+    // The text last written or last read, so an edit that lands back on it is not a change and a save
+    // that would rewrite the same bytes is skipped.
+    private string _savedConfigText = string.Empty;
+
+    // The config the running workspace was built from, which the draft is compared against to decide
+    // whether a reload would change anything.
+    private string _loadedConfigText = string.Empty;
 
     // The config instance the sections were last built from, used to skip a rebuild when nothing changed.
     private ProjectConfig? _loadedConfig;
+
+    // The working copy the sections edit, replaced each time the project file is read.
+    private ProjectConfigDraft? _draft;
 
     // Section persistence is enabled only after the restore runs, so restoring the saved section does not
     // immediately rewrite it.
@@ -39,8 +61,6 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     // The section to fall back on when the rail reports no selection.
     private SettingsSection? _lastSelectedSection;
 
-    [ObservableProperty]
-    private bool _hasPendingChanges;
 
     // True when the project file did not parse, so the sections have nothing to show and the editor
     // offers to open the file as text instead.
@@ -80,12 +100,16 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         IWorkspaceWrapper workspaceWrapper)
     {
         _commandService = commandService;
+        _projectService = projectService;
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _logger = ServiceLocator.AcquireService<ILogger<ProjectSettingsEditorViewModel>>();
+        _fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _settings = ServiceLocator.AcquireService<ISettingsService>();
         var packageLocalization = ServiceLocator.AcquireService<IPackageLocalizationService>();
         var fileTypeCatalog = ServiceLocator.AcquireService<IFileTypeCatalog>();
 
-        ReloadProjectCommand = new RelayCommand(ReloadProject);
+        ReloadProjectCommand = new AsyncRelayCommand(ReloadProjectAsync);
 
         var project = projectService.CurrentProject;
         HasConfigError = project is not null && !project.ConfigIsHealthy;
@@ -97,6 +121,53 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
         PagesSection = new PagesSectionViewModel(_context);
         FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
+
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
+    }
+
+    /// <summary>
+    /// Drops the editor's subscriptions. Called when the document closes.
+    /// </summary>
+    public void Unregister()
+    {
+        _messengerService.Unregister<ResourceChangedMessage>(this);
+    }
+
+    // An external write to the project file (a git checkout, or the Code Editor in a previous tab) wins,
+    // the same way it does for every other document. A write this editor made is filtered by comparing
+    // the file to what was last saved.
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
+    {
+        var project = _projectService.CurrentProject;
+        if (project is null
+            || !project.IsProjectFile(message.Resource))
+        {
+            return;
+        }
+
+        var readResult = _fileSystem.ReadAllTextAsync(project.ProjectFilePath).GetAwaiter().GetResult();
+        if (readResult.IsFailure)
+        {
+            return;
+        }
+
+        var parseResult = ProjectConfigParser.ParseFromText(readResult.Value);
+        if (parseResult.IsFailure)
+        {
+            return;
+        }
+
+        var configText = ProjectConfigSerializer.Serialize(parseResult.Value);
+        if (string.Equals(configText, _savedConfigText, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _draft = new ProjectConfigDraft(parseResult.Value);
+        _context.Draft = _draft;
+        _savedConfigText = configText;
+
+        ReloadSections();
     }
 
     /// <summary>
@@ -142,16 +213,38 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         }
         _loadedConfig = config;
 
+        LoadDraft();
+
         InformationSection.Load();
         PackagesSection.Load();
         FileEditorsSection.Load();
         PagesSection.Load();
         FeatureFlagsSection.Load();
 
-        HasPendingChanges = false;
         _loaded = true;
 
         UpdatePackagesSectionIssue();
+        OnPropertyChanged(nameof(HasPendingChanges));
+    }
+
+    /// <summary>
+    /// Whether the config now differs from the one the running workspace was built from, so a reload
+    /// would change something.
+    /// </summary>
+    public bool HasPendingChanges => _draft is not null
+        && !string.Equals(_draft.Serialize(), _loadedConfigText, StringComparison.Ordinal);
+
+    // Rebuilds every section from the draft that just replaced the previous one.
+    private void ReloadSections()
+    {
+        InformationSection.Load();
+        PackagesSection.Load();
+        FileEditorsSection.Load();
+        PagesSection.Load();
+        FeatureFlagsSection.Load();
+
+        UpdatePackagesSectionIssue();
+        OnPropertyChanged(nameof(HasPendingChanges));
     }
 
     partial void OnSelectedSectionChanged(SettingsSection? value)
@@ -201,14 +294,90 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         }
     }
 
-    // Any section edit marks the editor pending, so it can show that a reload is needed.
-    private void MarkPending()
+    /// <summary>
+    /// Whether the draft has moved away from what is on disk, so the save tick has something to write.
+    /// </summary>
+    public bool HasUnsavedChanges => _draft is not null
+        && !string.Equals(_draft.Serialize(), _savedConfigText, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Writes the draft to the project file. A no-op when the draft matches what is already there.
+    /// </summary>
+    public async Task<Result> SaveConfigAsync()
     {
-        HasPendingChanges = true;
+        var draft = _draft;
+        if (draft is null)
+        {
+            return Result.Ok();
+        }
+
+        var projectFilePath = _projectService.CurrentProject?.ProjectFilePath;
+        if (string.IsNullOrEmpty(projectFilePath))
+        {
+            return Result.Ok();
+        }
+
+        var configText = draft.Serialize();
+        if (string.Equals(configText, _savedConfigText, StringComparison.Ordinal))
+        {
+            return Result.Ok();
+        }
+
+        var writeResult = await _fileSystem.WriteAllTextAsync(projectFilePath, configText);
+        if (writeResult.IsFailure)
+        {
+            return Result.Fail($"Failed to write the project config: '{projectFilePath}'")
+                .WithErrors(writeResult);
+        }
+
+        _savedConfigText = configText;
+
+        return Result.Ok();
     }
 
-    private void ReloadProject()
+    // Reads the project file into a fresh draft for the sections to edit. The draft is built from the
+    // parsed file rather than the reconciled config, so saving writes back only what the file states
+    // rather than every discovered default folded into it.
+    private void LoadDraft()
     {
+        var projectFilePath = _projectService.CurrentProject?.ProjectFilePath;
+        if (string.IsNullOrEmpty(projectFilePath))
+        {
+            return;
+        }
+
+        var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath, _fileSystem);
+        if (parseResult.IsFailure)
+        {
+            return;
+        }
+
+        _draft = new ProjectConfigDraft(parseResult.Value);
+        _context.Draft = _draft;
+        _savedConfigText = _draft.Serialize();
+
+        var loadedConfig = _projectService.CurrentProject?.Config;
+        _loadedConfigText = loadedConfig is null ? string.Empty : ProjectConfigSerializer.Serialize(loadedConfig);
+    }
+
+    // Every section edit changes the draft, and the pending state is computed from it.
+    private void MarkPending()
+    {
+        OnPropertyChanged(nameof(HasPendingChanges));
+    }
+
+    // The reload rebuilds the workspace from the file, so the draft has to reach disk first. The save
+    // tick would get there on its own within a second, which is exactly the window a user clicking
+    // Reload straight after an edit falls into.
+    private async Task ReloadProjectAsync()
+    {
+        var saveResult = await SaveConfigAsync();
+        if (saveResult.IsFailure)
+        {
+            _logger.LogError(saveResult, "Failed to save the project config before reloading.");
+            return;
+        }
+
         _commandService.Execute<IReloadProjectCommand>();
     }
 

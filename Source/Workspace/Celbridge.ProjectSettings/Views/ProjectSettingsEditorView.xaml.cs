@@ -9,12 +9,17 @@ namespace Celbridge.ProjectSettings.Views;
 
 /// <summary>
 /// The Project Settings editor: a document view over the project's .celbridge file presenting its settings
-/// as a rail of sections. Each section writes its edits straight through to the file, so this view carries
-/// no buffer, never reports unsaved changes, and takes no part in the document save tick.
+/// as a rail of sections. Sections edit a working copy of the config, which the save tick writes back to
+/// the file like any other document.
 /// </summary>
 public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentView
 {
+    // Matches the delay the text document views use, so a burst of edits settles into one write.
+    private const double SaveDelay = 1.0;
+
     private readonly IStringLocalizer _stringLocalizer;
+
+    private double _saveTimer = SaveDelay;
 
     public ProjectSettingsEditorViewModel ViewModel { get; }
 
@@ -152,18 +157,29 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return Result.Ok();
     }
 
-    public bool HasUnsavedChanges => false;
+    public bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
 
     public Result<bool> UpdateSaveTimer(double deltaTime)
     {
-        return false;
+        if (!HasUnsavedChanges)
+        {
+            return Result<bool>.Fail("The document has no unsaved changes.");
+        }
+
+        _saveTimer -= deltaTime;
+        if (_saveTimer > 0)
+        {
+            return false;
+        }
+
+        _saveTimer = SaveDelay;
+
+        return true;
     }
 
     public async Task<Result> SaveDocument()
     {
-        await Task.CompletedTask;
-
-        return Result.Ok();
+        return await ViewModel.SaveConfigAsync();
     }
 
     public WritableState WritableState { get; private set; } = WritableState.Writable;
@@ -197,6 +213,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         await Task.CompletedTask;
 
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        ViewModel.Unregister();
     }
 
     public async Task<string?> TrySaveEditorStateAsync()

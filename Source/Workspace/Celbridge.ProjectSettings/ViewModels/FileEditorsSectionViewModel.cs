@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 
@@ -308,16 +309,12 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
 
     private void CommitAssociation(string extension, string? editorId)
     {
-        ProjectConfigEdit edit;
         if (editorId is null)
         {
-            edit = new RemoveEditorAssociationEdit(extension);
-        }
-        else
-        {
-            edit = new SetEditorAssociationEdit(extension, editorId);
+            EditConfig(draft => draft.RemoveEditorAssociation(extension));
+            return;
         }
 
-        WriteEdits(edit);
+        EditConfig(draft => draft.SetEditorAssociation(extension, editorId));
     }
 }
