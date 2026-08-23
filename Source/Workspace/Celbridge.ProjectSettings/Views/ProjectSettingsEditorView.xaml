@@ -3,30 +3,77 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  xmlns:services="using:Celbridge.UserInterface.Services"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   DataContext="{x:Bind ViewModel}"
   Background="Transparent">
 
-  <controls:SettingsSectionSwitcher
-      Margin="12"
-      Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"
-      SelectedSection="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}">
+  <UserControl.Resources>
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+  </UserControl.Resources>
 
-    <!-- Reloading applies the whole file, not the section on screen, so it sits under the rail with the
-         sections rather than beside any one of them. The button takes the accent style while an edit is
-         waiting on a reload, applied in code-behind. -->
-    <controls:SettingsSectionSwitcher.RailFooter>
-      <StackPanel Spacing="8">
-        <Button x:Name="ReloadProjectButton"
-                HorizontalAlignment="Stretch"
-                Content="{x:Bind ReloadProjectText}"
-                Command="{x:Bind ViewModel.ReloadProjectCommand}"/>
-        <TextBlock Text="{x:Bind ReloadCaptionText}"
+  <Grid Background="Transparent">
+
+    <controls:SettingsSectionSwitcher
+        Margin="12"
+        Visibility="{x:Bind ViewModel.HasSections, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+        Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"
+        SelectedSection="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}">
+
+      <!-- Reloading applies the whole file, not the section on screen, so it sits under the rail with the
+           sections rather than beside any one of them. The button takes the accent style while an edit is
+           waiting on a reload, applied in code-behind. -->
+      <controls:SettingsSectionSwitcher.RailFooter>
+        <StackPanel Spacing="8">
+          <Button x:Name="ReloadProjectButton"
+                  HorizontalAlignment="Stretch"
+                  Content="{x:Bind ReloadProjectText}"
+                  Command="{x:Bind ViewModel.ReloadProjectCommand}"/>
+          <TextBlock Text="{x:Bind ReloadCaptionText}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+      </controls:SettingsSectionSwitcher.RailFooter>
+
+    </controls:SettingsSectionSwitcher>
+
+    <!-- A config that did not parse leaves the sections with nothing to show, so the editor reports the
+         failure and hands the file to the only editor that can still open it. -->
+    <ScrollViewer Padding="24"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollMode="Disabled"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Visibility="{x:Bind ViewModel.HasConfigError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+      <StackPanel Spacing="12"
+                  MaxWidth="640"
+                  HorizontalAlignment="Left">
+
+        <TextBlock Text="{x:Bind ConfigErrorTitleText}"
+                   Style="{StaticResource SectionHeadingTextStyle}"
+                   TextWrapping="Wrap"/>
+
+        <TextBlock Text="{x:Bind ConfigErrorCaptionText}"
                    Style="{StaticResource SupportingTextStyle}"
                    TextWrapping="Wrap"/>
+
+        <Border Background="{ThemeResource ChromeBackgroundBrush}"
+                BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12"
+                Visibility="{x:Bind ViewModel.HasConfigErrorDetail, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+          <TextBlock Text="{x:Bind ViewModel.ConfigErrorDetail, Mode=OneWay}"
+                     IsTextSelectionEnabled="True"
+                     TextWrapping="Wrap"/>
+        </Border>
+
+        <Button x:Name="OpenInCodeEditorButton"
+                HorizontalAlignment="Left"
+                Content="{x:Bind OpenInCodeEditorText}"
+                Click="OpenInCodeEditorButton_Click"/>
+
       </StackPanel>
-    </controls:SettingsSectionSwitcher.RailFooter>
+    </ScrollViewer>
 
-  </controls:SettingsSectionSwitcher>
-
+  </Grid>
 </UserControl>

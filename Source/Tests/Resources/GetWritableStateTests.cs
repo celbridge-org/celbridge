@@ -4,6 +4,7 @@ using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
+using Celbridge.Messaging;
 
 namespace Celbridge.Tests.Resources;
 
@@ -207,6 +208,7 @@ public class GetWritableStateTests
         return new ResourceOperationService(
             Substitute.For<ILogger<ResourceOperationService>>(),
             _workspaceWrapper,
+            Substitute.For<IProjectService>(),
             TestFileSystem.CreateLocal());
     }
 

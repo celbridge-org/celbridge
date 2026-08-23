@@ -1,5 +1,7 @@
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Utilities;
 
@@ -11,6 +13,7 @@ public class ProjectService : IProjectService
 
     private readonly ILogger<ProjectService> _logger;
     private readonly ISettingsService _settingsService;
+    private readonly IMessengerService _messengerService;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
     private readonly ILocalFileSystem _fileSystem;
@@ -20,15 +23,75 @@ public class ProjectService : IProjectService
     public ProjectService(
         ILogger<ProjectService> logger,
         ISettingsService settingsService,
+        IMessengerService messengerService,
         ProjectFactory projectFactory,
         IProjectTemplateService projectTemplateService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _settingsService = settingsService;
+        _messengerService = messengerService;
         _projectFactory = projectFactory;
         _projectTemplateService = projectTemplateService;
         _fileSystem = fileSystem;
+
+        _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChanged);
+    }
+
+    // Keeps the loaded project's identity in step when the user renames the project file. This message
+    // rather than the move operation, because it is also raised when a rename is undone.
+    private void OnResourceKeyChanged(object recipient, ResourceKeyChangedMessage message)
+    {
+        var project = CurrentProject;
+        if (project is null)
+        {
+            return;
+        }
+
+        if (!project.IsProjectFile(message.SourceResource))
+        {
+            return;
+        }
+
+        // A move into a subfolder would change the project folder, which the loaded workspace has
+        // already resolved every path against. Only a rename in place is reconciled here.
+        var newKey = message.DestResource.Path;
+        if (message.DestResource.Root != ResourceKey.DefaultRoot
+            || newKey.Contains('/'))
+        {
+            _logger.LogWarning($"The project file was moved to '{message.DestResource}'. The loaded project still refers to '{project.ProjectFilePath}'.");
+            return;
+        }
+
+        var newProjectFilePath = Path.Combine(project.ProjectFolderPath, newKey);
+
+        CurrentProject = new Project(
+            newProjectFilePath,
+            Path.GetFileNameWithoutExtension(newKey),
+            project.ProjectFolderPath,
+            project.Config,
+            project.MigrationResult,
+            project.ConfigIsHealthy,
+            project.ConfigLoadFailure);
+
+        ReplaceRecentProject(project.ProjectFilePath, newProjectFilePath);
+    }
+
+    // Rewrites the renamed project's recent-projects entry in place, so the list keeps its position
+    // rather than gaining a dead entry beside a new one.
+    private void ReplaceRecentProject(string oldProjectFilePath, string newProjectFilePath)
+    {
+        var storedProjects = _settingsService.Get(SettingCatalog.Project.RecentProjects);
+        var recentProjects = new List<string>(storedProjects);
+
+        var index = recentProjects.IndexOf(oldProjectFilePath);
+        if (index < 0)
+        {
+            return;
+        }
+
+        recentProjects[index] = newProjectFilePath;
+        _settingsService.Set(SettingCatalog.Project.RecentProjects, recentProjects);
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)

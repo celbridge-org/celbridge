@@ -162,6 +162,9 @@
   <data name="ResourceTree_ConfirmDeleteFile" xml:space="preserve">
     <value>Delete '{0}' file?</value>
   </data>
+  <data name="ResourceTree_ConfirmDeleteProjectFileWarning" xml:space="preserve">
+    <value>This is the project file. Deleting it means this project can no longer be opened.</value>
+  </data>
   <data name="ResourceTree_ConfirmDeleteFolder" xml:space="preserve">
     <value>Delete '{0}' folder?</value>
   </data>
@@ -745,6 +748,15 @@ Open with default application instead?</value>
   </data>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse All Folders</value>
+  </data>
+  <data name="ProjectSettings_ConfigErrorTitle" xml:space="preserve">
+    <value>This project file could not be read</value>
+  </data>
+  <data name="ProjectSettings_ConfigErrorCaption" xml:space="preserve">
+    <value>Project settings cannot be shown until the file is valid. Open it as text to repair it, then reload the project.</value>
+  </data>
+  <data name="ProjectSettings_OpenInCodeEditor" xml:space="preserve">
+    <value>Open in Code Editor</value>
   </data>
   <data name="ProjectSettings_PackagesHeader" xml:space="preserve">
     <value>Packages</value>

@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -41,6 +42,24 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasPendingChanges;
 
+    // True when the project file did not parse, so the sections have nothing to show and the editor
+    // offers to open the file as text instead.
+    [ObservableProperty]
+    private bool _hasConfigError;
+
+    [ObservableProperty]
+    private string _configErrorDetail = string.Empty;
+
+    /// <summary>
+    /// True while the sections are the thing to show, which is whenever the config parsed.
+    /// </summary>
+    public bool HasSections => !HasConfigError;
+
+    /// <summary>
+    /// True when the load failure carried a message worth showing verbatim.
+    /// </summary>
+    public bool HasConfigErrorDetail => !string.IsNullOrWhiteSpace(ConfigErrorDetail);
+
     [ObservableProperty]
     private IReadOnlyList<SettingsSection> _sections = Array.Empty<SettingsSection>();
 
@@ -67,6 +86,10 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         var fileTypeCatalog = ServiceLocator.AcquireService<IFileTypeCatalog>();
 
         ReloadProjectCommand = new RelayCommand(ReloadProject);
+
+        var project = projectService.CurrentProject;
+        HasConfigError = project is not null && !project.ConfigIsHealthy;
+        ConfigErrorDetail = project?.ConfigLoadFailure?.MessageChain ?? string.Empty;
 
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(_context);
@@ -187,5 +210,19 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     private void ReloadProject()
     {
         _commandService.Execute<IReloadProjectCommand>();
+    }
+
+    /// <summary>
+    /// Reopens the project file in the Code Editor, which is the only editor that can show a file the
+    /// config parser rejected.
+    /// </summary>
+    public void OpenInCodeEditor(ResourceKey fileResource)
+    {
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.EditorId = DocumentConstants.CodeEditorId;
+            command.ForceReload = true;
+        });
     }
 }

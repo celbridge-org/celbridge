@@ -20,6 +20,9 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 
     public string ReloadProjectText => _stringLocalizer.GetString("ProjectSettings_ReloadProject");
     public string ReloadCaptionText => _stringLocalizer.GetString("ProjectSettings_ReloadCaption");
+    public string ConfigErrorTitleText => _stringLocalizer.GetString("ProjectSettings_ConfigErrorTitle");
+    public string ConfigErrorCaptionText => _stringLocalizer.GetString("ProjectSettings_ConfigErrorCaption");
+    public string OpenInCodeEditorText => _stringLocalizer.GetString("ProjectSettings_OpenInCodeEditor");
 
     public ProjectSettingsEditorView()
     {
@@ -101,6 +104,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return sections;
     }
 
+    private void OpenInCodeEditorButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenInCodeEditor(FileResource);
+    }
+
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ProjectSettingsEditorViewModel.HasPendingChanges))
@@ -128,9 +136,8 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     {
         await Task.CompletedTask;
 
-        // The project file is hidden from the resource tree while the config is healthy, so it is absent
-        // from the registry. Existence is already checked by the documents service before the view is
-        // created, and nothing here resolves the resource through the registry.
+        // Existence is already checked by the documents service before the view is created, and nothing
+        // here resolves the resource through the registry.
         FileResource = fileResource;
 
         return Result.Ok();
