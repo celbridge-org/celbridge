@@ -2,6 +2,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
+using Celbridge.Projects;
 
 namespace Celbridge.Resources.Services;
 
@@ -19,6 +20,7 @@ public class ResourceOperationService : IResourceOperationService
 
     private readonly ILogger<ResourceOperationService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
 
     private readonly List<FileOperation> _undoStack = new();
     private readonly List<FileOperation> _redoStack = new();
@@ -30,10 +32,12 @@ public class ResourceOperationService : IResourceOperationService
     public ResourceOperationService(
         ILogger<ResourceOperationService> logger,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _fileSystem = fileSystem;
     }
 
@@ -106,6 +110,12 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
     {
+        var projectFileGateResult = GateProjectFileMove(source, dest);
+        if (projectFileGateResult.IsFailure)
+        {
+            return Result<MoveResult>.Fail(projectFileGateResult);
+        }
+
         var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
@@ -139,6 +149,44 @@ public class ResourceOperationService : IResourceOperationService
         AddOperation(operation);
 
         return operation.LastMoveResult!;
+    }
+
+    // Refused outright rather than confirmed, because neither destination has a reading where it is
+    // what the user wanted.
+    private Result GateProjectFileMove(ResourceKey source, ResourceKey dest)
+    {
+        var project = _projectService.CurrentProject;
+        if (project is null
+            || !project.IsProjectFile(source))
+        {
+            return Result.Ok();
+        }
+
+        // The source is at the project root, so any destination that is also at the root is a rename.
+        if (dest.Root != ResourceKey.DefaultRoot
+            || dest.Path.Contains('/'))
+        {
+            return Refuse(ProjectFileMoveRefusal.OutsideProjectFolder);
+        }
+
+        // The picker and file activation both find a project by its extension, so a rename that drops it
+        // leaves a project nothing can open again.
+        var destExtension = Path.GetExtension(dest.Path);
+        if (!string.Equals(destExtension, ProjectConstants.ProjectFileExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return Refuse(ProjectFileMoveRefusal.ExtensionChanged);
+        }
+
+        return Result.Ok();
+    }
+
+    // The reason rides a typed error so the surface presenting it can write it in the user's language;
+    // the message carries the same reason for a log or an agent caller.
+    private static Result Refuse(ProjectFileMoveRefusal refusal)
+    {
+        var error = new ProjectFileMoveRefusedError(refusal);
+
+        return Result.Fail(error.Message).WithException(error);
     }
 
     public async Task<Result> DeleteAsync(ResourceKey resource)

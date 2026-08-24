@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 
@@ -16,6 +18,7 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
 {
     private readonly IFileTypeCatalog _fileTypeCatalog;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ILogger<FileEditorsSectionViewModel> _logger;
 
     private bool _suppressFileTypeRebuild;
 
@@ -49,6 +52,7 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
     {
         _fileTypeCatalog = fileTypeCatalog;
         _stringLocalizer = stringLocalizer;
+        _logger = ServiceLocator.AcquireService<ILogger<FileEditorsSectionViewModel>>();
 
         var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         if (dispatcherQueue is not null)
@@ -132,6 +136,13 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
 
         foreach (var extension in manifestCategoryByExtension.Keys.OrderBy(key => key, StringComparer.Ordinal))
         {
+            if (documentsService.IsReservedFileType(extension))
+            {
+                // Core file types carry a role the application depends on, so they are not the user's
+                // to reassign. The code editor claims them as text, which is what puts them here.
+                continue;
+            }
+
             var pick = documentsService.GetEditorCandidatesForExtension(extension);
             if (pick.Candidates.Count == 0)
             {
@@ -308,16 +319,18 @@ public partial class FileEditorsSectionViewModel : ProjectSettingsSectionViewMod
 
     private void CommitAssociation(string extension, string? editorId)
     {
-        ProjectConfigEdit edit;
         if (editorId is null)
         {
-            edit = new RemoveEditorAssociationEdit(extension);
-        }
-        else
-        {
-            edit = new SetEditorAssociationEdit(extension, editorId);
+            EditConfig(draft => draft.RemoveEditorAssociation(extension));
+            return;
         }
 
-        WriteEdits(edit);
+        // An extension the catalog reported but the draft rejects is a malformed claim rather than
+        // anything the user did, so the pick is dropped and the claim is logged.
+        var editResult = EditConfig(draft => draft.SetEditorAssociation(extension, editorId));
+        if (editResult.IsFailure)
+        {
+            _logger.LogError(editResult, $"Failed to associate file extension '{extension}' with editor '{editorId}'");
+        }
     }
 }

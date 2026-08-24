@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -17,6 +18,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
 
     public DeleteResourceDialogCommand(
         ILogger<DeleteResourceDialogCommand> logger,
@@ -24,13 +26,26 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService)
     {
         _logger = logger;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _dialogService = dialogService;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
+    }
+
+    private bool SelectionContainsProjectFile()
+    {
+        var project = _projectService.CurrentProject;
+        if (project is null)
+        {
+            return false;
+        }
+
+        return Resources.Any(project.IsProjectFile);
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -108,6 +123,13 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         {
             // Multiple items - show count
             confirmDeleteString = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteMultiple", Resources.Count);
+        }
+
+        // Deleting the project file takes the project with it, which the generic wording does not convey.
+        if (SelectionContainsProjectFile())
+        {
+            var projectFileWarning = _stringLocalizer.GetString("ResourceTree_ConfirmDeleteProjectFileWarning");
+            confirmDeleteString = confirmDeleteString + "\n\n" + projectFileWarning;
         }
 
         var confirmationOptions = new ConfirmationDialogOptions

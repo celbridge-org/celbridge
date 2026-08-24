@@ -58,6 +58,7 @@ public class CustomDocumentHandlerTests
 
         var project = Substitute.For<IProject>();
         project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
+        project.ProjectDataFolderPath.Returns(Path.Combine(_projectFolderPath, ".celbridge"));
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
@@ -99,7 +100,7 @@ public class CustomDocumentHandlerTests
         result.Resource.Should().Be("logs:reports/acme-tiles-convert.report");
 
         var reportPath = Path.Combine(
-            ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, "Project.celbridge")),
+            ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, ".celbridge")),
             "acme-tiles-convert.report");
 
         File.Exists(reportPath).Should().BeTrue();
@@ -117,7 +118,7 @@ public class CustomDocumentHandlerTests
 
         await act.Should().ThrowAsync<ArgumentException>();
 
-        Directory.Exists(ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, "Project.celbridge")))
+        Directory.Exists(ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, ".celbridge")))
             .Should().BeFalse();
     }
 

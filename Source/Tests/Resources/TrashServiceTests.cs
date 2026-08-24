@@ -1,4 +1,6 @@
 using Celbridge.Messaging;
+using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
@@ -50,10 +52,25 @@ public class TrashServiceTests
         var sidecarService = new SidecarService(_workspaceWrapper);
         resourceService.Sidecars.Returns(sidecarService);
 
+        // A real Project rather than a substitute, so the trash folder resolves through the same data
+        // folder logic the running application uses.
+        var project = new Project(
+            Path.Combine(_tempFolder, "Acme.celbridge"),
+            "Acme",
+            _tempFolder,
+            new ProjectConfig(),
+            MigrationResult.Success(),
+            ConfigIsHealthy: true,
+            ConfigLoadFailure: null);
+
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
+            projectService,
             TestFileSystem.CreateLocal());
     }
 

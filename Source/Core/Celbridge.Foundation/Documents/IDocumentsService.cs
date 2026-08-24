@@ -45,6 +45,25 @@ public sealed record ExtensionEditorCandidates(
     EditorId DefaultEditorId);
 
 /// <summary>
+/// Options for opening a document in the documents panel.
+/// </summary>
+public record OpenDocumentOptions(
+    DocumentAddress? Address = null,
+    bool ForceReload = false,
+    string Location = "",
+    bool Activate = true,
+    EditorId EditorId = default,
+    string? EditorStateJson = null);
+
+/// <summary>
+/// Options for closing a document in the documents panel. ForceClose closes the document without letting
+/// it cancel. SelectNeighbour decides whether another document takes over when the closing one was active.
+/// </summary>
+public record CloseDocumentOptions(
+    bool ForceClose = false,
+    bool SelectNeighbour = true);
+
+/// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
 /// </summary>
 public interface IDocumentsService
@@ -134,15 +153,21 @@ public interface IDocumentsService
     ExtensionEditorCandidates GetEditorCandidatesForExtension(string fileExtension);
 
     /// <summary>
+    /// True when a registered editor reserves the extension for a role the application depends on. The
+    /// File Types page leaves these out, because pointing one at a different editor breaks the
+    /// application rather than customizing it.
+    /// </summary>
+    bool IsReservedFileType(string fileExtension);
+
+    /// <summary>
     /// Opens a file resource as a document in the documents panel.
     /// </summary>
     Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);
 
     /// <summary>
     /// Closes an opened document in the documents panel.
-    /// forceClose forces the document to close without allowing the document to cancel the close operation.
     /// </summary>
-    Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose);
+    Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null);
 
     /// <summary>
     /// Activates an opened document in the documents panel, making it the active tab.

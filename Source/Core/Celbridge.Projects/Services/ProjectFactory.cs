@@ -49,6 +49,7 @@ public class ProjectFactory
 
             ProjectConfig config;
             bool configIsHealthy = false;
+            Result? configLoadFailure = null;
             if (migrationSucceeded)
             {
                 var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath, _fileSystem);
@@ -56,6 +57,7 @@ public class ProjectFactory
                 {
                     _logger.LogError(parseResult, "Failed to parse project configuration");
                     config = new ProjectConfig();
+                    configLoadFailure = parseResult;
                 }
                 else
                 {
@@ -66,6 +68,7 @@ public class ProjectFactory
             else
             {
                 config = new ProjectConfig();
+                configLoadFailure = migrationResult.OperationResult;
             }
 
             var project = new Project(
@@ -74,7 +77,8 @@ public class ProjectFactory
                 projectFolderPath,
                 config,
                 migrationResult,
-                configIsHealthy);
+                configIsHealthy,
+                configLoadFailure);
 
             return Result<IProject>.Ok(project);
         }

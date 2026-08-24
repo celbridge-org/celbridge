@@ -11,6 +11,12 @@ public static class PackageConstants
     public const string ManifestFileName = "package.toml";
 
     /// <summary>
+    /// Extension carried by a per-contribution editor manifest, which is always named with a stem
+    /// ("code.editor.toml"). A file named "editor.toml" alone is not a manifest.
+    /// </summary>
+    public const string EditorManifestExtension = ".editor.toml";
+
+    /// <summary>
     /// Default install folder for packages, relative to the project root.
     /// </summary>
     public const string DefaultPackagesFolder = "packages";

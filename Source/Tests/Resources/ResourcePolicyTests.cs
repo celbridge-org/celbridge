@@ -91,6 +91,23 @@ public class ResourcePolicyTests
     }
 
     [Test]
+    public void SystemAllow_ProtectsManifests_EvenWhenIgnored()
+    {
+        // An editor manifest always carries a stem, so the floor has to cover "*.editor.toml" rather
+        // than a bare "editor.toml" that no manifest is ever named.
+        var policy = BuildPolicy(ignoreFileContent: "*.toml\n");
+
+        policy.Evaluate(new ResourceKey("packages/acme/package.toml"), ResourceAction.List)
+            .IsSuccess.Should().BeTrue();
+        policy.Evaluate(new ResourceKey("packages/acme/code.editor.toml"), ResourceAction.List)
+            .IsSuccess.Should().BeTrue();
+
+        // An ordinary TOML file carries no role, so the project's own rule still hides it.
+        policy.Evaluate(new ResourceKey("packages/acme/settings.toml"), ResourceAction.List)
+            .IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public void IgnoreFile_HidesMatchedPaths()
     {
         var policy = BuildPolicy(ignoreFileContent: "bin/\n*.log\n");

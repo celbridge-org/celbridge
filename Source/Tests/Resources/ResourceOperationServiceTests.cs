@@ -1,5 +1,6 @@
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
@@ -22,6 +23,7 @@ public class ResourceOperationServiceTests
     private LocalResourceFileSystem _resourceFileSystem = null!;
     private TrashService _trashService = null!;
     private ResourceOperationService _operationService = null!;
+    private IProjectService _projectService = null!;
 
     [SetUp]
     public void Setup()
@@ -90,17 +92,92 @@ public class ResourceOperationServiceTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
+        _projectService = Substitute.For<IProjectService>();
+        StubCurrentProject("Acme.celbridge");
+
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
+            _projectService,
             TestFileSystem.CreateLocal());
         resourceService.Trash.Returns(_trashService);
 
         _operationService = new ResourceOperationService(
             Substitute.For<ILogger<ResourceOperationService>>(),
             _workspaceWrapper,
+            _projectService,
             TestFileSystem.CreateLocal());
+    }
+
+    [Test]
+    public async Task MovingTheProjectFileOutOfItsFolder_IsRefused()
+    {
+        StubCurrentProject("Acme.celbridge");
+
+        var result = await _operationService.MoveAsync(
+            new ResourceKey("Acme.celbridge"),
+            new ResourceKey("sub/Acme.celbridge"));
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("cannot be moved out of it");
+    }
+
+    [Test]
+    public async Task RenamingTheProjectFileInPlace_IsNotRefused()
+    {
+        // The guard lets the rename through, so the move then fails on the missing source. Asserting on
+        // which failure came back is what distinguishes "allowed" from "refused" without staging files.
+        StubCurrentProject("Acme.celbridge");
+
+        var result = await _operationService.MoveAsync(
+            new ResourceKey("Acme.celbridge"),
+            new ResourceKey("Renamed.celbridge"));
+
+        result.FirstErrorMessage.Should().NotContain("Move the whole folder instead");
+    }
+
+    [Test]
+    public async Task MovingAnOrdinaryFile_IsNotRefused()
+    {
+        StubCurrentProject("Acme.celbridge");
+
+        var result = await _operationService.MoveAsync(
+            new ResourceKey("notes.md"),
+            new ResourceKey("sub/notes.md"));
+
+        result.FirstErrorMessage.Should().NotContain("Move the whole folder instead");
+    }
+
+    [Test]
+    public async Task RenamingTheProjectFileToAnotherExtension_IsRefused()
+    {
+        StubCurrentProject("Acme.celbridge");
+
+        var result = await _operationService.MoveAsync(
+            new ResourceKey("Acme.celbridge"),
+            new ResourceKey("Acme.txt"));
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("must keep its .celbridge extension");
+    }
+
+    // A real Project rather than a substitute, so the guard runs the actual IsProjectFile comparison
+    // instead of a stub's default answer.
+    private void StubCurrentProject(string projectFileName)
+    {
+        var projectFolderPath = _tempFolder;
+
+        var project = new Project(
+            Path.Combine(projectFolderPath, projectFileName),
+            Path.GetFileNameWithoutExtension(projectFileName),
+            projectFolderPath,
+            new ProjectConfig(),
+            MigrationResult.Success(),
+            ConfigIsHealthy: true,
+            ConfigLoadFailure: null);
+
+        _projectService.CurrentProject.Returns(project);
     }
 
     [TearDown]

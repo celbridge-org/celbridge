@@ -28,12 +28,7 @@ public enum WorkspacePanelId
     /// <summary>
     /// The custom-utility surface in the Utility Panel (Explorer and Search have their own values).
     /// </summary>
-    CustomUtility,
-
-    /// <summary>
-    /// The Project Settings panel.
-    /// </summary>
-    ProjectSettings
+    CustomUtility
 }
 
 /// <summary>
@@ -49,7 +44,7 @@ public enum WorkspaceSurface
     None = 0,
 
     /// <summary>
-    /// The Utility Panel (left sidebar hosting Explorer, Search and Project Settings).
+    /// The Utility Panel (left sidebar hosting Explorer and Search).
     /// </summary>
     UtilityPanel = 1 << 0,
 

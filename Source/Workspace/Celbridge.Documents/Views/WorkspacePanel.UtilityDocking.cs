@@ -79,7 +79,7 @@ public sealed partial class WorkspacePanel
 
         if (placement.Activate)
         {
-            SectionContainer.ActivateDocument(resource, section);
+            SectionContainer.ActivateDocument(resource, section, ActiveDocumentChangeReason.Activated);
         }
 
         return Result.Ok();
@@ -93,7 +93,10 @@ public sealed partial class WorkspacePanel
         var location = SectionContainer.FindDocumentTab(resource);
         if (location is not null)
         {
-            SectionContainer.ActivateDocument(resource, location.SectionView.Section);
+            SectionContainer.ActivateDocument(
+                resource,
+                location.SectionView.Section,
+                ActiveDocumentChangeReason.Activated);
         }
     }
 

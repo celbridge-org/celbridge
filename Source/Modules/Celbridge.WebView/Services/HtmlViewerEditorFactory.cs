@@ -6,7 +6,7 @@ namespace Celbridge.WebView.Services;
 
 /// <summary>
 /// Factory for the built-in HTML viewer. Claims .html and .htm ahead of the code editor in the
-/// built-in host order, making the viewer the default editor for those extensions.
+/// built-ins' pinned order, making the viewer the default editor for those extensions.
 /// </summary>
 public class HtmlViewerEditorFactory : DocumentEditorFactoryBase
 {

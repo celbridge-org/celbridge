@@ -42,7 +42,6 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
         // of its configuration surface, so context.Arguments is deliberately unused here. The REPL is
         // configured through the startup script, which runs as IPython exec_lines.
         var request = new PythonLaunchRequest(
-            context.ProjectFolderPath,
             pythonVersion,
             dependencies);
 

@@ -1,0 +1,104 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.SettingsSectionSwitcher"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:services="using:Celbridge.UserInterface.Services"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+  <UserControl.Resources>
+    <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+  </UserControl.Resources>
+
+  <!-- The rail sits on the chrome surface and the section is carved out of it, the same way a panel is
+       carved out of the workspace, with the gutter as the channel between them. -->
+  <Grid ColumnSpacing="{StaticResource GutterSize}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="150"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <StackPanel>
+
+    <!-- Lines the first rail row up with the section heading beside it. Margin rather than Padding,
+         because ItemsControl has no template to bind Padding to. -->
+    <ItemsControl x:Name="RailItems"
+                  Margin="0,14,0,0"
+                  VerticalAlignment="Top">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Spacing="2"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="controls:SettingsSection">
+          <controls:IconToggleButton Style="{StaticResource RailButtonStyle}"
+                                     IsChecked="{x:Bind IsSelected, Mode=OneWay}"
+                                     Click="RailButton_Click">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="10">
+              <Grid VerticalAlignment="Center">
+                <controls:Icon IconName="{x:Bind IconName}"
+                               FontSize="{StaticResource IconSizeMedium}"/>
+
+                <!-- Reports that the section has something to look at; the detail is inside the section. -->
+                <Ellipse Width="6"
+                         Height="6"
+                         Margin="0,-2,-7,0"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Top"
+                         Fill="{ThemeResource SystemFillColorCautionBrush}"
+                         ToolTipService.ToolTip="{x:Bind IssueTooltip}"
+                         Visibility="{x:Bind HasIssue, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+              </Grid>
+
+              <TextBlock Text="{x:Bind Label}"
+                         TextWrapping="NoWrap"
+                         VerticalAlignment="Center"/>
+            </StackPanel>
+          </controls:IconToggleButton>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+      <!-- Whatever the surface wants to sit under its rail, grouped with the section rows rather than
+           pinned to the bottom of the column. Empty in a surface that supplies none. -->
+      <ContentPresenter x:Name="RailFooterPresenter"
+                        Margin="0,40,0,0"/>
+
+    </StackPanel>
+
+    <!-- Corners are set in code-behind from PanelCornerRadius, which is a Double. -->
+    <Border x:Name="SectionArea"
+            Grid.Column="1"
+            Background="{ThemeResource ContentBackgroundBrush}"
+            BorderBrush="{ThemeResource PanelEdgeBrush}"
+            BorderThickness="1">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16">
+          <StackPanel Spacing="2">
+            <TextBlock x:Name="SectionLabel"
+                       Style="{StaticResource SectionHeadingTextStyle}"/>
+            <TextBlock x:Name="SectionDescription"
+                       Style="{StaticResource SupportingTextStyle}"
+                       TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Every section is realized here and hidden rather than swapped in, so its scroll position and
+             expander state survive navigating away and back. -->
+        <Grid x:Name="SectionContent"
+              Grid.Row="1"/>
+
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>

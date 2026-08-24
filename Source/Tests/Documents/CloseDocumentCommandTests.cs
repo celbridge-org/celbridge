@@ -20,7 +20,7 @@ public class CloseDocumentCommandTests
     public void Setup()
     {
         _documentsService = Substitute.For<IDocumentsService>();
-        _documentsService.CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(Result.Ok());
+        _documentsService.CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<CloseDocumentOptions>()).Returns(Result.Ok());
 
         _utilityService = Substitute.For<IUtilityService>();
         _utilityService.DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<DockLocation>()).Returns(Result.Ok());
@@ -51,8 +51,26 @@ public class CloseDocumentCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), true);
+        var expectedOptions = new CloseDocumentOptions(ForceClose: true, SelectNeighbour: true);
+        await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), expectedOptions);
         await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<DockLocation>());
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithoutNeighbourSelection_CarriesTheOptionToTheService()
+    {
+        // Reopening with another editor closes and reopens the same document, so the neighbour must not
+        // become active for the tick in between.
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.SelectNeighbour = false;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        var expectedOptions = new CloseDocumentOptions(ForceClose: false, SelectNeighbour: false);
+        await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), expectedOptions);
     }
 
     [Test]
@@ -69,7 +87,7 @@ public class CloseDocumentCommandTests
         result.IsSuccess.Should().BeTrue();
 
         await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, DockLocation.UtilityPanel);
-        await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>());
+        await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<CloseDocumentOptions>());
     }
 
     [Test]
@@ -85,6 +103,6 @@ public class CloseDocumentCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
-        await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<bool>());
+        await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<CloseDocumentOptions>());
     }
 }

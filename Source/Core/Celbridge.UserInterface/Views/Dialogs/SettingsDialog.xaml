@@ -3,7 +3,6 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-    xmlns:viewmodels="using:Celbridge.UserInterface.ViewModels.Dialogs"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <ContentDialog.Resources>
@@ -22,7 +21,7 @@
          enough to reach it is clipped at the edge rather than laid out narrower. -->
     <x:Double x:Key="SettingsDialogContentWidth">880</x:Double>
 
-    <!-- Fixed rather than sized to the category, so the dialog does not resize as the user moves down the
+    <!-- Fixed rather than sized to the section, so the dialog does not resize as the user moves down the
          rail. Both extents are held here because they are chosen together against the window minimum. -->
     <x:Double x:Key="SettingsDialogContentHeight">460</x:Double>
 
@@ -53,77 +52,10 @@
     </Grid>
   </ContentDialog.Title>
 
-  <!-- The rail sits on the chrome surface and the section is carved out of it, the same way a panel is
-       carved out of the workspace, with the gutter as the channel between them. -->
-  <Grid Width="{StaticResource SettingsDialogContentWidth}"
-        Height="{StaticResource SettingsDialogContentHeight}"
-        ColumnSpacing="{StaticResource GutterSize}">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="150"/>
-      <ColumnDefinition Width="*"/>
-    </Grid.ColumnDefinitions>
+  <controls:SettingsSectionSwitcher
+      Width="{StaticResource SettingsDialogContentWidth}"
+      Height="{StaticResource SettingsDialogContentHeight}"
+      Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"
+      SelectedSection="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}"/>
 
-    <!-- The top padding drops the first row onto the section heading's line: it is the heading band's
-         inset less half the difference between a row's height and its text. Retune it if any of those
-         three change. -->
-    <ItemsControl ItemsSource="{x:Bind ViewModel.Sections, Mode=OneWay}"
-                  Padding="0,10,0,0">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="viewmodels:SettingsSection">
-          <controls:IconToggleButton Style="{StaticResource RailButtonStyle}"
-                                     Margin="0,0,0,2"
-                                     IsChecked="{x:Bind IsSelected, Mode=OneWay}"
-                                     Click="RailButton_Click">
-            <StackPanel Orientation="Horizontal"
-                        Spacing="10">
-              <controls:Icon IconName="{x:Bind IconName}"
-                             FontSize="{StaticResource IconSizeMedium}"
-                             VerticalAlignment="Center"/>
-              <TextBlock Text="{x:Bind Label}"
-                         TextWrapping="NoWrap"
-                         VerticalAlignment="Center"/>
-            </StackPanel>
-          </controls:IconToggleButton>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
-
-    <!-- Corners are set in code-behind from PanelCornerRadius, which is a Double. -->
-    <Border x:Name="SectionArea"
-            Grid.Column="1"
-            Background="{ThemeResource ContentBackgroundBrush}"
-            BorderBrush="{ThemeResource PanelEdgeBrush}"
-            BorderThickness="1">
-      <Grid>
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Matches the band the Project Settings panel puts above its sections. -->
-        <Border BorderBrush="{ThemeResource DividerBrush}"
-                BorderThickness="0,0,0,1"
-                Padding="16">
-          <StackPanel Spacing="2">
-            <TextBlock Text="{x:Bind ViewModel.SelectedSection.Label, Mode=OneWay}"
-                       Style="{StaticResource SectionHeadingTextStyle}"/>
-            <TextBlock Text="{x:Bind ViewModel.SelectedSection.Description, Mode=OneWay}"
-                       Style="{StaticResource SupportingTextStyle}"
-                       TextWrapping="Wrap"/>
-          </StackPanel>
-        </Border>
-
-        <ScrollViewer Grid.Row="1"
-                      Padding="16"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollMode="Disabled"
-                      HorizontalScrollBarVisibility="Disabled">
-          <ContentControl Content="{x:Bind ViewModel.SelectedSection.Content, Mode=OneWay}"
-                          HorizontalContentAlignment="Stretch"
-                          IsTabStop="False"/>
-        </ScrollViewer>
-      </Grid>
-    </Border>
-
-  </Grid>
 </ContentDialog>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.Settings;
 using Microsoft.Extensions.Localization;
 
@@ -62,16 +63,13 @@ public class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewModel
 
     private void SetSelection(string flagName, FeatureFlagSelection selection)
     {
-        ProjectConfigEdit edit;
         if (selection == FeatureFlagSelection.Default)
         {
-            edit = new RemoveFeatureFlagEdit(flagName);
-        }
-        else
-        {
-            edit = new SetFeatureFlagEdit(flagName, selection == FeatureFlagSelection.On);
+            EditConfig(draft => draft.RemoveFeatureFlag(flagName));
+            return;
         }
 
-        WriteEdits(edit);
+        var enabled = selection == FeatureFlagSelection.On;
+        EditConfig(draft => draft.SetFeatureFlag(flagName, enabled));
     }
 }

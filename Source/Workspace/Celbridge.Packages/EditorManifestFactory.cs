@@ -16,7 +16,7 @@ public class EditorManifestFactory : DocumentEditorFactoryBase
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_EditorManifest");
 
-    public override IReadOnlyList<string> SupportedExtensions { get; } = [PackageManifestLoader.EditorManifestExtension];
+    public override IReadOnlyList<string> SupportedExtensions { get; } = [PackageConstants.EditorManifestExtension];
 
     public override bool IsPlaceholder => true;
 

@@ -9,4 +9,16 @@ public record Project(
     string ProjectFolderPath,
     ProjectConfig Config,
     MigrationResult MigrationResult,
-    bool ConfigIsHealthy) : IProject;
+    bool ConfigIsHealthy,
+    Result? ConfigLoadFailure) : IProject
+{
+    public string ProjectDataFolderPath =>
+        ProjectDataFolder.ResolvePath(ProjectFolderPath, Config.Celbridge.DataFolder);
+
+    public bool IsProjectFile(ResourceKey resource)
+    {
+        // Path rather than ToString, which carries the "project:" root prefix.
+        return resource.Root == ResourceKey.DefaultRoot
+            && string.Equals(resource.Path, Path.GetFileName(ProjectFilePath), StringComparison.Ordinal);
+    }
+}

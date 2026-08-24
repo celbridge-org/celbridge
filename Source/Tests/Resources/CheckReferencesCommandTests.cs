@@ -80,6 +80,7 @@ public class CheckReferencesCommandTests
 
         var project = Substitute.For<IProject>();
         project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
+        project.ProjectDataFolderPath.Returns(Path.Combine(_projectFolderPath, ".celbridge"));
 
         _projectService = Substitute.For<IProjectService>();
         _projectService.CurrentProject.Returns(project);

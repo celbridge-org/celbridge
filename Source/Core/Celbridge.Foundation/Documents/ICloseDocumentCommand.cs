@@ -16,4 +16,10 @@ public interface ICloseDocumentCommand : IExecutableCommand
     /// Forces the document to close without allowing the document to cancel the close operation.
     /// </summary>
     bool ForceClose { get; set; }
+
+    /// <summary>
+    /// Whether another document takes over when the closing one is the active document. False leaves the
+    /// active document naming a document that is no longer open.
+    /// </summary>
+    bool SelectNeighbour { get; set; }
 }

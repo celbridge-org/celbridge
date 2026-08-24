@@ -49,9 +49,15 @@ public interface IDocumentEditorRegistry
     /// Gets every factory that can handle the given file, in resolution order, deduplicated by
     /// editor id and filtered by CanHandleResource. More specific matches win first: a longer
     /// extension suffix outranks a shorter one, and within one suffix declared editors come in
-    /// declaration order, then built-ins in host order.
+    /// declaration order, then built-ins in their pinned order.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource);
+
+    /// <summary>
+    /// True when a registered factory reserves the file type this resource is, meaning the type carries
+    /// a role the application depends on and cannot be pointed at another editor durably.
+    /// </summary>
+    bool IsReservedResource(ResourceKey fileResource);
 
     /// <summary>
     /// Returns the factories a user could reasonably pick from an "Open with..."

@@ -162,6 +162,9 @@
   <data name="ResourceTree_ConfirmDeleteFile" xml:space="preserve">
     <value>Delete '{0}' file?</value>
   </data>
+  <data name="ResourceTree_ConfirmDeleteProjectFileWarning" xml:space="preserve">
+    <value>This is the project file. Deleting it means this project can no longer be opened.</value>
+  </data>
   <data name="ResourceTree_ConfirmDeleteFolder" xml:space="preserve">
     <value>Delete '{0}' folder?</value>
   </data>
@@ -203,6 +206,12 @@
   </data>
   <data name="Policy_ReadOnly_Single" xml:space="preserve">
     <value>'{0}' is in a read-only location.</value>
+  </data>
+  <data name="ProjectFile_CannotMoveOutOfProjectFolder" xml:space="preserve">
+    <value>The project folder is the folder this file sits in. Move the whole folder instead.</value>
+  </data>
+  <data name="ProjectFile_CannotChangeExtension" xml:space="preserve">
+    <value>The project file must keep its {0} extension.</value>
   </data>
   <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
     <value>Could not delete '{0}': {1}</value>
@@ -746,8 +755,14 @@ Open with default application instead?</value>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse All Folders</value>
   </data>
-  <data name="ProjectSettingsPanel_Title" xml:space="preserve">
-    <value>Project Settings</value>
+  <data name="ProjectSettings_ConfigErrorTitle" xml:space="preserve">
+    <value>This project file could not be read</value>
+  </data>
+  <data name="ProjectSettings_ConfigErrorCaption" xml:space="preserve">
+    <value>Project settings cannot be shown until the file is valid. Open it as text to repair it, then reload the project.</value>
+  </data>
+  <data name="ProjectSettings_OpenInCodeEditor" xml:space="preserve">
+    <value>Open in Code Editor</value>
   </data>
   <data name="ProjectSettings_PackagesHeader" xml:space="preserve">
     <value>Packages</value>
@@ -1409,8 +1424,8 @@ Open with default application instead?</value>
   <data name="DocumentEditor_HtmlViewer" xml:space="preserve">
     <value>HTML Viewer</value>
   </data>
-  <data name="DocumentEditor_ProjectFile" xml:space="preserve">
-    <value>Project File</value>
+  <data name="DocumentEditor_ProjectSettings" xml:space="preserve">
+    <value>Project Settings</value>
   </data>
   <data name="DocumentEditor_PackageManifest" xml:space="preserve">
     <value>Package Manifest</value>

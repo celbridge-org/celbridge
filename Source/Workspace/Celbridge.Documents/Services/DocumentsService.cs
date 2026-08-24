@@ -221,6 +221,14 @@ public class DocumentsService : IDocumentsService, IDisposable
                 continue;
             }
 
+            if (IsReservedFileType(extension))
+            {
+                // The reserving editor is already the default for the type, so an association here can
+                // only move it off the editor the application depends on.
+                invalidEntries.Add($"'{extension}': the file type is reserved and cannot be associated with another editor");
+                continue;
+            }
+
             var supportsExtension = factory.SupportedExtensions
                 .Any(supported => extension.EndsWith(supported, StringComparison.Ordinal));
             if (!supportsExtension)
@@ -343,6 +351,13 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
     {
+        if (_documentEditorRegistry.IsReservedResource(fileResource))
+        {
+            // A reserved file type opens in another editor for a look, but the choice is not recorded:
+            // the sidecar would sit beside a file the application depends on and outlive the look.
+            return Result.Ok();
+        }
+
         var defaultEditorId = GetDefaultEditorId(fileResource);
 
         // The sidecar only records a deviation from the project default: choosing the default clears the
@@ -432,6 +447,22 @@ public class DocumentsService : IDocumentsService, IDisposable
         return new ExtensionEditorCandidates(candidates, defaultEditorId);
     }
 
+    public bool IsReservedFileType(string fileExtension)
+    {
+        // An exact match rather than the suffix walk: ".editor.toml" is reserved while ".toml" is an
+        // ordinary text file the user may reassign.
+        var factories = _documentEditorRegistry.GetFactoriesForExtension(fileExtension);
+        foreach (var factory in factories)
+        {
+            if (factory.ReservesFileType)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // The editor the resolution rules pick when the file has no per-file override: the
     // editor-associations entry if one matches, else the first non-placeholder supporting factory in
     // resolution order.
@@ -492,9 +523,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         return outcome;
     }
 
-    public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
+    public async Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null)
     {
-        var closeResult = await DocumentsPanel.CloseDocument(fileResource, forceClose);
+        var closeResult = await DocumentsPanel.CloseDocument(fileResource, options);
         if (closeResult.IsFailure)
         {
             return Result.Fail($"Failed to close document for file resource '{fileResource}'")
@@ -576,7 +607,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 // Log the error and close the document to get back to a consistent state
                 _logger.LogError(changeResult, $"Failed to change document resource from '{oldResource}' to '{newResource}'");
-                await CloseDocument(oldResource, true);
+                await CloseDocument(oldResource, new CloseDocumentOptions(ForceClose: true));
             }
         };
 

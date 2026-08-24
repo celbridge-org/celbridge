@@ -5,6 +5,7 @@ using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.ProjectSettings.ViewModels;
@@ -196,37 +197,29 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
 
     private void SetPackageDisabled(string packageName, bool disabled)
     {
-        WriteEdits(new SetPackageDisabledEdit(packageName, disabled));
+        EditConfig(draft => draft.SetPackageDisabled(packageName, disabled));
     }
 
     private void SetContributionEnabled(ContributionItemViewModel row, bool enabled)
     {
-        ProjectConfigEdit edit;
         if (row.IsOptional)
         {
-            edit = new SetContributionEnabledEdit(row.PackageName, row.ContributionId, enabled);
-        }
-        else
-        {
-            edit = new SetContributionDisabledEdit(row.PackageName, row.ContributionId, !enabled);
+            EditConfig(draft => draft.SetContributionEnabled(row.PackageName, row.ContributionId, enabled));
+            return;
         }
 
-        WriteEdits(edit);
+        EditConfig(draft => draft.SetContributionDisabled(row.PackageName, row.ContributionId, !enabled));
     }
 
     private void CommitContributionValue(string packageName, string contributionId, string key, ConfigEditValue? value)
     {
-        ProjectConfigEdit edit;
         if (value is null)
         {
-            edit = new RemoveContributionValueEdit(packageName, contributionId, key);
-        }
-        else
-        {
-            edit = new SetContributionValueEdit(packageName, contributionId, key, value);
+            EditConfig(draft => draft.RemoveContributionValue(packageName, contributionId, key));
+            return;
         }
 
-        WriteEdits(edit);
+        EditConfig(draft => draft.SetContributionValue(packageName, contributionId, key, value));
     }
 
     private string PackageDisplayName(Package package)

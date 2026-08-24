@@ -1,4 +1,5 @@
 using Celbridge.Projects;
+using Celbridge.Projects.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.ProjectSettings.ViewModels;
@@ -50,7 +51,7 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
     {
         if (!_suppressCommit)
         {
-            WriteEdits(new SetProjectVersionEdit(value));
+            EditConfig(draft => draft.ProjectVersion = value);
         }
     }
 
@@ -58,7 +59,7 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
     {
         if (!_suppressCommit)
         {
-            WriteEdits(new SetDescriptionEdit(value));
+            EditConfig(draft => draft.Description = value);
         }
     }
 
@@ -66,7 +67,7 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
     {
         if (!_suppressCommit)
         {
-            WriteEdits(new SetIgnoreFileEdit(value));
+            EditConfig(draft => draft.IgnoreFile = value);
         }
     }
 }

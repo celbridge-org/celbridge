@@ -4,7 +4,8 @@ Drives the agent-facing file.* and explorer.* tools against the live project to
 confirm the resource policy is enforced end to end:
 
 - the system tier (the reserved .celbridge metadata folder is denied; the
-  *.celbridge project file stays allowed),
+  *.celbridge project file is an ordinary resource that cannot be moved out of
+  the project folder or renamed away from its extension),
 - the Phase 4.5 destination-visibility gate (create / write / move / copy to a
   path the ignore-file hides is refused, not silently written to disk where
   Celbridge could never see it again),
@@ -30,6 +31,15 @@ from .helpers import delete_if_exists
 def _root_child_names(file):
     tree = file.get_tree("", depth=1)
     return [child["name"] for child in tree.get("children", [])]
+
+
+def _project_file_name(file):
+    names = _root_child_names(file)
+    for name in names:
+        if name.endswith(".celbridge"):
+            return name
+
+    return None
 
 
 def _resource_exists(file, resource):
@@ -59,12 +69,29 @@ class TestResourcePolicy:
         # .celbridge is system-denied: never a resource, never in the tree.
         assert ".celbridge" not in _root_child_names(file)
 
-    def test_project_file_hidden(self, file):
-        # The *.celbridge project file is edited through Project Settings rather than as a tree
-        # resource, so a project whose config parsed cleanly hides it. A faulted config skips the
-        # rule so the file reappears for the code editor to repair.
-        names = _root_child_names(file)
-        assert not any(name.endswith(".celbridge") for name in names)
+    def test_project_file_visible(self, file):
+        # The project file opens as a document, in the Project Settings editor or the code editor, so
+        # hiding it from the tree would leave it the one document with no way in.
+        assert _project_file_name(file) is not None
+
+    def test_project_file_move_out_of_folder_refused(self, explorer, file):
+        # The project folder is defined as the folder the project file sits in, so moving the file
+        # does not relocate the project, it orphans it.
+        project_file = _project_file_name(file)
+        result = explorer.move(project_file, f"TestPolicy/{project_file}")
+        assert result["status"] == "partial_failure"
+        assert "moved out of it" in result["failedResources"][0]["message"]
+        assert _resource_exists(file, project_file)
+
+    def test_project_file_extension_change_refused(self, explorer, file):
+        # The file picker and file activation both find a project by its extension, so a rename that
+        # drops it leaves a project nothing can open again.
+        project_file = _project_file_name(file)
+        renamed = project_file.replace(".celbridge", ".txt")
+        result = explorer.move(project_file, renamed)
+        assert result["status"] == "partial_failure"
+        assert ".celbridge extension" in result["failedResources"][0]["message"]
+        assert _resource_exists(file, project_file)
 
     def test_write_into_metadata_folder_denied(self, file):
         with pytest.raises(CelError, match="(?i)denied"):

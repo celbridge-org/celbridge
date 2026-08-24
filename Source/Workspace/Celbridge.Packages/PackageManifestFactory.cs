@@ -10,8 +10,6 @@ namespace Celbridge.Packages;
 /// </summary>
 public class PackageManifestFactory : DocumentEditorFactoryBase
 {
-    private const string PackageManifestFilename = "package.toml";
-
     private readonly IStringLocalizer _stringLocalizer;
 
     public override EditorId EditorId { get; } = new("celbridge.package-manifest");
@@ -20,7 +18,7 @@ public class PackageManifestFactory : DocumentEditorFactoryBase
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = Array.Empty<string>();
 
-    public override IReadOnlyList<string> SupportedFilenames { get; } = [PackageManifestFilename];
+    public override IReadOnlyList<string> SupportedFilenames { get; } = [PackageConstants.ManifestFileName];
 
     public override bool IsPlaceholder => true;
 

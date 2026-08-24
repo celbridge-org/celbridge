@@ -108,7 +108,7 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
         var fileResource = new ResourceKey("test.md");
 
-        // The code editor registers first, but the pinned host order places the
+        // The code editor registers first, but the pinned order places the
         // markdown editor ahead of it.
         var codeFactory = CreateMockFactory(BuiltInEditors.CodeEditorId.ToString(), ".md");
         var markdownFactory = CreateMockFactory(BuiltInEditors.MarkdownEditorId.ToString(), ".md");
@@ -257,8 +257,12 @@ public class DocumentEditorRegistryTests
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var declaredFactory = CreateMockFactory("my-editor", ".widget");
+
+        // A placeholder reserves by definition, which is what DocumentEditorFactoryBase says and what
+        // ranks it ahead of the declared editor.
         var placeholderFactory = CreateMockFactory("celbridge.widget-placeholder", ".widget");
         placeholderFactory.IsPlaceholder.Returns(true);
+        placeholderFactory.ReservesFileType.Returns(true);
 
         registry.RegisterFactory(declaredFactory);
         registry.RegisterFactory(placeholderFactory);
@@ -268,6 +272,49 @@ public class DocumentEditorRegistryTests
         factories.Should().HaveCount(2);
         factories[0].Should().Be(placeholderFactory);
         factories[1].Should().Be(declaredFactory);
+    }
+
+    [Test]
+    public void GetFactoriesForExtension_AReservingEditorRanksAheadOfADeclaredEditor()
+    {
+        // A reserving editor that opens its own file type, rather than reserving the name and opening
+        // nothing, still has to win it: a project package claiming the extension must not take it.
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var declaredFactory = CreateMockFactory("acme.config-editor", ".widget");
+        var reservingFactory = CreateMockFactory("celbridge.widget-settings", ".widget");
+        reservingFactory.ReservesFileType.Returns(true);
+
+        registry.RegisterFactory(declaredFactory);
+        registry.RegisterFactory(reservingFactory);
+
+        var factories = registry.GetFactoriesForExtension(".widget");
+
+        factories[0].Should().Be(reservingFactory);
+    }
+
+    [Test]
+    public void IsReservedResource_AReservedFileType_IsReservedWhicheverFileItIs()
+    {
+        // Reservation follows the file type, not the file: the factory that opens only one of them
+        // still reserves the type for all of them.
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var reservingFactory = CreateMockFactory("celbridge.widget-settings", ".widget", canHandle: false);
+        reservingFactory.ReservesFileType.Returns(true);
+        registry.RegisterFactory(reservingFactory);
+
+        registry.IsReservedResource(new ResourceKey("other.widget")).Should().BeTrue();
+    }
+
+    [Test]
+    public void IsReservedResource_AnOrdinaryFileType_IsNotReserved()
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        registry.RegisterFactory(CreateMockFactory("acme.notes", ".widget"));
+
+        registry.IsReservedResource(new ResourceKey("notes.widget")).Should().BeFalse();
     }
 
     [Test]

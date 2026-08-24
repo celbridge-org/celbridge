@@ -36,6 +36,13 @@ public interface IDocumentEditorFactory
     bool IsPlaceholder { get; }
 
     /// <summary>
+    /// True when the extensions and filenames this factory claims carry a role the application depends
+    /// on, so they are not file types a user may point at a different editor. Placeholders reserve by
+    /// definition; an editor that both reserves a type and opens it sets this itself.
+    /// </summary>
+    bool ReservesFileType { get; }
+
+    /// <summary>
     /// True for factories that produce utility documents: Utility Panel surfaces backed by a fixed utils:
     /// resource rather than an extension claimed across the project.
     /// </summary>

@@ -58,8 +58,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
         var workspaceSettingsFolder = Path.Combine(
-            project.ProjectFolderPath,
-            ProjectConstants.CelbridgeFolder,
+            project.ProjectDataFolderPath,
             ProjectConstants.SettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
 

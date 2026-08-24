@@ -139,7 +139,7 @@ public class DocumentViewFactory
     }
 
     // First factory in resolution order for the resource: declared editors in declaration
-    // order, then built-ins in host order. Placeholder factories (package.toml, *.celbridge,
+    // order, then built-ins in their pinned order. Placeholder factories (package.toml, *.celbridge,
     // *.editor.toml) reserve extensions but never produce a view, so they are skipped here.
     private IDocumentView? CreateFromResolvedFactory(ResourceKey fileResource)
     {

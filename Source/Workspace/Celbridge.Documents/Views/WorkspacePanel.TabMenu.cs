@@ -291,6 +291,8 @@ public sealed partial class WorkspacePanel
 
             selectedEditorId = pickList.EditorIds[choiceResult.Value.SelectedIndex];
 
+            // The choice is recorded in a sidecar beside the file. A reserved file type takes the
+            // reopen but not the sidecar, which the documents service applies.
             await ViewModel.SetPreferredEditorAsync(fileResource, selectedEditorId);
         }
 
@@ -312,10 +314,13 @@ public sealed partial class WorkspacePanel
             editorState = await tab.ViewModel.DocumentView.TrySaveEditorStateAsync();
         }
 
-        // Close then reopen via the command service, which processes them sequentially
+        // Close then reopen via the command service, which processes them sequentially. The close does not
+        // pick a neighbour: the same document is coming straight back to this section and index, so
+        // activating another one in between would only be undone by the reopen.
         var closeResult = await _commandService.ExecuteAsync<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
+            command.SelectNeighbour = false;
         });
 
         if (closeResult.IsFailure)
@@ -323,7 +328,7 @@ public sealed partial class WorkspacePanel
             return;
         }
 
-        _commandService.Execute<IOpenDocumentCommand>(command =>
+        var openResult = await _commandService.ExecuteAsync<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.EditorId = editorId;
@@ -331,5 +336,12 @@ public sealed partial class WorkspacePanel
             command.TargetSection = section;
             command.TargetTabIndex = tabIndex;
         });
+
+        if (openResult.IsFailure)
+        {
+            // The document is still recorded as active but its tab has gone, so the reopen has to put
+            // the workspace back on a document that exists.
+            SectionContainer.ReconcileMissingActiveDocument();
+        }
     }
 }

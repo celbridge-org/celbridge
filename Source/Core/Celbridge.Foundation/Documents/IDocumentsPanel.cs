@@ -86,9 +86,8 @@ public interface IDocumentsPanel
 
     /// <summary>
     /// Close an opened document in the documents panel.
-    /// forceClose forces the document to close without allowing the document to cancel the close operation.
     /// </summary>
-    Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose);
+    Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null);
 
     /// <summary>
     /// Save any modified documents to disk.

@@ -126,7 +126,7 @@ internal sealed class CustomDocumentHandler : IHostDocument
                 nameof(reportJson));
         }
 
-        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectFilePath);
+        var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, currentProject.ProjectDataFolderPath);
         if (writeResult.IsFailure)
         {
             throw new InvalidOperationException(writeResult.MessageChain);

@@ -45,6 +45,39 @@ public class ProjectConfigParserTests
     }
 
     [Test]
+    public void ParseFromText_DataFolder_NamesTheProjectDataFolder()
+    {
+        var content = """
+            [celbridge]
+            data-folder = "variant-a"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Celbridge.DataFolder.Should().Be("variant-a");
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_DataFolderThatIsAPath_IsIgnoredWithAnEntryError()
+    {
+        // The value builds paths inside the reserved .celbridge/ folder, so a path is dropped outright
+        // rather than narrowed to a segment the project did not ask for.
+        var content = """
+            [celbridge]
+            data-folder = "../escape"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Celbridge.DataFolder.Should().BeEmpty();
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("data-folder");
+    }
+
+    [Test]
     public void ParseFromFile_ValidV2Config_ParsesAllSections()
     {
         var content = """

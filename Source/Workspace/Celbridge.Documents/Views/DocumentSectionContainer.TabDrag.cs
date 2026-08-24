@@ -120,7 +120,10 @@ public sealed partial class DocumentSectionContainer
         if (sourceSectionView == targetSectionView)
         {
             sourceSectionView.ReorderTab(tab, insertionSlot);
-            ActivateDocument(tab.ViewModel.FileResource, sourceSectionView.Section);
+            ActivateDocument(
+                tab.ViewModel.FileResource,
+                sourceSectionView.Section,
+                ActiveDocumentChangeReason.Activated);
             NotifyLayoutChanged();
         }
         else if (MoveTabToSection(tab, targetSectionView.Section, insertionSlot))

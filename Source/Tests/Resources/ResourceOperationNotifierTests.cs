@@ -40,6 +40,7 @@ public class ResourceOperationNotifierTests
 
         var project = Substitute.For<IProject>();
         project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
+        project.ProjectDataFolderPath.Returns(Path.Combine(_projectFolderPath, ".celbridge"));
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
@@ -97,7 +98,7 @@ public class ResourceOperationNotifierTests
         _sentMessages[0].FailedResources.Should().HaveCount(1);
         _sentMessages[0].ReportResource.IsEmpty.Should().BeTrue();
 
-        Directory.Exists(ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, "Project.celbridge")))
+        Directory.Exists(ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, ".celbridge")))
             .Should().BeFalse("one failure says everything the report would have said");
     }
 
@@ -253,7 +254,7 @@ public class ResourceOperationNotifierTests
     private JsonElement ReadReport(string reportFileName)
     {
         var reportsFolderPath = ReportLocation.ResolveFolderPath(
-            Path.Combine(_projectFolderPath, "Project.celbridge"));
+            Path.Combine(_projectFolderPath, ".celbridge"));
 
         var reportPath = Path.Combine(reportsFolderPath, reportFileName);
         File.Exists(reportPath).Should().BeTrue();

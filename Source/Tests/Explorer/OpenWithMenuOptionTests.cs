@@ -220,10 +220,9 @@ public class OpenWithMenuOptionTests
     [Test]
     public void GetState_HiddenForPlaceholderFactoryPlusTextFallback()
     {
-        // Placeholder factories (PackageManifestFactory, ProjectFileFactory,
-        // EditorManifestFactory) exist only to register an extension for resource
-        // classification. They cannot create document views and must not appear in
-        // the "Open with..." picker. With one placeholder plus the text fallback,
+        // Placeholder factories (PackageManifestFactory, EditorManifestFactory) exist
+        // only to register an extension for resource classification. They cannot create
+        // document views and must not appear in the "Open with..." picker. With one placeholder plus the text fallback,
         // only the fallback survives the filter, so the menu stays hidden (one
         // candidate, nothing to pick between).
         var clickedFile = CreateFileResource("package.toml");

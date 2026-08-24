@@ -52,6 +52,13 @@ public static class BuiltInEditors
     public static readonly EditorId HtmlViewerId = new("celbridge.html-viewer");
 
     /// <summary>
+    /// Built-in id of the Project Settings editor, registered natively by the Project Settings module.
+    /// Absent from BuiltInResolutionOrder because it reserves the project file type, and a reserving
+    /// editor holds its file types ahead of the pinned order rather than taking a place in it.
+    /// </summary>
+    public static readonly EditorId ProjectSettingsEditorId = new("celbridge.project-settings");
+
+    /// <summary>
     /// Bundled packages the host always activates, independent of the project's activation list.
     /// </summary>
     public static readonly IReadOnlyList<string> AlwaysActivePackages =
@@ -63,8 +70,8 @@ public static class BuiltInEditors
 
     /// <summary>
     /// The package built-ins: bundled contributions registered under host-assigned ids. Ordered to
-    /// match the shared editors' relative order in HostResolutionOrder, which is the authority for
-    /// open precedence; the two lists differ only in that HostResolutionOrder also carries the
+    /// match the shared editors' relative order in BuiltInResolutionOrder, which is the authority for
+    /// open precedence; the two lists differ only in that BuiltInResolutionOrder also carries the
     /// natively registered HtmlViewer and WebView editors, which are not package contributions.
     /// </summary>
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
@@ -81,7 +88,7 @@ public static class BuiltInEditors
     /// is the authority for built-in open precedence; PackageBuiltIns lists the same contributions
     /// (minus the natively registered HtmlViewer and WebView) in the same relative order.
     /// </summary>
-    public static readonly IReadOnlyList<EditorId> HostResolutionOrder =
+    public static readonly IReadOnlyList<EditorId> BuiltInResolutionOrder =
     [
         MarkdownEditorId,
         HtmlViewerId,

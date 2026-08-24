@@ -21,6 +21,12 @@ public interface IProject
     string ProjectFolderPath { get; }
 
     /// <summary>
+    /// Returns the path to the folder this project's local data is written under. Sits inside the
+    /// hidden project folder, in the sub-folder the config names when it names one.
+    /// </summary>
+    string ProjectDataFolderPath { get; }
+
+    /// <summary>
     /// Gets the project configuration.
     /// </summary>
     public ProjectConfig Config { get; }
@@ -28,14 +34,25 @@ public interface IProject
     /// <summary>
     /// True when the .celbridge file opened cleanly (migration succeeded and the config parsed). False
     /// when the project opened in a degraded state with an empty config, in which case the file is
-    /// preserved for repair: the normalize-on-load write is suppressed and the file stays visible in
-    /// the resource tree so the code editor can fix it.
+    /// preserved for repair: the normalize-on-load write is suppressed so the unparsed content is not
+    /// overwritten.
     /// </summary>
     bool ConfigIsHealthy { get; }
+
+    /// <summary>
+    /// The failure that made the config unhealthy, or null when it loaded cleanly. Carried whole rather
+    /// than as a message, so a consumer chooses how much of the chain to show.
+    /// </summary>
+    Result? ConfigLoadFailure { get; }
 
     /// <summary>
     /// Gets the complete migration result from when the project was loaded.
     /// Contains the migration status, old/new versions, and operation result.
     /// </summary>
     MigrationResult MigrationResult { get; }
+
+    /// <summary>
+    /// True when the resource is this project's .celbridge file, which sits at the project root.
+    /// </summary>
+    bool IsProjectFile(ResourceKey resource);
 }
