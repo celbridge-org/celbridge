@@ -61,7 +61,6 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     // The section to fall back on when the rail reports no selection.
     private SettingsSection? _lastSelectedSection;
 
-
     // True when the project file did not parse, so the sections have nothing to show and the editor
     // offers to open the file as text instead.
     [ObservableProperty]
@@ -95,19 +94,24 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     public IRelayCommand ReloadProjectCommand { get; }
 
     public ProjectSettingsEditorViewModel(
+        ILogger<ProjectSettingsEditorViewModel> logger,
         IProjectService projectService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IMessengerService messengerService,
+        ILocalFileSystem fileSystem,
+        IStringLocalizer stringLocalizer,
+        ISettingsService settingsService,
+        IPackageLocalizationService packageLocalization,
+        IFileTypeCatalog fileTypeCatalog)
     {
-        _commandService = commandService;
+        _logger = logger;
         _projectService = projectService;
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _logger = ServiceLocator.AcquireService<ILogger<ProjectSettingsEditorViewModel>>();
-        _fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _settings = ServiceLocator.AcquireService<ISettingsService>();
-        var packageLocalization = ServiceLocator.AcquireService<IPackageLocalizationService>();
-        var fileTypeCatalog = ServiceLocator.AcquireService<IFileTypeCatalog>();
+        _commandService = commandService;
+        _messengerService = messengerService;
+        _fileSystem = fileSystem;
+        _stringLocalizer = stringLocalizer;
+        _settings = settingsService;
 
         ReloadProjectCommand = new AsyncRelayCommand(ReloadProjectAsync);
 
@@ -145,7 +149,9 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
             return;
         }
 
-        var readResult = _fileSystem.ReadAllTextAsync(project.ProjectFilePath).GetAwaiter().GetResult();
+        // The resource monitor raises this on the UI thread, so the read crosses to the thread pool
+        // rather than blocking it.
+        var readResult = SyncRunner.Run(() => _fileSystem.ReadAllTextAsync(project.ProjectFilePath));
         if (readResult.IsFailure)
         {
             return;

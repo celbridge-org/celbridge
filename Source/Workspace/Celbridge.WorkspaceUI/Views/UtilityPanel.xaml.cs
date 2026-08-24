@@ -28,13 +28,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly IMessengerService _messengerService;
     private readonly ISpotlightRegistry _spotlightRegistry;
     private readonly ICommandService _commandService;
+    private readonly IProjectService _projectService;
 
     // Spotlight landmark ids for the built-in rail buttons. These must match the descriptors seeded in
     // SpotlightLandmarks exactly.
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
-
 
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
@@ -102,6 +102,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _projectService = ServiceLocator.AcquireService<IProjectService>();
 
         // Acquire panel views via DI and host them in ContentControls
         ExplorerPanel = ServiceLocator.AcquireService<IExplorerPanel>();
@@ -156,8 +157,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // depend on extension resolution. Already open, the command activates its tab.
     private void OpenProjectSettings()
     {
-        var projectService = ServiceLocator.AcquireService<IProjectService>();
-        var project = projectService.CurrentProject;
+        var project = _projectService.CurrentProject;
         if (project is null)
         {
             return;

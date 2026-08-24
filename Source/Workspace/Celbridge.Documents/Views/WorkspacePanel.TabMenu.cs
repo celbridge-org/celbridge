@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Projects;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -292,16 +291,9 @@ public sealed partial class WorkspacePanel
 
             selectedEditorId = pickList.EditorIds[choiceResult.Value.SelectedIndex];
 
-            // The override is recorded in a sidecar beside the file. The project file is opened from the
-            // Project Settings button, which always names its editor, so persisting a choice here would
-            // only add a committed sidecar next to the project file that nothing reads.
-            var isProjectFile = Path.GetExtension(fileResource.ResourceName)
-                .Equals(ProjectConstants.ProjectFileExtension, StringComparison.OrdinalIgnoreCase);
-
-            if (!isProjectFile)
-            {
-                await ViewModel.SetPreferredEditorAsync(fileResource, selectedEditorId);
-            }
+            // The choice is recorded in a sidecar beside the file. A reserved file type takes the
+            // reopen but not the sidecar, which the documents service applies.
+            await ViewModel.SetPreferredEditorAsync(fileResource, selectedEditorId);
         }
 
         await ReopenTabWithEditor(tab, selectedEditorId);

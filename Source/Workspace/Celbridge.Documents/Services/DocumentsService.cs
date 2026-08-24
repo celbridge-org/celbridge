@@ -221,6 +221,14 @@ public class DocumentsService : IDocumentsService, IDisposable
                 continue;
             }
 
+            if (IsReservedFileType(extension))
+            {
+                // The reserving editor is already the default for the type, so an association here can
+                // only move it off the editor the application depends on.
+                invalidEntries.Add($"'{extension}': the file type is reserved and cannot be associated with another editor");
+                continue;
+            }
+
             var supportsExtension = factory.SupportedExtensions
                 .Any(supported => extension.EndsWith(supported, StringComparison.Ordinal));
             if (!supportsExtension)
@@ -343,6 +351,13 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
     {
+        if (_documentEditorRegistry.IsReservedResource(fileResource))
+        {
+            // A reserved file type opens in another editor for a look, but the choice is not recorded:
+            // the sidecar would sit beside a file the application depends on and outlive the look.
+            return Result.Ok();
+        }
+
         var defaultEditorId = GetDefaultEditorId(fileResource);
 
         // The sidecar only records a deviation from the project default: choosing the default clears the

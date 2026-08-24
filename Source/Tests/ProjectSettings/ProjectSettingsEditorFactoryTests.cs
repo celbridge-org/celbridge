@@ -71,6 +71,18 @@ public class ProjectSettingsEditorFactoryTests
     }
 
     [Test]
+    public void TheProjectFileType_IsReserved_SoNoSidecarOrAssociationCanReassignIt()
+    {
+        var registry = CreateRegistry();
+
+        registry.IsReservedResource(new ResourceKey("Acme.celbridge")).Should().BeTrue();
+
+        // Reservation follows the file type, so a configuration this factory will not open is still
+        // not a file the user may pin an editor to.
+        registry.IsReservedResource(new ResourceKey("Designer.celbridge")).Should().BeTrue();
+    }
+
+    [Test]
     public void PickList_ForAnotherConfiguration_HoldsOnlyTheCodeEditor()
     {
         // Fewer than two entries means no "Open with..." choice is offered, which is what makes the
@@ -93,12 +105,14 @@ public class ProjectSettingsEditorFactoryTests
         return registry;
     }
 
+    // The code editor claims .celbridge for real: the extension is in the languages file-type catalog,
+    // so it competes for the project file rather than only appearing as the view-as-text fallback.
     private static IDocumentEditorFactory CreateCodeEditorFactory()
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
         factory.EditorId.Returns(BuiltInEditors.CodeEditorId);
         factory.DisplayName.Returns("Code Editor");
-        factory.SupportedExtensions.Returns(new List<string> { ".txt" });
+        factory.SupportedExtensions.Returns(new List<string> { ".txt", ProjectConstants.ProjectFileExtension });
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
 
         return factory;

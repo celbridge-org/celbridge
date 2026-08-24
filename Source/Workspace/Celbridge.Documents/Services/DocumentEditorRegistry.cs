@@ -8,15 +8,14 @@ namespace Celbridge.Documents.Services;
 /// </summary>
 public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
-    // The resolution band a factory falls into, ordered highest priority first: placeholders
-    // reserve their names ahead of everything, then declared editors in registration order,
-    // then built-ins in their pinned order, then built-ins outside that list.
+    // The resolution band a factory falls into, ordered highest priority first: a factory that
+    // reserves its file types holds them against the field, then declared editors in registration
+    // order, then built-ins in their pinned order.
     private enum EditorRankBand
     {
-        Placeholder,
+        Reserved,
         DeclaredInstance,
         BuiltIn,
-        UnlistedBuiltIn,
     }
 
     // A factory's resolution rank: its band first, then its position within the band (the pinned order
@@ -165,43 +164,61 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
     public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource)
     {
-        // Match order: exact filename first, then multi-part extension suffixes
-        // longest first. Dedupe by editor id so a factory registered against
-        // both a filename and an extension does not appear twice in the
-        // "Open with..." dialog.
-        var fileName = fileResource.ResourceName;
+        // Dedupe by editor id so a factory registered against both a filename and an extension does
+        // not appear twice in the "Open with..." dialog.
         var seenEditorIds = new HashSet<EditorId>();
         var candidates = new List<IDocumentEditorFactory>();
 
-        if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
+        foreach (var factory in GetClaimingFactories(fileResource.ResourceName))
         {
-            foreach (var factory in byFilename)
+            if (factory.CanHandleResource(fileResource)
+                && seenEditorIds.Add(factory.EditorId))
             {
-                if (factory.CanHandleResource(fileResource)
-                    && seenEditorIds.Add(factory.EditorId))
-                {
-                    candidates.Add(factory);
-                }
-            }
-        }
-
-        var lowerFileName = fileName.ToLowerInvariant();
-        foreach (var suffix in GetExtensionSuffixes(lowerFileName))
-        {
-            if (_extensionToFactories.TryGetValue(suffix, out var factoryList))
-            {
-                foreach (var factory in factoryList)
-                {
-                    if (factory.CanHandleResource(fileResource)
-                        && seenEditorIds.Add(factory.EditorId))
-                    {
-                        candidates.Add(factory);
-                    }
-                }
+                candidates.Add(factory);
             }
         }
 
         return candidates;
+    }
+
+    public bool IsReservedResource(ResourceKey fileResource)
+    {
+        // The file type is what carries the role, so this asks what claims the name rather than what
+        // would open this particular file: a second project config is as reserved as the loaded one.
+        foreach (var factory in GetClaimingFactories(fileResource.ResourceName))
+        {
+            if (factory.ReservesFileType)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Every factory claiming the given filename, in match order: the exact filename first, then
+    // multi-part extension suffixes longest first. Yields duplicates when a factory claims the file
+    // more than one way.
+    private IEnumerable<IDocumentEditorFactory> GetClaimingFactories(string fileName)
+    {
+        if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
+        {
+            foreach (var factory in byFilename)
+            {
+                yield return factory;
+            }
+        }
+
+        foreach (var suffix in GetExtensionSuffixes(fileName.ToLowerInvariant()))
+        {
+            if (_extensionToFactories.TryGetValue(suffix, out var byExtension))
+            {
+                foreach (var factory in byExtension)
+                {
+                    yield return factory;
+                }
+            }
+        }
     }
 
     public IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForResource(ResourceKey fileResource)
@@ -308,9 +325,11 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         var registrationOrder = _registrationCounter;
         _registrationCounter++;
 
-        if (factory.IsPlaceholder)
+        // A reserving factory is the one that must win its file types, whether it opens them itself
+        // (the Project Settings editor) or reserves the name and opens nothing (the manifests).
+        if (factory.ReservesFileType)
         {
-            return new EditorRank(EditorRankBand.Placeholder, registrationOrder);
+            return new EditorRank(EditorRankBand.Reserved, registrationOrder);
         }
 
         var hostOrderIndex = -1;

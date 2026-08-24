@@ -78,15 +78,35 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
     /// </summary>
     protected void EditConfig(Action<ProjectConfigDraft> edit)
     {
+        EditConfig(draft =>
+        {
+            edit(draft);
+
+            return Result.Ok();
+        });
+    }
+
+    /// <summary>
+    /// Mutates the draft with an edit that can be rejected, reporting the edit only once it is applied.
+    /// Fails before the editor has loaded a draft.
+    /// </summary>
+    protected Result EditConfig(Func<ProjectConfigDraft, Result> edit)
+    {
         var draft = _context.Draft;
         if (draft is null)
         {
-            return;
+            return Result.Fail("The Project Settings editor has no config draft to edit.");
         }
 
-        edit(draft);
+        var editResult = edit(draft);
+        if (editResult.IsFailure)
+        {
+            return editResult;
+        }
 
         _context.NotifyEdited();
+
+        return Result.Ok();
     }
 
     // Opens a manifest as a document for editing.

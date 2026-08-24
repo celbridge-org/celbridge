@@ -54,6 +54,12 @@ public interface IDocumentEditorRegistry
     IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource);
 
     /// <summary>
+    /// True when a registered factory reserves the file type this resource is, meaning the type carries
+    /// a role the application depends on and cannot be pointed at another editor durably.
+    /// </summary>
+    bool IsReservedResource(ResourceKey fileResource);
+
+    /// <summary>
     /// Returns the factories a user could reasonably pick from an "Open with..."
     /// dialog: non-placeholder factories that claim the file, plus the code
     /// editor appended as a "view as text" option for text-shaped files.

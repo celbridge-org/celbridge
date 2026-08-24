@@ -135,6 +135,24 @@ public class DocumentsServiceTests
     }
 
     [Test]
+    public async Task SetPreferredEditorAsync_AReservedFileType_RecordsNothing()
+    {
+        // A reserved type opens in another editor for a look, but the look is not persisted: no sidecar
+        // is written beside a file the application depends on, and none is cleared either.
+        var reservingEditorId = new EditorId("test.reserving-editor");
+        var factory = CreateFactory(reservingEditorId, ".celbridge", "Reserving Editor");
+        factory.ReservesFileType.Returns(true);
+        _registry.RegisterFactory(factory);
+
+        var result = await _documentsService.SetPreferredEditorAsync(
+            new ResourceKey("Acme.celbridge"), new EditorId("test.code-editor"));
+
+        result.IsSuccess.Should().BeTrue();
+        _capturedSetCommand.Should().BeNull();
+        _capturedRemoveCommand.Should().BeNull();
+    }
+
+    [Test]
     public void GetEditorPickList_ReturnsNullWhenFewerThanTwoEditors()
     {
         _registry.RegisterFactory(CreateFactory(new EditorId("test.only"), ".md", "Only Editor"));

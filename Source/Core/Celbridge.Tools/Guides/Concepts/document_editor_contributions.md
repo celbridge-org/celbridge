@@ -58,7 +58,7 @@ grid-size    = 16              # a config key declared by the editor's [[config]
 
 To turn a whole package off, list it in `[celbridge].disabled-packages`. A contribution is referenced as `package.contribution`; a project cannot declare several copies of one contribution, nor override an editor's display name, icon, or description.
 
-Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in their pinned order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. See `project_structure` for the full `.celbridge` schema.
+Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in their pinned order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. Celbridge's own file types (the `.celbridge` project file, `package.toml`, `*.editor.toml`) are reserved: they resolve to their own editor ahead of any contribution claiming the same extension, and neither an association nor a sidecar can point them elsewhere. See `project_structure` for the full `.celbridge` schema.
 
 ## Config descriptors (optional)
 

@@ -53,8 +53,8 @@ public static class BuiltInEditors
 
     /// <summary>
     /// Built-in id of the Project Settings editor, registered natively by the Project Settings module.
-    /// Absent from BuiltInResolutionOrder because it claims only the loaded project file, which no other
-    /// editor competes for by default.
+    /// Absent from BuiltInResolutionOrder because it reserves the project file type, and a reserving
+    /// editor holds its file types ahead of the pinned order rather than taking a place in it.
     /// </summary>
     public static readonly EditorId ProjectSettingsEditorId = new("celbridge.project-settings");
 
