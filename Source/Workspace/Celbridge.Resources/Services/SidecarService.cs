@@ -1,4 +1,5 @@
 using Celbridge.Resources.Helpers;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -28,6 +29,19 @@ public sealed class SidecarService : ISidecarService
             return false;
         }
         return fileName.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Only the two creating writes are gated. Removing fields or tags never creates a file, so it stays
+    // open as the way to clear a sidecar that an earlier version left beside one of these formats.
+    private static Result RefuseCelbridgeFormat(ResourceKey resource)
+    {
+        if (CelbridgeFileFormats.IsCelbridgeFormat(resource.ResourceName))
+        {
+            return Result.Fail(
+                $"'{resource}' is a Celbridge file format, which does not carry a sidecar.");
+        }
+
+        return Result.Ok();
     }
 
     public Result<ResourceKey> GetSidecarKey(ResourceKey parent)
@@ -85,6 +99,12 @@ public sealed class SidecarService : ISidecarService
 
     public async Task<Result<SidecarWriteOutcome>> SetFieldsAsync(ResourceKey resource, IReadOnlyDictionary<string, object> fields)
     {
+        var formatResult = RefuseCelbridgeFormat(resource);
+        if (formatResult.IsFailure)
+        {
+            return Result<SidecarWriteOutcome>.Fail(formatResult);
+        }
+
         if (fields is null)
         {
             return Result<SidecarWriteOutcome>.Fail("Fields dictionary is null.");
@@ -154,6 +174,12 @@ public sealed class SidecarService : ISidecarService
 
     public async Task<Result<SidecarWriteOutcome>> AddTagsAsync(ResourceKey resource, IReadOnlyList<string> tags)
     {
+        var formatResult = RefuseCelbridgeFormat(resource);
+        if (formatResult.IsFailure)
+        {
+            return Result<SidecarWriteOutcome>.Fail(formatResult);
+        }
+
         if (tags is null)
         {
             return Result<SidecarWriteOutcome>.Fail("Tags list is null.");

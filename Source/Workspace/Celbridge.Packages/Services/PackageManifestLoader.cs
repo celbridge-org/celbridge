@@ -42,7 +42,6 @@ public static class PackageManifestLoader
     /// <summary>
     /// File extension of an editor manifest.
     /// </summary>
-    public const string EditorManifestExtension = ".editor.toml";
 
     private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
 
@@ -171,10 +170,10 @@ public static class PackageManifestLoader
             var editors = new List<EditorContribution>();
             foreach (var relativePath in editorManifestPaths)
             {
-                if (!relativePath.EndsWith(EditorManifestExtension, StringComparison.Ordinal))
+                if (!relativePath.EndsWith(PackageConstants.EditorManifestExtension, StringComparison.Ordinal))
                 {
                     return Result.Fail(
-                        $"Editor manifest reference '{relativePath}' must use the '{EditorManifestExtension}' extension: {packageTomlPath}");
+                        $"Editor manifest reference '{relativePath}' must use the '{PackageConstants.EditorManifestExtension}' extension: {packageTomlPath}");
                 }
 
                 var fullPath = Path.Combine(packageFolder, relativePath);

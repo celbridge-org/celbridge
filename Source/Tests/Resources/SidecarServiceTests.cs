@@ -36,6 +36,45 @@ public class SidecarServiceTests
     }
 
     [Test]
+    public async Task SetFieldsAsync_ACelbridgeFileFormat_IsRefused()
+    {
+        // The project file and the manifests are the application's own machinery, so nothing pins
+        // metadata beside them.
+        var fields = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [SidecarFieldNames.Editor] = "celbridge.code-editor",
+        };
+
+        var result = await _sidecarService.SetFieldsAsync(new ResourceKey("Acme.celbridge"), fields);
+
+        result.IsFailure.Should().BeTrue();
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task AddTagsAsync_AManifest_IsRefused()
+    {
+        var packageResult = await _sidecarService.AddTagsAsync(
+            new ResourceKey("packages/acme/package.toml"), ["draft"]);
+        packageResult.IsFailure.Should().BeTrue();
+
+        var editorResult = await _sidecarService.AddTagsAsync(
+            new ResourceKey("packages/acme/code.editor.toml"), ["draft"]);
+        editorResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AddTagsAsync_AnOrdinaryTomlFile_IsAllowed()
+    {
+        // The refusal is on Celbridge's own formats, not on TOML: a project's own config file still
+        // takes tags like any other resource.
+        var result = await _sidecarService.AddTagsAsync(new ResourceKey("config/settings.toml"), ["draft"]);
+
+        result.IsFailure.Should().BeTrue("the parent file does not exist in this fixture");
+        result.MessageChain.Should().NotContain("Celbridge file format");
+    }
+
+    [Test]
     public void GetSidecarKey_FailsForCelKey()
     {
         // GetSidecarKey stays parent-only. DeleteResourceCommand and the rename

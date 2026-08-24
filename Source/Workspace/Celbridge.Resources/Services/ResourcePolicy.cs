@@ -1,4 +1,5 @@
 using Celbridge.Projects;
+using Celbridge.Utilities;
 
 namespace Celbridge.Resources.Services;
 
@@ -289,28 +290,19 @@ public sealed class ResourcePolicy : IResourcePolicy
     {
         var rules = new List<CompiledPolicyRule>();
 
-        // The user-facing project file is always List and Write allowed so a
-        // restrictive [resources] configuration cannot brick the in-app editor.
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemAllow,
-            pattern: "*.celbridge",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-            description: "The Celbridge project file is always visible and writable.",
-            matcher: ResourcePathMatcher.Compile("*.celbridge")));
-
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemAllow,
-            pattern: "package.toml",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-            description: "The package manifest is always visible and writable.",
-            matcher: ResourcePathMatcher.Compile("package.toml")));
-
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemAllow,
-            pattern: "editor.toml",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-            description: "The editor manifest is always visible and writable.",
-            matcher: ResourcePathMatcher.Compile("editor.toml")));
+        // Celbridge's own file formats are always List, Read and Write allowed so a restrictive
+        // [resources] configuration cannot brick the in-app editors that read them. Generated from the
+        // shared pattern list, so the floor covers exactly the formats the rest of the app treats as
+        // machinery.
+        foreach (var pattern in CelbridgeFileFormats.Patterns)
+        {
+            rules.Add(new CompiledPolicyRule(
+                source: PolicyRuleSource.SystemAllow,
+                pattern: pattern,
+                gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
+                description: $"'{pattern}' is a Celbridge file format and is always visible and writable.",
+                matcher: ResourcePathMatcher.Compile(pattern)));
+        }
 
         return rules;
     }
