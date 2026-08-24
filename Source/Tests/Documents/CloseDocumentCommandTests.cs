@@ -51,25 +51,25 @@ public class CloseDocumentCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        var expectedOptions = new CloseDocumentOptions(ForceClose: true, SelectSuccessor: true);
+        var expectedOptions = new CloseDocumentOptions(ForceClose: true, SelectNeighbour: true);
         await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), expectedOptions);
         await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<DockLocation>());
     }
 
     [Test]
-    public async Task ExecuteAsync_WithoutSuccessorSelection_CarriesTheOptionToTheService()
+    public async Task ExecuteAsync_WithoutNeighbourSelection_CarriesTheOptionToTheService()
     {
         // Reopening with another editor closes and reopens the same document, so the neighbour must not
         // become active for the tick in between.
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
-        command.SelectSuccessor = false;
+        command.SelectNeighbour = false;
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
 
-        var expectedOptions = new CloseDocumentOptions(ForceClose: false, SelectSuccessor: false);
+        var expectedOptions = new CloseDocumentOptions(ForceClose: false, SelectNeighbour: false);
         await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), expectedOptions);
     }
 

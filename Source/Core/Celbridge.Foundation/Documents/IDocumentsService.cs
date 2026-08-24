@@ -57,11 +57,11 @@ public record OpenDocumentOptions(
 
 /// <summary>
 /// Options for closing a document in the documents panel. ForceClose closes the document without letting
-/// it cancel. SelectSuccessor makes the neighbouring document active when the closing one was active.
+/// it cancel. SelectNeighbour decides whether another document takes over when the closing one was active.
 /// </summary>
 public record CloseDocumentOptions(
     bool ForceClose = false,
-    bool SelectSuccessor = true);
+    bool SelectNeighbour = true);
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.

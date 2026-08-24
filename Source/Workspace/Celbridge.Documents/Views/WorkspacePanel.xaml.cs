@@ -845,7 +845,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 int tabIndex = sectionView.GetTabIndex(documentTab);
 
                 // Handle selection of next document before removing the tab
-                if (closeOptions.SelectSuccessor)
+                if (closeOptions.SelectNeighbour)
                 {
                     SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
                 }

@@ -20,9 +20,8 @@
 
     <StackPanel>
 
-    <!-- Centres the first row on the section heading's line: the section area's edge (1) plus the heading
-         band's inset (16), less half the difference between a row's height (32) and the heading's line box
-         (~21). Margin rather than Padding, because ItemsControl has no template to bind Padding to. -->
+    <!-- Lines the first rail row up with the section heading beside it. Margin rather than Padding,
+         because ItemsControl has no template to bind Padding to. -->
     <ItemsControl x:Name="RailItems"
                   Margin="0,14,0,0"
                   VerticalAlignment="Top">

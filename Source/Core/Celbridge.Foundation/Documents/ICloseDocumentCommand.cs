@@ -18,7 +18,8 @@ public interface ICloseDocumentCommand : IExecutableCommand
     bool ForceClose { get; set; }
 
     /// <summary>
-    /// Whether closing the active document makes its neighbour active.
+    /// Whether another document takes over when the closing one is the active document. False leaves the
+    /// active document naming a document that is no longer open.
     /// </summary>
-    bool SelectSuccessor { get; set; }
+    bool SelectNeighbour { get; set; }
 }
