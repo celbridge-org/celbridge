@@ -1,4 +1,4 @@
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Resolves and validates the project data folder: the folder inside .celbridge/ that a project's local

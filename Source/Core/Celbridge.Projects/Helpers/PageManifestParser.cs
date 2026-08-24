@@ -2,7 +2,7 @@ using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Reads a page manifest (pages.toml): the required [publish].path that names the served path of a page's

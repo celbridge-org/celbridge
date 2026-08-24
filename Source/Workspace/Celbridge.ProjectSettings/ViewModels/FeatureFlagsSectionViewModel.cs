@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using Celbridge.Projects;
-using Celbridge.Projects.Services;
 using Celbridge.Settings;
 using Microsoft.Extensions.Localization;
 
