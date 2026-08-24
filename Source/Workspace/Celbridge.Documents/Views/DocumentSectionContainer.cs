@@ -8,8 +8,8 @@ namespace Celbridge.Documents.Views;
 public record DocumentTabLocation(DocumentSectionView SectionView, DocumentTab Tab);
 
 /// <summary>
-/// Why the active document changed. Restoring a session is the one change the user did not ask for, so it is
-/// the one that does not carry the keyboard to the document it selects.
+/// Why the active document changed. Only a change that asks for the document without already holding the
+/// keyboard carries focus to it.
 /// </summary>
 public enum ActiveDocumentChangeReason
 {
@@ -22,7 +22,12 @@ public enum ActiveDocumentChangeReason
     /// <summary>
     /// The workspace restored the document that was active when the project was last open.
     /// </summary>
-    Restored
+    Restored,
+
+    /// <summary>
+    /// The document's own surface reported that it took the keyboard, which makes it the active document.
+    /// </summary>
+    Focused
 }
 
 /// <summary>
@@ -143,9 +148,13 @@ public sealed partial class DocumentSectionContainer
     }
 
     /// <summary>
-    /// Makes the specified document the active document.
+    /// Makes the specified document the active document. Every caller states its reason, because the reason
+    /// decides whether the keyboard follows and a caller that already holds it must not ask for it again.
     /// </summary>
-    public void ActivateDocument(ResourceKey fileResource, DocumentSection section)
+    public void ActivateDocument(
+        ResourceKey fileResource,
+        DocumentSection section,
+        ActiveDocumentChangeReason reason)
     {
         if (fileResource.IsEmpty)
         {
@@ -165,7 +174,7 @@ public sealed partial class DocumentSectionContainer
 
         UpdateTabSelectionIndicators();
 
-        ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Activated);
+        ActiveDocumentChanged?.Invoke(_activeDocument, reason);
     }
 
     /// <summary>

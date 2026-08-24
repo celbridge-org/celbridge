@@ -115,11 +115,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         ViewModel.OnActiveDocumentChanged(documentResource);
 
         // The keyboard follows the active document, so every path that changes it carries focus without
-        // having to remember to: opening, closing onto the next tab, moving a tab between sections. A
-        // restore is the exception, because the user did not ask for it. An empty resource means the last
-        // document closed, and the surface that held focus reports its own teardown.
-        if (reason == ActiveDocumentChangeReason.Activated
-            && !documentResource.IsEmpty)
+        // having to remember to: opening, closing onto the next tab, moving a tab between sections.
+        if (ActiveDocumentFocusPolicy.ShouldCarryFocus(documentResource, reason))
         {
             FocusActivatedDocument(documentResource);
         }
@@ -243,7 +240,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 {
                     existingSectionView.ReorderTab(existingTab, slot);
                     existingSectionView.SelectTab(existingTab);
-                    SectionContainer.ActivateDocument(fileResourceKey, targetSection);
+                    SectionContainer.ActivateDocument(
+                        fileResourceKey,
+                        targetSection,
+                        ActiveDocumentChangeReason.Activated);
                 }
             }
             else
@@ -287,6 +287,13 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () =>
             {
+                // The active document can change again before the grant runs, and a grant for a document
+                // that is no longer active would take the keyboard back off the one that is.
+                if (SectionContainer.ActiveDocument != fileResource)
+                {
+                    return;
+                }
+
                 var location = SectionContainer.FindDocumentTab(fileResource);
                 var documentView = location?.Tab.Content as IDocumentView;
                 if (documentView is null)
@@ -399,11 +406,16 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
-        // Find the section containing this document and update the active document
+        // Find the section containing this document and update the active document. Reported as focus
+        // driven: the surface that sent this already holds the keyboard, so the activation must not turn
+        // round and grant it again.
         var location = SectionContainer.FindDocumentTab(message.DocumentResource);
         if (location is not null)
         {
-            SectionContainer.ActivateDocument(message.DocumentResource, location.SectionView.Section);
+            SectionContainer.ActivateDocument(
+                message.DocumentResource,
+                location.SectionView.Section,
+                ActiveDocumentChangeReason.Focused);
         }
     }
 
@@ -682,7 +694,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             {
                 var targetSection = SectionContainer.GetSection(section);
                 targetSection.SelectTab(existingTab);
-                SectionContainer.ActivateDocument(fileResource, section);
+                SectionContainer.ActivateDocument(fileResource, section, ActiveDocumentChangeReason.Activated);
             }
 
             if (effectiveOptions.ForceReload)
@@ -770,7 +782,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         if (effectiveOptions.Activate)
         {
-            SectionContainer.ActivateDocument(fileResource, section);
+            SectionContainer.ActivateDocument(fileResource, section, ActiveDocumentChangeReason.Activated);
         }
 
         if (!string.IsNullOrEmpty(effectiveOptions.Location))
@@ -1002,7 +1014,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // Section.SelectTab alone does not update the container's active-section
         // / active-document tracking, so the new tab would be selected within
         // its section but not surfaced as the workspace's active document.
-        SectionContainer.ActivateDocument(fileResource, location.SectionView.Section);
+        SectionContainer.ActivateDocument(
+            fileResource,
+            location.SectionView.Section,
+            ActiveDocumentChangeReason.Activated);
 
         return Result.Ok();
     }
