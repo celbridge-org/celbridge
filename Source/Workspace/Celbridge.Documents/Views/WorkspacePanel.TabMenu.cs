@@ -322,10 +322,13 @@ public sealed partial class WorkspacePanel
             editorState = await tab.ViewModel.DocumentView.TrySaveEditorStateAsync();
         }
 
-        // Close then reopen via the command service, which processes them sequentially
+        // Close then reopen via the command service, which processes them sequentially. The close does not
+        // pick a successor: the same document is coming straight back to this section and index, so
+        // activating the neighbour in between would only be undone by the reopen.
         var closeResult = await _commandService.ExecuteAsync<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
+            command.SelectSuccessor = false;
         });
 
         if (closeResult.IsFailure)

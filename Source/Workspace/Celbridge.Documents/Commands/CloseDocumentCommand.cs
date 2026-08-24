@@ -13,6 +13,8 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
 
     public bool ForceClose { get; set; }
 
+    public bool SelectSuccessor { get; set; } = true;
+
     public CloseDocumentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -32,7 +34,9 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
             return await utilityService.DockUtilityAsync(dockedUtilityId, DockLocation.UtilityPanel);
         }
 
-        var closeResult = await documentsService.CloseDocument(FileResource, ForceClose);
+        var closeOptions = new CloseDocumentOptions(ForceClose, SelectSuccessor);
+
+        var closeResult = await documentsService.CloseDocument(FileResource, closeOptions);
         if (closeResult.IsFailure)
         {
             return Result.Fail($"Failed to close document for file resource '{FileResource}'")

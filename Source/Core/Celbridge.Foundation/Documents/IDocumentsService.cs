@@ -45,6 +45,25 @@ public sealed record ExtensionEditorCandidates(
     EditorId DefaultEditorId);
 
 /// <summary>
+/// Options for opening a document in the documents panel.
+/// </summary>
+public record OpenDocumentOptions(
+    DocumentAddress? Address = null,
+    bool ForceReload = false,
+    string Location = "",
+    bool Activate = true,
+    EditorId EditorId = default,
+    string? EditorStateJson = null);
+
+/// <summary>
+/// Options for closing a document in the documents panel. ForceClose closes the document without letting
+/// it cancel. SelectSuccessor makes the neighbouring document active when the closing one was active.
+/// </summary>
+public record CloseDocumentOptions(
+    bool ForceClose = false,
+    bool SelectSuccessor = true);
+
+/// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
 /// </summary>
 public interface IDocumentsService
@@ -147,9 +166,8 @@ public interface IDocumentsService
 
     /// <summary>
     /// Closes an opened document in the documents panel.
-    /// forceClose forces the document to close without allowing the document to cancel the close operation.
     /// </summary>
-    Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose);
+    Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null);
 
     /// <summary>
     /// Activates an opened document in the documents panel, making it the active tab.

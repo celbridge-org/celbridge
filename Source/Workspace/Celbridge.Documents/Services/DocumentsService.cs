@@ -508,9 +508,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         return outcome;
     }
 
-    public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
+    public async Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null)
     {
-        var closeResult = await DocumentsPanel.CloseDocument(fileResource, forceClose);
+        var closeResult = await DocumentsPanel.CloseDocument(fileResource, options);
         if (closeResult.IsFailure)
         {
             return Result.Fail($"Failed to close document for file resource '{fileResource}'")
@@ -592,7 +592,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 // Log the error and close the document to get back to a consistent state
                 _logger.LogError(changeResult, $"Failed to change document resource from '{oldResource}' to '{newResource}'");
-                await CloseDocument(oldResource, true);
+                await CloseDocument(oldResource, new CloseDocumentOptions(ForceClose: true));
             }
         };
 

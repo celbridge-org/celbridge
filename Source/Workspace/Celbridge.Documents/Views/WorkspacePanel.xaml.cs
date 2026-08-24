@@ -814,8 +814,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
     }
 
-    public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
+    public async Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null)
     {
+        var closeOptions = options ?? new CloseDocumentOptions();
+
         var location = SectionContainer.FindDocumentTab(fileResource);
         if (location is not null)
         {
@@ -826,7 +828,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             // If the close is cancelled this value is discarded.
             var capturedEditorState = await TryCaptureEditorStateAsync(documentTab);
 
-            var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
+            var closeResult = await documentTab.ViewModel.CloseDocument(closeOptions.ForceClose);
             if (closeResult.IsFailure)
             {
                 return Result.Fail($"An error occurred when closing the document for file resource: '{fileResource}'")
@@ -843,7 +845,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 int tabIndex = sectionView.GetTabIndex(documentTab);
 
                 // Handle selection of next document before removing the tab
-                SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
+                if (closeOptions.SelectSuccessor)
+                {
+                    SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
+                }
 
                 RemoveTabFromSection(sectionView, documentTab);
 
