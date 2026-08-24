@@ -328,7 +328,7 @@ public sealed partial class WorkspacePanel
             return;
         }
 
-        _commandService.Execute<IOpenDocumentCommand>(command =>
+        var openResult = await _commandService.ExecuteAsync<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.EditorId = editorId;
@@ -336,5 +336,12 @@ public sealed partial class WorkspacePanel
             command.TargetSection = section;
             command.TargetTabIndex = tabIndex;
         });
+
+        if (openResult.IsFailure)
+        {
+            // The document is still recorded as active but its tab has gone, so the reopen has to put
+            // the workspace back on a document that exists.
+            SectionContainer.ReconcileMissingActiveDocument();
+        }
     }
 }

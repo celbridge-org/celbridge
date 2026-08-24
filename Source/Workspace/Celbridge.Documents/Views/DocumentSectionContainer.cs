@@ -302,6 +302,30 @@ public sealed partial class DocumentSectionContainer
             location = FindFallbackActiveDocument();
         }
 
+        ApplyActiveDocument(location, ActiveDocumentChangeReason.Restored);
+    }
+
+    /// <summary>
+    /// Hands the active document to whatever is still open when the one recorded as active no longer
+    /// has a tab. For a caller that kept a closing document active because it meant to put it straight
+    /// back, and could not.
+    /// </summary>
+    public void ReconcileMissingActiveDocument()
+    {
+        if (_activeDocument.IsEmpty
+            || FindDocumentTab(_activeDocument) is not null)
+        {
+            return;
+        }
+
+        // The keyboard follows, because the surface that held it has been torn down.
+        ApplyActiveDocument(FindFallbackActiveDocument(), ActiveDocumentChangeReason.Activated);
+    }
+
+    // Makes the located document active, or records that none is. A null location means no section has
+    // a tab to hand it to.
+    private void ApplyActiveDocument(DocumentTabLocation? location, ActiveDocumentChangeReason reason)
+    {
         if (location is not null)
         {
             // Directly update the active document; programmatic selection does not rely on events.
@@ -317,7 +341,7 @@ public sealed partial class DocumentSectionContainer
         }
 
         UpdateTabSelectionIndicators();
-        ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Restored);
+        ActiveDocumentChanged?.Invoke(_activeDocument, reason);
     }
 
     /// <summary>
