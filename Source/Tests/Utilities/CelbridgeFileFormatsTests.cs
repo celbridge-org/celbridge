@@ -13,6 +13,7 @@ public class CelbridgeFileFormatsTests
     [TestCase("package.toml")]
     [TestCase("code.editor.toml")]
     [TestCase("markdown.editor.toml")]
+    [TestCase("pages.toml")]
     public void IsCelbridgeFormat_TheApplicationsOwnFormats_AreRecognized(string fileName)
     {
         CelbridgeFileFormats.IsCelbridgeFormat(fileName).Should().BeTrue();

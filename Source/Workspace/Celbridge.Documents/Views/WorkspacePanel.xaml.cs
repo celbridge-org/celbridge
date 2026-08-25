@@ -731,14 +731,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.FileResource = fileResource;
         documentTab.ViewModel.FilePath = filePath;
 
-        // When the caller names the editor (a utility launcher always does), stamp the utility's manifest title
-        // and icon before the tab enters the visual tree, so it never briefly flashes the raw backing-file name
-        // while the view is created. Paths that only learn the editor id from the created view re-apply below.
-        ApplyUtilityTabMetadata(documentTab, effectiveOptions.EditorId);
-        if (!documentTab.ViewModel.IsUtility)
-        {
-            documentTab.ViewModel.DocumentName = fileResource.ResourceName;
-        }
+        // Titled before the tab enters the visual tree, so it never briefly flashes the raw backing-file
+        // name while the view is created.
+        ApplyEditorTabMetadata(documentTab, effectiveOptions.EditorId);
 
         if (address is not null)
         {
@@ -768,10 +763,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         UpdateEditorDisplayName(documentTab, documentView.EditorId);
 
-        // Apply the manifest title and icon for paths that only learn the editor id from the created view.
-        // The launcher path already stamped it above, and re-applying is idempotent. Runs before
-        // UpdateAllTabDisplayNames so the utility title is not overwritten by filename disambiguation.
-        ApplyUtilityTabMetadata(documentTab, documentView.EditorId);
+        // Runs before UpdateAllTabDisplayNames, so a fixed title is not overwritten by disambiguation.
+        ApplyEditorTabMetadata(documentTab, documentView.EditorId);
 
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
@@ -1097,8 +1090,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         documentTab.ViewModel.FileResource = newResource;
-        documentTab.ViewModel.DocumentName = newResource.ResourceName;
         documentTab.ViewModel.FilePath = newResourcePath;
+        if (!documentTab.ViewModel.HasFixedTitle)
+        {
+            documentTab.ViewModel.DocumentName = newResource.ResourceName;
+        }
 
         // Update all tab names to handle any filename ambiguity changes
         UpdateAllTabDisplayNames();
@@ -1119,12 +1115,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     private void UpdateAllTabDisplayNames()
     {
-        // Collect all tabs from all sections. Utility tabs keep their manifest title, so they are
-        // excluded from filename-based disambiguation.
         var allTabs = new List<DocumentTab>();
         foreach (var sectionView in SectionContainer.GetAllSections())
         {
-            allTabs.AddRange(sectionView.GetAllTabs().Where(tab => !tab.ViewModel.IsUtility));
+            allTabs.AddRange(sectionView.GetAllTabs().Where(tab => !tab.ViewModel.HasFixedTitle));
         }
 
         // Group tabs by their filename

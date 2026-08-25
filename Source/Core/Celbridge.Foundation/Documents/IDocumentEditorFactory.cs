@@ -36,6 +36,13 @@ public interface IDocumentEditorFactory
     bool IsPlaceholder { get; }
 
     /// <summary>
+    /// The title a document tab shows instead of the file name, or empty to use the file name. Set by an
+    /// editor whose file is fixed and whose name adds nothing to a tab strip; a tab titled this way is
+    /// left out of filename disambiguation.
+    /// </summary>
+    string DocumentTabTitle { get; }
+
+    /// <summary>
     /// True when the extensions and filenames this factory claims carry a role the application depends
     /// on, so they are not file types a user may point at a different editor. Placeholders reserve by
     /// definition; an editor that both reserves a type and opens it sets this itself.

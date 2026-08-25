@@ -51,6 +51,13 @@ public partial class DocumentTabViewModel : ObservableObject
     private bool _isUtility;
 
     /// <summary>
+    /// True when the tab's title comes from its editor rather than its file, so filename disambiguation
+    /// leaves it alone. Set for a utility, and for an editor that names its own tabs.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasFixedTitle;
+
+    /// <summary>
     /// The Bootstrap glyph name for a utility tab's icon, sourced from the manifest. Empty for
     /// ordinary document tabs.
     /// </summary>
@@ -72,7 +79,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// <summary>
     /// Returns the file extension for the current resource.
     /// </summary>
-    public string FileExtension => Path.GetExtension(FileResource.ResourceName);
+    public string FileName => FileResource.ResourceName;
 
     /// <summary>
     /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
@@ -119,7 +126,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
     partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
     {
-        OnPropertyChanged(nameof(FileExtension));
+        OnPropertyChanged(nameof(FileName));
     }
 
     public IDocumentView? DocumentView { get; set; }

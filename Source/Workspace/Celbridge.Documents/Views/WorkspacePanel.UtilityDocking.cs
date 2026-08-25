@@ -49,7 +49,7 @@ public sealed partial class WorkspacePanel
         documentTab.ViewModel.FileResource = resource;
         documentTab.ViewModel.FilePath = filePath;
         documentTab.ViewModel.EditorId = editorId;
-        ApplyUtilityTabMetadata(documentTab, editorId);
+        ApplyEditorTabMetadata(documentTab, editorId);
 
         var dockedView = new DockedUtilityDocumentView(_serviceProvider, _messengerService, panelView.Controller);
         dockedView.EditorId = editorId;
@@ -124,17 +124,26 @@ public sealed partial class WorkspacePanel
         UpdateAllTabDisplayNames();
     }
 
-    private void ApplyUtilityTabMetadata(DocumentTab documentTab, EditorId editorId)
+    // Decides what a tab is called: a utility's manifest title, the title its editor gives its tabs, or
+    // the file name. Idempotent, because a caller that does not name the editor applies it again once the
+    // created view reports which editor it is.
+    private void ApplyEditorTabMetadata(DocumentTab documentTab, EditorId editorId)
     {
         var utilityInfo = ViewModel.ResolveUtilityTabInfo(editorId);
-        if (utilityInfo is null)
+        if (utilityInfo is not null)
         {
+            documentTab.ViewModel.IsUtility = true;
+            documentTab.ViewModel.HasFixedTitle = true;
+            documentTab.ViewModel.UtilityIconName = utilityInfo.IconName;
+            documentTab.ViewModel.DocumentName = utilityInfo.Title;
+            documentTab.ViewModel.UtilityTooltip = utilityInfo.Tooltip;
             return;
         }
 
-        documentTab.ViewModel.IsUtility = true;
-        documentTab.ViewModel.UtilityIconName = utilityInfo.IconName;
-        documentTab.ViewModel.DocumentName = utilityInfo.Title;
-        documentTab.ViewModel.UtilityTooltip = utilityInfo.Tooltip;
+        var editorTabTitle = ViewModel.ResolveEditorTabTitle(editorId);
+        documentTab.ViewModel.HasFixedTitle = !string.IsNullOrEmpty(editorTabTitle);
+        documentTab.ViewModel.DocumentName = documentTab.ViewModel.HasFixedTitle
+            ? editorTabTitle
+            : documentTab.ViewModel.FileResource.ResourceName;
     }
 }

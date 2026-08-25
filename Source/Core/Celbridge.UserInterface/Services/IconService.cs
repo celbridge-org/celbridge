@@ -153,14 +153,49 @@ public class IconService : IIconService
 
     public Result<IconDefinition> GetFileIconForFileName(string fileName)
     {
-        if (!string.IsNullOrEmpty(fileName) &&
-            _fileNameIconOverrides.TryGetValue(fileName, out var fileNameOverride))
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return Result<IconDefinition>.Ok(DefaultFileIcon);
+        }
+
+        if (_fileNameIconOverrides.TryGetValue(fileName, out var fileNameOverride))
         {
             return Result<IconDefinition>.Ok(fileNameOverride);
         }
 
-        // A name with no extension falls through to the default file icon.
-        return GetFileIconForExtension(Path.GetExtension(fileName));
+        foreach (var suffix in GetExtensionSuffixes(fileName))
+        {
+            if (_fileIconOverrides.TryGetValue(suffix, out var suffixOverride))
+            {
+                return Result<IconDefinition>.Ok(suffixOverride);
+            }
+        }
+
+        // A name matching no suffix falls through to the default file icon.
+        return Result<IconDefinition>.Ok(DefaultFileIcon);
+    }
+
+    // The dot-free extension suffixes of a name, longest first: "code.editor.toml" yields
+    // "editor.toml" then "toml", so a manifest takes its own icon rather than the one every TOML file
+    // shares. A caller holding only an extension (".md") resolves through the same walk, because an
+    // extension is its own longest suffix.
+    private static IEnumerable<string> GetExtensionSuffixes(string fileName)
+    {
+        // A leading dot is not skipped, unlike editor resolution: a dotfile does carry an icon, and
+        // ".gitignore" has always resolved through its own key.
+        var searchFrom = 0;
+
+        while (searchFrom < fileName.Length)
+        {
+            var dotIndex = fileName.IndexOf('.', searchFrom);
+            if (dotIndex < 0)
+            {
+                yield break;
+            }
+
+            yield return fileName.Substring(dotIndex + 1);
+            searchFrom = dotIndex + 1;
+        }
     }
 
     public Result<IconDefinition> CreateIcon(string iconName, string colorHex)

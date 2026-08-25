@@ -4,8 +4,8 @@ using Celbridge.Projects;
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// The file formats Celbridge's own machinery reads: the project file, package manifests, and
-/// per-contribution editor manifests. They carry a role the application depends on rather than being
+/// The file formats Celbridge's own machinery reads: the project file, package manifests,
+/// per-contribution editor manifests, and page manifests. They carry a role the application depends on rather than being
 /// project content, so the resource policy holds them addressable whatever the project's rules say, and
 /// no sidecar is written beside them.
 /// </summary>
@@ -19,6 +19,7 @@ public static class CelbridgeFileFormats
         $"*{ProjectConstants.ProjectFileExtension}",
         PackageConstants.ManifestFileName,
         $"*{PackageConstants.EditorManifestExtension}",
+        PageConstants.ManifestFileName,
     ];
 
     // Compiled once from Patterns, so the predicate and the rules a consumer builds cannot disagree.

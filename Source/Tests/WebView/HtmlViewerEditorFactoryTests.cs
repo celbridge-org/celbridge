@@ -24,6 +24,14 @@ public class HtmlViewerEditorFactoryTests
     }
 
     [Test]
+    public void Factory_NamesItsTabsAfterTheirFile()
+    {
+        // An ordinary editor opens whichever file the user picked, so its tabs carry file names and take
+        // part in disambiguation. Only an editor bound to one fixed file titles its own tabs.
+        _factory.DocumentTabTitle.Should().BeEmpty();
+    }
+
+    [Test]
     public void Factory_DoesNotRegisterWebView()
     {
         _factory.SupportedExtensions.Should().NotContain(".webview");
