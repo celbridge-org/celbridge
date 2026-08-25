@@ -25,12 +25,30 @@
           VerticalContentAlignment="Stretch"
           Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
 
-    <!-- Attached to the whole button so it drops down aligned to the button's left edge. Every item after
-         the recent projects header is rebuilt each time the menu opens. -->
+    <!-- Attached to the whole button so it drops down aligned to the button's left edge. The projects the
+         menu switches to lead it, and the less frequently used items follow. The recent project rows are the
+         only items built at runtime, inserted below the recent projects header each time the menu opens. -->
     <FlyoutBase.AttachedFlyout>
       <MenuFlyout x:Name="ProjectMenuFlyout"
                   Placement="BottomEdgeAlignedLeft">
 
+        <controls:MenuSectionHeaderItem x:Name="CurrentProjectHeader"
+                                        Text="{x:Bind CurrentProjectHeaderString}"
+                                        Style="{StaticResource MenuSectionHeaderItemStyle}"/>
+
+        <controls:ProjectMenuItem x:Name="CurrentProjectItem"
+                                  Style="{StaticResource ProjectMenuItemStyle}"
+                                  Click="ReturnToCurrentProject"/>
+
+        <MenuFlyoutSeparator x:Name="CurrentProjectSeparator"/>
+
+        <controls:MenuSectionHeaderItem x:Name="RecentProjectsHeader"
+                                        Text="{x:Bind RecentProjectsHeaderString}"
+                                        Style="{StaticResource MenuSectionHeaderItemStyle}"/>
+
+        <MenuFlyoutSeparator/>
+
+        <!-- The same four commands the File menu carries, in the same order, so the two surfaces read alike. -->
         <MenuFlyoutItem Text="{x:Bind NewProjectString}"
                         Click="NewProject">
           <MenuFlyoutItem.Icon>
@@ -59,29 +77,17 @@
           </MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
 
-        <MenuFlyoutSeparator x:Name="CurrentProjectSeparator"/>
+        <MenuFlyoutSeparator x:Name="ProjectLoadReportSeparator"/>
 
-        <controls:MenuSectionHeaderItem x:Name="CurrentProjectHeader"
-                                        Text="{x:Bind CurrentProjectHeaderString}"
-                                        Style="{StaticResource MenuSectionHeaderItemStyle}"/>
-
-        <controls:ProjectMenuItem x:Name="CurrentProjectItem"
-                                  Style="{StaticResource ProjectMenuItemStyle}"
-                                  Click="ReturnToCurrentProject"/>
-
-        <!-- The deliberate route back to the load report, in every state including a healthy one. Named
-             for what it does: the health itself is stated by the button beside the switcher. -->
-        <MenuFlyoutItem x:Name="ProjectHealthItem"
-                        Click="OpenProjectHealthReport">
+        <!-- The only route to the report after a clean load: the health button beside the switcher stays
+             collapsed, and the logs: root the report is written to is not enumerated in the Explorer. -->
+        <MenuFlyoutItem x:Name="ProjectLoadReportItem"
+                        Text="{x:Bind ProjectLoadReportString}"
+                        Click="OpenProjectLoadReport">
           <MenuFlyoutItem.Icon>
-            <controls:Icon x:Name="ProjectHealthIcon"/>
+            <controls:Icon Symbol="Report"/>
           </MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
-
-        <MenuFlyoutSeparator/>
-
-        <controls:MenuSectionHeaderItem Text="{x:Bind RecentProjectsHeaderString}"
-                                        Style="{StaticResource MenuSectionHeaderItemStyle}"/>
       </MenuFlyout>
     </FlyoutBase.AttachedFlyout>
 

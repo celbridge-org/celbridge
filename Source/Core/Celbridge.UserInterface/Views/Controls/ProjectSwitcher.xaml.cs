@@ -14,9 +14,9 @@ public sealed partial class ProjectSwitcher : UserControl
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
-    // The items declared in XAML: the project actions, the current-project section and the recent-projects
-    // header. They are kept across rebuilds, and every item added after them is rebuilt on each open.
-    private readonly int _staticFlyoutItemCount;
+    // The recent project rows built on the last open, kept so they can be removed before the next one.
+    // Everything else in the menu is declared in XAML and stays in place.
+    private readonly List<MenuFlyoutItemBase> _recentProjectItems = new();
 
     private readonly IProjectHealthService _projectHealthService;
 
@@ -28,6 +28,7 @@ public sealed partial class ProjectSwitcher : UserControl
     private string OpenProjectString => _stringLocalizer.GetString("MainMenu_OpenProject");
     private string ReloadProjectString => _stringLocalizer.GetString("MainMenu_ReloadProject");
     private string CloseProjectString => _stringLocalizer.GetString("MainMenu_CloseProject");
+    private string ProjectLoadReportString => _stringLocalizer.GetString("TitleBar_ProjectLoadReport");
     private string CurrentProjectHeaderString => _stringLocalizer.GetString("TitleBar_CurrentProjectHeader");
     private string RecentProjectsHeaderString => _stringLocalizer.GetString("TitleBar_RecentProjectsHeader");
 
@@ -40,8 +41,6 @@ public sealed partial class ProjectSwitcher : UserControl
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
 
         this.InitializeComponent();
-
-        _staticFlyoutItemCount = ProjectMenuFlyout.Items.Count;
 
         this.DataContext = ViewModel;
 
@@ -79,10 +78,11 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void OnProjectMenuFlyoutOpening(object? sender, object e)
     {
-        while (ProjectMenuFlyout.Items.Count > _staticFlyoutItemCount)
+        foreach (var recentProjectItem in _recentProjectItems)
         {
-            ProjectMenuFlyout.Items.RemoveAt(_staticFlyoutItemCount);
+            ProjectMenuFlyout.Items.Remove(recentProjectItem);
         }
+        _recentProjectItems.Clear();
 
         var viewModel = _applicationMenuViewModel;
         if (viewModel is null)
@@ -97,7 +97,8 @@ public sealed partial class ProjectSwitcher : UserControl
             CurrentProjectHeader.Visibility = Visibility.Collapsed;
             CurrentProjectItem.Visibility = Visibility.Collapsed;
             CurrentProjectSeparator.Visibility = Visibility.Collapsed;
-            ProjectHealthItem.Visibility = Visibility.Collapsed;
+            ProjectLoadReportSeparator.Visibility = Visibility.Collapsed;
+            ProjectLoadReportItem.Visibility = Visibility.Collapsed;
         }
         else
         {
@@ -109,7 +110,7 @@ public sealed partial class ProjectSwitcher : UserControl
             CurrentProjectItem.Visibility = Visibility.Visible;
             CurrentProjectSeparator.Visibility = Visibility.Visible;
 
-            UpdateProjectHealthItem();
+            UpdateProjectLoadReportItem();
         }
 
         var recentProjects = viewModel.GetRecentProjects();
@@ -120,16 +121,26 @@ public sealed partial class ProjectSwitcher : UserControl
                 Text = _stringLocalizer.GetString("Menu_NoRecentProjects"),
                 IsEnabled = false
             };
-            ProjectMenuFlyout.Items.Add(emptyItem);
-            return;
+            _recentProjectItems.Add(emptyItem);
+        }
+        else
+        {
+            RecentProjectsMenu.Populate(
+                _recentProjectItems,
+                recentProjects,
+                OpenRecentProjectFromSwitcher,
+                _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
+                viewModel.ClearRecentProjects);
         }
 
-        RecentProjectsMenu.Populate(
-            ProjectMenuFlyout.Items,
-            recentProjects,
-            OpenRecentProjectFromSwitcher,
-            _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
-            viewModel.ClearRecentProjects);
+        // The rows belong to the recent projects header, so they go in below it rather than at the end of the
+        // menu, where the project commands sit.
+        var insertIndex = ProjectMenuFlyout.Items.IndexOf(RecentProjectsHeader) + 1;
+        foreach (var recentProjectItem in _recentProjectItems)
+        {
+            ProjectMenuFlyout.Items.Insert(insertIndex, recentProjectItem);
+            insertIndex++;
+        }
     }
 
     private void NewProject(object sender, RoutedEventArgs e)
@@ -177,23 +188,23 @@ public sealed partial class ProjectSwitcher : UserControl
         commandService.Execute<IActivateDocumentCommand>(command => command.FileResource = activeDocument);
     }
 
-    private void UpdateProjectHealthItem()
+    private void UpdateProjectLoadReportItem()
     {
         var health = _projectHealthService.CurrentHealth;
         if (health is null)
         {
-            // Nothing was recorded for this load, so there is no report to open.
-            ProjectHealthItem.Visibility = Visibility.Collapsed;
+            // Nothing was recorded for this load, so there is no report to open. The separator goes with the
+            // item, which is last in the menu and would otherwise leave it dangling.
+            ProjectLoadReportSeparator.Visibility = Visibility.Collapsed;
+            ProjectLoadReportItem.Visibility = Visibility.Collapsed;
             return;
         }
 
-        ProjectHealthItem.Text = _stringLocalizer.GetString("TitleBar_ViewLoadReport");
-        ProjectHealthIcon.Symbol = IconSymbol.Report;
-
-        ProjectHealthItem.Visibility = Visibility.Visible;
+        ProjectLoadReportSeparator.Visibility = Visibility.Visible;
+        ProjectLoadReportItem.Visibility = Visibility.Visible;
     }
 
-    private void OpenProjectHealthReport(object sender, RoutedEventArgs e)
+    private void OpenProjectLoadReport(object sender, RoutedEventArgs e)
     {
         var reportResource = _projectHealthService.CurrentHealth?.Resource ?? ResourceKey.Empty;
         if (reportResource.IsEmpty)
