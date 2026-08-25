@@ -1,6 +1,6 @@
 using Celbridge.Packages;
 
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Reconciles a parsed .celbridge against the packages discovered on disk. Required and recommended

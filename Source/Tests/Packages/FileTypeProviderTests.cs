@@ -3,7 +3,6 @@ using Celbridge.Packages;
 using Celbridge.UserInterface;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;

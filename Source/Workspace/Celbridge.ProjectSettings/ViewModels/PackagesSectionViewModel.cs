@@ -5,7 +5,6 @@ using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Projects.Services;
 using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.ProjectSettings.ViewModels;

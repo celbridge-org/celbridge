@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using Celbridge.Packages;
-using Celbridge.Projects.Services;
+using Celbridge.Projects;
 using Celbridge.Resources;
 
 namespace Celbridge.ProjectSettings.ViewModels;

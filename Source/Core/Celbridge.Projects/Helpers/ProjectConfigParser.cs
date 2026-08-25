@@ -3,7 +3,7 @@ using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
 
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Static utility class for parsing Celbridge project configuration files (v2 schema).

@@ -1,7 +1,7 @@
 using System.Globalization;
 using Tomlyn.Model;
 
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Minimal JSON Pointer style reader over a Tomlyn table.
