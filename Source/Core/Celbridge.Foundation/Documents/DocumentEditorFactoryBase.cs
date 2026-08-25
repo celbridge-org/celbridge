@@ -16,6 +16,8 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 
     public virtual bool IsPlaceholder => false;
 
+    public virtual string DocumentTabTitle => string.Empty;
+
     public virtual bool ReservesFileType => IsPlaceholder;
 
     public virtual bool IsUtility => false;

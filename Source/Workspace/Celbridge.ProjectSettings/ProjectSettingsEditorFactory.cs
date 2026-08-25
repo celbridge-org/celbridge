@@ -22,6 +22,8 @@ public class ProjectSettingsEditorFactory : DocumentEditorFactoryBase
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = [ProjectConstants.ProjectFileExtension];
 
+    public override string DocumentTabTitle => DisplayName;
+
     public override bool ReservesFileType => true;
 
     public ProjectSettingsEditorFactory(

@@ -289,6 +289,24 @@ public partial class WorkspacePanelViewModel : ObservableObject
 
     public record class UtilityTabInfo(string IconName, string Title, string Tooltip);
 
+    // Looks up the title the named editor gives its document tabs. Returns an empty title when the editor
+    // names its tabs after their file, which is every editor bar those bound to one fixed file.
+    public string ResolveEditorTabTitle(EditorId editorId)
+    {
+        if (editorId.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var factoryResult = _documentsService.DocumentEditorRegistry.GetFactoryById(editorId);
+        if (factoryResult.IsFailure)
+        {
+            return string.Empty;
+        }
+
+        return factoryResult.Value.DocumentTabTitle;
+    }
+
     // Resolves how a utility document presents as a tab, or null when the editor is not a utility.
     public UtilityTabInfo? ResolveUtilityTabInfo(EditorId editorId)
     {

@@ -51,6 +51,13 @@ public partial class DocumentTabViewModel : ObservableObject
     private bool _isUtility;
 
     /// <summary>
+    /// True when the tab's title comes from its editor rather than its file, so filename disambiguation
+    /// leaves it alone. Set for a utility, and for an editor that names its own tabs.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasFixedTitle;
+
+    /// <summary>
     /// The Bootstrap glyph name for a utility tab's icon, sourced from the manifest. Empty for
     /// ordinary document tabs.
     /// </summary>

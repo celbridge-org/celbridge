@@ -59,6 +59,15 @@ public class ProjectSettingsEditorFactoryTests
     }
 
     [Test]
+    public void DocumentTabTitle_IsTheEditorsOwnName()
+    {
+        // One project is loaded, so the file name disambiguates nothing, and the tab answers to the same
+        // name as the rail button that opens it.
+        _factory.DocumentTabTitle.Should().NotBeEmpty();
+        _factory.DocumentTabTitle.Should().Be(_factory.DisplayName);
+    }
+
+    [Test]
     public void PickList_ForTheLoadedProjectFile_OffersBothEditors()
     {
         var registry = CreateRegistry();
