@@ -27,9 +27,20 @@ public class ProjectDataFolderTests
     [TestCase("..")]
     [TestCase("../escape")]
     [TestCase("nested/folder")]
-    [TestCase("nested\folder")]
+    [TestCase(@"nested\folder")]
     public void IsValidFolderName_AnythingThatIsNotASingleSegment_IsRejected(string folderName)
     {
+        ProjectDataFolder.IsValidFolderName(folderName).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsValidFolderName_AControlCharacter_IsRejected()
+    {
+        // Built from the code point rather than an escape: a backslash-f in a non-verbatim string is
+        // a form feed, which is what made the separator case above silently test something else.
+        // Windows rejects control characters through the invalid-file-name set and Linux does not.
+        var folderName = "data" + (char)12 + "folder";
+
         ProjectDataFolder.IsValidFolderName(folderName).Should().BeFalse();
     }
 

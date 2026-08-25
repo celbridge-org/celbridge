@@ -27,6 +27,17 @@ public static class ProjectDataFolder
             return false;
         }
 
+        // Control characters for the same reason: Windows carries them in the invalid-character set
+        // and Linux does not, and this name is read from a committed file that has to resolve the
+        // same way wherever the project is opened.
+        foreach (var character in folderName)
+        {
+            if (char.IsControl(character))
+            {
+                return false;
+            }
+        }
+
         if (folderName == "."
             || folderName == "..")
         {
