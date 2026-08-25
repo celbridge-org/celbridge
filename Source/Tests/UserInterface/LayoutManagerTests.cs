@@ -252,6 +252,21 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void SetSurfaceVisibility_InFocusMode_KeepsThePanelsTheModeHid()
+    {
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        // Focus hides every surface transiently, so showing one from there returns to the layout the user
+        // prefers with that surface shown, rather than to the mode's empty layout plus that one surface.
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);
+        _workspaceSettings.PreferredSurfaceVisibility.Should()
+            .Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);
+    }
+
+    [Test]
     public void SetSurfaceVisibility_SameState_NoChange()
     {
         bool messageReceived = false;

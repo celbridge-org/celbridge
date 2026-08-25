@@ -4,7 +4,7 @@ namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// The live layout state of the document areas: per-area split and ratio, which areas the user has visible,
-/// and the transient isolation and Utility Panel presentation. Holds the layout rules over that state;
+/// and the transient isolation and Utility Rail and Panel presentation. Holds the layout rules over that state;
 /// applying it to the visual tree is the section container's job. Mutations return whether the state
 /// changed, so the caller knows when to re-apply the layout.
 /// </summary>
@@ -18,6 +18,7 @@ public class AreaLayoutState
 
     private DocumentArea? _isolatedArea;
     private bool _isUtilityPanelPresented = true;
+    private bool _isUtilityRailPresented = true;
     private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
     public AreaLayoutState()
@@ -39,6 +40,17 @@ public class AreaLayoutState
     /// Whether the Utility Panel is showing alongside the document areas.
     /// </summary>
     public bool IsUtilityPanelPresented => _isUtilityPanelPresented;
+
+    /// <summary>
+    /// Whether the Utility Rail is showing down the left of the workspace.
+    /// </summary>
+    public bool IsUtilityRailPresented => _isUtilityRailPresented;
+
+    /// <summary>
+    /// Whether anything is showing in the band left of the document areas, which is what an area on that side
+    /// draws its left edge against.
+    /// </summary>
+    public bool IsUtilityColumnPresented => _isUtilityRailPresented || _isUtilityPanelPresented;
 
     /// <summary>
     /// How far the Bottom area spans across the workspace.
@@ -260,6 +272,18 @@ public class AreaLayoutState
         }
 
         _isUtilityPanelPresented = isPresented;
+
+        return true;
+    }
+
+    public bool SetUtilityRailPresented(bool isPresented)
+    {
+        if (_isUtilityRailPresented == isPresented)
+        {
+            return false;
+        }
+
+        _isUtilityRailPresented = isPresented;
 
         return true;
     }

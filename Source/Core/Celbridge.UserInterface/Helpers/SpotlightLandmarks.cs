@@ -20,9 +20,9 @@ internal static class SpotlightLandmarks
             new("new-file-button", WorkspaceSurface.UtilityPanel),
             new("new-folder-button", WorkspaceSurface.UtilityPanel),
             new("collapse-folders-button", WorkspaceSurface.UtilityPanel),
-            new("explorer-utility-button", WorkspaceSurface.UtilityPanel),
-            new("search-utility-button", WorkspaceSurface.UtilityPanel),
-            new("project-settings-utility-button", WorkspaceSurface.UtilityPanel),
+            new("explorer-utility-button", null),
+            new("search-utility-button", null),
+            new("project-settings-utility-button", null),
             new("search-input", WorkspaceSurface.UtilityPanel),
             new("search-run-button", WorkspaceSurface.UtilityPanel),
             new("search-history-button", WorkspaceSurface.UtilityPanel),
@@ -54,7 +54,7 @@ internal static class SpotlightLandmarks
         // rather than listed above.
         foreach (var link in CommunityLinks.All)
         {
-            registry.RegisterLandmark(new LandmarkDescriptor(link.LandmarkId, WorkspaceSurface.UtilityPanel));
+            registry.RegisterLandmark(new LandmarkDescriptor(link.LandmarkId, null));
         }
     }
 }

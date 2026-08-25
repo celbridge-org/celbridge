@@ -123,11 +123,25 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     public void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible)
     {
-        var newVisibility = isVisible
-            ? SurfaceVisibility | surface
-            : SurfaceVisibility & ~surface;
+        // Manually changing panel visibility means the user is customizing the layout, so leave any
+        // Focus/Presentation mode and return to the Default layout.
+        bool isLeavingLayoutMode = _layoutMode != LayoutMode.Default;
 
-        if (newVisibility == SurfaceVisibility)
+        // Those modes hide every surface transiently, so the change is composed against the panels the user
+        // prefers rather than against the empty layout the mode was showing. Composing against the mode's own
+        // visibility would persist it as the preference, losing the panels the mode had hidden.
+        var currentVisibility = SurfaceVisibility;
+        if (isLeavingLayoutMode)
+        {
+            currentVisibility = PreferredSurfaceVisibility;
+        }
+
+        var newVisibility = isVisible
+            ? currentVisibility | surface
+            : currentVisibility & ~surface;
+
+        if (newVisibility == SurfaceVisibility
+            && !isLeavingLayoutMode)
         {
             return;
         }
@@ -135,9 +149,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // This is a user-initiated change, so it should persist
         UpdateSurfaceVisibility(newVisibility, shouldPersist: true);
 
-        // Manually changing panel visibility means the user is customizing the layout, so leave any
-        // Focus/Presentation mode and return to the Default layout.
-        if (_layoutMode != LayoutMode.Default)
+        if (isLeavingLayoutMode)
         {
             SetLayoutModeInternal(LayoutMode.Default);
         }

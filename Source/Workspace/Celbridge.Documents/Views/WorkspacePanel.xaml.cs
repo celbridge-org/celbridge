@@ -348,6 +348,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // into Focus or Presentation.
         ApplyIsolatedArea(_windowModeService.LayoutMode);
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
+        UpdateUtilityRailVisibility(_windowModeService.LayoutMode);
 
         RegisterAsResourceDropTarget();
     }
@@ -443,6 +444,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     {
         ApplyIsolatedArea(message.LayoutMode);
         UpdateTabStripVisibility(message.LayoutMode);
+        UpdateUtilityRailVisibility(message.LayoutMode);
 
         // Entering a mode that hides the side panels can leave keyboard focus on a now-hidden panel
         // (e.g. the Explorer), which stops app shortcuts like F11 from being delivered until the user
@@ -490,6 +492,14 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         {
             toolbar.Visibility = toolbarVisibility;
         }
+    }
+
+    // The rail is chrome the workspace always offers rather than a surface the user collapses, so it follows
+    // the application toolbar: Focus keeps it and Presentation strips back to the document content alone.
+    // Keeping it in Focus also leaves the Utility Panel one click away from that mode.
+    private void UpdateUtilityRailVisibility(LayoutMode layoutMode)
+    {
+        SectionContainer.Areas.SetUtilityRailPresented(layoutMode != LayoutMode.Presentation);
     }
 
     private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)

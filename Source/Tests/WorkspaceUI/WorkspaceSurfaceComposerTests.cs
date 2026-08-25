@@ -21,6 +21,7 @@ public class WorkspaceSurfaceComposerTests
     private static readonly Size BottomAreaMinimum = new(487, 200);
     private static readonly Size SideAreaMinimum = new(220, 430);
     private const double UtilityPanelMinimum = 280;
+    private const double UtilityRailWidth = 40;
 
     // A workspace with room to spare, so the clamps are deciding how the surplus is shared out rather than
     // running out of space.
@@ -36,8 +37,10 @@ public class WorkspaceSurfaceComposerTests
         var composer = CreateComposer(CreatePresentation());
 
         // The Main and Bottom areas share a column, so it holds the wider of the two, with the Utility Panel
-        // and the Side area beside it.
-        double expectedWidth = UtilityPanelMinimum +
+        // and the Side area beside it, and the rail down the left of the lot. The rail meets the panel
+        // directly, so no channel is counted between those two.
+        double expectedWidth = UtilityRailWidth +
+            UtilityPanelMinimum +
             GutterSize +
             BottomAreaMinimum.Width +
             GutterSize +
@@ -54,8 +57,24 @@ public class WorkspaceSurfaceComposerTests
     {
         var composer = CreateComposer(CreatePresentation(isUtilityPanelPresented: false));
 
+        // The rail is not part of the panel, so collapsing the panel leaves the rail holding the left of the
+        // workspace on its own.
         composer.UtilityPanelMinimumWidth.Should().Be(0);
-        composer.MinimumSize.Width.Should().Be(BottomAreaMinimum.Width + GutterSize + SideAreaMinimum.Width);
+        composer.MinimumSize.Width.Should().Be(
+            UtilityRailWidth + BottomAreaMinimum.Width + GutterSize + SideAreaMinimum.Width);
+    }
+
+    [Test]
+    public void MinimumSize_DropsAHiddenUtilityRail()
+    {
+        var composer = CreateComposer(CreatePresentation(isUtilityRailPresented: false));
+
+        double expectedWidth = UtilityPanelMinimum +
+            GutterSize +
+            BottomAreaMinimum.Width +
+            GutterSize +
+            SideAreaMinimum.Width;
+        composer.MinimumSize.Width.Should().Be(expectedWidth);
     }
 
     [Test]
@@ -67,7 +86,8 @@ public class WorkspaceSurfaceComposerTests
         composer.BottomAreaMinimumHeight.Should().Be(0);
         composer.MainColumnMinimumWidth.Should().Be(MainAreaMinimum.Width);
 
-        double expectedWidth = UtilityPanelMinimum +
+        double expectedWidth = UtilityRailWidth +
+            UtilityPanelMinimum +
             GutterSize +
             MainAreaMinimum.Width +
             GutterSize +
@@ -89,7 +109,8 @@ public class WorkspaceSurfaceComposerTests
 
         composer.MainColumnMinimumWidth.Should().Be(splitMainAreaMinimum.Width);
 
-        double expectedWidth = UtilityPanelMinimum +
+        double expectedWidth = UtilityRailWidth +
+            UtilityPanelMinimum +
             GutterSize +
             splitMainAreaMinimum.Width +
             GutterSize +
@@ -104,7 +125,8 @@ public class WorkspaceSurfaceComposerTests
 
         composer.MainColumnMinimumWidth.Should().Be(MainAreaMinimum.Width);
 
-        double expectedWidth = UtilityPanelMinimum +
+        double expectedWidth = UtilityRailWidth +
+            UtilityPanelMinimum +
             GutterSize +
             MainAreaMinimum.Width +
             GutterSize +
@@ -128,7 +150,8 @@ public class WorkspaceSurfaceComposerTests
         composer.MinimumSize.Height.Should().Be(expectedHeight);
 
         // The Bottom area takes the Side area's column, so the row it sits in is the wider of the two.
-        composer.MinimumSize.Width.Should().Be(UtilityPanelMinimum + GutterSize + BottomAreaMinimum.Width);
+        composer.MinimumSize.Width.Should().Be(
+            UtilityRailWidth + UtilityPanelMinimum + GutterSize + BottomAreaMinimum.Width);
     }
 
     [Test]
@@ -142,7 +165,8 @@ public class WorkspaceSurfaceComposerTests
 
         // Nothing sits beside the Bottom area, so the surfaces above it set the width and its own extent only
         // takes over once it is the wider of the two.
-        double expectedWidth = UtilityPanelMinimum +
+        double expectedWidth = UtilityRailWidth +
+            UtilityPanelMinimum +
             GutterSize +
             MainAreaMinimum.Width +
             GutterSize +
@@ -162,7 +186,8 @@ public class WorkspaceSurfaceComposerTests
             composer.MainColumnMinimumWidth,
             composer.SideAreaMinimumWidth,
             GutterSize);
-        double trackWidths = WorkspaceMinimumSize.ComposeAdjacent(
+        double railWidth = presentation.IsUtilityRailPresented ? UtilityRailWidth : 0;
+        double trackWidths = railWidth + WorkspaceMinimumSize.ComposeAdjacent(
             composer.UtilityPanelMinimumWidth,
             documentAreaWidths,
             GutterSize);
@@ -344,6 +369,7 @@ public class WorkspaceSurfaceComposerTests
         yield return CreatePresentation(bottomAreaSpansSideArea: true);
         yield return CreatePresentation(bottomAreaSpansUtilityPanel: true, bottomAreaSpansSideArea: true);
         yield return CreatePresentation(isUtilityPanelPresented: false);
+        yield return CreatePresentation(isUtilityRailPresented: false);
         yield return CreatePresentation(isBottomAreaPresented: false);
         yield return CreatePresentation(isSideAreaPresented: false);
         yield return CreatePresentation(
@@ -352,20 +378,21 @@ public class WorkspaceSurfaceComposerTests
             isUtilityPanelPresented: false);
     }
 
-    // What the Main area's column is left with once the pixel-sized surfaces either side of it have taken
-    // their share of the workspace.
+    // What the Main area's column is left with once the rail and the pixel-sized surfaces either side of it
+    // have taken their share of the workspace.
     private static double ResolveMainColumnWidth(
         double workspaceWidth,
         double utilityPanelWidth,
         double sideAreaWidth)
     {
-        return workspaceWidth - utilityPanelWidth - GutterSize - sideAreaWidth - GutterSize;
+        return workspaceWidth - UtilityRailWidth - utilityPanelWidth - GutterSize - sideAreaWidth - GutterSize;
     }
 
     private static WorkspaceSurfacePresentation CreatePresentation(
         bool isBottomAreaPresented = true,
         bool isSideAreaPresented = true,
         bool isUtilityPanelPresented = true,
+        bool isUtilityRailPresented = true,
         bool bottomAreaSpansUtilityPanel = false,
         bool bottomAreaSpansSideArea = false)
     {
@@ -374,6 +401,7 @@ public class WorkspaceSurfaceComposerTests
             IsBottomAreaPresented: isBottomAreaPresented,
             IsSideAreaPresented: isSideAreaPresented,
             IsUtilityPanelPresented: isUtilityPanelPresented,
+            IsUtilityRailPresented: isUtilityRailPresented,
             BottomAreaSpansUtilityPanel: bottomAreaSpansUtilityPanel,
             BottomAreaSpansSideArea: bottomAreaSpansSideArea);
     }
@@ -392,6 +420,7 @@ public class WorkspaceSurfaceComposerTests
             BottomAreaMinimumSize: BottomAreaMinimum,
             SideAreaMinimumSize: SideAreaMinimum,
             UtilityPanelMinimumWidth: UtilityPanelMinimum,
+            UtilityRailWidth: UtilityRailWidth,
             GutterSize: GutterSize,
             WorkspaceExtent: new Size(workspaceWidth, workspaceHeight),
             UtilityPanelWidth: utilityPanelWidth,

@@ -24,10 +24,10 @@ public static class WorkspaceMinimumSize
     }
 
     /// <summary>
-    /// The smallest size the workspace can be laid out at in the layout a workspace opens with: the surfaces
-    /// the given visibility shows, each unsplit and holding the floor composed from the authored chrome, with
-    /// the channels between them and the one above the document areas. Nothing here is measured, so this
-    /// holds before any workspace exists, which is where the window minimum is applied.
+    /// The smallest size the workspace can be laid out at in the layout a workspace opens with: the Utility
+    /// Rail, plus the surfaces the given visibility shows, each unsplit and holding the floor composed from the
+    /// authored chrome, with the channels between them and the one above the document areas. Nothing here is
+    /// measured, so this holds before any workspace exists, which is where the window minimum is applied.
     /// </summary>
     public static Size ComposeDefaultLayout(WorkspaceSurface visibleSurfaces, double gutterSize)
     {
@@ -53,13 +53,18 @@ public static class WorkspaceMinimumSize
         if (visibleSurfaces.HasFlag(WorkspaceSurface.UtilityPanel))
         {
             // The panel's content area is carved out like a section and draws the same edge down each side, so
-            // it holds the same width floor. What the panel adds is the rail beside it, which meets the content
-            // directly: the channel the user sees is the gap the rail leaves around its buttons.
-            utilityPanelMinimumWidth = WorkspaceConstants.UtilityPanelRailWidth + sectionMinimum.Width;
+            // it holds the same width floor.
+            utilityPanelMinimumWidth = sectionMinimum.Width;
         }
 
         double documentAreasWidth = ComposeAdjacent(sectionMinimum.Width, sideMinimumWidth, gutterSize);
         double width = ComposeAdjacent(utilityPanelMinimumWidth, documentAreasWidth, gutterSize);
+
+        // The Utility Rail is chrome the workspace always shows rather than a surface the visibility collapses,
+        // and it meets whatever sits beside it directly: the channel the user sees is the gap the rail leaves
+        // around its buttons.
+        width += WorkspaceConstants.UtilityRailWidth;
+
         double documentAreasHeight = ComposeAdjacent(sectionMinimum.Height, bottomMinimumHeight, gutterSize);
 
         return new Size(width, documentAreasHeight);

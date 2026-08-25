@@ -4,9 +4,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
-/// Owns the Utility Panel rail state: the ordered rail items, which one is selected, and whether the selected
-/// surface currently holds focus. The rail buttons bind to the per-item IsSelected, IsFocused, and IsDocked
-/// flags.
+/// Owns the Utility Panel rail state: the ordered rail items, which one is selected, whether the panel the
+/// selection shows in is on screen, and whether the selected surface currently holds focus. The rail buttons
+/// bind to the per-item IsSelected, IsFocused, and IsDocked flags.
 /// </summary>
 public partial class UtilityPanelViewModel : ObservableObject
 {
@@ -14,6 +14,7 @@ public partial class UtilityPanelViewModel : ObservableObject
 
     private EditorId _selectedUtilityId = EditorId.Empty;
     private WorkspacePanelId _focusedPanel = WorkspacePanelId.None;
+    private bool _isPanelVisible = true;
 
     // True from a selection until focus lands on the selected surface. While it is true the accent is shown
     // optimistically and focus reports for other panels are ignored, which suppresses the transient bounce as
@@ -65,6 +66,16 @@ public partial class UtilityPanelViewModel : ObservableObject
     {
         _selectedUtilityId = id;
         _awaitingSelectionFocus = true;
+        RefreshItemStates();
+    }
+
+    /// <summary>
+    /// Reports whether the Utility Panel is on screen. No rail button is marked while the panel is collapsed,
+    /// because the selection has no surface to point at, but the selection itself is kept for the next reveal.
+    /// </summary>
+    public void SetPanelVisible(bool isVisible)
+    {
+        _isPanelVisible = isVisible;
         RefreshItemStates();
     }
 
@@ -143,7 +154,7 @@ public partial class UtilityPanelViewModel : ObservableObject
 
         foreach (var item in _items)
         {
-            item.IsSelected = item.Id == _selectedUtilityId;
+            item.IsSelected = _isPanelVisible && item.Id == _selectedUtilityId;
             item.IsFocused = item.IsSelected && surfaceHasFocus;
         }
     }

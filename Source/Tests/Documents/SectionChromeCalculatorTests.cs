@@ -56,9 +56,24 @@ public class SectionChromeCalculatorTests
     }
 
     [Test]
-    public void HiddenUtilityPanel_MainLeavesItsLeftEdgeBare()
+    public void HiddenUtilityPanel_MainStillFacesTheRailBesideIt()
     {
         _layoutState.SetUtilityPanelPresented(false);
+        var calculator = CreateCalculator();
+
+        var areaChrome = calculator.CalculateAreaChrome(DocumentArea.Main, Radius);
+
+        // The rail stays on screen when the panel collapses, so the left edge still faces a neighbour.
+        areaChrome.Primary.Edges.Should().Be(new Thickness(1, 1, 1, 1));
+        areaChrome.Primary.Corners.Should().Be(new CornerRadius(Radius, Radius, Radius, Radius));
+    }
+
+    [Test]
+    public void HiddenUtilityColumn_MainLeavesItsLeftEdgeBare()
+    {
+        // Presentation mode takes the rail as well as the panel, leaving the application border on that side.
+        _layoutState.SetUtilityPanelPresented(false);
+        _layoutState.SetUtilityRailPresented(false);
         var calculator = CreateCalculator();
 
         var areaChrome = calculator.CalculateAreaChrome(DocumentArea.Main, Radius);
@@ -130,17 +145,17 @@ public class SectionChromeCalculatorTests
     }
 
     [Test]
-    public void LeftAlignedBottomArea_BottomLeavesItsLeftEdgeBare()
+    public void LeftAlignedBottomArea_BottomStopsBesideTheRail()
     {
         _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Left);
         var calculator = CreateCalculator();
 
         var areaChrome = calculator.CalculateAreaChrome(DocumentArea.Bottom, Radius);
 
-        // The Bottom area now runs under the Utility Panel to the application border, so it no longer
-        // faces the panel across a gutter. Its right edge still faces the Side area.
-        areaChrome.Primary.Edges.Should().Be(new Thickness(0, 1, 1, 0));
-        areaChrome.Primary.Corners.Should().Be(new CornerRadius(0, Radius, 0, 0));
+        // The Bottom area now runs under the Utility Panel, but never under the rail, so its left edge faces
+        // the rail instead of reaching the application border. Its right edge still faces the Side area.
+        areaChrome.Primary.Edges.Should().Be(new Thickness(1, 1, 1, 0));
+        areaChrome.Primary.Corners.Should().Be(new CornerRadius(Radius, Radius, 0, 0));
     }
 
     [Test]
@@ -159,16 +174,16 @@ public class SectionChromeCalculatorTests
     }
 
     [Test]
-    public void JustifiedBottomArea_BottomLeavesBothSideEdgesBare()
+    public void JustifiedBottomArea_BottomLeavesItsRightEdgeBare()
     {
         _layoutState.SetBottomAreaAlignment(BottomAreaAlignment.Justify);
         var calculator = CreateCalculator();
 
         var areaChrome = calculator.CalculateAreaChrome(DocumentArea.Bottom, Radius);
 
-        // Only the top edge faces a gutter, so no corner has two edges to round between.
-        areaChrome.Primary.Edges.Should().Be(new Thickness(0, 1, 0, 0));
-        areaChrome.Primary.Corners.Should().Be(new CornerRadius(0, 0, 0, 0));
+        // It runs under both neighbours to the border on the right, and stops beside the rail on the left.
+        areaChrome.Primary.Edges.Should().Be(new Thickness(1, 1, 0, 0));
+        areaChrome.Primary.Corners.Should().Be(new CornerRadius(Radius, 0, 0, 0));
     }
 
     [Test]

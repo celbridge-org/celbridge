@@ -17,6 +17,8 @@
     <!-- The resizable tracks carry no size here. Their defaults come from WorkspaceConstants and their
          minimums are composed from the document floor, both applied in code-behind. -->
     <Grid.ColumnDefinitions>
+      <!-- Sized by the rail that sits in it, which carries its own fixed width. -->
+      <ColumnDefinition Width="Auto"/>
       <ColumnDefinition x:Name="UtilityPanelColumn"/>
       <!-- Sized by the splitter that sits in it, and collapses with it when the Utility Panel is hidden. -->
       <ColumnDefinition Width="Auto"/>
@@ -33,10 +35,18 @@
       <RowDefinition x:Name="BottomAreaRow"/>
     </Grid.RowDefinitions>
 
+    <!-- The rail runs the full height down the left of the workspace and is never spanned by the Bottom area,
+         however that area is aligned. It meets whatever sits beside it directly, with no gutter column
+         between. -->
+    <Grid x:Name="UtilityRailHost"
+          Grid.Row="0"
+          Grid.RowSpan="3"
+          Grid.Column="0"/>
+
     <Grid x:Name="UtilityPanelHost"
           Grid.Row="0"
           Grid.RowSpan="3"
-          Grid.Column="0"
+          Grid.Column="1"
           layout:WorkspaceLayout.Surface="UtilityPanel"
           AutomationProperties.AutomationId="explorer-panel"
           Background="{ThemeResource ChromeBackgroundBrush}"/>
@@ -46,14 +56,14 @@
     <controls:Splitter x:Name="UtilityPanelSplitter"
                        Grid.Row="0"
                        Grid.RowSpan="3"
-                       Grid.Column="1"
+                       Grid.Column="2"
                        Orientation="Vertical"/>
 
     <!-- The document-area grids carry the Documents focus-tracking identity, which is why it is declared
          here per host and not on an ancestor: the Utility Panel shares this tree and keeps its own. -->
     <Grid x:Name="MainAreaGrid"
           Grid.Row="0"
-          Grid.Column="2"
+          Grid.Column="3"
           ui:FocusTracking.Panel="Documents"
           AutomationProperties.AutomationId="main-area"/>
 
@@ -61,12 +71,12 @@
          accent line on hover and drag. -->
     <controls:Splitter x:Name="BottomAreaSplitter"
                        Grid.Row="1"
-                       Grid.Column="2"
+                       Grid.Column="3"
                        Orientation="Horizontal"/>
 
     <Grid x:Name="BottomAreaGrid"
           Grid.Row="2"
-          Grid.Column="2"
+          Grid.Column="3"
           layout:WorkspaceLayout.Surface="BottomArea"
           ui:FocusTracking.Panel="Documents"
           AutomationProperties.AutomationId="bottom-area"/>
@@ -74,13 +84,13 @@
     <controls:Splitter x:Name="SideAreaSplitter"
                        Grid.Row="0"
                        Grid.RowSpan="3"
-                       Grid.Column="3"
+                       Grid.Column="4"
                        Orientation="Vertical"/>
 
     <Grid x:Name="SideAreaGrid"
           Grid.Row="0"
           Grid.RowSpan="3"
-          Grid.Column="4"
+          Grid.Column="5"
           layout:WorkspaceLayout.Surface="SideArea"
           ui:FocusTracking.Panel="Documents"
           AutomationProperties.AutomationId="side-area"/>

@@ -123,6 +123,32 @@ public class UtilityPanelViewModelTests
     }
 
     [Test]
+    public void SetPanelVisible_Collapsed_ClearsEveryMarkWhileKeepingTheSelection()
+    {
+        _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
+
+        _viewModel.SetPanelVisible(false);
+
+        // Nothing on the rail is marked while the panel is off screen, because the selection has no surface to
+        // point at, but the selection is kept so the next reveal returns to it.
+        _explorer.IsSelected.Should().BeFalse();
+        _explorer.IsFocused.Should().BeFalse();
+        _viewModel.SelectedUtilityId.Should().Be(BuiltInUtilityIds.Explorer);
+    }
+
+    [Test]
+    public void SetPanelVisible_Revealed_MarksTheSelectionAgain()
+    {
+        _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
+        _viewModel.SetPanelVisible(false);
+
+        _viewModel.SetPanelVisible(true);
+
+        _explorer.IsSelected.Should().BeTrue();
+        _search.IsSelected.Should().BeFalse();
+    }
+
+    [Test]
     public void SetDocked_MarksTheItemDocked()
     {
         var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);

@@ -7,18 +7,20 @@ using Windows.Foundation;
 namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
-/// Lays out the workspace surfaces: the Utility Panel it hosts, the three document-area grids, and the
-/// splitters that size them. This control owns surface geometry only; the presentation is pushed in as a
-/// snapshot, and the sections inside the area grids are managed by the documents panel. Every floor and
-/// every maximum it applies is composed by WorkspaceSurfaceComposer.
+/// Lays out the workspace surfaces: the Utility Rail and Utility Panel it hosts, the three document-area
+/// grids, and the splitters that size them. This control owns surface geometry only; the presentation is
+/// pushed in as a snapshot, and the sections inside the area grids are managed by the documents panel. Every
+/// floor and every maximum it applies is composed by WorkspaceSurfaceComposer.
 /// </summary>
 public sealed partial class WorkspaceSurfaceContainer : UserControl
 {
-    // Positions in the workspace grid that the Bottom area's alignment moves things between. A surface
-    // beside the document areas runs the full height of the grid, and shortens to the Main area row alone
-    // once the Bottom area runs underneath it.
-    private const int UtilityPanelColumnIndex = 0;
-    private const int MainAreaColumnIndex = 2;
+    // Positions in the workspace grid: the tracks each surface sits in, which are both what the Bottom area's
+    // alignment moves things between and what the splitters resize. A surface beside the document areas runs
+    // the full height of the grid, and shortens to the Main area row alone once the Bottom area runs
+    // underneath it.
+    private const int UtilityPanelColumnIndex = 1;
+    private const int MainAreaColumnIndex = 3;
+    private const int SideAreaColumnIndex = 5;
     private const int BottomAreaRowIndex = 2;
     private const int FullHeightRowSpan = 3;
     private const int AboveBottomAreaRowSpan = 1;
@@ -34,6 +36,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         IsBottomAreaPresented: true,
         IsSideAreaPresented: true,
         IsUtilityPanelPresented: true,
+        IsUtilityRailPresented: true,
         BottomAreaSpansUtilityPanel: false,
         BottomAreaSpansSideArea: false);
 
@@ -83,10 +86,12 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         BottomAreaRow.Height = new GridLength(WorkspaceConstants.BottomAreaHeight);
 
         // The Utility Panel is part of the workspace layout rather than a sibling of it, so this
-        // container creates and hosts it.
+        // container creates and hosts it. Its rail is hosted in a column of its own, which is what keeps the
+        // rail on screen while the panel is collapsed.
         var utilityPanel = ServiceLocator.AcquireService<IUtilityPanel>();
         _utilityPanel = (UtilityPanel)utilityPanel;
         UtilityPanelHost.Children.Add(_utilityPanel);
+        UtilityRailHost.Children.Add(_utilityPanel.Rail);
 
         InitializeSurfaceSplitters();
 
@@ -141,6 +146,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         BottomAreaGrid.Visibility = isBottomPresented ? Visibility.Visible : Visibility.Collapsed;
         SideAreaGrid.Visibility = isSidePresented ? Visibility.Visible : Visibility.Collapsed;
         UtilityPanelHost.Visibility = isUtilityPanelPresented ? Visibility.Visible : Visibility.Collapsed;
+        UtilityRailHost.Visibility = presentation.IsUtilityRailPresented ? Visibility.Visible : Visibility.Collapsed;
 
         // A splitter only earns its place between two presented surfaces.
         bool showBottomSplitter = isMainPresented && isBottomPresented;
@@ -282,6 +288,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             BottomAreaMinimumSize: GetAreaMinimumSize(DocumentArea.Bottom),
             SideAreaMinimumSize: GetAreaMinimumSize(DocumentArea.Side),
             UtilityPanelMinimumWidth: _utilityPanel.MinimumWidth,
+            UtilityRailWidth: WorkspaceConstants.UtilityRailWidth,
             GutterSize: GutterSize,
             WorkspaceExtent: new Size(ActualWidth, ActualHeight),
             UtilityPanelWidth: ResolveTrackWidth(UtilityPanelColumn.Width),
@@ -339,6 +346,8 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         Grid.SetColumn(BottomAreaSplitter, bottomColumn);
         Grid.SetColumnSpan(BottomAreaSplitter, bottomColumnSpan);
 
+        // The rail is not spanned however the Bottom area is aligned, so it keeps its full-height row span and
+        // its bottom group stays pinned to the bottom of the window.
         int utilityPanelRowSpan = spansUtilityPanel ? AboveBottomAreaRowSpan : FullHeightRowSpan;
         Grid.SetRowSpan(UtilityPanelHost, utilityPanelRowSpan);
         Grid.SetRowSpan(UtilityPanelSplitter, utilityPanelRowSpan);
@@ -352,9 +361,8 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         _utilityPanel.SetBottomEdgePresented(spansUtilityPanel);
     }
 
-    // The tracks the splitters resize are indexed into the one workspace grid. Bottom and Side are
-    // measured from the far edge, so their deltas are inverted; the Utility Panel is measured from the
-    // near edge.
+    // Bottom and Side are measured from the far edge, so their deltas are inverted; the Utility Panel is
+    // measured from the near edge.
     private void InitializeSurfaceSplitters()
     {
         // Each splitter is held between its surface's own floor and the space the arrangement leaves it, the
@@ -363,7 +371,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         _utilityPanelSplitterHelper = new SplitterHelper(
             RootGrid,
             GridResizeMode.Columns,
-            0,
+            UtilityPanelColumnIndex,
             minSizeFunc: () => CreateComposer().UtilityPanelMinimumWidth,
             maxSizeFunc: () => CreateComposer().AvailableUtilityPanelWidth);
 
@@ -381,7 +389,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         _sideAreaSplitterHelper = new SplitterHelper(
             RootGrid,
             GridResizeMode.Columns,
-            4,
+            SideAreaColumnIndex,
             minSizeFunc: () => CreateComposer().SideAreaMinimumWidth,
             invertDelta: true,
             maxSizeFunc: () => CreateComposer().AvailableSideAreaWidth);

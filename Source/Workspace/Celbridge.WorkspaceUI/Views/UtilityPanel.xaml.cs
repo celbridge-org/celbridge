@@ -29,6 +29,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly ISpotlightRegistry _spotlightRegistry;
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
+    private readonly ILayoutService _layoutService;
+
+    // The rail is hosted in a workspace column of its own, so it stays on screen while the panel is collapsed.
+    // This panel still owns it: the rail holds the groups, and every button, its state and its click belong here.
+    private readonly UtilityRail _rail;
+
+    private readonly UtilityButton _explorerButton;
+    private readonly UtilityButton _searchButton;
+    private readonly UtilityButton _projectSettingsButton;
 
     // Spotlight landmark ids for the built-in rail buttons. These must match the descriptors seeded in
     // SpotlightLandmarks exactly.
@@ -55,6 +64,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // the restore itself do not overwrite the saved selection before it is read.
     private bool _selectionPersistenceEnabled;
 
+    // The utility a reveal selected while the panel was collapsed. A surface off screen cannot take the
+    // keyboard, so the focus claim waits for the reveal to be laid out.
+    private EditorId _pendingRevealUtilityId = EditorId.Empty;
+
     public IExplorerPanel ExplorerPanel { get; }
     public ISearchPanel SearchPanel { get; }
 
@@ -70,11 +83,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             var contentChrome = new Size(
                 ContentArea.BorderThickness.Left + ContentArea.BorderThickness.Right,
                 ContentArea.BorderThickness.Top + ContentArea.BorderThickness.Bottom);
-            double contentMinimumWidth = WorkspaceMinimumSize.ComposeSection(contentChrome).Width;
 
-            return RailColumn.Width.Value + contentMinimumWidth;
+            return WorkspaceMinimumSize.ComposeSection(contentChrome).Width;
         }
     }
+
+    /// <summary>
+    /// The rail that selects this panel's surfaces, hosted beside the panel in the workspace layout.
+    /// </summary>
+    internal UtilityRail Rail => _rail;
 
     // Whether the panel draws a bottom edge and rounded bottom corners: it does when the Bottom document
     // area runs underneath it, and meets the application border flush otherwise. Driven by the surface
@@ -94,8 +111,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         SetBottomEdgePresented(false);
 
-        RailColumn.Width = new GridLength(WorkspaceConstants.UtilityPanelRailWidth);
-
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();
         _settings = ServiceLocator.AcquireService<ISettingsService>();
@@ -103,6 +118,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _projectService = ServiceLocator.AcquireService<IProjectService>();
+        _layoutService = ServiceLocator.AcquireService<ILayoutService>();
+
+        _rail = new UtilityRail();
+        _explorerButton = new UtilityButton();
+        _searchButton = new UtilityButton();
+        _projectSettingsButton = new UtilityButton();
 
         // Acquire panel views via DI and host them in ContentControls
         ExplorerPanel = ServiceLocator.AcquireService<IExplorerPanel>();
@@ -111,6 +132,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         SearchPanelControl.Content = SearchPanel as UIElement;
 
         ViewModel = ServiceLocator.AcquireService<UtilityPanelViewModel>();
+        ViewModel.SetPanelVisible(_layoutService.IsUtilityPanelVisible);
         DataContext = ViewModel;
 
         InitializeBuiltInButtons();
@@ -129,24 +151,27 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         var explorerItem = ViewModel.AddItem(BuiltInUtilityIds.Explorer, WorkspacePanelId.Explorer);
         var searchItem = ViewModel.AddItem(BuiltInUtilityIds.Search, WorkspacePanelId.Search);
 
-        ExplorerButton.SetIcon(IconSymbol.Folder);
-        ExplorerButton.SetAutomationId(ExplorerLandmarkId);
-        BindButton(ExplorerButton, explorerItem);
-        ExplorerButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Explorer);
+        _explorerButton.SetIcon(IconSymbol.Folder);
+        _explorerButton.SetAutomationId(ExplorerLandmarkId);
+        BindButton(_explorerButton, explorerItem);
+        _explorerButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Explorer);
+        _rail.AddUtilityButton(_explorerButton);
 
-        SearchButton.SetIcon(IconSymbol.Search);
-        SearchButton.SetAutomationId(SearchLandmarkId);
-        BindButton(SearchButton, searchItem);
-        SearchButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Search);
+        _searchButton.SetIcon(IconSymbol.Search);
+        _searchButton.SetAutomationId(SearchLandmarkId);
+        BindButton(_searchButton, searchItem);
+        _searchButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Search);
+        _rail.AddUtilityButton(_searchButton);
 
         // Project Settings opens a document rather than selecting a surface, so the button is a launcher
         // like the community links: no rail item, no content host, no focus action.
-        ProjectSettingsButton.SetIcon(IconSymbol.Sliders);
-        ProjectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
-        ProjectSettingsButton.Click += (sender, e) => OpenProjectSettings();
+        _projectSettingsButton.SetIcon(IconSymbol.Sliders);
+        _projectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
+        _projectSettingsButton.Click += (sender, e) => OpenProjectSettings();
+        _rail.AddLauncherButton(_projectSettingsButton);
 
-        _buttons[BuiltInUtilityIds.Explorer] = ExplorerButton;
-        _buttons[BuiltInUtilityIds.Search] = SearchButton;
+        _buttons[BuiltInUtilityIds.Explorer] = _explorerButton;
+        _buttons[BuiltInUtilityIds.Search] = _searchButton;
         _contentControls[BuiltInUtilityIds.Explorer] = ExplorerPanelControl;
         _contentControls[BuiltInUtilityIds.Search] = SearchPanelControl;
         _focusActions[BuiltInUtilityIds.Explorer] = ExplorerPanel.FocusPanel;
@@ -187,7 +212,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
             railButton.Click += (sender, e) => OpenCommunityLink(link);
 
-            CommunityItems.Children.Add(railButton);
+            _rail.AddCommunityButton(railButton);
 
             _communityButtons.Add(new CommunityRailButton(link, railButton));
         }
@@ -240,12 +265,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // discovery pass completes.
         _messengerService.Register<PackagesInitializedMessage>(this, OnPackagesInitialized);
         UpdateProjectSettingsIssuePip();
+
+        // The rail selection follows the panel's visibility, and a reveal waiting on the panel coming back
+        // claims the keyboard here. The workspace restores its visibility around this point, so it is read
+        // again rather than left at what the constructor saw.
+        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
+        ViewModel.SetPanelVisible(_layoutService.IsUtilityPanelVisible);
     }
 
     private void UtilityPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         _messengerService.Unregister<PanelFocusChangedMessage>(this);
         _messengerService.Unregister<PackagesInitializedMessage>(this);
+        _messengerService.Unregister<SurfaceVisibilityChangedMessage>(this);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, null);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, null);
         _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, null);
@@ -274,19 +306,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         var hasIssues = packageService is not null
             && packageService.GetContributionIssues().Count > 0;
 
-        ProjectSettingsButton.SetIssuePipVisible(hasIssues);
+        _projectSettingsButton.SetIssuePipVisible(hasIssues);
     }
 
     private void ApplyTooltips()
     {
         var explorerTooltip = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
-        ExplorerButton.SetTooltip(explorerTooltip);
+        _explorerButton.SetTooltip(explorerTooltip);
 
         var searchTooltip = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
-        SearchButton.SetTooltip(searchTooltip);
+        _searchButton.SetTooltip(searchTooltip);
 
         var projectSettingsTooltip = _stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
-        ProjectSettingsButton.SetTooltip(projectSettingsTooltip);
+        _projectSettingsButton.SetTooltip(projectSettingsTooltip);
 
         foreach (var communityButton in _communityButtons)
         {
@@ -323,8 +355,57 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _ = workspaceWrapper.WorkspaceService.UtilityService.EnsureUtilityInitializedAsync(utilityId);
 
-        ShowSurface(utilityId);
+        // Showing a utility presents it, so a collapsed panel is brought back rather than the surface being
+        // selected somewhere the user cannot see it. Focus is claimed once the reveal has been laid out,
+        // because an off-screen surface cannot take the keyboard.
+        bool isPanelVisible = _layoutService.IsUtilityPanelVisible;
+        if (!isPanelVisible)
+        {
+            _pendingRevealUtilityId = utilityId;
+            ShowUtilityPanel();
+        }
+
+        ShowSurface(utilityId, takeFocus: isPanelVisible);
         PersistSelectedUtility(utilityId.ToString());
+    }
+
+    private void ShowUtilityPanel()
+    {
+        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        {
+            command.Surfaces = WorkspaceSurface.UtilityPanel;
+            command.IsVisible = true;
+        });
+    }
+
+    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
+    {
+        bool isPanelVisible = message.SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
+
+        // The rail shows no selection while the panel it selects into is collapsed, so the accent never marks a
+        // surface that is not on screen. The selection itself is kept, so a reveal returns to it.
+        ViewModel.SetPanelVisible(isPanelVisible);
+
+        var revealedUtilityId = _pendingRevealUtilityId;
+        _pendingRevealUtilityId = EditorId.Empty;
+
+        if (!isPanelVisible
+            || revealedUtilityId.IsEmpty)
+        {
+            return;
+        }
+
+        // Deferred to a low dispatcher tick so the reveal has been laid out before the surface claims the
+        // keyboard. A later selection supersedes this one, so the id is checked again on the tick.
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
+            {
+                if (ViewModel.SelectedUtilityId == revealedUtilityId)
+                {
+                    ShowSurface(revealedUtilityId);
+                }
+            });
     }
 
     // Selects the surface in the view model (which lights the accent optimistically) and shows its content.
@@ -442,9 +523,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             var utilityId = utility.UtilityId;
             railButton.Click += (sender, e) => ShowUtility(utilityId);
 
-            RailItems.Children.Add(railButton);
+            _rail.AddUtilityButton(railButton);
 
-            _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(landmarkId, WorkspaceSurface.UtilityPanel));
+            _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(landmarkId, null));
 
             var contentControl = new ContentControl
             {
@@ -483,7 +564,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         foreach (var utilityId in GetCustomUtilityIds())
         {
             var railButton = _buttons[utilityId];
-            RailItems.Children.Remove(railButton);
+            _rail.RemoveUtilityButton(railButton);
 
             var contentControl = _contentControls[utilityId];
             contentControl.Content = null;

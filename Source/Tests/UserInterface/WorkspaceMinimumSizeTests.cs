@@ -95,10 +95,12 @@ public class WorkspaceMinimumSizeTests
 
         var minimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(WorkspaceSurface.All, GutterSize);
 
-        // The Utility Panel, the Main area and the Side area across, with a channel between each pair. The
-        // panel's own rail meets its content directly, so no channel is counted between those two.
-        double utilityPanelWidth = WorkspaceConstants.UtilityPanelRailWidth + sectionWidth;
-        minimumSize.Width.Should().Be(utilityPanelWidth + GutterSize + sectionWidth + GutterSize + sectionWidth);
+        // The Utility Panel, the Main area and the Side area across, with a channel between each pair, and the
+        // Utility Rail down the left of them. The rail meets the panel directly, so no channel is counted
+        // between those two.
+        double expectedWidth = WorkspaceConstants.UtilityRailWidth +
+            sectionWidth + GutterSize + sectionWidth + GutterSize + sectionWidth;
+        minimumSize.Width.Should().Be(expectedWidth);
 
         // The Main area above the Bottom area. The application toolbar carries the channel above them.
         minimumSize.Height.Should().Be(sectionHeight + GutterSize + sectionHeight);
@@ -111,6 +113,7 @@ public class WorkspaceMinimumSizeTests
 
         var mainAreaOnly = WorkspaceMinimumSize.ComposeDefaultLayout(WorkspaceSurface.None, GutterSize);
 
-        mainAreaOnly.Width.Should().Be(sectionWidth);
+        // The rail is chrome rather than a surface, so it is still there once every surface has gone.
+        mainAreaOnly.Width.Should().Be(WorkspaceConstants.UtilityRailWidth + sectionWidth);
     }
 }
