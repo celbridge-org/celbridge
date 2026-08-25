@@ -69,7 +69,7 @@
                                FontSize="16"
                                MinWidth="20"
                                Margin="0"
-                               Foreground="{ThemeResource AccentBrush}"
+                               Foreground="{ThemeResource AccentContrastBrush}"
                                Visibility="{x:Bind ViewModel.IsUtility, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                 <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
@@ -83,7 +83,7 @@
             <Border x:Name="SelectionIndicator"
                     Height="3"
                     CornerRadius="1.5"
-                    Background="{ThemeResource AccentBrush}"
+                    Background="{ThemeResource AccentContrastBrush}"
                     Visibility="Collapsed"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Bottom"

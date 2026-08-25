@@ -85,6 +85,7 @@ public class DesignTokenCoverageTests
     private static readonly string[] PublishedTokenNames =
     [
         "--cel-accent",
+        "--cel-accent-contrast",
         "--cel-accent-hover",
         "--cel-accent-pressed",
         "--cel-accent-text",

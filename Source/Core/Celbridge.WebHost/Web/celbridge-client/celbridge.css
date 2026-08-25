@@ -138,7 +138,7 @@ button.cel-accent:active {
    part of the host rather than falling back to the browser's blue links and UA monospace. */
 
 a {
-    color: var(--cel-accent);
+    color: var(--cel-accent-contrast);
     text-decoration: none;
 }
 
@@ -323,7 +323,7 @@ hr {
 }
 
 .cel-card-list .cel-expander.dragging .cel-card-grip {
-    color: var(--cel-accent);
+    color: var(--cel-accent-contrast);
 }
 
 /* Carries the FLIP slide that card-list.js sets up when a drag displaces a row. Scoped to the drag, so cards

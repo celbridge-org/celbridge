@@ -30,7 +30,7 @@
                  FontSize="18"
                  Margin="0,0,0,12"/>
 
-      <HyperlinkButton Foreground="{ThemeResource AccentBrush}"
+      <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
                        Command="{x:Bind ViewModel.NewProjectCommand}"
                        ToolTipService.ToolTip="{x:Bind NewProjectTooltipString}">
         <StackPanel Orientation="Horizontal">
@@ -40,7 +40,7 @@
         </StackPanel>
       </HyperlinkButton>
 
-      <HyperlinkButton Foreground="{ThemeResource AccentBrush}"
+      <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
                        Command="{x:Bind ViewModel.OpenProjectCommand}"
                        ToolTipService.ToolTip="{x:Bind OpenProjectTooltipString}">
         <StackPanel Orientation="Horizontal">
@@ -60,7 +60,7 @@
                  FontSize="18"
                  Margin="0,0,0,12"/>
 
-      <HyperlinkButton Foreground="{ThemeResource AccentBrush}"
+      <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
                        Command="{x:Bind ViewModel.ShowLearnCommand}"
                        ToolTipService.ToolTip="{x:Bind LearnTooltipString}">
         <StackPanel Orientation="Horizontal">
@@ -70,7 +70,7 @@
         </StackPanel>
       </HyperlinkButton>
 
-      <HyperlinkButton Foreground="{ThemeResource AccentBrush}"
+      <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
                        Command="{x:Bind ViewModel.ShowForumCommand}"
                        ToolTipService.ToolTip="{x:Bind ForumTooltipString}">
         <StackPanel Orientation="Horizontal">
@@ -102,7 +102,7 @@
                                       VerticalAlignment="Center"/>
 
               <Grid MinWidth="100">
-                <HyperlinkButton Foreground="{ThemeResource AccentBrush}"
+                <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
                                  Click="RecentProjectButton_Click"
                                  ToolTipService.ToolTip="{Binding ProjectFilePath}"
                                  ToolTipService.Placement="Bottom">

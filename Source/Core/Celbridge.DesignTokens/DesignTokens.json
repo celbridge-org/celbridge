@@ -314,6 +314,17 @@
           "comment": "The accent is the application's own, not the one the operating system supplies. It carries meaning here, marking the selected category or the primary action, so it is held at a known contrast against the surfaces and the text drawn over it rather than left to a setting outside the application.",
           "darkComment": "A mid blue rather than a light one, so the same white sits over it as on the light theme. The cost is prominence: against the chrome surface it reads at about three to one, where a light accent reads at nearly eight."
         },
+        "accent-contrast": {
+          "targets": ["xaml", "css"],
+          "xaml": "AccentContrastColor",
+          "xamlBrush": "AccentContrastBrush",
+          "css": "--cel-accent-contrast",
+          "light": "#0069BC",
+          "dark": "#6BA0F2",
+          "published": true,
+          "comment": "The accent where it has to be read rather than filled with: link text, a tinted glyph, a thin marker. Reach for the plain accent first and come here when the surface behind it makes that too faint to read. Not to be confused with accent-text, which is what goes over an accent fill.",
+          "darkComment": "Lifted well clear of the surfaces, because the mid blue the fill needs is the wrong end of the range for something drawn at text size."
+        },
         "accent-hover": {
           "targets": ["css"],
           "css": "--cel-accent-hover",
