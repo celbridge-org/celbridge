@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects;
 
 /// <summary>
 /// Serializes a project config to canonical, deterministic TOML. The same resolved model always

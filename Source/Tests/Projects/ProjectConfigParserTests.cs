@@ -1,5 +1,4 @@
 using Celbridge.Projects;
-using Celbridge.Projects.Services;
 using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Projects;

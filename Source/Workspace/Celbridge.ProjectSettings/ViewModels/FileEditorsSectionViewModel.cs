@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Projects.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
 
