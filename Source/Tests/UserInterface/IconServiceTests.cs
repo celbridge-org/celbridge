@@ -158,6 +158,54 @@ public class IconServiceTests
     }
 
     [Test]
+    public void GetFileIconForFileName_LongestSuffixWins()
+    {
+        // A manifest carries its own icon rather than the one every TOML file shares, and every manifest
+        // has a different stem, so the match has to be on the suffix rather than the whole name.
+        var iconService = new IconService();
+        var manifestIcon = iconService.CreateIcon("nf-cod-settings", "#169B62").Value;
+        var tomlIcon = iconService.CreateIcon("nf-cod-settings", "#8A8F98").Value;
+
+        iconService.SetFileIconOverrides(
+            new Dictionary<string, IconDefinition>
+            {
+                [".editor.toml"] = manifestIcon,
+                [".toml"] = tomlIcon,
+            },
+            new Dictionary<string, IconDefinition>());
+
+        iconService.GetFileIconForFileName("code.editor.toml").Value.Should().Be(manifestIcon);
+        iconService.GetFileIconForFileName("markdown.editor.toml").Value.Should().Be(manifestIcon);
+
+        // A plain TOML file matches only the shorter suffix.
+        iconService.GetFileIconForFileName("settings.toml").Value.Should().Be(tomlIcon);
+    }
+
+    [Test]
+    public void GetFileIconForFileName_ABareExtension_ResolvesThroughTheSameWalk()
+    {
+        // The FileIcon control binds an extension in some places and a whole name in others, so both
+        // forms go through this one lookup.
+        var iconService = new IconService();
+        var markdownIcon = iconService.CreateIcon("bs-journal-text", "#FF8800").Value;
+
+        iconService.SetFileIconOverrides(
+            new Dictionary<string, IconDefinition> { [".md"] = markdownIcon },
+            new Dictionary<string, IconDefinition>());
+
+        iconService.GetFileIconForFileName(".md").Value.Should().Be(markdownIcon);
+        iconService.GetFileIconForFileName("readme.md").Value.Should().Be(markdownIcon);
+
+        // A dotfile keeps resolving through its own key rather than being read as a stem.
+        var ignoreIcon = iconService.CreateIcon("bs-gear", "#00FF00").Value;
+        iconService.SetFileIconOverrides(
+            new Dictionary<string, IconDefinition> { [".gitignore"] = ignoreIcon },
+            new Dictionary<string, IconDefinition>());
+
+        iconService.GetFileIconForFileName(".gitignore").Value.Should().Be(ignoreIcon);
+    }
+
+    [Test]
     public void GetFileIconForExtension_OverrideWins_AndEachSetReplacesTheLast()
     {
         var iconService = new IconService();

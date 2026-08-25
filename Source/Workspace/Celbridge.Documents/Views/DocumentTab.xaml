@@ -58,7 +58,7 @@
                 <!-- Ordinary document tabs show a file-type icon; utility tabs show their manifest glyph tinted
                      to the accent color, a subtle cue marking the tab as a docked utility rather than a file. -->
                 <controls:FileIcon x:Name="ResourceIcon"
-                                   Source="{x:Bind ViewModel.FileExtension, Mode=OneWay}"
+                                   Source="{x:Bind ViewModel.FileName, Mode=OneWay}"
                                    Size="18"
                                    MinWidth="22"
                                    Margin="0"
