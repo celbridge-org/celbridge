@@ -11,6 +11,11 @@ namespace Celbridge.UserInterface.Views;
 
 public sealed partial class ProjectSwitcher : UserControl
 {
+    // The switcher is the fast path to a recent project, so it shows only the most recent few. The complete
+    // list is in the File menu's Open Recent submenu. Capping the rows fixes the menu's height, so the
+    // commands below them stay on screen however many projects the history holds.
+    private const int MaxRecentProjectsShown = 5;
+
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
@@ -125,9 +130,11 @@ public sealed partial class ProjectSwitcher : UserControl
         }
         else
         {
+            var shownProjects = recentProjects.Take(MaxRecentProjectsShown).ToList();
+
             RecentProjectsMenu.Populate(
                 _recentProjectItems,
-                recentProjects,
+                shownProjects,
                 OpenRecentProjectFromSwitcher,
                 _stringLocalizer.GetString("MainMenu_ClearRecentProjects"),
                 viewModel.ClearRecentProjects);
