@@ -351,8 +351,8 @@
   <data name="ProjectHealth_Healthy" xml:space="preserve">
     <value>Loaded with no issues</value>
   </data>
-  <data name="TitleBar_ViewLoadReport" xml:space="preserve">
-    <value>View Load Report</value>
+  <data name="TitleBar_ProjectLoadReport" xml:space="preserve">
+    <value>Project Load Report</value>
   </data>
   <data name="ProjectHealth_Warnings_One" xml:space="preserve">
     <value>Loaded with 1 warning</value>
