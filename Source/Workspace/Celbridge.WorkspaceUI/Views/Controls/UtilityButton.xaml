@@ -20,15 +20,14 @@
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="SelectedUnfocused">
-                    <!-- Selected but the utility panel is unfocused: a neutral fill, still reading as the
-                         surface on screen. -->
+                    <!-- The utility the panel is showing, without the keyboard: a neutral fill. -->
                     <VisualState.Setters>
                         <Setter Target="ButtonFill.Background" Value="{ThemeResource ButtonActiveBackgroundBrush}" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="SelectedFocused">
-                    <!-- Selected and focused: the accent fills the button, with the glyph in the tone chosen
-                         to read against it. ThemeResource keeps both correct across a theme switch. -->
+                    <!-- Holding the keyboard: the accent fills the button, with the glyph in the tone
+                         chosen to read against it. -->
                     <VisualState.Setters>
                         <Setter Target="ButtonFill.Background" Value="{ThemeResource AccentBrush}" />
                         <Setter Target="IconElement.Foreground" Value="{ThemeResource AccentTextBrush}" />
@@ -46,18 +45,6 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Background="Transparent"
-                IsHitTestVisible="False" />
-
-        <!-- Attention flash overlay, pulsed to the accent color by FlashAttention (e.g. when this utility is
-             undocked and the button becomes available again). Behind the icon and not hit-testable. -->
-        <Border x:Name="AttentionOverlay"
-                Width="32"
-                Height="32"
-                CornerRadius="{StaticResource IconButtonCornerRadius}"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Background="{ThemeResource AccentBrush}"
-                Opacity="0"
                 IsHitTestVisible="False" />
 
         <!-- Click target over the whole cell, so the channel either side of the button stays clickable. Its

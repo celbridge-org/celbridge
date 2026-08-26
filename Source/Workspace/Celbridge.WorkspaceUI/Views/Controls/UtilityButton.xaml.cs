@@ -1,22 +1,12 @@
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
-using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.WorkspaceUI.Views.Controls;
 
 /// <summary>
-/// A single icon button in the Utility Panel rail. Mouse-driven and not focusable by design: clicking it
-/// raises Click, and the selection indicator is driven by the bound IsSelected and IsFocused state, independent
-/// of the click.
+/// A single icon button in the Utility Rail.
 /// </summary>
 public sealed partial class UtilityButton : UserControl
 {
-    // Icon opacity while the utility is docked, giving the button a disabled look while it stays clickable.
-    private const double DockedIconOpacity = 0.4;
-
-    // The currently running attention flash, if any. Kept so a repeated flash restarts cleanly.
-    private Storyboard? _attentionStoryboard;
-
     // Whether the pointer is over the cell. Combines with the selection inputs to pick the visual state.
     private bool _isPointerOver;
 
@@ -34,12 +24,6 @@ public sealed partial class UtilityButton : UserControl
         typeof(UtilityButton),
         new PropertyMetadata(false, OnSelectionStateChanged));
 
-    public static readonly DependencyProperty IsDockedProperty = DependencyProperty.Register(
-        nameof(IsDocked),
-        typeof(bool),
-        typeof(UtilityButton),
-        new PropertyMetadata(false, OnIsDockedChanged));
-
     public UtilityButton()
     {
         this.InitializeComponent();
@@ -50,8 +34,8 @@ public sealed partial class UtilityButton : UserControl
     }
 
     /// <summary>
-    /// Shows the selection indicator when true. Reflects the currently shown surface, driven by the rail's
-    /// selection state, not by the button's own click.
+    /// Fills the button with a neutral tone to show that the Utility Panel holds this utility. Driven by the
+    /// rail's state, not by the button's own click.
     /// </summary>
     public bool IsSelected
     {
@@ -60,24 +44,13 @@ public sealed partial class UtilityButton : UserControl
     }
 
     /// <summary>
-    /// Fills the button with the accent color to show that the shown utility has focus, and with a neutral
-    /// tone when it does not. Only meaningful while IsSelected is true.
+    /// Deepens the fill to the accent color to show that the keyboard is in the utility the panel is showing.
+    /// A refinement of IsSelected, so it has no effect on its own.
     /// </summary>
     public bool IsFocused
     {
         get => (bool)GetValue(IsFocusedProperty);
         set => SetValue(IsFocusedProperty, value);
-    }
-
-    /// <summary>
-    /// Dims the button to a disabled-looking state while its utility is docked (presented in a document tab),
-    /// reflecting that clicking it will not change the shown panel surface. The button stays interactive: a
-    /// click activates the utility's document tab.
-    /// </summary>
-    public bool IsDocked
-    {
-        get => (bool)GetValue(IsDockedProperty);
-        set => SetValue(IsDockedProperty, value);
     }
 
     public void SetIcon(IconSymbol symbol)
@@ -110,25 +83,9 @@ public sealed partial class UtilityButton : UserControl
         IssuePip.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>
-    /// Briefly pulses the button to the accent color to draw the user's attention to it, then fades back out.
-    /// Used to signal that the utility's rail button has become available again after an undock.
-    /// </summary>
-    public void FlashAttention()
-    {
-        _attentionStoryboard?.Stop();
-        _attentionStoryboard = AttentionFlash.Play(AttentionOverlay);
-    }
-
     private static void OnSelectionStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         ((UtilityButton)d).UpdateSelectionVisualState();
-    }
-
-    private static void OnIsDockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var button = (UtilityButton)d;
-        button.IconElement.Opacity = (bool)e.NewValue ? DockedIconOpacity : 1.0;
     }
 
     private void UpdateSelectionVisualState()

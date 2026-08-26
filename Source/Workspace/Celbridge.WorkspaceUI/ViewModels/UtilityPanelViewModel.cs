@@ -4,9 +4,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
-/// Owns the Utility Panel rail state: the ordered rail items, which one is selected, whether the panel the
-/// selection shows in is on screen, and whether the selected surface currently holds focus. The rail buttons
-/// bind to the per-item IsSelected, IsFocused, and IsDocked flags.
+/// Owns the Utility Panel rail state: the ordered rail items, which one the panel is showing, and whether
+/// it holds the keyboard.
 /// </summary>
 public partial class UtilityPanelViewModel : ObservableObject
 {
@@ -60,29 +59,20 @@ public partial class UtilityPanelViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Selects the rail surface with the given id and shows the accent optimistically until focus settles on it.
+    /// Makes the utility with the given id the one the panel is showing. Pass awaitFocus when the surface is
+    /// about to take the keyboard, so it counts as focused until focus settles on it.
     /// </summary>
-    public void SelectUtility(EditorId id)
+    public void SelectUtility(EditorId id, bool awaitFocus = true)
     {
         _selectedUtilityId = id;
-        _awaitingSelectionFocus = true;
+        _awaitingSelectionFocus = awaitFocus;
         RefreshItemStates();
     }
 
     /// <summary>
-    /// Reports whether the Utility Panel is on screen. No rail button is marked while the panel is collapsed,
-    /// because the selection has no surface to point at, but the selection itself is kept for the next reveal.
-    /// </summary>
-    public void SetPanelVisible(bool isVisible)
-    {
-        _isPanelVisible = isVisible;
-        RefreshItemStates();
-    }
-
-    /// <summary>
-    /// Reports the currently focused workspace panel so the accent can reflect real focus. While awaiting the
-    /// selection's focus, a report for a different panel is ignored (the transient switch bounce). A report for
-    /// the selected surface settles the wait.
+    /// Reports which workspace panel currently holds focus. While awaiting a selection's focus, a report for
+    /// a different panel is ignored (the transient switch bounce); a report for the selected surface settles
+    /// the wait.
     /// </summary>
     public void ReconcileFocus(WorkspacePanelId focusedPanel)
     {
@@ -98,7 +88,7 @@ public partial class UtilityPanelViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Sets whether the utility with the given id is docked as a document, which dims its rail button.
+    /// Sets whether the utility with the given id is presented in a document tab rather than by this panel.
     /// </summary>
     public void SetDocked(EditorId id, bool isDocked)
     {
@@ -106,7 +96,17 @@ public partial class UtilityPanelViewModel : ObservableObject
         if (item is not null)
         {
             item.IsDocked = isDocked;
+            RefreshItemStates();
         }
+    }
+
+    /// <summary>
+    /// Sets whether the Utility Panel is on screen.
+    /// </summary>
+    public void SetPanelVisible(bool isVisible)
+    {
+        _isPanelVisible = isVisible;
+        RefreshItemStates();
     }
 
     private UtilityItemViewModel? FindItem(EditorId id)
@@ -131,7 +131,7 @@ public partial class UtilityPanelViewModel : ObservableObject
         }
     }
 
-    // The selected surface counts as focused when we are optimistically awaiting its focus, or when the real
+    // The shown utility counts as focused when we are optimistically awaiting its focus, or when the real
     // focused panel matches its identity.
     private bool SelectedSurfaceHasFocus
     {
@@ -154,7 +154,12 @@ public partial class UtilityPanelViewModel : ObservableObject
 
         foreach (var item in _items)
         {
-            item.IsSelected = _isPanelVisible && item.Id == _selectedUtilityId;
+            // A docked utility is presented in a document tab rather than by this panel, so the panel's marks
+            // are not its to carry.
+            item.IsSelected = _isPanelVisible
+                && !item.IsDocked
+                && item.Id == _selectedUtilityId;
+
             item.IsFocused = item.IsSelected && surfaceHasFocus;
         }
     }

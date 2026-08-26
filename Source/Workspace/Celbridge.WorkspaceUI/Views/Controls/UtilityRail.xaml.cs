@@ -2,8 +2,8 @@ namespace Celbridge.WorkspaceUI.Views.Controls;
 
 /// <summary>
 /// The icon strip down the left of the workspace, holding the utility surface buttons, the launcher buttons
-/// below them, and the community links pinned to the bottom. It stays on screen while the Utility Panel beside
-/// it is hidden, so a collapsed panel is always one click from coming back.
+/// below them, and the community links pinned to the bottom. It stays on screen while the Utility Panel
+/// beside it is hidden.
 /// </summary>
 public sealed partial class UtilityRail : UserControl
 {

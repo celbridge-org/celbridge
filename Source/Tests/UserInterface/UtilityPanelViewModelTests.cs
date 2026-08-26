@@ -4,9 +4,10 @@ using Celbridge.WorkspaceUI.ViewModels;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for UtilityPanelViewModel, the rail selection/focus state machine. Focus on the accent rules:
-/// optimistic focus on selection, suppression of the transient switch bounce, and honouring real focus once
-/// the selection settles.
+/// Unit tests for UtilityPanelViewModel, the rail mark state machine. Both marks describe the Utility Panel,
+/// so the cases are: which item the panel is showing, whether the keyboard is in it (optimistic on selection,
+/// suppressing the transient switch bounce, honouring real focus once it settles), and the items that carry
+/// no mark at all.
 /// </summary>
 [TestFixture]
 public class UtilityPanelViewModelTests
@@ -123,21 +124,47 @@ public class UtilityPanelViewModelTests
     }
 
     [Test]
-    public void SetPanelVisible_Collapsed_ClearsEveryMarkWhileKeepingTheSelection()
+    public void SetDocked_MarksTheItemDocked()
+    {
+        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+
+        _viewModel.SetDocked(NotepadUtilityId, true);
+        notepad.IsDocked.Should().BeTrue();
+
+        _viewModel.SetDocked(NotepadUtilityId, false);
+        notepad.IsDocked.Should().BeFalse();
+    }
+
+    [Test]
+    public void DockedUtility_CarriesNoMark()
+    {
+        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        _viewModel.SelectUtility(NotepadUtilityId);
+
+        // Docking hands the utility to a document tab, so the panel's marks stop being its to carry, even
+        // though it was the panel's utility a moment ago.
+        _viewModel.SetDocked(NotepadUtilityId, true);
+
+        notepad.IsSelected.Should().BeFalse();
+        notepad.IsFocused.Should().BeFalse();
+    }
+
+    [Test]
+    public void CollapsedPanel_ClearsEveryMarkAndKeepsTheSelection()
     {
         _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
 
         _viewModel.SetPanelVisible(false);
 
-        // Nothing on the rail is marked while the panel is off screen, because the selection has no surface to
-        // point at, but the selection is kept so the next reveal returns to it.
+        // A collapsed panel is showing nothing, so there is nothing to mark. The selection survives for the
+        // next time it opens.
         _explorer.IsSelected.Should().BeFalse();
         _explorer.IsFocused.Should().BeFalse();
         _viewModel.SelectedUtilityId.Should().Be(BuiltInUtilityIds.Explorer);
     }
 
     [Test]
-    public void SetPanelVisible_Revealed_MarksTheSelectionAgain()
+    public void RevealedPanel_MarksItsUtilityAgain()
     {
         _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
         _viewModel.SetPanelVisible(false);
@@ -149,15 +176,14 @@ public class UtilityPanelViewModelTests
     }
 
     [Test]
-    public void SetDocked_MarksTheItemDocked()
+    public void SelectUtility_NotAwaitingFocus_MarksTheUtilityWithoutTheAccent()
     {
-        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        // A selection that is not taking the keyboard, such as restoring the panel's utility while another
+        // panel holds focus. Awaiting a focus that will never arrive would leave the accent stuck on.
+        _viewModel.SelectUtility(BuiltInUtilityIds.Explorer, awaitFocus: false);
 
-        _viewModel.SetDocked(NotepadUtilityId, true);
-        notepad.IsDocked.Should().BeTrue();
-
-        _viewModel.SetDocked(NotepadUtilityId, false);
-        notepad.IsDocked.Should().BeFalse();
+        _explorer.IsSelected.Should().BeTrue();
+        _explorer.IsFocused.Should().BeFalse();
     }
 
     [Test]

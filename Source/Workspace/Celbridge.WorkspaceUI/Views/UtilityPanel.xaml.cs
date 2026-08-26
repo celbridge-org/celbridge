@@ -30,6 +30,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly ICommandService _commandService;
     private readonly IProjectService _projectService;
     private readonly ILayoutService _layoutService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // The rail is hosted in a workspace column of its own, so it stays on screen while the panel is collapsed.
     // This panel still owns it: the rail holds the groups, and every button, its state and its click belong here.
@@ -119,6 +120,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _projectService = ServiceLocator.AcquireService<IProjectService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
+        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         _rail = new UtilityRail();
         _explorerButton = new UtilityButton();
@@ -238,12 +240,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             Path = new PropertyPath(nameof(UtilityItemViewModel.IsFocused)),
             Mode = BindingMode.OneWay
         });
-        button.SetBinding(UtilityButton.IsDockedProperty, new Binding
-        {
-            Source = item,
-            Path = new PropertyPath(nameof(UtilityItemViewModel.IsDocked)),
-            Mode = BindingMode.OneWay
-        });
     }
 
     private void UtilityPanel_Loaded(object sender, RoutedEventArgs e)
@@ -266,9 +262,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Register<PackagesInitializedMessage>(this, OnPackagesInitialized);
         UpdateProjectSettingsIssuePip();
 
-        // The rail selection follows the panel's visibility, and a reveal waiting on the panel coming back
-        // claims the keyboard here. The workspace restores its visibility around this point, so it is read
-        // again rather than left at what the constructor saw.
+        // The rail marks follow the panel's visibility, and a reveal waiting on the panel coming back claims
+        // the keyboard here. The workspace restores its visibility around this point, so it is read again
+        // rather than left at what the constructor saw.
         _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
         ViewModel.SetPanelVisible(_layoutService.IsUtilityPanelVisible);
     }
@@ -301,8 +297,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Flags the Project Settings rail button when any contribution has dropped configuration.
     private void UpdateProjectSettingsIssuePip()
     {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        var packageService = workspaceWrapper.WorkspaceService?.PackageService;
+        var packageService = _workspaceWrapper.WorkspaceService?.PackageService;
         var hasIssues = packageService is not null
             && packageService.GetContributionIssues().Count > 0;
 
@@ -352,8 +347,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         // A lazy-load utility creates its WebView on first show. The surface is shown
         // immediately; the WebView attaches to it when initialization completes.
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        _ = workspaceWrapper.WorkspaceService.UtilityService.EnsureUtilityInitializedAsync(utilityId);
+        _ = _workspaceWrapper.WorkspaceService.UtilityService.EnsureUtilityInitializedAsync(utilityId);
 
         // Showing a utility presents it, so a collapsed panel is brought back rather than the surface being
         // selected somewhere the user cannot see it. Focus is claimed once the reveal has been laid out,
@@ -382,15 +376,21 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         bool isPanelVisible = message.SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
 
-        // The rail shows no selection while the panel it selects into is collapsed, so the accent never marks a
-        // surface that is not on screen. The selection itself is kept, so a reveal returns to it.
+        // A collapsed panel is showing nothing, so no rail item is marked. The selection is kept, so a reveal
+        // returns to it.
         ViewModel.SetPanelVisible(isPanelVisible);
+
+        // Every surface reports through this message, so one about the Bottom or Side area says nothing about
+        // a reveal still waiting on the panel. The claim is left pending until the panel is actually on screen.
+        if (!isPanelVisible)
+        {
+            return;
+        }
 
         var revealedUtilityId = _pendingRevealUtilityId;
         _pendingRevealUtilityId = EditorId.Empty;
 
-        if (!isPanelVisible
-            || revealedUtilityId.IsEmpty)
+        if (revealedUtilityId.IsEmpty)
         {
             return;
         }
@@ -408,7 +408,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             });
     }
 
-    // Selects the surface in the view model (which lights the accent optimistically) and shows its content.
+    // Makes the utility the one the panel shows and shows its content. takeFocus carries the keyboard to it,
+    // and with it the optimistic accent that holds until focus settles.
     private void ShowSurface(EditorId utilityId, bool takeFocus = true)
     {
         if (!_contentControls.TryGetValue(utilityId, out var content))
@@ -416,7 +417,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             return;
         }
 
-        ViewModel.SelectUtility(utilityId);
+        ViewModel.SelectUtility(utilityId, awaitFocus: takeFocus);
         ShowContent(utilityId, content, takeFocus);
         NotifyActiveUtilityChanged();
     }
@@ -593,19 +594,16 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
 
         ViewModel.SetDocked(utilityId, isDocument);
-    }
 
-    public void FlashUtility(EditorId utilityId)
-    {
-        if (!_buttons.TryGetValue(utilityId, out var button))
+        // A utility that has left for a document tab can no longer be the panel's surface, so the panel takes
+        // Explorer instead of showing an empty content host. Selected rather than presented: docking is not a
+        // reason to open a collapsed panel, and the keyboard belongs to the tab the utility just moved into.
+        if (isDocument
+            && ViewModel.SelectedUtilityId == utilityId)
         {
-            return;
+            ShowSurface(BuiltInUtilityIds.Explorer, takeFocus: false);
+            PersistSelectedUtility(BuiltInUtilityIds.Explorer.ToString());
         }
-
-        // Deferred to a low dispatcher tick so the undock reparent settles before the button pulses.
-        _ = DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => button.FlashAttention());
     }
 
     public void RestoreSelectedUtility()
