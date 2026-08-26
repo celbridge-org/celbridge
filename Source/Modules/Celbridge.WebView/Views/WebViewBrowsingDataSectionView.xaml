@@ -1,0 +1,21 @@
+<UserControl
+    x:Class="Celbridge.WebView.Views.WebViewBrowsingDataSectionView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+    <!-- A pointer rather than a clear action: every web view in the application shares one profile, so
+         clearing is application-wide and belongs in Application Settings where it cannot read as
+         per-document. -->
+    <StackPanel Spacing="12">
+
+        <TextBlock Text="{x:Bind BrowsingDataHintString}"
+                   Style="{StaticResource SupportingTextStyle}"
+                   TextWrapping="Wrap" />
+
+        <Button HorizontalAlignment="Left"
+                Content="{x:Bind OpenApplicationSettingsString}"
+                Click="OpenApplicationSettingsButton_Click" />
+
+    </StackPanel>
+</UserControl>

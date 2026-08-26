@@ -1,0 +1,35 @@
+<UserControl
+    x:Class="Celbridge.WebView.Views.WebViewHomeSectionView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+    <StackPanel Spacing="12">
+
+        <StackPanel Spacing="2">
+            <TextBlock Text="{x:Bind HomeUrlLabelString}"
+                       Style="{StaticResource FieldLabelTextStyle}" />
+            <TextBox IsSpellCheckEnabled="False"
+                     PlaceholderText="{x:Bind AddressPlaceholderString}"
+                     ToolTipService.ToolTip="{x:Bind ViewModel.HomeUrlTooltip, Mode=OneWay}"
+                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+            <TextBlock Text="{x:Bind InvalidUrlString}"
+                       Style="{StaticResource SupportingTextStyle}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ViewModel.IsHomeUrlInvalid, Mode=OneWay}" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8">
+            <Button Content="{x:Bind SetCurrentPageAsHomeString}"
+                    IsEnabled="{x:Bind ViewModel.CanSetCurrentPageAsHome, Mode=OneWay}"
+                    Click="SetCurrentPageAsHomeButton_Click" />
+            <Button Content="{x:Bind NewDocumentString}"
+                    ToolTipService.ToolTip="{x:Bind NewDocumentTooltipString}"
+                    IsEnabled="{x:Bind ViewModel.CanCreateDocumentFromCurrentPage, Mode=OneWay}"
+                    Click="NewDocumentButton_Click" />
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

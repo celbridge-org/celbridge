@@ -87,7 +87,7 @@ public class DialogService : IDialogService
         return token;
     }
 
-    public async Task ShowSettingsDialogAsync()
+    public async Task ShowSettingsDialogAsync(string sectionKey)
     {
         if (IsDialogOpen)
         {
@@ -95,7 +95,7 @@ public class DialogService : IDialogService
             return;
         }
 
-        var dialog = _dialogFactory.CreateSettingsDialog();
+        var dialog = _dialogFactory.CreateSettingsDialog(sectionKey);
 
         try
         {

@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
@@ -15,7 +14,6 @@ public partial class ApplicationMenuViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly IDialogService _dialogService;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
@@ -28,7 +26,6 @@ public partial class ApplicationMenuViewModel : ObservableObject
     public ApplicationMenuViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
-        IDialogService dialogService,
         ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
@@ -37,7 +34,6 @@ public partial class ApplicationMenuViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
-        _dialogService = dialogService;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
@@ -105,7 +101,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
 
     public void ShowSettings()
     {
-        _ = _dialogService.ShowSettingsDialogAsync();
+        _commandService.Execute<IShowSettingsCommand>();
     }
 
     public void ExitApplication()

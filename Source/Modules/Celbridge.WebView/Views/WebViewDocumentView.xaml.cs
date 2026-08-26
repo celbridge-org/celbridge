@@ -9,7 +9,6 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
@@ -22,29 +21,22 @@ using Windows.System;
 namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// The per-user view state of a .webview document: whether the settings side panel is open and how wide
-/// it is. Persisted through the document editor state, not the .webview file.
+/// The per-user view state of a .webview document: whether the settings are open and which section they
+/// are showing. Persisted through the document editor state, not the .webview file.
 /// </summary>
-internal sealed record WebViewEditorState(bool SettingsPanelOpen, double SettingsPanelWidth);
+internal sealed record WebViewEditorState(bool SettingsOpen, string SettingsSectionKey);
 
 /// <summary>
 /// Hosts an arbitrary user URL from a .webview document, or a project-served
 /// HTML page from a .html / .htm document. The two roles share a single WebView2
 /// lifecycle and differ only in URL source, navigation policy, and chrome: the
 /// external-URL role presents a browser-style URL bar above the page and a
-/// resizable settings side panel beside it.
+/// resizable settings panel over it.
 /// </summary>
 public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget, IDocumentChromeOwner
 {
     // How long the settled download indicator stays visible before fading out.
     private static readonly TimeSpan DownloadIndicatorDismissDelay = TimeSpan.FromSeconds(10);
-
-    // Sized so the panel's action buttons carry their full labels, with headroom for longer translations.
-    // A URL is too long to fit at any width a side panel can take, so the address is left to scroll.
-    private const double DefaultSettingsPanelWidth = 340;
-    private const double MinSettingsPanelWidth = 260;
-    // The narrowest the page is allowed to become while the settings panel is dragged wider.
-    private const double MinWebViewWidth = 240;
 
     private static readonly JsonSerializerOptions EditorStateSerializerOptions = new()
     {
@@ -70,8 +62,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     private DispatcherTimer? _downloadIndicatorDismissTimer;
 
-    private readonly SplitterHelper _settingsPanelSplitterHelper;
-    private double _settingsPanelWidth = DefaultSettingsPanelWidth;
+    // The section the settings reopen on, carried until the surface is built on first use.
+    private string _settingsSectionKey = string.Empty;
+
+    // Where the page was last told to go, held until the committed address catches up with it.
+    private string _pendingNavigationUrl = string.Empty;
 
     // Set on successful registration with the bridge. Only populated for the
     // HtmlViewer role. .webview (external URL) documents do not register and the
@@ -98,17 +93,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private string AddressPlaceholderString => _stringLocalizer.GetString("WebView_UrlBar_AddressPlaceholder");
     private string OpenInBrowserTooltipString => _stringLocalizer.GetString("WebView_UrlBar_OpenInBrowserTooltip");
     private string SettingsTooltipString => _stringLocalizer.GetString("WebView_UrlBar_SettingsTooltip");
-    private string SettingsTitleString => _stringLocalizer.GetString("WebView_Settings_Title");
-    private string CloseSettingsTooltipString => _stringLocalizer.GetString("WebView_Settings_CloseTooltip");
-    private string HomeUrlLabelString => _stringLocalizer.GetString("WebView_Settings_HomeUrlLabel");
-    private string InvalidUrlString => _stringLocalizer.GetString("WebView_InvalidUrl");
-    private string SetCurrentPageAsHomeString => _stringLocalizer.GetString("WebView_Settings_SetCurrentPageAsHome");
-    private string NewDocumentString => _stringLocalizer.GetString("WebView_Settings_NewDocument");
-    private string NewDocumentTooltipString => _stringLocalizer.GetString("WebView_Settings_NewDocumentTooltip");
-    private string ShowUrlBarLabelString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarLabel");
-    private string ShowUrlBarHintString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarHint");
-    private string BrowsingDataLabelString => _stringLocalizer.GetString("WebView_Settings_BrowsingDataLabel");
-    private string BrowsingDataHintString => _stringLocalizer.GetString("WebView_Settings_BrowsingDataHint");
+    private string PlaceholderAddressHintString => _stringLocalizer.GetString("WebView_Placeholder_AddressHint");
+    private string PlaceholderSettingsHintString => _stringLocalizer.GetString("WebView_Placeholder_SettingsHint");
+    private string PlaceholderLoadFailedString => _stringLocalizer.GetString("WebView_Placeholder_LoadFailed");
+    private string PlaceholderLoadFailedHintString => _stringLocalizer.GetString("WebView_Placeholder_LoadFailedHint");
 
     public WebViewDocumentView(
         IServiceProvider serviceProvider,
@@ -136,19 +124,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         FindBar.Attach(this);
         FindBar.Closed += OnFindBarClosed;
 
-        // The panel is docked to the right edge, so a drag towards the page has to widen it.
-        _settingsPanelSplitterHelper = new SplitterHelper(
-            LayoutRoot,
-            GridResizeMode.Columns,
-            index: 2,
-            minSizeFunc: () => MinSettingsPanelWidth,
-            invertDelta: true,
-            maxSizeFunc: () => LayoutRoot.ActualWidth - MinWebViewWidth);
-
-        SettingsPanelSplitter.DragStarted += SettingsPanelSplitter_DragStarted;
-        SettingsPanelSplitter.DragDelta += SettingsPanelSplitter_DragDelta;
-        SettingsPanelSplitter.DragCompleted += SettingsPanelSplitter_DragCompleted;
-        SettingsPanelSplitter.DoubleClicked += SettingsPanelSplitter_DoubleClicked;
+        SettingsSurface.ReturnToPageRequested += SettingsSurface_ReturnToPageRequested;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         UpdateReloadOrStopTooltip();
@@ -173,6 +149,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         Navigate(navigateUrl);
     }
 
+    // Drops the page and returns the document to the placeholder it started on. A real navigation rather
+    // than just clearing the address, so the page being left stops running instead of playing on unseen.
+    private void ClearPage()
+    {
+        Navigate("about:blank");
+    }
+
     private void Navigate(string url)
     {
         if (_webView is null)
@@ -191,7 +174,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         // the Skia heads raise no navigation event for it at all, not even once the tab is later shown, so
         // its address bar would otherwise stay empty for the life of the document. Any redirect is picked
         // up by the navigation events as usual.
+        // A document restored into a background tab navigates with no events at all, so the failure a
+        // previous navigation reported is cleared here rather than in NavigationStarting alone.
+        ViewModel.HasNavigationFailed = false;
+
         ViewModel.CurrentUrl = uri.AbsoluteUri;
+        _pendingNavigationUrl = uri.AbsoluteUri;
 
         _webView.Source = uri;
     }
@@ -512,7 +500,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             }
         }
 
-        ViewModel.IsNavigating = false;
+        ViewModel.NotifyNavigationCompleted(e.IsSuccess);
         UpdateNavigationState();
     }
 
@@ -526,10 +514,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _toolBridge?.NotifyContentLoading(FileResource);
         }
 
-        ViewModel.IsNavigating = true;
+        ViewModel.NotifyNavigationStarted();
         if (!string.IsNullOrEmpty(args.Uri))
         {
             ViewModel.CurrentUrl = args.Uri;
+            _pendingNavigationUrl = args.Uri;
         }
     }
 
@@ -542,7 +531,27 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         ViewModel.CanGoBack = _webView.CanGoBack;
         ViewModel.CanGoForward = _webView.CanGoForward;
-        ViewModel.CurrentUrl = _webView.Source?.AbsoluteUri ?? string.Empty;
+
+        // Source names the last committed navigation, so while one is in flight it still reports the page
+        // being left. With nothing pending it is the only signal for a same-document navigation, which
+        // raises no navigation event.
+        var committedUrl = _webView.CoreWebView2?.Source;
+        if (string.IsNullOrEmpty(committedUrl))
+        {
+            return;
+        }
+
+        if (_pendingNavigationUrl.Length > 0
+            && committedUrl != _pendingNavigationUrl)
+        {
+            return;
+        }
+
+        _pendingNavigationUrl = string.Empty;
+
+        // CoreWebView2.Source rather than WebView2.Source, which reports the address percent-encoded where
+        // this reports it as the page shows it.
+        ViewModel.CurrentUrl = committedUrl;
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -577,10 +586,14 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
                 // Unlike the other navigation commands, Stop has no equivalent on the WebView2 control, and
                 // the CoreWebView2 member behind it is unimplemented on the Skia heads, so it goes through
                 // the adapter.
+                ViewModel.NotifyNavigationStopped();
                 await _webViewAdapter.StopAsync(coreWebView2);
             }
             else
             {
+                // Reload acts on the page, not on the address box, so an uncommitted edit there is
+                // dropped rather than left standing over a page it does not name.
+                SyncAddressText();
                 await _webViewAdapter.ReloadAsync(coreWebView2, clearCache: true);
             }
         }
@@ -594,8 +607,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     {
         if (ViewModel.TryNormalizeUserUrl(ViewModel.SourceUrl, out var homeUrl))
         {
+            // Navigating to the address already showing raises no change for the binding to follow, so an
+            // uncommitted edit in the box would survive the navigation.
+            SyncAddressText();
             Navigate(homeUrl);
         }
+    }
+
+    // Puts the address the page is actually showing back in the box, discarding an edit the user typed
+    // but never committed.
+    private void SyncAddressText()
+    {
+        AddressTextBox.Text = ViewModel.AddressText;
     }
 
     private void OpenInBrowserButton_Click(object sender, RoutedEventArgs e)
@@ -605,9 +628,23 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     private void AddressTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (ViewModel.IsSettingsVisible)
+        {
+            // Read-only stops the address being edited, but Enter would still navigate what it already
+            // holds, and Escape would discard a selection the user made to copy from.
+            return;
+        }
+
         if (e.Key == VirtualKey.Enter)
         {
-            if (ViewModel.TryNormalizeUserUrl(AddressTextBox.Text, out var url))
+            var address = AddressTextBox.Text.Trim();
+            if (address.Length == 0)
+            {
+                // Committing an empty address is a request to go nowhere, which leaves the document on
+                // the placeholder rather than on the page it happened to be showing.
+                ClearPage();
+            }
+            else if (ViewModel.TryNormalizeUserUrl(address, out var url))
             {
                 Navigate(url);
 
@@ -621,63 +658,75 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         else if (e.Key == VirtualKey.Escape)
         {
             // Abandon the edit: restore the address the page is actually showing and return to the content.
-            AddressTextBox.Text = ViewModel.CurrentUrl;
+            SyncAddressText();
             GiveFocusToWebContent();
 
             e.Handled = true;
         }
     }
 
-    private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
+    // A document with neither an address nor a URL bar to type one into has no way in, so it opens on the
+    // settings whatever state it was saved in. Home is the section holding the URL, and a restored section
+    // would otherwise land the user somewhere that cannot help.
+    private void OpenSettingsIfNoWayToNavigate()
     {
-        ViewModel.CloseSettingsPanel();
-    }
-
-    private void SetCurrentPageAsHomeButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.SetCurrentPageAsHome();
-    }
-
-    private void NewDocumentButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.CreateDocumentFromCurrentPage();
-    }
-
-    private void SettingsPanelSplitter_DragStarted(object? sender, EventArgs e)
-    {
-        _settingsPanelSplitterHelper.OnDragStarted();
-    }
-
-    private void SettingsPanelSplitter_DragDelta(object? sender, double delta)
-    {
-        _settingsPanelSplitterHelper.OnDragDelta(delta);
-    }
-
-    private void SettingsPanelSplitter_DragCompleted(object? sender, EventArgs e)
-    {
-        _settingsPanelWidth = SettingsPanelColumn.ActualWidth;
-    }
-
-    private void SettingsPanelSplitter_DoubleClicked(object? sender, EventArgs e)
-    {
-        _settingsPanelWidth = DefaultSettingsPanelWidth;
-        ApplySettingsPanelLayout();
-    }
-
-    // Drives the panel column and its splitter gutter from the view model's open state. The panel border
-    // binds its own visibility, but the column and the splitter are layout, not content.
-    private void ApplySettingsPanelLayout()
-    {
-        if (ViewModel.IsSettingsPanelVisible)
+        if (Options.Role != WebViewDocumentRole.ExternalUrl
+            || !string.IsNullOrWhiteSpace(ViewModel.SourceUrl)
+            || ViewModel.ShowUrlBar)
         {
-            SettingsPanelColumn.Width = new GridLength(_settingsPanelWidth, GridUnitType.Pixel);
-            SettingsPanelSplitter.Visibility = Visibility.Visible;
+            return;
         }
-        else
+
+        _settingsSectionKey = WebViewDocumentSettingsView.HomeSectionKey;
+        ViewModel.IsSettingsOpen = true;
+
+        // The open state may be unchanged, which raises no property change to drive the layout.
+        ApplyContentLayout();
+    }
+
+    // A document showing nothing navigates as soon as it is given an address. One already showing a page
+    // keeps it: changing the Home URL is not a request to leave the page.
+    private void NavigateIfPageIsBlank()
+    {
+        if (Options.Role != WebViewDocumentRole.ExternalUrl
+            || ViewModel.HasPage)
         {
-            SettingsPanelColumn.Width = new GridLength(0);
-            SettingsPanelSplitter.Visibility = Visibility.Collapsed;
+            return;
         }
+
+        TryNavigate();
+    }
+
+    private void SettingsSurface_ReturnToPageRequested(object? sender, EventArgs e)
+    {
+        ViewModel.CloseSettings();
+
+        // The button that asked has just collapsed with the settings, so the keyboard has nowhere to go.
+        GiveFocusToWebContent();
+    }
+
+    // Gives the document area to whichever of the page, the settings and the placeholder belongs there.
+    // The WebView is collapsed rather than covered by either of the other two: a hosted web view is a
+    // native view above the canvas they are drawn on, so while it is shown it takes mouse input meant for
+    // them, and the cursor over it answers to the page.
+    private void ApplyContentLayout()
+    {
+        var showSettings = ViewModel.IsSettingsVisible;
+        if (showSettings)
+        {
+            SettingsSurface.Initialize(ViewModel, _settingsSectionKey);
+
+            // Find applies to the page, which is no longer on screen. Closing the bar hands the keyboard
+            // back to the page, so only do it when the bar is actually showing.
+            if (FindBar.Visibility == Visibility.Visible)
+            {
+                FindBar.Close();
+            }
+        }
+
+        SettingsSurface.Visibility = showSettings ? Visibility.Visible : Visibility.Collapsed;
+        ContentPlaceholder.Visibility = ViewModel.IsPlaceholderVisible ? Visibility.Visible : Visibility.Collapsed;
+        AppWebViewContainer.Visibility = ViewModel.IsPageOnScreen ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void DownloadIndicatorButton_Click(object sender, RoutedEventArgs e)
@@ -698,9 +747,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         {
             UpdateDownloadIndicatorTooltip();
         }
-        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsPanelVisible))
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsVisible))
         {
-            ApplySettingsPanelLayout();
+            ApplyContentLayout();
+        }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.CurrentUrl)
+            || e.PropertyName == nameof(WebViewDocumentViewModel.HasNavigationFailed))
+        {
+            ApplyContentLayout();
+        }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.SourceUrl))
+        {
+            NavigateIfPageIsBlank();
         }
     }
 
@@ -993,6 +1051,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             return loadResult;
         }
 
+        OpenSettingsIfNoWayToNavigate();
+
         // Runs after the view model so NavigateUrl is resolved by the time initialization navigates.
         var wasInitialized = _initializeWebViewTask is not null;
         await EnsureWebViewInitializedAsync();
@@ -1022,15 +1082,23 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     {
         await Task.CompletedTask;
 
-        // A view that has not finished initializing would report a default panel state, which the layout
-        // store would then write over good saved state. The HTML viewer has no settings panel at all.
+        // A view that has not finished initializing would report a default settings state, which the
+        // layout store would then write over good saved state. The HTML viewer has no settings at all.
         if (Options.Role != WebViewDocumentRole.ExternalUrl ||
             _webView is null)
         {
             return null;
         }
 
-        var editorState = new WebViewEditorState(ViewModel.IsSettingsPanelOpen, _settingsPanelWidth);
+        var sectionKey = SettingsSurface.SelectedSectionKey;
+        if (string.IsNullOrEmpty(sectionKey))
+        {
+            // The surface builds its sections on first use, so a document that never opened the settings
+            // carries the section it was restored with rather than reporting none.
+            sectionKey = _settingsSectionKey;
+        }
+
+        var editorState = new WebViewEditorState(ViewModel.IsSettingsOpen, sectionKey);
 
         return JsonSerializer.Serialize(editorState, EditorStateSerializerOptions);
     }
@@ -1060,12 +1128,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             return;
         }
 
-        _settingsPanelWidth = Math.Max(editorState.SettingsPanelWidth, MinSettingsPanelWidth);
-        ViewModel.IsSettingsPanelOpen = editorState.SettingsPanelOpen;
+        _settingsSectionKey = editorState.SettingsSectionKey;
+        ViewModel.IsSettingsOpen = editorState.SettingsOpen;
 
         // The open state may be unchanged from the default, which raises no property change, so apply the
         // layout directly rather than relying on the view model notification.
-        ApplySettingsPanelLayout();
+        ApplyContentLayout();
+
+        // Restoring runs after the content loads, so a saved closed state would otherwise put a document
+        // with no way in back to its blank page.
+        OpenSettingsIfNoWayToNavigate();
     }
 
     // The URL bar is the only chrome this view hides, and it carries every control the view owns.
@@ -1091,6 +1163,14 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     public override void FocusDocument()
     {
+        if (ViewModel.IsSettingsVisible)
+        {
+            // The page is collapsed behind the settings, and native focus on macOS would land on a hidden
+            // web view that no keystroke could ever leave.
+            SettingsSurface.Focus(FocusState.Programmatic);
+            return;
+        }
+
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
         GiveFocusToWebContent();
@@ -1128,9 +1208,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         await host.NotifyGrantFocusAsync();
     }
 
-    // True when the host find bar can drive this document: the WebView is live and its backend has no find UI
-    // of its own (the Windows Chromium heads do, so they report false and keep their built-in bar).
-    public bool CanFind => !_webViewAdapter.ProvidesBuiltInFind && _webView?.CoreWebView2 is not null;
+    // True when the host find bar can drive this document: the page is the thing on screen, the WebView is
+    // live, and its backend has no find UI of its own (the Windows Chromium heads do, so they report false
+    // and keep their built-in bar).
+    public bool CanFind => ViewModel.IsPageOnScreen
+        && !_webViewAdapter.ProvidesBuiltInFind
+        && _webView?.CoreWebView2 is not null;
 
     public bool TryBeginFind()
     {

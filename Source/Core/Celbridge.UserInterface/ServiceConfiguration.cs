@@ -62,6 +62,7 @@ public static class ServiceConfiguration
         services.AddTransient<ISetThemeCommand, SetThemeCommand>();
         services.AddTransient<ISetLanguageCommand, SetLanguageCommand>();
         services.AddTransient<IAlertCommand, AlertCommand>();
+        services.AddTransient<IShowSettingsCommand, ShowSettingsCommand>();
         services.AddTransient<IConfirmActionCommand, ConfirmActionCommand>();
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
         services.AddTransient<IShowLogsCommand, ShowLogsCommand>();
