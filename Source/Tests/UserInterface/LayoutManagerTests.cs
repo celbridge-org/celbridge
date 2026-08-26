@@ -252,6 +252,35 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void SetSurfaceVisibility_InFocusMode_KeepsThePanelsTheModeHid()
+    {
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        // Focus hides every surface transiently, so showing one from there returns to the layout the user
+        // prefers with that surface shown.
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);
+        _workspaceSettings.PreferredSurfaceVisibility.Should()
+            .Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);
+    }
+
+    [Test]
+    public void SetSurfaceVisibility_InPresentationMode_PersistsTheComposedLayout()
+    {
+        // Preferred is now UtilityPanel and BottomArea, with SideArea hidden.
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        // Showing SideArea from Presentation composes a visibility the stored preference does not hold.
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, true);
+
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _workspaceSettings.PreferredSurfaceVisibility.Should().Be(WorkspaceSurface.All);
+    }
+
+    [Test]
     public void SetSurfaceVisibility_SameState_NoChange()
     {
         bool messageReceived = false;

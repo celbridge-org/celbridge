@@ -1,81 +1,29 @@
-﻿<UserControl
+<UserControl
     x:Class="Celbridge.WorkspaceUI.Views.UtilityPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-    xmlns:rail="using:Celbridge.WorkspaceUI.Views.Controls"
     xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <Grid x:Name="LayoutRoot">
-        <Grid.ColumnDefinitions>
-            <!-- Sized from WorkspaceConstants in code-behind, so the rail width the panel's minimum composes
-                 from and the rail width it draws are the same value. -->
-            <ColumnDefinition x:Name="RailColumn"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Utility rail: a custom, non-focusable icon strip, deliberately not a NavigationView. It stays on
-             the chrome field, so the panel beside it reads as carved out. -->
-        <Grid Grid.Column="0"
-              Background="{ThemeResource ChromeBackgroundBrush}">
-
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <!-- Absorbs the height between the two groups. It collapses to nothing before the groups
-                     overlap, so a short window leaves them meeting rather than drawn on top of each other. -->
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <StackPanel Grid.Row="0"
-                        Orientation="Vertical"
-                        ui:FocusTracking.PreservePanelFocus="True">
-
-                <StackPanel x:Name="RailItems" Orientation="Vertical">
-                    <rail:UtilityButton x:Name="ExplorerButton" />
-                    <rail:UtilityButton x:Name="SearchButton" />
-                </StackPanel>
-
-                <!-- Project Settings sits just below the utilities, set apart by a gap but still grouped with
-                     them for discoverability. It opens a document rather than selecting a surface, so it is
-                     not a rail item and carries no selection or focus state. -->
-                <rail:UtilityButton x:Name="ProjectSettingsButton"
-                                    Margin="0,16,0,0" />
-            </StackPanel>
-
-            <!-- The community links, built from the link catalog in code-behind. Pinned to the bottom of the
-                 rail, away from the surface buttons above: these open a document elsewhere in the layout
-                 rather than selecting the surface beside the rail. -->
-            <StackPanel x:Name="CommunityItems"
-                        Grid.Row="2"
-                        Orientation="Vertical"
+    <!-- The surface the rail selects into. Carved out of the field like a document section, so a custom utility
+         looks the same docked into a document tab. The edges and corners here are a starting point: code-behind
+         rewrites them for where the layout has put the panel. -->
+    <Grid x:Name="ContentArea"
+          Background="{ThemeResource ContentBackgroundBrush}"
+          BorderBrush="{ThemeResource PanelEdgeBrush}"
+          BorderThickness="1,1,1,0">
+        <!-- The panel host controls sit above the hosted panel's FocusTracking.Panel declaration. A tree
+             rebuild destroys the focused row and the platform bounces focus up onto the host, which has no
+             panel ancestor and would otherwise clear panel focus to None. PreservePanelFocus keeps the
+             current panel during that bounce. -->
+        <ContentControl x:Name="ExplorerPanelControl"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"
                         ui:FocusTracking.PreservePanelFocus="True" />
-        </Grid>
-
-        <!-- Content area for the selected panel. Carved out of the field like a document section, so a custom
-             utility looks the same docked into a document tab. It meets the rail directly on the left, where
-             the gap the rail leaves around its buttons is the channel the user sees. The splitter supplies the
-             channel on the right. The bottom meets the application border and is left flush. Corners are set
-             in code-behind from PanelCornerRadius. -->
-        <Grid x:Name="ContentArea"
-              Grid.Column="1"
-              Background="{ThemeResource ContentBackgroundBrush}"
-              BorderBrush="{ThemeResource PanelEdgeBrush}"
-              BorderThickness="1,1,1,0">
-            <!-- The panel host controls sit above the hosted panel's FocusTracking.Panel declaration. A tree
-                 rebuild destroys the focused row and the platform bounces focus up onto the host, which has no
-                 panel ancestor and would otherwise clear panel focus to None. PreservePanelFocus keeps the
-                 current panel during that transient bounce, matching the utility rail above. -->
-            <ContentControl x:Name="ExplorerPanelControl"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch"
-                            ui:FocusTracking.PreservePanelFocus="True" />
-            <ContentControl x:Name="SearchPanelControl"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch"
-                            Visibility="Collapsed"
-                            ui:FocusTracking.PreservePanelFocus="True" />
-        </Grid>
+        <ContentControl x:Name="SearchPanelControl"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"
+                        Visibility="Collapsed"
+                        ui:FocusTracking.PreservePanelFocus="True" />
     </Grid>
 </UserControl>

@@ -81,15 +81,15 @@ public class SectionChromeCalculator
     // and the neighbour it ran under gains a bottom edge instead.
     private Thickness ResolveAreaEdges(DocumentArea area)
     {
-        double facingUtilityPanel = ResolveEdge(_layoutState.IsUtilityPanelPresented);
+        double facingUtilityColumn = ResolveEdge(_layoutState.IsUtilityColumnPresented);
 
         if (area == DocumentArea.Side)
         {
-            // The Side area's left edge faces the main column, or the Utility Panel when no other area is
-            // presented alongside it.
+            // The Side area's left edge faces the main column, or the Utility Rail and Panel when no other
+            // area is presented alongside it.
             bool isMainColumnPresented = _layoutState.IsAreaPresented(DocumentArea.Main) ||
                 _layoutState.IsAreaPresented(DocumentArea.Bottom);
-            double sideLeft = ResolveEdge(isMainColumnPresented || _layoutState.IsUtilityPanelPresented);
+            double sideLeft = ResolveEdge(isMainColumnPresented || _layoutState.IsUtilityColumnPresented);
             double sideBottom = ResolveEdge(_layoutState.BottomAreaSpansSideArea);
 
             return new Thickness(sideLeft, EdgeThickness, 0, sideBottom);
@@ -99,8 +99,10 @@ public class SectionChromeCalculator
 
         if (area == DocumentArea.Bottom)
         {
-            double bottomLeft = ResolveEdge(_layoutState.IsUtilityPanelPresented &&
-                !_layoutState.BottomAreaSpansUtilityPanel);
+            // The Bottom area's alignment can take it across the Utility Panel, but never across the rail, so
+            // the rail is still there to face on that side once it has.
+            double bottomLeft = ResolveEdge(_layoutState.IsUtilityRailPresented ||
+                (_layoutState.IsUtilityPanelPresented && !_layoutState.BottomAreaSpansUtilityPanel));
             double bottomRight = ResolveEdge(_layoutState.IsAreaPresented(DocumentArea.Side) &&
                 !_layoutState.BottomAreaSpansSideArea);
 
@@ -109,7 +111,7 @@ public class SectionChromeCalculator
 
         double facingBottom = ResolveEdge(_layoutState.IsAreaPresented(DocumentArea.Bottom));
 
-        return new Thickness(facingUtilityPanel, EdgeThickness, facingSide, facingBottom);
+        return new Thickness(facingUtilityColumn, EdgeThickness, facingSide, facingBottom);
     }
 
     private static double ResolveEdge(bool facesNeighbour)

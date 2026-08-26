@@ -4,14 +4,16 @@ using Windows.Foundation;
 namespace Celbridge.WorkspaceUI.Helpers;
 
 /// <summary>
-/// The set of workspace surfaces currently presented and how far the Bottom area spans across its
-/// neighbours. A surface the Bottom area spans across stops above it instead of running full height.
+/// The set of workspace surfaces currently presented, whether the Utility Rail is on screen beside them, and
+/// how far the Bottom area spans across its neighbours. A surface the Bottom area spans across stops above it
+/// instead of running full height.
 /// </summary>
 public record WorkspaceSurfacePresentation(
     bool IsMainAreaPresented,
     bool IsBottomAreaPresented,
     bool IsSideAreaPresented,
     bool IsUtilityPanelPresented,
+    bool IsUtilityRailPresented,
     bool BottomAreaSpansUtilityPanel,
     bool BottomAreaSpansSideArea);
 
@@ -26,6 +28,7 @@ public record WorkspaceSurfaceMetrics(
     Size BottomAreaMinimumSize,
     Size SideAreaMinimumSize,
     double UtilityPanelMinimumWidth,
+    double UtilityRailWidth,
     double GutterSize,
     Size WorkspaceExtent,
     double? UtilityPanelWidth,
@@ -45,6 +48,7 @@ public sealed class WorkspaceSurfaceComposer
     private readonly Size _bottomAreaMinimumSize;
     private readonly Size _sideAreaMinimumSize;
     private readonly double _utilityPanelMinimumWidth;
+    private readonly double _utilityRailWidth;
 
     public WorkspaceSurfaceComposer(WorkspaceSurfacePresentation presentation, WorkspaceSurfaceMetrics metrics)
     {
@@ -62,6 +66,12 @@ public sealed class WorkspaceSurfaceComposer
         {
             _utilityPanelMinimumWidth = metrics.UtilityPanelMinimumWidth;
         }
+
+        _utilityRailWidth = 0;
+        if (presentation.IsUtilityRailPresented)
+        {
+            _utilityRailWidth = metrics.UtilityRailWidth;
+        }
     }
 
     /// <summary>
@@ -77,7 +87,9 @@ public sealed class WorkspaceSurfaceComposer
                 DocumentAreasMinimumWidth,
                 _metrics.GutterSize);
 
-            double width = Math.Max(surfacesBesideUtilityPanel, BottomRowMinimumWidth);
+            // The rail runs down the whole workspace beside every row, and meets what sits next to it directly,
+            // so it adds its width without a channel of its own.
+            double width = _utilityRailWidth + Math.Max(surfacesBesideUtilityPanel, BottomRowMinimumWidth);
 
             return new Size(width, DocumentAreasMinimumHeight + _metrics.GutterSize);
         }

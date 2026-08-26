@@ -139,7 +139,7 @@
     },
 
     {
-      "comment": "Vertical icon rail sizing, mirroring the workspace utility rail (WorkspaceConstants.UtilityPanelRailWidth, which sizes the panel's rail column, and UtilityButton.xaml's cell and button). The column carries the whole band up to the panel beside it, with no gutter between the two, so the square button centred in a square cell is what holds the channel open. Keep the three in sync when any changes.",
+      "comment": "Vertical icon rail sizing, mirroring the workspace utility rail (WorkspaceConstants.UtilityRailWidth, which sizes the rail control, and UtilityButton.xaml's cell and button). The column carries the whole band up to whatever sits beside it, with no gutter between the two, so the square button centred in a square cell is what holds the channel open. Keep the three in sync when any changes.",
       "tokens": {
         "rail-width": {
           "targets": ["css"],

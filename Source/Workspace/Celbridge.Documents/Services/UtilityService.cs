@@ -228,10 +228,6 @@ public class UtilityService : IUtilityService, IDisposable
 
         var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
 
-        // The utility's surface has left the Utility Panel, so show Explorer so the panel is not left blank.
-        utilityPanel.ShowUtility(BuiltInUtilityIds.Explorer);
-
-        // Tell the rail this utility is a document, so its button dims and its click activates the tab.
         utilityPanel.SetUtilityDockLocation(panelView.UtilityId, DockLocation.Document, panelView.FileResource);
 
         FlashDocumentTab(panelView.FileResource);
@@ -261,9 +257,6 @@ public class UtilityService : IUtilityService, IDisposable
 
         // Present the utility at its destination, mirroring the dock as a document, which activates the tab.
         utilityPanel.ShowUtility(panelView.UtilityId);
-
-        // Flash the rail button so the move is obvious.
-        utilityPanel.FlashUtility(panelView.UtilityId);
 
         return Result.Ok();
     }

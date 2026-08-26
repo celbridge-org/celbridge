@@ -53,14 +53,9 @@ public interface IUtilityPanel
     EditorId ActiveUtilityId { get; }
 
     /// <summary>
-    /// The smallest width the panel can be laid out at: the rail, the channel beside it, and the floor for
-    /// the surface it hosts.
-    /// </summary>
-    double MinimumWidth { get; }
-
-    /// <summary>
     /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
-    /// otherwise selects its rail surface in the Utility Panel. A no-op when no utility has that id.
+    /// otherwise selects its rail surface in the Utility Panel, presenting the panel when it is collapsed. A
+    /// no-op when no utility has that id.
     /// </summary>
     void ShowUtility(EditorId utilityId);
 
@@ -77,17 +72,11 @@ public interface IUtilityPanel
     void ClearCustomUtilities();
 
     /// <summary>
-    /// Updates a custom utility's rail button to reflect its current dock location. When docked as a
-    /// Document the button shows a docked cue and its click activates documentResource's tab. When in the
-    /// UtilityPanel the button returns to normal, its click shows the panel surface, and documentResource
-    /// is ignored.
+    /// Tells the panel where a custom utility now lives, so the rail and the panel's surface follow it.
+    /// documentResource is the document hosting the utility while the location is Document, and is otherwise
+    /// ignored.
     /// </summary>
     void SetUtilityDockLocation(EditorId utilityId, DockLocation location, ResourceKey documentResource);
-
-    /// <summary>
-    /// Briefly flashes a utility's rail button to draw attention to it. A no-op when no utility has that id.
-    /// </summary>
-    void FlashUtility(EditorId utilityId);
 
     /// <summary>
     /// Restores the previously active rail surface from workspace settings, falling back to Explorer when the

@@ -17,7 +17,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
-    private WorkspaceSurface _surfaceVisibility = WorkspaceSurface.All;
     private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
     public LayoutManager(
@@ -103,17 +102,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
-    public WorkspaceSurface SurfaceVisibility
-    {
-        get => _surfaceVisibility;
-        private set
-        {
-            if (_surfaceVisibility != value)
-            {
-                _surfaceVisibility = value;
-            }
-        }
-    }
+    public WorkspaceSurface SurfaceVisibility { get; private set; } = WorkspaceSurface.All;
 
     public bool IsUtilityPanelVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
 
@@ -123,11 +112,24 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     public void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible)
     {
-        var newVisibility = isVisible
-            ? SurfaceVisibility | surface
-            : SurfaceVisibility & ~surface;
+        // Manually changing panel visibility means the user is customizing the layout, so leave any
+        // Focus/Presentation mode and return to the Default layout.
+        bool isLeavingLayoutMode = _layoutMode != LayoutMode.Default;
 
-        if (newVisibility == SurfaceVisibility)
+        // Those modes hide every surface transiently, so the change is composed against the visibility the
+        // user prefers.
+        var currentVisibility = SurfaceVisibility;
+        if (isLeavingLayoutMode)
+        {
+            currentVisibility = PreferredSurfaceVisibility;
+        }
+
+        var newVisibility = isVisible
+            ? currentVisibility | surface
+            : currentVisibility & ~surface;
+
+        if (newVisibility == SurfaceVisibility
+            && !isLeavingLayoutMode)
         {
             return;
         }
@@ -135,9 +137,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // This is a user-initiated change, so it should persist
         UpdateSurfaceVisibility(newVisibility, shouldPersist: true);
 
-        // Manually changing panel visibility means the user is customizing the layout, so leave any
-        // Focus/Presentation mode and return to the Default layout.
-        if (_layoutMode != LayoutMode.Default)
+        if (isLeavingLayoutMode)
         {
             SetLayoutModeInternal(LayoutMode.Default);
         }
@@ -266,10 +266,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         var oldVisibility = SurfaceVisibility;
         SurfaceVisibility = newVisibility;
 
-        // Only persist if explicitly requested (user-initiated changes)
-        // and not in Presentation mode (temporary presentation state)
-        if (shouldPersist &&
-            _layoutMode != LayoutMode.Presentation)
+        // Mode-driven visibility is transient, and its callers say so by not asking for a persist.
+        if (shouldPersist)
         {
             PersistPreferredSurfaceVisibility(newVisibility);
         }

@@ -5,18 +5,14 @@ namespace Celbridge.Explorer.Commands;
 
 public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 {
-    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey Resource { get; set; }
 
     public bool ShowExplorerPanel { get; set; } = true;
 
-    public SelectResourceCommand(
-        ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+    public SelectResourceCommand(IWorkspaceWrapper workspaceWrapper)
     {
-        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -32,15 +28,6 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
         if (ShowExplorerPanel)
         {
-            _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
-            {
-                command.Surfaces = WorkspaceSurface.UtilityPanel;
-                command.IsVisible = true;
-            });
-
-            // Switch the Utility Panel to the Explorer tab. Making the Utility Panel visible is not
-            // enough on its own: the Explorer content stays collapsed while another utility (such as
-            // Search) is the active tab, so the selected resource would not be shown.
             var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
             utilityPanel.ShowUtility(BuiltInUtilityIds.Explorer);
         }

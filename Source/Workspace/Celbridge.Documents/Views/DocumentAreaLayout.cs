@@ -152,6 +152,17 @@ public sealed class DocumentAreaLayout
     }
 
     /// <summary>
+    /// Sets whether the Utility Rail is showing down the left of the workspace.
+    /// </summary>
+    public void SetUtilityRailPresented(bool isPresented)
+    {
+        if (_layoutState.SetUtilityRailPresented(isPresented))
+        {
+            ApplyWorkspaceLayout();
+        }
+    }
+
+    /// <summary>
     /// Sets how far the Bottom area spans across the workspace: the Main area only, or across the Utility
     /// Panel, the Side area, or both. The surfaces it runs across stop above it.
     /// </summary>
@@ -575,6 +586,7 @@ public sealed class DocumentAreaLayout
             IsBottomAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Bottom),
             IsSideAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Side),
             IsUtilityPanelPresented: _layoutState.IsUtilityPanelPresented,
+            IsUtilityRailPresented: _layoutState.IsUtilityRailPresented,
             BottomAreaSpansUtilityPanel: _layoutState.BottomAreaSpansUtilityPanel,
             BottomAreaSpansSideArea: _layoutState.BottomAreaSpansSideArea);
 

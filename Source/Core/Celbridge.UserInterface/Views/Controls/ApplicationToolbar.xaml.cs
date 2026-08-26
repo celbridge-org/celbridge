@@ -34,7 +34,7 @@ public sealed partial class ApplicationToolbar : UserControl
 
         ToolbarRow.Height = new Microsoft.UI.Xaml.GridLength(ToolbarHeight);
 
-        AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(WorkspaceConstants.UtilityPanelRailWidth);
+        AppIconColumn.Width = new Microsoft.UI.Xaml.GridLength(WorkspaceConstants.UtilityRailWidth);
 
         var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         if (platformInfo.ReservesWindowCaptionButtons)

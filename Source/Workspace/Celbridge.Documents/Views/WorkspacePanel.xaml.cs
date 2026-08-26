@@ -12,6 +12,11 @@ namespace Celbridge.Documents.Views;
 
 using IWorkspacePanelLogger = Logging.ILogger<WorkspacePanel>;
 
+/// <summary>
+/// A document's focus claim held back until the collapsed area holding it has been revealed.
+/// </summary>
+internal sealed record PendingRevealFocus(ResourceKey Document, DocumentArea Area);
+
 public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 {
     private readonly IServiceProvider _serviceProvider;
@@ -26,6 +31,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private readonly Dictionary<DocumentArea, DocumentToolbar> _areaToolbars = new();
 
     private bool _isShuttingDown = false;
+
+    // A document off screen cannot take the keyboard, so its claim waits for the area to be laid out.
+    private PendingRevealFocus? _pendingRevealFocus;
 
     public WorkspacePanelViewModel ViewModel { get; }
 
@@ -114,12 +122,47 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         ViewModel.OnActiveDocumentChanged(documentResource);
 
+        var revealingArea = RevealActivatedDocumentArea(documentResource, reason);
+
+        // This activation supersedes any claim still waiting on a reveal, so at most one is ever held and it
+        // is always the newest.
+        _pendingRevealFocus = null;
+
         // The keyboard follows the active document, so every path that changes it carries focus without
         // having to remember to: opening, closing onto the next tab, moving a tab between sections.
         if (ActiveDocumentFocusPolicy.ShouldCarryFocus(documentResource, reason))
         {
-            FocusActivatedDocument(documentResource);
+            if (revealingArea is not null)
+            {
+                _pendingRevealFocus = new PendingRevealFocus(documentResource, revealingArea.Value);
+            }
+            else
+            {
+                FocusActivatedDocument(documentResource);
+            }
         }
+    }
+
+    // Opens the collapsed area holding the document that just became active, returning the area being
+    // revealed, or null when nothing needed revealing. A restore is left alone: the workspace restores its
+    // own surface visibility.
+    private DocumentArea? RevealActivatedDocumentArea(ResourceKey documentResource, ActiveDocumentChangeReason reason)
+    {
+        if (documentResource.IsEmpty
+            || reason != ActiveDocumentChangeReason.Activated)
+        {
+            return null;
+        }
+
+        var area = SectionContainer.ActiveSection.GetArea();
+        if (ViewModel.IsAreaVisible(area))
+        {
+            return null;
+        }
+
+        ViewModel.SetAreaVisible(area, true);
+
+        return area;
     }
 
     private void OnSectionDocumentsLayoutChanged(DocumentSectionView sectionView, List<ResourceKey> documents)
@@ -348,6 +391,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // into Focus or Presentation.
         ApplyIsolatedArea(_windowModeService.LayoutMode);
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
+        UpdateUtilityRailVisibility(_windowModeService.LayoutMode);
 
         RegisterAsResourceDropTarget();
     }
@@ -443,6 +487,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     {
         ApplyIsolatedArea(message.LayoutMode);
         UpdateTabStripVisibility(message.LayoutMode);
+        UpdateUtilityRailVisibility(message.LayoutMode);
 
         // Entering a mode that hides the side panels can leave keyboard focus on a now-hidden panel
         // (e.g. the Explorer), which stops app shortcuts like F11 from being delivered until the user
@@ -492,6 +537,12 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
+    // Presentation mode strips back to the document content alone, so it is the only mode that hides the rail.
+    private void UpdateUtilityRailVisibility(LayoutMode layoutMode)
+    {
+        SectionContainer.Areas.SetUtilityRailPresented(layoutMode != LayoutMode.Presentation);
+    }
+
     private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
     {
         if (_isShuttingDown)
@@ -500,6 +551,16 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         ApplyAreaVisibility();
+
+        // Every surface reports through this message, so one about another area says nothing about a claim
+        // still waiting on this one.
+        var pendingFocus = _pendingRevealFocus;
+        if (pendingFocus is not null
+            && ViewModel.IsAreaVisible(pendingFocus.Area))
+        {
+            _pendingRevealFocus = null;
+            FocusActivatedDocument(pendingFocus.Document);
+        }
     }
 
     // Shows or hides the collapsible areas to match the workspace surface visibility. Hiding an area

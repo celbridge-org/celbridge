@@ -4,9 +4,7 @@ using Celbridge.WorkspaceUI.ViewModels;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for UtilityPanelViewModel, the rail selection/focus state machine. Focus on the accent rules:
-/// optimistic focus on selection, suppression of the transient switch bounce, and honouring real focus once
-/// the selection settles.
+/// Unit tests for UtilityPanelViewModel, the rail mark state machine.
 /// </summary>
 [TestFixture]
 public class UtilityPanelViewModelTests
@@ -132,6 +130,55 @@ public class UtilityPanelViewModelTests
 
         _viewModel.SetDocked(NotepadUtilityId, false);
         notepad.IsDocked.Should().BeFalse();
+    }
+
+    [Test]
+    public void DockedUtility_CarriesNoMark()
+    {
+        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        _viewModel.SelectUtility(NotepadUtilityId);
+
+        // Docking hands the utility to a document tab, so the panel's marks stop being its to carry.
+        _viewModel.SetDocked(NotepadUtilityId, true);
+
+        notepad.IsSelected.Should().BeFalse();
+        notepad.IsFocused.Should().BeFalse();
+    }
+
+    [Test]
+    public void CollapsedPanel_ClearsEveryMarkAndKeepsTheSelection()
+    {
+        _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
+
+        _viewModel.SetPanelVisible(false);
+
+        // A collapsed panel is showing nothing, so there is nothing to mark.
+        _explorer.IsSelected.Should().BeFalse();
+        _explorer.IsFocused.Should().BeFalse();
+        _viewModel.SelectedUtilityId.Should().Be(BuiltInUtilityIds.Explorer);
+    }
+
+    [Test]
+    public void RevealedPanel_MarksItsUtilityAgain()
+    {
+        _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
+        _viewModel.SetPanelVisible(false);
+
+        _viewModel.SetPanelVisible(true);
+
+        _explorer.IsSelected.Should().BeTrue();
+        _search.IsSelected.Should().BeFalse();
+    }
+
+    [Test]
+    public void SelectUtility_NotAwaitingFocus_MarksTheUtilityWithoutTheAccent()
+    {
+        // A selection that is not taking the keyboard, such as restoring the panel's utility while another
+        // panel holds focus. Awaiting a focus that will never arrive would leave the accent stuck on.
+        _viewModel.SelectUtility(BuiltInUtilityIds.Explorer, awaitFocus: false);
+
+        _explorer.IsSelected.Should().BeTrue();
+        _explorer.IsFocused.Should().BeFalse();
     }
 
     [Test]

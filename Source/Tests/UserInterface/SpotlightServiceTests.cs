@@ -1,4 +1,5 @@
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
@@ -10,6 +11,7 @@ public class SpotlightServiceTests
     private ILogger<SpotlightService> _logger = null!;
     private IMessengerService _messengerService = null!;
     private ILayoutService _layoutService = null!;
+    private IWindowModeService _windowModeService = null!;
     private ISpotlightRegistry _landmarkRegistry = null!;
 
     [SetUp]
@@ -18,13 +20,14 @@ public class SpotlightServiceTests
         _logger = Substitute.For<ILogger<SpotlightService>>();
         _messengerService = Substitute.For<IMessengerService>();
         _layoutService = Substitute.For<ILayoutService>();
+        _windowModeService = Substitute.For<IWindowModeService>();
         _landmarkRegistry = Substitute.For<ISpotlightRegistry>();
     }
 
     [Test]
     public void RegisterPresenter_ThenClear_HidesThePresenter()
     {
-        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _windowModeService, _landmarkRegistry);
         var presenter = new StubSpotlightPresenter();
 
         service.RegisterPresenter(presenter);
@@ -36,7 +39,7 @@ public class SpotlightServiceTests
     [Test]
     public void RegisterPresenter_ReplacesPreviousPresenter()
     {
-        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _windowModeService, _landmarkRegistry);
         var first = new StubSpotlightPresenter();
         var second = new StubSpotlightPresenter();
 
@@ -52,7 +55,7 @@ public class SpotlightServiceTests
     [Test]
     public void UnregisterPresenter_NotCurrent_IsIgnored()
     {
-        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _windowModeService, _landmarkRegistry);
         var first = new StubSpotlightPresenter();
         var second = new StubSpotlightPresenter();
 
@@ -68,7 +71,7 @@ public class SpotlightServiceTests
     [Test]
     public void UnregisterPresenter_Current_ClearsTheSlot()
     {
-        var service = new SpotlightService(_logger, _messengerService, _layoutService, _landmarkRegistry);
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _windowModeService, _landmarkRegistry);
         var presenter = new StubSpotlightPresenter();
 
         service.RegisterPresenter(presenter);
@@ -77,6 +80,31 @@ public class SpotlightServiceTests
 
         // No presenter is registered, so clearing drives nothing.
         presenter.HideCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task ShowSpotlightAsync_InPresentationMode_IsRefused()
+    {
+        // A landmark that gates on a surface, so without the Presentation guard the reveal below would
+        // fire and take the user out of the mode.
+        _landmarkRegistry
+            .TryGetLandmark("search-input", out Arg.Any<LandmarkDescriptor?>())
+            .Returns(call =>
+            {
+                call[1] = new LandmarkDescriptor("search-input", WorkspaceSurface.UtilityPanel);
+                return true;
+            });
+        _windowModeService.LayoutMode.Returns(LayoutMode.Presentation);
+
+        var service = new SpotlightService(_logger, _messengerService, _layoutService, _windowModeService, _landmarkRegistry);
+        service.RegisterPresenter(new StubSpotlightPresenter());
+
+        var result = await service.ShowSpotlightAsync("search-input", "Search", 0);
+
+        // Revealing the landmark's surface would drop the user out of their presentation, which is theirs
+        // to leave.
+        result.IsFailure.Should().BeTrue();
+        _layoutService.DidNotReceiveWithAnyArgs().SetSurfaceVisibility(default, default);
     }
 
     private sealed class StubSpotlightPresenter : ISpotlightPresenter
