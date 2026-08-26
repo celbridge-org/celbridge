@@ -152,8 +152,7 @@ public sealed class DocumentAreaLayout
     }
 
     /// <summary>
-    /// Sets whether the Utility Rail is showing down the left of the workspace. Like the panel beside it, the
-    /// rail is what an area on that side draws its left edge against.
+    /// Sets whether the Utility Rail is showing down the left of the workspace.
     /// </summary>
     public void SetUtilityRailPresented(bool isPresented)
     {

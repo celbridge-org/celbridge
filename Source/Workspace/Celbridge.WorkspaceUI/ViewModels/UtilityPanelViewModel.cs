@@ -71,7 +71,7 @@ public partial class UtilityPanelViewModel : ObservableObject
 
     /// <summary>
     /// Reports which workspace panel currently holds focus. While awaiting a selection's focus, a report for
-    /// a different panel is ignored (the transient switch bounce); a report for the selected surface settles
+    /// a different panel is ignored (the transient switch bounce). A report for the selected surface settles
     /// the wait.
     /// </summary>
     public void ReconcileFocus(WorkspacePanelId focusedPanel)

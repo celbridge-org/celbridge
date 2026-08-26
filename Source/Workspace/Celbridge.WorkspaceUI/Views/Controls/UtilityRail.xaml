@@ -5,16 +5,14 @@
     xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <!-- A custom, non-focusable icon strip, deliberately not a NavigationView. It stays on the chrome field,
-         so whatever sits beside it reads as carved out. The buttons are built by the Utility Panel, which
-         owns the rail's state, so this control holds the groups and nothing else. -->
+    <!-- A custom, non-focusable icon strip. It stays on the chrome field, so whatever sits beside it reads
+         as carved out. This control holds the button groups only. -->
     <Grid x:Name="LayoutRoot"
           Background="{ThemeResource ChromeBackgroundBrush}">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- Absorbs the height between the two groups. It collapses to nothing before the groups
-                 overlap, so a short window leaves them meeting rather than drawn on top of each other. -->
+            <!-- Absorbs the height between the two groups. -->
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -25,17 +23,15 @@
 
             <StackPanel x:Name="UtilityItems" Orientation="Vertical" />
 
-            <!-- Launchers sit just below the utilities, set apart by a gap but still grouped with them for
-                 discoverability. They open a document rather than selecting a surface, so they are not rail
-                 items and carry no selection or focus state. -->
+            <!-- Launchers sit just below the utilities, set apart by a gap. They open a document rather than
+                 selecting a surface, so they carry no selection or focus state. -->
             <StackPanel x:Name="LauncherItems"
                         Orientation="Vertical"
                         Margin="0,16,0,0" />
         </StackPanel>
 
-        <!-- The community links, built from the link catalog. Pinned to the bottom of the rail, away from the
-             surface buttons above: these open a document elsewhere in the layout rather than selecting the
-             surface beside the rail. -->
+        <!-- The community links, pinned to the bottom of the rail. They open a document rather than
+             selecting a surface. -->
         <StackPanel x:Name="CommunityItems"
                     Grid.Row="2"
                     Orientation="Vertical"

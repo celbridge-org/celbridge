@@ -4,10 +4,7 @@ using Celbridge.WorkspaceUI.ViewModels;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for UtilityPanelViewModel, the rail mark state machine. Both marks describe the Utility Panel,
-/// so the cases are: which item the panel is showing, whether the keyboard is in it (optimistic on selection,
-/// suppressing the transient switch bounce, honouring real focus once it settles), and the items that carry
-/// no mark at all.
+/// Unit tests for UtilityPanelViewModel, the rail mark state machine.
 /// </summary>
 [TestFixture]
 public class UtilityPanelViewModelTests
@@ -141,8 +138,7 @@ public class UtilityPanelViewModelTests
         var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
         _viewModel.SelectUtility(NotepadUtilityId);
 
-        // Docking hands the utility to a document tab, so the panel's marks stop being its to carry, even
-        // though it was the panel's utility a moment ago.
+        // Docking hands the utility to a document tab, so the panel's marks stop being its to carry.
         _viewModel.SetDocked(NotepadUtilityId, true);
 
         notepad.IsSelected.Should().BeFalse();
@@ -156,8 +152,7 @@ public class UtilityPanelViewModelTests
 
         _viewModel.SetPanelVisible(false);
 
-        // A collapsed panel is showing nothing, so there is nothing to mark. The selection survives for the
-        // next time it opens.
+        // A collapsed panel is showing nothing, so there is nothing to mark.
         _explorer.IsSelected.Should().BeFalse();
         _explorer.IsFocused.Should().BeFalse();
         _viewModel.SelectedUtilityId.Should().Be(BuiltInUtilityIds.Explorer);

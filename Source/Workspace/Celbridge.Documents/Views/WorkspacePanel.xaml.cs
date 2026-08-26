@@ -494,9 +494,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
-    // The rail is chrome the workspace always offers rather than a surface the user collapses, so it follows
-    // the application toolbar: Focus keeps it and Presentation strips back to the document content alone.
-    // Keeping it in Focus also leaves the Utility Panel one click away from that mode.
+    // Presentation mode strips back to the document content alone, so it is the only mode that hides the rail.
     private void UpdateUtilityRailVisibility(LayoutMode layoutMode)
     {
         SectionContainer.Areas.SetUtilityRailPresented(layoutMode != LayoutMode.Presentation);

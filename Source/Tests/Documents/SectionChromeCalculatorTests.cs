@@ -152,8 +152,8 @@ public class SectionChromeCalculatorTests
 
         var areaChrome = calculator.CalculateAreaChrome(DocumentArea.Bottom, Radius);
 
-        // The Bottom area now runs under the Utility Panel, but never under the rail, so its left edge faces
-        // the rail instead of reaching the application border. Its right edge still faces the Side area.
+        // The Bottom area now runs under the Utility Panel, but never under the rail, so its left edge still
+        // faces the rail. Its right edge faces the Side area.
         areaChrome.Primary.Edges.Should().Be(new Thickness(1, 1, 1, 0));
         areaChrome.Primary.Corners.Should().Be(new CornerRadius(Radius, Radius, 0, 0));
     }

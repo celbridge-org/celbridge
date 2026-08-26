@@ -2,8 +2,7 @@ namespace Celbridge.WorkspaceUI.Views.Controls;
 
 /// <summary>
 /// The icon strip down the left of the workspace, holding the utility surface buttons, the launcher buttons
-/// below them, and the community links pinned to the bottom. It stays on screen while the Utility Panel
-/// beside it is hidden.
+/// below them, and the community links pinned to the bottom.
 /// </summary>
 public sealed partial class UtilityRail : UserControl
 {
@@ -11,8 +10,7 @@ public sealed partial class UtilityRail : UserControl
     {
         this.InitializeComponent();
 
-        // The rail is a fixed band rather than a resizable surface, so it carries its own width instead of
-        // taking one from the column it is hosted in.
+        // The rail sizes itself, so the column hosting it does not set a width.
         Width = WorkspaceConstants.UtilityRailWidth;
     }
 

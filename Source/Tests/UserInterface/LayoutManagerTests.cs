@@ -258,7 +258,7 @@ public class LayoutManagerTests
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         // Focus hides every surface transiently, so showing one from there returns to the layout the user
-        // prefers with that surface shown, rather than to the mode's empty layout plus that one surface.
+        // prefers with that surface shown.
         _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
 
         _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);

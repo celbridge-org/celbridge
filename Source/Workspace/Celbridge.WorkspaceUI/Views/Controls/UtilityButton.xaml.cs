@@ -34,8 +34,7 @@ public sealed partial class UtilityButton : UserControl
     }
 
     /// <summary>
-    /// Fills the button with a neutral tone to show that the Utility Panel holds this utility. Driven by the
-    /// rail's state, not by the button's own click.
+    /// Fills the button with a neutral tone to show that the Utility Panel holds this utility.
     /// </summary>
     public bool IsSelected
     {

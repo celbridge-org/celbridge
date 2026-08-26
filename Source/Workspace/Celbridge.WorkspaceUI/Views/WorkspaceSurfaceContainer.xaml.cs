@@ -8,15 +8,13 @@ namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
 /// Lays out the workspace surfaces: the Utility Rail and Utility Panel it hosts, the three document-area
-/// grids, and the splitters that size them. This control owns surface geometry only. The presentation is
-/// pushed in as a snapshot, and the sections inside the area grids are managed by the documents panel. Every
-/// floor and every maximum it applies is composed by WorkspaceSurfaceComposer.
+/// grids, and the splitters that size them. This control owns surface geometry only, with the presentation
+/// pushed in as a snapshot.
 /// </summary>
 public sealed partial class WorkspaceSurfaceContainer : UserControl
 {
-    // Positions in the workspace grid: the tracks each surface sits in, which are both what the Bottom area's
-    // alignment moves things between and what the splitters resize. A surface beside the document areas runs
-    // the full height of the grid, and shortens to the Main area row alone once the Bottom area runs
+    // Positions in the workspace grid: the tracks each surface sits in. A surface beside the document areas
+    // runs the full height of the grid, and shortens to the Main area row alone once the Bottom area runs
     // underneath it.
     private const int UtilityPanelColumnIndex = 1;
     private const int MainAreaColumnIndex = 3;
@@ -85,9 +83,8 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         SideAreaColumn.Width = new GridLength(WorkspaceConstants.SideAreaWidth);
         BottomAreaRow.Height = new GridLength(WorkspaceConstants.BottomAreaHeight);
 
-        // The Utility Panel is part of the workspace layout rather than a sibling of it, so this
-        // container creates and hosts it. Its rail is hosted in a column of its own, which is what keeps the
-        // rail on screen while the panel is collapsed.
+        // This container creates and hosts the Utility Panel. Its rail is hosted in a column of its own,
+        // which keeps the rail on screen while the panel is collapsed.
         var utilityPanel = ServiceLocator.AcquireService<IUtilityPanel>();
         _utilityPanel = (UtilityPanel)utilityPanel;
         UtilityPanelHost.Children.Add(_utilityPanel);
@@ -346,8 +343,6 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         Grid.SetColumn(BottomAreaSplitter, bottomColumn);
         Grid.SetColumnSpan(BottomAreaSplitter, bottomColumnSpan);
 
-        // The rail is not spanned however the Bottom area is aligned, so it keeps its full-height row span and
-        // its bottom group stays pinned to the bottom of the window.
         int utilityPanelRowSpan = spansUtilityPanel ? AboveBottomAreaRowSpan : FullHeightRowSpan;
         Grid.SetRowSpan(UtilityPanelHost, utilityPanelRowSpan);
         Grid.SetRowSpan(UtilityPanelSplitter, utilityPanelRowSpan);

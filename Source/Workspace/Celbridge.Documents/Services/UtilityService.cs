@@ -228,7 +228,6 @@ public class UtilityService : IUtilityService, IDisposable
 
         var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
 
-        // Tell the rail this utility now lives in a document tab.
         utilityPanel.SetUtilityDockLocation(panelView.UtilityId, DockLocation.Document, panelView.FileResource);
 
         FlashDocumentTab(panelView.FileResource);

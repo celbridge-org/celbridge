@@ -5,8 +5,7 @@ namespace Celbridge.Documents.Services;
 /// <summary>
 /// The live layout state of the document areas: per-area split and ratio, which areas the user has visible,
 /// and the transient isolation and Utility Rail and Panel presentation. Holds the layout rules over that
-/// state. Applying it to the visual tree is the section container's job. Mutations return whether the state
-/// changed, so the caller knows when to re-apply the layout.
+/// state. Mutations return whether the state changed.
 /// </summary>
 public class AreaLayoutState
 {
@@ -47,8 +46,7 @@ public class AreaLayoutState
     public bool IsUtilityRailPresented => _isUtilityRailPresented;
 
     /// <summary>
-    /// Whether anything is showing in the band left of the document areas, which is what an area on that side
-    /// draws its left edge against.
+    /// Whether anything is showing in the band left of the document areas.
     /// </summary>
     public bool IsUtilityColumnPresented => _isUtilityRailPresented || _isUtilityPanelPresented;
 

@@ -31,7 +31,7 @@ These rules need no judgement, so decide them in the shell rather than spending 
 ```bash
 WL=/tmp/comment-worklist.txt
 echo "== prose semicolons =="
-grep -nE '(///|//|#).*;[[:space:]]*$|(///|//|#).*[a-z]; [a-z]' "$WL"
+grep -nE '(///|//|#).*;[[:space:]]*$|(///|//|#).*[[:alnum:])"'"'"']; [[:alnum:]]' "$WL"
 echo "== banned doc constructs =="
 grep -nE '<remarks>|<c>|<list>|<item>|/// <param' "$WL"
 echo "== section markers =="

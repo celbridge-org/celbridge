@@ -27,7 +27,7 @@ public static class WorkspaceMinimumSize
     /// The smallest size the workspace can be laid out at in the layout a workspace opens with: the Utility
     /// Rail, plus the surfaces the given visibility shows, each unsplit and holding the floor composed from the
     /// authored chrome, with the channels between them and the one above the document areas. Nothing here is
-    /// measured, so this holds before any workspace exists, which is where the window minimum is applied.
+    /// measured, so this holds before any workspace exists.
     /// </summary>
     public static Size ComposeDefaultLayout(WorkspaceSurface visibleSurfaces, double gutterSize)
     {
@@ -60,9 +60,8 @@ public static class WorkspaceMinimumSize
         double documentAreasWidth = ComposeAdjacent(sectionMinimum.Width, sideMinimumWidth, gutterSize);
         double width = ComposeAdjacent(utilityPanelMinimumWidth, documentAreasWidth, gutterSize);
 
-        // The Utility Rail is chrome the workspace always shows rather than a surface the visibility collapses,
-        // and it meets whatever sits beside it directly: the channel the user sees is the gap the rail leaves
-        // around its buttons.
+        // The rail is always on screen and meets whatever sits beside it directly, so its width is added
+        // without a channel.
         width += WorkspaceConstants.UtilityRailWidth;
 
         double documentAreasHeight = ComposeAdjacent(sectionMinimum.Height, bottomMinimumHeight, gutterSize);

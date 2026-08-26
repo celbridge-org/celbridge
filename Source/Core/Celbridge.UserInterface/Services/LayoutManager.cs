@@ -127,9 +127,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // Focus/Presentation mode and return to the Default layout.
         bool isLeavingLayoutMode = _layoutMode != LayoutMode.Default;
 
-        // Those modes hide every surface transiently, so the change is composed against the panels the user
-        // prefers rather than against the empty layout the mode was showing. Composing against the mode's own
-        // visibility would persist it as the preference, losing the panels the mode had hidden.
+        // Those modes hide every surface transiently, so the change is composed against the visibility the
+        // user prefers.
         var currentVisibility = SurfaceVisibility;
         if (isLeavingLayoutMode)
         {
