@@ -278,9 +278,8 @@ function initializeSpreadsheet() {
     }
 }
 
-// Moves the active cell one column on Tab (or back on Shift+Tab). The host swallows the native Tab so focus
-// stays in the document, then forwards it here, matching the cell navigation the packaged Windows head gets
-// from the WebView natively.
+// Applies Tab (or Shift+Tab) to the workbook. The host swallows the native key so focus stays in the
+// document, then forwards it here.
 function handleTabKey(shift) {
     if (!designer) {
         return;
@@ -298,21 +297,16 @@ function handleTabKey(shift) {
         return;
     }
 
-    const row = sheet.getActiveRowIndex();
-    const column = sheet.getActiveColumnIndex();
-    if (row < 0
-        || column < 0) {
-        return;
-    }
+    // SpreadJS binds Tab to these commands itself, so running them gives the key the behaviour it has on the
+    // packaged Windows head, where it reaches the WebView: an open cell editor is committed before the
+    // selection moves, the move stays inside a selected range, and it wraps to the next row at the end of one.
+    const commandManager = spread.commandManager();
+    const command = shift ? 'moveToPreviousCell' : 'moveToNextCell';
 
-    const columnCount = sheet.getColumnCount();
-    const targetColumn = Math.max(0, Math.min(shift ? column - 1 : column + 1, columnCount - 1));
-    if (targetColumn === column) {
-        return;
-    }
-
-    sheet.setActiveCell(row, targetColumn);
-    sheet.showColumn(targetColumn, GC.Spread.Sheets.HorizontalPosition.nearest);
+    commandManager.execute({
+        cmd: command,
+        sheetName: sheet.name()
+    });
 }
 
 async function initializeEditor() {
