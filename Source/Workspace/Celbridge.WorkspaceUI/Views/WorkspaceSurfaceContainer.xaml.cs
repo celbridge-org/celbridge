@@ -284,7 +284,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
             MainAreaMinimumSize: GetAreaMinimumSize(DocumentArea.Main),
             BottomAreaMinimumSize: GetAreaMinimumSize(DocumentArea.Bottom),
             SideAreaMinimumSize: GetAreaMinimumSize(DocumentArea.Side),
-            UtilityPanelMinimumWidth: _utilityPanel.MinimumWidth,
+            UtilityPanelMinimumWidth: WorkspaceMinimumSize.ComposeUtilityPanelWidth(),
             UtilityRailWidth: WorkspaceConstants.UtilityRailWidth,
             GutterSize: GutterSize,
             WorkspaceExtent: new Size(ActualWidth, ActualHeight),

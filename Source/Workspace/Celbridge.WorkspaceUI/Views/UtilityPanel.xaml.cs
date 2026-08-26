@@ -7,11 +7,9 @@ using Celbridge.Projects;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
-using Windows.Foundation;
 
 namespace Celbridge.WorkspaceUI.Views;
 
@@ -76,19 +74,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public EditorId ActiveUtilityId => ViewModel.SelectedUtilityId;
 
-    public double MinimumWidth
-    {
-        get
-        {
-            // The content area is carved out like a document section, so it composes from the same floor.
-            var contentChrome = new Size(
-                ContentArea.BorderThickness.Left + ContentArea.BorderThickness.Right,
-                ContentArea.BorderThickness.Top + ContentArea.BorderThickness.Bottom);
-
-            return WorkspaceMinimumSize.ComposeSection(contentChrome).Width;
-        }
-    }
-
     /// <summary>
     /// The rail that selects this panel's surfaces, hosted beside the panel in the workspace layout.
     /// </summary>
@@ -102,7 +87,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
         double bottomRadius = isPresented ? panelCornerRadius : 0;
 
-        ContentArea.BorderThickness = new Thickness(1, 1, 1, isPresented ? 1 : 0);
+        double edge = WorkspaceConstants.SectionEdgeThickness;
+        ContentArea.BorderThickness = new Thickness(edge, edge, edge, isPresented ? edge : 0);
         ContentArea.CornerRadius = new CornerRadius(panelCornerRadius, panelCornerRadius, bottomRadius, bottomRadius);
     }
 

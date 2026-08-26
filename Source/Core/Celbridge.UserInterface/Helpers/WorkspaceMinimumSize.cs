@@ -24,6 +24,18 @@ public static class WorkspaceMinimumSize
     }
 
     /// <summary>
+    /// The smallest width the Utility Panel can be laid out at: the document floor plus the edges its content
+    /// area draws down each side, which it carves out like a document section.
+    /// </summary>
+    public static double ComposeUtilityPanelWidth()
+    {
+        double edges = WorkspaceConstants.SectionEdgeThickness * 2;
+        var panelChrome = new Size(edges, edges);
+
+        return ComposeSection(panelChrome).Width;
+    }
+
+    /// <summary>
     /// The smallest size the workspace can be laid out at in the layout a workspace opens with: the Utility
     /// Rail, plus the surfaces the given visibility shows, each unsplit and holding the floor composed from the
     /// authored chrome, with the channels between them and the one above the document areas. Nothing here is
@@ -52,9 +64,7 @@ public static class WorkspaceMinimumSize
         double utilityPanelMinimumWidth = 0;
         if (visibleSurfaces.HasFlag(WorkspaceSurface.UtilityPanel))
         {
-            // The panel's content area is carved out like a section and draws the same edge down each side, so
-            // it holds the same width floor.
-            utilityPanelMinimumWidth = sectionMinimum.Width;
+            utilityPanelMinimumWidth = ComposeUtilityPanelWidth();
         }
 
         double documentAreasWidth = ComposeAdjacent(sectionMinimum.Width, sideMinimumWidth, gutterSize);
