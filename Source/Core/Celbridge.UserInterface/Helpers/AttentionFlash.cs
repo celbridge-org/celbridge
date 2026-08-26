@@ -11,10 +11,26 @@ namespace Celbridge.UserInterface.Helpers;
 public static class AttentionFlash
 {
     /// <summary>
-    /// Starts a flash on the given overlay and returns the running storyboard. Pulses the overlay's opacity in
-    /// to a partial accent wash (kept below full so any content above it stays readable), holds, then fades out.
+    /// The peak opacity of a flash washing over an element, kept below full so the content underneath stays
+    /// readable.
     /// </summary>
-    public static Storyboard Play(UIElement overlay)
+    public const double FillPeakOpacity = 0.55;
+
+    /// <summary>
+    /// The peak opacity of a flash tracing an outline, which covers no content and so pulses close to full.
+    /// </summary>
+    public const double OutlinePeakOpacity = 0.9;
+
+    /// <summary>
+    /// The thickness a perimeter flash draws its outline at, heavier than the chrome edge it pulses over.
+    /// </summary>
+    public const double OutlineThickness = 2;
+
+    /// <summary>
+    /// Starts a flash on the given overlay and returns the running storyboard. Pulses the overlay's opacity in
+    /// to the given peak, holds, then fades out.
+    /// </summary>
+    public static Storyboard Play(UIElement overlay, double peakOpacity = FillPeakOpacity)
     {
         // One key-framed animation, not several: WinUI forbids two animations in a storyboard from targeting the
         // same property on the same element, so the fade-in, hold, and fade-out are key frames on a single
@@ -32,12 +48,12 @@ public static class AttentionFlash
         animation.KeyFrames.Add(new LinearDoubleKeyFrame
         {
             KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),
-            Value = 0.55
+            Value = peakOpacity
         });
         animation.KeyFrames.Add(new LinearDoubleKeyFrame
         {
             KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(640)),
-            Value = 0.55
+            Value = peakOpacity
         });
         animation.KeyFrames.Add(new LinearDoubleKeyFrame
         {
@@ -50,5 +66,28 @@ public static class AttentionFlash
         storyboard.Begin();
 
         return storyboard;
+    }
+
+    /// <summary>
+    /// Scales a chrome outline to the perimeter flash thickness, leaving bare every edge the chrome itself
+    /// leaves bare.
+    /// </summary>
+    public static Thickness ResolveOutline(Thickness edges)
+    {
+        return new Thickness(
+            ResolveOutlineEdge(edges.Left),
+            ResolveOutlineEdge(edges.Top),
+            ResolveOutlineEdge(edges.Right),
+            ResolveOutlineEdge(edges.Bottom));
+    }
+
+    private static double ResolveOutlineEdge(double edge)
+    {
+        if (edge > 0)
+        {
+            return OutlineThickness;
+        }
+
+        return 0;
     }
 }

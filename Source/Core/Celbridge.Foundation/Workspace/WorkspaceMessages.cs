@@ -27,6 +27,11 @@ public record WorkspaceStateDirtyMessage();
 public record SurfaceVisibilityChangedMessage(WorkspaceSurface SurfaceVisibility);
 
 /// <summary>
+/// Sent to request a brief attention flash around the perimeter of a surface the user has just revealed.
+/// </summary>
+public record FlashSurfaceMessage(WorkspaceSurface Surface);
+
+/// <summary>
 /// Message sent when the Bottom document area's alignment changes.
 /// </summary>
 public record BottomAreaAlignmentChangedMessage(BottomAreaAlignment Alignment);

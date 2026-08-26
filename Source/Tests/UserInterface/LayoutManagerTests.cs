@@ -385,6 +385,65 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void RevealingASurface_SendsFlashSurfaceMessage()
+    {
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+
+        FlashSurfaceMessage? receivedMessage = null;
+        var recipient = new object();
+        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => receivedMessage = m);
+
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+
+        receivedMessage.Should().NotBeNull();
+        receivedMessage!.Surface.Should().Be(WorkspaceSurface.UtilityPanel);
+    }
+
+    [Test]
+    public void HidingASurface_SendsNoFlashSurfaceMessage()
+    {
+        bool messageReceived = false;
+        var recipient = new object();
+        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => messageReceived = true);
+
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+
+        messageReceived.Should().BeFalse();
+    }
+
+    [Test]
+    public void RevealingASurfaceFromFocus_FlashesOnlyTheRequestedSurface()
+    {
+        // Focus hides every surface, so asking for one back brings its neighbours with it.
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        var flashedSurfaces = new List<WorkspaceSurface>();
+        var recipient = new object();
+        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => flashedSurfaces.Add(m.Surface));
+
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, true);
+
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        flashedSurfaces.Should().Equal(WorkspaceSurface.BottomArea);
+    }
+
+    [Test]
+    public void LayoutModeTransition_SendsNoFlashSurfaceMessage()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        bool messageReceived = false;
+        var recipient = new object();
+        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => messageReceived = true);
+
+        // Returning to Default brings back every surface.
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        messageReceived.Should().BeFalse();
+    }
+
+    [Test]
     public void SetSurfaceVisibility_InDefaultMode_UpdatesPreferredSurfaceVisibility()
     {
         _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);

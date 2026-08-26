@@ -73,6 +73,14 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
     /// </summary>
     public IUtilityPanel UtilityPanel => _utilityPanel;
 
+    /// <summary>
+    /// Briefly pulses an accent outline around the Utility Panel's perimeter.
+    /// </summary>
+    public void FlashUtilityPanelPerimeter()
+    {
+        _utilityPanel.FlashPerimeter();
+    }
+
     public WorkspaceSurfaceContainer()
     {
         InitializeComponent();
