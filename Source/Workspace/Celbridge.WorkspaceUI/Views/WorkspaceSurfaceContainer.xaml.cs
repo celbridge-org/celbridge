@@ -8,7 +8,7 @@ namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
 /// Lays out the workspace surfaces: the Utility Rail and Utility Panel it hosts, the three document-area
-/// grids, and the splitters that size them. This control owns surface geometry only; the presentation is
+/// grids, and the splitters that size them. This control owns surface geometry only. The presentation is
 /// pushed in as a snapshot, and the sections inside the area grids are managed by the documents panel. Every
 /// floor and every maximum it applies is composed by WorkspaceSurfaceComposer.
 /// </summary>
@@ -361,7 +361,7 @@ public sealed partial class WorkspaceSurfaceContainer : UserControl
         _utilityPanel.SetBottomEdgePresented(spansUtilityPanel);
     }
 
-    // Bottom and Side are measured from the far edge, so their deltas are inverted; the Utility Panel is
+    // Bottom and Side are measured from the far edge, so their deltas are inverted. The Utility Panel is
     // measured from the near edge.
     private void InitializeSurfaceSplitters()
     {

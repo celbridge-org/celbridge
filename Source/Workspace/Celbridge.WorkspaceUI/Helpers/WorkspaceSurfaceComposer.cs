@@ -6,7 +6,7 @@ namespace Celbridge.WorkspaceUI.Helpers;
 /// <summary>
 /// The set of workspace surfaces currently presented, whether the Utility Rail is on screen beside them, and
 /// how far the Bottom area spans across its neighbours. A surface the Bottom area spans across stops above it
-/// instead of running full height; the rail is never spanned.
+/// instead of running full height. The rail is never spanned.
 /// </summary>
 public record WorkspaceSurfacePresentation(
     bool IsMainAreaPresented,
