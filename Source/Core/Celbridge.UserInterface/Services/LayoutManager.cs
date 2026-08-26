@@ -17,7 +17,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
-    private WorkspaceSurface _surfaceVisibility = WorkspaceSurface.All;
     private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
     public LayoutManager(
@@ -103,17 +102,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
-    public WorkspaceSurface SurfaceVisibility
-    {
-        get => _surfaceVisibility;
-        private set
-        {
-            if (_surfaceVisibility != value)
-            {
-                _surfaceVisibility = value;
-            }
-        }
-    }
+    public WorkspaceSurface SurfaceVisibility { get; private set; } = WorkspaceSurface.All;
 
     public bool IsUtilityPanelVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
 
@@ -277,10 +266,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         var oldVisibility = SurfaceVisibility;
         SurfaceVisibility = newVisibility;
 
-        // Only persist if explicitly requested (user-initiated changes)
-        // and not in Presentation mode (temporary presentation state)
-        if (shouldPersist &&
-            _layoutMode != LayoutMode.Presentation)
+        // Mode-driven visibility is transient, and its callers say so by not asking for a persist.
+        if (shouldPersist)
         {
             PersistPreferredSurfaceVisibility(newVisibility);
         }

@@ -8,6 +8,7 @@ public sealed class SpotlightService : ISpotlightService
     private readonly ILogger<SpotlightService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ILayoutService _layoutService;
+    private readonly IWindowModeService _windowModeService;
     private readonly ISpotlightRegistry _landmarkRegistry;
 
     // Reveal providers keyed by landmark id. Only landmarks that need preparation beyond the
@@ -32,11 +33,13 @@ public sealed class SpotlightService : ISpotlightService
         ILogger<SpotlightService> logger,
         IMessengerService messengerService,
         ILayoutService layoutService,
+        IWindowModeService windowModeService,
         ISpotlightRegistry landmarkRegistry)
     {
         _logger = logger;
         _messengerService = messengerService;
         _layoutService = layoutService;
+        _windowModeService = windowModeService;
         _landmarkRegistry = landmarkRegistry;
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloadedMessage);
@@ -89,6 +92,14 @@ public sealed class SpotlightService : ISpotlightService
         if (_presenter is null)
         {
             return Result.Fail($"Cannot show spotlight on '{target}': the workspace UI is not available.");
+        }
+
+        // A spotlight reveals whatever surface its landmark sits on, which would take the user out of the
+        // presentation they are giving. Leaving Presentation mode is theirs to decide, and a spotlight is
+        // cosmetic, so the request is refused instead.
+        if (_windowModeService.LayoutMode == LayoutMode.Presentation)
+        {
+            return Result.Fail($"Cannot show spotlight on '{target}': the application is in Presentation mode.");
         }
 
         // Clear the previous spotlight (undoing its transient reveal) before preparing the new one.

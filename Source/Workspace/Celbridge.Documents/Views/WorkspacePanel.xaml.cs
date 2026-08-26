@@ -12,6 +12,11 @@ namespace Celbridge.Documents.Views;
 
 using IWorkspacePanelLogger = Logging.ILogger<WorkspacePanel>;
 
+/// <summary>
+/// A document's focus claim held back until the collapsed area holding it has been revealed.
+/// </summary>
+internal sealed record PendingRevealFocus(ResourceKey Document, DocumentArea Area);
+
 public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 {
     private readonly IServiceProvider _serviceProvider;
@@ -27,9 +32,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     private bool _isShuttingDown = false;
 
-    // The document whose focus claim is waiting on a collapsed area being revealed. A document off screen
-    // cannot take the keyboard, so the claim waits for the area to be laid out.
-    private ResourceKey _pendingRevealFocusDocument = ResourceKey.Empty;
+    // A document off screen cannot take the keyboard, so its claim waits for the area to be laid out.
+    private PendingRevealFocus? _pendingRevealFocus;
 
     public WorkspacePanelViewModel ViewModel { get; }
 
@@ -118,15 +122,19 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         ViewModel.OnActiveDocumentChanged(documentResource);
 
-        bool isAreaRevealing = RevealActivatedDocumentArea(documentResource, reason);
+        var revealingArea = RevealActivatedDocumentArea(documentResource, reason);
+
+        // This activation supersedes any claim still waiting on a reveal, so at most one is ever held and it
+        // is always the newest.
+        _pendingRevealFocus = null;
 
         // The keyboard follows the active document, so every path that changes it carries focus without
         // having to remember to: opening, closing onto the next tab, moving a tab between sections.
         if (ActiveDocumentFocusPolicy.ShouldCarryFocus(documentResource, reason))
         {
-            if (isAreaRevealing)
+            if (revealingArea is not null)
             {
-                _pendingRevealFocusDocument = documentResource;
+                _pendingRevealFocus = new PendingRevealFocus(documentResource, revealingArea.Value);
             }
             else
             {
@@ -135,26 +143,26 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
-    // Opens the collapsed area holding the document that just became active. Returns whether a reveal was
-    // asked for, which the caller waits out before moving the keyboard into the area. A restore is left
-    // alone: the workspace restores its own surface visibility.
-    private bool RevealActivatedDocumentArea(ResourceKey documentResource, ActiveDocumentChangeReason reason)
+    // Opens the collapsed area holding the document that just became active, returning the area being
+    // revealed, or null when nothing needed revealing. A restore is left alone: the workspace restores its
+    // own surface visibility.
+    private DocumentArea? RevealActivatedDocumentArea(ResourceKey documentResource, ActiveDocumentChangeReason reason)
     {
         if (documentResource.IsEmpty
             || reason != ActiveDocumentChangeReason.Activated)
         {
-            return false;
+            return null;
         }
 
         var area = SectionContainer.ActiveSection.GetArea();
         if (ViewModel.IsAreaVisible(area))
         {
-            return false;
+            return null;
         }
 
         ViewModel.SetAreaVisible(area, true);
 
-        return true;
+        return area;
     }
 
     private void OnSectionDocumentsLayoutChanged(DocumentSectionView sectionView, List<ResourceKey> documents)
@@ -544,12 +552,14 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         ApplyAreaVisibility();
 
-        var revealedDocument = _pendingRevealFocusDocument;
-        _pendingRevealFocusDocument = ResourceKey.Empty;
-
-        if (!revealedDocument.IsEmpty)
+        // Every surface reports through this message, so one about another area says nothing about a claim
+        // still waiting on this one.
+        var pendingFocus = _pendingRevealFocus;
+        if (pendingFocus is not null
+            && ViewModel.IsAreaVisible(pendingFocus.Area))
         {
-            FocusActivatedDocument(revealedDocument);
+            _pendingRevealFocus = null;
+            FocusActivatedDocument(pendingFocus.Document);
         }
     }
 

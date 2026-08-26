@@ -267,6 +267,20 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void SetSurfaceVisibility_InPresentationMode_PersistsTheComposedLayout()
+    {
+        // Preferred is now UtilityPanel and BottomArea, with SideArea hidden.
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        // Showing SideArea from Presentation composes a visibility the stored preference does not hold.
+        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, true);
+
+        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _workspaceSettings.PreferredSurfaceVisibility.Should().Be(WorkspaceSurface.All);
+    }
+
+    [Test]
     public void SetSurfaceVisibility_SameState_NoChange()
     {
         bool messageReceived = false;
