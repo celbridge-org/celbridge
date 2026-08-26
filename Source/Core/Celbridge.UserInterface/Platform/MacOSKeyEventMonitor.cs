@@ -166,10 +166,13 @@ internal static class MacOSKeyEventMonitor
                 return nsEvent;
             }
 
+            // The letter the chord names, which is what the shortcuts below are matched against.
+            var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
+
             // Command+W closes the active document, Command+Shift+W closes its section. WKWebView reserves
             // Command+W and never delivers it to the web content, so this native monitor is the only reliable
             // delivery path on the Skia head.
-            if (IsCloseShortcut(nsEvent, modifierFlags))
+            if (IsCloseShortcut(shortcutCharacter, modifierFlags))
             {
                 if (shift)
                 {
@@ -187,7 +190,7 @@ internal static class MacOSKeyEventMonitor
             // key equivalent to the web content rather than to the menu, so a page that ignores it (an
             // external site in a .webview) leaves the shortcut dead. Swallowed only once a find has begun: a
             // document with no find of its own leaves the key to the page, where the editors run their own.
-            if (IsFindShortcut(nsEvent, modifierFlags))
+            if (IsFindShortcut(shortcutCharacter, modifierFlags))
             {
                 if (ActiveDocumentFind.GetActiveFindableDocument()?.TryBeginFind() == true)
                 {
@@ -208,41 +211,55 @@ internal static class MacOSKeyEventMonitor
     }
 
     // True for Command+W and Command+Shift+W.
-    private static bool IsCloseShortcut(IntPtr nsEvent, ulong modifierFlags)
+    private static bool IsCloseShortcut(char? shortcutCharacter, ulong modifierFlags)
     {
-        return IsCommandShortcut(nsEvent, modifierFlags, "w");
+        return shortcutCharacter == 'w'
+            && IsPlainCommandChord(modifierFlags);
     }
 
     // True for Command+F. Command+Shift+F is not a find shortcut, so Shift is rejected.
-    private static bool IsFindShortcut(IntPtr nsEvent, ulong modifierFlags)
+    private static bool IsFindShortcut(char? shortcutCharacter, ulong modifierFlags)
     {
         if ((modifierFlags & ModifierFlagShift) != 0)
         {
             return false;
         }
 
-        return IsCommandShortcut(nsEvent, modifierFlags, "f");
+        return shortcutCharacter == 'f'
+            && IsPlainCommandChord(modifierFlags);
     }
 
-    // True when the event is Command plus the given character. Matched on the character (layout-aware) rather
-    // than the hardware key code, and rejected when Control or Option is also held so it does not fire on
-    // unrelated chords.
-    private static bool IsCommandShortcut(IntPtr nsEvent, ulong modifierFlags, string character)
+    // True for a Command chord holding neither Control nor Option, so a shortcut cannot fire on an unrelated
+    // chord built over the same letter.
+    private static bool IsPlainCommandChord(ulong modifierFlags)
     {
         bool command = (modifierFlags & ModifierFlagCommand) != 0;
         bool control = (modifierFlags & ModifierFlagControl) != 0;
         bool option = (modifierFlags & ModifierFlagOption) != 0;
 
-        if (!command
-            || control
-            || option)
+        return command
+            && !control
+            && !option;
+    }
+
+    // The lower-case letter a chord names, or null when it names none. The event's own character answers for
+    // a Latin layout whatever its arrangement, because it reports the key as labelled: the W key gives "w" on
+    // AZERTY as on QWERTY, and a layout that swaps to QWERTY under Command (Dvorak-QWERTY) reports the
+    // swapped letter. A non-Latin layout reports its own alphabet instead, so the key code is translated
+    // through the ASCII-capable layout, which is how AppKit matches menu key equivalents.
+    private static char? ResolveShortcutCharacter(IntPtr nsEvent, ulong keyCode)
+    {
+        var characters = ReadNSString(SendMessage(nsEvent, GetSelector("charactersIgnoringModifiers")));
+        if (characters.Length == 1)
         {
-            return false;
+            var character = char.ToLowerInvariant(characters[0]);
+            if (character is >= 'a' and <= 'z')
+            {
+                return character;
+            }
         }
 
-        var characters = ReadNSString(SendMessage(nsEvent, GetSelector("charactersIgnoringModifiers")));
-
-        return string.Equals(characters, character, StringComparison.OrdinalIgnoreCase);
+        return MacOSKeyboardLayout.ResolveAsciiLetter(keyCode);
     }
 
     [StructLayout(LayoutKind.Sequential)]
