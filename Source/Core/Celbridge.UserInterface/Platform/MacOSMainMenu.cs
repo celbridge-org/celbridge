@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Settings;
 using Celbridge.UserInterface.ViewModels.Controls;
@@ -236,17 +235,6 @@ internal static class MacOSMainMenu
         return items;
     }
 
-    private static IFindableDocument? GetActiveFindableDocument()
-    {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return null;
-        }
-
-        return workspaceWrapper.WorkspaceService.DocumentsService.GetActiveFindableDocument();
-    }
-
     private static MacMenuItemState QueryState(long tag)
     {
         // The standard Edit verbs and Full Screen are responder-chain Selector items (see Install), so
@@ -315,7 +303,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState FindCommandState()
     {
-        var canFind = GetActiveFindableDocument()?.CanFind ?? false;
+        var canFind = ActiveDocumentFind.GetActiveFindableDocument()?.CanFind ?? false;
 
         return canFind ? MacMenuItemState.Enabled : MacMenuItemState.Disabled;
     }
@@ -433,7 +421,7 @@ internal static class MacOSMainMenu
                 break;
 
             case TagFind:
-                GetActiveFindableDocument()?.TryBeginFind();
+                ActiveDocumentFind.GetActiveFindableDocument()?.TryBeginFind();
                 break;
 
             case TagLayoutDefault:

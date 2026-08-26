@@ -77,8 +77,8 @@ public partial class MainPage : Page
 
         // Deliver document keys the focused WKWebView would otherwise swallow: Tab to the focused web
         // surface (editor indent, or the page's own form-field navigation) instead of letting the managed
-        // focus loop move focus out of it, and Command+W / Command+Shift+W to the close-document shortcuts.
-        // macOS-only. A no-op elsewhere.
+        // focus loop move focus out of it, Command+W / Command+Shift+W to the close-document shortcuts, and
+        // Command+F to the active document's find bar. macOS-only. A no-op elsewhere.
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, _logger);
