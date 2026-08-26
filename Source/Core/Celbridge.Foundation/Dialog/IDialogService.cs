@@ -47,9 +47,10 @@ public interface IDialogService
     IProgressDialogToken AcquireProgressDialog(string titleText);
 
     /// <summary>
-    /// Display the Settings Dialog for the application settings.
+    /// Display the Settings Dialog for the application settings, opening it on the given category. Pass an
+    /// empty key to open the category the user last had open.
     /// </summary>
-    Task ShowSettingsDialogAsync();
+    Task ShowSettingsDialogAsync(string sectionKey);
 
     /// <summary>
     /// Display a New Project Dialog with template selection.

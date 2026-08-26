@@ -52,9 +52,9 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public ISettingsDialog CreateSettingsDialog()
+    public ISettingsDialog CreateSettingsDialog(string sectionKey)
     {
-        var dialog = new SettingsDialog();
+        var dialog = new SettingsDialog(sectionKey);
         return WithFocusGuard(dialog);
     }
 

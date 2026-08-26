@@ -30,21 +30,25 @@ public partial class SettingsDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Supplies the categories to show, in rail order, and selects the one the user last had open. Called
-    /// by the dialog, which is the only place that can build each category's content.
+    /// Supplies the categories to show, in rail order, and selects the requested one, falling back to the
+    /// one the user last had open. Called by the dialog, which is the only place that can build each
+    /// category's content. Persistence stays off over the selection, so opening on a requested category
+    /// does not displace the one the user chose for themselves.
     /// </summary>
-    public void InitializeSections(IReadOnlyList<SettingsSection> sections)
+    public void InitializeSections(IReadOnlyList<SettingsSection> sections, string requestedSectionKey)
     {
         Guard.IsTrue(sections.Count > 0);
 
         _sectionPersistenceEnabled = false;
         Sections = sections;
 
+        var requestedSection = sections.FirstOrDefault(section => section.Key == requestedSectionKey);
+
         // An unrecognized or empty key lands on the first category, which is what a new installation gets.
         var storedKey = _settingsService.Get(SettingCatalog.Application.SettingsDialogSelectedSection);
         var storedSection = sections.FirstOrDefault(section => section.Key == storedKey);
 
-        SelectedSection = storedSection ?? sections[0];
+        SelectedSection = requestedSection ?? storedSection ?? sections[0];
 
         _sectionPersistenceEnabled = true;
     }

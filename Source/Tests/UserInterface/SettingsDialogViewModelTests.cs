@@ -85,7 +85,7 @@ public class SettingsDialogViewModelTests
         };
 
         var viewModel = new SettingsDialogViewModel(_settingsService);
-        viewModel.InitializeSections(reorderedSections);
+        viewModel.InitializeSections(reorderedSections, string.Empty);
 
         viewModel.SelectedSection.Should().Be(WebView);
     }
@@ -130,16 +130,51 @@ public class SettingsDialogViewModelTests
     }
 
     [Test]
+    public void ARequestedCategory_IsSelectedOverTheStoredOne()
+    {
+        // A caller opening the dialog on a category is answering its own question, not returning the user
+        // to where they were.
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+
+        var viewModel = CreateViewModel(requestedSectionKey: "WebView");
+
+        viewModel.SelectedSection.Should().Be(WebView);
+    }
+
+    [Test]
+    public void ARequestedCategory_DoesNotDisplaceTheStoredOne()
+    {
+        // The jump is the caller's choice rather than the user's, so the category they chose for
+        // themselves is still there the next time they open the dialog from the menu.
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+
+        CreateViewModel(requestedSectionKey: "WebView");
+
+        var storedKey = _settingsService.Get(SettingCatalog.Application.SettingsDialogSelectedSection);
+        storedKey.Should().Be("Workshop");
+    }
+
+    [Test]
+    public void AnUnknownRequestedKey_FallsBackToTheStoredCategory()
+    {
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+
+        var viewModel = CreateViewModel(requestedSectionKey: "Retired");
+
+        viewModel.SelectedSection.Should().Be(Workshop);
+    }
+
+    [Test]
     public void InitializeSections_RejectsAnEmptyRail()
     {
         var viewModel = new SettingsDialogViewModel(_settingsService);
 
-        var initialize = () => viewModel.InitializeSections(Array.Empty<SettingsSection>());
+        var initialize = () => viewModel.InitializeSections(Array.Empty<SettingsSection>(), string.Empty);
 
         initialize.Should().Throw<InvalidOperationException>();
     }
 
-    private SettingsDialogViewModel CreateViewModel()
+    private SettingsDialogViewModel CreateViewModel(string requestedSectionKey = "")
     {
         var sections = new List<SettingsSection>
         {
@@ -149,7 +184,7 @@ public class SettingsDialogViewModelTests
         };
 
         var viewModel = new SettingsDialogViewModel(_settingsService);
-        viewModel.InitializeSections(sections);
+        viewModel.InitializeSections(sections, requestedSectionKey);
 
         return viewModel;
     }

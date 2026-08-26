@@ -26,7 +26,7 @@ public interface IDialogFactory
     /// <summary>
     /// Create a Settings Dialog for the application settings.
     /// </summary>
-    ISettingsDialog CreateSettingsDialog();
+    ISettingsDialog CreateSettingsDialog(string sectionKey);
 
     /// <summary>
     /// Create a New Project Dialog with template selection.

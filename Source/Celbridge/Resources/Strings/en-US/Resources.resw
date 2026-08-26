@@ -579,9 +579,6 @@
   <data name="WebView_ShowUrlBar" xml:space="preserve">
     <value>Show URL Bar</value>
   </data>
-  <data name="WebView_Settings_Title" xml:space="preserve">
-    <value>Web View Settings</value>
-  </data>
   <data name="WebView_Settings_HomeUrlLabel" xml:space="preserve">
     <value>Home URL</value>
   </data>
@@ -606,14 +603,44 @@
   <data name="WebView_Settings_ShowUrlBarHint" xml:space="preserve">
     <value>Right-click the document tab to show the URL bar again.</value>
   </data>
-  <data name="WebView_Settings_BrowsingDataLabel" xml:space="preserve">
+  <data name="WebView_Settings_BrowsingDataHint" xml:space="preserve">
+    <value>This data is shared by every web page in Celbridge, so clearing it signs you out of every site, in every document.</value>
+  </data>
+  <data name="WebView_Settings_OpenApplicationSettings" xml:space="preserve">
+    <value>Open Application Settings</value>
+  </data>
+  <data name="WebView_Settings_ReturnToPage" xml:space="preserve">
+    <value>Return to Page</value>
+  </data>
+  <data name="WebView_Placeholder_AddressHint" xml:space="preserve">
+    <value>Enter a web address above to open a page.</value>
+  </data>
+  <data name="WebView_Placeholder_SettingsHint" xml:space="preserve">
+    <value>Set a Home URL in Web View Settings to open a page.</value>
+  </data>
+  <data name="WebView_Placeholder_LoadFailed" xml:space="preserve">
+    <value>This page could not be loaded.</value>
+  </data>
+  <data name="WebView_Placeholder_LoadFailedHint" xml:space="preserve">
+    <value>Check the address and your network connection, then reload.</value>
+  </data>
+  <data name="WebView_Settings_HomeHeader" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="WebView_Settings_HomeDescription" xml:space="preserve">
+    <value>Set the page this document opens on, or adopt the page on screen.</value>
+  </data>
+  <data name="WebView_Settings_AppearanceHeader" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="WebView_Settings_AppearanceDescription" xml:space="preserve">
+    <value>Choose which chrome the document shows around the page.</value>
+  </data>
+  <data name="WebView_Settings_BrowsingDataHeader" xml:space="preserve">
     <value>Browsing Data</value>
   </data>
-  <data name="WebView_Settings_BrowsingDataHint" xml:space="preserve">
-    <value>Cookies, cached credentials and site data are shared by every web page in Celbridge. Clear them from Privacy in Application Settings.</value>
-  </data>
-  <data name="WebView_Settings_CloseTooltip" xml:space="preserve">
-    <value>Close Settings</value>
+  <data name="WebView_Settings_BrowsingDataDescription" xml:space="preserve">
+    <value>Cookies, cached credentials and site data for every web page in Celbridge.</value>
   </data>
   <data name="WebView_InvalidUrl" xml:space="preserve">
     <value>Enter a valid external URL (https://...).</value>

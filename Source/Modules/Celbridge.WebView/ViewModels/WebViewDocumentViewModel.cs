@@ -31,22 +31,44 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomeUrlValid))]
     [NotifyPropertyChangedFor(nameof(IsHomeUrlInvalid))]
+    [NotifyPropertyChangedFor(nameof(IsHomeEnabled))]
     [NotifyPropertyChangedFor(nameof(HomeUrlTooltip))]
     [NotifyPropertyChangedFor(nameof(CanSetCurrentPageAsHome))]
     private string _sourceUrl = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsUrlBarVisible))]
+    [NotifyPropertyChangedFor(nameof(IsAddressHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsSettingsHintVisible))]
     private bool _showUrlBar = true;
 
+    // Cleared when a navigation starts and set by the stop gesture, so the cancelled navigation that
+    // follows is not reported as a page that failed to load.
+    private bool _navigationStoppedByUser;
+
+    // The URL bar acts on a page that is not on screen while the settings are showing, so every control
+    // that would navigate is driven from this as well as from its own state.
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSettingsPanelVisible))]
-    private bool _isSettingsPanelOpen;
+    [NotifyPropertyChangedFor(nameof(IsSettingsVisible))]
+    [NotifyPropertyChangedFor(nameof(IsBackEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsForwardEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsHomeEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsAddressReadOnly))]
+    [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
+    [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
+    [NotifyPropertyChangedFor(nameof(IsLoadFailedVisible))]
+    [NotifyPropertyChangedFor(nameof(IsAddressHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsSettingsHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsPageOnScreen))]
+    private bool _isSettingsOpen;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBackEnabled))]
     private bool _canGoBack;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsForwardEnabled))]
     private bool _canGoForward;
 
     [ObservableProperty]
@@ -55,7 +77,26 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(CanOpenInBrowser))]
     [NotifyPropertyChangedFor(nameof(CanSetCurrentPageAsHome))]
     [NotifyPropertyChangedFor(nameof(CanCreateDocumentFromCurrentPage))]
+    [NotifyPropertyChangedFor(nameof(HasPage))]
+    [NotifyPropertyChangedFor(nameof(AddressText))]
+    [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
+    [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
+    [NotifyPropertyChangedFor(nameof(IsLoadFailedVisible))]
+    [NotifyPropertyChangedFor(nameof(IsAddressHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsSettingsHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsPageOnScreen))]
     private string _currentUrl = string.Empty;
+
+    // Reported by the WebView when a navigation does not complete, which leaves the page being left
+    // still rendered.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
+    [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
+    [NotifyPropertyChangedFor(nameof(IsLoadFailedVisible))]
+    [NotifyPropertyChangedFor(nameof(IsAddressHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsSettingsHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsPageOnScreen))]
+    private bool _hasNavigationFailed;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
@@ -89,7 +130,18 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         {
             _role = value;
             OnPropertyChanged(nameof(IsUrlBarVisible));
-            OnPropertyChanged(nameof(IsSettingsPanelVisible));
+            OnPropertyChanged(nameof(IsSettingsVisible));
+            OnPropertyChanged(nameof(IsBackEnabled));
+            OnPropertyChanged(nameof(IsForwardEnabled));
+            OnPropertyChanged(nameof(IsReloadOrStopEnabled));
+            OnPropertyChanged(nameof(IsHomeEnabled));
+            OnPropertyChanged(nameof(IsAddressReadOnly));
+            OnPropertyChanged(nameof(IsPlaceholderVisible));
+            OnPropertyChanged(nameof(IsEmptyStateVisible));
+            OnPropertyChanged(nameof(IsLoadFailedVisible));
+            OnPropertyChanged(nameof(IsAddressHintVisible));
+            OnPropertyChanged(nameof(IsSettingsHintVisible));
+            OnPropertyChanged(nameof(IsPageOnScreen));
         }
     }
 
@@ -100,10 +152,56 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public bool IsUrlBarVisible => Role == WebViewDocumentRole.ExternalUrl && ShowUrlBar;
 
     /// <summary>
-    /// True when the settings side panel should occupy its column. Like the URL bar,
-    /// the panel is external-URL chrome and never appears for the HTML viewer.
+    /// True when the settings should take the document area in place of the page. Like the URL bar, the
+    /// settings are external-URL chrome and never appear for the HTML viewer.
     /// </summary>
-    public bool IsSettingsPanelVisible => Role == WebViewDocumentRole.ExternalUrl && IsSettingsPanelOpen;
+    public bool IsSettingsVisible => Role == WebViewDocumentRole.ExternalUrl && IsSettingsOpen;
+
+    /// <summary>
+    /// True when the document is showing a page, as opposed to nothing or a page that failed to load.
+    /// </summary>
+    public bool HasPage => IsPageUrl(CurrentUrl);
+
+    /// <summary>
+    /// The address as the URL bar should show it. Blank for a document with no page, so clearing the
+    /// address and committing it leaves the bar empty rather than naming the blank page behind it.
+    /// </summary>
+    public string AddressText => HasPage ? CurrentUrl : string.Empty;
+
+    /// <summary>
+    /// True when the placeholder takes the document area in place of a page: the document has none to
+    /// show, or the one it was sent to did not load.
+    /// </summary>
+    public bool IsPlaceholderVisible => Role == WebViewDocumentRole.ExternalUrl
+        && !IsSettingsVisible
+        && (HasNavigationFailed || !HasPage);
+
+    /// <summary>
+    /// True when the placeholder should say how to open a page, the document having none.
+    /// </summary>
+    public bool IsEmptyStateVisible => IsPlaceholderVisible && !HasNavigationFailed;
+
+    /// <summary>
+    /// True when the placeholder should report that the address it was sent to did not load.
+    /// </summary>
+    public bool IsLoadFailedVisible => IsPlaceholderVisible && HasNavigationFailed;
+
+    /// <summary>
+    /// True when the placeholder should point at the URL bar, which is where a document showing it opens
+    /// a page.
+    /// </summary>
+    public bool IsAddressHintVisible => IsEmptyStateVisible && ShowUrlBar;
+
+    /// <summary>
+    /// True when the placeholder should point at the settings instead, the document having no URL bar to
+    /// type an address into.
+    /// </summary>
+    public bool IsSettingsHintVisible => IsEmptyStateVisible && !ShowUrlBar;
+
+    /// <summary>
+    /// True when the page is what fills the document area, rather than the settings or the placeholder.
+    /// </summary>
+    public bool IsPageOnScreen => !IsSettingsVisible && !IsPlaceholderVisible;
 
     /// <summary>
     /// True when the configured Home URL is a navigable external URL.
@@ -146,7 +244,28 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public bool CanReload => IsPageUrl(CurrentUrl);
 
-    public bool IsReloadOrStopEnabled => IsNavigating || CanReload;
+    /// <summary>
+    /// True when the page can be navigated back to the previous entry in its history.
+    /// </summary>
+    public bool IsBackEnabled => CanGoBack && !IsSettingsVisible;
+
+    /// <summary>
+    /// True when the page can be navigated forward to the next entry in its history.
+    /// </summary>
+    public bool IsForwardEnabled => CanGoForward && !IsSettingsVisible;
+
+    /// <summary>
+    /// True when the page can be navigated to the configured Home URL.
+    /// </summary>
+    public bool IsHomeEnabled => IsHomeUrlValid && !IsSettingsVisible;
+
+    /// <summary>
+    /// True when the address is shown for reading rather than for editing, which is what the settings
+    /// leave it as: the address can still be selected and copied, but not navigated away from.
+    /// </summary>
+    public bool IsAddressReadOnly => IsSettingsVisible;
+
+    public bool IsReloadOrStopEnabled => (IsNavigating || CanReload) && !IsSettingsVisible;
 
     /// <summary>
     /// True when the reload/stop button shows the reload icon; while a navigation
@@ -346,12 +465,47 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Closes the settings panel. The panel needs a way out of its own, because a document that hides the
-    /// URL bar hides the toggle that opened it.
+    /// Records that a navigation has begun, clearing the failure the previous one may have reported.
     /// </summary>
-    public void CloseSettingsPanel()
+    public void NotifyNavigationStarted()
     {
-        IsSettingsPanelOpen = false;
+        _navigationStoppedByUser = false;
+        HasNavigationFailed = false;
+        IsNavigating = true;
+    }
+
+    /// <summary>
+    /// Records that the user stopped the navigation in flight, so the cancellation reported for it is not
+    /// taken for a page that failed to load.
+    /// </summary>
+    public void NotifyNavigationStopped()
+    {
+        _navigationStoppedByUser = true;
+    }
+
+    /// <summary>
+    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far.
+    /// </summary>
+    public void NotifyNavigationCompleted(bool isSuccess)
+    {
+        IsNavigating = false;
+
+        if (isSuccess
+            || _navigationStoppedByUser)
+        {
+            return;
+        }
+
+        HasNavigationFailed = true;
+    }
+
+    /// <summary>
+    /// Returns the document to the page. The settings need a way out of their own, because a document that
+    /// hides the URL bar hides the toggle that opened them.
+    /// </summary>
+    public void CloseSettings()
+    {
+        IsSettingsOpen = false;
     }
 
     /// <summary>

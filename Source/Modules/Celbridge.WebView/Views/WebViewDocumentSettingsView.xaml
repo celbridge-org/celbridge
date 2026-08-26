@@ -1,0 +1,22 @@
+<UserControl
+    x:Class="Celbridge.WebView.Views.WebViewDocumentSettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Background="Transparent">
+
+    <controls:SettingsSectionSwitcher x:Name="SectionSwitcher"
+                                      Margin="12">
+
+        <!-- Leaving the settings belongs to the whole surface rather than to any one section, and the URL
+             bar carrying the toggle back can be hidden, so the way out sits under the rail. -->
+        <controls:SettingsSectionSwitcher.RailFooter>
+            <Button x:Name="ReturnToPageButton"
+                    HorizontalAlignment="Stretch"
+                    Content="{x:Bind ReturnToPageString}"
+                    Click="ReturnToPageButton_Click" />
+        </controls:SettingsSectionSwitcher.RailFooter>
+
+    </controls:SettingsSectionSwitcher>
+</UserControl>

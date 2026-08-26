@@ -16,7 +16,7 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
 
     public SettingsDialogViewModel ViewModel { get; }
 
-    public SettingsDialog()
+    public SettingsDialog(string sectionKey)
     {
         // The labels are bound one-time, so the localizer has to be in place before the XAML loads.
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
@@ -25,7 +25,7 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
         XamlRoot = userInterfaceService.XamlRoot as XamlRoot;
 
         ViewModel = ServiceLocator.AcquireService<SettingsDialogViewModel>();
-        ViewModel.InitializeSections(BuildSections());
+        ViewModel.InitializeSections(BuildSections(), sectionKey);
 
         this.InitializeComponent();
 
@@ -49,19 +49,19 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
         var sections = new List<SettingsSection>
         {
             new(
-                "Appearance",
+                SettingsDialogSections.Appearance,
                 "bs-palette",
                 _stringLocalizer.GetString("Settings_Appearance_SectionHeader"),
                 _stringLocalizer.GetString("Settings_Appearance_Description"),
                 new AppearanceSettingsView()),
             new(
-                "Workshop",
+                SettingsDialogSections.Workshop,
                 "bs-shop",
                 _stringLocalizer.GetString("Settings_Workshop_SectionHeader"),
                 _stringLocalizer.GetString("Settings_Workshop_Description"),
                 new WorkshopSettingsView()),
             new(
-                "WebView",
+                SettingsDialogSections.WebView,
                 "bs-globe",
                 _stringLocalizer.GetString("Settings_WebView_SectionHeader"),
                 _stringLocalizer.GetString("Settings_WebView_Description"),
