@@ -1,25 +1,18 @@
 using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
-using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
 
 public sealed partial class ProjectToolbar : UserControl
 {
-    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private MainMenu? _mainMenu;
-
-    private string HomeTitleString => _stringLocalizer.GetString("TitleBar_HomeTitle");
 
     public ProjectToolbar()
     {
         this.InitializeComponent();
 
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         // The menu opens over the document area, where a hosted web view would take the click too.
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
@@ -42,10 +35,6 @@ public sealed partial class ProjectToolbar : UserControl
         }
 
         ApplyTooltips();
-        UpdateHomeTitleVisibility();
-
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
-        _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     private void OnProjectToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -54,8 +43,6 @@ public sealed partial class ProjectToolbar : UserControl
 
         Loaded -= OnProjectToolbar_Loaded;
         Unloaded -= OnProjectToolbar_Unloaded;
-
-        _messengerService.UnregisterAll(this);
     }
 
     /// <summary>
@@ -79,23 +66,5 @@ public sealed partial class ProjectToolbar : UserControl
         ToolTipService.SetToolTip(MainMenuButton, mainMenuTooltip);
         ToolTipService.SetPlacement(MainMenuButton, PlacementMode.Bottom);
         AutomationProperties.SetName(MainMenuButton, mainMenuTooltip);
-    }
-
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
-    {
-        UpdateHomeTitleVisibility();
-    }
-
-    private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
-    {
-        UpdateHomeTitleVisibility();
-    }
-
-    private void UpdateHomeTitleVisibility()
-    {
-        // The switcher occupies this slot while a project is loaded, and collapses itself when none is.
-        HomeTitle.Visibility = _workspaceWrapper.IsWorkspaceLoaded
-            ? Visibility.Collapsed
-            : Visibility.Visible;
     }
 }

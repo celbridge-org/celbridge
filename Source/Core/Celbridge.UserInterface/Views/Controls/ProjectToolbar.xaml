@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="Celbridge.UserInterface.Views.ProjectToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -13,6 +13,7 @@
          button is shown from code-behind on those platforms; macOS surfaces these commands through the system
          menu bar, so the button stays collapsed there. -->
     <controls:IconButton x:Name="MainMenuButton"
+                         Margin="4,0,0,0"
                          AutomationProperties.AutomationId="main-menu-button"
                          VerticalAlignment="Center"
                          Visibility="Collapsed">
@@ -24,14 +25,10 @@
       </Button.Flyout>
     </controls:IconButton>
 
-    <!-- Shown in place of the project switcher while no project is loaded, so the toolbar strip keeps the same
-         geometry in both states. -->
-    <TextBlock x:Name="HomeTitle"
-               Text="{x:Bind HomeTitleString}"
-               Margin="8,0,0,0"
-               VerticalAlignment="Center"/>
-
+    <!-- The switcher rests filled rather than only tinting under the pointer, so without a gap here its
+         pill meets the main menu button's hover fill with no seam between them. -->
     <local:ProjectSwitcher x:Name="ProjectSwitcher"
+                           Margin="8,0,0,0"
                            VerticalAlignment="Center"/>
 
     <controls:ProjectHealthButton x:Name="ProjectHealthButton"
