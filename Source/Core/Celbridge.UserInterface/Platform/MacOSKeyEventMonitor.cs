@@ -12,10 +12,10 @@ namespace Celbridge.UserInterface.Platform;
 /// where a WKWebView is first responder and neither Uno's managed input nor the web content reliably sees the
 /// event. A local monitor sees each key before it is dispatched to any responder. While a document holds focus
 /// it keeps Tab inside the document instead of letting the managed focus loop advance out to the surrounding
-/// panels, and it routes Command+W and Command+Shift+W to the close-document shortcuts (which WKWebView
-/// otherwise swallows as reserved key equivalents). Tab is routed through the web-view focus registry, which
-/// knows the focused surface: its edit target acts on the key (indent, move a cell), or the key is delivered
-/// to the page itself so it can move between its own form fields. macOS-only.
+/// panels, and it routes Command+W, Command+Shift+W, and Command+F to the close-document and find shortcuts
+/// (which WKWebView otherwise swallows as key equivalents). Tab is routed through the web-view focus
+/// registry, which knows the focused surface: its edit target acts on the key (indent, move a cell), or the
+/// key is delivered to the page itself so it can move between its own form fields. macOS-only.
 /// </summary>
 internal static class MacOSKeyEventMonitor
 {
@@ -142,8 +142,8 @@ internal static class MacOSKeyEventMonitor
             }
 
             // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Search,
-            // and so on) everywhere else, and the close shortcuts must not close a hidden document from another
-            // panel.
+            // and so on) everywhere else, the close shortcuts must not close a hidden document from another
+            // panel, and Command+F falls through to the Find menu item, which drives the same document.
             if (_focusService?.FocusedPanel != WorkspacePanelId.Documents)
             {
                 return nsEvent;
@@ -166,10 +166,13 @@ internal static class MacOSKeyEventMonitor
                 return nsEvent;
             }
 
+            // The letter the chord names, which is what the shortcuts below are matched against.
+            var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
+
             // Command+W closes the active document, Command+Shift+W closes its section. WKWebView reserves
             // Command+W and never delivers it to the web content, so this native monitor is the only reliable
             // delivery path on the Skia head.
-            if (IsCloseShortcut(nsEvent, modifierFlags))
+            if (IsCloseShortcut(shortcutCharacter, modifierFlags))
             {
                 if (shift)
                 {
@@ -183,6 +186,20 @@ internal static class MacOSKeyEventMonitor
                 return IntPtr.Zero;
             }
 
+            // Command+F opens the active document's find bar, as the Find menu item does. WKWebView hands the
+            // key equivalent to the web content rather than to the menu, so a page that ignores it (an
+            // external site in a .webview) leaves the shortcut dead. Swallowed only once a find has begun: a
+            // document with no find of its own leaves the key to the page, where the editors run their own.
+            if (IsFindShortcut(shortcutCharacter, modifierFlags))
+            {
+                if (ActiveDocumentFind.GetActiveFindableDocument()?.TryBeginFind() == true)
+                {
+                    return IntPtr.Zero;
+                }
+
+                return nsEvent;
+            }
+
             return nsEvent;
         }
         catch (Exception exception)
@@ -193,24 +210,56 @@ internal static class MacOSKeyEventMonitor
         }
     }
 
-    // True for Command+W and Command+Shift+W. Matched on the character (layout-aware) rather than the hardware
-    // key code, and rejected when Control or Option is also held so it does not fire on unrelated chords.
-    private static bool IsCloseShortcut(IntPtr nsEvent, ulong modifierFlags)
+    // True for Command+W and Command+Shift+W.
+    private static bool IsCloseShortcut(char? shortcutCharacter, ulong modifierFlags)
+    {
+        return shortcutCharacter == 'w'
+            && IsPlainCommandChord(modifierFlags);
+    }
+
+    // True for Command+F. Command+Shift+F is not a find shortcut, so Shift is rejected.
+    private static bool IsFindShortcut(char? shortcutCharacter, ulong modifierFlags)
+    {
+        if ((modifierFlags & ModifierFlagShift) != 0)
+        {
+            return false;
+        }
+
+        return shortcutCharacter == 'f'
+            && IsPlainCommandChord(modifierFlags);
+    }
+
+    // True for a Command chord holding neither Control nor Option, so a shortcut cannot fire on an unrelated
+    // chord built over the same letter.
+    private static bool IsPlainCommandChord(ulong modifierFlags)
     {
         bool command = (modifierFlags & ModifierFlagCommand) != 0;
         bool control = (modifierFlags & ModifierFlagControl) != 0;
         bool option = (modifierFlags & ModifierFlagOption) != 0;
 
-        if (!command
-            || control
-            || option)
+        return command
+            && !control
+            && !option;
+    }
+
+    // The lower-case letter a chord names, or null when it names none. The event's own character answers for
+    // a Latin layout whatever its arrangement, because it reports the key as labelled: the W key gives "w" on
+    // AZERTY as on QWERTY, and a layout that swaps to QWERTY under Command (Dvorak-QWERTY) reports the
+    // swapped letter. A non-Latin layout reports its own alphabet instead, so the key code is translated
+    // through the ASCII-capable layout, which is how AppKit matches menu key equivalents.
+    private static char? ResolveShortcutCharacter(IntPtr nsEvent, ulong keyCode)
+    {
+        var characters = ReadNSString(SendMessage(nsEvent, GetSelector("charactersIgnoringModifiers")));
+        if (characters.Length == 1)
         {
-            return false;
+            var character = char.ToLowerInvariant(characters[0]);
+            if (character is >= 'a' and <= 'z')
+            {
+                return character;
+            }
         }
 
-        var characters = ReadNSString(SendMessage(nsEvent, GetSelector("charactersIgnoringModifiers")));
-
-        return string.Equals(characters, "w", StringComparison.OrdinalIgnoreCase);
+        return MacOSKeyboardLayout.ResolveAsciiLetter(keyCode);
     }
 
     [StructLayout(LayoutKind.Sequential)]
