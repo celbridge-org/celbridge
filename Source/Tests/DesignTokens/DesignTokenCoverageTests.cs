@@ -204,7 +204,7 @@ public class DesignTokenCoverageTests
                 continue;
             }
 
-            var content = File.ReadAllText(filePath);
+            var content = ArchitectureHelpers.ReadSourceFile(filePath);
 
             if (content.Contains("SystemAccentColor", StringComparison.Ordinal))
             {
@@ -308,7 +308,7 @@ public class DesignTokenCoverageTests
         foreach (var filePath in EnumerateSourceFiles(sourceFolder, searchPatterns))
         {
             var relativePath = Path.GetRelativePath(sourceFolder, filePath);
-            var content = File.ReadAllText(filePath);
+            var content = ArchitectureHelpers.ReadSourceFile(filePath);
 
             foreach (Match match in referenceRegex.Matches(content))
             {
@@ -346,7 +346,7 @@ public class DesignTokenCoverageTests
                 continue;
             }
 
-            var content = File.ReadAllText(filePath);
+            var content = ArchitectureHelpers.ReadSourceFile(filePath);
 
             remainingNames.RemoveAll(name =>
             {
@@ -364,8 +364,9 @@ public class DesignTokenCoverageTests
         return namesInUse;
     }
 
-    // Walks the tree a folder at a time so build output and package folders are pruned rather than
-    // enumerated. Each carries copies of the web assets, which would be scanned as if they were sources.
+    // Walks the tree a folder at a time so build output, dependency caches, and per-project runtime data
+    // are pruned rather than enumerated. Each carries copies of the web assets, and a dot folder can carry
+    // a whole bundled Python install, all of which would be scanned as if they were sources.
     private static IEnumerable<string> EnumerateSourceFiles(string folder, string[] searchPatterns)
     {
         foreach (var searchPattern in searchPatterns)
@@ -379,7 +380,8 @@ public class DesignTokenCoverageTests
         foreach (var subFolder in Directory.EnumerateDirectories(folder))
         {
             var folderName = Path.GetFileName(subFolder);
-            if (folderName is "bin" or "obj" or "node_modules")
+            if (folderName.StartsWith('.') ||
+                folderName is "bin" or "obj" or "node_modules")
             {
                 continue;
             }

@@ -61,7 +61,7 @@ public class LayoutMinimumContainmentTests
                 continue;
             }
 
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (AuthoredSizeFloorPattern.IsMatch(contents))
             {
                 offenders.Add(relativePath);
@@ -83,7 +83,7 @@ public class LayoutMinimumContainmentTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder, "*.xaml"))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (TrackMinimumInMarkupPattern.IsMatch(contents))
             {
                 offenders.Add(Path.GetRelativePath(sourceFolder, filePath));
@@ -92,7 +92,7 @@ public class LayoutMinimumContainmentTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (TrackMinimumInCodePattern.IsMatch(contents))
             {
                 offenders.Add(Path.GetRelativePath(sourceFolder, filePath));

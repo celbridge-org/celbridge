@@ -14,7 +14,8 @@ MINIMUM_PYTHON = (3, 10)
 
 # Zip entries record the time each file was packaged, so two builds of identical sources differ byte
 # for byte and the committed wheel shows as modified after every rebuild. Pinning SOURCE_DATE_EPOCH
-# makes the wheel reproducible. The value is arbitrary because nothing reads these timestamps.
+# settles the timestamps. The build backend version is the other half, and pyproject.toml pins that.
+# The value is arbitrary because nothing reads these timestamps.
 WHEEL_TIMESTAMP = "1704067200"  # 2024-01-01T00:00:00Z
 
 CANDIDATE_INTERPRETERS = [

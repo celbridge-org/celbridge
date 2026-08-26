@@ -1,5 +1,8 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+# Pinned rather than a floor. setuptools stamps its own version into the wheel's dist-info, so an
+# unpinned range builds different bytes on every machine that resolves a different release, and the
+# committed wheel then shows as modified after any rebuild. Bump deliberately.
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]

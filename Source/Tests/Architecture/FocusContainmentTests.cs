@@ -35,7 +35,7 @@ public class FocusContainmentTests
                 continue;
             }
 
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (contents.Contains("OnFocusReceived(") ||
                 contents.Contains("ClearFocus("))
             {

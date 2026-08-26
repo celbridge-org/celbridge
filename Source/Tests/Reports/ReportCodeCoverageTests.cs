@@ -71,7 +71,7 @@ public class ReportCodeCoverageTests
             "\n",
             ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder)
                 .Where(filePath => !filePath.EndsWith("ReportFindingCatalog.cs", StringComparison.OrdinalIgnoreCase))
-                .Select(File.ReadAllText));
+                .Select(ArchitectureHelpers.ReadSourceFile));
 
         foreach (var entry in GetCatalogEntries())
         {
