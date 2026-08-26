@@ -628,11 +628,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.ToggleSettingsPanel();
-    }
-
     private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.CloseSettingsPanel();
