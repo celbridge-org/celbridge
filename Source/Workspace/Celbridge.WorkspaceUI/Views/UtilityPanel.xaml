@@ -25,5 +25,14 @@
                         VerticalContentAlignment="Stretch"
                         Visibility="Collapsed"
                         ui:FocusTracking.PreservePanelFocus="True" />
+
+        <!-- Attention flash outline, tracing the same edges and corners as the panel's own chrome. Its
+             z-index clears the one the active surface is raised to, so the outline draws over that
+             surface's opaque rows. -->
+        <Border x:Name="PerimeterOverlay"
+                Canvas.ZIndex="2"
+                BorderBrush="{ThemeResource AccentBrush}"
+                Opacity="0"
+                IsHitTestVisible="False" />
     </Grid>
 </UserControl>

@@ -62,5 +62,11 @@
                                    HorizontalAlignment="Left"
                                    VerticalAlignment="Top"
                                    Visibility="Collapsed"/>
+
+    <!-- Attention flash outline, tracing the same edges and corners as the section's own chrome. -->
+    <Border x:Name="PerimeterOverlay"
+            BorderBrush="{ThemeResource AccentBrush}"
+            Opacity="0"
+            IsHitTestVisible="False"/>
   </Grid>
 </UserControl>

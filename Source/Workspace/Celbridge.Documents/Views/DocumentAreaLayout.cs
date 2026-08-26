@@ -623,6 +623,25 @@ public sealed class DocumentAreaLayout
         }
     }
 
+    /// <summary>
+    /// Briefly pulses an accent outline around the area's perimeter, outlining both sections of a split
+    /// area. A no-op while the area is not presented.
+    /// </summary>
+    public void FlashAreaPerimeter(DocumentArea area)
+    {
+        if (!_layoutState.IsAreaPresented(area))
+        {
+            return;
+        }
+
+        _sectionLookup(area.GetPrimarySection()).FlashPerimeter();
+
+        if (_layoutState.IsAreaSplit(area))
+        {
+            _sectionLookup(area.GetSecondarySection()).FlashPerimeter();
+        }
+    }
+
     private void Splitter_DragStarted(object? sender, EventArgs e)
     {
         if (sender is not Splitter splitter || splitter.Tag is not DocumentArea area)

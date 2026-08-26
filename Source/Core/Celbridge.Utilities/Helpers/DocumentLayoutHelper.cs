@@ -165,6 +165,24 @@ public static class DocumentLayoutHelper
     }
 
     /// <summary>
+    /// The document area occupying the surface, or null for a surface that holds no area.
+    /// </summary>
+    public static DocumentArea? GetArea(this WorkspaceSurface surface)
+    {
+        switch (surface)
+        {
+            case WorkspaceSurface.BottomArea:
+                return DocumentArea.Bottom;
+
+            case WorkspaceSurface.SideArea:
+                return DocumentArea.Side;
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
     /// Parses a section name, returning false when the name does not match a section. Used for stored
     /// addresses and for agent tool arguments, both of which carry the name rather than a number.
     /// </summary>

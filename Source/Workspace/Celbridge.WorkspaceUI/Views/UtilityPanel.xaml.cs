@@ -7,9 +7,11 @@ using Celbridge.Projects;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.WorkspaceUI.Views;
 
@@ -59,6 +61,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // items: they never select a surface, so they carry no selection, focus, or docked state.
     private readonly List<CommunityRailButton> _communityButtons = new();
 
+    private Storyboard? _perimeterStoryboard;
+
     // Selection is persisted only after RestoreSelectedUtility runs, so the constructor's default selection and
     // the restore itself do not overwrite the saved selection before it is read.
     private bool _selectionPersistenceEnabled;
@@ -90,6 +94,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         double edge = WorkspaceConstants.SectionEdgeThickness;
         ContentArea.BorderThickness = new Thickness(edge, edge, edge, isPresented ? edge : 0);
         ContentArea.CornerRadius = new CornerRadius(panelCornerRadius, panelCornerRadius, bottomRadius, bottomRadius);
+
+        // The flash outline traces the same shape as the chrome, at its own heavier thickness.
+        PerimeterOverlay.BorderThickness = AttentionFlash.ResolveOutline(ContentArea.BorderThickness);
+        PerimeterOverlay.CornerRadius = ContentArea.CornerRadius;
+    }
+
+    /// <summary>
+    /// Briefly pulses an accent outline around the panel's perimeter.
+    /// </summary>
+    internal void FlashPerimeter()
+    {
+        _perimeterStoryboard?.Stop();
+        _perimeterStoryboard = AttentionFlash.Play(PerimeterOverlay, AttentionFlash.OutlinePeakOpacity);
     }
 
     public UtilityPanel()
@@ -435,6 +452,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // onto it, leaving its rail button unfocused.
         bool wasAlreadyVisible = content.Visibility == Visibility.Visible;
 
+        // Below the perimeter flash overlay, which takes the z-index above this one.
         Canvas.SetZIndex(content, 1);
         content.Visibility = Visibility.Visible;
 

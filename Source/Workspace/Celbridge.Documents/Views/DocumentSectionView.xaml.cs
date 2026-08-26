@@ -26,6 +26,7 @@ public sealed partial class DocumentSectionView : UserControl
     private bool _isShuttingDown = false;
     private bool _scrollButtonsHidden;
     private bool _scrollIndicatorAttached;
+    private Storyboard? _perimeterStoryboard;
 
     // The tab list template's two overflow arrows, named by their containers because that is what carries
     // the width each arrow costs the strip.
@@ -208,6 +209,19 @@ public sealed partial class DocumentSectionView : UserControl
         // The placeholder fills the section, so it has to repeat the rounding or it squares the corners off
         // again while the section is empty.
         EmptyPlaceholder.CornerRadius = corners;
+
+        // The flash outline traces the same shape as the chrome, at its own heavier thickness.
+        PerimeterOverlay.BorderThickness = AttentionFlash.ResolveOutline(edges);
+        PerimeterOverlay.CornerRadius = corners;
+    }
+
+    /// <summary>
+    /// Briefly pulses an accent outline around the section's perimeter.
+    /// </summary>
+    public void FlashPerimeter()
+    {
+        _perimeterStoryboard?.Stop();
+        _perimeterStoryboard = AttentionFlash.Play(PerimeterOverlay, AttentionFlash.OutlinePeakOpacity);
     }
 
     /// <summary>

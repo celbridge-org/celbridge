@@ -116,6 +116,10 @@ public class LayoutManager : IWindowModeService, ILayoutService
         // Focus/Presentation mode and return to the Default layout.
         bool isLeavingLayoutMode = _layoutMode != LayoutMode.Default;
 
+        // Read against what is on screen, so a surface hidden by a layout mode counts as revealed when the
+        // user asks for it back.
+        bool wasVisible = SurfaceVisibility.HasFlag(surface);
+
         // Those modes hide every surface transiently, so the change is composed against the visibility the
         // user prefers.
         var currentVisibility = SurfaceVisibility;
@@ -140,6 +144,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
         if (isLeavingLayoutMode)
         {
             SetLayoutModeInternal(LayoutMode.Default);
+        }
+
+        // Sent last, once the whole layout has settled, and only for the surface the user asked for.
+        if (isVisible
+            && !wasVisible)
+        {
+            _messengerService.Send(new FlashSurfaceMessage(surface));
         }
     }
 

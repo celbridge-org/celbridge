@@ -382,6 +382,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // Listen for requests to flash a document tab (e.g. when a utility is surfaced or a document reopened)
         _messengerService.Register<FlashDocumentMessage>(this, OnFlashDocumentRequested);
 
+        // Listen for requests to flash the perimeter of a surface the user has just revealed.
+        _messengerService.Register<FlashSurfaceMessage>(this, OnFlashSurfaceRequested);
+
         // Register how this panel takes keyboard focus, so the focus service can hand it back after an
         // interaction moves it away transiently. Without it a modal dialog raised over a document leaves the
         // keyboard nowhere when it closes.
@@ -917,6 +920,35 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // state we were trying to get into anyway, so we consider this a success.
 
         return Result.Ok();
+    }
+
+    private void OnFlashSurfaceRequested(object recipient, FlashSurfaceMessage message)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // Deferred until the layout has settled, so the outline is at the size it will pulse at.
+        var surface = message.Surface;
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => FlashSurface(surface));
+    }
+
+    private void FlashSurface(WorkspaceSurface surface)
+    {
+        if (surface == WorkspaceSurface.UtilityPanel)
+        {
+            SurfaceContainer.FlashUtilityPanelPerimeter();
+            return;
+        }
+
+        var area = surface.GetArea();
+        if (area is DocumentArea revealedArea)
+        {
+            SectionContainer.Areas.FlashAreaPerimeter(revealedArea);
+        }
     }
 
     private void OnFlashDocumentRequested(object recipient, FlashDocumentMessage message)
