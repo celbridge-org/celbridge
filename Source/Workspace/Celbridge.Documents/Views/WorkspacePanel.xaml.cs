@@ -27,6 +27,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     private bool _isShuttingDown = false;
 
+    // The document whose focus claim is waiting on a collapsed area being revealed. A document off screen
+    // cannot take the keyboard, so the claim waits for the area to be laid out.
+    private ResourceKey _pendingRevealFocusDocument = ResourceKey.Empty;
+
     public WorkspacePanelViewModel ViewModel { get; }
 
     // Manages the document sections inside the surface container's area grids.
@@ -114,12 +118,43 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         ViewModel.OnActiveDocumentChanged(documentResource);
 
+        bool isAreaRevealing = RevealActivatedDocumentArea(documentResource, reason);
+
         // The keyboard follows the active document, so every path that changes it carries focus without
         // having to remember to: opening, closing onto the next tab, moving a tab between sections.
         if (ActiveDocumentFocusPolicy.ShouldCarryFocus(documentResource, reason))
         {
-            FocusActivatedDocument(documentResource);
+            if (isAreaRevealing)
+            {
+                _pendingRevealFocusDocument = documentResource;
+            }
+            else
+            {
+                FocusActivatedDocument(documentResource);
+            }
         }
+    }
+
+    // Opens the collapsed area holding the document that just became active. Returns whether a reveal was
+    // asked for, which the caller waits out before moving the keyboard into the area. A restore is left
+    // alone: the workspace restores its own surface visibility.
+    private bool RevealActivatedDocumentArea(ResourceKey documentResource, ActiveDocumentChangeReason reason)
+    {
+        if (documentResource.IsEmpty
+            || reason != ActiveDocumentChangeReason.Activated)
+        {
+            return false;
+        }
+
+        var area = SectionContainer.ActiveSection.GetArea();
+        if (ViewModel.IsAreaVisible(area))
+        {
+            return false;
+        }
+
+        ViewModel.SetAreaVisible(area, true);
+
+        return true;
     }
 
     private void OnSectionDocumentsLayoutChanged(DocumentSectionView sectionView, List<ResourceKey> documents)
@@ -508,6 +543,14 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         ApplyAreaVisibility();
+
+        var revealedDocument = _pendingRevealFocusDocument;
+        _pendingRevealFocusDocument = ResourceKey.Empty;
+
+        if (!revealedDocument.IsEmpty)
+        {
+            FocusActivatedDocument(revealedDocument);
+        }
     }
 
     // Shows or hides the collapsible areas to match the workspace surface visibility. Hiding an area

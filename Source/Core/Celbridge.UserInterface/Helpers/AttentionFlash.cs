@@ -3,11 +3,10 @@ using Microsoft.UI.Xaml.Media.Animation;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Runs the shared attention flash: a brief accent-colour pulse on an overlay element that draws the eye to a
-/// surface which just appeared or moved (a docked utility tab, a document tab moved by a section-count change,
-/// or a utility rail button freed by an undock). The caller owns an overlay element with Opacity 0 and passes
-/// it in; the returned storyboard is already running, and the caller keeps it so a repeated flash can stop the
-/// previous one.
+/// Runs the shared attention flash: a brief accent-colour pulse on an overlay element that draws the eye to
+/// something which just appeared, moved, or was asked for. The caller owns an overlay element with Opacity 0
+/// and passes it in. The returned storyboard is already running, and the caller keeps it so a repeated flash
+/// can stop the previous one.
 /// </summary>
 public static class AttentionFlash
 {
@@ -37,12 +36,12 @@ public static class AttentionFlash
         });
         animation.KeyFrames.Add(new LinearDoubleKeyFrame
         {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(560)),
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(640)),
             Value = 0.55
         });
         animation.KeyFrames.Add(new LinearDoubleKeyFrame
         {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(920)),
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1000)),
             Value = 0.0
         });
 

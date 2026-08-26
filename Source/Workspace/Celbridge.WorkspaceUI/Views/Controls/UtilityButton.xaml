@@ -47,6 +47,18 @@
                 Background="Transparent"
                 IsHitTestVisible="False" />
 
+        <!-- Attention flash overlay, pulsed to the accent color by FlashAttention. Over the fill and under the
+             glyph, and not hit-testable. -->
+        <Border x:Name="AttentionOverlay"
+                Width="32"
+                Height="32"
+                CornerRadius="{StaticResource IconButtonCornerRadius}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{ThemeResource AccentBrush}"
+                Opacity="0"
+                IsHitTestVisible="False" />
+
         <!-- Click target over the whole cell, so the channel either side of the button stays clickable. Its
              own fills are cleared to transparent because ButtonFill draws every state. -->
         <Button x:Name="ButtonElement"

@@ -169,7 +169,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // like the community links: no rail item, no content host, no focus action.
         _projectSettingsButton.SetIcon(IconSymbol.Sliders);
         _projectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
-        _projectSettingsButton.Click += (sender, e) => OpenProjectSettings();
+        _projectSettingsButton.Click += (sender, e) =>
+        {
+            _projectSettingsButton.FlashAttention();
+            OpenProjectSettings();
+        };
         _rail.AddLauncherButton(_projectSettingsButton);
 
         _buttons[BuiltInUtilityIds.Explorer] = _explorerButton;
@@ -212,7 +216,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             railButton.SetIcon(link.Icon);
             railButton.SetAutomationId(link.LandmarkId);
 
-            railButton.Click += (sender, e) => OpenCommunityLink(link);
+            railButton.Click += (sender, e) =>
+            {
+                railButton.FlashAttention();
+                OpenCommunityLink(link);
+            };
 
             _rail.AddCommunityButton(railButton);
 
@@ -334,6 +342,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         {
             // Activate the docked utility's tab, then request an attention flash so the reveal gives visible
             // feedback even when the tab was already the active document.
+            FlashRailButton(utilityId);
             _commandService.Execute<IActivateDocumentCommand>(command => command.FileResource = documentResource);
             _messengerService.Send(new FlashDocumentMessage(documentResource));
             return;
@@ -359,6 +368,14 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         ShowSurface(utilityId, takeFocus: isPanelVisible);
         PersistSelectedUtility(utilityId.ToString());
+    }
+
+    private void FlashRailButton(EditorId utilityId)
+    {
+        if (_buttons.TryGetValue(utilityId, out var railButton))
+        {
+            railButton.FlashAttention();
+        }
     }
 
     private void ShowUtilityPanel()

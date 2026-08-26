@@ -1,4 +1,6 @@
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.WorkspaceUI.Views.Controls;
 
@@ -9,6 +11,8 @@ public sealed partial class UtilityButton : UserControl
 {
     // Whether the pointer is over the cell. Combines with the selection inputs to pick the visual state.
     private bool _isPointerOver;
+
+    private Storyboard? _attentionStoryboard;
 
     public event EventHandler<RoutedEventArgs>? Click;
 
@@ -80,6 +84,15 @@ public sealed partial class UtilityButton : UserControl
     public void SetIssuePipVisible(bool isVisible)
     {
         IssuePip.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Briefly pulses the button with the accent color, then fades it back out.
+    /// </summary>
+    public void FlashAttention()
+    {
+        _attentionStoryboard?.Stop();
+        _attentionStoryboard = AttentionFlash.Play(AttentionOverlay);
     }
 
     private static void OnSelectionStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
