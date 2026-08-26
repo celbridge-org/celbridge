@@ -345,11 +345,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         });
     }
 
-    public void ToggleSettingsPanel()
-    {
-        IsSettingsPanelOpen = !IsSettingsPanelOpen;
-    }
-
     /// <summary>
     /// Closes the settings panel. The panel needs a way out of its own, because a document that hides the
     /// URL bar hides the toggle that opened it.

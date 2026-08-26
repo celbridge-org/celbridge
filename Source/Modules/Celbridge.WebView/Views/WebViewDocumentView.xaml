@@ -120,12 +120,15 @@
                                          Click="OpenInBrowserButton_Click">
                         <controls:Icon Symbol="Reveal" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
-                    <controls:IconButton x:Name="SettingsButton"
-                                         VerticalAlignment="Center"
-                                         ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
-                                         Click="SettingsButton_Click">
+                    <!-- A toggle rather than a plain button: the panel stays open until it is closed and
+                         its state is saved with the document, so it takes the accent fill the way any other
+                         selected control does. -->
+                    <controls:IconToggleButton x:Name="SettingsButton"
+                                               VerticalAlignment="Center"
+                                               ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
+                                               IsChecked="{x:Bind ViewModel.IsSettingsPanelOpen, Mode=TwoWay}">
                         <controls:Icon Symbol="Sliders" FontSize="{StaticResource IconSizeMedium}" />
-                    </controls:IconButton>
+                    </controls:IconToggleButton>
                 </StackPanel>
             </Grid>
         </Border>
@@ -170,29 +173,32 @@
                 </Grid.RowDefinitions>
 
                 <!-- A panel header is chrome over the panel's content, matching PanelHeader and the settings
-                     panels in the web editors. Fixed rather than scrolling: the close button is the panel's
-                     only way out once the URL bar carrying the settings toggle is hidden. -->
+                     panels in the web editors. Fixed rather than scrolling: the chevron is the panel's only
+                     way out once the URL bar carrying the settings toggle is hidden. It sits on the inner
+                     edge facing the page and points out towards the application edge, which is where the
+                     Side area puts its own collapse chevron. -->
                 <Grid Grid.Row="0"
                       Height="40"
                       Background="{ThemeResource ChromeBackgroundBrush}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0"
-                               Text="{x:Bind SettingsTitleString}"
-                               Style="{StaticResource PanelTitleTextStyle}"
-                               Margin="12,0,0,0"
-                               VerticalAlignment="Center" />
-
-                    <controls:IconButton Grid.Column="1"
-                                         Margin="0,0,8,0"
+                    <controls:IconButton Grid.Column="0"
+                                         Margin="8,0,0,0"
                                          VerticalAlignment="Center"
                                          ToolTipService.ToolTip="{x:Bind CloseSettingsTooltipString}"
                                          Click="CloseSettingsButton_Click">
-                        <controls:Icon Symbol="Close" FontSize="{StaticResource IconSizeMedium}" />
+                        <controls:Icon Symbol="ChevronRight" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
+
+                    <TextBlock Grid.Column="1"
+                               Text="{x:Bind SettingsTitleString}"
+                               Style="{StaticResource PanelTitleTextStyle}"
+                               Margin="6,0,12,0"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
                 </Grid>
 
                 <ScrollViewer Grid.Row="1" Padding="12,0,12,12">
