@@ -6,6 +6,11 @@ namespace Celbridge.Tests.Console;
 [TestFixture]
 public class StartupInjectorTests
 {
+    // The production intervals hold the same 10:1 cap-to-quiet ratio, so the algorithm is exercised as
+    // shipped. Only the scale changes, which is what stops a case that can only be proven by waiting the
+    // cap out from costing a second and a half.
+    private static readonly StartupInjectorTiming FastTiming = new(QuietPeriodMs: 20, CapMs: 200, PollIntervalMs: 5);
+
     private sealed class FakeTerminal : ITerminal
     {
         private readonly object _lock = new();
@@ -78,7 +83,7 @@ public class StartupInjectorTests
     public async Task Injects_AfterOutputSettles()
     {
         var terminal = new FakeTerminal();
-        using var injector = StartupInjector.Begin(terminal, new[] { "celbridge-py --python 3.13" });
+        using var injector = StartupInjector.Begin(terminal, new[] { "celbridge-py --python 3.13" }, timing: FastTiming);
 
         terminal.RaiseOutput("prompt> ");
 
@@ -92,7 +97,7 @@ public class StartupInjectorTests
     public async Task Injects_AtCapWhenNoOutputArrives()
     {
         var terminal = new FakeTerminal();
-        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" });
+        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timing: FastTiming);
 
         var injected = await WaitForAsync(() => terminal.Writes.Count == 1, 3000);
 
@@ -103,12 +108,12 @@ public class StartupInjectorTests
     public async Task Injects_ExactlyOnce()
     {
         var terminal = new FakeTerminal();
-        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" });
+        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timing: FastTiming);
 
         terminal.RaiseOutput("a");
 
         await WaitForAsync(() => terminal.Writes.Count >= 1, 2000);
-        await Task.Delay(300);
+        await Task.Delay(200);
 
         terminal.Writes.Count.Should().Be(1);
     }
@@ -117,10 +122,10 @@ public class StartupInjectorTests
     public async Task Dispose_BeforeSettle_PreventsInjection()
     {
         var terminal = new FakeTerminal();
-        var injector = StartupInjector.Begin(terminal, new[] { "cmd" });
+        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timing: FastTiming);
         injector.Dispose();
 
-        await Task.Delay(2000);
+        await Task.Delay(600);
 
         terminal.Writes.Should().BeEmpty();
     }
@@ -130,7 +135,7 @@ public class StartupInjectorTests
     {
         var terminal = new FakeTerminal();
         var lines = new[] { "celbridge-py", "import numpy as np", "%load_ext autoreload" };
-        using var injector = StartupInjector.Begin(terminal, lines);
+        using var injector = StartupInjector.Begin(terminal, lines, timing: FastTiming);
 
         terminal.RaiseOutput("prompt> ");
 
@@ -148,7 +153,7 @@ public class StartupInjectorTests
     {
         var terminal = new FakeTerminal();
         var callbackFired = false;
-        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true);
+        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true, FastTiming);
 
         terminal.RaiseOutput("prompt> ");
 
@@ -163,10 +168,10 @@ public class StartupInjectorTests
     {
         var terminal = new FakeTerminal();
         var callbackFired = false;
-        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true);
+        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true, FastTiming);
         injector.Dispose();
 
-        await Task.Delay(2000);
+        await Task.Delay(600);
 
         callbackFired.Should().BeFalse();
     }

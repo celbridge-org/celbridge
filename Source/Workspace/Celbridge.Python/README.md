@@ -14,15 +14,17 @@ The Python source lives in `packages/celbridge/`. It has a single runtime depend
 
 ## Running Tests
 
-Create a virtual environment and install the package with test dependencies:
+Create a virtual environment and install the package with test dependencies. Create it at the repo root, never inside `Source/`: the Uno SDK's item globs and the architecture tests both walk every folder under a project, and neither can be told to skip a venv sitting there.
 
 ```bash
-cd Source/Workspace/Celbridge.Python
-python -m venv .venv
+python -m venv .venv          # from the repo root
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # Linux/macOS
+cd Source/Workspace/Celbridge.Python
 pip install -e "packages/celbridge[dev]"
 ```
+
+The venv is for running these tests only. `build.py` resolves its own interpreter from PATH and never looks for a venv, so where the venv lives has no bearing on the wheel build.
 
 Run all tests:
 
@@ -39,3 +41,5 @@ To build the wheel manually:
 ```bash
 python build.py
 ```
+
+The built wheel is committed, and rebuilding it from unchanged sources produces the same bytes, so a rebuild leaves nothing to commit. Two things make that hold: `build.py` pins `SOURCE_DATE_EPOCH` so the archive timestamps settle, and `pyproject.toml` pins the setuptools version because setuptools stamps its own version into the wheel's metadata. If a rebuild ever does show a diff, one of those two has moved.

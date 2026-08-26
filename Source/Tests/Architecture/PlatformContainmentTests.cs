@@ -20,7 +20,7 @@ public class PlatformContainmentTests
         var offenders = new List<string>();
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (!contents.Contains("DllImport"))
             {
                 continue;

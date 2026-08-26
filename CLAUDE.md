@@ -44,21 +44,29 @@ The test project does not contain XAML and can be built and run with `dotnet`:
 dotnet test Source/Tests/Celbridge.Tests.csproj
 ```
 
+Pass `--no-restore` in the inner loop. `dotnet` re-walks the restore graph over all 24 referenced projects on every invocation, which costs several seconds and finds nothing new unless a package reference changed:
+
+```
+dotnet test Source/Tests/Celbridge.Tests.csproj --no-restore
+```
+
 Run JS tests from the `Source/` folder:
 
 ```
 cd Source && npm test
 ```
 
-Run Python tests using a virtual environment:
+Run Python tests using a virtual environment. Create it at the repo root, never inside `Source/`: the Uno SDK's item globs and the architecture tests both walk every folder under a project, and neither can be told to skip a venv sitting there.
 
 ```
-cd Source/Workspace/Celbridge.Python
 python -m venv .venv
 .venv\Scripts\activate
+cd Source/Workspace/Celbridge.Python
 pip install -e "packages/celbridge[dev]"
 python run_tests.py
 ```
+
+The venv is for running the tests only. The wheel build (`build.py`) resolves its own interpreter from PATH and never looks for a venv, so where the venv lives has no bearing on the build.
 
 ## Design Tokens
 

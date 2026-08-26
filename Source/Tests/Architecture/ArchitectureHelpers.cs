@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Celbridge.Tests.Architecture;
 
 /// <summary>
@@ -5,25 +7,17 @@ namespace Celbridge.Tests.Architecture;
 /// </summary>
 internal static class ArchitectureHelpers
 {
+    private static readonly Lazy<string> CachedSourceFolder = new(LocateSourceFolder);
+    private static readonly ConcurrentDictionary<string, IReadOnlyList<string>> CachedFileLists = new();
+    private static readonly ConcurrentDictionary<string, string> CachedFileContents = new();
+
     /// <summary>
     /// Locates the repository Source folder by walking up from the test binary to the solution file, or an
     /// empty string if it cannot be found.
     /// </summary>
     public static string FindSourceFolder()
     {
-        var folder = new DirectoryInfo(AppContext.BaseDirectory);
-        while (folder is not null)
-        {
-            var solutionPath = Path.Combine(folder.FullName, "Celbridge.slnx");
-            if (File.Exists(solutionPath))
-            {
-                return Path.Combine(folder.FullName, "Source");
-            }
-
-            folder = folder.Parent;
-        }
-
-        return string.Empty;
+        return CachedSourceFolder.Value;
     }
 
     /// <summary>
@@ -32,23 +26,9 @@ internal static class ArchitectureHelpers
     /// </summary>
     public static IEnumerable<string> EnumerateProductionSourceFiles(string sourceFolder, string searchPattern = "*.cs")
     {
-        // The conventions govern production code. The Tests project legitimately names the guarded concepts.
-        var testsFolder = Path.Combine(sourceFolder, "Tests");
+        var cacheKey = string.Concat(sourceFolder, "|", searchPattern);
 
-        foreach (var filePath in Directory.EnumerateFiles(sourceFolder, searchPattern, SearchOption.AllDirectories))
-        {
-            if (filePath.StartsWith(testsFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (IsGeneratedOrBuildOutput(filePath))
-            {
-                continue;
-            }
-
-            yield return filePath;
-        }
+        return CachedFileLists.GetOrAdd(cacheKey, _ => CollectProductionSourceFiles(sourceFolder, searchPattern));
     }
 
     /// <summary>
@@ -65,7 +45,7 @@ internal static class ArchitectureHelpers
             }
 
             var segments = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (segments.Any(segment => segment is "node_modules" or "min" or "lib" or "vendor" or "dist" or "tests"))
+            if (segments.Any(segment => segment is "min" or "lib" or "vendor" or "dist" or "tests"))
             {
                 continue;
             }
@@ -74,9 +54,85 @@ internal static class ArchitectureHelpers
         }
     }
 
-    private static bool IsGeneratedOrBuildOutput(string filePath)
+    /// <summary>
+    /// Reads a source file located by one of the enumeration helpers, holding the contents so that the
+    /// tests which scan the same files do not each read them from disk.
+    /// </summary>
+    public static string ReadSourceFile(string filePath)
     {
-        var segments = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return segments.Any(segment => segment is "obj" or "bin");
+        return CachedFileContents.GetOrAdd(filePath, File.ReadAllText);
+    }
+
+    private static string LocateSourceFolder()
+    {
+        var folder = new DirectoryInfo(AppContext.BaseDirectory);
+        while (folder is not null)
+        {
+            var solutionPath = Path.Combine(folder.FullName, "Celbridge.slnx");
+            if (File.Exists(solutionPath))
+            {
+                return Path.Combine(folder.FullName, "Source");
+            }
+
+            folder = folder.Parent;
+        }
+
+        return string.Empty;
+    }
+
+    private static IReadOnlyList<string> CollectProductionSourceFiles(string sourceFolder, string searchPattern)
+    {
+        // The conventions govern production code. The Tests project legitimately names the guarded concepts.
+        var testsFolder = Path.Combine(sourceFolder, "Tests");
+
+        var filePaths = new List<string>();
+        CollectSourceFilesInFolder(sourceFolder, searchPattern, testsFolder, filePaths);
+
+        return filePaths;
+    }
+
+    // Walks a folder at a time so build output and cache folders are pruned rather than enumerated and
+    // then discarded. A developer machine carries tens of thousands of such files, and walking them
+    // dominates the runtime of every test that scans the tree.
+    private static void CollectSourceFilesInFolder(
+        string folder,
+        string searchPattern,
+        string testsFolder,
+        List<string> filePaths)
+    {
+        foreach (var filePath in Directory.EnumerateFiles(folder, searchPattern))
+        {
+            filePaths.Add(filePath);
+        }
+
+        foreach (var subFolder in Directory.EnumerateDirectories(folder))
+        {
+            if (IsExcludedFolder(subFolder, testsFolder))
+            {
+                continue;
+            }
+
+            CollectSourceFilesInFolder(subFolder, searchPattern, testsFolder, filePaths);
+        }
+    }
+
+    private static bool IsExcludedFolder(string folderPath, string testsFolder)
+    {
+        if (folderPath.Equals(testsFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var folderName = Path.GetFileName(folderPath);
+
+        // A dot folder holds a dependency cache or per-project runtime data, never checked in source.
+        // Some carry a bundled Python or Node install whose own files would otherwise be scanned as
+        // if they were Celbridge sources.
+        if (folderName.StartsWith('.'))
+        {
+            return true;
+        }
+
+        return folderName is "bin" or "obj" or "node_modules";
     }
 }

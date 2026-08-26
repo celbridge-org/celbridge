@@ -69,7 +69,7 @@ public class XamlNamespacePrefixTests
         var declarations = new List<PrefixDeclaration>();
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder, "*.xaml"))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             foreach (Match match in NamespaceDeclaration.Matches(contents))
             {
                 var declaration = new PrefixDeclaration(

@@ -51,7 +51,7 @@ public class WebChannelContractTests
 
             var isImplemented = productionFiles
                 .Where(filePath => !string.Equals(filePath, declaration.DeclaringFile, StringComparison.OrdinalIgnoreCase))
-                .Any(filePath => Regex.IsMatch(File.ReadAllText(filePath), $@"\b{Regex.Escape(declaration.MemberName)}\s*\("));
+                .Any(filePath => Regex.IsMatch(ArchitectureHelpers.ReadSourceFile(filePath), $@"\b{Regex.Escape(declaration.MemberName)}\s*\("));
 
             if (!isImplemented)
             {
@@ -88,7 +88,7 @@ public class WebChannelContractTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (!contents.Contains("RpcMethods"))
             {
                 continue;
@@ -129,7 +129,7 @@ public class WebChannelContractTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             if (!contents.Contains("[JsonRpcMethod("))
             {
                 continue;
@@ -165,7 +165,7 @@ public class WebChannelContractTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             foreach (Match match in Regex.Matches(contents, pattern))
             {
                 if (match.Groups[1].Success)
@@ -195,7 +195,7 @@ public class WebChannelContractTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionWebFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             foreach (Match match in Regex.Matches(contents, pattern))
             {
                 calls[match.Groups[1].Value] = Path.GetFileName(filePath);
@@ -216,7 +216,7 @@ public class WebChannelContractTests
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionWebFiles(sourceFolder))
         {
-            var contents = File.ReadAllText(filePath);
+            var contents = ArchitectureHelpers.ReadSourceFile(filePath);
             foreach (Match match in Regex.Matches(contents, pattern))
             {
                 mentions.Add(match.Groups[1].Value);
