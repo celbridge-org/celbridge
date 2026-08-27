@@ -5,11 +5,36 @@
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:documents="using:Celbridge.Documents.Views"
     xmlns:local="using:Celbridge.WebView.Views"
+    xmlns:vm="using:Celbridge.WebView.ViewModels"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     DataContext="{x:Bind ViewModel}">
 
+    <documents:DocumentView.Resources>
+
+        <!-- One bookmark, as a button in the bookmarks bar. -->
+        <DataTemplate x:Key="BookmarkButtonTemplate" x:DataType="vm:WebViewBookmarkViewModel">
+            <controls:IconButton Padding="8,0"
+                                 VerticalAlignment="Center"
+                                 ToolTipService.ToolTip="{x:Bind Url, Mode=OneWay}"
+                                 Click="BookmarkButton_Click">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="6">
+                    <controls:Icon IconName="{x:Bind Icon, Mode=OneWay}"
+                                   FontSize="{StaticResource IconSizeMedium}"
+                                   VerticalAlignment="Center"
+                                   Visibility="{x:Bind HasIcon, Mode=OneWay}" />
+                    <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               TextWrapping="NoWrap" />
+                </StackPanel>
+            </controls:IconButton>
+        </DataTemplate>
+
+    </documents:DocumentView.Resources>
+
     <Grid x:Name="LayoutRoot">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -72,14 +97,11 @@
                     </controls:IconButton>
                 </StackPanel>
 
-                <!-- Read-only rather than disabled while the settings are showing, so the address can
-                     still be selected and copied. -->
                 <TextBox x:Name="AddressTextBox"
                          Grid.Column="1"
                          MinHeight="32"
                          VerticalAlignment="Center"
                          IsSpellCheckEnabled="False"
-                         IsReadOnly="{x:Bind ViewModel.IsAddressReadOnly, Mode=OneWay}"
                          PlaceholderText="{x:Bind AddressPlaceholderString}"
                          Text="{x:Bind ViewModel.AddressText, Mode=OneWay}"
                          KeyDown="AddressTextBox_KeyDown" />
@@ -127,12 +149,56 @@
             </Grid>
         </Border>
 
-        <!-- Sits in its own row above the page, for the same reason the URL bar does. -->
+        <Border x:Name="BookmarksBar"
+                Grid.Row="1"
+                Padding="8,4"
+                Background="{ThemeResource ChromeBackgroundBrush}"
+                BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                Visibility="{x:Bind ViewModel.IsBookmarksBarVisible, Mode=OneWay}">
+
+            <Grid ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Buttons that do not fit are clipped at the right edge rather than wrapped or shrunk, the
+                     whole set staying reachable from the settings. The scroll viewer is what clips them, and
+                     it also lets a trackpad reach the overflow on platforms that scroll one. -->
+                <ScrollViewer Grid.Column="0"
+                              HorizontalScrollMode="Enabled"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollMode="Disabled"
+                              VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.ToolbarBookmarks, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource BookmarkButtonTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="4" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- The way through to the full list, outside the clipped strip so it stays reachable however
+                     many bookmarks the bar cannot fit. -->
+                <controls:IconButton x:Name="ManageBookmarksButton"
+                                     Grid.Column="1"
+                                     VerticalAlignment="Center"
+                                     ToolTipService.ToolTip="{x:Bind ManageBookmarksTooltipString}"
+                                     Click="ManageBookmarksButton_Click">
+                    <controls:Icon Symbol="More" FontSize="{StaticResource IconSizeMedium}" />
+                </controls:IconButton>
+            </Grid>
+        </Border>
+
         <local:WebViewFindBar x:Name="FindBar"
-                              Grid.Row="1" />
+                              Grid.Row="2" />
 
         <Grid x:Name="AppWebViewContainer"
-              Grid.Row="2"
+              Grid.Row="3"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch" />
 
@@ -140,7 +206,7 @@
              otherwise present. The WebView is hidden while this shows, so the blank page does not read as
              a broken one. -->
         <Border x:Name="ContentPlaceholder"
-                Grid.Row="2"
+                Grid.Row="3"
                 Background="{ThemeResource ContentBackgroundBrush}"
                 Visibility="Collapsed">
             <StackPanel HorizontalAlignment="Center"
@@ -198,7 +264,7 @@
              while this shows, which is also what keeps a hosted web view from taking mouse input meant for
              the settings on the macOS Skia head. -->
         <local:WebViewDocumentSettingsView x:Name="SettingsSurface"
-                                           Grid.Row="2"
+                                           Grid.Row="3"
                                            Visibility="Collapsed" />
 
     </Grid>

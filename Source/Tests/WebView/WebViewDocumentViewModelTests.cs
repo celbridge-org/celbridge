@@ -2,7 +2,9 @@ using Celbridge.Commands;
 using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.WebHost;
+using Microsoft.Extensions.Localization;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
@@ -14,19 +16,21 @@ namespace Celbridge.Tests.WebView;
 public class WebViewDocumentViewModelTests
 {
     private ICommandService _commandService = null!;
-    private IWebViewService _webViewService = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IServerService _serverService = null!;
+    private IIconService _iconService = null!;
+    private IStringLocalizer _stringLocalizer = null!;
 
     [SetUp]
     public void SetUp()
     {
         _commandService = Substitute.For<ICommandService>();
-        var featureFlags = Substitute.For<IFeatureFlags>();
-
         _serverService = Substitute.For<IServerService>();
         _serverService.Port.Returns(5000);
+
+        _iconService = Substitute.For<IIconService>();
+        _stringLocalizer = Substitute.For<IStringLocalizer>();
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         // Default: file exists on disk so reads are attempted. Per-test stubs
@@ -40,7 +44,6 @@ public class WebViewDocumentViewModelTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _webViewService = new WebViewService(featureFlags, _workspaceWrapper, Substitute.For<IWebViewAdapter>());
     }
 
     [Test]
@@ -166,7 +169,7 @@ public class WebViewDocumentViewModelTests
         // The HtmlViewer role serves the HTML file directly via the project virtual
         // host without consulting any .webview file. The resource file system is
         // never called for this role.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
         {
             FilePath = "ignored.html",
             FileResource = new ResourceKey("page.html"),
@@ -183,7 +186,7 @@ public class WebViewDocumentViewModelTests
     public void IsUrlBarVisible_HtmlViewer_IsFalse()
     {
         // The URL bar is external-URL chrome; the HTML viewer never shows it.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
         {
             FileResource = new ResourceKey("page.html"),
             Role = WebViewDocumentRole.HtmlViewer,
@@ -195,7 +198,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public void NavigateUrl_HtmlViewer_BuildsLoopbackProjectUrlFromResourceKey()
     {
-        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
         {
             FileResource = new ResourceKey("Pages/welcome.html"),
             Role = WebViewDocumentRole.HtmlViewer,
@@ -287,44 +290,142 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
-    public void CreateDocumentFromCurrentPage_DispatchesTheDialogForTheDocumentFolder()
+    public void CanAddBookmarkFromCurrentPage_WithNoMatchingBookmark_IsTrue()
     {
-        // The dialog command owns naming and creation; the view model only supplies the page and the
-        // folder the current document lives in.
-        var dialogCommand = Substitute.For<ICreateWebViewDialogCommand>();
-        _commandService
-            .Execute(Arg.Any<Action<ICreateWebViewDialogCommand>>(), Arg.Any<string>(), Arg.Any<int>())
-            .Returns(callInfo =>
-            {
-                var configure = callInfo.Arg<Action<ICreateWebViewDialogCommand>>();
-                configure(dialogCommand);
-                return Result.Ok();
-            });
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/other")));
 
-        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
-        {
-            FileResource = new ResourceKey("Links/start.webview"),
-        };
-        viewModel.CurrentUrl = "https://scratch.mit.edu/projects/1";
-
-        viewModel.CreateDocumentFromCurrentPage();
-
-        dialogCommand.SourceUrl.Should().Be("https://scratch.mit.edu/projects/1");
-        dialogCommand.DestFolderResource.Should().Be(new ResourceKey("Links"));
+        viewModel.CanAddBookmarkFromCurrentPage.Should().BeTrue();
     }
 
     [Test]
-    public void CreateDocumentFromCurrentPage_DoesNothingWithoutANavigablePage()
+    public void CanAddBookmarkFromCurrentPage_WithAMatchingBookmark_IsFalse()
+    {
+        // Opening a bookmark and then the settings should not offer to bookmark the page again.
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs")));
+
+        viewModel.CanAddBookmarkFromCurrentPage.Should().BeFalse();
+    }
+
+    [Test]
+    public void CanAddBookmarkFromCurrentPage_MatchingBookmarkWithNoTrailingSlash_IsFalse()
+    {
+        // Navigating rewrites the address to its absolute form, so a hand-typed bookmark differs from the
+        // page it opens by a trailing slash alone.
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
+
+        viewModel.CanAddBookmarkFromCurrentPage.Should().BeFalse();
+    }
+
+    [Test]
+    public void CanAddBookmarkFromCurrentPage_AfterTheMatchingBookmarkIsRemoved_IsTrueAgain()
     {
         var viewModel = CreateViewModel();
-        viewModel.CurrentUrl = "about:blank";
+        viewModel.CurrentUrl = "https://example.com/docs";
+        var bookmark = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs"));
+        viewModel.Bookmarks.Add(bookmark);
 
-        viewModel.CreateDocumentFromCurrentPage();
+        viewModel.Bookmarks.Remove(bookmark);
 
-        _commandService.DidNotReceive().Execute(
-            Arg.Any<Action<ICreateWebViewDialogCommand>>(),
-            Arg.Any<string>(),
-            Arg.Any<int>());
+        viewModel.CanAddBookmarkFromCurrentPage.Should().BeTrue();
+    }
+
+    [Test]
+    public void ToolbarBookmarks_LeavesOutAnEntryThatCannotBeNavigatedTo()
+    {
+        // Adding a bookmark starts it blank, and the bar is on screen while it is filled in, so an entry
+        // with no usable URL must not put a button there that does nothing.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark(string.Empty)));
+
+        viewModel.ToolbarBookmarks.Should().ContainSingle();
+        viewModel.ToolbarBookmarks[0].Url.Should().Be("https://example.com");
+    }
+
+    [Test]
+    public void IsBookmarksBarVisible_WithOnlyUnnavigableBookmarks_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark(string.Empty)));
+
+        viewModel.IsBookmarksBarVisible.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsBookmarksBarVisible_WhileTheSettingsAreOpen_StaysTrue()
+    {
+        // The bar doubles as a live preview of the bookmarks being edited, so it stays up with the
+        // settings showing.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
+
+        viewModel.IsSettingsOpen = true;
+
+        viewModel.IsBookmarksBarVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsHomeEnabled_WhileTheSettingsAreOpen_StaysTrue()
+    {
+        // Home names a destination, so it stays live and returns the document area to the page.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.SourceUrl = "https://example.com";
+
+        viewModel.IsSettingsOpen = true;
+
+        viewModel.IsHomeEnabled.Should().BeTrue();
+    }
+
+    [Test]
+    public void NavigationOnThePage_WhileTheSettingsAreOpen_StaysDisabled()
+    {
+        // Back, Forward and Reload act on a page that is not on screen, so they report as unavailable
+        // rather than acting out of sight.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com";
+        viewModel.CanGoBack = true;
+        viewModel.CanGoForward = true;
+
+        viewModel.IsSettingsOpen = true;
+
+        viewModel.IsBackEnabled.Should().BeFalse();
+        viewModel.IsForwardEnabled.Should().BeFalse();
+        viewModel.IsReloadOrStopEnabled.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task LoadContent_CompletesASourceUrlWithNoScheme()
+    {
+        // A host typed into the Home URL field, or written by hand, opens the page it names rather than
+        // failing the whole document.
+        StubWebViewFile("source_url = \"example.com\"");
+        var viewModel = CreateViewModel();
+
+        var result = await viewModel.LoadContent();
+
+        result.IsSuccess.Should().BeTrue();
+        viewModel.SourceUrl.Should().Be("https://example.com");
+    }
+
+    [Test]
+    public void SourceUrl_SetWithNoScheme_IsCompletedOnCommit()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.SourceUrl = "example.com";
+
+        viewModel.SourceUrl.Should().Be("https://example.com");
     }
 
     private void StubWebViewFile(string tomlContent)
@@ -335,7 +436,7 @@ public class WebViewDocumentViewModelTests
 
     private WebViewDocumentViewModel CreateViewModel()
     {
-        return new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper, _serverService)
+        return new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
         {
             FileResource = new ResourceKey("test.webview"),
         };

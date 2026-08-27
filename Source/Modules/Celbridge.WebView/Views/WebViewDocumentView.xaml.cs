@@ -93,6 +93,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private string AddressPlaceholderString => _stringLocalizer.GetString("WebView_UrlBar_AddressPlaceholder");
     private string OpenInBrowserTooltipString => _stringLocalizer.GetString("WebView_UrlBar_OpenInBrowserTooltip");
     private string SettingsTooltipString => _stringLocalizer.GetString("WebView_UrlBar_SettingsTooltip");
+    private string ManageBookmarksTooltipString => _stringLocalizer.GetString("WebView_Bookmarks_ManageTooltip");
     private string PlaceholderAddressHintString => _stringLocalizer.GetString("WebView_Placeholder_AddressHint");
     private string PlaceholderSettingsHintString => _stringLocalizer.GetString("WebView_Placeholder_SettingsHint");
     private string PlaceholderLoadFailedString => _stringLocalizer.GetString("WebView_Placeholder_LoadFailed");
@@ -127,6 +128,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         SettingsSurface.ReturnToPageRequested += SettingsSurface_ReturnToPageRequested;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        ViewModel.NavigateRequested += ViewModel_NavigateRequested;
         UpdateReloadOrStopTooltip();
 
         Loaded += WebViewDocumentView_Loaded;
@@ -610,6 +612,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             // Navigating to the address already showing raises no change for the binding to follow, so an
             // uncommitted edit in the box would survive the navigation.
             SyncAddressText();
+
+            // Home names a destination, so it gives the document area back to the page the way committing
+            // an address does.
+            ViewModel.CloseSettings();
             Navigate(homeUrl);
         }
     }
@@ -626,26 +632,55 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         ViewModel.OpenBrowser(ViewModel.CurrentUrl);
     }
 
-    private void AddressTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void ManageBookmarksButton_Click(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.IsSettingsVisible)
+        // Opening the settings builds them on the stored section, so the key is set first. A surface that
+        // was already built ignores that key, and is sent to the section directly below.
+        _settingsSectionKey = WebViewDocumentSettingsView.BookmarksSectionKey;
+        ViewModel.IsSettingsOpen = true;
+
+        SettingsSurface.SelectSection(WebViewDocumentSettingsView.BookmarksSectionKey);
+    }
+
+    private void BookmarkButton_Click(object sender, RoutedEventArgs e)
+    {
+        var bookmarkButton = (FrameworkElement)sender;
+        if (bookmarkButton.DataContext is not WebViewBookmarkViewModel bookmark)
         {
-            // Read-only stops the address being edited, but Enter would still navigate what it already
-            // holds, and Escape would discard a selection the user made to copy from.
             return;
         }
 
+        ViewModel.OpenBookmark(bookmark);
+    }
+
+    // A bookmark, or anything else that opens a page without going through the address box.
+    private void ViewModel_NavigateRequested(object? sender, string url)
+    {
+        // Navigating to the address already showing raises no change for the binding to follow, so an
+        // uncommitted edit in the box would survive the navigation.
+        SyncAddressText();
+        Navigate(url);
+        GiveFocusToWebContent();
+    }
+
+    private void AddressTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
         if (e.Key == VirtualKey.Enter)
         {
+            // Committing an address is a request to see a page, so the settings give the document area back
+            // rather than leaving the navigation to happen out of sight. An address that cannot be
+            // navigated to leaves them where they are, having asked for nothing.
             var address = AddressTextBox.Text.Trim();
             if (address.Length == 0)
             {
                 // Committing an empty address is a request to go nowhere, which leaves the document on
                 // the placeholder rather than on the page it happened to be showing.
+                ViewModel.CloseSettings();
                 ClearPage();
             }
             else if (ViewModel.TryNormalizeUserUrl(address, out var url))
             {
+                ViewModel.CloseSettings();
                 Navigate(url);
 
                 // Hand focus to the page the way the find bar does on close, so the next keystroke reaches
@@ -659,7 +694,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         {
             // Abandon the edit: restore the address the page is actually showing and return to the content.
             SyncAddressText();
-            GiveFocusToWebContent();
+
+            // The settings keep the document area until the user leaves them, so there is no page waiting
+            // for the keyboard while they are showing.
+            if (ViewModel.IsPageOnScreen)
+            {
+                GiveFocusToWebContent();
+            }
 
             e.Handled = true;
         }
@@ -1267,6 +1308,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     public override async Task PrepareToClose()
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        ViewModel.NavigateRequested -= ViewModel_NavigateRequested;
         _downloadIndicatorDismissTimer?.Stop();
 
         TeardownWebViewState();

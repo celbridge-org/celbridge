@@ -18,12 +18,16 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     /// </summary>
     public const string HomeSectionKey = "Home";
 
+    /// <summary>
+    /// The key of the section holding the bookmarks, which the bookmarks bar sends the user to.
+    /// </summary>
+    public const string BookmarksSectionKey = "Bookmarks";
+
     private readonly IStringLocalizer _stringLocalizer;
 
-    private WebViewDocumentViewModel? _viewModel;
+    private WebViewDocumentViewModel? _documentViewModel;
 
-    // The section to fall back on when the rail reports no selection.
-    private SettingsSection? _lastSelectedSection;
+    public WebViewDocumentSettingsViewModel ViewModel { get; }
 
     public string ReturnToPageString => _stringLocalizer.GetString("WebView_Settings_ReturnToPage");
 
@@ -36,17 +40,16 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     /// The key of the section showing, so the document can reopen on the one the user last had open.
     /// Empty until the sections are built.
     /// </summary>
-    public string SelectedSectionKey => SectionSwitcher.SelectedSection?.Key ?? string.Empty;
+    public string SelectedSectionKey => ViewModel.SelectedSectionKey;
 
     public WebViewDocumentSettingsView()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        InitializeComponent();
+        // The view model backs x:Bind paths, so it must exist before InitializeComponent evaluates them.
+        ViewModel = ServiceLocator.AcquireService<WebViewDocumentSettingsViewModel>();
 
-        SectionSwitcher.RegisterPropertyChangedCallback(
-            SettingsSectionSwitcher.SelectedSectionProperty,
-            (_, _) => ApplySelection());
+        InitializeComponent();
     }
 
     /// <summary>
@@ -55,19 +58,25 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     /// </summary>
     public void Initialize(WebViewDocumentViewModel viewModel, string selectedSectionKey)
     {
-        if (_viewModel is not null)
+        if (_documentViewModel is not null)
         {
             return;
         }
 
-        _viewModel = viewModel;
+        _documentViewModel = viewModel;
 
         var sections = BuildSections(viewModel);
-        SectionSwitcher.Sections = sections;
 
-        // An unrecognized or empty key lands on the first section, which is what a new document gets.
-        var storedSection = sections.FirstOrDefault(section => section.Key == selectedSectionKey);
-        SectionSwitcher.SelectedSection = storedSection ?? sections[0];
+        ViewModel.InitializeSections(sections, selectedSectionKey);
+    }
+
+    /// <summary>
+    /// Shows the section the given key names. Does nothing until the sections are built, or for a key none
+    /// of them carries.
+    /// </summary>
+    public void SelectSection(string sectionKey)
+    {
+        ViewModel.SelectSection(sectionKey);
     }
 
     // The sections in rail order. The keys are persisted, so changing one drops the section a returning
@@ -75,6 +84,11 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     private List<SettingsSection> BuildSections(WebViewDocumentViewModel viewModel)
     {
         var homeView = new WebViewHomeSectionView
+        {
+            ViewModel = viewModel
+        };
+
+        var bookmarksView = new WebViewBookmarksSectionView
         {
             ViewModel = viewModel
         };
@@ -95,6 +109,12 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
                 _stringLocalizer.GetString("WebView_Settings_HomeDescription"),
                 homeView),
             new(
+                BookmarksSectionKey,
+                "bs-bookmark",
+                _stringLocalizer.GetString("WebView_Settings_BookmarksHeader"),
+                _stringLocalizer.GetString("WebView_Settings_BookmarksDescription"),
+                bookmarksView),
+            new(
                 "Appearance",
                 "bs-palette",
                 _stringLocalizer.GetString("WebView_Settings_AppearanceHeader"),
@@ -109,33 +129,6 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         };
 
         return sections;
-    }
-
-    // The switcher writes the clicked section but leaves the checked state of the rail rows to its owner,
-    // so exactly one row carries it.
-    private void ApplySelection()
-    {
-        var selectedSection = SectionSwitcher.SelectedSection;
-        if (selectedSection is null)
-        {
-            // Nothing in the rail clears the selection, but the property is public: hold the invariant that
-            // a section is always showing rather than leaving it to callers.
-            SectionSwitcher.SelectedSection = _lastSelectedSection;
-            return;
-        }
-
-        var sections = SectionSwitcher.Sections;
-        if (sections is null)
-        {
-            return;
-        }
-
-        foreach (var section in sections)
-        {
-            section.IsSelected = ReferenceEquals(section, selectedSection);
-        }
-
-        _lastSelectedSection = selectedSection;
     }
 
     private void ReturnToPageButton_Click(object sender, RoutedEventArgs e)

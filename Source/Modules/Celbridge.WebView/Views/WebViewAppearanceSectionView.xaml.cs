@@ -27,6 +27,8 @@ public sealed partial class WebViewAppearanceSectionView : UserControl
 
     public string ShowUrlBarLabelString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarLabel");
     public string ShowUrlBarHintString => _stringLocalizer.GetString("WebView_Settings_ShowUrlBarHint");
+    public string ShowBookmarksBarLabelString => _stringLocalizer.GetString("WebView_Settings_ShowBookmarksBarLabel");
+    public string ShowBookmarksBarHintString => _stringLocalizer.GetString("WebView_Settings_ShowBookmarksBarHint");
 
     public WebViewAppearanceSectionView()
     {

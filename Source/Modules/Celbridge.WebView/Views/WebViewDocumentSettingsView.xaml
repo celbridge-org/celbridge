@@ -6,8 +6,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="Transparent">
 
-    <controls:SettingsSectionSwitcher x:Name="SectionSwitcher"
-                                      Margin="12">
+    <controls:SettingsSectionSwitcher Margin="12"
+                                      Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"
+                                      SelectedSection="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}">
 
         <!-- Leaving the settings belongs to the whole surface rather than to any one section, and the URL
              bar carrying the toggle back can be hidden, so the way out sits under the rail. -->

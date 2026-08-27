@@ -1,7 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.Modules;
 using Celbridge.WebHost;
-using Celbridge.WebView.Commands;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Celbridge.WebView.Views;
@@ -24,18 +23,13 @@ public class Module : IModule
         //
 
         services.AddTransient<WebViewDocumentViewModel>();
+        services.AddTransient<WebViewDocumentSettingsViewModel>();
 
         //
         // Register navigation policy helper
         //
 
         services.AddTransient<IWebViewNavigationPolicy, WebViewNavigationPolicy>();
-
-        //
-        // Register commands
-        //
-
-        services.AddTransient<ICreateWebViewDialogCommand, CreateWebViewDialogCommand>();
     }
 
     public Result Initialize()
