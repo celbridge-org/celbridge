@@ -28,19 +28,19 @@ public static class ProjectConfigSerializer
         var celbridge = config.Celbridge;
         if (!string.IsNullOrEmpty(celbridge.CelbridgeVersion))
         {
-            WriteKeyValue(builder, "celbridge-version", RenderString(celbridge.CelbridgeVersion));
+            WriteKeyValue(builder, "celbridge-version", TomlStringEncoder.EncodeBasicString(celbridge.CelbridgeVersion));
         }
         if (!string.IsNullOrEmpty(celbridge.ProjectVersion))
         {
-            WriteKeyValue(builder, "project-version", RenderString(celbridge.ProjectVersion));
+            WriteKeyValue(builder, "project-version", TomlStringEncoder.EncodeBasicString(celbridge.ProjectVersion));
         }
         if (!string.IsNullOrEmpty(celbridge.Description))
         {
-            WriteKeyValue(builder, "description", RenderString(celbridge.Description));
+            WriteKeyValue(builder, "description", TomlStringEncoder.EncodeBasicString(celbridge.Description));
         }
         if (!string.IsNullOrEmpty(celbridge.DataFolder))
         {
-            WriteKeyValue(builder, "data-folder", RenderString(celbridge.DataFolder));
+            WriteKeyValue(builder, "data-folder", TomlStringEncoder.EncodeBasicString(celbridge.DataFolder));
         }
         if (celbridge.EditorAssociations.Count > 0)
         {
@@ -62,7 +62,7 @@ public static class ProjectConfigSerializer
         builder.Append("# The resource set: the files the ignore-file allows, plus 'add', minus 'remove'.\n");
         builder.Append("# 'lock' freezes resources so they can't be edited, moved, or deleted.\n");
         builder.Append("[celbridge.resources]\n");
-        WriteKeyValue(builder, "ignore-file", RenderString(resources.IgnoreFile));
+        WriteKeyValue(builder, "ignore-file", TomlStringEncoder.EncodeBasicString(resources.IgnoreFile));
         WriteKeyValue(builder, "add", RenderStringArray(resources.Add));
         WriteKeyValue(builder, "remove", RenderStringArray(resources.Remove));
         WriteKeyValue(builder, "lock", RenderStringArray(resources.Lock));
@@ -82,8 +82,8 @@ public static class ProjectConfigSerializer
             builder.Append('\n');
             builder.Append("[[contribution]]\n");
 
-            WriteKeyValue(builder, ContributionPropertyKeys.Package, RenderString(contribution.PackageName));
-            WriteKeyValue(builder, ContributionPropertyKeys.Contribution, RenderString(contribution.ContributionId));
+            WriteKeyValue(builder, ContributionPropertyKeys.Package, TomlStringEncoder.EncodeBasicString(contribution.PackageName));
+            WriteKeyValue(builder, ContributionPropertyKeys.Contribution, TomlStringEncoder.EncodeBasicString(contribution.ContributionId));
 
             if (contribution.Disabled)
             {
@@ -120,13 +120,13 @@ public static class ProjectConfigSerializer
                 return doubleValue.ToString(CultureInfo.InvariantCulture);
 
             case string stringValue:
-                return RenderString(stringValue);
+                return TomlStringEncoder.EncodeBasicString(stringValue);
 
             case IReadOnlyList<string> listValue:
                 return RenderStringArray(listValue);
 
             default:
-                return RenderString(value?.ToString() ?? string.Empty);
+                return TomlStringEncoder.EncodeBasicString(value?.ToString() ?? string.Empty);
         }
     }
 
@@ -137,7 +137,7 @@ public static class ProjectConfigSerializer
             return "[]";
         }
 
-        var items = values.Select(RenderString);
+        var items = values.Select(TomlStringEncoder.EncodeBasicString);
         return $"[{string.Join(", ", items)}]";
     }
 
@@ -145,7 +145,7 @@ public static class ProjectConfigSerializer
     {
         var entries = map
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => $"{RenderString(pair.Key)} = {RenderString(pair.Value)}");
+            .Select(pair => $"{TomlStringEncoder.EncodeBasicString(pair.Key)} = {TomlStringEncoder.EncodeBasicString(pair.Value)}");
         return $"{{ {string.Join(", ", entries)} }}";
     }
 
@@ -153,57 +153,7 @@ public static class ProjectConfigSerializer
     {
         var entries = map
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => $"{RenderString(pair.Key)} = {(pair.Value ? "true" : "false")}");
+            .Select(pair => $"{TomlStringEncoder.EncodeBasicString(pair.Key)} = {(pair.Value ? "true" : "false")}");
         return $"{{ {string.Join(", ", entries)} }}";
-    }
-
-    // Renders a TOML basic string with the standard escapes.
-    private static string RenderString(string value)
-    {
-        var builder = new StringBuilder(value.Length + 2);
-        builder.Append('"');
-        foreach (var character in value)
-        {
-            switch (character)
-            {
-                case '"':
-                    builder.Append("\\\"");
-                    break;
-                case '\\':
-                    builder.Append("\\\\");
-                    break;
-                case '\b':
-                    builder.Append("\\b");
-                    break;
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-                case '\f':
-                    builder.Append("\\f");
-                    break;
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-                default:
-                    // TOML basic strings forbid unescaped control characters. The common ones are
-                    // handled above. Escape the rest (and DEL) as \uXXXX so the file re-parses.
-                    if (character < ' '
-                        || character == '\u007f')
-                    {
-                        builder.Append("\\u").Append(((int)character).ToString("X4", CultureInfo.InvariantCulture));
-                    }
-                    else
-                    {
-                        builder.Append(character);
-                    }
-                    break;
-            }
-        }
-        builder.Append('"');
-
-        return builder.ToString();
     }
 }
