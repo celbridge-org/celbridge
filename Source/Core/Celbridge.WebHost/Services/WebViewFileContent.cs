@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using Celbridge.Utilities;
 using Tomlyn;
@@ -215,7 +214,7 @@ public sealed record WebViewFileContent(
     {
         builder.Append(key);
         builder.Append(" = ");
-        builder.Append(EncodeTomlString(value));
+        builder.Append(TomlStringEncoder.EncodeBasicString(value));
         builder.Append('\n');
     }
 
@@ -225,34 +224,5 @@ public sealed record WebViewFileContent(
         builder.Append(" = ");
         builder.Append(value ? "true" : "false");
         builder.Append('\n');
-    }
-
-    // Encodes a value as a TOML basic string, escaping the few characters a URL
-    // can legally carry that a basic string cannot hold verbatim.
-    private static string EncodeTomlString(string value)
-    {
-        var builder = new StringBuilder(value.Length + 2);
-        builder.Append('"');
-        foreach (var character in value)
-        {
-            if (character == '\\' ||
-                character == '"')
-            {
-                builder.Append('\\');
-                builder.Append(character);
-            }
-            else if (character < 0x20 ||
-                     character == 0x7F)
-            {
-                builder.AppendFormat(CultureInfo.InvariantCulture, "\\u{0:X4}", (int)character);
-            }
-            else
-            {
-                builder.Append(character);
-            }
-        }
-        builder.Append('"');
-
-        return builder.ToString();
     }
 }

@@ -44,7 +44,7 @@ public static class SidecarTomlEncoder
 
         if (CanUseBasicString(raw))
         {
-            return "\"" + raw + "\"";
+            return TomlStringEncoder.EncodeBasicString(raw);
         }
 
         if (CanUseLiteralTriple(raw))
@@ -55,8 +55,7 @@ public static class SidecarTomlEncoder
             return "'''\n" + raw + "'''";
         }
 
-        var escaped = EscapeForBasicTriple(raw);
-        return "\"\"\"\n" + escaped + "\"\"\"";
+        return TomlStringEncoder.EncodeMultilineBasicString(raw);
     }
 
     /// <summary>
@@ -378,68 +377,5 @@ public static class SidecarTomlEncoder
             }
         }
         return true;
-    }
-
-    // Escape backslashes, break any run of three or more consecutive double
-    // quotes, and break the tail so trailing quotes don't merge with the
-    // closing delimiter. Control characters other than tab, LF, and CR are
-    // emitted as \uXXXX escapes.
-    private static string EscapeForBasicTriple(string raw)
-    {
-        var builder = new StringBuilder(raw.Length + 8);
-        int run = 0;
-        for (int i = 0; i < raw.Length; i++)
-        {
-            var c = raw[i];
-            if (c == '\\')
-            {
-                builder.Append("\\\\");
-                run = 0;
-                continue;
-            }
-            if (c == '"')
-            {
-                run++;
-                if (run == 3)
-                {
-                    builder.Append("\\\"");
-                    run = 0;
-                }
-                else
-                {
-                    builder.Append('"');
-                }
-                continue;
-            }
-            if (c == '\n'
-                || c == '\r'
-                || c == '\t')
-            {
-                builder.Append(c);
-                run = 0;
-                continue;
-            }
-            if (c < 0x20
-                || c == 0x7F)
-            {
-                builder.AppendFormat(CultureInfo.InvariantCulture, "\\u{0:X4}", (int)c);
-                run = 0;
-                continue;
-            }
-            builder.Append(c);
-            run = 0;
-        }
-
-        if (run > 0)
-        {
-            // The content tail is one or two consecutive quotes and would merge
-            // with the closing delimiter. Replace the last emitted quote with
-            // its escaped form to break the merge.
-            int lastIndex = builder.Length - 1;
-            builder.Remove(lastIndex, 1);
-            builder.Append("\\\"");
-        }
-
-        return builder.ToString();
     }
 }
