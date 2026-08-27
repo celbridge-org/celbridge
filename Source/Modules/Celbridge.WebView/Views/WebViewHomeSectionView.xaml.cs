@@ -1,12 +1,13 @@
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebView.ViewModels;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// The Home section of the Web View settings: the URL the document opens on, and the actions that adopt
-/// the page on screen as that URL or as a new document.
+/// The Home section of the Web View settings: the URL the document opens on, and the action that adopts
+/// the page on screen as that URL.
 /// </summary>
 public sealed partial class WebViewHomeSectionView : UserControl
 {
@@ -36,6 +37,11 @@ public sealed partial class WebViewHomeSectionView : UserControl
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         InitializeComponent();
+    }
+
+    private void CommitField_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        FocusNavigationHelper.CommitFieldOnEnter(sender, e);
     }
 
     private void SetCurrentPageAsHomeButton_Click(object sender, RoutedEventArgs e)

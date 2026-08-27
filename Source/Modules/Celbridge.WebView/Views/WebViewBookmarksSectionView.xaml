@@ -42,8 +42,7 @@
           <TextBox IsSpellCheckEnabled="False"
                    PlaceholderText="{x:Bind UrlPlaceholder}"
                    Text="{x:Bind Url, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                   Tag="Url"
-                   KeyDown="BookmarkField_KeyDown" />
+                   KeyDown="CommitField_KeyDown" />
           <TextBlock Text="{x:Bind InvalidUrlText}"
                      Style="{StaticResource SupportingTextStyle}"
                      Foreground="{ThemeResource SystemFillColorCriticalBrush}"
@@ -57,8 +56,7 @@
           <TextBox IsSpellCheckEnabled="False"
                    PlaceholderText="{x:Bind NamePlaceholder}"
                    Text="{x:Bind Name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                   Tag="Name"
-                   KeyDown="BookmarkField_KeyDown" />
+                   KeyDown="CommitField_KeyDown" />
         </StackPanel>
 
         <StackPanel Spacing="2">
@@ -67,8 +65,7 @@
           <TextBox IsSpellCheckEnabled="False"
                    PlaceholderText="{x:Bind IconPlaceholder}"
                    Text="{x:Bind Icon, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                   Tag="Icon"
-                   KeyDown="BookmarkField_KeyDown" />
+                   KeyDown="CommitField_KeyDown" />
           <TextBlock Text="{x:Bind IconHint}"
                      Style="{StaticResource SupportingTextStyle}"
                      TextWrapping="Wrap" />

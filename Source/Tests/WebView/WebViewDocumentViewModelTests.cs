@@ -290,6 +290,79 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
+    public async Task LoadContent_WithBookmarks_DoesNotMarkUnsavedChanges()
+    {
+        // The bookmarks arriving from disk are not edits, so a document that is only opened must not be
+        // written straight back out.
+        StubWebViewFile(
+            """
+            source_url = "https://example.com"
+
+            [[bookmarks]]
+            url = "https://example.com/docs"
+            name = "Docs"
+            """);
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.Bookmarks.Should().ContainSingle();
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task AddingABookmark_AfterLoad_MarksUnsavedChanges()
+    {
+        StubWebViewFile("source_url = \"https://example.com\"");
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs")));
+
+        viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task EditingABookmark_AfterLoad_MarksUnsavedChanges()
+    {
+        StubWebViewFile(
+            """
+            source_url = "https://example.com"
+
+            [[bookmarks]]
+            url = "https://example.com/docs"
+            """);
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+
+        viewModel.Bookmarks[0].Name = "Docs";
+
+        viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ChangingSourceUrl_AfterAFailedLoad_StillMarksUnsavedChanges()
+    {
+        // A document left open over a file that no longer parses is fixed from its settings, so the change
+        // handler has to survive the failure that sent the user there.
+        StubWebViewFile("source_url = ");
+
+        var viewModel = CreateViewModel();
+        var loadResult = await viewModel.LoadContent();
+        loadResult.IsFailure.Should().BeTrue();
+
+        viewModel.SourceUrl = "https://example.org";
+
+        viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
     public void CanAddBookmarkFromCurrentPage_WithNoMatchingBookmark_IsTrue()
     {
         var viewModel = CreateViewModel();

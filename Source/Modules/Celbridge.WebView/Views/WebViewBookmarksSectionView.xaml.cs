@@ -1,8 +1,8 @@
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebView.ViewModels;
 using Microsoft.Extensions.Localization;
-using Windows.System;
 
 namespace Celbridge.WebView.Views;
 
@@ -55,37 +55,9 @@ public sealed partial class WebViewBookmarksSectionView : UserControl
         ViewModel.Bookmarks.Add(bookmark);
     }
 
-    // The fields commit when they lose focus, which leaves Enter looking as though it did nothing. There is
-    // no way to push a compiled binding, so Enter writes the field's value to the property its tag names.
-    private void BookmarkField_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void CommitField_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key != VirtualKey.Enter)
-        {
-            return;
-        }
-
-        var textBox = (TextBox)sender;
-        if (textBox.DataContext is not WebViewBookmarkViewModel bookmark)
-        {
-            return;
-        }
-
-        switch (textBox.Tag as string)
-        {
-            case nameof(WebViewBookmarkViewModel.Url):
-                bookmark.Url = textBox.Text;
-                break;
-
-            case nameof(WebViewBookmarkViewModel.Name):
-                bookmark.Name = textBox.Text;
-                break;
-
-            case nameof(WebViewBookmarkViewModel.Icon):
-                bookmark.Icon = textBox.Text;
-                break;
-        }
-
-        e.Handled = true;
+        FocusNavigationHelper.CommitFieldOnEnter(sender, e);
     }
 
     private void AddCurrentPageButton_Click(object sender, RoutedEventArgs e)

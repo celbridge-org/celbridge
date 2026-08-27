@@ -12,7 +12,8 @@
             <TextBox IsSpellCheckEnabled="False"
                      PlaceholderText="{x:Bind AddressPlaceholderString}"
                      ToolTipService.ToolTip="{x:Bind ViewModel.HomeUrlTooltip, Mode=OneWay}"
-                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     KeyDown="CommitField_KeyDown" />
             <TextBlock Text="{x:Bind InvalidUrlString}"
                        Style="{StaticResource SupportingTextStyle}"
                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"

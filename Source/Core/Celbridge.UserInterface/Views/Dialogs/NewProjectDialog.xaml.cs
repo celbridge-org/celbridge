@@ -57,13 +57,9 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
     private void ProjectNameTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Enter)
-        {
-            e.Handled = true;
-            // Move focus away from the TextBox when Enter is pressed
-            // This allows the user to see validation results without submitting
-            FocusNavigationHelper.MoveFocusToNextElement();
-        }
+        // Move focus away from the TextBox when Enter is pressed
+        // This allows the user to see validation results without submitting
+        FocusNavigationHelper.CommitFieldOnEnter(sender, e);
     }
 
     private void CancelButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)

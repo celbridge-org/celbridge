@@ -418,7 +418,13 @@ public sealed partial class CardListView : UserControl
             return;
         }
 
-        items.Remove(item);
+        var index = IndexOfItem(items, item);
+        if (index < 0)
+        {
+            return;
+        }
+
+        items.RemoveAt(index);
     }
 
     private void Grip_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -529,7 +535,10 @@ public sealed partial class CardListView : UserControl
 
     private void LayoutRoot_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (_dragState is null)
+        // Only the pointer that took hold of the grip drives the placement, so a second one arriving
+        // mid-drag cannot take the card over.
+        if (_dragState is null
+            || e.Pointer.PointerId != _dragState.Pointer.PointerId)
         {
             return;
         }
@@ -560,7 +569,8 @@ public sealed partial class CardListView : UserControl
 
     private void LayoutRoot_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        if (_dragState is null)
+        if (_dragState is null
+            || e.Pointer.PointerId != _dragState.Pointer.PointerId)
         {
             return;
         }
@@ -627,13 +637,20 @@ public sealed partial class CardListView : UserControl
             return;
         }
 
+        var item = dragState.Entry.Item;
+
+        var index = IndexOfItem(items, item);
+        if (index < 0)
+        {
+            return;
+        }
+
         // The cards already sit in the new order, so the list is brought into line with them rather than
         // the other way round.
         _isCommittingOrder = true;
         try
         {
-            var item = dragState.Entry.Item;
-            items.Remove(item);
+            items.RemoveAt(index);
             items.Insert(dragState.SlotIndex, item);
         }
         finally
@@ -666,5 +683,20 @@ public sealed partial class CardListView : UserControl
         var transform = element.TransformToVisual(LayoutRoot);
 
         return transform.TransformPoint(new Point(0, 0)).Y;
+    }
+
+    // The position of an entry, found by identity rather than by value. A list of records can hold two
+    // equal entries, and IList.Remove would take the first of them rather than the one the user acted on.
+    private static int IndexOfItem(IList items, object item)
+    {
+        for (var index = 0; index < items.Count; index++)
+        {
+            if (ReferenceEquals(items[index], item))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 }

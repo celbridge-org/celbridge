@@ -66,7 +66,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsBackEnabled))]
     [NotifyPropertyChangedFor(nameof(IsForwardEnabled))]
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
-    [NotifyPropertyChangedFor(nameof(IsHomeEnabled))]
     [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
     [NotifyPropertyChangedFor(nameof(IsLoadFailedVisible))]
@@ -146,7 +145,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             OnPropertyChanged(nameof(IsBackEnabled));
             OnPropertyChanged(nameof(IsForwardEnabled));
             OnPropertyChanged(nameof(IsReloadOrStopEnabled));
-            OnPropertyChanged(nameof(IsHomeEnabled));
             OnPropertyChanged(nameof(IsPlaceholderVisible));
             OnPropertyChanged(nameof(IsEmptyStateVisible));
             OnPropertyChanged(nameof(IsLoadFailedVisible));
@@ -380,6 +378,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         _iconService = iconService;
         _stringLocalizer = stringLocalizer;
 
+        PropertyChanged += WebViewDocumentViewModel_PropertyChanged;
         Bookmarks.CollectionChanged += Bookmarks_CollectionChanged;
     }
 
@@ -406,9 +405,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             return Result.Ok();
         }
 
-        // A reload after a rename re-enters here, so detach the change handler
-        // while the parsed values are pushed onto the properties.
-        PropertyChanged -= WebViewDocumentViewModel_PropertyChanged;
+        // A reload after a rename re-enters here, so the parsed values are pushed onto the properties with
+        // the change handlers held off.
         _isLoadingContent = true;
 
         try
@@ -423,8 +421,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         {
             _isLoadingContent = false;
         }
-
-        PropertyChanged += WebViewDocumentViewModel_PropertyChanged;
 
         return Result.Ok();
     }
@@ -683,13 +679,26 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         return _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     }
 
+    // Records an edit against the document, unless the change came from the load rather than from the user.
+    // An HTML viewer has no .webview file behind it, so nothing it reports is a change to write back.
+    private void RecordDataChanged()
+    {
+        if (_isLoadingContent
+            || Role == WebViewDocumentRole.HtmlViewer)
+        {
+            return;
+        }
+
+        OnDataChanged();
+    }
+
     private void WebViewDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SourceUrl) ||
             e.PropertyName == nameof(ShowUrlBar) ||
             e.PropertyName == nameof(ShowBookmarksBar))
         {
-            OnDataChanged();
+            RecordDataChanged();
         }
     }
 
@@ -734,16 +743,20 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         OnPropertyChanged(nameof(ToolbarBookmarks));
         OnPropertyChanged(nameof(CanAddBookmarkFromCurrentPage));
 
-        if (_isLoadingContent)
-        {
-            return;
-        }
-
-        OnDataChanged();
+        RecordDataChanged();
     }
 
     private void Bookmark_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        // The stored properties only. A bookmark also reports the display properties derived from these,
+        // which carry no edit of their own.
+        if (e.PropertyName != nameof(WebViewBookmarkViewModel.Url)
+            && e.PropertyName != nameof(WebViewBookmarkViewModel.Name)
+            && e.PropertyName != nameof(WebViewBookmarkViewModel.Icon))
+        {
+            return;
+        }
+
         if (e.PropertyName == nameof(WebViewBookmarkViewModel.Url))
         {
             OnPropertyChanged(nameof(IsBookmarksBarVisible));
@@ -751,12 +764,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             OnPropertyChanged(nameof(CanAddBookmarkFromCurrentPage));
         }
 
-        if (_isLoadingContent)
-        {
-            return;
-        }
-
-        OnDataChanged();
+        RecordDataChanged();
     }
 
     // A blank WebView reports an empty source or about:blank; neither is a page

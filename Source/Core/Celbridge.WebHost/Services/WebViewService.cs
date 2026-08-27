@@ -19,19 +19,6 @@ public class WebViewService : IWebViewService
         _webViewAdapter = webViewAdapter;
     }
 
-    public bool IsExternalUrl(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return false;
-        }
-
-        var trimmed = url.Trim();
-
-        return trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-    }
-
     public bool IsDevToolsFeatureEnabled()
     {
         return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevTools);

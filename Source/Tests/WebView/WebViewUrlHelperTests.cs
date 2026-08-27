@@ -21,10 +21,20 @@ public class WebViewUrlHelperTests
         url.Should().Be("http://localhost:5173");
     }
 
-    [Test]
-    public void TryNormalize_RejectsANonWebScheme()
+    [TestCase("file:///c:/notes.txt")]
+    [TestCase("local://Sites/index.html")]
+    [TestCase("LOCAL://Sites/index.html")]
+    public void TryNormalize_RejectsANonWebScheme(string url)
     {
-        WebViewUrlHelper.TryNormalize("file:///c:/notes.txt", out _).Should().BeFalse();
+        WebViewUrlHelper.TryNormalize(url, out _).Should().BeFalse();
+    }
+
+    [TestCase("")]
+    [TestCase("   ")]
+    [TestCase("../index.html")]
+    public void TryNormalize_RejectsAnAddressThatNamesNoHost(string url)
+    {
+        WebViewUrlHelper.TryNormalize(url, out _).Should().BeFalse();
     }
 
     [Test]
