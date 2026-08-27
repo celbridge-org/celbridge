@@ -1,10 +1,10 @@
 # Nerd Fonts (Symbols Only)
 
-`SymbolsNerdFont-Regular.ttf` and `glyphnames.json` are taken unmodified from the Nerd Fonts v3.4.0
-release, published 2025-04-24.
+`SymbolsNerdFont-Regular.ttf` and `glyphnames.json` are taken unmodified from the Nerd Fonts v3.5.0
+release, published 2026-08-02.
 
-* Font: <https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/NerdFontsSymbolsOnly.zip>
-* Glyph names: <https://github.com/ryanoasis/nerd-fonts/blob/v3.4.0/glyphnames.json>
+* Font: <https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.0/NerdFontsSymbolsOnly.zip>
+* Glyph names: <https://github.com/ryanoasis/nerd-fonts/blob/v3.5.0/glyphnames.json>
 * Project: <https://github.com/ryanoasis/nerd-fonts>
 
 The Nerd Fonts project itself is MIT licensed; that licence is in the `LICENSE` file beside this one.
@@ -14,7 +14,7 @@ The Nerd Fonts project itself is MIT licensed; that licence is in the `LICENSE` 
 Nerd Fonts aggregates several icon sets into one font, each under its own licence. The name prefix
 identifies which set a glyph came from, so `nf-oct-repo` is an Octicon and `nf-md-language_python` is a
 Material Design icon. The licence files are published upstream under
-<https://github.com/ryanoasis/nerd-fonts/tree/v3.4.0/src/glyphs>.
+<https://github.com/ryanoasis/nerd-fonts/tree/v3.5.0/src/glyphs>.
 
 | Prefix | Icon set | Licence |
 | --- | --- | --- |
