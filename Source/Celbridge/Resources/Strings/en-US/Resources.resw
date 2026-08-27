@@ -585,18 +585,6 @@
   <data name="WebView_Settings_SetCurrentPageAsHome" xml:space="preserve">
     <value>Set Current Page as Home</value>
   </data>
-  <data name="WebView_Settings_NewDocument" xml:space="preserve">
-    <value>New Web View Document…</value>
-  </data>
-  <data name="WebView_Settings_NewDocumentTooltip" xml:space="preserve">
-    <value>Create a new Web View document for the current page</value>
-  </data>
-  <data name="WebView_NewDocumentDialog_Title" xml:space="preserve">
-    <value>New Web View Document</value>
-  </data>
-  <data name="WebView_NewDocumentDialog_DocumentName" xml:space="preserve">
-    <value>Document Name</value>
-  </data>
   <data name="WebView_Settings_ShowUrlBarLabel" xml:space="preserve">
     <value>Show URL Bar</value>
   </data>
@@ -604,7 +592,7 @@
     <value>Right-click the document tab to show the URL bar again.</value>
   </data>
   <data name="WebView_Settings_BrowsingDataHint" xml:space="preserve">
-    <value>This data is shared by every web page in Celbridge, so clearing it signs you out of every site, in every document.</value>
+    <value>Clear the browsing data from the application settings.</value>
   </data>
   <data name="WebView_Settings_OpenApplicationSettings" xml:space="preserve">
     <value>Open Application Settings</value>
@@ -628,22 +616,79 @@
     <value>Home</value>
   </data>
   <data name="WebView_Settings_HomeDescription" xml:space="preserve">
-    <value>Set the page this document opens on, or adopt the page on screen.</value>
+    <value>Choose the page this document opens on.</value>
   </data>
   <data name="WebView_Settings_AppearanceHeader" xml:space="preserve">
     <value>Appearance</value>
   </data>
   <data name="WebView_Settings_AppearanceDescription" xml:space="preserve">
-    <value>Choose which chrome the document shows around the page.</value>
+    <value>Choose which toolbars this document shows.</value>
   </data>
   <data name="WebView_Settings_BrowsingDataHeader" xml:space="preserve">
     <value>Browsing Data</value>
   </data>
   <data name="WebView_Settings_BrowsingDataDescription" xml:space="preserve">
-    <value>Cookies, cached credentials and site data for every web page in Celbridge.</value>
+    <value>Cookies, saved logins and other data stored by the web pages you visit.</value>
   </data>
   <data name="WebView_InvalidUrl" xml:space="preserve">
     <value>Enter a valid external URL (https://...).</value>
+  </data>
+  <data name="WebView_Settings_BookmarksHeader" xml:space="preserve">
+    <value>Bookmarks</value>
+  </data>
+  <data name="WebView_Settings_BookmarksDescription" xml:space="preserve">
+    <value>Pages you can jump to from the buttons under the address bar.</value>
+  </data>
+  <data name="WebView_Settings_AddBookmarkFromCurrentPage" xml:space="preserve">
+    <value>Bookmark Current Page</value>
+  </data>
+  <data name="WebView_Settings_AddBookmark" xml:space="preserve">
+    <value>Add Bookmark</value>
+  </data>
+  <data name="WebView_Settings_NoBookmarks" xml:space="preserve">
+    <value>No bookmarks yet.</value>
+  </data>
+  <data name="WebView_Settings_BookmarkUrlLabel" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="WebView_Settings_BookmarkNameLabel" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="WebView_Settings_BookmarkIconLabel" xml:space="preserve">
+    <value>Icon</value>
+  </data>
+  <data name="WebView_Settings_BookmarkNamePlaceholder" xml:space="preserve">
+    <value>Name shown on the button</value>
+  </data>
+  <data name="WebView_Settings_BookmarkIconPlaceholder" xml:space="preserve">
+    <value>bs-book</value>
+  </data>
+  <data name="WebView_Settings_BookmarkIconHint" xml:space="preserve">
+    <value>An icon name such as bs-book or bs-github. Leave blank for no icon.</value>
+  </data>
+  <data name="WebView_Settings_BookmarkUnknownIcon" xml:space="preserve">
+    <value>There is no icon with this name, so a default one is shown.</value>
+  </data>
+  <data name="WebView_Settings_BookmarkOpenTooltip" xml:space="preserve">
+    <value>Open this bookmark</value>
+  </data>
+  <data name="WebView_Settings_BookmarkUntitled" xml:space="preserve">
+    <value>Untitled bookmark</value>
+  </data>
+  <data name="WebView_Bookmarks_ManageTooltip" xml:space="preserve">
+    <value>Manage bookmarks</value>
+  </data>
+  <data name="WebView_Settings_ShowBookmarksBarLabel" xml:space="preserve">
+    <value>Show bookmarks bar</value>
+  </data>
+  <data name="WebView_Settings_ShowBookmarksBarHint" xml:space="preserve">
+    <value>The bar only appears when you have bookmarks.</value>
+  </data>
+  <data name="CardList_Reorder" xml:space="preserve">
+    <value>Drag to reorder</value>
+  </data>
+  <data name="CardList_Delete" xml:space="preserve">
+    <value>Delete</value>
   </data>
   <data name="Documents_OpenDocumentFailedTitle" xml:space="preserve">
     <value>Open Document Failed</value>

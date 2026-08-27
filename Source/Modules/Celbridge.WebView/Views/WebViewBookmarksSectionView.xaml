@@ -1,0 +1,98 @@
+<UserControl
+    x:Class="Celbridge.WebView.Views.WebViewBookmarksSectionView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:vm="using:Celbridge.WebView.ViewModels"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+  <UserControl.Resources>
+
+    <!-- The collapsed card identifies the bookmark the way its toolbar button does, so what the header
+         shows is a preview of what the bar will show. -->
+    <DataTemplate x:Key="BookmarkHeaderTemplate" x:DataType="vm:WebViewBookmarkViewModel">
+      <StackPanel Orientation="Horizontal"
+                  Spacing="8"
+                  VerticalAlignment="Center">
+        <controls:Icon IconName="{x:Bind Icon, Mode=OneWay}"
+                       FontSize="{StaticResource IconSizeMedium}"
+                       VerticalAlignment="Center"
+                       Visibility="{x:Bind HasIcon, Mode=OneWay}" />
+        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}"
+                   Style="{StaticResource ListItemTitleTextStyle}"
+                   TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="BookmarkActionsTemplate" x:DataType="vm:WebViewBookmarkViewModel">
+      <controls:IconButton VerticalAlignment="Center"
+                           ToolTipService.ToolTip="{x:Bind OpenTooltip}"
+                           Click="OpenBookmarkButton_Click">
+        <controls:Icon IconName="bs-arrow-up-right" FontSize="{StaticResource IconSizeMedium}" />
+      </controls:IconButton>
+    </DataTemplate>
+
+    <DataTemplate x:Key="BookmarkBodyTemplate" x:DataType="vm:WebViewBookmarkViewModel">
+      <StackPanel Spacing="12">
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind UrlLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <TextBox IsSpellCheckEnabled="False"
+                   PlaceholderText="{x:Bind UrlPlaceholder}"
+                   Text="{x:Bind Url, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                   KeyDown="CommitField_KeyDown" />
+          <TextBlock Text="{x:Bind InvalidUrlText}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                     TextWrapping="Wrap"
+                     Visibility="{x:Bind IsUrlInvalid, Mode=OneWay}" />
+        </StackPanel>
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind NameLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <TextBox IsSpellCheckEnabled="False"
+                   PlaceholderText="{x:Bind NamePlaceholder}"
+                   Text="{x:Bind Name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                   KeyDown="CommitField_KeyDown" />
+        </StackPanel>
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind IconLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <TextBox IsSpellCheckEnabled="False"
+                   PlaceholderText="{x:Bind IconPlaceholder}"
+                   Text="{x:Bind Icon, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                   KeyDown="CommitField_KeyDown" />
+          <TextBlock Text="{x:Bind IconHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind UnknownIconText}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                     TextWrapping="Wrap"
+                     Visibility="{x:Bind IsIconUnknown, Mode=OneWay}" />
+        </StackPanel>
+
+      </StackPanel>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <controls:CardListView x:Name="BookmarkCards"
+                         HeaderTemplate="{StaticResource BookmarkHeaderTemplate}"
+                         HeaderActionsTemplate="{StaticResource BookmarkActionsTemplate}"
+                         BodyTemplate="{StaticResource BookmarkBodyTemplate}"
+                         AddButtonText="{x:Bind AddBookmarkString}"
+                         EmptyText="{x:Bind NoBookmarksString}">
+
+    <controls:CardListView.AddRowContent>
+      <Button Content="{x:Bind AddCurrentPageString}"
+              IsEnabled="{x:Bind ViewModel.CanAddBookmarkFromCurrentPage, Mode=OneWay}"
+              Click="AddCurrentPageButton_Click" />
+    </controls:CardListView.AddRowContent>
+
+  </controls:CardListView>
+</UserControl>

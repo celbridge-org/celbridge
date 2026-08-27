@@ -1,0 +1,44 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.CardListView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+  <UserControl.Resources>
+    <!-- Held here rather than looked up from the application resources, so the accent resolves against the
+         theme this control is drawn under. The palette is generated once per theme, and an application-level
+         lookup answers to the operating system's theme rather than the one the window is showing. -->
+    <SolidColorBrush x:Key="CardDragOutlineBrush" Color="{ThemeResource AccentColor}" />
+    <SolidColorBrush x:Key="CardDragGripBrush" Color="{ThemeResource AccentContrastColor}" />
+  </UserControl.Resources>
+
+  <!-- The reorder drag captures the pointer on this root rather than on the grip that started it: the
+       dragged card moves between slots while the drag runs, and a captured element that is reparented
+       loses its capture. The background makes the root hit-testable so the pointer can reach it. -->
+  <Grid x:Name="LayoutRoot"
+        Background="Transparent">
+
+    <StackPanel Spacing="8">
+
+      <StackPanel x:Name="CardsPanel"
+                  Spacing="8" />
+
+      <TextBlock x:Name="EmptyTextBlock"
+                 Style="{StaticResource SupportingTextStyle}"
+                 TextWrapping="Wrap" />
+
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Left"
+                  Spacing="8">
+
+        <ContentPresenter x:Name="AddRowPresenter"
+                          VerticalAlignment="Center" />
+
+        <Button x:Name="AddButton"
+                Click="AddButton_Click" />
+
+      </StackPanel>
+
+    </StackPanel>
+  </Grid>
+</UserControl>

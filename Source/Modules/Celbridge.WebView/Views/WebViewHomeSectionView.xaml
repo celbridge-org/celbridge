@@ -12,7 +12,8 @@
             <TextBox IsSpellCheckEnabled="False"
                      PlaceholderText="{x:Bind AddressPlaceholderString}"
                      ToolTipService.ToolTip="{x:Bind ViewModel.HomeUrlTooltip, Mode=OneWay}"
-                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                     Text="{x:Bind ViewModel.SourceUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     KeyDown="CommitField_KeyDown" />
             <TextBlock Text="{x:Bind InvalidUrlString}"
                        Style="{StaticResource SupportingTextStyle}"
                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
@@ -20,16 +21,10 @@
                        Visibility="{x:Bind ViewModel.IsHomeUrlInvalid, Mode=OneWay}" />
         </StackPanel>
 
-        <StackPanel Orientation="Horizontal"
-                    Spacing="8">
-            <Button Content="{x:Bind SetCurrentPageAsHomeString}"
-                    IsEnabled="{x:Bind ViewModel.CanSetCurrentPageAsHome, Mode=OneWay}"
-                    Click="SetCurrentPageAsHomeButton_Click" />
-            <Button Content="{x:Bind NewDocumentString}"
-                    ToolTipService.ToolTip="{x:Bind NewDocumentTooltipString}"
-                    IsEnabled="{x:Bind ViewModel.CanCreateDocumentFromCurrentPage, Mode=OneWay}"
-                    Click="NewDocumentButton_Click" />
-        </StackPanel>
+        <Button Content="{x:Bind SetCurrentPageAsHomeString}"
+                HorizontalAlignment="Left"
+                IsEnabled="{x:Bind ViewModel.CanSetCurrentPageAsHome, Mode=OneWay}"
+                Click="SetCurrentPageAsHomeButton_Click" />
 
     </StackPanel>
 </UserControl>

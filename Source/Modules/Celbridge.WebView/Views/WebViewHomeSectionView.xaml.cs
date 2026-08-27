@@ -1,12 +1,13 @@
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebView.ViewModels;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// The Home section of the Web View settings: the URL the document opens on, and the actions that adopt
-/// the page on screen as that URL or as a new document.
+/// The Home section of the Web View settings: the URL the document opens on, and the action that adopts
+/// the page on screen as that URL.
 /// </summary>
 public sealed partial class WebViewHomeSectionView : UserControl
 {
@@ -30,8 +31,6 @@ public sealed partial class WebViewHomeSectionView : UserControl
     public string AddressPlaceholderString => _stringLocalizer.GetString("WebView_UrlBar_AddressPlaceholder");
     public string InvalidUrlString => _stringLocalizer.GetString("WebView_InvalidUrl");
     public string SetCurrentPageAsHomeString => _stringLocalizer.GetString("WebView_Settings_SetCurrentPageAsHome");
-    public string NewDocumentString => _stringLocalizer.GetString("WebView_Settings_NewDocument");
-    public string NewDocumentTooltipString => _stringLocalizer.GetString("WebView_Settings_NewDocumentTooltip");
 
     public WebViewHomeSectionView()
     {
@@ -40,13 +39,13 @@ public sealed partial class WebViewHomeSectionView : UserControl
         InitializeComponent();
     }
 
+    private void CommitField_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        FocusNavigationHelper.CommitFieldOnEnter(sender, e);
+    }
+
     private void SetCurrentPageAsHomeButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel?.SetCurrentPageAsHome();
-    }
-
-    private void NewDocumentButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel?.CreateDocumentFromCurrentPage();
     }
 }

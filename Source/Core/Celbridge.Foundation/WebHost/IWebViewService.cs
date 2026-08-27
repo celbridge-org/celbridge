@@ -27,12 +27,6 @@ public interface IGetWebViewToolSupportCommand : IExecutableCommand<WebViewToolS
 public interface IWebViewService
 {
     /// <summary>
-    /// Returns true if the URL is an external http/https URL suitable for navigating
-    /// inside a .webview document. Local-scheme and relative-path URLs are rejected.
-    /// </summary>
-    bool IsExternalUrl(string url);
-
-    /// <summary>
     /// Returns true if the WebViewDevTools feature flag is enabled in the
     /// user's .celbridge config. Callers that additionally need to block
     /// DevTools for a specific host (e.g. a bundled package that embeds

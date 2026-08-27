@@ -21,5 +21,18 @@
                        TextWrapping="Wrap" />
         </StackPanel>
 
+        <StackPanel Spacing="2">
+            <TextBlock Text="{x:Bind ShowBookmarksBarLabelString}"
+                       Style="{StaticResource FieldLabelTextStyle}" />
+            <ToggleSwitch MinWidth="0"
+                          OnContent=""
+                          OffContent=""
+                          IsOn="{x:Bind ViewModel.ShowBookmarksBar, Mode=TwoWay}" />
+
+            <TextBlock Text="{x:Bind ShowBookmarksBarHintString}"
+                       Style="{StaticResource SupportingTextStyle}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
     </StackPanel>
 </UserControl>

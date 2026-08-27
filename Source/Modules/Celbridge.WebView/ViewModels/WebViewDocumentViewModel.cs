@@ -1,12 +1,16 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
+using Celbridge.WebView.Helpers;
 using Celbridge.WebView.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WebView.ViewModels;
 
@@ -24,9 +28,14 @@ public enum WebViewDownloadStatus
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
-    private readonly IWebViewService _webViewService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IServerService _serverService;
+    private readonly IIconService _iconService;
+    private readonly IStringLocalizer _stringLocalizer;
+
+    // Set while the document's settings are being read off disk, so the bookmarks arriving in the
+    // collection are not taken for edits and written straight back out.
+    private bool _isLoadingContent;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomeUrlValid))]
@@ -42,6 +51,10 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsSettingsHintVisible))]
     private bool _showUrlBar = true;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBookmarksBarVisible))]
+    private bool _showBookmarksBar = true;
+
     // Cleared when a navigation starts and set by the stop gesture, so the cancelled navigation that
     // follows is not reported as a page that failed to load.
     private bool _navigationStoppedByUser;
@@ -53,8 +66,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsBackEnabled))]
     [NotifyPropertyChangedFor(nameof(IsForwardEnabled))]
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
-    [NotifyPropertyChangedFor(nameof(IsHomeEnabled))]
-    [NotifyPropertyChangedFor(nameof(IsAddressReadOnly))]
     [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
     [NotifyPropertyChangedFor(nameof(IsLoadFailedVisible))]
@@ -76,7 +87,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
     [NotifyPropertyChangedFor(nameof(CanOpenInBrowser))]
     [NotifyPropertyChangedFor(nameof(CanSetCurrentPageAsHome))]
-    [NotifyPropertyChangedFor(nameof(CanCreateDocumentFromCurrentPage))]
     [NotifyPropertyChangedFor(nameof(HasPage))]
     [NotifyPropertyChangedFor(nameof(AddressText))]
     [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
@@ -85,6 +95,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsAddressHintVisible))]
     [NotifyPropertyChangedFor(nameof(IsSettingsHintVisible))]
     [NotifyPropertyChangedFor(nameof(IsPageOnScreen))]
+    [NotifyPropertyChangedFor(nameof(CanAddBookmarkFromCurrentPage))]
     private string _currentUrl = string.Empty;
 
     // Reported by the WebView when a navigation does not complete, which leaves the page being left
@@ -134,16 +145,27 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             OnPropertyChanged(nameof(IsBackEnabled));
             OnPropertyChanged(nameof(IsForwardEnabled));
             OnPropertyChanged(nameof(IsReloadOrStopEnabled));
-            OnPropertyChanged(nameof(IsHomeEnabled));
-            OnPropertyChanged(nameof(IsAddressReadOnly));
             OnPropertyChanged(nameof(IsPlaceholderVisible));
             OnPropertyChanged(nameof(IsEmptyStateVisible));
             OnPropertyChanged(nameof(IsLoadFailedVisible));
             OnPropertyChanged(nameof(IsAddressHintVisible));
             OnPropertyChanged(nameof(IsSettingsHintVisible));
             OnPropertyChanged(nameof(IsPageOnScreen));
+            OnPropertyChanged(nameof(IsBookmarksBarVisible));
         }
     }
+
+    /// <summary>
+    /// The document's bookmarks, in the order their buttons appear in the bookmarks bar. Editing the
+    /// collection or any bookmark in it records a change against the document.
+    /// </summary>
+    public ObservableCollection<WebViewBookmarkViewModel> Bookmarks { get; } = new();
+
+    /// <summary>
+    /// Raised when something other than the URL bar asks the document to open a page, carrying the URL to
+    /// navigate to. The view owns the WebView, so it performs the navigation.
+    /// </summary>
+    public event EventHandler<string>? NavigateRequested;
 
     /// <summary>
     /// True when the browser-style URL bar should be shown: the external-URL role
@@ -156,6 +178,21 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// settings are external-URL chrome and never appear for the HTML viewer.
     /// </summary>
     public bool IsSettingsVisible => Role == WebViewDocumentRole.ExternalUrl && IsSettingsOpen;
+
+    /// <summary>
+    /// True when the bookmarks bar should be shown. It stays up while the settings have the document area,
+    /// where it doubles as a live preview of the bookmarks being edited.
+    /// </summary>
+    public bool IsBookmarksBarVisible => Role == WebViewDocumentRole.ExternalUrl
+        && ShowBookmarksBar
+        && Bookmarks.Any(bookmark => bookmark.IsNavigable);
+
+    /// <summary>
+    /// The bookmarks the bar offers a button for: those that can actually be navigated to, so an entry
+    /// still being filled in does not put a button there that does nothing.
+    /// </summary>
+    public IReadOnlyList<WebViewBookmarkViewModel> ToolbarBookmarks =>
+        Bookmarks.Where(bookmark => bookmark.IsNavigable).ToList();
 
     /// <summary>
     /// True when the document is showing a page, as opposed to nothing or a page that failed to load.
@@ -238,9 +275,25 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public bool CanSetCurrentPageAsHome => IsPageUrl(CurrentUrl) && CurrentUrl != SourceUrl;
 
     /// <summary>
-    /// True when the page on screen can be captured as a new .webview document.
+    /// True when the page on screen can be bookmarked, which a page a bookmark already points at cannot.
     /// </summary>
-    public bool CanCreateDocumentFromCurrentPage => IsPageUrl(CurrentUrl) && !FileResource.IsEmpty;
+    public bool CanAddBookmarkFromCurrentPage => IsPageUrl(CurrentUrl) && !IsCurrentPageBookmarked;
+
+    private bool IsCurrentPageBookmarked
+    {
+        get
+        {
+            foreach (var bookmark in Bookmarks)
+            {
+                if (WebViewUrlHelper.IsSameUrl(bookmark.Url, CurrentUrl))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
 
     public bool CanReload => IsPageUrl(CurrentUrl);
 
@@ -257,13 +310,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// <summary>
     /// True when the page can be navigated to the configured Home URL.
     /// </summary>
-    public bool IsHomeEnabled => IsHomeUrlValid && !IsSettingsVisible;
-
-    /// <summary>
-    /// True when the address is shown for reading rather than for editing, which is what the settings
-    /// leave it as: the address can still be selected and copied, but not navigated away from.
-    /// </summary>
-    public bool IsAddressReadOnly => IsSettingsVisible;
+    public bool IsHomeEnabled => IsHomeUrlValid;
 
     public bool IsReloadOrStopEnabled => (IsNavigating || CanReload) && !IsSettingsVisible;
 
@@ -320,14 +367,32 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public WebViewDocumentViewModel(
         ICommandService commandService,
-        IWebViewService webViewService,
         IWorkspaceWrapper workspaceWrapper,
-        IServerService serverService)
+        IServerService serverService,
+        IIconService iconService,
+        IStringLocalizer stringLocalizer)
     {
         _commandService = commandService;
-        _webViewService = webViewService;
         _workspaceWrapper = workspaceWrapper;
         _serverService = serverService;
+        _iconService = iconService;
+        _stringLocalizer = stringLocalizer;
+
+        PropertyChanged += WebViewDocumentViewModel_PropertyChanged;
+        Bookmarks.CollectionChanged += Bookmarks_CollectionChanged;
+    }
+
+    // The Home URL field takes the same shorthand the address bar does, so a host typed without a scheme is
+    // completed as it is entered rather than written to the file as something the loader would refuse.
+    partial void OnSourceUrlChanged(string value)
+    {
+        if (!WebViewUrlHelper.TryNormalize(value, out var normalizedUrl)
+            || normalizedUrl == value)
+        {
+            return;
+        }
+
+        SourceUrl = normalizedUrl;
     }
 
     public async Task<Result> LoadContent()
@@ -340,17 +405,22 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             return Result.Ok();
         }
 
-        // A reload after a rename re-enters here, so detach the change handler
-        // while the parsed values are pushed onto the properties.
-        PropertyChanged -= WebViewDocumentViewModel_PropertyChanged;
+        // A reload after a rename re-enters here, so the parsed values are pushed onto the properties with
+        // the change handlers held off.
+        _isLoadingContent = true;
 
-        var loadResult = await LoadDocumentSettingsAsync();
-        if (loadResult.IsFailure)
+        try
         {
-            return loadResult;
+            var loadResult = await LoadDocumentSettingsAsync();
+            if (loadResult.IsFailure)
+            {
+                return loadResult;
+            }
         }
-
-        PropertyChanged += WebViewDocumentViewModel_PropertyChanged;
+        finally
+        {
+            _isLoadingContent = false;
+        }
 
         return Result.Ok();
     }
@@ -370,6 +440,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             // Treat as a blank URL so the view shows nothing rather than failing.
             SourceUrl = string.Empty;
             ShowUrlBar = true;
+            ShowBookmarksBar = true;
+            PopulateBookmarks(Array.Empty<WebViewBookmark>());
             return Result.Ok();
         }
 
@@ -389,6 +461,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         var content = parseResult.Value;
 
         ShowUrlBar = content.ShowUrlBar;
+        ShowBookmarksBar = content.ShowBookmarksBar;
+        PopulateBookmarks(content.Bookmarks);
 
         var sourceUrl = content.SourceUrl.Trim();
         if (string.IsNullOrEmpty(sourceUrl))
@@ -397,13 +471,15 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             return Result.Ok();
         }
 
-        if (!_webViewService.IsExternalUrl(sourceUrl))
+        // A hand-edited file may name a host with no scheme, which is the shorthand the address bar takes,
+        // so it is completed here rather than failing the document over it.
+        if (!WebViewUrlHelper.TryNormalize(sourceUrl, out var normalizedUrl))
         {
             return Result.Fail(
                 $"{ExplorerConstants.WebViewExtension} documents only support external http/https URLs. Configured URL: '{sourceUrl}'");
         }
 
-        SourceUrl = sourceUrl;
+        SourceUrl = normalizedUrl;
         return Result.Ok();
     }
 
@@ -413,7 +489,16 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
-        var content = new WebViewFileContent(SourceUrl, ShowUrlBar);
+        var bookmarks = Bookmarks
+            .Select(bookmark => bookmark.ToBookmark())
+            .Where(bookmark => !string.IsNullOrWhiteSpace(bookmark.Url))
+            .ToList();
+
+        var content = new WebViewFileContent(SourceUrl, ShowUrlBar, ShowBookmarksBar)
+        {
+            Bookmarks = bookmarks
+        };
+
         return await SaveTextToFileAsync(content.ToToml());
     }
 
@@ -423,32 +508,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// </summary>
     public bool TryNormalizeUserUrl(string input, out string url)
     {
-        url = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return false;
-        }
-
-        var trimmed = input.Trim();
-        if (!trimmed.Contains("://", StringComparison.Ordinal))
-        {
-            trimmed = $"https://{trimmed}";
-        }
-
-        if (!_webViewService.IsExternalUrl(trimmed))
-        {
-            return false;
-        }
-
-        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            return false;
-        }
-
-        url = trimmed;
-        return true;
+        return WebViewUrlHelper.TryNormalize(input, out url);
     }
 
     public void OpenBrowser(string url)
@@ -522,21 +582,56 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Opens the dialog that names a new .webview document for the page currently on screen. The document
-    /// is created in this document's folder, so related links stay together.
+    /// Adds a bookmark for the page currently on screen, named after its host so the button reads as
+    /// something before the user renames it.
     /// </summary>
-    public void CreateDocumentFromCurrentPage()
+    public void AddBookmarkFromCurrentPage()
     {
         if (!TryNormalizeUserUrl(CurrentUrl, out var pageUrl))
         {
             return;
         }
 
-        _commandService.Execute<ICreateWebViewDialogCommand>(command =>
+        var name = string.Empty;
+        if (Uri.TryCreate(pageUrl, UriKind.Absolute, out var uri))
         {
-            command.SourceUrl = pageUrl;
-            command.DestFolderResource = FileResource.GetParent();
-        });
+            name = uri.Host;
+        }
+
+        var bookmark = CreateBookmark(new WebViewBookmark(pageUrl, name));
+        Bookmarks.Add(bookmark);
+    }
+
+    /// <summary>
+    /// Builds a bookmark for this document. Use it for every bookmark the settings add, so each one is
+    /// wired to record its edits against the document.
+    /// </summary>
+    public WebViewBookmarkViewModel CreateBookmark(WebViewBookmark bookmark)
+    {
+        var bookmarkViewModel = new WebViewBookmarkViewModel(_iconService, _stringLocalizer)
+        {
+            Url = bookmark.Url,
+            Name = bookmark.Name,
+            Icon = bookmark.Icon
+        };
+
+        return bookmarkViewModel;
+    }
+
+    /// <summary>
+    /// Opens a bookmark, leaving the settings first if they have the document area: the page a bookmark
+    /// opens is behind them.
+    /// </summary>
+    public void OpenBookmark(WebViewBookmarkViewModel bookmark)
+    {
+        if (!TryNormalizeUserUrl(bookmark.Url, out var url))
+        {
+            return;
+        }
+
+        CloseSettings();
+
+        NavigateRequested?.Invoke(this, url);
     }
 
     public void BeginDownload()
@@ -584,13 +679,92 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         return _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     }
 
+    // Records an edit against the document, unless the change came from the load rather than from the user.
+    // An HTML viewer has no .webview file behind it, so nothing it reports is a change to write back.
+    private void RecordDataChanged()
+    {
+        if (_isLoadingContent
+            || Role == WebViewDocumentRole.HtmlViewer)
+        {
+            return;
+        }
+
+        OnDataChanged();
+    }
+
     private void WebViewDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SourceUrl) ||
-            e.PropertyName == nameof(ShowUrlBar))
+            e.PropertyName == nameof(ShowUrlBar) ||
+            e.PropertyName == nameof(ShowBookmarksBar))
         {
-            OnDataChanged();
+            RecordDataChanged();
         }
+    }
+
+    // Replaces the bookmarks with those just read off disk. The collection handler is what keeps each
+    // bookmark's edits wired up, so the load goes through the collection rather than around it.
+    private void PopulateBookmarks(IReadOnlyList<WebViewBookmark> bookmarks)
+    {
+        // Clearing raises a reset, which reports no old items, so the outgoing bookmarks are detached here.
+        foreach (var bookmark in Bookmarks)
+        {
+            bookmark.PropertyChanged -= Bookmark_PropertyChanged;
+        }
+
+        Bookmarks.Clear();
+
+        foreach (var bookmark in bookmarks)
+        {
+            var bookmarkViewModel = CreateBookmark(bookmark);
+            Bookmarks.Add(bookmarkViewModel);
+        }
+    }
+
+    private void Bookmarks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (WebViewBookmarkViewModel bookmark in e.OldItems)
+            {
+                bookmark.PropertyChanged -= Bookmark_PropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (WebViewBookmarkViewModel bookmark in e.NewItems)
+            {
+                bookmark.PropertyChanged += Bookmark_PropertyChanged;
+            }
+        }
+
+        OnPropertyChanged(nameof(IsBookmarksBarVisible));
+        OnPropertyChanged(nameof(ToolbarBookmarks));
+        OnPropertyChanged(nameof(CanAddBookmarkFromCurrentPage));
+
+        RecordDataChanged();
+    }
+
+    private void Bookmark_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // The stored properties only. A bookmark also reports the display properties derived from these,
+        // which carry no edit of their own.
+        if (e.PropertyName != nameof(WebViewBookmarkViewModel.Url)
+            && e.PropertyName != nameof(WebViewBookmarkViewModel.Name)
+            && e.PropertyName != nameof(WebViewBookmarkViewModel.Icon))
+        {
+            return;
+        }
+
+        if (e.PropertyName == nameof(WebViewBookmarkViewModel.Url))
+        {
+            OnPropertyChanged(nameof(IsBookmarksBarVisible));
+            OnPropertyChanged(nameof(ToolbarBookmarks));
+            OnPropertyChanged(nameof(CanAddBookmarkFromCurrentPage));
+        }
+
+        RecordDataChanged();
     }
 
     // A blank WebView reports an empty source or about:blank; neither is a page
