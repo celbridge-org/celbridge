@@ -10,7 +10,7 @@
          sections inside its area grids are managed by the DocumentSectionContainer coordinator, wired
          up in code-behind. The Documents focus-tracking identity is declared per area grid inside the
          surface container, because the Utility Panel shares that tree and keeps its own. -->
-    <workspace:WorkspaceSurfaceContainer x:Name="SurfaceContainer"/>
+    <workspace:WorkspaceLayoutContainer x:Name="LayoutContainer"/>
     <!-- Topmost display-only layer for tab drag visuals (ghost and insertion indicator) -->
     <Canvas x:Name="TabDragOverlay"
             IsHitTestVisible="False"/>

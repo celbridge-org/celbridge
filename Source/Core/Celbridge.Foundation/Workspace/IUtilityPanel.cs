@@ -5,7 +5,7 @@ using Celbridge.Search;
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Ids for the built-in Utility Panel surfaces, in the same "{scope}.{name}" form as custom utility ids.
+/// Ids for the built-in Utility Panel utilities, in the same "{scope}.{name}" form as custom utility ids.
 /// </summary>
 public static class BuiltInUtilityIds
 {
@@ -39,7 +39,7 @@ public static class BuiltInLauncherIds
 }
 
 /// <summary>
-/// Interface for the Utility Panel, which hosts the Explorer and Search surfaces plus any custom utilities.
+/// Interface for the Utility Panel, which hosts the built-in Explorer and Search plus any custom utilities.
 /// </summary>
 public interface IUtilityPanel
 {
@@ -54,7 +54,7 @@ public interface IUtilityPanel
     ISearchPanel SearchPanel { get; }
 
     /// <summary>
-    /// The utility id of the surface currently active in the rail. Empty when no rail surface is active.
+    /// The utility id of the utility currently active in the rail. Empty when none is active.
     /// </summary>
     EditorId ActiveUtilityId { get; }
 
@@ -66,7 +66,7 @@ public interface IUtilityPanel
 
     /// <summary>
     /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
-    /// otherwise selects its rail surface in the Utility Panel, presenting the panel when it is collapsed. A
+    /// otherwise selects its rail item in the Utility Panel, presenting the panel when it is collapsed. A
     /// no-op when no utility has that id.
     /// </summary>
     void ShowUtility(EditorId utilityId);
@@ -91,14 +91,14 @@ public interface IUtilityPanel
     void ClearRailItems();
 
     /// <summary>
-    /// Tells the panel where a custom utility now lives, so the rail and the panel's surface follow it.
+    /// Tells the panel where a custom utility now lives, so the rail and the panel's content follow it.
     /// documentResource is the document hosting the utility while the area is a document area, and is
     /// otherwise ignored.
     /// </summary>
     void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource);
 
     /// <summary>
-    /// Restores the previously active rail surface from workspace settings, falling back to Explorer when the
+    /// Restores the previously active rail item from workspace settings, falling back to Explorer when the
     /// persisted id no longer resolves. Called on project load after the utility items have been built.
     /// </summary>
     void RestoreSelectedUtility();

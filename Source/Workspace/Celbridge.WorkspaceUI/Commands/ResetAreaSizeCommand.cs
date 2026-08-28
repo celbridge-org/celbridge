@@ -2,13 +2,13 @@ using Celbridge.Commands;
 
 namespace Celbridge.WorkspaceUI.Commands;
 
-public class ResetSurfaceSizeCommand : CommandBase, IResetSurfaceSizeCommand
+public class ResetAreaSizeCommand : CommandBase, IResetAreaSizeCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public WorkspaceSurface Surface { get; set; }
+    public WorkspaceArea Area { get; set; }
 
-    public ResetSurfaceSizeCommand(IWorkspaceWrapper workspaceWrapper)
+    public ResetAreaSizeCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -17,22 +17,22 @@ public class ResetSurfaceSizeCommand : CommandBase, IResetSurfaceSizeCommand
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
-        switch (Surface)
+        switch (Area)
         {
-            case WorkspaceSurface.UtilityPanel:
+            case WorkspaceArea.Utility:
                 workspaceSettings.UtilityPanelWidth = WorkspaceConstants.UtilityPanelWidth;
                 break;
 
-            case WorkspaceSurface.SideArea:
+            case WorkspaceArea.Side:
                 workspaceSettings.SideAreaWidth = WorkspaceConstants.SideAreaWidth;
                 break;
 
-            case WorkspaceSurface.BottomArea:
+            case WorkspaceArea.Bottom:
                 workspaceSettings.BottomAreaHeight = WorkspaceConstants.BottomAreaHeight;
                 break;
 
             default:
-                return Result.Fail($"Unknown surface: {Surface}");
+                return Result.Fail($"Area has no size of its own: {Area}");
         }
 
         await Task.CompletedTask;

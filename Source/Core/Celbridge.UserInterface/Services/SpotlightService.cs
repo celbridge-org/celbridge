@@ -94,7 +94,7 @@ public sealed class SpotlightService : ISpotlightService
             return Result.Fail($"Cannot show spotlight on '{target}': the workspace UI is not available.");
         }
 
-        // A spotlight reveals whatever surface its landmark sits on, which would take the user out of the
+        // A spotlight reveals whatever area its landmark sits in, which would take the user out of the
         // presentation they are giving. Leaving Presentation mode is theirs to decide, and a spotlight is
         // cosmetic, so the request is refused instead.
         if (_windowModeService.LayoutMode == LayoutMode.Presentation)
@@ -105,12 +105,12 @@ public sealed class SpotlightService : ISpotlightService
         // Clear the previous spotlight (undoing its transient reveal) before preparing the new one.
         ClearSpotlightState();
 
-        // Reveal the landmark's layout surface, so spotlighting a landmark in a collapsed panel
+        // Reveal the landmark's workspace area, so spotlighting a landmark in a collapsed panel
         // opens that panel first. The reveal is sticky: the panel stays open afterwards.
         if (_landmarkRegistry.TryGetLandmark(target, out var descriptor) &&
-            descriptor!.Surface is not null)
+            descriptor!.Area is not null)
         {
-            _layoutService.SetSurfaceVisibility(descriptor.Surface.Value, true);
+            _layoutService.SetAreaVisibility(descriptor.Area.Value, true);
         }
 
         // Run the landmark's own reveal, if it has a provider (for example switching to the

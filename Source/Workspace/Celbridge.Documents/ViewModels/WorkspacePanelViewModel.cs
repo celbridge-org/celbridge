@@ -38,15 +38,15 @@ public partial class WorkspacePanelViewModel : ObservableObject
     {
         if (e.PropertyName == nameof(IBindableWorkspaceSettings.UtilityPanelWidth))
         {
-            SurfaceSizeChanged?.Invoke(WorkspaceSurface.UtilityPanel);
+            AreaSizeChanged?.Invoke(WorkspaceArea.Utility);
         }
         else if (e.PropertyName == nameof(IBindableWorkspaceSettings.BottomAreaHeight))
         {
-            SurfaceSizeChanged?.Invoke(WorkspaceSurface.BottomArea);
+            AreaSizeChanged?.Invoke(WorkspaceArea.Bottom);
         }
         else if (e.PropertyName == nameof(IBindableWorkspaceSettings.SideAreaWidth))
         {
-            SurfaceSizeChanged?.Invoke(WorkspaceSurface.SideArea);
+            AreaSizeChanged?.Invoke(WorkspaceArea.Side);
         }
     }
 
@@ -105,9 +105,9 @@ public partial class WorkspacePanelViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Raised when a stored surface size changes, so the view can re-apply it to the live layout.
+    /// Raised when a stored area size changes, so the view can re-apply it to the live layout.
     /// </summary>
-    public event Action<WorkspaceSurface>? SurfaceSizeChanged;
+    public event Action<WorkspaceArea>? AreaSizeChanged;
 
     public void OnAreaLayoutChanged(DocumentArea area, bool isSplit, double splitRatio)
     {
@@ -116,19 +116,19 @@ public partial class WorkspacePanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public float GetSurfaceSize(WorkspaceSurface surface)
+    public float GetAreaSize(WorkspaceArea area)
     {
         var settings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
-        switch (surface)
+        switch (area)
         {
-            case WorkspaceSurface.UtilityPanel:
+            case WorkspaceArea.Utility:
                 return settings.UtilityPanelWidth;
 
-            case WorkspaceSurface.BottomArea:
+            case WorkspaceArea.Bottom:
                 return settings.BottomAreaHeight;
 
-            case WorkspaceSurface.SideArea:
+            case WorkspaceArea.Side:
                 return settings.SideAreaWidth;
 
             default:
@@ -136,35 +136,35 @@ public partial class WorkspacePanelViewModel : ObservableObject
         }
     }
 
-    public void StoreSurfaceSize(WorkspaceSurface surface, float size)
+    public void StoreAreaSize(WorkspaceArea area, float size)
     {
         var settings = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
-        switch (surface)
+        switch (area)
         {
-            case WorkspaceSurface.UtilityPanel:
+            case WorkspaceArea.Utility:
                 settings.UtilityPanelWidth = size;
                 break;
 
-            case WorkspaceSurface.BottomArea:
+            case WorkspaceArea.Bottom:
                 settings.BottomAreaHeight = size;
                 break;
 
-            case WorkspaceSurface.SideArea:
+            case WorkspaceArea.Side:
                 settings.SideAreaWidth = size;
                 break;
         }
     }
 
-    public void ResetSurfaceSize(WorkspaceSurface surface)
+    public void ResetAreaSize(WorkspaceArea area)
     {
-        _commandService.Execute<IResetSurfaceSizeCommand>(command =>
+        _commandService.Execute<IResetAreaSizeCommand>(command =>
         {
-            command.Surface = surface;
+            command.Area = area;
         });
     }
 
-    public bool IsUtilityPanelVisible => _layoutService.IsUtilityPanelVisible;
+    public bool IsUtilityPanelVisible => _layoutService.IsAreaVisible(WorkspaceArea.Utility);
 
     public BottomAreaAlignment BottomAreaAlignment => _layoutService.BottomAreaAlignment;
 
@@ -175,7 +175,7 @@ public partial class WorkspacePanelViewModel : ObservableObject
             return true;
         }
 
-        return _layoutService.SurfaceVisibility.HasFlag(area.GetSurface());
+        return _layoutService.IsAreaVisible(area.GetWorkspaceArea());
     }
 
     public void SetAreaVisible(DocumentArea area, bool isVisible)
@@ -185,9 +185,9 @@ public partial class WorkspacePanelViewModel : ObservableObject
             return;
         }
 
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Surfaces = area.GetSurface();
+            command.Area = area.GetWorkspaceArea();
             command.IsVisible = isVisible;
         });
     }

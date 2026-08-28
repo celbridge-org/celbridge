@@ -3,6 +3,7 @@ using Celbridge.Messaging.Services;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Commands;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +34,7 @@ public class SetBottomAreaAlignmentCommandTests
         var settingsService = Substitute.For<ISettingsService>();
 
         var workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
-        workspaceSettings.PreferredSurfaceVisibility = WorkspaceSurface.All;
+        workspaceSettings.PreferredVisibleAreas = WorkspaceAreaHelper.AllAreasVisible;
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -55,7 +56,7 @@ public class SetBottomAreaAlignmentCommandTests
     [Test]
     public async Task Execute_HiddenBottomArea_AppliesAlignmentAndShowsTheArea()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Bottom, false);
 
         var command = new SetBottomAreaAlignmentCommand(_layoutManager)
         {
@@ -66,11 +67,11 @@ public class SetBottomAreaAlignmentCommandTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Justify);
-        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
     }
 
     [Test]
-    public async Task Execute_VisibleBottomArea_LeavesTheOtherSurfacesAlone()
+    public async Task Execute_VisibleBottomArea_LeavesTheOtherAreasAlone()
     {
         var command = new SetBottomAreaAlignmentCommand(_layoutManager)
         {
@@ -79,14 +80,14 @@ public class SetBottomAreaAlignmentCommandTests
 
         await command.ExecuteAsync();
 
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 
     [Test]
     public async Task Execute_InFocusMode_ShowsTheAreaAndReturnsToTheDefaultLayout()
     {
-        // Focus mode hides every surface, so revealing the Bottom area is the same layout customization
+        // Focus mode hides every collapsible area, so revealing the Bottom area is the same customization
         // as toggling it by hand and leaves the mode behind.
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
@@ -98,7 +99,7 @@ public class SetBottomAreaAlignmentCommandTests
         await command.ExecuteAsync();
 
         _layoutManager.BottomAreaAlignment.Should().Be(BottomAreaAlignment.Right);
-        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
 }

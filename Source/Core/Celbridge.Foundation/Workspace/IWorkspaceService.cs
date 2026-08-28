@@ -72,7 +72,7 @@ public interface IWorkspaceService
     /// <summary>
     /// The most recently focussed workspace panel.
     /// </summary>
-    WorkspacePanelId ActivePanel { get; }
+    FocusPanelId ActivePanel { get; }
 
     /// <summary>
     /// Returns the Utility Panel view.

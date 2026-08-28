@@ -19,7 +19,7 @@ public sealed record UtilityRailResource(
 public sealed record UtilityRailPanelView(
     object Content,
     Action FocusPanel,
-    WorkspacePanelId FocusIdentity,
+    FocusPanelId FocusIdentity,
     bool PreservePanelFocus = false);
 
 /// <summary>

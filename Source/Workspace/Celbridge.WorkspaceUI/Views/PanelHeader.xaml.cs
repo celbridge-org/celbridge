@@ -120,39 +120,43 @@ public sealed partial class PanelHeader : UserControl
         // The walk runs on Loaded because the header's ancestors are only reachable once the tree is live.
         FocusIndicatorControl.Panel = FocusTracking.FindPanel(this);
 
-        // Loaded also covers a panel that is re-docked into another surface, which changes the direction it
+        // Loaded also covers a panel that is re-docked into another area, which changes the direction it
         // collapses in.
-        CollapseButtonIcon.Symbol = WorkspaceLayout.FindSurface(this).GetCollapseSymbol();
+        var hostArea = WorkspaceLayout.FindArea(this);
+        if (hostArea is not null)
+        {
+            CollapseButtonIcon.Symbol = hostArea.Value.GetCollapseSymbol();
+        }
     }
 
     private void CollapseButton_Click(object sender, RoutedEventArgs e)
     {
-        // The surface is derived from the container the header currently sits in.
-        var surface = WorkspaceLayout.FindSurface(this);
-        if (surface == WorkspaceSurface.None)
+        // The area is derived from the container the header currently sits in.
+        var hostArea = WorkspaceLayout.FindArea(this);
+        if (hostArea is null)
         {
             return;
         }
 
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Surfaces = surface;
+            command.Area = hostArea.Value;
             command.IsVisible = false;
         });
     }
 
     private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        var surface = WorkspaceLayout.FindSurface(this);
-        if (surface == WorkspaceSurface.None)
+        var hostArea = WorkspaceLayout.FindArea(this);
+        if (hostArea is null)
         {
             return;
         }
 
         // Double-clicking the title bar resets the panel to its default size
-        _commandService.Execute<IResetSurfaceSizeCommand>(command =>
+        _commandService.Execute<IResetAreaSizeCommand>(command =>
         {
-            command.Surface = surface;
+            command.Area = hostArea.Value;
         });
     }
 }

@@ -55,14 +55,14 @@ public class GetUtilitiesStateCommandTests
             {
                 ItemId = BuiltInUtilityIds.Explorer,
                 DisplayName = "Explorer",
-                PanelView = new UtilityRailPanelView(new object(), () => { }, WorkspacePanelId.Explorer)
+                PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer)
             },
             new()
             {
                 ItemId = NotepadId,
                 DisplayName = "Notepad",
                 Resource = new UtilityRailResource(NotepadResource, NotepadId),
-                PanelView = new UtilityRailPanelView(new object(), () => { }, WorkspacePanelId.CustomUtility)
+                PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.CustomUtility)
             },
             new()
             {

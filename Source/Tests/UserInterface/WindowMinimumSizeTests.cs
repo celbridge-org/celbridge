@@ -1,5 +1,5 @@
-using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.UserInterface;
@@ -11,14 +11,14 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class WindowMinimumSizeTests
 {
-    // The channel between two surfaces, mirroring the GutterSize resource in Styles.xaml, which a test cannot
+    // The channel between two areas, mirroring the GutterSize resource in Styles.xaml, which a test cannot
     // resolve without an application.
     private const double GutterSize = 7;
 
-    [TestCaseSource(nameof(SurfaceVisibilityCombinations))]
-    public void DefaultLayout_FitsInsideTheAuthoredWindowMinimum(WorkspaceSurface visibleSurfaces)
+    [TestCaseSource(nameof(AreaVisibilityCombinations))]
+    public void DefaultLayout_FitsInsideTheAuthoredWindowMinimum(IReadOnlySet<WorkspaceArea> visibleAreas)
     {
-        var windowSize = WindowMinimumSize.ComposeDefaultLayoutWindow(visibleSurfaces, GutterSize);
+        var windowSize = WindowMinimumSize.ComposeDefaultLayoutWindow(visibleAreas, GutterSize);
 
         windowSize.Width.Should().BeLessThanOrEqualTo(WindowMinimumSize.AuthoredWidth);
         windowSize.Height.Should().BeLessThanOrEqualTo(WindowMinimumSize.AuthoredHeight);
@@ -27,9 +27,10 @@ public class WindowMinimumSizeTests
     [Test]
     public void Compose_HoldsTheAuthoredSizeWhileTheDefaultLayoutFitsInsideIt()
     {
-        var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
-
-        var minimumSize = WindowMinimumSize.Compose(defaultVisibleSurfaces, GutterSize, windowSizeScale: 1);
+        var minimumSize = WindowMinimumSize.Compose(
+            WorkspaceAreaHelper.AllAreasVisible,
+            GutterSize,
+            windowSizeScale: 1);
 
         minimumSize.Width.Should().Be(WindowMinimumSize.AuthoredWidth);
         minimumSize.Height.Should().Be(WindowMinimumSize.AuthoredHeight);
@@ -38,27 +39,39 @@ public class WindowMinimumSizeTests
     [Test]
     public void Compose_ScalesIntoTheUnitTheHeadMeasuresItsWindowIn()
     {
-        var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
-
         // The presenter enforces the constraint in physical pixels and does not scale them itself, so a size
         // composed in device-independent pixels is scaled before it is applied.
-        var minimumSize = WindowMinimumSize.Compose(defaultVisibleSurfaces, GutterSize, windowSizeScale: 2);
+        var minimumSize = WindowMinimumSize.Compose(
+            WorkspaceAreaHelper.AllAreasVisible,
+            GutterSize,
+            windowSizeScale: 2);
 
         minimumSize.Width.Should().Be(WindowMinimumSize.AuthoredWidth * 2);
         minimumSize.Height.Should().Be(WindowMinimumSize.AuthoredHeight * 2);
     }
 
     // Every layout a workspace can open with. The window minimum is composed before any workspace exists, so
-    // it stands on the authored terms and the stored surface visibility alone.
-    private static IEnumerable<WorkspaceSurface> SurfaceVisibilityCombinations()
+    // it stands on the authored terms and the stored area visibility alone. Main is in every case because it
+    // is always visible.
+    private static IEnumerable<IReadOnlySet<WorkspaceArea>> AreaVisibilityCombinations()
     {
-        yield return WorkspaceSurface.None;
-        yield return WorkspaceSurface.UtilityPanel;
-        yield return WorkspaceSurface.BottomArea;
-        yield return WorkspaceSurface.SideArea;
-        yield return WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea;
-        yield return WorkspaceSurface.UtilityPanel | WorkspaceSurface.SideArea;
-        yield return WorkspaceSurface.BottomArea | WorkspaceSurface.SideArea;
-        yield return WorkspaceSurface.All;
+        yield return VisibleAreas();
+        yield return VisibleAreas(WorkspaceArea.Utility);
+        yield return VisibleAreas(WorkspaceArea.Bottom);
+        yield return VisibleAreas(WorkspaceArea.Side);
+        yield return VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom);
+        yield return VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Side);
+        yield return VisibleAreas(WorkspaceArea.Bottom, WorkspaceArea.Side);
+        yield return WorkspaceAreaHelper.AllAreasVisible;
+    }
+
+    private static IReadOnlySet<WorkspaceArea> VisibleAreas(params WorkspaceArea[] collapsibleAreas)
+    {
+        var visibleAreas = new HashSet<WorkspaceArea>(collapsibleAreas)
+        {
+            WorkspaceArea.Main
+        };
+
+        return visibleAreas;
     }
 }

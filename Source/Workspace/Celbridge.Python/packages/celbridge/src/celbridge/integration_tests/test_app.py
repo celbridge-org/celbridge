@@ -11,10 +11,12 @@ class TestApp:
 
     def test_get_state_returns_layout_mode(self, app):
         result = app.get_state()
-        layout_mode = result["layoutMode"]
-        assert isinstance(layout_mode["utilityPanelVisible"], bool)
-        assert isinstance(layout_mode["bottomAreaVisible"], bool)
-        assert isinstance(layout_mode["sideAreaVisible"], bool)
+        area_visibility = result["layoutMode"]["areaVisibility"]
+        for area in ["utility", "main", "bottom", "side"]:
+            assert isinstance(area_visibility[area], bool), f"Expected a bool for area: {area}"
+
+        # Main is the one area that cannot be hidden.
+        assert area_visibility["main"]
 
     def test_get_state_returns_version(self, app):
         result = app.get_state()

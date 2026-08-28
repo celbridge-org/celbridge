@@ -2,6 +2,7 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers.FullScreen;
+using Celbridge.Utilities;
 using Microsoft.UI.Windowing;
 using Windows.Graphics;
 
@@ -217,9 +218,7 @@ public sealed class WindowStateHelper
     private SizeInt32 ComposeMinimumWindowSize()
     {
         double gutterSize = (double)Application.Current.Resources["GutterSize"];
-        var defaultVisibleSurfaces = SettingCatalog.Layout.PreferredSurfaceVisibility.DefaultValue;
-
-        return WindowMinimumSize.Compose(defaultVisibleSurfaces, gutterSize, WindowSizeScale);
+        return WindowMinimumSize.Compose(WorkspaceAreaHelper.AllAreasVisible, gutterSize, WindowSizeScale);
     }
 
     // The composed minimum is in device-independent pixels, which is not what every head measures its window

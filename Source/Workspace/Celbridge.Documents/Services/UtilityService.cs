@@ -165,7 +165,7 @@ public class UtilityService : IUtilityService, IDisposable
                 DisplayName = displayName,
                 Tooltip = tooltip,
                 Resource = new UtilityRailResource(resource, resolvedEditor.EditorId),
-                PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, WorkspacePanelId.CustomUtility)
+                PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
             };
 
             _utilityItems.Add(railItem);

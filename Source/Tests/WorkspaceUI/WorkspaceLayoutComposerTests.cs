@@ -9,7 +9,7 @@ namespace Celbridge.Tests.WorkspaceUI;
 /// composed from them, and the clamps every entry point that sizes a surface goes through.
 /// </summary>
 [TestFixture]
-public class WorkspaceSurfaceComposerTests
+public class WorkspaceLayoutComposerTests
 {
     // The channel between two surfaces, mirroring the GutterSize resource in Styles.xaml, which a test cannot
     // resolve without an application.
@@ -175,7 +175,7 @@ public class WorkspaceSurfaceComposerTests
     }
 
     [TestCaseSource(nameof(LayoutConfigurations))]
-    public void ComposedFloors_FitInsideTheWorkspaceMinimum(WorkspaceSurfacePresentation presentation)
+    public void ComposedFloors_FitInsideTheWorkspaceMinimum(WorkspaceLayoutPresentation presentation)
     {
         var composer = CreateComposer(presentation);
 
@@ -362,7 +362,7 @@ public class WorkspaceSurfaceComposerTests
     }
 
     // Every arrangement the workspace can be in: each Bottom area alignment, and each surface hidden.
-    private static IEnumerable<WorkspaceSurfacePresentation> LayoutConfigurations()
+    private static IEnumerable<WorkspaceLayoutPresentation> LayoutConfigurations()
     {
         yield return CreatePresentation();
         yield return CreatePresentation(bottomAreaSpansUtilityPanel: true);
@@ -388,7 +388,7 @@ public class WorkspaceSurfaceComposerTests
         return workspaceWidth - UtilityRailWidth - utilityPanelWidth - GutterSize - sideAreaWidth - GutterSize;
     }
 
-    private static WorkspaceSurfacePresentation CreatePresentation(
+    private static WorkspaceLayoutPresentation CreatePresentation(
         bool isBottomAreaPresented = true,
         bool isSideAreaPresented = true,
         bool isUtilityPanelPresented = true,
@@ -396,7 +396,7 @@ public class WorkspaceSurfaceComposerTests
         bool bottomAreaSpansUtilityPanel = false,
         bool bottomAreaSpansSideArea = false)
     {
-        return new WorkspaceSurfacePresentation(
+        return new WorkspaceLayoutPresentation(
             IsMainAreaPresented: true,
             IsBottomAreaPresented: isBottomAreaPresented,
             IsSideAreaPresented: isSideAreaPresented,
@@ -407,15 +407,15 @@ public class WorkspaceSurfaceComposerTests
     }
 
     // A workspace extent of zero stands for one that has not been laid out yet, where only the floors apply.
-    private static WorkspaceSurfaceComposer CreateComposer(
-        WorkspaceSurfacePresentation presentation,
+    private static WorkspaceLayoutComposer CreateComposer(
+        WorkspaceLayoutPresentation presentation,
         double workspaceWidth = 0,
         double workspaceHeight = 0,
         double? utilityPanelWidth = null,
         double? sideAreaWidth = null,
         Size? mainAreaMinimumSize = null)
     {
-        var metrics = new WorkspaceSurfaceMetrics(
+        var metrics = new WorkspaceLayoutMetrics(
             MainAreaMinimumSize: mainAreaMinimumSize ?? MainAreaMinimum,
             BottomAreaMinimumSize: BottomAreaMinimum,
             SideAreaMinimumSize: SideAreaMinimum,
@@ -426,6 +426,6 @@ public class WorkspaceSurfaceComposerTests
             UtilityPanelWidth: utilityPanelWidth,
             SideAreaWidth: sideAreaWidth);
 
-        return new WorkspaceSurfaceComposer(presentation, metrics);
+        return new WorkspaceLayoutComposer(presentation, metrics);
     }
 }

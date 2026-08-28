@@ -55,8 +55,8 @@ public static class ServiceConfiguration
         services.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         services.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
-        services.AddTransient<ISetSurfaceVisibilityCommand, SetSurfaceVisibilityCommand>();
-        services.AddTransient<IResetSurfaceSizeCommand, ResetSurfaceSizeCommand>();
+        services.AddTransient<ISetAreaVisibilityCommand, SetAreaVisibilityCommand>();
+        services.AddTransient<IResetAreaSizeCommand, ResetAreaSizeCommand>();
         services.AddTransient<ISetBottomAreaAlignmentCommand, SetBottomAreaAlignmentCommand>();
         services.AddTransient<IPerformEditCommand, PerformEditCommand>();
     }

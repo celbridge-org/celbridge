@@ -3,17 +3,15 @@ using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.Utilities;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Workspace layout snapshot reported as part of app_get_state. Reflects which
-/// surfaces are currently visible.
+/// Workspace layout snapshot reported as part of app_get_state. Maps each workspace area token to whether
+/// that area is currently on screen.
 /// </summary>
-public record class LayoutModeInfo(
-    bool UtilityPanelVisible,
-    bool BottomAreaVisible,
-    bool SideAreaVisible);
+public record class LayoutModeInfo(IReadOnlyDictionary<string, bool> AreaVisibility);
 
 /// <summary>
 /// Result returned by app_get_state, describing the current app and workspace state.
@@ -98,10 +96,15 @@ internal sealed class AppStateProvider : IAppStateProvider
 
         var activeUtility = isLoaded ? _activeUtilityId : string.Empty;
 
-        var layoutMode = new LayoutModeInfo(
-            UtilityPanelVisible: _layoutService.IsUtilityPanelVisible,
-            BottomAreaVisible: _layoutService.IsBottomAreaVisible,
-            SideAreaVisible: _layoutService.IsSideAreaVisible);
+        // Every area is reported, including Main, so a caller reads one shape rather than inferring the
+        // areas that are always on screen.
+        var areaVisibility = new Dictionary<string, bool>();
+        foreach (var area in WorkspaceAreaHelper.AllAreas)
+        {
+            areaVisibility[area.ToToken()] = _layoutService.IsAreaVisible(area);
+        }
+
+        var layoutMode = new LayoutModeInfo(areaVisibility);
 
         var spotlightLandmarks = _spotlightRegistry.GetLandmarks()
             .Select(landmark => landmark.Id)

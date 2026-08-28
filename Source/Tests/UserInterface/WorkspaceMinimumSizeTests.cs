@@ -1,4 +1,5 @@
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Windows.Foundation;
 
@@ -86,14 +87,16 @@ public class WorkspaceMinimumSizeTests
     }
 
     [Test]
-    public void ComposeDefaultLayout_ComposesEverySurfaceItShows()
+    public void ComposeDefaultLayout_ComposesEveryAreaItShows()
     {
         double sectionWidth = WorkspaceConstants.DocumentMinWidth + WorkspaceConstants.SectionEdgeThickness * 2;
         double sectionHeight = WorkspaceConstants.DocumentMinHeight +
             WorkspaceConstants.SectionTabStripHeight +
             WorkspaceConstants.SectionEdgeThickness * 2;
 
-        var minimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(WorkspaceSurface.All, GutterSize);
+        var minimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(
+            WorkspaceAreaHelper.AllAreasVisible,
+            GutterSize);
 
         // The Utility Panel, the Main area and the Side area across, with a channel between each pair, and the
         // Utility Rail down the left of them. The rail meets the panel directly, so no channel is counted
@@ -107,13 +110,18 @@ public class WorkspaceMinimumSizeTests
     }
 
     [Test]
-    public void ComposeDefaultLayout_DropsASurfaceItDoesNotShowAndTheChannelWithIt()
+    public void ComposeDefaultLayout_DropsAnAreaItDoesNotShowAndTheChannelWithIt()
     {
         double sectionWidth = WorkspaceConstants.DocumentMinWidth + WorkspaceConstants.SectionEdgeThickness * 2;
 
-        var mainAreaOnly = WorkspaceMinimumSize.ComposeDefaultLayout(WorkspaceSurface.None, GutterSize);
+        var onlyMainVisible = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Main
+        };
 
-        // The rail is chrome rather than a surface, so it is still there once every surface has gone.
+        var mainAreaOnly = WorkspaceMinimumSize.ComposeDefaultLayout(onlyMainVisible, GutterSize);
+
+        // The rail is chrome rather than an area, so it is still there once every collapsible area has gone.
         mainAreaOnly.Width.Should().Be(WorkspaceConstants.UtilityRailWidth + sectionWidth);
     }
 }

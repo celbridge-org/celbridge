@@ -79,7 +79,7 @@ public class PanelFocusTracker
 
         // Walk towards the visual root, taking the nearest Panel declaration. No declaration
         // classifies as None, which clears panel focus but preserves the edit context.
-        var panel = WorkspacePanelId.None;
+        var panel = FocusPanelId.None;
         IEditTarget? editTarget = null;
         var foundDeclaration = false;
         var reachedMainContentRoot = false;
@@ -90,7 +90,7 @@ public class PanelFocusTracker
             if (!foundDeclaration)
             {
                 var declaredPanel = FocusTracking.GetPanel(current);
-                if (declaredPanel != WorkspacePanelId.None)
+                if (declaredPanel != FocusPanelId.None)
                 {
                     panel = declaredPanel;
                     editTarget = FocusTracking.GetEditTarget(current);

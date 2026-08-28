@@ -37,11 +37,11 @@ public static class WorkspaceMinimumSize
 
     /// <summary>
     /// The smallest size the workspace can be laid out at in the layout a workspace opens with: the Utility
-    /// Rail, plus the surfaces the given visibility shows, each unsplit and holding the floor composed from the
-    /// authored chrome, with the channels between them and the one above the document areas. Nothing here is
-    /// measured, so this holds before any workspace exists.
+    /// Rail, plus the given visible areas, each unsplit and holding the floor composed from the authored
+    /// chrome, with the channels between them and the one above the document areas. Nothing here is measured,
+    /// so this holds before any workspace exists.
     /// </summary>
-    public static Size ComposeDefaultLayout(WorkspaceSurface visibleSurfaces, double gutterSize)
+    public static Size ComposeDefaultLayout(IReadOnlySet<WorkspaceArea> visibleAreas, double gutterSize)
     {
         double edges = WorkspaceConstants.SectionEdgeThickness * 2;
         var sectionChrome = new Size(edges, WorkspaceConstants.SectionTabStripHeight + edges);
@@ -50,19 +50,19 @@ public static class WorkspaceMinimumSize
         // No area is split in the default layout, so every document area takes one section, and the Main area
         // is always shown.
         double sideMinimumWidth = 0;
-        if (visibleSurfaces.HasFlag(WorkspaceSurface.SideArea))
+        if (visibleAreas.Contains(WorkspaceArea.Side))
         {
             sideMinimumWidth = sectionMinimum.Width;
         }
 
         double bottomMinimumHeight = 0;
-        if (visibleSurfaces.HasFlag(WorkspaceSurface.BottomArea))
+        if (visibleAreas.Contains(WorkspaceArea.Bottom))
         {
             bottomMinimumHeight = sectionMinimum.Height;
         }
 
         double utilityPanelMinimumWidth = 0;
-        if (visibleSurfaces.HasFlag(WorkspaceSurface.UtilityPanel))
+        if (visibleAreas.Contains(WorkspaceArea.Utility))
         {
             utilityPanelMinimumWidth = ComposeUtilityPanelWidth();
         }

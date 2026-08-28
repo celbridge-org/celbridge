@@ -32,7 +32,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         // A docked utility reports the Documents panel and marks itself the active document on focus, matching
         // any other document tab. Docking back into the panel re-points the controller at its Utility context.
         _focusContext = new CustomEditorFocusContext(
-            WorkspacePanelId.Documents,
+            FocusPanelId.Documents,
             () => messengerService.Send(new DocumentViewFocusedMessage(_viewModel.FileResource)));
     }
 

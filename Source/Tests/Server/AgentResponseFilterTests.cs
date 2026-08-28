@@ -221,7 +221,13 @@ public class AgentResponseFilterTests
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "Documents",
             ActiveUtility: "",
-            LayoutMode: new LayoutModeInfo(true, false, true),
+            LayoutMode: new LayoutModeInfo(new Dictionary<string, bool>
+            {
+                ["utility"] = true,
+                ["main"] = true,
+                ["bottom"] = false,
+                ["side"] = true
+            }),
             SpotlightLandmarks: new List<string>());
         _documentStateProvider.Result = new DocumentStateResult(
             ActiveDocument: "/Notes/README.md",
@@ -598,7 +604,13 @@ public class AgentResponseFilterTests
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "None",
             ActiveUtility: "",
-            LayoutMode: new LayoutModeInfo(true, true, false),
+            LayoutMode: new LayoutModeInfo(new Dictionary<string, bool>
+            {
+                ["utility"] = true,
+                ["main"] = true,
+                ["bottom"] = true,
+                ["side"] = false
+            }),
             SpotlightLandmarks: new List<string>());
 
         public AppStateResult GetState() => State;

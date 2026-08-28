@@ -255,22 +255,22 @@ public class MainMenu
 
         viewSubItem.Items.Add(new MenuFlyoutSeparator());
 
-        void AddSurfaceItem(string labelKey, WorkspaceSurface surface)
+        void AddAreaItem(string labelKey, WorkspaceArea area)
         {
-            var isVisible = _viewMenuViewModel.IsSurfaceVisible(surface);
+            var isVisible = _viewMenuViewModel.IsAreaVisible(area);
 
-            var surfaceItem = CreateToggleMenuItem(
+            var areaItem = CreateToggleMenuItem(
                 label: _stringLocalizer.GetString(labelKey),
                 isChecked: isVisible,
                 isEnabled: isWorkspaceLoaded,
-                onClick: (sender, e) => _viewMenuViewModel.SetSurfaceVisibility(surface, !isVisible));
+                onClick: (sender, e) => _viewMenuViewModel.SetAreaVisibility(area, !isVisible));
 
-            viewSubItem.Items.Add(surfaceItem);
+            viewSubItem.Items.Add(areaItem);
         }
 
-        AddSurfaceItem("Menu_UtilityPanel", WorkspaceSurface.UtilityPanel);
-        AddSurfaceItem("Menu_BottomArea", WorkspaceSurface.BottomArea);
-        AddSurfaceItem("Menu_SideArea", WorkspaceSurface.SideArea);
+        AddAreaItem("Menu_UtilityPanel", WorkspaceArea.Utility);
+        AddAreaItem("Menu_BottomArea", WorkspaceArea.Bottom);
+        AddAreaItem("Menu_SideArea", WorkspaceArea.Side);
 
         viewSubItem.Items.Add(new MenuFlyoutSeparator());
 

@@ -1,37 +1,6 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Identifies individual panels in the workspace for focus tracking.
-/// </summary>
-public enum WorkspacePanelId
-{
-    /// <summary>
-    /// No panel.
-    /// </summary>
-    None,
-
-    /// <summary>
-    /// The Explorer panel.
-    /// </summary>
-    Explorer,
-
-    /// <summary>
-    /// The Search panel.
-    /// </summary>
-    Search,
-
-    /// <summary>
-    /// The Documents panel, covering all three document areas.
-    /// </summary>
-    Documents,
-
-    /// <summary>
-    /// The custom-utility surface in the Utility Panel (Explorer and Search have their own values).
-    /// </summary>
-    CustomUtility
-}
-
-/// <summary>
 /// A place in the workspace that presents a workspace item, whether a workspace-scoped utility or an open
 /// document. A workspace item occupies exactly one area at a time; moving a utility between areas reparents
 /// its single live view rather than recreating it.
@@ -39,7 +8,8 @@ public enum WorkspacePanelId
 public enum WorkspaceArea
 {
     /// <summary>
-    /// A rail surface in the Utility Panel, which shows one surface at a time.
+    /// A place in the Utility Panel, the collapsible sidebar on the left, which shows one workspace item
+    /// at a time.
     /// </summary>
     Utility,
 
@@ -57,39 +27,6 @@ public enum WorkspaceArea
     /// A tab in the collapsible document area to the right.
     /// </summary>
     Side
-}
-
-/// <summary>
-/// Flags representing which of the collapsible workspace surfaces should be visible. The Main document
-/// area is always visible and is not a surface.
-/// </summary>
-[Flags]
-public enum WorkspaceSurface
-{
-    /// <summary>
-    /// No surfaces visible.
-    /// </summary>
-    None = 0,
-
-    /// <summary>
-    /// The Utility Panel (the left sidebar).
-    /// </summary>
-    UtilityPanel = 1 << 0,
-
-    /// <summary>
-    /// The Bottom document area.
-    /// </summary>
-    BottomArea = 1 << 1,
-
-    /// <summary>
-    /// The Side document area.
-    /// </summary>
-    SideArea = 1 << 2,
-
-    /// <summary>
-    /// All surfaces are visible.
-    /// </summary>
-    All = UtilityPanel | BottomArea | SideArea
 }
 
 /// <summary>

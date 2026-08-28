@@ -273,13 +273,13 @@ internal static class MacOSMainMenu
                 return LayoutModeState(LayoutMode.Presentation);
 
             case TagUtilityPanel:
-                return SurfaceState(WorkspaceSurface.UtilityPanel);
+                return AreaState(WorkspaceArea.Utility);
 
             case TagBottomArea:
-                return SurfaceState(WorkspaceSurface.BottomArea);
+                return AreaState(WorkspaceArea.Bottom);
 
             case TagSideArea:
-                return SurfaceState(WorkspaceSurface.SideArea);
+                return AreaState(WorkspaceArea.Side);
 
             case TagResetLayout:
                 return WorkspaceCommandState();
@@ -326,7 +326,7 @@ internal static class MacOSMainMenu
         return MacMenuItemState.Checkable(viewModel.LayoutMode == layoutMode);
     }
 
-    private static MacMenuItemState SurfaceState(WorkspaceSurface surface)
+    private static MacMenuItemState AreaState(WorkspaceArea area)
     {
         var viewModel = GetViewMenuViewModel();
         if (!viewModel.IsWorkspaceLoaded)
@@ -334,7 +334,7 @@ internal static class MacOSMainMenu
             return MacMenuItemState.Disabled;
         }
 
-        return MacMenuItemState.Checkable(viewModel.IsSurfaceVisible(surface));
+        return MacMenuItemState.Checkable(viewModel.IsAreaVisible(area));
     }
 
     private static MacMenuItemState ThemeState(ApplicationColorTheme theme)
@@ -437,15 +437,15 @@ internal static class MacOSMainMenu
                 break;
 
             case TagUtilityPanel:
-                ToggleSurface(WorkspaceSurface.UtilityPanel);
+                ToggleArea(WorkspaceArea.Utility);
                 break;
 
             case TagBottomArea:
-                ToggleSurface(WorkspaceSurface.BottomArea);
+                ToggleArea(WorkspaceArea.Bottom);
                 break;
 
             case TagSideArea:
-                ToggleSurface(WorkspaceSurface.SideArea);
+                ToggleArea(WorkspaceArea.Side);
                 break;
 
             case TagResetLayout:
@@ -480,12 +480,12 @@ internal static class MacOSMainMenu
         return ServiceLocator.AcquireService<ViewMenuViewModel>();
     }
 
-    private static void ToggleSurface(WorkspaceSurface surface)
+    private static void ToggleArea(WorkspaceArea area)
     {
         var viewModel = GetViewMenuViewModel();
-        var isVisible = viewModel.IsSurfaceVisible(surface);
+        var isVisible = viewModel.IsAreaVisible(area);
 
-        viewModel.SetSurfaceVisibility(surface, !isVisible);
+        viewModel.SetAreaVisibility(area, !isVisible);
     }
 
     private static void ShowAboutPanel()

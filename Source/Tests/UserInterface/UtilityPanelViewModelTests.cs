@@ -19,8 +19,8 @@ public class UtilityPanelViewModelTests
     public void SetUp()
     {
         _viewModel = new UtilityPanelViewModel();
-        _explorer = _viewModel.AddItem(BuiltInUtilityIds.Explorer, WorkspacePanelId.Explorer);
-        _search = _viewModel.AddItem(BuiltInUtilityIds.Search, WorkspacePanelId.Search);
+        _explorer = _viewModel.AddItem(BuiltInUtilityIds.Explorer, FocusPanelId.Explorer);
+        _search = _viewModel.AddItem(BuiltInUtilityIds.Search, FocusPanelId.Search);
     }
 
     [Test]
@@ -66,7 +66,7 @@ public class UtilityPanelViewModelTests
 
         // The switch collapses the outgoing panel, so focus briefly relocates to another panel before the new
         // surface receives it. That transient report must not drop the accent.
-        _viewModel.ReconcileFocus(WorkspacePanelId.Documents);
+        _viewModel.ReconcileFocus(FocusPanelId.Documents);
 
         _explorer.IsFocused.Should().BeTrue();
     }
@@ -76,7 +76,7 @@ public class UtilityPanelViewModelTests
     {
         _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
 
-        _viewModel.ReconcileFocus(WorkspacePanelId.Explorer);
+        _viewModel.ReconcileFocus(FocusPanelId.Explorer);
 
         _explorer.IsFocused.Should().BeTrue();
     }
@@ -87,8 +87,8 @@ public class UtilityPanelViewModelTests
         _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
 
         // Focus lands on the selected surface (settles the wait), then the user moves focus into a document.
-        _viewModel.ReconcileFocus(WorkspacePanelId.Explorer);
-        _viewModel.ReconcileFocus(WorkspacePanelId.Documents);
+        _viewModel.ReconcileFocus(FocusPanelId.Explorer);
+        _viewModel.ReconcileFocus(FocusPanelId.Documents);
 
         // The accent now honours real focus: the selected surface no longer holds it.
         _explorer.IsSelected.Should().BeTrue();
@@ -99,10 +99,10 @@ public class UtilityPanelViewModelTests
     public void ReconcileFocus_ReturningToTheSelectedSurface_RelightsAccent()
     {
         _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
-        _viewModel.ReconcileFocus(WorkspacePanelId.Explorer);
-        _viewModel.ReconcileFocus(WorkspacePanelId.Documents);
+        _viewModel.ReconcileFocus(FocusPanelId.Explorer);
+        _viewModel.ReconcileFocus(FocusPanelId.Documents);
 
-        _viewModel.ReconcileFocus(WorkspacePanelId.Explorer);
+        _viewModel.ReconcileFocus(FocusPanelId.Explorer);
 
         _explorer.IsFocused.Should().BeTrue();
     }
@@ -110,10 +110,10 @@ public class UtilityPanelViewModelTests
     [Test]
     public void CustomUtility_FocusReportedAsUtility_LightsAccent()
     {
-        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        var notepad = _viewModel.AddItem(NotepadUtilityId, FocusPanelId.CustomUtility);
 
         _viewModel.SelectUtility(NotepadUtilityId);
-        _viewModel.ReconcileFocus(WorkspacePanelId.CustomUtility);
+        _viewModel.ReconcileFocus(FocusPanelId.CustomUtility);
 
         notepad.IsSelected.Should().BeTrue();
         notepad.IsFocused.Should().BeTrue();
@@ -123,7 +123,7 @@ public class UtilityPanelViewModelTests
     [Test]
     public void SetDocked_MarksTheItemDocked()
     {
-        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        var notepad = _viewModel.AddItem(NotepadUtilityId, FocusPanelId.CustomUtility);
 
         _viewModel.SetDocked(NotepadUtilityId, true);
         notepad.IsDocked.Should().BeTrue();
@@ -135,7 +135,7 @@ public class UtilityPanelViewModelTests
     [Test]
     public void DockedUtility_CarriesNoMark()
     {
-        var notepad = _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        var notepad = _viewModel.AddItem(NotepadUtilityId, FocusPanelId.CustomUtility);
         _viewModel.SelectUtility(NotepadUtilityId);
 
         // Docking hands the utility to a document tab, so the panel's marks stop being its to carry.
@@ -184,7 +184,7 @@ public class UtilityPanelViewModelTests
     [Test]
     public void RemoveItem_RemovesItFromTheRail()
     {
-        _viewModel.AddItem(NotepadUtilityId, WorkspacePanelId.CustomUtility);
+        _viewModel.AddItem(NotepadUtilityId, FocusPanelId.CustomUtility);
         _viewModel.Items.Should().HaveCount(3);
 
         _viewModel.RemoveItem(NotepadUtilityId);

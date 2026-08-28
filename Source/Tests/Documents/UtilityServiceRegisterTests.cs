@@ -75,7 +75,7 @@ public class UtilityServiceRegisterTests
         {
             ItemId = itemId,
             DisplayName = displayName,
-            PanelView = new UtilityRailPanelView(new object(), () => { }, WorkspacePanelId.Explorer)
+            PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer)
         };
     }
 

@@ -8,7 +8,7 @@ namespace Celbridge.WorkspaceUI.Helpers;
 /// how far the Bottom area spans across its neighbours. A surface the Bottom area spans across stops above it
 /// instead of running full height.
 /// </summary>
-public record WorkspaceSurfacePresentation(
+public record WorkspaceLayoutPresentation(
     bool IsMainAreaPresented,
     bool IsBottomAreaPresented,
     bool IsSideAreaPresented,
@@ -23,7 +23,7 @@ public record WorkspaceSurfacePresentation(
 /// columns are holding. A column passes null while it is star sized, because a surface filling the
 /// workspace is holding nothing back from its peer.
 /// </summary>
-public record WorkspaceSurfaceMetrics(
+public record WorkspaceLayoutMetrics(
     Size MainAreaMinimumSize,
     Size BottomAreaMinimumSize,
     Size SideAreaMinimumSize,
@@ -40,17 +40,17 @@ public record WorkspaceSurfaceMetrics(
 /// layout of its own: the surface container reads the live sizes into the metrics, asks for a value, and
 /// writes the answer onto its grid.
 /// </summary>
-public sealed class WorkspaceSurfaceComposer
+public sealed class WorkspaceLayoutComposer
 {
-    private readonly WorkspaceSurfacePresentation _presentation;
-    private readonly WorkspaceSurfaceMetrics _metrics;
+    private readonly WorkspaceLayoutPresentation _presentation;
+    private readonly WorkspaceLayoutMetrics _metrics;
     private readonly Size _mainAreaMinimumSize;
     private readonly Size _bottomAreaMinimumSize;
     private readonly Size _sideAreaMinimumSize;
     private readonly double _utilityPanelMinimumWidth;
     private readonly double _utilityRailWidth;
 
-    public WorkspaceSurfaceComposer(WorkspaceSurfacePresentation presentation, WorkspaceSurfaceMetrics metrics)
+    public WorkspaceLayoutComposer(WorkspaceLayoutPresentation presentation, WorkspaceLayoutMetrics metrics)
     {
         _presentation = presentation;
         _metrics = metrics;

@@ -25,7 +25,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public ISearchService SearchService { get; }
     public IDataTransferService DataTransferService { get; }
 
-    public WorkspacePanelId ActivePanel { get; private set; }
+    public FocusPanelId ActivePanel { get; private set; }
 
     public IUtilityPanel UtilityPanel { get; private set; } = null!;
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
@@ -89,7 +89,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         // Focus on chrome (toolbars, dialogs) reports None. Keep the active panel on the last real panel so
         // panel-scoped undo still targets it after such an interaction.
-        if (message.FocusedPanel != WorkspacePanelId.None)
+        if (message.FocusedPanel != FocusPanelId.None)
         {
             ActivePanel = message.FocusedPanel;
         }

@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.WorkspaceUI.ViewModels;
 
 /// <summary>
-/// View model for a single Utility Panel rail item: a built-in Explorer or Search surface, or a custom
+/// View model for a single Utility Panel rail item: the built-in Explorer or Search, or a custom
 /// utility.
 /// </summary>
 public partial class UtilityItemViewModel : ObservableObject
@@ -15,10 +15,10 @@ public partial class UtilityItemViewModel : ObservableObject
     public EditorId Id { get; }
 
     /// <summary>
-    /// The workspace panel identity used to decide whether this surface currently holds focus. Built-in
+    /// The workspace panel identity used to decide whether this rail item currently holds focus. Built-in
     /// Explorer and Search have their own identities. Every custom utility reports as CustomUtility.
     /// </summary>
-    public WorkspacePanelId FocusIdentity { get; }
+    public FocusPanelId FocusIdentity { get; }
 
     [ObservableProperty]
     private bool _isSelected;
@@ -31,7 +31,7 @@ public partial class UtilityItemViewModel : ObservableObject
     /// </summary>
     public bool IsDocked { get; set; }
 
-    public UtilityItemViewModel(EditorId id, WorkspacePanelId focusIdentity)
+    public UtilityItemViewModel(EditorId id, FocusPanelId focusIdentity)
     {
         Id = id;
         FocusIdentity = focusIdentity;

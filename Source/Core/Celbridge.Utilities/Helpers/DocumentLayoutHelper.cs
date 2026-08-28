@@ -146,43 +146,6 @@ public static class DocumentLayoutHelper
     }
 
     /// <summary>
-    /// The workspace surface the area occupies, or None for Main, which is always visible and has no
-    /// surface of its own.
-    /// </summary>
-    public static WorkspaceSurface GetSurface(this DocumentArea area)
-    {
-        switch (area)
-        {
-            case DocumentArea.Bottom:
-                return WorkspaceSurface.BottomArea;
-
-            case DocumentArea.Side:
-                return WorkspaceSurface.SideArea;
-
-            default:
-                return WorkspaceSurface.None;
-        }
-    }
-
-    /// <summary>
-    /// The document area occupying the surface, or null for a surface that holds no area.
-    /// </summary>
-    public static DocumentArea? GetArea(this WorkspaceSurface surface)
-    {
-        switch (surface)
-        {
-            case WorkspaceSurface.BottomArea:
-                return DocumentArea.Bottom;
-
-            case WorkspaceSurface.SideArea:
-                return DocumentArea.Side;
-
-            default:
-                return null;
-        }
-    }
-
-    /// <summary>
     /// The document area an item occupies in the given workspace area, or null when the area is the
     /// Utility Panel, which holds no document area.
     /// </summary>

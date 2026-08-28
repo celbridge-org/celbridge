@@ -10,7 +10,7 @@ using Windows.Foundation;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// The geometry of the three document areas inside the grids the workspace surface container provides:
+/// The geometry of the three document areas inside the grids the workspace layout container provides:
 /// which areas are presented, how each one is split, the splitter that divides a split area, the floors its
 /// sections are held at, and the chrome they draw. The sections and the documents in them belong to
 /// DocumentSectionContainer, which this asks for a section view whenever it needs one.
@@ -19,7 +19,7 @@ public sealed class DocumentAreaLayout
 {
     private const double MinDragDistance = 5.0; // Minimum pixels to count as a real drag
 
-    private readonly WorkspaceSurfaceContainer _surfaceContainer;
+    private readonly WorkspaceLayoutContainer _layoutContainer;
     private readonly Func<DocumentSection, DocumentSectionView> _sectionLookup;
     private readonly Action<DocumentArea> _migrateSecondarySection;
     private readonly AreaLayoutState _layoutState = new();
@@ -54,19 +54,19 @@ public sealed class DocumentAreaLayout
     // Folding an area migrates its secondary section's tabs into its primary one before the area is rebuilt,
     // so no tab is left in an unmounted section. That is the section container's work, so it is passed in.
     public DocumentAreaLayout(
-        WorkspaceSurfaceContainer surfaceContainer,
+        WorkspaceLayoutContainer layoutContainer,
         Func<DocumentSection, DocumentSectionView> sectionLookup,
         Action<DocumentArea> migrateSecondarySection)
     {
-        _surfaceContainer = surfaceContainer;
+        _layoutContainer = layoutContainer;
         _sectionLookup = sectionLookup;
         _migrateSecondarySection = migrateSecondarySection;
 
-        _surfaceContainer.BottomAreaSplitterSnapTargets = ResolveBottomAreaSnapTargets;
+        _layoutContainer.BottomAreaSplitterSnapTargets = ResolveBottomAreaSnapTargets;
 
         // An area's minimum derives from the sections inside its grid, which this class lays out, so the
-        // surface container asks for it rather than naming a size of its own.
-        _surfaceContainer.AreaMinimumSizes = GetAreaMinimumSize;
+        // layout container asks for it rather than naming a size of its own.
+        _layoutContainer.AreaMinimumSizes = GetAreaMinimumSize;
 
         _chromeCalculator = new SectionChromeCalculator(_layoutState);
 
@@ -164,7 +164,7 @@ public sealed class DocumentAreaLayout
 
     /// <summary>
     /// Sets how far the Bottom area spans across the workspace: the Main area only, or across the Utility
-    /// Panel, the Side area, or both. The surfaces it runs across stop above it.
+    /// Panel, the Side area, or both. The areas it runs across stop above it.
     /// </summary>
     public void SetBottomAreaAlignment(BottomAreaAlignment alignment)
     {
@@ -205,7 +205,7 @@ public sealed class DocumentAreaLayout
         RebuildArea(area);
 
         // A split area needs room for two sections, so its minimum grows, and the workspace floors the
-        // surface container composes from it are re-applied by pushing the presentation again.
+        // layout container composes from it are re-applied by pushing the presentation again.
         ApplyWorkspaceLayout();
 
         AreaLayoutChanged?.Invoke(area, isSplit, _layoutState.GetAreaSplitRatio(area));
@@ -349,7 +349,7 @@ public sealed class DocumentAreaLayout
 
     private Grid GetAreaGrid(DocumentArea area)
     {
-        return _surfaceContainer.GetAreaGrid(area);
+        return _layoutContainer.GetAreaGrid(area);
     }
 
     // Rebuilds an area's internal grid for its current split state. Sections that stay mounted are left
@@ -577,11 +577,11 @@ public sealed class DocumentAreaLayout
         }
     }
 
-    // Pushes the current presentation to the surface container, then re-applies the section chrome,
-    // which depends on which surfaces the sections now face.
+    // Pushes the current presentation to the layout container, then re-applies the section chrome,
+    // which depends on which areas the sections now face.
     private void ApplyWorkspaceLayout()
     {
-        var presentation = new WorkspaceSurfacePresentation(
+        var presentation = new WorkspaceLayoutPresentation(
             IsMainAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Main),
             IsBottomAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Bottom),
             IsSideAreaPresented: _layoutState.IsAreaPresented(DocumentArea.Side),
@@ -590,7 +590,7 @@ public sealed class DocumentAreaLayout
             BottomAreaSpansUtilityPanel: _layoutState.BottomAreaSpansUtilityPanel,
             BottomAreaSpansSideArea: _layoutState.BottomAreaSpansSideArea);
 
-        _surfaceContainer.ApplyPresentation(presentation);
+        _layoutContainer.ApplyPresentation(presentation);
 
         ApplySectionChrome();
     }
@@ -713,7 +713,7 @@ public sealed class DocumentAreaLayout
     // That divider is measured down from the top of the Main area while the Bottom splitter sizes the
     // Bottom area up from the base, so the target is the two areas' height less the Side area's primary
     // section. An alignment that runs the Bottom area under the Side area leaves nothing to line up with.
-    // Supplied to the surface container, whose splitter owns the snapping.
+    // Supplied to the layout container, whose splitter owns the snapping.
     private IReadOnlyList<double> ResolveBottomAreaSnapTargets()
     {
         if (!_layoutState.IsAreaPresented(DocumentArea.Side) ||

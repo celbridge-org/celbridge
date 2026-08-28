@@ -22,14 +22,14 @@ public record WorkspaceUnloadedMessage();
 public record WorkspaceStateDirtyMessage();
 
 /// <summary>
-/// Message sent when the surface visibility changes.
+/// Message sent when the set of visible workspace areas changes.
 /// </summary>
-public record SurfaceVisibilityChangedMessage(WorkspaceSurface SurfaceVisibility);
+public record AreaVisibilityChangedMessage(IReadOnlySet<WorkspaceArea> VisibleAreas);
 
 /// <summary>
-/// Sent to request a brief attention flash around the perimeter of a surface the user has just revealed.
+/// Sent to request a brief attention flash around the perimeter of an area the user has just revealed.
 /// </summary>
-public record FlashSurfaceMessage(WorkspaceSurface Surface);
+public record FlashAreaMessage(WorkspaceArea Area);
 
 /// <summary>
 /// Message sent when the Bottom document area's alignment changes.
@@ -39,7 +39,7 @@ public record BottomAreaAlignmentChangedMessage(BottomAreaAlignment Alignment);
 /// <summary>
 /// Message sent when the focused panel changes.
 /// </summary>
-public record PanelFocusChangedMessage(WorkspacePanelId FocusedPanel);
+public record PanelFocusChangedMessage(FocusPanelId FocusedPanel);
 
 /// <summary>
 /// Sent when the surface shown in the Utility Panel rail changes. UtilityId is the fully-qualified id of the

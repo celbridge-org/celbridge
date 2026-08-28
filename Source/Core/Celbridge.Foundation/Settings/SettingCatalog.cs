@@ -53,15 +53,18 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Panel and surface layout state. Workspace-scoped, so each project
-    /// remembers its own panel layout.
+    /// Workspace area layout state. Workspace-scoped, so each project
+    /// remembers its own layout.
     /// </summary>
     public static class Layout
     {
-        // The settings store serializes an enum by its integer value, so a change to the WorkspaceSurface
-        // flags needs a new key name. Reusing one reads stale data into the wrong surfaces.
-        public static readonly SettingDescriptor<WorkspaceSurface> PreferredSurfaceVisibility =
-            new("Layout.VisibleSurfaces", SettingScope.Workspace, WorkspaceSurface.All);
+        // The areas the user prefers to see, as a comma separated list of area tokens. This is the layout
+        // Focus and Presentation restore on the way out, not what is on screen while one of them is hiding
+        // everything. The default stands for a project that has never customised its layout, which shows
+        // every area: the facade reads that off whether the key is configured, so it is distinct from a
+        // stored value hiding every area that can be hidden.
+        public static readonly SettingDescriptor<string> PreferredVisibleAreas =
+            new("Layout.PreferredVisibleAreas", SettingScope.Workspace, "");
 
         public static readonly SettingDescriptor<float> UtilityPanelWidth =
             new("Layout.UtilityPanelWidth", SettingScope.Workspace, WorkspaceConstants.UtilityPanelWidth);

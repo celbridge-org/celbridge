@@ -25,7 +25,7 @@ namespace Celbridge.Documents.Views;
 /// The hosting surface a consumer supplies to a CustomEditorController: the workspace panel the
 /// editor's web surface reports focus through, and the side effect to run when it gains focus.
 /// </summary>
-public sealed record CustomEditorFocusContext(WorkspacePanelId Panel, Action OnFocusGained);
+public sealed record CustomEditorFocusContext(FocusPanelId Panel, Action OnFocusGained);
 
 /// <summary>
 /// Drives a custom (WebView-based) editor: it acquires and tears down the WebView, owns the JSON-RPC
