@@ -21,6 +21,24 @@ public static class BuiltInUtilityIds
 }
 
 /// <summary>
+/// Ids for the built-in rail launchers, in the same "{scope}.{name}" form as custom utility ids. A launcher
+/// opens a document and never occupies the panel, so it is not a utility and takes no entry above; it still
+/// needs a rail identity to be addressed by.
+/// </summary>
+public static class BuiltInLauncherIds
+{
+    /// <summary>
+    /// The Project Settings launcher's rail id.
+    /// </summary>
+    public static readonly EditorId ProjectSettings = EditorId.Create("celbridge", "project-settings");
+
+    /// <summary>
+    /// The Community Workshop launcher's rail id.
+    /// </summary>
+    public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
+}
+
+/// <summary>
 /// Interface for the Utility Panel, which hosts the Explorer and Search surfaces plus any custom utilities.
 /// </summary>
 public interface IUtilityPanel
@@ -41,6 +59,12 @@ public interface IUtilityPanel
     EditorId ActiveUtilityId { get; }
 
     /// <summary>
+    /// Whether the rail carries a button with this id, whatever the item's scope. False for a utility that
+    /// was declared but skipped at load, because no button was built for it.
+    /// </summary>
+    bool HasRailItem(EditorId itemId);
+
+    /// <summary>
     /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
     /// otherwise selects its rail surface in the Utility Panel, presenting the panel when it is collapsed. A
     /// no-op when no utility has that id.
@@ -48,15 +72,21 @@ public interface IUtilityPanel
     void ShowUtility(EditorId utilityId);
 
     /// <summary>
-    /// Appends the contributed rail items and their content hosts between the built-in surfaces and the
-    /// launchers. Replaces any previously built items. Called on project load once the utility panels have
-    /// been created.
+    /// The built-in utility items this panel builds for itself. Their descriptors wrap live views, so the
+    /// panel constructs them and the utility service records them into the rail register.
+    /// </summary>
+    IReadOnlyList<UtilityRailItem> GetBuiltInUtilityItems();
+
+    /// <summary>
+    /// Renders the rail register: builds a button, and where the item has a panel view a content host, for
+    /// every item the panel does not already carry. Replaces any previously built items. Called on project
+    /// load once the utilities have been created.
     /// </summary>
     void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems);
 
     /// <summary>
-    /// Removes all contributed rail items and their content hosts. Called on project unload. Reverts the
-    /// selection to Explorer if a contributed utility was showing.
+    /// Removes every rail item the panel built from the register, along with their content hosts. Called on
+    /// project unload. Reverts the selection to Explorer if a contributed utility was showing.
     /// </summary>
     void ClearRailItems();
 

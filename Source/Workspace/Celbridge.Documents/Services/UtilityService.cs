@@ -5,7 +5,9 @@ using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workshop;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Services;
 
@@ -18,6 +20,23 @@ public class UtilityService : IUtilityService, IDisposable
     private readonly UtilityResourceSeeder _utilityResourceSeeder;
 
     private readonly List<CustomUtilityView> _utilities = new();
+
+    // Spotlight landmark ids for the launcher rail buttons. These must match the descriptors seeded in
+    // SpotlightLandmarks exactly.
+    private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
+    private const string WorkshopLandmarkId = "workshop-utility-button";
+
+    // A launcher opens a document and never occupies the panel.
+    private static readonly IReadOnlyList<WorkspaceArea> MainOnlyAreas =
+    [
+        WorkspaceArea.Main
+    ];
+
+    // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
+    // their descriptors wrap live views; the rest are built here.
+    private readonly List<UtilityRailItem> _builtInUtilityItems = new();
+    private readonly List<UtilityRailItem> _utilityItems = new();
+    private readonly List<UtilityRailItem> _launcherItems = new();
 
     private bool _disposed;
 
@@ -42,11 +61,48 @@ public class UtilityService : IUtilityService, IDisposable
             serviceProvider.GetRequiredService<ILogger<UtilityResourceSeeder>>());
     }
 
-    public async Task<IReadOnlyList<UtilityRailItem>> CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors)
+    public void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems)
+    {
+        _builtInUtilityItems.Clear();
+        _builtInUtilityItems.AddRange(builtInUtilityItems);
+    }
+
+    public IReadOnlyList<UtilityRailItem> GetRailItems()
+    {
+        var railItems = new List<UtilityRailItem>();
+        railItems.AddRange(_builtInUtilityItems);
+        railItems.AddRange(_utilityItems);
+        railItems.AddRange(_launcherItems);
+
+        return railItems;
+    }
+
+    public WorkspaceArea GetItemArea(EditorId itemId)
+    {
+        // A utility carries its own area because it moves; everything else on the rail has one place it lives,
+        // which its descriptor already states.
+        var utility = _utilities.FirstOrDefault(candidate => candidate.UtilityId == itemId);
+        if (utility is not null)
+        {
+            return utility.Area;
+        }
+
+        foreach (var railItem in GetRailItems())
+        {
+            if (railItem.ItemId == itemId)
+            {
+                return railItem.DefaultArea;
+            }
+        }
+
+        return WorkspaceArea.Utility;
+    }
+
+    public async Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors)
     {
         var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-        var railItems = new List<UtilityRailItem>();
+        _utilityItems.Clear();
         foreach (var resolvedEditor in resolvedEditors)
         {
             var contribution = resolvedEditor.Contribution;
@@ -112,10 +168,66 @@ public class UtilityService : IUtilityService, IDisposable
                 PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, WorkspacePanelId.CustomUtility)
             };
 
-            railItems.Add(railItem);
+            _utilityItems.Add(railItem);
         }
 
-        return railItems;
+        _launcherItems.Clear();
+        _launcherItems.AddRange(BuildLauncherItems());
+    }
+
+    // The launchers: rail items that open a document and never occupy the panel, so they carry no panel view.
+    private List<UtilityRailItem> BuildLauncherItems()
+    {
+        var projectService = _serviceProvider.GetRequiredService<IProjectService>();
+        var workshopService = _serviceProvider.GetRequiredService<IWorkshopService>();
+        var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+        var iconService = _serviceProvider.GetRequiredService<IIconService>();
+
+        var launcherItems = new List<UtilityRailItem>();
+
+        // The project file sits at the project root, so its resource key is just the file name. The editor is
+        // named so the choice does not depend on extension resolution.
+        var project = projectService.CurrentProject;
+        if (project is not null)
+        {
+            var projectFileName = Path.GetFileName(project.ProjectFilePath);
+            if (ResourceKey.TryCreate(projectFileName, out var projectFileResource))
+            {
+                string projectSettingsName = stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
+
+                var projectSettingsItem = new UtilityRailItem
+                {
+                    ItemId = BuiltInLauncherIds.ProjectSettings,
+                    LandmarkId = ProjectSettingsLandmarkId,
+                    IconName = iconService.GetIconName(IconSymbol.Sliders),
+                    DisplayName = projectSettingsName,
+                    Tooltip = projectSettingsName,
+                    AllowedAreas = MainOnlyAreas,
+                    DefaultArea = WorkspaceArea.Main,
+                    Resource = new UtilityRailResource(projectFileResource, BuiltInEditors.ProjectSettingsEditorId)
+                };
+
+                launcherItems.Add(projectSettingsItem);
+            }
+        }
+
+        string workshopName = stringLocalizer.GetString("UtilityPanel_WorkshopTooltip");
+
+        var workshopItem = new UtilityRailItem
+        {
+            ItemId = BuiltInLauncherIds.Workshop,
+            LandmarkId = WorkshopLandmarkId,
+            IconName = iconService.GetIconName(IconSymbol.People),
+            DisplayName = workshopName,
+            Tooltip = workshopName,
+            AllowedAreas = MainOnlyAreas,
+            DefaultArea = WorkspaceArea.Main,
+            Resource = new UtilityRailResource(workshopService.DocumentResource, BuiltInEditors.WebViewEditorId)
+        };
+
+        launcherItems.Add(workshopItem);
+
+        return launcherItems;
     }
 
     public async Task<Result> EnsureUtilityInitializedAsync(EditorId utilityId)

@@ -4,9 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Direct unit test for ShowUtilityCommand. Exercises the command's own routing logic: the built-in surfaces
-/// bypass the utility service, and every other id is validated against the live utilities rather than the
-/// declared contributions.
+/// Direct unit test for ShowUtilityCommand. Exercises the command's own routing logic: an id is accepted when
+/// it is a live utility or a button on the rail, and only a live utility can be moved to an area first.
 /// </summary>
 [TestFixture]
 public class ShowUtilityCommandTests
@@ -85,10 +84,12 @@ public class ShowUtilityCommandTests
     }
 
     [Test]
-    public async Task Execute_BuiltInUtility_RevealsWithoutConsultingTheUtilityService()
+    public async Task Execute_BuiltInSurface_RevealsEvenThoughItIsNotALiveUtility()
     {
-        // The built-in surfaces are not contributions and are never created by the utility service, so they
-        // must bypass the live-utility guard.
+        // The built-in surfaces are not contributions and are never created by the utility service, so the
+        // rail is what says they exist.
+        _utilityPanel.HasRailItem(BuiltInUtilityIds.Explorer).Returns(true);
+
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = BuiltInUtilityIds.Explorer
@@ -98,7 +99,27 @@ public class ShowUtilityCommandTests
 
         result.IsSuccess.Should().BeTrue();
         _utilityPanel.Received(1).ShowUtility(BuiltInUtilityIds.Explorer);
-        _utilityService.DidNotReceive().HasUtility(Arg.Any<EditorId>());
+    }
+
+    [Test]
+    public async Task Execute_Launcher_RevealsItsDocument()
+    {
+        // A launcher opens a document rather than occupying the panel, so it is not a live utility either.
+        // An agent asked for a button the user can see has to be able to reveal it.
+        _utilityPanel.HasRailItem(BuiltInLauncherIds.Workshop).Returns(true);
+
+        var command = new ShowUtilityCommand(_workspaceWrapper)
+        {
+            UtilityId = BuiltInLauncherIds.Workshop
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        _utilityPanel.Received(1).ShowUtility(BuiltInLauncherIds.Workshop);
+
+        // Only a live utility can be moved between areas, so a launcher never reaches the dock path.
+        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<WorkspaceArea>());
     }
 
     [Test]

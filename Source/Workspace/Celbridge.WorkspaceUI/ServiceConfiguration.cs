@@ -1,6 +1,6 @@
-using Celbridge.Community;
 using Celbridge.DataTransfer;
 using Celbridge.UserInterface;
+using Celbridge.Workshop;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Commands;
 using Celbridge.WorkspaceUI.Platform;
@@ -20,7 +20,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IFocusService, FocusService>();
         services.AddSingleton<PanelFocusTracker>();
-        services.AddSingleton<ICommunityService, CommunityService>();
+        services.AddSingleton<IWorkshopService, WorkshopService>();
 
         PlatformServiceConfiguration.ConfigureServices(services);
 
@@ -59,7 +59,6 @@ public static class ServiceConfiguration
         services.AddTransient<IResetSurfaceSizeCommand, ResetSurfaceSizeCommand>();
         services.AddTransient<ISetBottomAreaAlignmentCommand, SetBottomAreaAlignmentCommand>();
         services.AddTransient<IPerformEditCommand, PerformEditCommand>();
-        services.AddTransient<IOpenCommunityLinkCommand, OpenCommunityLinkCommand>();
     }
 
     public static void Initialize()

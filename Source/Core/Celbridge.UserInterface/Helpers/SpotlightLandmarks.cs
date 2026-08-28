@@ -1,4 +1,3 @@
-using Celbridge.Community;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -23,6 +22,7 @@ internal static class SpotlightLandmarks
             new("explorer-utility-button", null),
             new("search-utility-button", null),
             new("project-settings-utility-button", null),
+            new("workshop-utility-button", null),
             new("search-input", WorkspaceSurface.UtilityPanel),
             new("search-run-button", WorkspaceSurface.UtilityPanel),
             new("search-history-button", WorkspaceSurface.UtilityPanel),
@@ -48,13 +48,6 @@ internal static class SpotlightLandmarks
         foreach (var landmark in BuiltInLandmarks)
         {
             registry.RegisterLandmark(landmark);
-        }
-
-        // The community rail buttons are built from the link catalog, so their landmarks are derived from it
-        // rather than listed above.
-        foreach (var link in CommunityLinks.All)
-        {
-            registry.RegisterLandmark(new LandmarkDescriptor(link.LandmarkId, null));
         }
     }
 }

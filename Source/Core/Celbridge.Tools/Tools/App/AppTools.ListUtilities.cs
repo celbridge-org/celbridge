@@ -7,25 +7,26 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// A single utility in the app_list_utilities result. Area is "utility" (a Utility Panel rail surface) or a
-/// document area token (docked as a document tab in that area). IsShown reports whether the utility is
+/// document area token (presented as a document tab in that area). IsShown reports whether the utility is
 /// currently surfaced to the user: the active rail surface when in the panel, or the active document
-/// when docked as a document.
+/// when it is a document. Resource is the file the utility presents, empty when it has none.
 /// </summary>
 public record class UtilityListEntry(
     string UtilityId,
     string DisplayName,
     string Area,
-    bool IsShown);
+    bool IsShown,
+    string Resource);
 
 /// <summary>
-/// Result returned by app_list_utilities: the catalog of every available utility, built-in and custom.
+/// Result returned by app_list_utilities: every utility the Utility Panel rail offers.
 /// </summary>
 public record class UtilitiesListResult(
     IReadOnlyList<UtilityListEntry> Utilities);
 
 public partial class AppTools
 {
-    /// <summary>List every available utility (built-in and custom) with its shown state.</summary>
+    /// <summary>List every utility on the Utility Panel rail with its area and shown state.</summary>
     [McpServerTool(Name = "app_list_utilities", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.list_utilities")]
     [RelatedGuides("workspace_panels")]
@@ -42,11 +43,17 @@ public partial class AppTools
         foreach (var utility in snapshot.Utilities)
         {
             var area = utility.Area.ToToken();
+
+            // A utility with no file behind it reports an empty resource rather than the empty key's own
+            // "project:" spelling, which would read as a resource that exists.
+            var resource = utility.Resource.IsEmpty ? string.Empty : utility.Resource.ToString();
+
             entries.Add(new UtilityListEntry(
                 utility.UtilityId.ToString(),
                 utility.DisplayName,
                 area,
-                utility.IsShown));
+                utility.IsShown,
+                resource));
         }
 
         var result = new UtilitiesListResult(entries);

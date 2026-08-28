@@ -1364,11 +1364,17 @@ Open with default application instead?</value>
   <data name="UtilityPanel_ProjectSettingsTooltip" xml:space="preserve">
     <value>Project Settings</value>
   </data>
-  <data name="UtilityPanel_LearnTooltip" xml:space="preserve">
+  <data name="UtilityPanel_WorkshopTooltip" xml:space="preserve">
+    <value>Community Workshop</value>
+  </data>
+  <data name="Workshop_Section_Celbridge" xml:space="preserve">
+    <value>Celbridge</value>
+  </data>
+  <data name="Workshop_Section_Learn" xml:space="preserve">
     <value>Learn</value>
   </data>
-  <data name="UtilityPanel_ForumTooltip" xml:space="preserve">
-    <value>Community Forum</value>
+  <data name="Workshop_Section_Forum" xml:space="preserve">
+    <value>Forum</value>
   </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
     <value>Open as document</value>

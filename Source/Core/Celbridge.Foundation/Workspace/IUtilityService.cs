@@ -5,17 +5,37 @@ namespace Celbridge.Workspace;
 /// <summary>
 /// Owns the workspace's utilities: their lifecycle (created at project load, torn down at unload), their save
 /// tick, and the dock orchestration that moves each utility's single WebView between the Utility Panel and a
-/// document tab.
+/// document tab. Also holds the register of every workspace item the Utility Panel rail presents, and the
+/// area each one occupies, so a caller reads placement from the record rather than from the view showing it.
 /// </summary>
 public interface IUtilityService
 {
     /// <summary>
-    /// Creates each utility as a persistent workspace surface and returns the rail items describing
-    /// them. Each utility is owned by this service until the workspace unloads. Utilities are given in
-    /// declaration order, which is the rail order. A lazy-load utility is bound but its WebView is
-    /// deferred to the first show.
+    /// Records the built-in utility items the Utility Panel builds for itself. Their descriptors wrap live
+    /// views, so the panel constructs them and publishes them here for the register to hold. Called once per
+    /// workspace load, before the utilities are created.
     /// </summary>
-    Task<IReadOnlyList<UtilityRailItem>> CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
+    void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems);
+
+    /// <summary>
+    /// Creates each utility as a persistent workspace surface and records it in the rail register, along with
+    /// the launchers. Each utility is owned by this service until the workspace unloads. Utilities are created
+    /// in declaration order, which is the rail order. A lazy-load utility is bound but its WebView is deferred
+    /// to the first show.
+    /// </summary>
+    Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
+
+    /// <summary>
+    /// Every workspace item the rail presents, in rail order: the registered built-in utilities, then the
+    /// contribution utilities, then the launchers. Empty until the utilities have been created.
+    /// </summary>
+    IReadOnlyList<UtilityRailItem> GetRailItems();
+
+    /// <summary>
+    /// The area a rail item currently occupies, which is its descriptor's default area until it moves.
+    /// Reports the Utility Panel for an id the register does not hold.
+    /// </summary>
+    WorkspaceArea GetItemArea(EditorId itemId);
 
     /// <summary>
     /// Initializes a lazy-load utility's WebView if it has not been created yet. A no-op for

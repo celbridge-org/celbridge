@@ -1,9 +1,7 @@
 using Celbridge.Commands;
-using Celbridge.Community;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Packages;
-using Celbridge.Projects;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -23,7 +21,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly IMessengerService _messengerService;
     private readonly ISpotlightRegistry _spotlightRegistry;
     private readonly ICommandService _commandService;
-    private readonly IProjectService _projectService;
     private readonly ILayoutService _layoutService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IIconService _iconService;
@@ -36,22 +33,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // SpotlightLandmarks exactly.
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
-    private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
 
-    // Rail identity of the Project Settings launcher. It is not a utility, so it takes no BuiltInUtilityIds
-    // entry; the panel needs an id to key its button by.
-    private static readonly EditorId ProjectSettingsItemId = EditorId.Create("celbridge", "project-settings");
-
-    // Explorer and Search work in a portrait column and nowhere else; the launchers open a document and
-    // never occupy the panel.
+    // Explorer and Search work in a portrait column and nowhere else.
     private static readonly IReadOnlyList<WorkspaceArea> PanelOnlyAreas =
     [
         WorkspaceArea.Utility
-    ];
-
-    private static readonly IReadOnlyList<WorkspaceArea> MainOnlyAreas =
-    [
-        WorkspaceArea.Main
     ];
 
     // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
@@ -64,6 +50,14 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Docked utilities (utility id -> the document resource its WebView is docked into). A docked utility's rail
     // click activates its document tab instead of showing the panel surface.
     private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
+
+    // Launchers (rail id -> the document it opens). A launcher never occupies the panel, so this is what its
+    // button click and its reveal both go through.
+    private readonly Dictionary<EditorId, UtilityRailResource> _launcherResources = new();
+
+    // The built-in utility descriptors this panel builds for itself, published to the utility service so the
+    // rail register holds every item rather than only the ones the service builds.
+    private readonly List<UtilityRailItem> _builtInUtilityItems = new();
 
     // The rail's buttons in the three ordered groups the panel presents: the built-in surfaces, then the
     // contribution utilities, then the launchers. The rail draws them as one stack, so the panel rebuilds it
@@ -132,7 +126,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _projectService = ServiceLocator.AcquireService<IProjectService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
         _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
@@ -147,7 +140,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ViewModel.SetPanelVisible(_layoutService.IsUtilityPanelVisible);
         DataContext = ViewModel;
 
-        BuildBuiltInRailItems();
+        BuildBuiltInUtilityItems();
         RefreshRailButtons();
 
         // Show the Explorer surface by default
@@ -157,16 +150,20 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         Unloaded += UtilityPanel_Unloaded;
     }
 
-    // The built-in rail items: the two panel surfaces, then the launchers that open a document. Every button
-    // on the rail is built from a descriptor by AddRailItem, whichever group it belongs to.
-    private void BuildBuiltInRailItems()
+    // The panel's own built-in utilities, Explorer and Search. These wrap live views acquired from DI, so the
+    // panel builds them rather than the utility service, which does not exist yet when the panel is constructed.
+    private void BuildBuiltInUtilityItems()
     {
+        string explorerName = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
+        string searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
+
         var explorerItem = new UtilityRailItem
         {
             ItemId = BuiltInUtilityIds.Explorer,
             LandmarkId = ExplorerLandmarkId,
             IconName = _iconService.GetIconName(IconSymbol.Folder),
-            Tooltip = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip"),
+            DisplayName = explorerName,
+            Tooltip = explorerName,
             AllowedAreas = PanelOnlyAreas,
             PanelView = new UtilityRailPanelView(
                 ExplorerPanel,
@@ -180,7 +177,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             ItemId = BuiltInUtilityIds.Search,
             LandmarkId = SearchLandmarkId,
             IconName = _iconService.GetIconName(IconSymbol.Search),
-            Tooltip = _stringLocalizer.GetString("UtilityPanel_SearchTooltip"),
+            DisplayName = searchName,
+            Tooltip = searchName,
             AllowedAreas = PanelOnlyAreas,
             PanelView = new UtilityRailPanelView(
                 SearchPanel,
@@ -189,64 +187,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
                 PreservePanelFocus: true)
         };
 
+        _builtInUtilityItems.Add(explorerItem);
+        _builtInUtilityItems.Add(searchItem);
+
         _surfaceButtons.Add(AddRailItem(explorerItem));
         _surfaceButtons.Add(AddRailItem(searchItem));
-
-        foreach (var launcherItem in BuildLauncherItems())
-        {
-            _launcherButtons.Add(AddRailItem(launcherItem));
-        }
-    }
-
-    // The launchers: rail items that open a document and never occupy the panel, so they carry no rail
-    // selection, content host or focus action.
-    private List<UtilityRailItem> BuildLauncherItems()
-    {
-        var launcherItems = new List<UtilityRailItem>();
-
-        // The project file sits at the project root, so its resource key is just the file name. The editor is
-        // named so the choice does not depend on extension resolution.
-        var project = _projectService.CurrentProject;
-        if (project is not null)
-        {
-            var projectFileName = Path.GetFileName(project.ProjectFilePath);
-            if (ResourceKey.TryCreate(projectFileName, out var projectFileResource))
-            {
-                var projectSettingsItem = new UtilityRailItem
-                {
-                    ItemId = ProjectSettingsItemId,
-                    LandmarkId = ProjectSettingsLandmarkId,
-                    IconName = _iconService.GetIconName(IconSymbol.Sliders),
-                    Tooltip = _stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip"),
-                    AllowedAreas = MainOnlyAreas,
-                    DefaultArea = WorkspaceArea.Main,
-                    Resource = new UtilityRailResource(projectFileResource, BuiltInEditors.ProjectSettingsEditorId)
-                };
-
-                launcherItems.Add(projectSettingsItem);
-            }
-        }
-
-        var communityService = ServiceLocator.AcquireService<ICommunityService>();
-        foreach (var link in CommunityLinks.All)
-        {
-            var communityItem = new UtilityRailItem
-            {
-                ItemId = EditorId.Create("celbridge", link.LinkId),
-                LandmarkId = link.LandmarkId,
-                IconName = _iconService.GetIconName(link.Icon),
-                Tooltip = _stringLocalizer.GetString(link.TooltipKey),
-                AllowedAreas = MainOnlyAreas,
-                DefaultArea = WorkspaceArea.Main,
-                Resource = new UtilityRailResource(
-                    communityService.GetLinkResource(link),
-                    BuiltInEditors.WebViewEditorId)
-            };
-
-            launcherItems.Add(communityItem);
-        }
-
-        return launcherItems;
     }
 
     // Builds a rail button from a descriptor and registers everything the panel tracks for it. An item that
@@ -274,11 +219,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
         else if (resource is not null)
         {
-            railButton.Click += (sender, e) =>
-            {
-                railButton.FlashAttention();
-                OpenRailItemDocument(resource);
-            };
+            _launcherResources[itemId] = resource;
+            railButton.Click += (sender, e) => ShowLauncherDocument(itemId, resource);
         }
 
         _buttons[itemId] = railButton;
@@ -314,8 +256,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     // Opens a launcher's document. Already open, the command activates its tab.
-    private void OpenRailItemDocument(UtilityRailResource resource)
+    private void ShowLauncherDocument(EditorId itemId, UtilityRailResource resource)
     {
+        FlashRailButton(itemId);
+
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resource.Resource;
@@ -392,7 +336,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Flags the Project Settings rail button when any contribution has dropped configuration.
     private void UpdateProjectSettingsIssuePip()
     {
-        if (!_buttons.TryGetValue(ProjectSettingsItemId, out var projectSettingsButton))
+        if (!_buttons.TryGetValue(BuiltInLauncherIds.ProjectSettings, out var projectSettingsButton))
         {
             return;
         }
@@ -409,8 +353,20 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ViewModel.ReconcileFocus(message.FocusedPanel);
     }
 
+    public bool HasRailItem(EditorId itemId)
+    {
+        return _buttons.ContainsKey(itemId);
+    }
+
     public void ShowUtility(EditorId utilityId)
     {
+        // A launcher has no panel surface, so revealing it is opening its document, the same as clicking it.
+        if (_launcherResources.TryGetValue(utilityId, out var launcherResource))
+        {
+            ShowLauncherDocument(utilityId, launcherResource);
+            return;
+        }
+
         // A utility docked as a document activates its document tab, without changing the shown panel surface or
         // the rail highlight. A utility in the panel selects its rail surface.
         if (_dockedUtilityResources.TryGetValue(utilityId, out var documentResource))
@@ -595,18 +551,44 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Send(new ActiveUtilityChangedMessage(ActiveUtilityId.ToString()));
     }
 
+    public IReadOnlyList<UtilityRailItem> GetBuiltInUtilityItems()
+    {
+        return _builtInUtilityItems;
+    }
+
     public void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems)
     {
         ClearRailItems();
 
         foreach (var railItem in railItems)
         {
-            _customUtilityButtons.Add(AddRailItem(railItem));
+            // The rail surfaces are built in the constructor because they wrap live views, so they are already
+            // on the rail. Rebuilding one would reparent the view it hosts.
+            if (_buttons.ContainsKey(railItem.ItemId))
+            {
+                continue;
+            }
 
-            _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(railItem.LandmarkId, null));
+            var railButton = AddRailItem(railItem);
+
+            // An item with no panel view has nowhere to park a live view, so it is a launcher: it opens a
+            // document, and joins the group the rail draws after the gap. A contribution's landmark is
+            // registered here because it exists only while its package is loaded.
+            if (railItem.PanelView is null)
+            {
+                _launcherButtons.Add(railButton);
+            }
+            else
+            {
+                _customUtilityButtons.Add(railButton);
+                _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(railItem.LandmarkId, null));
+            }
         }
 
         RefreshRailButtons();
+
+        // The Project Settings button is rebuilt above, so its issue pip is re-applied to the new button.
+        UpdateProjectSettingsIssuePip();
     }
 
     // Rebuilds the rail as two visual groups: the panel surfaces with the contribution utilities, then the
@@ -652,6 +634,16 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             _dockedUtilityResources.Remove(utilityId);
             ViewModel.RemoveItem(utilityId);
         }
+
+        // The launchers host no live view and no content, so they are simply dropped and rebuilt. Their
+        // landmarks are seeded at startup rather than registered per workspace, so none is unregistered here.
+        foreach (var launcherId in _launcherResources.Keys)
+        {
+            _buttons.Remove(launcherId);
+        }
+
+        _launcherResources.Clear();
+        _launcherButtons.Clear();
 
         RefreshRailButtons();
     }
