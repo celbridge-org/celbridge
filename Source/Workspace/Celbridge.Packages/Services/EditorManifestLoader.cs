@@ -45,7 +45,6 @@ internal static class EditorManifestLoader
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
-    private const string LazyLoadKey = "lazy-load";
     private const string AreasKey = "areas";
     private const string DefaultAreaKey = "default-area";
 
@@ -454,7 +453,6 @@ internal static class EditorManifestLoader
         }
 
         var template = TomlTableReader.GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
-        var lazyLoad = TomlTableReader.GetBoolOrNull(utilityTable, LazyLoadKey) ?? false;
 
         var areasResult = ParseAllowedAreas(utilityTable, editorTomlPath);
         if (areasResult.IsFailure)
@@ -470,21 +468,11 @@ internal static class EditorManifestLoader
         }
         var defaultArea = defaultAreaResult.Value;
 
-        // Only a utility-scoped declaration is supported: a workspace item with no place in the Utility Panel
-        // has nowhere to park its live view, and the rail cannot yet present one.
-        if (!allowedAreas.Contains(WorkspaceArea.Utility))
-        {
-            return Result.Fail(
-                $"[{UtilitySection}] '{AreasKey}' must include '{WorkspaceAreaTokens.Utility}': {editorTomlPath}. " +
-                $"A workspace item that is not a utility is not supported yet.");
-        }
-
         var descriptor = new UtilityDescriptor
         {
             ResourceExtension = resourceExtension.ToLowerInvariant(),
             Template = template,
             Icon = icon,
-            LazyLoad = lazyLoad,
             AllowedAreas = allowedAreas,
             DefaultArea = defaultArea
         };

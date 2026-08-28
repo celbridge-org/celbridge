@@ -20,7 +20,7 @@ A JSON object with one field:
   - `utilityId` (string) — the id to pass to `app_show_utility` (e.g. `celbridge.explorer`, or the editor id of a contributed utility).
   - `displayName` (string) — the human-readable, localized name.
   - `area` (string) — the workspace area the utility occupies: `"utility"` when it is a rail surface in the Utility Panel, or a document area token (`"main"`, `"bottom"`, `"side"`) when it is a document tab. A custom utility can move between the areas it allows at runtime; Explorer and Search are always `"utility"`, and the launchers are always `"main"`.
-  - `allowedAreas` (array of string) — the areas this utility may be moved to, which `area` is always one of. Pass one of these to `app_show_utility`; any other area is refused. Explorer and Search report `["utility"]` and the launchers report `["main"]`, so a single-entry list means the utility cannot be moved.
+  - `allowedAreas` (array of string) — the areas this utility may be moved to, which `area` is always one of. Pass one of these to `app_show_utility`; any other area is refused. Explorer and Search report `["utility"]` and the launchers report `["main"]`, so a single-entry list means the utility cannot be moved. A list containing `"utility"` also marks the entry as one that lives in the rail and is never destroyed; one without it is a button that opens an ordinary document.
   - `isShown` (bool) — whether the utility is currently surfaced to the user: in the `utility` area, whether it is the active rail tab; in a document area, whether its tab is the active document.
   - `resource` (string) — the file the utility presents, or empty when it has none. Explorer and Search have no file behind them, so they report an empty string.
 

@@ -36,6 +36,16 @@ public static class BuiltInLauncherIds
     /// The Community Workshop launcher's rail id.
     /// </summary>
     public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
+
+    /// <summary>
+    /// Every built-in launcher id. Their rail buttons are rebuilt per workspace, but their Spotlight
+    /// landmarks are seeded at startup and outlive any one workspace, unlike a contribution's.
+    /// </summary>
+    public static readonly IReadOnlyList<EditorId> All =
+    [
+        ProjectSettings,
+        Workshop
+    ];
 }
 
 /// <summary>

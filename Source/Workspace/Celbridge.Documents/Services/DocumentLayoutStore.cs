@@ -293,20 +293,36 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            // A stored utils: entry means the utility was docked last session. Utilities are created eagerly
-            // at workspace load, before this runs, so reparent the live utility into its saved tab position
-            // instead of creating a second view.
+            // A stored utils: entry is one of the rail's own workspace items, both of which are registered
+            // before this runs. A workspace-scoped one was docked last session, so its live view is
+            // reparented into the saved tab position rather than a second view being created; an open-scoped
+            // one opens as an ordinary document below, with the editor its rail item names.
+            var railEditorId = EditorId.Empty;
             if (fileResource.Root == ProjectConstants.UtilsFolder)
             {
-                var utilityAddress = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
-
                 var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-                var restoreResult = await utilityService.RestoreDockedUtility(fileResource, utilityAddress);
-                if (restoreResult.IsFailure)
+
+                var railItem = utilityService.FindRailItem(fileResource);
+                if (railItem is null)
                 {
-                    _logger.LogWarning(restoreResult, $"Failed to restore docked utility '{fileResource}'");
+                    _logger.LogWarning($"Cannot restore '{fileResource}': no rail item presents it.");
+                    continue;
                 }
-                continue;
+
+                if (railItem.PanelView is not null)
+                {
+                    var utilityAddress = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
+
+                    var restoreResult = await utilityService.RestoreDockedUtility(fileResource, utilityAddress);
+                    if (restoreResult.IsFailure)
+                    {
+                        _logger.LogWarning(restoreResult, $"Failed to restore docked utility '{fileResource}'");
+                    }
+                    continue;
+                }
+
+                Guard.IsNotNull(railItem.Resource);
+                railEditorId = railItem.Resource.Editor;
             }
 
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
@@ -321,14 +337,15 @@ public class DocumentLayoutStore
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
             // An empty editor id makes the factory resolve the editor from the sidecar (or the
-            // per-extension default) rather than from persisted layout state.
+            // per-extension default) rather than from persisted layout state. A rail item's document names
+            // its editor instead: a utils: file has no sidecar and its extension is claimed by no editor.
             string? editorStateJson = null;
             editorStates?.TryGetValue(fileResource.ToString(), out editorStateJson);
 
             var restoreOptions = new OpenDocumentOptions(
                 Address: address,
                 Activate: false,
-                EditorId: EditorId.Empty,
+                EditorId: railEditorId,
                 EditorStateJson: editorStateJson);
 
             var openResult = await DocumentsPanel.OpenDocument(fileResource, restoreOptions);

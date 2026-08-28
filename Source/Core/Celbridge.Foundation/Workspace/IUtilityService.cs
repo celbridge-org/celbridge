@@ -18,10 +18,10 @@ public interface IUtilityService
     void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems);
 
     /// <summary>
-    /// Creates each utility as a persistent workspace surface and records it in the rail register, along with
-    /// the launchers. Each utility is owned by this service until the workspace unloads. Utilities are created
-    /// in declaration order, which is the rail order. A lazy-load utility is bound but its WebView is deferred
-    /// to the first show.
+    /// Seeds each declared workspace item's backing file and records it in the rail register, along with the
+    /// launchers, in declaration order, which is the rail order. A workspace-scoped declaration also gets a
+    /// persistent surface owned by this service until the workspace unloads; an open-scoped one gets no view
+    /// until its rail button opens its document.
     /// </summary>
     Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
 
@@ -38,10 +38,10 @@ public interface IUtilityService
     WorkspaceArea GetItemArea(EditorId itemId);
 
     /// <summary>
-    /// Initializes a lazy-load utility's WebView if it has not been created yet. A no-op for
-    /// already-initialized utilities, built-in utilities, and unknown ids.
+    /// The rail item that presents this resource, or null when no rail item does. A returned item with a
+    /// panel view is a workspace-scoped utility, which is presented by docking rather than by opening.
     /// </summary>
-    Task<Result> EnsureUtilityInitializedAsync(EditorId utilityId);
+    UtilityRailItem? FindRailItem(ResourceKey resource);
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given

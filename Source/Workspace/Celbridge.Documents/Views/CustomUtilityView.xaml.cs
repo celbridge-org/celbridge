@@ -24,9 +24,6 @@ public sealed partial class CustomUtilityView : UserControl
     // The utility's id, set on Bind. Used by the dock orchestration to address this panel.
     private EditorId _utilityId = EditorId.Empty;
 
-    // The bound resolved editor, held so a lazy utility can initialize its WebView on first show.
-    private ResolvedEditor? _resolvedEditor;
-
     // The document area the "Open as document" control docks into, resolved from the utility's declaration
     // on Bind. Null when the utility declares no document area, in which case the control is hidden.
     private WorkspaceArea? _openAsDocumentArea;
@@ -123,12 +120,11 @@ public sealed partial class CustomUtilityView : UserControl
     }
 
     /// <summary>
-    /// Binds the panel to its resolved editor and backing resource without creating the WebView.
-    /// The backing file is expected to already exist, seeded before this call.
+    /// Binds the panel to its resolved editor and backing resource, and creates its WebView. The backing
+    /// file is expected to already exist, seeded before this call.
     /// </summary>
     public async Task<Result> BindAsync(ResolvedEditor resolvedEditor, ResourceKey resource, string displayName)
     {
-        _resolvedEditor = resolvedEditor;
         _utilityId = resolvedEditor.EditorId;
 
         ApplyDeclaredAreas(resolvedEditor.Contribution.UtilityDescriptor);
@@ -151,24 +147,10 @@ public sealed partial class CustomUtilityView : UserControl
         var writableState = await operations.GetWritableStateAsync(resource);
         _controller.SetWritableState(writableState);
 
-        return Result.Ok();
-    }
-
-    /// <summary>
-    /// Initializes the WebView for the bound resolved editor. The controller runs the initialization
-    /// once; later calls await the same result, so this is safe to call on every show.
-    /// </summary>
-    public async Task<Result> EnsureInitializedAsync()
-    {
-        if (_resolvedEditor is null)
-        {
-            return Result.Fail("Cannot initialize utility: the view is not bound to a resolved editor");
-        }
-
-        var initResult = await _controller.InitializeAsync(_resolvedEditor);
+        var initResult = await _controller.InitializeAsync(resolvedEditor);
         if (initResult.IsFailure)
         {
-            return Result.Fail($"Failed to initialize utility: '{_viewModel.FileResource}'")
+            return Result.Fail($"Failed to initialize utility: '{resource}'")
                 .WithErrors(initResult);
         }
 

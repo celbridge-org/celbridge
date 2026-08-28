@@ -6,6 +6,7 @@ using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Utilities;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
@@ -51,9 +52,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // click activates its document tab instead of showing it in the panel.
     private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
 
-    // Launchers (rail id -> the document it opens). A launcher never occupies the panel, so this is what its
-    // button click and its reveal both go through.
-    private readonly Dictionary<EditorId, UtilityRailResource> _launcherResources = new();
+    // The launchers, by rail id. A launcher never occupies the panel, so its descriptor is what its button
+    // click and its reveal both go through.
+    private readonly Dictionary<EditorId, UtilityRailItem> _launcherItems = new();
 
     // The built-in utility descriptors this panel builds for itself, published to the utility service so the
     // rail register holds every item rather than only the ones the service builds.
@@ -219,8 +220,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
         else if (resource is not null)
         {
-            _launcherResources[itemId] = resource;
-            railButton.Click += (sender, e) => ShowLauncherDocument(itemId, resource);
+            _launcherItems[itemId] = item;
+            railButton.Click += (sender, e) => ShowLauncherDocument(item);
+
+            // A contribution's landmark exists only while its package is loaded, so the rail registers it.
+            // The built-in launchers are seeded at startup instead.
+            if (!BuiltInLauncherIds.All.Contains(itemId))
+            {
+                _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(item.LandmarkId, null));
+            }
         }
 
         _buttons[itemId] = railButton;
@@ -255,16 +263,46 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         return contentControl;
     }
 
-    // Opens a launcher's document. Already open, the command activates its tab.
-    private void ShowLauncherDocument(EditorId itemId, UtilityRailResource resource)
+    // Opens a launcher's document in the area it declares. Already open, the command activates its tab.
+    private void ShowLauncherDocument(UtilityRailItem item)
     {
-        FlashRailButton(itemId);
+        Guard.IsNotNull(item.Resource);
+
+        FlashRailButton(item.ItemId);
+
+        var area = item.DefaultArea;
+        var resource = item.Resource;
+
+        // Opening into a section does not reveal its area, so a collapsed one is presented first.
+        PresentArea(area);
+
+        // The declared area decides where the document lands when it opens. A tab that is already open keeps
+        // the section the user put it in, which is what an unnamed section means to the open command.
+        var targetSection = ResolveLauncherSection(resource.Resource, area);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resource.Resource;
             command.EditorId = resource.Editor;
+            command.TargetSection = targetSection;
         });
+    }
+
+    // Null once the document is open, so the open command leaves the tab where the user put it.
+    private DocumentSection? ResolveLauncherSection(ResourceKey resource, WorkspaceArea area)
+    {
+        var openDocuments = _workspaceWrapper.WorkspaceService.DocumentsService.GetOpenDocuments();
+        foreach (var openDocument in openDocuments)
+        {
+            if (openDocument.FileResource == resource)
+            {
+                return null;
+            }
+        }
+
+        var documentArea = area.GetDocumentArea();
+
+        return documentArea?.GetPrimarySection();
     }
 
     // Binds a rail button's visual state to its item view model.
@@ -362,9 +400,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         // A launcher never occupies the panel, so revealing it is opening its document, the same as clicking
         // it.
-        if (_launcherResources.TryGetValue(utilityId, out var launcherResource))
+        if (_launcherItems.TryGetValue(utilityId, out var launcherItem))
         {
-            ShowLauncherDocument(utilityId, launcherResource);
+            ShowLauncherDocument(launcherItem);
             return;
         }
 
@@ -384,10 +422,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         {
             return;
         }
-
-        // A lazy-load utility creates its WebView on first show. The utility is shown
-        // immediately; the WebView attaches to it when initialization completes.
-        _ = _workspaceWrapper.WorkspaceService.UtilityService.EnsureUtilityInitializedAsync(utilityId);
 
         // Showing a utility presents it, so a collapsed panel is brought back first. Its focus claim waits
         // for the reveal to be laid out.
@@ -412,9 +446,21 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     private void ShowUtilityPanel()
     {
+        PresentArea(WorkspaceArea.Utility);
+    }
+
+    // Reveals a collapsed area, so presenting something in it puts it on screen. Main is never collapsed,
+    // which is the no-op case.
+    private void PresentArea(WorkspaceArea area)
+    {
+        if (!area.IsCollapsible())
+        {
+            return;
+        }
+
         _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Area = WorkspaceArea.Utility;
+            command.Area = area;
             command.IsVisible = true;
         });
     }
@@ -636,14 +682,20 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             ViewModel.RemoveItem(utilityId);
         }
 
-        // The launchers host no live view and no content, so they are simply dropped and rebuilt. Their
-        // landmarks are seeded at startup rather than registered per workspace, so none is unregistered here.
-        foreach (var launcherId in _launcherResources.Keys)
+        // The launchers host no live view and no content, so they are simply dropped and rebuilt. Only a
+        // contributed launcher's landmark was registered with the rail; the built-in ones are seeded at
+        // startup and outlive the workspace.
+        foreach (var launcherItem in _launcherItems.Values)
         {
-            _buttons.Remove(launcherId);
+            _buttons.Remove(launcherItem.ItemId);
+
+            if (!BuiltInLauncherIds.All.Contains(launcherItem.ItemId))
+            {
+                _spotlightRegistry.UnregisterLandmark(launcherItem.LandmarkId);
+            }
         }
 
-        _launcherResources.Clear();
+        _launcherItems.Clear();
         _launcherButtons.Clear();
 
         RefreshRailButtons();

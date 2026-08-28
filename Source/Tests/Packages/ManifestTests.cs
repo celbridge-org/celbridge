@@ -1008,7 +1008,6 @@ public class ManifestTests
             resource-extension = "._widget"
             template = "templates/default._widget"
             icon = "star"
-            lazy-load = true
             """);
 
         var result = LoadPackage();
@@ -1028,11 +1027,10 @@ public class ManifestTests
         descriptor.ResourceExtension.Should().Be("._widget");
         descriptor.Template.Should().Be("templates/default._widget");
         descriptor.Icon.Should().Be("star");
-        descriptor.LazyLoad.Should().BeTrue();
     }
 
     [Test]
-    public void LoadPackage_UtilityDefaults_TemplateEmptyAndLazyLoadFalse()
+    public void LoadPackage_UtilityDefaults_TemplateEmptyAndPlacementUnchanged()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -1050,11 +1048,11 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         var descriptor = result.Value.Editors[0].UtilityDescriptor!;
         descriptor.Template.Should().BeEmpty();
-        descriptor.LazyLoad.Should().BeFalse();
 
         // A manifest declaring no areas keeps the placement every utility had before areas could be declared.
         descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Main);
         descriptor.DefaultArea.Should().Be(WorkspaceArea.Utility);
+        descriptor.IsWorkspaceScoped.Should().BeTrue();
     }
 
     [Test]
@@ -1082,6 +1080,34 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_UtilityAreasWithoutTheUtilityPanel_ParsesAsDocumentScoped()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-renderer"
+            type = "utility"
+            display-name = "Widget_Utility_DisplayName"
+
+            [utility]
+            resource-extension = "._widget"
+            icon = "star"
+            areas = ["bottom"]
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+
+        // The one document area it allows is also the default, so the declaration need not name one.
+        var descriptor = result.Value.Editors[0].UtilityDescriptor!;
+        descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Bottom);
+        descriptor.DefaultArea.Should().Be(WorkspaceArea.Bottom);
+
+        // Nothing parks a live view in the Utility Panel, so the item is destroyed when its tab closes.
+        descriptor.IsWorkspaceScoped.Should().BeFalse();
+    }
+
+    [Test]
     public void LoadPackage_UtilityAreasWithoutDefault_DefaultsToTheUtilityPanel()
     {
         WriteSingleEditorPackage("""
@@ -1106,7 +1132,6 @@ public class ManifestTests
     [TestCase("[\"utility\", \"utility\"]", Description = "duplicate area")]
     [TestCase("[\"utility\", \"panel\"]", Description = "unrecognized area")]
     [TestCase("\"utility\"", Description = "not an array")]
-    [TestCase("[\"main\"]", Description = "no utility area, which is not supported yet")]
     [TestCase("[\"main\", \"bottom\"]", Description = "no utility area and no default to infer")]
     public void LoadPackage_UtilityInvalidAreas_ReturnsFailure(string areasValue)
     {

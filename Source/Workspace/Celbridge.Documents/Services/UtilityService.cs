@@ -35,10 +35,11 @@ public class UtilityService : IUtilityService, IDisposable
     ];
 
     // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
-    // their descriptors wrap live views; the rest are built here.
+    // their descriptors wrap live views; the rest are built here. The contributed items hold both kinds of
+    // declaration, and each one's panel view says which kind it is.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
-    private readonly List<UtilityRailItem> _utilityItems = new();
-    private readonly List<UtilityRailItem> _launcherItems = new();
+    private readonly List<UtilityRailItem> _contributedItems = new();
+    private readonly List<UtilityRailItem> _builtInLauncherItems = new();
 
     private bool _disposed;
 
@@ -75,10 +76,24 @@ public class UtilityService : IUtilityService, IDisposable
     {
         var railItems = new List<UtilityRailItem>();
         railItems.AddRange(_builtInUtilityItems);
-        railItems.AddRange(_utilityItems);
-        railItems.AddRange(_launcherItems);
+        railItems.AddRange(_contributedItems);
+        railItems.AddRange(_builtInLauncherItems);
 
         return railItems;
+    }
+
+    public UtilityRailItem? FindRailItem(ResourceKey resource)
+    {
+        foreach (var railItem in GetRailItems())
+        {
+            if (railItem.Resource is not null
+                && railItem.Resource.Resource == resource)
+            {
+                return railItem;
+            }
+        }
+
+        return null;
     }
 
     public WorkspaceArea GetItemArea(EditorId itemId)
@@ -106,7 +121,7 @@ public class UtilityService : IUtilityService, IDisposable
     {
         var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-        _utilityItems.Clear();
+        _contributedItems.Clear();
         foreach (var resolvedEditor in resolvedEditors)
         {
             var contribution = resolvedEditor.Contribution;
@@ -134,33 +149,10 @@ public class UtilityService : IUtilityService, IDisposable
             }
 
             var displayName = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.DisplayName);
-
-            var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
-            var bindResult = await panelView.BindAsync(resolvedEditor, resource, displayName);
-            if (bindResult.IsFailure)
-            {
-                _logger.LogError(bindResult, $"Failed to bind utility: '{resource}'");
-                continue;
-            }
-
-            // A lazy-load utility defers its WebView to the first show; every other utility
-            // initializes now.
-            if (!descriptor.LazyLoad)
-            {
-                var initResult = await panelView.EnsureInitializedAsync();
-                if (initResult.IsFailure)
-                {
-                    _logger.LogError(initResult, $"Failed to initialize utility: '{resource}'");
-                    continue;
-                }
-            }
-
-            _utilities.Add(panelView);
-
             var tooltip = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.Description);
 
-            // A contribution utility carries both payloads: the resource it opens as a document, and the view
-            // already bound to that resource for the panel to host.
+            // Every declared item carries the resource it opens as a document. Only a workspace-scoped one
+            // also carries a panel view, and building that view is what creates the utility.
             var railItem = new UtilityRailItem
             {
                 ItemId = utilityId,
@@ -170,19 +162,56 @@ public class UtilityService : IUtilityService, IDisposable
                 Tooltip = tooltip,
                 AllowedAreas = descriptor.AllowedAreas,
                 DefaultArea = descriptor.DefaultArea,
-                Resource = new UtilityRailResource(resource, resolvedEditor.EditorId),
-                PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
+                Resource = new UtilityRailResource(resource, resolvedEditor.EditorId)
             };
 
-            _utilityItems.Add(railItem);
+            if (descriptor.IsWorkspaceScoped)
+            {
+                var panelViewResult = await CreateUtilityViewAsync(resolvedEditor, resource, displayName);
+                if (panelViewResult.IsFailure)
+                {
+                    _logger.LogError(panelViewResult, $"Failed to create utility: '{resource}'");
+                    continue;
+                }
+                var panelView = panelViewResult.Value;
+
+                _utilities.Add(panelView);
+
+                railItem = railItem with
+                {
+                    PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
+                };
+            }
+
+            _contributedItems.Add(railItem);
         }
 
-        _launcherItems.Clear();
-        _launcherItems.AddRange(BuildLauncherItems());
+        _builtInLauncherItems.Clear();
+        _builtInLauncherItems.AddRange(BuildBuiltInLauncherItems());
     }
 
-    // The launchers: rail items that open a document and never occupy the panel, so they carry no panel view.
-    private List<UtilityRailItem> BuildLauncherItems()
+    // Builds a workspace-scoped utility's persistent surface: the view the Utility Panel hosts and the dock
+    // orchestration reparents. Its WebView is created here, so it is ready wherever the utility is presented.
+    private async Task<Result<CustomUtilityView>> CreateUtilityViewAsync(
+        ResolvedEditor resolvedEditor,
+        ResourceKey resource,
+        string displayName)
+    {
+        var panelView = _serviceProvider.GetRequiredService<CustomUtilityView>();
+
+        var bindResult = await panelView.BindAsync(resolvedEditor, resource, displayName);
+        if (bindResult.IsFailure)
+        {
+            return Result<CustomUtilityView>.Fail($"Failed to bind utility: '{resource}'")
+                .WithErrors(bindResult);
+        }
+
+        return panelView;
+    }
+
+    // The built-in launchers: rail items that open a document and never occupy the panel, so they carry no
+    // panel view. A contribution declaring no utility area builds the same shape from its manifest.
+    private List<UtilityRailItem> BuildBuiltInLauncherItems()
     {
         var projectService = _serviceProvider.GetRequiredService<IProjectService>();
         var workshopService = _serviceProvider.GetRequiredService<IWorkshopService>();
@@ -236,24 +265,6 @@ public class UtilityService : IUtilityService, IDisposable
         return launcherItems;
     }
 
-    public async Task<Result> EnsureUtilityInitializedAsync(EditorId utilityId)
-    {
-        var panelView = _utilities.FirstOrDefault(utility => utility.UtilityId == utilityId);
-        if (panelView is null)
-        {
-            // Built-in utilities and unknown ids have no deferred initialization.
-            return Result.Ok();
-        }
-
-        var initResult = await panelView.EnsureInitializedAsync();
-        if (initResult.IsFailure)
-        {
-            _logger.LogError(initResult, $"Failed to initialize utility: '{utilityId}'");
-        }
-
-        return initResult;
-    }
-
     public async Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address)
     {
         var panelView = _utilities.FirstOrDefault(utility => utility.FileResource == resource);
@@ -279,14 +290,6 @@ public class UtilityService : IUtilityService, IDisposable
                 .WithErrors(placementResult);
         }
         var placement = placementResult.Value;
-
-        // A lazy utility restored into the tab layout as a docked document initializes at restore.
-        var initResult = await panelView.EnsureInitializedAsync();
-        if (initResult.IsFailure)
-        {
-            return Result.Fail($"Failed to initialize docked utility for resource '{resource}'")
-                .WithErrors(initResult);
-        }
 
         // A restore never activates, because the active document is restored separately, and never flashes
         // or navigates the rail, both of which belong to the interactive dock.
@@ -368,14 +371,6 @@ public class UtilityService : IUtilityService, IDisposable
                 $"it allows {DescribeAreas(allowedAreas)}.");
         }
 
-        // Docking presents the utility, so a lazy utility initializes here.
-        var initResult = await panelView.EnsureInitializedAsync();
-        if (initResult.IsFailure)
-        {
-            return Result.Fail($"Failed to initialize utility '{utilityId}' for docking")
-                .WithErrors(initResult);
-        }
-
         // The Utility Panel is the one area that holds no document area, so this routes the dock without a
         // second test of what the area is.
         var documentArea = area.GetDocumentArea();
@@ -402,7 +397,7 @@ public class UtilityService : IUtilityService, IDisposable
     // cannot happen for a live utility, so the callers above fall back to the manifest defaults.
     private UtilityRailItem? FindUtilityItem(EditorId utilityId)
     {
-        return _utilityItems.FirstOrDefault(item => item.ItemId == utilityId);
+        return _contributedItems.FirstOrDefault(item => item.ItemId == utilityId);
     }
 
     // Names a set of areas by their tokens, in the order the areas read on screen, for an error message.

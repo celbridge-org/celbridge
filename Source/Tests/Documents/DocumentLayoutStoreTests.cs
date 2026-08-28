@@ -15,6 +15,8 @@ namespace Celbridge.Tests.Documents;
 [TestFixture]
 public class DocumentLayoutStoreTests
 {
+    private static readonly EditorId NotesEditorId = EditorId.Create("acme", "notes");
+
     private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IDocumentsPanel _documentsPanel = null!;
@@ -211,10 +213,12 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_UtilityResource_DocksViaDocumentsService()
     {
-        // A utils: resource is a utility, a permanent Utility Panel surface instantiated eagerly at load. A
-        // stored utils: entry means it was docked last session, so the restore drives the dock mechanism to
+        // A workspace-scoped utility is a permanent Utility Panel surface instantiated eagerly at load. A
+        // stored entry for one means it was docked last session, so the restore drives the dock mechanism to
         // reparent the already-live utility into its saved position rather than opening a second document.
-        var utilityResource = new ResourceKey("utils:settings._notepad");
+        var utilityResource = new ResourceKey("utils:acme.notepad._notepad");
+        _utilityService.FindRailItem(utilityResource).Returns(CreateRailItem(utilityResource, hasPanelView: true));
+
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
             new(utilityResource.ToString(), WindowIndex: 0, Section: "main_left", TabOrder: 3),
@@ -228,6 +232,79 @@ public class DocumentLayoutStoreTests
             utilityResource,
             Arg.Is<DocumentAddress>(address => address.Section == DocumentSection.MainLeft && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_DocumentScopedItem_OpensItWithItsDeclaredEditor()
+    {
+        // An open-scoped workspace item is backed by a utils: file too, but it has no live view to reparent:
+        // it reopens as an ordinary document. Its editor comes from the rail item, because a utils: file has
+        // no sidecar and its extension is claimed by no editor.
+        var itemResource = new ResourceKey("utils:acme.notes._notes");
+        var railItem = CreateRailItem(itemResource, hasPanelView: false);
+        _utilityService.FindRailItem(itemResource).Returns(railItem);
+
+        var itemPath = Path.Combine(_tempFolder, "acme.notes._notes");
+        await File.WriteAllTextAsync(itemPath, "{}");
+        _resourceRegistry.ResolveResourcePath(itemResource).Returns(Result<string>.Ok(itemPath));
+
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new(itemResource.ToString(), WindowIndex: 0, Section: "bottom_left", TabOrder: 1),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _utilityService.DidNotReceive().RestoreDockedUtility(
+            Arg.Any<ResourceKey>(), Arg.Any<DocumentAddress>());
+
+        await _documentsPanel.Received(1).OpenDocument(
+            itemResource,
+            Arg.Is<OpenDocumentOptions>(options => options.EditorId == NotesEditorId
+                && options.Address!.Section == DocumentSection.BottomLeft));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_UtilsEntryWithNoRailItem_IsSkipped()
+    {
+        // The package that declared the item was removed since the layout was saved, so nothing presents it.
+        var itemResource = new ResourceKey("utils:acme.gone._gone");
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new(itemResource.ToString(), WindowIndex: 0, Section: "main_left", TabOrder: 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _utilityService.DidNotReceive().RestoreDockedUtility(
+            Arg.Any<ResourceKey>(), Arg.Any<DocumentAddress>());
+        await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    // A rail item presenting the resource. A panel view makes it a workspace-scoped utility; without one it
+    // is an open-scoped workspace item.
+    private static UtilityRailItem CreateRailItem(ResourceKey resource, bool hasPanelView)
+    {
+        var railItem = new UtilityRailItem
+        {
+            ItemId = NotesEditorId,
+            DisplayName = "Notes",
+            Resource = new UtilityRailResource(resource, NotesEditorId)
+        };
+
+        if (!hasPanelView)
+        {
+            return railItem;
+        }
+
+        return railItem with
+        {
+            PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.CustomUtility)
+        };
     }
 
     [Test]

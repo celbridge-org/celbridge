@@ -3,9 +3,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Describes a utility editor: a WebView editor that is a workspace fixture, backed by its own state
-/// file under the utils: root rather than a user-authored file. Parsed from the [utility] section of an
-/// editor manifest.
+/// Describes a workspace item the Utility Panel rail presents: a WebView editor backed by its own state file
+/// under the utils: root rather than a user-authored file. Parsed from the [utility] section of an editor
+/// manifest. AllowedAreas decides the item's scope, so one declaration covers both kinds.
 /// </summary>
 public record UtilityDescriptor
 {
@@ -37,11 +37,6 @@ public record UtilityDescriptor
     public string Icon { get; init; } = string.Empty;
 
     /// <summary>
-    /// When true, view creation is deferred to the first show of the utility.
-    /// </summary>
-    public bool LazyLoad { get; init; }
-
-    /// <summary>
     /// The areas this utility is allowed to occupy, from the manifest's areas key. Never empty and never
     /// holds a duplicate.
     /// </summary>
@@ -52,4 +47,11 @@ public record UtilityDescriptor
     /// Always a member of AllowedAreas.
     /// </summary>
     public WorkspaceArea DefaultArea { get; init; } = WorkspaceArea.Utility;
+
+    /// <summary>
+    /// Whether this declares a workspace-scoped utility, which lives from project load to unload and parks
+    /// its live view in the Utility Panel. False declares an open-scoped workspace item, created when its
+    /// rail button opens it and destroyed when its tab closes.
+    /// </summary>
+    public bool IsWorkspaceScoped => AllowedAreas.Contains(WorkspaceArea.Utility);
 }

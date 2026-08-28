@@ -44,11 +44,20 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _editorDisplayName = string.Empty;
 
     /// <summary>
-    /// True when this tab holds a utility document. Utility tabs source their title and icon from the
-    /// manifest rather than the filename and the file-type icon set.
+    /// True when this tab presents a workspace item a contribution declares rather than a user file. Such
+    /// tabs source their title and icon from the manifest rather than the filename and the file-type icon
+    /// set, and offer no menu actions on the backing file.
     /// </summary>
     [ObservableProperty]
     private bool _isUtility;
+
+    /// <summary>
+    /// True when this tab borrows a workspace-scoped utility's live view rather than holding a document of
+    /// its own. Such a tab was never opened as a document and is never really closed, so it announces
+    /// neither.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDockedUtility;
 
     /// <summary>
     /// True when the tab's title comes from its editor rather than its file, so filename disambiguation
@@ -311,7 +320,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// </summary>
     public void NotifyDocumentOpened()
     {
-        if (IsUtility)
+        if (IsDockedUtility)
         {
             return;
         }
@@ -325,7 +334,7 @@ public partial class DocumentTabViewModel : ObservableObject
     // directly. A docked utility never announced an open, so it announces no close either.
     private void NotifyDocumentClosed()
     {
-        if (IsUtility)
+        if (IsDockedUtility)
         {
             return;
         }

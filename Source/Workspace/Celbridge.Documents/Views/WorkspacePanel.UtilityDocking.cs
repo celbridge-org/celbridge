@@ -40,6 +40,10 @@ public sealed partial class WorkspacePanel
         documentTab.ViewModel.EditorId = editorId;
         ApplyEditorTabMetadata(documentTab, editorId);
 
+        // The tab borrows a live utility rather than opening a document, which is what suppresses its open
+        // and close announcements and sends its close back to the panel.
+        documentTab.ViewModel.IsDockedUtility = true;
+
         var dockedView = new DockedUtilityDocumentView(_serviceProvider, _messengerService, panelView.Controller);
         dockedView.EditorId = editorId;
         dockedView.Bind(resource, filePath);
