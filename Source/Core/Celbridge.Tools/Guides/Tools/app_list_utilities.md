@@ -15,7 +15,7 @@ A JSON object with one field:
 - `utilities` (array) — every available utility. Each entry has:
   - `utilityId` (string) — the id to pass to `app_show_utility` (e.g. `celbridge.explorer`, or the editor id of a contributed utility).
   - `displayName` (string) — the human-readable, localized name.
-  - `location` (string) — the utility's current dock location: `"panel"` when it is a rail surface in the Utility Panel, or `"document"` when the user has docked it into a document tab. A utility can move between the two at runtime; the built-in Explorer and Search are always `"panel"`.
-  - `isShown` (bool) — whether the utility is currently surfaced to the user: for a `panel`, whether it is the active rail tab; for a `document`, whether its tab is the active document.
+  - `area` (string) — the workspace area the utility currently occupies: `"utility"` when it is a rail surface in the Utility Panel, or a document area token (`"main"`) when the user has docked it into a document tab. A utility can move between the two at runtime; the built-in Explorer and Search are always `"utility"`.
+  - `isShown` (bool) — whether the utility is currently surfaced to the user: in the `utility` area, whether it is the active rail tab; in a document area, whether its tab is the active document.
 
 Returns an empty `utilities` array when no project is loaded.

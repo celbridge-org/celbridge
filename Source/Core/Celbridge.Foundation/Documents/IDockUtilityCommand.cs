@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Docks a utility at a dock location, reparenting its single persistent WebView to the location's
+/// Docks a utility in a workspace area, reparenting its single persistent WebView to that area's
 /// container (the Utility Panel rail or a document tab) rather than recreating it.
 /// </summary>
 public interface IDockUtilityCommand : IExecutableCommand
@@ -15,7 +15,7 @@ public interface IDockUtilityCommand : IExecutableCommand
     EditorId UtilityId { get; set; }
 
     /// <summary>
-    /// The dock location to move the utility to.
+    /// The workspace area to move the utility to.
     /// </summary>
-    DockLocation Location { get; set; }
+    WorkspaceArea Area { get; set; }
 }

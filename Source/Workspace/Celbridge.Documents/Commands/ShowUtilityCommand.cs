@@ -11,7 +11,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
 
     public EditorId UtilityId { get; set; } = EditorId.Empty;
 
-    public DockLocation? Location { get; set; }
+    public WorkspaceArea? Area { get; set; }
 
     public ShowUtilityCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -45,12 +45,12 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
             return Result.Fail($"No utility found with id '{UtilityId}'");
         }
 
-        if (Location is not null)
+        if (Area is not null)
         {
-            var dockResult = await utilityService.DockUtilityAsync(UtilityId, Location.Value);
+            var dockResult = await utilityService.DockUtilityAsync(UtilityId, Area.Value);
             if (dockResult.IsFailure)
             {
-                return Result.Fail($"Failed to dock utility '{UtilityId}' at location '{Location.Value}'")
+                return Result.Fail($"Failed to dock utility '{UtilityId}' in area '{Area.Value.ToToken()}'")
                     .WithErrors(dockResult);
             }
         }

@@ -8,11 +8,11 @@ You do not need to open a document to edit its file. The `file_*` tools work on 
 
 ### section
 
-The tab strip to open the document in, as one of `MainLeft`, `MainRight`, `BottomLeft`, `BottomRight`, `SideTop`, `SideBottom`. Matching is case-insensitive; any other value is rejected. See `document_get_state` for what each section is and when it exists.
+The tab strip to open the document in, as one of `main_left`, `main_right`, `bottom_left`, `bottom_right`, `side_top`, `side_bottom`. Any other value is rejected. See `document_get_state` for what each section is and when it exists.
 
-Empty (the default) always opens in `MainLeft`, the one section that is always present. It never lands in the collapsible Bottom or Side areas, and it does not follow the active document. A document that is already open stays in whichever section it is in — the default never moves it.
+Empty (the default) always opens in `main_left`, the one section that is always present. It never lands in the collapsible Bottom or Side areas, and it does not follow the active document. A document that is already open stays in whichever section it is in — the default never moves it.
 
-Naming a secondary section (`MainRight`, `BottomRight`, `SideBottom`) while its area is not split splits the area so the document opens where it was asked for. If that leaves the area's primary section empty — the area held nothing beforehand — the split folds straight back and the document ends up in the primary section, because a split section is never left empty. Naming a section in a collapsed area opens there without expanding the area, so the user does not see the document until they show it again — prefer `MainLeft` or the default when you want the document on screen.
+Naming a secondary section (`main_right`, `bottom_right`, `side_bottom`) while its area is not split splits the area so the document opens where it was asked for. If that leaves the area's primary section empty — the area held nothing beforehand — the split folds straight back and the document ends up in the primary section, because a split section is never left empty. Naming a section in a collapsed area opens there without expanding the area, so the user does not see the document until they show it again — prefer `main_left` or the default when you want the document on screen.
 
 ### forceReload
 

@@ -61,7 +61,7 @@ public class DocumentToolTests
         var root = ParseResult(await tools.GetState());
 
         root.GetProperty("activeDocument").GetString().Should().Be("project:notes/readme.md");
-        root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("MainLeft");
+        root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("main_left");
 
         var openDocuments = root.GetProperty("openDocuments");
         openDocuments.GetArrayLength().Should().Be(1);
@@ -89,17 +89,17 @@ public class DocumentToolTests
         var tools = new DocumentTools(_services);
         var root = ParseResult(await tools.GetState());
 
-        root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("MainLeft", "MainRight");
+        root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("main_left", "main_right");
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(2);
 
         var documents = root.GetProperty("openDocuments");
         var activeDoc = documents.EnumerateArray().First(d => d.GetProperty("isActive").GetBoolean());
         activeDoc.GetProperty("resource").GetString().Should().Be("project:src/main.py");
-        activeDoc.GetProperty("section").GetString().Should().Be("MainLeft");
+        activeDoc.GetProperty("section").GetString().Should().Be("main_left");
 
         var inactiveDoc = documents.EnumerateArray().First(d => !d.GetProperty("isActive").GetBoolean());
         inactiveDoc.GetProperty("resource").GetString().Should().Be("project:tests/test_main.py");
-        inactiveDoc.GetProperty("section").GetString().Should().Be("MainRight");
+        inactiveDoc.GetProperty("section").GetString().Should().Be("main_right");
     }
 
     [Test]

@@ -53,7 +53,7 @@ public class DocumentLayoutStore
             .Select(document => new StoredDocumentAddress(
                 document.FileResource.ToString(),
                 document.Address.WindowIndex,
-                document.Address.Section.ToString(),
+                document.Address.Section.ToToken(),
                 document.Address.TabOrder))
             .OrderBy(address => address.WindowIndex)
             .ThenBy(address => address.Section)
@@ -82,7 +82,7 @@ public class DocumentLayoutStore
         var areaLayout = new Dictionary<string, StoredAreaLayout>();
         foreach (var area in DocumentLayoutHelper.AllAreas)
         {
-            areaLayout[area.ToString()] = new StoredAreaLayout(DocumentsPanel.GetAreaSplitRatio(area));
+            areaLayout[area.GetWorkspaceArea().ToToken()] = new StoredAreaLayout(DocumentsPanel.GetAreaSplitRatio(area));
         }
 
         await propertyBag.SetPropertyAsync(AreaLayoutKey, areaLayout);
@@ -176,7 +176,7 @@ public class DocumentLayoutStore
         {
             foreach (var area in DocumentLayoutHelper.AllAreas)
             {
-                if (!storedLayout.AreaLayout.TryGetValue(area.ToString(), out var areaLayout))
+                if (!storedLayout.AreaLayout.TryGetValue(area.GetWorkspaceArea().ToToken(), out var areaLayout))
                 {
                     continue;
                 }
@@ -266,7 +266,7 @@ public class DocumentLayoutStore
 
             // An unrecognised section name comes from layout data written by a different section set.
             // MainLeft always exists, so it is the safe landing place.
-            if (!DocumentLayoutHelper.TryParseSection(stored.Section, out var storedSection))
+            if (!DocumentSectionTokens.TryParse(stored.Section, out var storedSection))
             {
                 storedSection = DocumentSection.MainLeft;
             }

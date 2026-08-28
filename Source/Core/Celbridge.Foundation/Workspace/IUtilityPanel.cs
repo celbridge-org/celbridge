@@ -21,18 +21,6 @@ public static class BuiltInUtilityIds
 }
 
 /// <summary>
-/// A custom utility surface hosted as a rail item in the Utility Panel. Content is the utility's panel
-/// view (a UIElement) and FocusPanel gives that view keyboard focus.
-/// </summary>
-public sealed record CustomUtility(
-    EditorId UtilityId,
-    string IconName,
-    string Tooltip,
-    string DisplayName,
-    object Content,
-    Action FocusPanel);
-
-/// <summary>
 /// Interface for the Utility Panel, which hosts the Explorer and Search surfaces plus any custom utilities.
 /// </summary>
 public interface IUtilityPanel
@@ -60,23 +48,24 @@ public interface IUtilityPanel
     void ShowUtility(EditorId utilityId);
 
     /// <summary>
-    /// Appends custom utility rail items and their content hosts after the built-in items. Replaces any
-    /// previously built items. Called on project load once the utility panels have been created.
+    /// Appends the contributed rail items and their content hosts between the built-in surfaces and the
+    /// launchers. Replaces any previously built items. Called on project load once the utility panels have
+    /// been created.
     /// </summary>
-    void BuildCustomUtilities(IReadOnlyList<CustomUtility> utilities);
+    void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems);
 
     /// <summary>
-    /// Removes all custom utility rail items and their content hosts. Called on project unload. Reverts
-    /// the selection to Explorer if a custom utility was showing.
+    /// Removes all contributed rail items and their content hosts. Called on project unload. Reverts the
+    /// selection to Explorer if a contributed utility was showing.
     /// </summary>
-    void ClearCustomUtilities();
+    void ClearRailItems();
 
     /// <summary>
     /// Tells the panel where a custom utility now lives, so the rail and the panel's surface follow it.
-    /// documentResource is the document hosting the utility while the location is Document, and is otherwise
-    /// ignored.
+    /// documentResource is the document hosting the utility while the area is a document area, and is
+    /// otherwise ignored.
     /// </summary>
-    void SetUtilityDockLocation(EditorId utilityId, DockLocation location, ResourceKey documentResource);
+    void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource);
 
     /// <summary>
     /// Restores the previously active rail surface from workspace settings, falling back to Explorer when the

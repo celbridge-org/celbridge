@@ -51,18 +51,18 @@ public class ShowUtilityCommandTests
     public async Task Execute_LiveUtilityWithLocation_DocksBeforeRevealing()
     {
         _utilityService.HasUtility(NotepadUtilityId).Returns(true);
-        _utilityService.DockUtilityAsync(NotepadUtilityId, DockLocation.Document).Returns(Result.Ok());
+        _utilityService.DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Main).Returns(Result.Ok());
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = NotepadUtilityId,
-            Location = DockLocation.Document
+            Area = WorkspaceArea.Main
         };
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, DockLocation.Document);
+        await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Main);
         _utilityPanel.Received(1).ShowUtility(NotepadUtilityId);
     }
 

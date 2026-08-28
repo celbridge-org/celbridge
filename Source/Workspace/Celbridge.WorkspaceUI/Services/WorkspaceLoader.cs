@@ -299,13 +299,13 @@ public class WorkspaceLoader
         }
 
         var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-        var tabs = await utilityService.CreateUtilitiesAsync(utilityInstances);
-        if (tabs.Count == 0)
+        var railItems = await utilityService.CreateUtilitiesAsync(utilityInstances);
+        if (railItems.Count == 0)
         {
             return;
         }
 
-        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildCustomUtilities(tabs);
+        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildRailItems(railItems);
     }
 
     // Enumerates the declared utility instances. Declaration order in the project config is the

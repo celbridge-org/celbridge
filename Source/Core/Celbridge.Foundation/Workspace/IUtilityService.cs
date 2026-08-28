@@ -10,12 +10,12 @@ namespace Celbridge.Workspace;
 public interface IUtilityService
 {
     /// <summary>
-    /// Creates each utility as a persistent workspace surface and returns the rail tabs describing
+    /// Creates each utility as a persistent workspace surface and returns the rail items describing
     /// them. Each utility is owned by this service until the workspace unloads. Utilities are given in
     /// declaration order, which is the rail order. A lazy-load utility is bound but its WebView is
     /// deferred to the first show.
     /// </summary>
-    Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
+    Task<IReadOnlyList<UtilityRailItem>> CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
 
     /// <summary>
     /// Initializes a lazy-load utility's WebView if it has not been created yet. A no-op for
@@ -38,11 +38,11 @@ public interface IUtilityService
     bool HasUtility(EditorId utilityId);
 
     /// <summary>
-    /// Docks a utility at the given location, reparenting its single persistent WebView to that location's
-    /// container (the Utility Panel rail or a document tab in Main's primary section). Reveals or
+    /// Docks a utility in the given area, reparenting its single persistent WebView to that area's
+    /// container (the Utility Panel rail or a document tab in the area's primary section). Reveals or
     /// activates the utility at the destination. A no-op when it is already there.
     /// </summary>
-    Task<Result> DockUtilityAsync(EditorId utilityId, DockLocation location);
+    Task<Result> DockUtilityAsync(EditorId utilityId, WorkspaceArea area);
 
     /// <summary>
     /// Returns the id of the utility currently docked as the given document resource, or null when the resource

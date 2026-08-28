@@ -89,21 +89,21 @@ public class GetUtilitiesStateCommandTests
 
         utilities[0].UtilityId.Should().Be(BuiltInUtilityIds.Explorer);
         utilities[0].DisplayName.Should().Be("Explorer");
-        utilities[0].Location.Should().Be(DockLocation.UtilityPanel);
+        utilities[0].Area.Should().Be(WorkspaceArea.Utility);
         utilities[0].IsShown.Should().BeFalse();
 
         utilities[1].UtilityId.Should().Be(BuiltInUtilityIds.Search);
-        utilities[1].Location.Should().Be(DockLocation.UtilityPanel);
+        utilities[1].Area.Should().Be(WorkspaceArea.Utility);
         utilities[1].IsShown.Should().BeFalse();
 
         utilities[2].UtilityId.Should().Be(new EditorId("widget-panel"));
         utilities[2].DisplayName.Should().Be("Widget Panel");
-        utilities[2].Location.Should().Be(DockLocation.UtilityPanel);
+        utilities[2].Area.Should().Be(WorkspaceArea.Utility);
         utilities[2].IsShown.Should().BeTrue();
 
         utilities[3].UtilityId.Should().Be(new EditorId("notepad"));
         utilities[3].DisplayName.Should().Be("Notepad");
-        utilities[3].Location.Should().Be(DockLocation.UtilityPanel);
+        utilities[3].Area.Should().Be(WorkspaceArea.Utility);
         utilities[3].IsShown.Should().BeFalse();
     }
 
@@ -164,7 +164,7 @@ public class GetUtilitiesStateCommandTests
 
         result.IsSuccess.Should().BeTrue();
         var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == new EditorId("notepad"));
-        notepad.Location.Should().Be(DockLocation.Document);
+        notepad.Area.Should().Be(WorkspaceArea.Main);
         notepad.IsShown.Should().BeTrue();
     }
 

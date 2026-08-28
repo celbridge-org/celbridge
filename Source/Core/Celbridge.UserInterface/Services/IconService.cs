@@ -247,6 +247,16 @@ public class IconService : IIconService
         return FallbackGlyph();
     }
 
+    public string GetIconName(IconSymbol icon)
+    {
+        if (_symbolToIconName.TryGetValue(icon, out string? iconName))
+        {
+            return iconName;
+        }
+
+        return string.Empty;
+    }
+
     public IconGlyph GetGlyph(string iconName)
     {
         if (TryGetGlyph(iconName, out IconGlyph glyph))

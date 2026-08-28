@@ -61,14 +61,14 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         utilities.Add(new UtilityInfo(
             BuiltInUtilityIds.Explorer,
             explorerName,
-            Location: DockLocation.UtilityPanel,
+            Area: WorkspaceArea.Utility,
             IsShown: activeUtilityId == BuiltInUtilityIds.Explorer));
 
         string searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
         utilities.Add(new UtilityInfo(
             BuiltInUtilityIds.Search,
             searchName,
-            Location: DockLocation.UtilityPanel,
+            Area: WorkspaceArea.Utility,
             IsShown: activeUtilityId == BuiltInUtilityIds.Search));
 
         // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
@@ -102,13 +102,13 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
                 }
             }
 
-            var location = isDocumentDocked ? DockLocation.Document : DockLocation.UtilityPanel;
+            var area = isDocumentDocked ? WorkspaceArea.Main : WorkspaceArea.Utility;
 
             var isShown = isDocumentDocked
                 ? activeDocument == utilityResource
                 : activeUtilityId == utilityId;
 
-            utilities.Add(new UtilityInfo(utilityId, displayName, location, isShown));
+            utilities.Add(new UtilityInfo(utilityId, displayName, area, isShown));
         }
 
         ResultValue = new UtilitiesStateSnapshot(utilities);

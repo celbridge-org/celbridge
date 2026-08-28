@@ -4,14 +4,14 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// A single utility in a utilities state snapshot: a built-in Utility Panel surface (Explorer, Search) or a
+/// A single utility in a utilities state snapshot: a built-in Utility Panel surface or a
 /// package-contributed utility. IsShown is true when the utility is currently surfaced to the user, either as
 /// the active rail surface or as the active document.
 /// </summary>
 public record class UtilityInfo(
     EditorId UtilityId,
     string DisplayName,
-    DockLocation Location,
+    WorkspaceArea Area,
     bool IsShown);
 
 /// <summary>

@@ -75,7 +75,7 @@ public sealed partial class CustomUtilityView : UserControl
     /// <summary>
     /// This utility's current dock location (the Utility Panel rail or a document tab).
     /// </summary>
-    public DockLocation Location { get; set; } = DockLocation.UtilityPanel;
+    public WorkspaceArea Area { get; set; } = WorkspaceArea.Utility;
 
     private void OpenAsDocumentButton_Click(object sender, RoutedEventArgs e)
     {
@@ -87,7 +87,7 @@ public sealed partial class CustomUtilityView : UserControl
         _commandService.Execute<IDockUtilityCommand>(command =>
         {
             command.UtilityId = _utilityId;
-            command.Location = DockLocation.Document;
+            command.Area = WorkspaceArea.Main;
         });
     }
 

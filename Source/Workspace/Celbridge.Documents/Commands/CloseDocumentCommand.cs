@@ -31,7 +31,7 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
         var utilityService = workspaceService.UtilityService;
         if (utilityService.GetDockedUtilityId(FileResource) is { } dockedUtilityId)
         {
-            return await utilityService.DockUtilityAsync(dockedUtilityId, DockLocation.UtilityPanel);
+            return await utilityService.DockUtilityAsync(dockedUtilityId, WorkspaceArea.Utility);
         }
 
         var closeOptions = new CloseDocumentOptions(ForceClose, SelectNeighbour);

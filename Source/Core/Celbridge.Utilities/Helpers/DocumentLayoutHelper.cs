@@ -183,12 +183,42 @@ public static class DocumentLayoutHelper
     }
 
     /// <summary>
-    /// Parses a section name, returning false when the name does not match a section. Used for stored
-    /// addresses and for agent tool arguments, both of which carry the name rather than a number.
+    /// The document area an item occupies in the given workspace area, or null when the area is the
+    /// Utility Panel, which holds no document area.
     /// </summary>
-    public static bool TryParseSection(string? name, out DocumentSection section)
+    public static DocumentArea? GetDocumentArea(this WorkspaceArea area)
     {
-        return Enum.TryParse(name, ignoreCase: true, out section)
-            && Enum.IsDefined(section);
+        switch (area)
+        {
+            case WorkspaceArea.Main:
+                return DocumentArea.Main;
+
+            case WorkspaceArea.Bottom:
+                return DocumentArea.Bottom;
+
+            case WorkspaceArea.Side:
+                return DocumentArea.Side;
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// The workspace area holding the given document area.
+    /// </summary>
+    public static WorkspaceArea GetWorkspaceArea(this DocumentArea area)
+    {
+        switch (area)
+        {
+            case DocumentArea.Bottom:
+                return WorkspaceArea.Bottom;
+
+            case DocumentArea.Side:
+                return WorkspaceArea.Side;
+
+            default:
+                return WorkspaceArea.Main;
+        }
     }
 }

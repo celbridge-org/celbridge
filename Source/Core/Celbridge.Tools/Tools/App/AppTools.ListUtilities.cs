@@ -6,14 +6,15 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// A single utility in the app_list_utilities result. Location is "panel" (a Utility Panel rail surface) or
-/// "document" (docked as a document tab). IsShown reports whether the utility is currently surfaced to the
-/// user: the active rail surface when in the panel, or the active document when docked as a document.
+/// A single utility in the app_list_utilities result. Area is "utility" (a Utility Panel rail surface) or a
+/// document area token (docked as a document tab in that area). IsShown reports whether the utility is
+/// currently surfaced to the user: the active rail surface when in the panel, or the active document
+/// when docked as a document.
 /// </summary>
 public record class UtilityListEntry(
     string UtilityId,
     string DisplayName,
-    string Location,
+    string Area,
     bool IsShown);
 
 /// <summary>
@@ -40,11 +41,11 @@ public partial class AppTools
         var entries = new List<UtilityListEntry>(snapshot.Utilities.Count);
         foreach (var utility in snapshot.Utilities)
         {
-            var location = DockLocationTokens.ToToken(utility.Location);
+            var area = utility.Area.ToToken();
             entries.Add(new UtilityListEntry(
                 utility.UtilityId.ToString(),
                 utility.DisplayName,
-                location,
+                area,
                 utility.IsShown));
         }
 

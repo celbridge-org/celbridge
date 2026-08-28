@@ -70,7 +70,7 @@ public partial class WorkspaceViewModel : ObservableObject
 
             // Tear down the utilities, then clear the rail.
             await _workspaceService.UtilityService.TeardownUtilitiesAsync();
-            _workspaceService.UtilityPanel.ClearCustomUtilities();
+            _workspaceService.UtilityPanel.ClearRailItems();
         }
         catch (Exception exception)
         {

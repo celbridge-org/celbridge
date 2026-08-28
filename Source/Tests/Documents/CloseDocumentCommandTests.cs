@@ -23,7 +23,7 @@ public class CloseDocumentCommandTests
         _documentsService.CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<CloseDocumentOptions>()).Returns(Result.Ok());
 
         _utilityService = Substitute.For<IUtilityService>();
-        _utilityService.DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<DockLocation>()).Returns(Result.Ok());
+        _utilityService.DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<WorkspaceArea>()).Returns(Result.Ok());
 
         // By default a resource is not a docked utility, so the command takes the ordinary close path.
         _utilityService.GetDockedUtilityId(Arg.Any<ResourceKey>()).Returns((EditorId?)null);
@@ -53,7 +53,7 @@ public class CloseDocumentCommandTests
         result.IsSuccess.Should().BeTrue();
         var expectedOptions = new CloseDocumentOptions(ForceClose: true, SelectNeighbour: true);
         await _documentsService.Received(1).CloseDocument(new ResourceKey("notes/readme.md"), expectedOptions);
-        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<DockLocation>());
+        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<WorkspaceArea>());
     }
 
     [Test]
@@ -86,7 +86,7 @@ public class CloseDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
 
-        await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, DockLocation.UtilityPanel);
+        await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Utility);
         await _documentsService.DidNotReceive().CloseDocument(Arg.Any<ResourceKey>(), Arg.Any<CloseDocumentOptions>());
     }
 
@@ -95,7 +95,7 @@ public class CloseDocumentCommandTests
     {
         var utilityResource = new ResourceKey("utils:settings._notepad");
         _utilityService.GetDockedUtilityId(utilityResource).Returns(NotepadUtilityId);
-        _utilityService.DockUtilityAsync(NotepadUtilityId, DockLocation.UtilityPanel).Returns(Result.Fail("Dock failed"));
+        _utilityService.DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Utility).Returns(Result.Fail("Dock failed"));
 
         var command = CreateCommand();
         command.FileResource = utilityResource;

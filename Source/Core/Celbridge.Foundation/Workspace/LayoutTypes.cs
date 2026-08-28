@@ -32,6 +32,34 @@ public enum WorkspacePanelId
 }
 
 /// <summary>
+/// A place in the workspace that presents a workspace item, whether a workspace-scoped utility or an open
+/// document. A workspace item occupies exactly one area at a time; moving a utility between areas reparents
+/// its single live view rather than recreating it.
+/// </summary>
+public enum WorkspaceArea
+{
+    /// <summary>
+    /// A rail surface in the Utility Panel, which shows one surface at a time.
+    /// </summary>
+    Utility,
+
+    /// <summary>
+    /// A tab in the centre document area, which is always visible.
+    /// </summary>
+    Main,
+
+    /// <summary>
+    /// A tab in the collapsible document area below Main.
+    /// </summary>
+    Bottom,
+
+    /// <summary>
+    /// A tab in the collapsible document area to the right.
+    /// </summary>
+    Side
+}
+
+/// <summary>
 /// Flags representing which of the collapsible workspace surfaces should be visible. The Main document
 /// area is always visible and is not a surface.
 /// </summary>
@@ -44,7 +72,7 @@ public enum WorkspaceSurface
     None = 0,
 
     /// <summary>
-    /// The Utility Panel (left sidebar hosting Explorer and Search).
+    /// The Utility Panel (the left sidebar).
     /// </summary>
     UtilityPanel = 1 << 0,
 

@@ -152,7 +152,7 @@ public class DocumentLayoutStoreTests
         // empty editor id (sidecar wins at restore) and the saved address.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", WindowIndex: 0, Section: "MainLeft", TabOrder: 2),
+            new("notes/readme.md", WindowIndex: 0, Section: "main_left", TabOrder: 2),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -175,8 +175,8 @@ public class DocumentLayoutStoreTests
         // must not abort the rest of the restore.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("///invalid///", 0, "MainLeft", 0),
-            new("notes/readme.md", 0, "MainLeft", 1),
+            new("///invalid///", 0, "main_left", 0),
+            new("notes/readme.md", 0, "main_left", 1),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -198,7 +198,7 @@ public class DocumentLayoutStoreTests
             .Returns(Result<IResource>.Fail("missing"));
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, "MainLeft", 0),
+            new("notes/readme.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -217,7 +217,7 @@ public class DocumentLayoutStoreTests
         var utilityResource = new ResourceKey("utils:settings._notepad");
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new(utilityResource.ToString(), WindowIndex: 0, Section: "MainLeft", TabOrder: 3),
+            new(utilityResource.ToString(), WindowIndex: 0, Section: "main_left", TabOrder: 3),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -240,7 +240,7 @@ public class DocumentLayoutStoreTests
             .Returns(Result<string>.Ok(missingPath));
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, "MainLeft", 0),
+            new("notes/readme.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -258,7 +258,7 @@ public class DocumentLayoutStoreTests
         _documentsPanel.IsAreaSplit(DocumentArea.Main).Returns(false);
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", WindowIndex: 0, Section: "MainRight", TabOrder: 0),
+            new("notes/readme.md", WindowIndex: 0, Section: "main_right", TabOrder: 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -279,7 +279,7 @@ public class DocumentLayoutStoreTests
         // folds away any split that ended up with nothing in it.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", WindowIndex: 0, Section: "MainLeft", TabOrder: 0),
+            new("notes/readme.md", WindowIndex: 0, Section: "main_left", TabOrder: 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -300,7 +300,7 @@ public class DocumentLayoutStoreTests
         // matches each opened tab.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, "MainLeft", 0),
+            new("notes/readme.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -323,7 +323,7 @@ public class DocumentLayoutStoreTests
     {
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, "MainLeft", 0),
+            new("notes/readme.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -342,7 +342,7 @@ public class DocumentLayoutStoreTests
         // can enforce the one-active-document invariant.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, "MainLeft", 0),
+            new("notes/readme.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -359,7 +359,7 @@ public class DocumentLayoutStoreTests
     {
         var areaLayout = new Dictionary<string, DocumentLayoutStore.StoredAreaLayout>
         {
-            ["Main"] = new DocumentLayoutStore.StoredAreaLayout(SplitRatio: 0.3),
+            ["main"] = new DocumentLayoutStore.StoredAreaLayout(SplitRatio: 0.3),
         };
         _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>("AreaLayout")
             .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>?>(areaLayout));
@@ -402,8 +402,8 @@ public class DocumentLayoutStoreTests
         await _propertyBag.Received(1).SetPropertyAsync(
             "AreaLayout",
             Arg.Is<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>(layout =>
-                layout["Main"].SplitRatio == 0.4
-                && layout["Bottom"].SplitRatio == 0.5));
+                layout["main"].SplitRatio == 0.4
+                && layout["bottom"].SplitRatio == 0.5));
     }
 
     [Test]

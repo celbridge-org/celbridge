@@ -13,7 +13,7 @@ The Focus and Presentation layout modes give the active document's area the whol
 
 ## Utilities
 
-A utility is an auxiliary surface — a colour picker, a scratchpad, a process view. A package contributes the utility editor, and a discovered package's utility appears automatically as a rail item in the Utility Panel alongside Explorer and Search — one per contribution. The user can dock a utility into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and contributed) with its current `location` (panel or document), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to a `location` first). See `utility_documents` for how they are authored.
+A utility is an auxiliary surface — a colour picker, a scratchpad, a process view. A package contributes the utility editor, and a discovered package's utility appears automatically as a rail item in the Utility Panel alongside Explorer and Search — one per contribution. The user can dock a utility into a document tab and back into the panel at will (the same surface, moved, not a copy). Use `app_list_utilities` to see every utility (built-in and contributed) with its current `area` (`utility` for the panel, or a document area), and `app_show_utility` to reveal one by id wherever it currently is (optionally moving it to an `area` first). See `utility_documents` for how they are authored.
 
 ## Resolving ambiguous file references
 
