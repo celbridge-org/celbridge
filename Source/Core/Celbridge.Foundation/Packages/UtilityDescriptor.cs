@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Packages;
 
 /// <summary>
@@ -7,6 +9,16 @@ namespace Celbridge.Packages;
 /// </summary>
 public record UtilityDescriptor
 {
+    /// <summary>
+    /// The areas a utility occupies when its manifest declares none, which reproduces the placement every
+    /// utility had before areas could be declared.
+    /// </summary>
+    public static readonly IReadOnlyList<WorkspaceArea> DefaultAllowedAreas =
+    [
+        WorkspaceArea.Utility,
+        WorkspaceArea.Main
+    ];
+
     /// <summary>
     /// File extension of the backing state file (e.g. "._utildemo"). The host derives the full path
     /// from the editor id, as "utils:{editorId}{ResourceExtension}".
@@ -28,4 +40,16 @@ public record UtilityDescriptor
     /// When true, view creation is deferred to the first show of the utility.
     /// </summary>
     public bool LazyLoad { get; init; }
+
+    /// <summary>
+    /// The areas this utility is allowed to occupy, from the manifest's areas key. Never empty and never
+    /// holds a duplicate.
+    /// </summary>
+    public IReadOnlyList<WorkspaceArea> AllowedAreas { get; init; } = DefaultAllowedAreas;
+
+    /// <summary>
+    /// The area the utility falls back to when no other one is named, from the manifest's default-area key.
+    /// Always a member of AllowedAreas.
+    /// </summary>
+    public WorkspaceArea DefaultArea { get; init; } = WorkspaceArea.Utility;
 }

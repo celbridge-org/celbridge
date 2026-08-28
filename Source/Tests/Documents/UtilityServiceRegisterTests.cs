@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Documents.Services;
 using Celbridge.Messaging;
 using Celbridge.Packages;
@@ -66,6 +67,7 @@ public class UtilityServiceRegisterTests
             _serviceProvider,
             Substitute.For<ILogger<UtilityService>>(),
             Substitute.For<IMessengerService>(),
+            Substitute.For<ICommandService>(),
             _workspaceWrapper);
     }
 

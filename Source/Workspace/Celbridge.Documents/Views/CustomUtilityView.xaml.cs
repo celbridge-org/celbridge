@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -25,6 +26,10 @@ public sealed partial class CustomUtilityView : UserControl
 
     // The bound resolved editor, held so a lazy utility can initialize its WebView on first show.
     private ResolvedEditor? _resolvedEditor;
+
+    // The document area the "Open as document" control docks into, resolved from the utility's declaration
+    // on Bind. Null when the utility declares no document area, in which case the control is hidden.
+    private WorkspaceArea? _openAsDocumentArea;
 
     public CustomUtilityView(IServiceProvider serviceProvider)
     {
@@ -79,16 +84,42 @@ public sealed partial class CustomUtilityView : UserControl
 
     private void OpenAsDocumentButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_utilityId.IsEmpty)
+        if (_utilityId.IsEmpty
+            || _openAsDocumentArea is null)
         {
             return;
         }
 
+        var documentArea = _openAsDocumentArea.Value;
+
         _commandService.Execute<IDockUtilityCommand>(command =>
         {
             command.UtilityId = _utilityId;
-            command.Area = WorkspaceArea.Main;
+            command.Area = documentArea;
         });
+    }
+
+    // Reads the document area the utility docks into from its declaration. A utility that declares no
+    // document area, or several without defaulting to one of them, has nowhere for the control to send it,
+    // so the control is hidden rather than left to fail on click.
+    private void ApplyDeclaredAreas(UtilityDescriptor? descriptor)
+    {
+        _openAsDocumentArea = null;
+
+        if (descriptor is not null)
+        {
+            var allowedAreas = descriptor.AllowedAreas;
+            var defaultArea = descriptor.DefaultArea;
+
+            if (WorkspaceAreaHelper.TryGetDocumentArea(allowedAreas, defaultArea, out var documentArea))
+            {
+                _openAsDocumentArea = documentArea;
+            }
+        }
+
+        OpenAsDocumentButton.Visibility = _openAsDocumentArea is null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     /// <summary>
@@ -99,6 +130,8 @@ public sealed partial class CustomUtilityView : UserControl
     {
         _resolvedEditor = resolvedEditor;
         _utilityId = resolvedEditor.EditorId;
+
+        ApplyDeclaredAreas(resolvedEditor.Contribution.UtilityDescriptor);
 
         PanelHeaderControl.Title = displayName;
 

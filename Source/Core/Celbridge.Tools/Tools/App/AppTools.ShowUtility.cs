@@ -8,7 +8,7 @@ public partial class AppTools
 {
     /// <summary>Show a utility by id: reveal it where it is, or move it to a workspace area first.</summary>
     /// <param name="utilityId">The utility to show: a built-in id ("celbridge.explorer", "celbridge.search", "celbridge.project-settings", "celbridge.workshop") or a custom id in "{packageName}.{contributionId}" form.</param>
-    /// <param name="area">Optional workspace area to move the utility to before revealing it: "utility" (the Utility Panel rail), or "main", "bottom" or "side" (a document tab in that area). "document" is accepted as an alias for the utility's document area. Omit to reveal the utility wherever it currently is. Ignored for the built-in utilities, which each have one place they live.</param>
+    /// <param name="area">Optional workspace area to move the utility to before revealing it: "utility" (the Utility Panel rail), or "main", "bottom" or "side" (a document tab in that area). "document" is accepted as an alias for the utility's own document area. Omit to reveal the utility wherever it currently is. Ignored for the built-in utilities, which each have one place they live.</param>
     [McpServerTool(Name = "app_show_utility")]
     [ToolAlias("app.show_utility")]
     [RelatedGuides("workspace_panels")]
@@ -19,14 +19,14 @@ public partial class AppTools
             return ToolResponse.Error(Result.Fail("A valid utilityId is required: lowercase letters, digits, dots, and hyphens."));
         }
 
-        WorkspaceArea? targetArea = null;
+        ShowUtilityArea? targetArea = null;
         if (!string.IsNullOrEmpty(area))
         {
-            if (!TryParseUtilityArea(area, out var parsedArea))
+            targetArea = ParseUtilityArea(area);
+            if (targetArea is null)
             {
                 return ToolResponse.Error(Result.Fail($"Invalid area '{area}'. Valid values are '{WorkspaceAreaTokens.Utility}', '{WorkspaceAreaTokens.Main}', '{WorkspaceAreaTokens.Bottom}', '{WorkspaceAreaTokens.Side}' and '{DocumentAreaAlias}'."));
             }
-            targetArea = parsedArea;
         }
 
         var showResult = await ExecuteCommandAsync<IShowUtilityCommand>(command =>
@@ -42,19 +42,24 @@ public partial class AppTools
         return ToolResponse.Success("ok");
     }
 
-    // Accepted alongside the area tokens as "the utility's default document area", so an agent can move a
-    // utility into a tab without naming one. Mapped to Main here only while Main is the sole document area
-    // a utility can occupy; once areas are declarable, resolution moves to where the declaration is known.
+    // Accepted alongside the area tokens as "this utility's own document area", so an agent can move a
+    // utility into a tab without knowing which document areas it declares. Which area that is depends on the
+    // utility, so the alias travels to the command and is resolved against the declaration there.
     private const string DocumentAreaAlias = "document";
 
-    private static bool TryParseUtilityArea(string token, out WorkspaceArea area)
+    // Null for a token that names no area, which the caller reports with the accepted values.
+    private static ShowUtilityArea? ParseUtilityArea(string token)
     {
         if (token == DocumentAreaAlias)
         {
-            area = WorkspaceArea.Main;
-            return true;
+            return ShowUtilityArea.DocumentArea;
         }
 
-        return WorkspaceAreaTokens.TryParse(token, out area);
+        if (!WorkspaceAreaTokens.TryParse(token, out var area))
+        {
+            return null;
+        }
+
+        return ShowUtilityArea.Named(area);
     }
 }

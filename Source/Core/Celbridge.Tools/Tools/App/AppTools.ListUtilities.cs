@@ -7,14 +7,16 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// A single utility in the app_list_utilities result. Area is "utility" (a Utility Panel rail surface) or a
-/// document area token (presented as a document tab in that area). IsShown reports whether the utility is
-/// currently surfaced to the user: the active rail surface when in the panel, or the active document
-/// when it is a document. Resource is the file the utility presents, empty when it has none.
+/// document area token (presented as a document tab in that area), and AllowedAreas are the area tokens it
+/// may be moved to. IsShown reports whether the utility is currently surfaced to the user: the active rail
+/// surface when in the panel, or the active document when it is a document. Resource is the file the utility
+/// presents, empty when it has none.
 /// </summary>
 public record class UtilityListEntry(
     string UtilityId,
     string DisplayName,
     string Area,
+    IReadOnlyList<string> AllowedAreas,
     bool IsShown,
     string Resource);
 
@@ -44,6 +46,12 @@ public partial class AppTools
         {
             var area = utility.Area.ToToken();
 
+            var allowedAreas = new List<string>(utility.AllowedAreas.Count);
+            foreach (var allowedArea in utility.AllowedAreas)
+            {
+                allowedAreas.Add(allowedArea.ToToken());
+            }
+
             // A utility with no file behind it reports an empty resource rather than the empty key's own
             // "project:" spelling, which would read as a resource that exists.
             var resource = utility.Resource.IsEmpty ? string.Empty : utility.Resource.ToString();
@@ -52,6 +60,7 @@ public partial class AppTools
                 utility.UtilityId.ToString(),
                 utility.DisplayName,
                 area,
+                allowedAreas,
                 utility.IsShown,
                 resource));
         }

@@ -61,6 +61,7 @@ public class GetUtilitiesStateCommandTests
             {
                 ItemId = NotepadId,
                 DisplayName = "Notepad",
+                AllowedAreas = [WorkspaceArea.Utility, WorkspaceArea.Bottom],
                 Resource = new UtilityRailResource(NotepadResource, NotepadId),
                 PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.CustomUtility)
             },
@@ -68,6 +69,7 @@ public class GetUtilitiesStateCommandTests
             {
                 ItemId = BuiltInLauncherIds.Workshop,
                 DisplayName = "Community Workshop",
+                AllowedAreas = [WorkspaceArea.Main],
                 DefaultArea = WorkspaceArea.Main,
                 Resource = new UtilityRailResource(WorkshopResource, BuiltInEditors.WebViewEditorId)
             }
@@ -100,6 +102,24 @@ public class GetUtilitiesStateCommandTests
         utilities[2].DisplayName.Should().Be("Community Workshop");
         utilities[2].Area.Should().Be(WorkspaceArea.Main);
         utilities[2].Resource.Should().Be(WorkshopResource);
+    }
+
+    [Test]
+    public async Task Execute_ReportsWhatEachItemDeclares()
+    {
+        // The declared set is reported alongside the current area, so a caller learns where an item may go
+        // without attempting a move to find out.
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper);
+
+        await command.ExecuteAsync();
+
+        var utilities = command.ResultValue.Utilities;
+
+        utilities.Single(utility => utility.UtilityId == NotepadId).AllowedAreas
+            .Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Bottom);
+
+        utilities.Single(utility => utility.UtilityId == BuiltInLauncherIds.Workshop).AllowedAreas
+            .Should().Equal(WorkspaceArea.Main);
     }
 
     [Test]

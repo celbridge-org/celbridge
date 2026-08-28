@@ -47,7 +47,7 @@ public class ShowUtilityCommandTests
     }
 
     [Test]
-    public async Task Execute_LiveUtilityWithLocation_DocksBeforeRevealing()
+    public async Task Execute_LiveUtilityWithArea_DocksBeforeRevealing()
     {
         _utilityService.HasUtility(NotepadUtilityId).Returns(true);
         _utilityService.DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Main).Returns(Result.Ok());
@@ -55,7 +55,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = NotepadUtilityId,
-            Area = WorkspaceArea.Main
+            Area = ShowUtilityArea.Named(WorkspaceArea.Main)
         };
 
         var result = await command.ExecuteAsync();
@@ -63,6 +63,67 @@ public class ShowUtilityCommandTests
         result.IsSuccess.Should().BeTrue();
         await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Main);
         _utilityPanel.Received(1).ShowUtility(NotepadUtilityId);
+    }
+
+    [Test]
+    public async Task Execute_DocumentArea_ResolvesTheAreaTheUtilityDeclares()
+    {
+        // The caller asked for a tab without naming an area, so the declaration decides which one.
+        _utilityService.HasUtility(NotepadUtilityId).Returns(true);
+        _utilityService.GetRailItems().Returns(BuildRegister(WorkspaceArea.Utility, WorkspaceArea.Bottom));
+        _utilityService.DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Bottom).Returns(Result.Ok());
+
+        var command = new ShowUtilityCommand(_workspaceWrapper)
+        {
+            UtilityId = NotepadUtilityId,
+            Area = ShowUtilityArea.DocumentArea
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        await _utilityService.Received(1).DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Bottom);
+    }
+
+    [Test]
+    public async Task Execute_DocumentAreaWithSeveralDeclared_FailsRatherThanPickingOne()
+    {
+        _utilityService.HasUtility(NotepadUtilityId).Returns(true);
+        _utilityService.GetRailItems().Returns(
+            BuildRegister(WorkspaceArea.Utility, WorkspaceArea.Main, WorkspaceArea.Bottom));
+
+        var command = new ShowUtilityCommand(_workspaceWrapper)
+        {
+            UtilityId = NotepadUtilityId,
+            Area = ShowUtilityArea.DocumentArea
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<WorkspaceArea>());
+        _utilityPanel.DidNotReceive().ShowUtility(Arg.Any<EditorId>());
+    }
+
+    [Test]
+    public async Task Execute_DisallowedArea_ReportsWhatTheServiceSays()
+    {
+        // The declaration is enforced by the service, so the command carries its error rather than
+        // second-guessing it.
+        _utilityService.HasUtility(NotepadUtilityId).Returns(true);
+        _utilityService.DockUtilityAsync(NotepadUtilityId, WorkspaceArea.Side)
+            .Returns(Result.Fail("it allows 'utility', 'main'."));
+
+        var command = new ShowUtilityCommand(_workspaceWrapper)
+        {
+            UtilityId = NotepadUtilityId,
+            Area = ShowUtilityArea.Named(WorkspaceArea.Side)
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        _utilityPanel.DidNotReceive().ShowUtility(Arg.Any<EditorId>());
     }
 
     [Test]
@@ -130,5 +191,20 @@ public class ShowUtilityCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    // A register holding the notepad utility alone, declaring the given areas and defaulting to the first.
+    private static List<UtilityRailItem> BuildRegister(params WorkspaceArea[] allowedAreas)
+    {
+        return new List<UtilityRailItem>
+        {
+            new()
+            {
+                ItemId = NotepadUtilityId,
+                DisplayName = "Notepad",
+                AllowedAreas = allowedAreas,
+                DefaultArea = allowedAreas[0]
+            }
+        };
     }
 }

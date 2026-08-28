@@ -64,6 +64,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
                 railItem.ItemId,
                 railItem.DisplayName,
                 area,
+                railItem.AllowedAreas,
                 isShown,
                 resource));
         }

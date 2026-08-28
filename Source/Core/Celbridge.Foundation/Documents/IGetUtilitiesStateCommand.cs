@@ -7,11 +7,13 @@ namespace Celbridge.Documents;
 /// A single entry in a utilities state snapshot: one button on the Utility Panel rail, whatever it presents.
 /// IsShown is true when it is currently surfaced to the user, either as the active rail surface or as the
 /// active document. Resource is the file the entry presents, and is empty for a rail surface that has none.
+/// AllowedAreas are the areas the entry may occupy, which Area is always one of.
 /// </summary>
 public record class UtilityInfo(
     EditorId UtilityId,
     string DisplayName,
     WorkspaceArea Area,
+    IReadOnlyList<WorkspaceArea> AllowedAreas,
     bool IsShown,
     ResourceKey Resource);
 

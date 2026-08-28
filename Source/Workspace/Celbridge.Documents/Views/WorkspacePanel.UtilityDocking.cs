@@ -1,11 +1,11 @@
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Where to place a utility when docking it into a document tab. A null Address docks into Main's primary
-/// section and appends the tab. A non-null Address targets a specific section and tab order. Activate
-/// selects the docked tab and makes it the active document.
+/// Where to place a utility when docking it into a document tab. Section names the section the tab lands in,
+/// and a null TabOrder appends the tab rather than inserting it at a stored position. Activate selects the
+/// docked tab and makes it the active document.
 /// </summary>
-public record DockUtilityPlacement(DocumentAddress? Address, bool Activate);
+public record DockUtilityPlacement(DocumentSection Section, int? TabOrder, bool Activate);
 
 /// <summary>
 /// Utility docking support for WorkspacePanel: presenting a utility as a document tab that borrows the
@@ -31,18 +31,7 @@ public sealed partial class WorkspacePanel
         }
         var filePath = resolveResult.Value;
 
-        var address = placement.Address;
-
-        DocumentSection section;
-        if (address is not null)
-        {
-            section = EnsureSectionMounted(address.Section);
-        }
-        else
-        {
-            section = DocumentLayoutHelper.DefaultOpenSection;
-        }
-
+        var section = EnsureSectionMounted(placement.Section);
         var sectionView = SectionContainer.GetSection(section);
 
         var documentTab = new DocumentTab();
@@ -55,9 +44,10 @@ public sealed partial class WorkspacePanel
         dockedView.EditorId = editorId;
         dockedView.Bind(resource, filePath);
 
-        if (address is not null)
+        var tabOrder = placement.TabOrder;
+        if (tabOrder is not null)
         {
-            sectionView.InsertTab(documentTab, address.TabOrder);
+            sectionView.InsertTab(documentTab, tabOrder.Value);
         }
         else
         {

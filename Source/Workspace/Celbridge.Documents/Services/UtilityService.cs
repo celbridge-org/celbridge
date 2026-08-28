@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -16,6 +17,7 @@ public class UtilityService : IUtilityService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UtilityService> _logger;
     private readonly IMessengerService _messengerService;
+    private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly UtilityResourceSeeder _utilityResourceSeeder;
 
@@ -46,6 +48,7 @@ public class UtilityService : IUtilityService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<UtilityService> logger,
         IMessengerService messengerService,
+        ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
     {
         // Only the workspace service is allowed to instantiate this service
@@ -54,6 +57,7 @@ public class UtilityService : IUtilityService, IDisposable
         _serviceProvider = serviceProvider;
         _logger = logger;
         _messengerService = messengerService;
+        _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
 
         _utilityResourceSeeder = new UtilityResourceSeeder(
@@ -164,6 +168,8 @@ public class UtilityService : IUtilityService, IDisposable
                 IconName = descriptor.Icon,
                 DisplayName = displayName,
                 Tooltip = tooltip,
+                AllowedAreas = descriptor.AllowedAreas,
+                DefaultArea = descriptor.DefaultArea,
                 Resource = new UtilityRailResource(resource, resolvedEditor.EditorId),
                 PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
             };
@@ -264,6 +270,16 @@ public class UtilityService : IUtilityService, IDisposable
             return Result.Ok();
         }
 
+        var utilityId = panelView.UtilityId;
+
+        var placementResult = ResolveRestorePlacement(utilityId, address);
+        if (placementResult.IsFailure)
+        {
+            return Result.Fail($"Cannot restore docked utility for resource '{resource}'")
+                .WithErrors(placementResult);
+        }
+        var placement = placementResult.Value;
+
         // A lazy utility restored into the tab layout as a docked document initializes at restore.
         var initResult = await panelView.EnsureInitializedAsync();
         if (initResult.IsFailure)
@@ -272,11 +288,9 @@ public class UtilityService : IUtilityService, IDisposable
                 .WithErrors(initResult);
         }
 
-        // Restore into the saved section and tab position without activating, because the active document is
-        // restored separately. No flash and no rail navigation either, both of which belong to the interactive
-        // dock only.
+        // A restore never activates, because the active document is restored separately, and never flashes
+        // or navigates the rail, both of which belong to the interactive dock.
         var documentsPanel = (WorkspacePanel)DocumentsPanel;
-        var placement = new DockUtilityPlacement(address, Activate: false);
         var dockResult = documentsPanel.DockUtility(panelView, placement);
         if (dockResult.IsFailure)
         {
@@ -284,13 +298,53 @@ public class UtilityService : IUtilityService, IDisposable
                 .WithErrors(dockResult);
         }
 
-        panelView.Area = address.Section.GetArea().GetWorkspaceArea();
+        panelView.Area = placement.Section.GetArea().GetWorkspaceArea();
 
         // Mark the rail button as a document so its click activates the tab and its cue shows, matching a live dock.
         _workspaceWrapper.WorkspaceService.UtilityPanel.SetUtilityArea(
             panelView.UtilityId, panelView.Area, resource);
 
         return Result.Ok();
+    }
+
+    // Where a stored tab position lands on restore. The saved section and tab order are reproduced while the
+    // declaration still allows that area, and a declaration that has since narrowed puts the utility at its
+    // default area instead, appended, because the stored tab order belongs to another section.
+    private Result<DockUtilityPlacement> ResolveRestorePlacement(EditorId utilityId, DocumentAddress address)
+    {
+        var allowedAreas = GetAllowedAreas(utilityId);
+
+        var storedArea = address.Section.GetArea().GetWorkspaceArea();
+        if (allowedAreas.Contains(storedArea))
+        {
+            return new DockUtilityPlacement(address.Section, address.TabOrder, Activate: false);
+        }
+
+        var defaultArea = GetDefaultArea(utilityId);
+        var documentArea = defaultArea.GetDocumentArea();
+        if (documentArea is null)
+        {
+            return Result.Fail(
+                $"Utility '{utilityId}' no longer allows the '{storedArea.ToToken()}' area, and its default " +
+                $"area is the Utility Panel.");
+        }
+
+        _logger.LogWarning(
+            $"Utility '{utilityId}' no longer allows the '{storedArea.ToToken()}' area it was stored in. " +
+            $"Restoring it in the '{defaultArea.ToToken()}' area instead.");
+
+        return new DockUtilityPlacement(documentArea.Value.GetPrimarySection(), TabOrder: null, Activate: false);
+    }
+
+    private WorkspaceArea GetDefaultArea(EditorId utilityId)
+    {
+        var railItem = FindUtilityItem(utilityId);
+        if (railItem is null)
+        {
+            return WorkspaceArea.Utility;
+        }
+
+        return railItem.DefaultArea;
     }
 
     public bool HasUtility(EditorId utilityId)
@@ -306,6 +360,14 @@ public class UtilityService : IUtilityService, IDisposable
             return Result.Fail($"Cannot dock utility: no utility found for '{utilityId}'");
         }
 
+        var allowedAreas = GetAllowedAreas(utilityId);
+        if (!allowedAreas.Contains(area))
+        {
+            return Result.Fail(
+                $"Cannot dock utility '{utilityId}' in the '{area.ToToken()}' area: " +
+                $"it allows {DescribeAreas(allowedAreas)}.");
+        }
+
         // Docking presents the utility, so a lazy utility initializes here.
         var initResult = await panelView.EnsureInitializedAsync();
         if (initResult.IsFailure)
@@ -314,35 +376,74 @@ public class UtilityService : IUtilityService, IDisposable
                 .WithErrors(initResult);
         }
 
-        if (area == WorkspaceArea.Utility)
+        // The Utility Panel is the one area that holds no document area, so this routes the dock without a
+        // second test of what the area is.
+        var documentArea = area.GetDocumentArea();
+        if (documentArea is null)
         {
             return DockUtilityInPanel(panelView);
         }
 
-        // Every utility docks into Main until utilities can declare the document area they use.
-        if (area != WorkspaceArea.Main)
-        {
-            return Result.Fail($"Cannot dock utility '{utilityId}' in area '{area.ToToken()}': utilities can only be docked in Main.");
-        }
-
-        return DockUtilityAsDocument(panelView);
+        return DockUtilityAsDocument(panelView, documentArea.Value);
     }
 
-    // Docks a utility into a document tab in Main's primary section, reusing its live WebView. Activates
-    // the tab if the utility is already there.
-    private Result DockUtilityAsDocument(CustomUtilityView panelView)
+    private IReadOnlyList<WorkspaceArea> GetAllowedAreas(EditorId utilityId)
+    {
+        var railItem = FindUtilityItem(utilityId);
+        if (railItem is null)
+        {
+            return UtilityDescriptor.DefaultAllowedAreas;
+        }
+
+        return railItem.AllowedAreas;
+    }
+
+    // The rail item holding a utility's declaration. Null only for an id the register does not hold, which
+    // cannot happen for a live utility, so the callers above fall back to the manifest defaults.
+    private UtilityRailItem? FindUtilityItem(EditorId utilityId)
+    {
+        return _utilityItems.FirstOrDefault(item => item.ItemId == utilityId);
+    }
+
+    // Names a set of areas by their tokens, in the order the areas read on screen, for an error message.
+    private static string DescribeAreas(IReadOnlyList<WorkspaceArea> areas)
+    {
+        var tokens = new List<string>();
+        foreach (var area in WorkspaceAreaHelper.AllAreas)
+        {
+            if (areas.Contains(area))
+            {
+                tokens.Add($"'{area.ToToken()}'");
+            }
+        }
+
+        return string.Join(", ", tokens);
+    }
+
+    // Docks a utility into a document tab in the area's primary section, reusing its live WebView. A utility
+    // already docked in another document area moves; one already in this area is activated in place.
+    private Result DockUtilityAsDocument(CustomUtilityView panelView, DocumentArea documentArea)
     {
         var documentsPanel = (WorkspacePanel)DocumentsPanel;
+        var area = documentArea.GetWorkspaceArea();
 
-        if (panelView.Area != WorkspaceArea.Utility)
+        if (panelView.Area == area)
         {
             documentsPanel.ActivateUtilityTab(panelView.FileResource);
+            PresentArea(area);
             FlashDocumentTab(panelView.FileResource);
             return Result.Ok();
         }
 
-        // A null address docks into Main's primary section and activates the tab.
-        var placement = new DockUtilityPlacement(Address: null, Activate: true);
+        // A utility docked in another document area returns to the panel first, so its WebView is reparented
+        // out of the old tab before the new one is built.
+        if (panelView.Area != WorkspaceArea.Utility)
+        {
+            ReturnUtilityToPanel(panelView);
+        }
+
+        var section = documentArea.GetPrimarySection();
+        var placement = new DockUtilityPlacement(section, TabOrder: null, Activate: true);
         var dockResult = documentsPanel.DockUtility(panelView, placement);
         if (dockResult.IsFailure)
         {
@@ -350,19 +451,36 @@ public class UtilityService : IUtilityService, IDisposable
                 .WithErrors(dockResult);
         }
 
-        panelView.Area = WorkspaceArea.Main;
+        panelView.Area = area;
 
         var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
 
-        utilityPanel.SetUtilityArea(panelView.UtilityId, WorkspaceArea.Main, panelView.FileResource);
+        utilityPanel.SetUtilityArea(panelView.UtilityId, area, panelView.FileResource);
+
+        PresentArea(area);
 
         FlashDocumentTab(panelView.FileResource);
 
         return Result.Ok();
     }
 
-    // Docks a utility back into the Utility Panel, reparenting its WebView out of its document tab and removing
-    // the tab. The utility itself is never torn down.
+    // Reveals a collapsed area, so docking into one presents the utility rather than hiding it. Main is never
+    // collapsed, which is the no-op case.
+    private void PresentArea(WorkspaceArea area)
+    {
+        if (!area.IsCollapsible())
+        {
+            return;
+        }
+
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
+        {
+            command.Area = area;
+            command.IsVisible = true;
+        });
+    }
+
+    // Docks a utility back into the Utility Panel and shows it there. The utility itself is never torn down.
     private Result DockUtilityInPanel(CustomUtilityView panelView)
     {
         if (panelView.Area == WorkspaceArea.Utility)
@@ -370,8 +488,19 @@ public class UtilityService : IUtilityService, IDisposable
             return Result.Ok();
         }
 
-        // Reparent the controller's WebView back to the Utility Panel before the tab is removed, so the WebView
-        // is never orphaned with the discarded tab.
+        ReturnUtilityToPanel(panelView);
+
+        // Present the utility at its destination, mirroring the dock as a document, which activates the tab.
+        _workspaceWrapper.WorkspaceService.UtilityPanel.ShowUtility(panelView.UtilityId);
+
+        return Result.Ok();
+    }
+
+    // Reparents a docked utility's WebView back into the Utility Panel and drops its document tab, without
+    // showing it. The reparent runs before the tab is removed so the WebView is never orphaned with the
+    // discarded tab.
+    private void ReturnUtilityToPanel(CustomUtilityView panelView)
+    {
         panelView.Controller.Redock(panelView.PanelContainer, panelView.PanelFocusContext);
         panelView.Area = WorkspaceArea.Utility;
 
@@ -380,11 +509,6 @@ public class UtilityService : IUtilityService, IDisposable
 
         var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
         utilityPanel.SetUtilityArea(panelView.UtilityId, WorkspaceArea.Utility, ResourceKey.Empty);
-
-        // Present the utility at its destination, mirroring the dock as a document, which activates the tab.
-        utilityPanel.ShowUtility(panelView.UtilityId);
-
-        return Result.Ok();
     }
 
     public EditorId? GetDockedUtilityId(ResourceKey resource)

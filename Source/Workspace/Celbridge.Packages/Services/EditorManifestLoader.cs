@@ -1,6 +1,7 @@
 using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -45,8 +46,14 @@ internal static class EditorManifestLoader
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
     private const string LazyLoadKey = "lazy-load";
+    private const string AreasKey = "areas";
+    private const string DefaultAreaKey = "default-area";
 
     private const string CatalogLanguagesValue = "languages";
+
+    // The area tokens, spelled out for the error messages the area keys produce.
+    private const string ValidAreaTokens =
+        $"{WorkspaceAreaTokens.Utility}, {WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}";
 
     private const string DocumentTypeValue = "document";
     private const string UtilityTypeValue = "utility";
@@ -449,15 +456,124 @@ internal static class EditorManifestLoader
         var template = TomlTableReader.GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
         var lazyLoad = TomlTableReader.GetBoolOrNull(utilityTable, LazyLoadKey) ?? false;
 
+        var areasResult = ParseAllowedAreas(utilityTable, editorTomlPath);
+        if (areasResult.IsFailure)
+        {
+            return Result<UtilityDescriptor>.Fail(areasResult.FirstErrorMessage).WithErrors(areasResult);
+        }
+        var allowedAreas = areasResult.Value;
+
+        var defaultAreaResult = ResolveDefaultArea(utilityTable, allowedAreas, editorTomlPath);
+        if (defaultAreaResult.IsFailure)
+        {
+            return Result<UtilityDescriptor>.Fail(defaultAreaResult.FirstErrorMessage).WithErrors(defaultAreaResult);
+        }
+        var defaultArea = defaultAreaResult.Value;
+
+        // Only a utility-scoped declaration is supported: a workspace item with no place in the Utility Panel
+        // has nowhere to park its live view, and the rail cannot yet present one.
+        if (!allowedAreas.Contains(WorkspaceArea.Utility))
+        {
+            return Result.Fail(
+                $"[{UtilitySection}] '{AreasKey}' must include '{WorkspaceAreaTokens.Utility}': {editorTomlPath}. " +
+                $"A workspace item that is not a utility is not supported yet.");
+        }
+
         var descriptor = new UtilityDescriptor
         {
             ResourceExtension = resourceExtension.ToLowerInvariant(),
             Template = template,
             Icon = icon,
-            LazyLoad = lazyLoad
+            LazyLoad = lazyLoad,
+            AllowedAreas = allowedAreas,
+            DefaultArea = defaultArea
         };
 
         return descriptor;
+    }
+
+    // Reads the areas key, which is a non-empty set of area tokens. An absent key leaves the descriptor's
+    // own default in place, which is the placement every utility had before areas could be declared.
+    private static Result<IReadOnlyList<WorkspaceArea>> ParseAllowedAreas(TomlTable utilityTable, string editorTomlPath)
+    {
+        if (!utilityTable.TryGetValue(AreasKey, out var areasObject))
+        {
+            return Result<IReadOnlyList<WorkspaceArea>>.Ok(UtilityDescriptor.DefaultAllowedAreas);
+        }
+
+        if (areasObject is not TomlArray areasArray)
+        {
+            return Result.Fail($"[{UtilitySection}] '{AreasKey}' must be an array of area names: {editorTomlPath}");
+        }
+
+        if (areasArray.Count == 0)
+        {
+            return Result.Fail($"[{UtilitySection}] '{AreasKey}' must name at least one area: {editorTomlPath}");
+        }
+
+        var allowedAreas = new List<WorkspaceArea>();
+        foreach (var element in areasArray)
+        {
+            var token = element as string;
+            if (!WorkspaceAreaTokens.TryParse(token, out var area))
+            {
+                return Result.Fail(
+                    $"[{UtilitySection}] '{AreasKey}' value '{element}' is not a recognized area " +
+                    $"({ValidAreaTokens}): {editorTomlPath}");
+            }
+
+            if (allowedAreas.Contains(area))
+            {
+                return Result.Fail($"[{UtilitySection}] '{AreasKey}' names '{token}' more than once: {editorTomlPath}");
+            }
+
+            allowedAreas.Add(area);
+        }
+
+        return allowedAreas.AsReadOnly();
+    }
+
+    // Reads the default-area key, or infers it: the Utility Panel when the declaration allows it, and
+    // otherwise the one document area it allows. A declaration allowing several document areas and no
+    // panel has to name its default.
+    private static Result<WorkspaceArea> ResolveDefaultArea(
+        TomlTable utilityTable,
+        IReadOnlyList<WorkspaceArea> allowedAreas,
+        string editorTomlPath)
+    {
+        var defaultAreaValue = TomlTableReader.GetStringOrNull(utilityTable, DefaultAreaKey);
+        if (defaultAreaValue is not null)
+        {
+            if (!WorkspaceAreaTokens.TryParse(defaultAreaValue, out var declaredArea))
+            {
+                return Result.Fail(
+                    $"[{UtilitySection}] '{DefaultAreaKey}' value '{defaultAreaValue}' is not a recognized area " +
+                    $"({ValidAreaTokens}): {editorTomlPath}");
+            }
+
+            if (!allowedAreas.Contains(declaredArea))
+            {
+                return Result.Fail(
+                    $"[{UtilitySection}] '{DefaultAreaKey}' value '{defaultAreaValue}' is not one of the areas " +
+                    $"'{AreasKey}' declares: {editorTomlPath}");
+            }
+
+            return declaredArea;
+        }
+
+        if (allowedAreas.Contains(WorkspaceArea.Utility))
+        {
+            return WorkspaceArea.Utility;
+        }
+
+        if (allowedAreas.Count == 1)
+        {
+            return allowedAreas[0];
+        }
+
+        return Result.Fail(
+            $"[{UtilitySection}] requires '{DefaultAreaKey}' when '{AreasKey}' declares several areas and none " +
+            $"of them is '{WorkspaceAreaTokens.Utility}': {editorTomlPath}");
     }
 
     private static Result<List<ConfigDescriptor>> ParseConfigDescriptors(TomlTable root, string editorTomlPath)

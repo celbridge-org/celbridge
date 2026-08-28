@@ -29,12 +29,12 @@ public sealed record UtilityRailPanelView(
 /// </summary>
 public sealed record UtilityRailItem
 {
-    // The areas a rail item may occupy unless it says otherwise, which is what every contribution utility
-    // does today.
-    private static readonly IReadOnlyList<WorkspaceArea> DockableAreas =
+    // Where an item that names no areas may go. The Utility Panel alone, because it is the one area every
+    // rail item can occupy and the one DefaultArea also falls back to. Every item the rail builds names its
+    // own areas: a contribution utility from its manifest, and the built-in items from what they are.
+    private static readonly IReadOnlyList<WorkspaceArea> PanelOnlyAreas =
     [
-        WorkspaceArea.Utility,
-        WorkspaceArea.Main
+        WorkspaceArea.Utility
     ];
 
     /// <summary>
@@ -67,10 +67,11 @@ public sealed record UtilityRailItem
     /// <summary>
     /// The areas this item is allowed to occupy. Never empty and never holds a duplicate.
     /// </summary>
-    public IReadOnlyList<WorkspaceArea> AllowedAreas { get; init; } = DockableAreas;
+    public IReadOnlyList<WorkspaceArea> AllowedAreas { get; init; } = PanelOnlyAreas;
 
     /// <summary>
-    /// The area the item occupies in a workspace with no stored state for it. Always a member of AllowedAreas.
+    /// The area the item falls back to when no other one is named: where a launcher opens its document, and
+    /// where a utility is restored when its stored area is no longer allowed. Always a member of AllowedAreas.
     /// </summary>
     public WorkspaceArea DefaultArea { get; init; } = WorkspaceArea.Utility;
 
