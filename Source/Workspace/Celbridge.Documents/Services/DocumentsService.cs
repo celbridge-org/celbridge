@@ -277,7 +277,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnAreaLayoutChangedMessage(object recipient, AreaLayoutChangedMessage message)
     {
-        _ = _layoutStore.StoreAreaLayoutAsync();
+        _ = _layoutStore.StoreAreaSplitRatiosAsync();
     }
 
     public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default)
@@ -566,7 +566,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Task StoreDocumentLayout() => _layoutStore.StoreDocumentLayoutAsync();
+    public Task StoreDocumentLayout() => _layoutStore.StoreOpenDocumentAddressesAsync();
 
     public Task StoreActiveDocument() => _layoutStore.StoreActiveDocumentAsync();
 

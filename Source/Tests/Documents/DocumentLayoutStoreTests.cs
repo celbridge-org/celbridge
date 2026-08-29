@@ -434,12 +434,12 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_AppliesStoredSplitRatio()
     {
-        var areaLayout = new Dictionary<string, DocumentLayoutStore.StoredAreaLayout>
+        var areaSplitRatios = new Dictionary<string, DocumentLayoutStore.StoredAreaSplitRatio>
         {
-            ["main"] = new DocumentLayoutStore.StoredAreaLayout(SplitRatio: 0.3),
+            ["main"] = new DocumentLayoutStore.StoredAreaSplitRatio(SplitRatio: 0.3),
         };
-        _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>("AreaSplitRatios")
-            .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>?>(areaLayout));
+        _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredAreaSplitRatio>>("AreaSplitRatios")
+            .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredAreaSplitRatio>?>(areaSplitRatios));
         _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
             .Returns(Result<ResourceKey>.Fail("not found"));
 
@@ -469,16 +469,16 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task StoreAreaLayoutAsync_WritesSplitRatioPerArea()
+    public async Task StoreAreaSplitRatiosAsync_WritesSplitRatioPerArea()
     {
         _documentsPanel.GetAreaSplitRatio(DocumentArea.Main).Returns(0.4);
         _documentsPanel.GetAreaSplitRatio(DocumentArea.Bottom).Returns(0.5);
 
-        await _store.StoreAreaLayoutAsync();
+        await _store.StoreAreaSplitRatiosAsync();
 
         await _propertyBag.Received(1).SetPropertyAsync(
             "AreaSplitRatios",
-            Arg.Is<Dictionary<string, DocumentLayoutStore.StoredAreaLayout>>(layout =>
+            Arg.Is<Dictionary<string, DocumentLayoutStore.StoredAreaSplitRatio>>(layout =>
                 layout["main"].SplitRatio == 0.4
                 && layout["bottom"].SplitRatio == 0.5));
     }
