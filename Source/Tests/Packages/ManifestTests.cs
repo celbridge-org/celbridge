@@ -1052,7 +1052,6 @@ public class ManifestTests
         // A manifest declaring no areas gets the default placement: the Utility Panel, dockable into Main.
         descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Main);
         descriptor.DefaultArea.Should().Be(WorkspaceArea.Utility);
-        descriptor.IsWorkspaceScoped.Should().BeTrue();
     }
 
     [Test]
@@ -1077,34 +1076,6 @@ public class ManifestTests
         var descriptor = result.Value.Editors[0].UtilityDescriptor!;
         descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Bottom);
         descriptor.DefaultArea.Should().Be(WorkspaceArea.Bottom);
-    }
-
-    [Test]
-    public void LoadPackage_UtilityAreasWithoutTheUtilityPanel_ParsesAsDocumentScoped()
-    {
-        WriteSingleEditorPackage("""
-            [editor]
-            id = "widget-renderer"
-            type = "utility"
-            display-name = "Widget_Utility_DisplayName"
-
-            [utility]
-            resource-extension = "._widget"
-            icon = "star"
-            areas = ["bottom"]
-            """);
-
-        var result = LoadPackage();
-
-        result.IsSuccess.Should().BeTrue();
-
-        // The one document area it allows is also the default, so the declaration need not name one.
-        var descriptor = result.Value.Editors[0].UtilityDescriptor!;
-        descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Bottom);
-        descriptor.DefaultArea.Should().Be(WorkspaceArea.Bottom);
-
-        // Nothing parks a live view in the Utility Panel, so the item is destroyed when its tab closes.
-        descriptor.IsWorkspaceScoped.Should().BeFalse();
     }
 
     [Test]
@@ -1133,6 +1104,7 @@ public class ManifestTests
     [TestCase("[\"utility\", \"panel\"]", Description = "unrecognized area")]
     [TestCase("\"utility\"", Description = "not an array")]
     [TestCase("[\"main\", \"bottom\"]", Description = "no utility area and no default to infer")]
+    [TestCase("[\"bottom\"]", Description = "no utility area")]
     public void LoadPackage_UtilityInvalidAreas_ReturnsFailure(string areasValue)
     {
         WriteSingleEditorPackage($"""

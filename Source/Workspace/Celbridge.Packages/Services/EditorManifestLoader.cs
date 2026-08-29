@@ -468,6 +468,14 @@ internal static class EditorManifestLoader
         }
         var defaultArea = defaultAreaResult.Value;
 
+        // A utility always occupies the Utility Panel, which is where its live view parks when its tab
+        // closes.
+        if (!allowedAreas.Contains(WorkspaceArea.Utility))
+        {
+            return Result.Fail(
+                $"[{UtilitySection}] '{AreasKey}' must include '{WorkspaceAreaTokens.Utility}': {editorTomlPath}.");
+        }
+
         var descriptor = new UtilityDescriptor
         {
             ResourceExtension = resourceExtension.ToLowerInvariant(),

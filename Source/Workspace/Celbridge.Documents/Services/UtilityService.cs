@@ -82,20 +82,6 @@ public class UtilityService : IUtilityService, IDisposable
         return railItems;
     }
 
-    public UtilityRailItem? FindRailItem(ResourceKey resource)
-    {
-        foreach (var railItem in GetRailItems())
-        {
-            if (railItem.Resource is not null
-                && railItem.Resource.Resource == resource)
-            {
-                return railItem;
-            }
-        }
-
-        return null;
-    }
-
     public WorkspaceArea GetItemArea(EditorId itemId)
     {
         // A utility carries its own area because it moves. Everything else on the rail has one place it
@@ -151,8 +137,16 @@ public class UtilityService : IUtilityService, IDisposable
             var displayName = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.DisplayName);
             var tooltip = PackageDisplayText.Resolve(localizationService, contribution.Package, contribution.Description);
 
-            // Every declared item carries the resource it opens as a document. Only a workspace-scoped one
-            // also carries a panel view, and building that view is what creates the utility.
+            var panelViewResult = await CreateUtilityViewAsync(resolvedEditor, resource, displayName);
+            if (panelViewResult.IsFailure)
+            {
+                _logger.LogError(panelViewResult, $"Failed to create utility: '{resource}'");
+                continue;
+            }
+            var panelView = panelViewResult.Value;
+
+            _utilities.Add(panelView);
+
             var railItem = new UtilityRailItem
             {
                 ItemId = utilityId,
@@ -162,26 +156,9 @@ public class UtilityService : IUtilityService, IDisposable
                 Tooltip = tooltip,
                 AllowedAreas = descriptor.AllowedAreas,
                 DefaultArea = descriptor.DefaultArea,
-                Resource = new UtilityRailResource(resource, resolvedEditor.EditorId)
+                Resource = new UtilityRailResource(resource, resolvedEditor.EditorId),
+                PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
             };
-
-            if (descriptor.IsWorkspaceScoped)
-            {
-                var panelViewResult = await CreateUtilityViewAsync(resolvedEditor, resource, displayName);
-                if (panelViewResult.IsFailure)
-                {
-                    _logger.LogError(panelViewResult, $"Failed to create utility: '{resource}'");
-                    continue;
-                }
-                var panelView = panelViewResult.Value;
-
-                _utilities.Add(panelView);
-
-                railItem = railItem with
-                {
-                    PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
-                };
-            }
 
             _contributedItems.Add(railItem);
         }

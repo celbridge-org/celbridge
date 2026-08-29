@@ -355,7 +355,7 @@ public partial class DocumentTab : TabViewItem
 
         // A utility tab presents a docked utility, not a file, so hide the options that reveal or act on its
         // backing file. The close and move options remain.
-        bool isUtility = ViewModel.IsUtility;
+        bool isUtility = ViewModel.IsDockedUtility;
         var fileActionsVisibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
         SelectFileSeparator.Visibility = fileActionsVisibility;
         SelectFileMenuItem.Visibility = fileActionsVisibility;

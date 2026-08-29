@@ -35,15 +35,6 @@ public static class BuiltInLauncherIds
     /// The Community Workshop launcher's rail id.
     /// </summary>
     public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
-
-    /// <summary>
-    /// Every built-in launcher id.
-    /// </summary>
-    public static readonly IReadOnlyList<EditorId> All =
-    [
-        ProjectSettings,
-        Workshop
-    ];
 }
 
 /// <summary>

@@ -37,12 +37,6 @@ public interface IUtilityService
     WorkspaceArea GetItemArea(EditorId itemId);
 
     /// <summary>
-    /// The rail item that presents this resource, or null when no rail item does. A returned item with a
-    /// panel view is a workspace-scoped utility, which is presented by docking rather than by opening.
-    /// </summary>
-    UtilityRailItem? FindRailItem(ResourceKey resource);
-
-    /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given
     /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
     /// or change which item the panel shows. Fails if no utility owns the resource.

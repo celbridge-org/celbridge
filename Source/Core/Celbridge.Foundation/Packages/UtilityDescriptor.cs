@@ -3,9 +3,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Describes a workspace item the Utility Panel rail presents: a WebView editor backed by its own state file
-/// under the utils: root rather than a user-authored file. Parsed from the [utility] section of an editor
-/// manifest.
+/// Describes a utility editor: a WebView editor that is a workspace fixture, backed by its own state
+/// file under the utils: root rather than a user-authored file. Parsed from the [utility] section of an
+/// editor manifest.
 /// </summary>
 public record UtilityDescriptor
 {
@@ -46,11 +46,4 @@ public record UtilityDescriptor
     /// Always a member of AllowedAreas.
     /// </summary>
     public WorkspaceArea DefaultArea { get; init; } = WorkspaceArea.Utility;
-
-    /// <summary>
-    /// Whether this declares a workspace-scoped utility, which lives from project load to unload and parks
-    /// its live view in the Utility Panel. False declares a document-scoped workspace item, created when its
-    /// rail button opens it and destroyed when its tab closes.
-    /// </summary>
-    public bool IsWorkspaceScoped => AllowedAreas.Contains(WorkspaceArea.Utility);
 }

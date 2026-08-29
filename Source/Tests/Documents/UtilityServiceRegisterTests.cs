@@ -25,8 +25,6 @@ public class UtilityServiceRegisterTests
     private static readonly ResourceKey ProjectFileResource = new("Acme.celbridge");
     private static readonly ResourceKey WorkshopResource = new("temp:workshop.webview");
 
-    private static readonly EditorId NotesItemId = EditorId.Create("acme", "notes");
-
     private IServiceProvider _serviceProvider = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -83,32 +81,6 @@ public class UtilityServiceRegisterTests
         workspaceService.ResourceService.Returns(resourceService);
         workspaceService.PackageService.Returns(Substitute.For<IPackageService>());
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-    }
-
-    // A contribution declaring a workspace item in the given areas. Only a declaration that allows the
-    // Utility Panel builds a view, so a document-scoped one can be exercised without a WebView.
-    private static ResolvedEditor CreateDeclaredItem(EditorId editorId, params WorkspaceArea[] allowedAreas)
-    {
-        var descriptor = new UtilityDescriptor
-        {
-            ResourceExtension = "._notes",
-            Icon = "bs-sticky",
-            AllowedAreas = allowedAreas,
-            DefaultArea = allowedAreas[0]
-        };
-
-        var contribution = new EditorContribution
-        {
-            Id = "notes",
-            DisplayName = "Notes",
-            UtilityDescriptor = descriptor
-        };
-
-        return new ResolvedEditor
-        {
-            EditorId = editorId,
-            Contribution = contribution
-        };
     }
 
     private UtilityService CreateService()
@@ -197,50 +169,6 @@ public class UtilityServiceRegisterTests
 
         var itemIds = service.GetRailItems().Select(railItem => railItem.ItemId);
         itemIds.Should().NotContain(BuiltInLauncherIds.ProjectSettings);
-    }
-
-    [Test]
-    public async Task CreateUtilitiesAsync_DocumentScopedDeclaration_BecomesALauncherWithNoPanelView()
-    {
-        var service = CreateService();
-
-        var declaredItem = CreateDeclaredItem(NotesItemId, WorkspaceArea.Bottom);
-        await service.CreateUtilitiesAsync(new List<ResolvedEditor> { declaredItem });
-
-        var railItem = service.GetRailItems().Single(item => item.ItemId == NotesItemId);
-
-        // Nothing parks a live view in the Utility Panel, so the item has no panel view. That is what makes
-        // it a launcher on the rail and what makes its close an ordinary close.
-        railItem.PanelView.Should().BeNull();
-        railItem.AllowedAreas.Should().Equal(WorkspaceArea.Bottom);
-        railItem.DefaultArea.Should().Be(WorkspaceArea.Bottom);
-
-        // It still opens a document, backed by its own seeded file under the utils: root.
-        var expectedResource = new ResourceKey($"utils:{NotesItemId}._notes");
-        railItem.Resource!.Resource.Should().Be(expectedResource);
-        railItem.Resource.Editor.Should().Be(NotesItemId);
-
-        await _resourceFileSystem.Received(1).WriteAllBytesAsync(expectedResource, Arg.Any<byte[]>());
-
-        // No view was built, so there is no live utility to dock.
-        service.HasUtility(NotesItemId).Should().BeFalse();
-    }
-
-    [Test]
-    public async Task FindRailItem_ReportsTheItemPresentingAResource()
-    {
-        var service = CreateService();
-
-        var declaredItem = CreateDeclaredItem(NotesItemId, WorkspaceArea.Main);
-        await service.CreateUtilitiesAsync(new List<ResolvedEditor> { declaredItem });
-
-        var railItem = service.FindRailItem(new ResourceKey($"utils:{NotesItemId}._notes"));
-
-        railItem.Should().NotBeNull();
-        railItem!.ItemId.Should().Be(NotesItemId);
-
-        // A resource no rail item presents is not the register's to answer for.
-        service.FindRailItem(new ResourceKey("Documents/notes.md")).Should().BeNull();
     }
 
     [Test]

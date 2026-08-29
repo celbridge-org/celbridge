@@ -44,16 +44,10 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _editorDisplayName = string.Empty;
 
     /// <summary>
-    /// True when this tab presents a workspace item a contribution declares rather than a user file. Such
-    /// a tab takes its title and icon from the manifest, and offers no menu actions on the backing file.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isUtility;
-
-    /// <summary>
-    /// True when this tab borrows a workspace-scoped utility's live view rather than holding a document of
-    /// its own. Such a tab was never opened as a document and is never really closed, so it announces
-    /// neither.
+    /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
+    /// tab takes its title and icon from the manifest, offers no menu actions on the backing file, and
+    /// announces neither an open nor a close because it was never opened as a document and is never
+    /// really closed.
     /// </summary>
     [ObservableProperty]
     private bool _isDockedUtility;
@@ -98,7 +92,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         get
         {
-            if (IsUtility)
+            if (IsDockedUtility)
             {
                 return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
             }

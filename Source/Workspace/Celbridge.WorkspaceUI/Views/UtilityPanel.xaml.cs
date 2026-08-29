@@ -222,13 +222,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         {
             _launcherItems[itemId] = item;
             railButton.Click += (sender, e) => ShowLauncherDocument(item);
-
-            // A contribution's landmark exists only while its package is loaded, so the rail registers it.
-            // The built-in launchers are seeded at startup instead.
-            if (!BuiltInLauncherIds.All.Contains(itemId))
-            {
-                _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(item.LandmarkId, null));
-            }
         }
 
         _buttons[itemId] = railButton;
@@ -686,11 +679,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         foreach (var launcherItem in _launcherItems.Values)
         {
             _buttons.Remove(launcherItem.ItemId);
-
-            if (!BuiltInLauncherIds.All.Contains(launcherItem.ItemId))
-            {
-                _spotlightRegistry.UnregisterLandmark(launcherItem.LandmarkId);
-            }
         }
 
         _launcherItems.Clear();
