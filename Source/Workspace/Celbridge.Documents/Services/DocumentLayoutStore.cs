@@ -11,9 +11,9 @@ namespace Celbridge.Documents.Services;
 /// </summary>
 public class DocumentLayoutStore
 {
-    private const string DocumentLayoutKey = "DocumentLayout";
+    private const string OpenDocumentAddressesKey = "OpenDocumentAddresses";
     private const string ActiveDocumentKey = "ActiveDocument";
-    private const string AreaLayoutKey = "AreaLayout";
+    private const string AreaSplitRatiosKey = "AreaSplitRatios";
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -60,7 +60,7 @@ public class DocumentLayoutStore
             .ThenBy(address => address.TabOrder)
             .ToList();
 
-        await propertyBag.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
+        await propertyBag.SetPropertyAsync(OpenDocumentAddressesKey, storedAddresses);
     }
 
     public async Task StoreActiveDocumentAsync()
@@ -85,7 +85,7 @@ public class DocumentLayoutStore
             areaLayout[area.GetWorkspaceArea().ToToken()] = new StoredAreaLayout(DocumentsPanel.GetAreaSplitRatio(area));
         }
 
-        await propertyBag.SetPropertyAsync(AreaLayoutKey, areaLayout);
+        await propertyBag.SetPropertyAsync(AreaSplitRatiosKey, areaLayout);
     }
 
     public async Task StoreDocumentEditorStatesAsync()
@@ -217,7 +217,7 @@ public class DocumentLayoutStore
         Dictionary<string, StoredAreaLayout>? areaLayout = null;
         try
         {
-            areaLayout = await propertyBag.GetPropertyAsync<Dictionary<string, StoredAreaLayout>>(AreaLayoutKey);
+            areaLayout = await propertyBag.GetPropertyAsync<Dictionary<string, StoredAreaLayout>>(AreaSplitRatiosKey);
         }
         catch
         {
@@ -228,7 +228,7 @@ public class DocumentLayoutStore
         List<StoredDocumentAddress>? storedAddresses = null;
         try
         {
-            storedAddresses = await propertyBag.GetPropertyAsync<List<StoredDocumentAddress>>(DocumentLayoutKey);
+            storedAddresses = await propertyBag.GetPropertyAsync<List<StoredDocumentAddress>>(OpenDocumentAddressesKey);
         }
         catch
         {
