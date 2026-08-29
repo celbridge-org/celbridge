@@ -65,8 +65,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        // The workspace settings are now loaded, so apply this project's preferred
-        // visible areas. No need to persist, we are restoring the saved state.
+        // No need to persist, we are restoring the saved state.
         UpdateVisibleAreas(PreferredVisibleAreas, shouldPersist: false);
 
         var storedAlignment = WorkspaceSettings?.BottomAreaAlignment ?? WorkspaceConstants.BottomAreaAlignment;
@@ -160,7 +159,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
             SetLayoutModeInternal(LayoutMode.Default);
         }
 
-        // Sent last, once the whole layout has settled, and only for the area the user asked for.
+        // Sent last, once the whole layout has settled.
         if (isVisible
             && !wasVisible)
         {
@@ -204,9 +203,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
             return Result.Ok();
         }
 
-        // Default restores the user's preferred areas. Focus and Presentation both hide every area that
-        // can be hidden. They differ only in the toolbar and document tabs, which the views hide based on
-        // the layout mode.
+        // Focus and Presentation differ only in the toolbar and document tabs, which the views hide based
+        // on the layout mode.
         IReadOnlySet<WorkspaceArea> targetAreas;
         if (mode == LayoutMode.Default)
         {

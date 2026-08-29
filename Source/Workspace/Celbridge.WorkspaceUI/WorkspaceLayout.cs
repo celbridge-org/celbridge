@@ -4,8 +4,7 @@ namespace Celbridge.WorkspaceUI;
 
 /// <summary>
 /// An attached property that declares which workspace area a container hosts. A panel derives the area it
-/// sits in by walking to the nearest ancestor carrying this property, so a panel's area follows where the
-/// layout mounts it rather than being hard-coded on the panel.
+/// sits in by walking to the nearest ancestor carrying this property.
 /// </summary>
 public static class WorkspaceLayout
 {

@@ -11,10 +11,9 @@ public sealed record UtilityRailResource(
 
 /// <summary>
 /// The view a rail item shows while it occupies the Utility Panel. Content is the view itself, FocusPanel
-/// gives it keyboard focus, and FocusIdentity is the panel it reports focus as. The application supplies this
-/// for Explorer and Search; for a contribution utility it is the view already built from the item's resource.
-/// PreservePanelFocus keeps the reported panel while the platform bounces focus up onto the host, which a
-/// view that rebuilds its focused element needs.
+/// gives it keyboard focus, and FocusIdentity is the panel it reports focus as. PreservePanelFocus keeps the
+/// reported panel while the platform bounces focus up onto the host, which a view that rebuilds its focused
+/// element needs.
 /// </summary>
 public sealed record UtilityRailPanelView(
     object Content,
@@ -23,15 +22,12 @@ public sealed record UtilityRailPanelView(
     bool PreservePanelFocus = false);
 
 /// <summary>
-/// One button on the Utility Panel rail and what it shows. Resource is set when the item can be a document
-/// and PanelView when it can occupy the Utility Panel, matching the areas it allows; at least one is always
+/// One button on the Utility Panel rail and what it shows. At least one of Resource and PanelView is always
 /// set, and a dockable utility carries both.
 /// </summary>
 public sealed record UtilityRailItem
 {
-    // Where an item that names no areas may go. The Utility Panel alone, because it is the one area every
-    // rail item can occupy and the one DefaultArea also falls back to. Every item the rail builds names its
-    // own areas: a contribution utility from its manifest, and the built-in items from what they are.
+    // Where an item that names no areas may go.
     private static readonly IReadOnlyList<WorkspaceArea> PanelOnlyAreas =
     [
         WorkspaceArea.Utility
@@ -43,9 +39,7 @@ public sealed record UtilityRailItem
     public EditorId ItemId { get; init; }
 
     /// <summary>
-    /// Automation id of the rail button, which is also its Spotlight landmark id. Carried rather than
-    /// derived from ItemId, because the built-in items are addressed by short names while a contribution's
-    /// landmark is built from its full editor id.
+    /// Automation id of the rail button, which is also its Spotlight landmark id.
     /// </summary>
     public string LandmarkId { get; init; } = string.Empty;
 

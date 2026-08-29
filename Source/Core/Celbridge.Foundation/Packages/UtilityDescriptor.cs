@@ -5,13 +5,12 @@ namespace Celbridge.Packages;
 /// <summary>
 /// Describes a workspace item the Utility Panel rail presents: a WebView editor backed by its own state file
 /// under the utils: root rather than a user-authored file. Parsed from the [utility] section of an editor
-/// manifest. AllowedAreas decides the item's scope, so one declaration covers both kinds.
+/// manifest.
 /// </summary>
 public record UtilityDescriptor
 {
     /// <summary>
-    /// The areas a utility occupies when its manifest declares none, which reproduces the placement every
-    /// utility had before areas could be declared.
+    /// The areas a utility occupies when its manifest declares none.
     /// </summary>
     public static readonly IReadOnlyList<WorkspaceArea> DefaultAllowedAreas =
     [
@@ -50,7 +49,7 @@ public record UtilityDescriptor
 
     /// <summary>
     /// Whether this declares a workspace-scoped utility, which lives from project load to unload and parks
-    /// its live view in the Utility Panel. False declares an open-scoped workspace item, created when its
+    /// its live view in the Utility Panel. False declares a document-scoped workspace item, created when its
     /// rail button opens it and destroyed when its tab closes.
     /// </summary>
     public bool IsWorkspaceScoped => AllowedAreas.Contains(WorkspaceArea.Utility);

@@ -96,8 +96,6 @@ internal sealed class AppStateProvider : IAppStateProvider
 
         var activeUtility = isLoaded ? _activeUtilityId : string.Empty;
 
-        // Every area is reported, including Main, so a caller reads one shape rather than inferring the
-        // areas that are always on screen.
         var areaVisibility = new Dictionary<string, bool>();
         foreach (var area in WorkspaceAreaHelper.AllAreas)
         {

@@ -53,16 +53,13 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Workspace area layout state. Workspace-scoped, so each project
-    /// remembers its own layout.
+    /// Workspace area layout state.
     /// </summary>
     public static class Layout
     {
         // The areas the user prefers to see, as a comma separated list of area tokens. This is the layout
         // Focus and Presentation restore on the way out, not what is on screen while one of them is hiding
-        // everything. The default stands for a project that has never customised its layout, which shows
-        // every area: the facade reads that off whether the key is configured, so it is distinct from a
-        // stored value hiding every area that can be hidden.
+        // everything. The empty default means the layout has never been customised, which shows every area.
         public static readonly SettingDescriptor<string> PreferredVisibleAreas =
             new("Layout.PreferredVisibleAreas", SettingScope.Workspace, "");
 

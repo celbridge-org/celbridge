@@ -293,10 +293,9 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            // A stored utils: entry is one of the rail's own workspace items, both of which are registered
-            // before this runs. A workspace-scoped one was docked last session, so its live view is
-            // reparented into the saved tab position rather than a second view being created; an open-scoped
-            // one opens as an ordinary document below, with the editor its rail item names.
+            // A stored utils: entry is one of the rail's own workspace items, registered before this runs.
+            // A workspace-scoped one was docked last session, so its live view is reparented into the saved
+            // tab position. A document-scoped one opens as an ordinary document below.
             var railEditorId = EditorId.Empty;
             if (fileResource.Root == ProjectConstants.UtilsFolder)
             {

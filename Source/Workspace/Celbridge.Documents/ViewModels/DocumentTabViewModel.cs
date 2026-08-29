@@ -45,8 +45,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
     /// <summary>
     /// True when this tab presents a workspace item a contribution declares rather than a user file. Such
-    /// tabs source their title and icon from the manifest rather than the filename and the file-type icon
-    /// set, and offer no menu actions on the backing file.
+    /// a tab takes its title and icon from the manifest, and offers no menu actions on the backing file.
     /// </summary>
     [ObservableProperty]
     private bool _isUtility;

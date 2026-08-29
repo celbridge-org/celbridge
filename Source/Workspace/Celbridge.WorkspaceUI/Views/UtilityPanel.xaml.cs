@@ -57,7 +57,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly Dictionary<EditorId, UtilityRailItem> _launcherItems = new();
 
     // The built-in utility descriptors this panel builds for itself, published to the utility service so the
-    // rail register holds every item rather than only the ones the service builds.
+    // rail register holds every item.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
 
     // The rail's buttons in the three ordered groups the panel presents: the built-in utilities, then the
@@ -196,7 +196,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     // Builds a rail button from a descriptor and registers everything the panel tracks for it. An item that
-    // can occupy the panel gets a rail item, a content host and a focus action; an item that only opens a
+    // can occupy the panel gets a rail item, a content host and a focus action. An item that only opens a
     // document gets none of those, and its click opens that document instead.
     private UtilityButton AddRailItem(UtilityRailItem item)
     {
@@ -300,9 +300,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             }
         }
 
-        var documentArea = area.GetDocumentArea();
-
-        return documentArea?.GetPrimarySection();
+        return area.GetPrimaryDocumentSection();
     }
 
     // Binds a rail button's visual state to its item view model.
@@ -591,8 +589,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
     }
 
-    // Broadcasts the now-active utility, so app-level state (e.g. app_get_state) can report it without
-    // touching this UI object off the UI thread.
+    // Broadcasts the now-active utility, so app-level state can report it without touching this UI object
+    // off the UI thread.
     private void NotifyActiveUtilityChanged()
     {
         _messengerService.Send(new ActiveUtilityChangedMessage(ActiveUtilityId.ToString()));
@@ -683,7 +681,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
 
         // The launchers host no live view and no content, so they are simply dropped and rebuilt. Only a
-        // contributed launcher's landmark was registered with the rail; the built-in ones are seeded at
+        // contributed launcher's landmark was registered with the rail. The built-in ones are seeded at
         // startup and outlive the workspace.
         foreach (var launcherItem in _launcherItems.Values)
         {
@@ -729,7 +727,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         var tag = _settings.Get(SettingCatalog.Layout.UtilityPanelSelectedUtility);
 
-        // Restoring the previously selected utility shows it; it is not the user choosing to work
+        // Restoring the previously selected utility shows it. It is not the user choosing to work
         // in that panel, so it claims the keyboard only as a fallback. The restored active document takes
         // focus first and keeps it, and a workspace with no open document leaves this the sole claimant.
         var takeFocus = _focusService.FocusedPanel == FocusPanelId.None;

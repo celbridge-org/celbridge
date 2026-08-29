@@ -237,7 +237,7 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_DocumentScopedItem_OpensItWithItsDeclaredEditor()
     {
-        // An open-scoped workspace item is backed by a utils: file too, but it has no live view to reparent:
+        // A document-scoped workspace item is backed by a utils: file too, but it has no live view to reparent:
         // it reopens as an ordinary document. Its editor comes from the rail item, because a utils: file has
         // no sidecar and its extension is claimed by no editor.
         var itemResource = new ResourceKey("utils:acme.notes._notes");
@@ -285,8 +285,8 @@ public class DocumentLayoutStoreTests
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
 
-    // A rail item presenting the resource. A panel view makes it a workspace-scoped utility; without one it
-    // is an open-scoped workspace item.
+    // A rail item presenting the resource. A panel view makes it a workspace-scoped utility. Without one it
+    // is a document-scoped workspace item.
     private static UtilityRailItem CreateRailItem(ResourceKey resource, bool hasPanelView)
     {
         var railItem = new UtilityRailItem

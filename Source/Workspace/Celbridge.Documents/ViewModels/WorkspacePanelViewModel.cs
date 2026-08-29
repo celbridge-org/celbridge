@@ -105,7 +105,7 @@ public partial class WorkspacePanelViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Raised when a stored area size changes, so the view can re-apply it to the live layout.
+    /// Raised when a stored area size changes.
     /// </summary>
     public event Action<WorkspaceArea>? AreaSizeChanged;
 

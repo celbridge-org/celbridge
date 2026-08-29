@@ -65,7 +65,7 @@ public sealed class DocumentAreaLayout
         _layoutContainer.BottomAreaSplitterSnapTargets = ResolveBottomAreaSnapTargets;
 
         // An area's minimum derives from the sections inside its grid, which this class lays out, so the
-        // layout container asks for it rather than naming a size of its own.
+        // layout container asks for it.
         _layoutContainer.AreaMinimumSizes = GetAreaMinimumSize;
 
         _chromeCalculator = new SectionChromeCalculator(_layoutState);

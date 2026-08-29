@@ -168,6 +168,21 @@ public static class DocumentLayoutHelper
     }
 
     /// <summary>
+    /// The always-present section of the document area an item occupies in the given workspace area, or null
+    /// when the area is the Utility Panel, which holds no document tabs.
+    /// </summary>
+    public static DocumentSection? GetPrimaryDocumentSection(this WorkspaceArea area)
+    {
+        var documentArea = area.GetDocumentArea();
+        if (documentArea is null)
+        {
+            return null;
+        }
+
+        return documentArea.Value.GetPrimarySection();
+    }
+
+    /// <summary>
     /// The workspace area holding the given document area.
     /// </summary>
     public static WorkspaceArea GetWorkspaceArea(this DocumentArea area)

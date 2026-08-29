@@ -134,8 +134,7 @@ public class WorkshopServiceTests
     public async Task WriteDocumentAsync_SucceedsWhileTheWorkspaceViewIsStillLoading()
     {
         // The seed runs partway through the workspace load, when the workspace service exists but the load
-        // has not finished. Guarding on the load instead dropped the seed, and the document was then missing
-        // when the layout restore looked for it.
+        // has not finished.
         _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var service = CreateService();

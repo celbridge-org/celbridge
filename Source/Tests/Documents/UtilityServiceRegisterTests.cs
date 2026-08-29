@@ -86,7 +86,7 @@ public class UtilityServiceRegisterTests
     }
 
     // A contribution declaring a workspace item in the given areas. Only a declaration that allows the
-    // Utility Panel builds a view, so an open-scoped one can be exercised without a WebView.
+    // Utility Panel builds a view, so a document-scoped one can be exercised without a WebView.
     private static ResolvedEditor CreateDeclaredItem(EditorId editorId, params WorkspaceArea[] allowedAreas)
     {
         var descriptor = new UtilityDescriptor

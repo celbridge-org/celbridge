@@ -31,7 +31,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         var utilityService = workspaceService.UtilityService;
         var documentsService = workspaceService.DocumentsService;
 
-        // Which rail button is selected is the panel's own state; where each item lives is the register's.
+        // Which rail button is selected is the panel's own state. Where each item lives is the register's.
         var activeUtilityId = workspaceService.UtilityPanel.ActiveUtilityId;
         var activeDocument = documentsService.ActiveDocument;
 
@@ -47,8 +47,8 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 
             var area = utilityService.GetItemArea(railItem.ItemId);
 
-            // An item in the panel is shown when the rail has selected it; anywhere else it is a document tab,
-            // shown when it is the active document.
+            // An item in the panel is shown when the rail has selected it. Anywhere else it is a document
+            // tab, shown when it is the active document.
             bool isShown;
             if (area == WorkspaceArea.Utility)
             {

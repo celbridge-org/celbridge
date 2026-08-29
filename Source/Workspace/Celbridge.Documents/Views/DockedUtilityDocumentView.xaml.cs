@@ -8,8 +8,8 @@ namespace Celbridge.Documents.Views;
 /// Document view for a utility docked as a document: a utility whose presentation has moved from the Utility
 /// Panel into a document tab. It borrows the utility's persistent CustomEditorController (owned by its
 /// CustomUtilityView) rather than creating one, so the utility keeps a single WebView as it moves between
-/// dock locations. The view is inert on saves (the owning panel drives the save tick) and never tears the
-/// controller down on close; the documents panel reparents the WebView back to the panel instead.
+/// areas. The view is inert on saves (the owning panel drives the save tick) and never tears the
+/// controller down on close. The documents panel reparents the WebView back to the panel instead.
 /// </summary>
 public sealed partial class DockedUtilityDocumentView : DocumentView
 {

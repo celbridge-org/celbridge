@@ -1,8 +1,7 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Tracks which workspace areas are on screen and how far the Bottom area spans. Main is always visible, so
-/// only the Utility Panel and the two collapsible document areas can be hidden.
+/// Tracks which workspace areas are on screen and how far the Bottom area spans. Main is always visible.
 /// </summary>
 public interface ILayoutService
 {

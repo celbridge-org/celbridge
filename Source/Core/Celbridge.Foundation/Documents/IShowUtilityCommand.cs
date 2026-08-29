@@ -4,15 +4,15 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// The area a show request moves a utility to. Named carries the area the caller asked for, and DocumentArea
-/// asks for whichever document area the utility declares as its own, which only its declaration knows.
+/// The area a show request moves a utility to. Named carries the area the caller asked for, and
+/// OwnDocumentArea asks for whichever document area the utility declares.
 /// </summary>
 public sealed record ShowUtilityArea
 {
     /// <summary>
     /// A request for the utility's own document area.
     /// </summary>
-    public static readonly ShowUtilityArea DocumentArea = new();
+    public static readonly ShowUtilityArea OwnDocumentArea = new();
 
     /// <summary>
     /// The area the caller named, or null when the utility's own document area was requested.

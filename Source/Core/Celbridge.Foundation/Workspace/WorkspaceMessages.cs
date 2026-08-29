@@ -42,7 +42,7 @@ public record BottomAreaAlignmentChangedMessage(BottomAreaAlignment Alignment);
 public record PanelFocusChangedMessage(FocusPanelId FocusedPanel);
 
 /// <summary>
-/// Sent when the surface shown in the Utility Panel rail changes. UtilityId is the fully-qualified id of the
+/// Sent when the item shown in the Utility Panel rail changes. UtilityId is the fully-qualified id of the
 /// now-active utility (a built-in id such as "celbridge.explorer", or a custom id), or empty when none.
 /// </summary>
 public record ActiveUtilityChangedMessage(string UtilityId);

@@ -5,8 +5,7 @@ using Celbridge.Workshop;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Verifies the invariants a Workshop section has to satisfy, so adding the next section to the catalog is a
-/// complete change rather than a half-drawn bookmark.
+/// Verifies the invariants every section in the Workshop catalog has to satisfy.
 /// </summary>
 [TestFixture]
 public class WorkshopSectionCatalogTests
@@ -60,8 +59,8 @@ public class WorkshopSectionCatalogTests
     [Test]
     public void All_TheLandingPageIsAlsoABookmark()
     {
-        // The landing page is the document's Home target as well as a bookmark, so the bar stays a complete
-        // way around the site if the URL bar is ever turned off for this document.
+        // The landing page is the document's Home target as well as a bookmark, so the bookmark bar alone
+        // is a complete way around the site.
         WorkshopSections.All.Should().Contain(WorkshopSections.Celbridge);
     }
 }

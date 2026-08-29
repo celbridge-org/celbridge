@@ -5,8 +5,8 @@ namespace Celbridge.Documents;
 
 /// <summary>
 /// A single entry in a utilities state snapshot: one button on the Utility Panel rail, whatever it presents.
-/// IsShown is true when it is currently surfaced to the user, either as the active rail surface or as the
-/// active document. Resource is the file the entry presents, and is empty for a rail surface that has none.
+/// IsShown is true when it is currently shown to the user, either as the selected rail item or as the
+/// active document. Resource is the file the entry presents, and is empty for a rail item that has none.
 /// AllowedAreas are the areas the entry may occupy, which Area is always one of.
 /// </summary>
 public record class UtilityInfo(

@@ -2,9 +2,8 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Utilities;
 
-// The wire tokens for a WorkspaceArea, used in manifests, in stored layout data, and in the utility MCP
-// tools. Kept explicit rather than derived from the enum member names so serialize and parse share one
-// source of truth and a code-side enum rename cannot silently change the tool API or the stored form.
+// The wire tokens for a WorkspaceArea, as they appear in manifests, in stored layout data, and in the
+// utility MCP tools. The token text is part of those formats and does not follow enum member renames.
 public static class WorkspaceAreaTokens
 {
     public const string Utility = "utility";

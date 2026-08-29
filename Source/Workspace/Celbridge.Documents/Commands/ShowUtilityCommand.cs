@@ -30,8 +30,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         var utilityPanel = workspaceService.UtilityPanel;
 
         // Only a workspace-scoped utility can move between areas, so a requested area applies to those alone.
-        // Guard against the live utilities rather than the declared contributions: a utility that was declared
-        // but skipped at load has no button on the rail and cannot be shown.
+        // A utility that was declared but skipped at load is not live and has no button on the rail.
         var utilityService = workspaceService.UtilityService;
         if (utilityService.HasUtility(UtilityId))
         {
@@ -66,8 +65,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
     }
 
     // A named area is taken as it stands, and DockUtilityAsync rejects one the utility does not allow. A
-    // request for the utility's own document area is answered from its declaration, which is why the caller
-    // does not have to know which document areas it offers.
+    // request for the utility's own document area is answered from its declaration.
     private Result<WorkspaceArea> ResolveArea(IUtilityService utilityService, ShowUtilityArea area)
     {
         var namedArea = area.NamedArea;

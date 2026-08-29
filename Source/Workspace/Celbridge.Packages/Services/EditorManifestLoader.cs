@@ -481,7 +481,7 @@ internal static class EditorManifestLoader
     }
 
     // Reads the areas key, which is a non-empty set of area tokens. An absent key leaves the descriptor's
-    // own default in place, which is the placement every utility had before areas could be declared.
+    // own default in place.
     private static Result<IReadOnlyList<WorkspaceArea>> ParseAllowedAreas(TomlTable utilityTable, string editorTomlPath)
     {
         if (!utilityTable.TryGetValue(AreasKey, out var areasObject))

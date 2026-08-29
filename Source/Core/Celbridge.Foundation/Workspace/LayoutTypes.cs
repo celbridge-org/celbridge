@@ -2,7 +2,7 @@ namespace Celbridge.Workspace;
 
 /// <summary>
 /// A place in the workspace that presents a workspace item, whether a workspace-scoped utility or an open
-/// document. A workspace item occupies exactly one area at a time; moving a utility between areas reparents
+/// document. A workspace item occupies exactly one area at a time. Moving a utility between areas reparents
 /// its single live view rather than recreating it.
 /// </summary>
 public enum WorkspaceArea

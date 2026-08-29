@@ -22,8 +22,7 @@ public static class BuiltInUtilityIds
 
 /// <summary>
 /// Ids for the built-in rail launchers, in the same "{scope}.{name}" form as custom utility ids. A launcher
-/// opens a document and never occupies the panel, so it is not a utility and takes no entry above; it still
-/// needs a rail identity to be addressed by.
+/// opens a document and never occupies the panel, so it is not a utility.
 /// </summary>
 public static class BuiltInLauncherIds
 {
@@ -38,8 +37,7 @@ public static class BuiltInLauncherIds
     public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
 
     /// <summary>
-    /// Every built-in launcher id. Their rail buttons are rebuilt per workspace, but their Spotlight
-    /// landmarks are seeded at startup and outlive any one workspace, unlike a contribution's.
+    /// Every built-in launcher id.
     /// </summary>
     public static readonly IReadOnlyList<EditorId> All =
     [
@@ -70,7 +68,7 @@ public interface IUtilityPanel
 
     /// <summary>
     /// Whether the rail carries a button with this id, whatever the item's scope. False for a utility that
-    /// was declared but skipped at load, because no button was built for it.
+    /// was declared but skipped at load.
     /// </summary>
     bool HasRailItem(EditorId itemId);
 
@@ -82,15 +80,14 @@ public interface IUtilityPanel
     void ShowUtility(EditorId utilityId);
 
     /// <summary>
-    /// The built-in utility items this panel builds for itself. Their descriptors wrap live views, so the
-    /// panel constructs them and the utility service records them into the rail register.
+    /// The built-in utility items this panel builds for itself.
     /// </summary>
     IReadOnlyList<UtilityRailItem> GetBuiltInUtilityItems();
 
     /// <summary>
     /// Renders the rail register: builds a button, and where the item has a panel view a content host, for
     /// every item the panel does not already carry. Replaces any previously built items. Called on project
-    /// load once the utilities have been created.
+    /// load.
     /// </summary>
     void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems);
 
@@ -109,7 +106,7 @@ public interface IUtilityPanel
 
     /// <summary>
     /// Restores the previously active rail item from workspace settings, falling back to Explorer when the
-    /// persisted id no longer resolves. Called on project load after the utility items have been built.
+    /// persisted id no longer resolves. Called on project load.
     /// </summary>
     void RestoreSelectedUtility();
 }

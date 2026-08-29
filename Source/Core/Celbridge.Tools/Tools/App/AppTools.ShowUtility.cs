@@ -42,17 +42,15 @@ public partial class AppTools
         return ToolResponse.Success("ok");
     }
 
-    // Accepted alongside the area tokens as "this utility's own document area", so an agent can move a
-    // utility into a tab without knowing which document areas it declares. Which area that is depends on the
-    // utility, so the alias travels to the command and is resolved against the declaration there.
+    // Accepted alongside the area tokens as "this utility's own document area".
     private const string DocumentAreaAlias = "document";
 
-    // Null for a token that names no area, which the caller reports with the accepted values.
+    // Null for a token that names no area.
     private static ShowUtilityArea? ParseUtilityArea(string token)
     {
         if (token == DocumentAreaAlias)
         {
-            return ShowUtilityArea.DocumentArea;
+            return ShowUtilityArea.OwnDocumentArea;
         }
 
         if (!WorkspaceAreaTokens.TryParse(token, out var area))

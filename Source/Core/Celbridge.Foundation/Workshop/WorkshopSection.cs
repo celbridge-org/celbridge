@@ -22,8 +22,7 @@ public sealed record WorkshopSection
 }
 
 /// <summary>
-/// The sections of the Celbridge site, declared once and seeded as the bookmarks of the Workshop
-/// document. The source of truth for what the Workshop offers.
+/// The sections of the Celbridge site, seeded as the bookmarks of the Workshop document.
 /// </summary>
 public static class WorkshopSections
 {

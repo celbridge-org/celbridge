@@ -289,7 +289,7 @@ public class WorkspaceLoader
     }
 
     // Assembles the rail register and has the panel render it. The utilities are owned by the utility service
-    // for the workspace lifetime; the panel's own built-in items join the register first so the register
+    // for the workspace lifetime. The panel's own built-in items join the register first, so the register
     // holds the rail in the order the panel draws it.
     private async Task BuildUtilities()
     {

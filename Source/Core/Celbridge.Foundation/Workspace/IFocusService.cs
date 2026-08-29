@@ -2,9 +2,7 @@ namespace Celbridge.Workspace;
 
 /// <summary>
 /// Identifies the parts of the workspace that can hold focus. The grain is what the user perceives as a
-/// focused panel rather than a container in the layout: Explorer and Search are built-in Utility Panel rail
-/// items, CustomUtility is whichever contributed utility the rail is showing, and Documents covers all three
-/// document areas at once.
+/// focused panel rather than a container in the layout.
 /// </summary>
 public enum FocusPanelId
 {
@@ -24,14 +22,13 @@ public enum FocusPanelId
     Search,
 
     /// <summary>
-    /// The document areas. All three share one value, so focus does not distinguish Main from Bottom or Side,
-    /// and a utility docked as a document reports this rather than CustomUtility.
+    /// The document areas, which focus does not distinguish between. A utility docked as a document reports
+    /// this rather than CustomUtility.
     /// </summary>
     Documents,
 
     /// <summary>
-    /// Whichever contributed utility the Utility Panel rail is showing. Explorer and Search have their own
-    /// values, so this covers the rest of the rail.
+    /// Whichever contributed utility the Utility Panel rail is showing.
     /// </summary>
     CustomUtility
 }

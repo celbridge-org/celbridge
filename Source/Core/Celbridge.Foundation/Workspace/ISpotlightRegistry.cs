@@ -2,7 +2,7 @@ namespace Celbridge.Workspace;
 
 /// <summary>
 /// A spotlightable UI landmark. Id matches the AutomationProperties.AutomationId set on the
-/// control and is the resolution key; Area is the workspace area to reveal before showing it,
+/// control and is the resolution key. Area is the workspace area to reveal before showing it,
 /// or null when the landmark does not gate on an area.
 /// </summary>
 public partial record class LandmarkDescriptor(string Id, WorkspaceArea? Area);

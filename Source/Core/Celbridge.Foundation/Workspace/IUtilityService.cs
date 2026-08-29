@@ -6,21 +6,20 @@ namespace Celbridge.Workspace;
 /// Owns the workspace's utilities: their lifecycle (created at project load, torn down at unload), their save
 /// tick, and the dock orchestration that moves each utility's single WebView between the Utility Panel and a
 /// document tab. Also holds the register of every workspace item the Utility Panel rail presents, and the
-/// area each one occupies, so a caller reads placement from the record rather than from the view showing it.
+/// area each one occupies.
 /// </summary>
 public interface IUtilityService
 {
     /// <summary>
-    /// Records the built-in utility items the Utility Panel builds for itself. Their descriptors wrap live
-    /// views, so the panel constructs them and publishes them here for the register to hold. Called once per
-    /// workspace load, before the utilities are created.
+    /// Records the built-in utility items the Utility Panel builds for itself. Called once per workspace
+    /// load.
     /// </summary>
     void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems);
 
     /// <summary>
     /// Seeds each declared workspace item's backing file and records it in the rail register, along with the
     /// launchers, in declaration order, which is the rail order. A workspace-scoped declaration also gets a
-    /// persistent surface owned by this service until the workspace unloads; an open-scoped one gets no view
+    /// persistent view owned by this service until the workspace unloads. A document-scoped one gets no view
     /// until its rail button opens its document.
     /// </summary>
     Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
@@ -46,7 +45,7 @@ public interface IUtilityService
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given
     /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
-    /// or change the shown panel surface. Fails if no utility owns the resource.
+    /// or change which item the panel shows. Fails if no utility owns the resource.
     /// </summary>
     Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
 

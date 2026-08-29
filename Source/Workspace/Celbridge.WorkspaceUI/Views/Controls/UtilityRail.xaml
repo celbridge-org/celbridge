@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="Celbridge.WorkspaceUI.Views.Controls.UtilityRail"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -10,8 +10,7 @@
     <Grid x:Name="LayoutRoot"
           Background="{ThemeResource ChromeBackgroundBrush}">
 
-        <!-- One top-aligned stack in declaration order. Groups are separated by the gap an item asks for
-             rather than by a stack of their own. -->
+        <!-- One top-aligned stack in declaration order. Groups are separated by the gap an item asks for. -->
         <StackPanel x:Name="RailItems"
                     Orientation="Vertical"
                     ui:FocusTracking.PreservePanelFocus="True" />

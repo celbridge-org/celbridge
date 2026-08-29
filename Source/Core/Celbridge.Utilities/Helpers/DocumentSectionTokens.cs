@@ -4,7 +4,7 @@ namespace Celbridge.Utilities;
 
 // The wire tokens for a DocumentSection, used in stored layout data and in the document MCP tools. Each
 // token joins its area's token to the side within that area, so a section token always begins with the
-// token of the area holding it. Kept explicit for the same reason as WorkspaceAreaTokens.
+// token of the area holding it.
 public static class DocumentSectionTokens
 {
     public const string MainLeft = "main_left";

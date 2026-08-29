@@ -75,7 +75,7 @@ public sealed partial class CustomUtilityView : UserControl
     public EditorId UtilityId => _utilityId;
 
     /// <summary>
-    /// This utility's current dock location (the Utility Panel rail or a document tab).
+    /// The area this utility currently occupies: the Utility Panel, or a document area holding its tab.
     /// </summary>
     public WorkspaceArea Area { get; set; } = WorkspaceArea.Utility;
 
@@ -98,7 +98,7 @@ public sealed partial class CustomUtilityView : UserControl
 
     // Reads the document area the utility docks into from its declaration. A utility that declares no
     // document area, or several without defaulting to one of them, has nowhere for the control to send it,
-    // so the control is hidden rather than left to fail on click.
+    // so the control is hidden.
     private void ApplyDeclaredAreas(UtilityDescriptor? descriptor)
     {
         _openAsDocumentArea = null;

@@ -98,7 +98,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         CreateAreaToolbars();
 
         // This panel composes every workspace area, so it is the only place both panel references are
-        // in hand. Registering here keeps the Utility Panel instance out of the documents interface.
+        // in hand.
         var workspaceWrapper = serviceProvider.AcquireService<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.SetPanels(LayoutContainer.UtilityPanel, this);
 

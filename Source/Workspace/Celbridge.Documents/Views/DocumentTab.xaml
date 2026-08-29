@@ -55,7 +55,7 @@
 
             <!-- Tab content -->
             <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                <!-- A tab over a user file shows a file-type icon; a tab over a contribution's own workspace
+                <!-- A tab over a user file shows a file-type icon. A tab over a contribution's own workspace
                      item shows its manifest glyph in the tab's own text colour. Every file-type icon is held
                      inside a luminance band that excludes that colour, so an untinted glyph is what marks the
                      tab as one of the rail's items. -->

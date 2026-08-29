@@ -35,7 +35,7 @@ public class UtilityService : IUtilityService, IDisposable
     ];
 
     // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
-    // their descriptors wrap live views; the rest are built here. The contributed items hold both kinds of
+    // their descriptors wrap live views. The rest are built here. The contributed items hold both kinds of
     // declaration, and each one's panel view says which kind it is.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
     private readonly List<UtilityRailItem> _contributedItems = new();
@@ -98,8 +98,8 @@ public class UtilityService : IUtilityService, IDisposable
 
     public WorkspaceArea GetItemArea(EditorId itemId)
     {
-        // A utility carries its own area because it moves; everything else on the rail has one place it lives,
-        // which its descriptor already states.
+        // A utility carries its own area because it moves. Everything else on the rail has one place it
+        // lives, which its descriptor already states.
         var utility = _utilities.FirstOrDefault(candidate => candidate.UtilityId == itemId);
         if (utility is not null)
         {
@@ -190,7 +190,7 @@ public class UtilityService : IUtilityService, IDisposable
         _builtInLauncherItems.AddRange(BuildBuiltInLauncherItems());
     }
 
-    // Builds a workspace-scoped utility's persistent surface: the view the Utility Panel hosts and the dock
+    // Builds a workspace-scoped utility's persistent view: the one the Utility Panel hosts and the dock
     // orchestration reparents. Its WebView is created here, so it is ready wherever the utility is presented.
     private async Task<Result<CustomUtilityView>> CreateUtilityViewAsync(
         ResolvedEditor resolvedEditor,
@@ -371,8 +371,7 @@ public class UtilityService : IUtilityService, IDisposable
                 $"it allows {DescribeAreas(allowedAreas)}.");
         }
 
-        // The Utility Panel is the one area that holds no document area, so this routes the dock without a
-        // second test of what the area is.
+        // The Utility Panel is the one area that holds no document area.
         var documentArea = area.GetDocumentArea();
         if (documentArea is null)
         {
@@ -393,8 +392,8 @@ public class UtilityService : IUtilityService, IDisposable
         return railItem.AllowedAreas;
     }
 
-    // The rail item holding a utility's declaration. Null only for an id the register does not hold, which
-    // cannot happen for a live utility, so the callers above fall back to the manifest defaults.
+    // The rail item holding a utility's declaration. Null for an id the register does not hold, which
+    // cannot happen for a live utility.
     private UtilityRailItem? FindUtilityItem(EditorId utilityId)
     {
         return _contributedItems.FirstOrDefault(item => item.ItemId == utilityId);
@@ -416,7 +415,7 @@ public class UtilityService : IUtilityService, IDisposable
     }
 
     // Docks a utility into a document tab in the area's primary section, reusing its live WebView. A utility
-    // already docked in another document area moves; one already in this area is activated in place.
+    // already docked in another document area moves. One already in this area is activated in place.
     private Result DockUtilityAsDocument(CustomUtilityView panelView, DocumentArea documentArea)
     {
         var documentsPanel = (WorkspacePanel)DocumentsPanel;

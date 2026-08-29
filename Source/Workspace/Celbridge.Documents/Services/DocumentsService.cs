@@ -489,7 +489,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
         // A workspace-scoped utility is only ever presented by docking, never opened as an ordinary document.
-        // An open-scoped workspace item is backed by a utils: file too, and opens like any other document, so
+        // A document-scoped workspace item is backed by a utils: file too, and opens like any other document, so
         // the rail item's scope decides this rather than the root.
         var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
         if (utilityService.FindRailItem(fileResource)?.PanelView is not null)

@@ -76,7 +76,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = NotepadUtilityId,
-            Area = ShowUtilityArea.DocumentArea
+            Area = ShowUtilityArea.OwnDocumentArea
         };
 
         var result = await command.ExecuteAsync();
@@ -95,7 +95,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = NotepadUtilityId,
-            Area = ShowUtilityArea.DocumentArea
+            Area = ShowUtilityArea.OwnDocumentArea
         };
 
         var result = await command.ExecuteAsync();

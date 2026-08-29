@@ -1049,7 +1049,7 @@ public class ManifestTests
         var descriptor = result.Value.Editors[0].UtilityDescriptor!;
         descriptor.Template.Should().BeEmpty();
 
-        // A manifest declaring no areas keeps the placement every utility had before areas could be declared.
+        // A manifest declaring no areas gets the default placement: the Utility Panel, dockable into Main.
         descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Main);
         descriptor.DefaultArea.Should().Be(WorkspaceArea.Utility);
         descriptor.IsWorkspaceScoped.Should().BeTrue();

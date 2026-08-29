@@ -72,8 +72,7 @@ public partial class HomeViewModel : ObservableObject
         OpenWorkshopSection(WorkshopSections.Forum);
     }
 
-    // No workspace is loaded on the Home page, so there is nowhere to dock a web view document. The Workshop
-    // rail button opens these pages in the app; here they open in the user's browser.
+    // No workspace is loaded on the Home page, so there is nowhere to dock a web view document.
     private void OpenWorkshopSection(WorkshopSection section)
     {
         _commandService.Execute<IOpenBrowserCommand>(command =>
