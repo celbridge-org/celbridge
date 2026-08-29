@@ -126,7 +126,7 @@ public class DocumentLayoutStore
                 catch (Exception ex)
                 {
                     // One editor failing leaves the rest of the sweep intact.
-                    _logger.LogDebug(ex, $"Could not save editor state for '{resourceKey}'");
+                    _logger.LogWarning(ex, $"Could not save editor state for '{resourceKey}'");
                 }
             }
 
@@ -142,7 +142,7 @@ public class DocumentLayoutStore
         catch (Exception ex)
         {
             // Best-effort persistence: losing editor state is a user convenience, not data loss.
-            _logger.LogDebug(ex, "Failed to store editor states for the open documents");
+            _logger.LogWarning(ex, "Failed to store editor states for the open documents");
         }
     }
 
@@ -171,7 +171,7 @@ public class DocumentLayoutStore
         catch (Exception ex)
         {
             // Best-effort persistence: losing editor state is a user convenience, not data loss.
-            _logger.LogDebug(ex, $"Failed to store editor state for '{fileResource}'");
+            _logger.LogWarning(ex, $"Failed to store editor state for '{fileResource}'");
         }
     }
 
@@ -250,7 +250,7 @@ public class DocumentLayoutStore
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, $"Could not load stored layout value '{key}' - starting fresh");
+            _logger.LogWarning(ex, $"Could not load stored layout value '{key}'. Starting fresh.");
             return null;
         }
     }

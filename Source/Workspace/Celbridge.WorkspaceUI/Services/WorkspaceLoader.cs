@@ -176,7 +176,7 @@ public class WorkspaceLoader
         // dock restore so the re-persisted layout still records the docked utilities.
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
-        await documentsService.StoreDocumentLayout();
+        await documentsService.StoreOpenDocumentAddresses();
 
         // Notify that the workspace has loaded.
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();

@@ -272,7 +272,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
-        _ = StoreDocumentLayout();
+        _ = StoreOpenDocumentAddresses();
     }
 
     private void OnAreaLayoutChangedMessage(object recipient, AreaLayoutChangedMessage message)
@@ -566,7 +566,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Task StoreDocumentLayout() => _layoutStore.StoreOpenDocumentAddressesAsync();
+    public Task StoreOpenDocumentAddresses() => _layoutStore.StoreOpenDocumentAddressesAsync();
 
     public Task StoreActiveDocument() => _layoutStore.StoreActiveDocumentAsync();
 
