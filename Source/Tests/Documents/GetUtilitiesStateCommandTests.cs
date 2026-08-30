@@ -19,6 +19,7 @@ public class GetUtilitiesStateCommandTests
     private IUtilityService _utilityService = null!;
     private IDocumentsService _documentsService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private ILayoutService _layoutService = null!;
 
     [SetUp]
     public void Setup()
@@ -30,8 +31,12 @@ public class GetUtilitiesStateCommandTests
         _utilityService.GetRailItems().Returns(BuildRegister());
 
         // Nothing has moved, so every item is where its descriptor puts it.
-        _utilityService.GetItemArea(Arg.Any<EditorId>()).Returns(WorkspaceArea.Utility);
-        _utilityService.GetItemArea(BuiltInLauncherIds.Workshop).Returns(WorkspaceArea.Main);
+        _utilityService.GetCurrentArea(Arg.Any<EditorId>()).Returns(WorkspaceArea.Utility);
+
+        // Nothing is collapsed unless a test says so, so isShown follows the selection.
+        _layoutService = Substitute.For<ILayoutService>();
+        _layoutService.IsAreaVisible(Arg.Any<WorkspaceArea>()).Returns(true);
+        _utilityService.GetCurrentArea(BuiltInLauncherIds.Workshop).Returns(WorkspaceArea.Main);
 
         _documentsService = Substitute.For<IDocumentsService>();
         _documentsService.ActiveDocument.Returns(ResourceKey.Empty);
@@ -46,40 +51,35 @@ public class GetUtilitiesStateCommandTests
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
     }
 
-    // A register in rail order: a surface with no file behind it, a contribution utility, then a launcher.
+    // A register in rail order: a panel utility with no file behind it, a dockable utility, then a launcher.
     private static List<UtilityRailItem> BuildRegister()
     {
         return new List<UtilityRailItem>
         {
-            new()
-            {
-                ItemId = BuiltInUtilityIds.Explorer,
-                DisplayName = "Explorer",
-                PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer)
-            },
-            new()
-            {
-                ItemId = NotepadId,
-                DisplayName = "Notepad",
-                AllowedAreas = [WorkspaceArea.Utility, WorkspaceArea.Bottom],
-                Resource = new UtilityRailResource(NotepadResource, NotepadId),
-                PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.CustomUtility)
-            },
-            new()
-            {
-                ItemId = BuiltInLauncherIds.Workshop,
-                DisplayName = "Community Workshop",
-                AllowedAreas = [WorkspaceArea.Main],
-                DefaultArea = WorkspaceArea.Main,
-                Resource = new UtilityRailResource(WorkshopResource, BuiltInEditors.WebViewEditorId)
-            }
+            UtilityRailItem.CreatePanelUtility(
+                BuiltInUtilityIds.Explorer, "explorer-utility-button", "folder", "Explorer", "Explorer",
+                new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer)),
+
+            UtilityRailItem.CreateDockableUtility(
+                NotepadId, "notepad-utility-button", "sticky", "Notepad", "Notepad",
+                NotepadResource,
+                NotepadId,
+                new UtilityRailPanelView(new object(), () => { }, FocusPanelId.CustomUtility),
+                WorkspaceArea.Bottom),
+
+            UtilityRailItem.CreateDocumentLauncher(
+                BuiltInLauncherIds.Workshop, "workshop-utility-button", "people",
+                "Community Workshop", "Community Workshop",
+                WorkshopResource,
+                BuiltInEditors.WebViewEditorId,
+                WorkspaceArea.Main)
         };
     }
 
     [Test]
     public async Task Execute_ReportsTheRegisterInRailOrderWithItsResources()
     {
-        var command = new GetUtilitiesStateCommand(_workspaceWrapper);
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 
         var result = await command.ExecuteAsync();
 
@@ -89,7 +89,7 @@ public class GetUtilitiesStateCommandTests
 
         utilities[0].UtilityId.Should().Be(BuiltInUtilityIds.Explorer);
         utilities[0].DisplayName.Should().Be("Explorer");
-        utilities[0].Area.Should().Be(WorkspaceArea.Utility);
+        utilities[0].CurrentArea.Should().Be(WorkspaceArea.Utility);
 
         // Explorer has no file behind it, so it reports no resource.
         utilities[0].Resource.IsEmpty.Should().BeTrue();
@@ -100,7 +100,7 @@ public class GetUtilitiesStateCommandTests
         // A launcher is listed like anything else on the rail, whatever its scope.
         utilities[2].UtilityId.Should().Be(BuiltInLauncherIds.Workshop);
         utilities[2].DisplayName.Should().Be("Community Workshop");
-        utilities[2].Area.Should().Be(WorkspaceArea.Main);
+        utilities[2].CurrentArea.Should().Be(WorkspaceArea.Main);
         utilities[2].Resource.Should().Be(WorkshopResource);
     }
 
@@ -109,17 +109,22 @@ public class GetUtilitiesStateCommandTests
     {
         // The declared set is reported alongside the current area, so a caller learns where an item may go
         // without attempting a move to find out.
-        var command = new GetUtilitiesStateCommand(_workspaceWrapper);
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 
         await command.ExecuteAsync();
 
         var utilities = command.ResultValue.Utilities;
 
-        utilities.Single(utility => utility.UtilityId == NotepadId).AllowedAreas
-            .Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Bottom);
+        // A dockable utility reports where it docks to, a launcher where its document opens, and a panel
+        // utility reports none because it never becomes a document.
+        utilities.Single(utility => utility.UtilityId == NotepadId).DockArea
+            .Should().Be(WorkspaceArea.Bottom);
 
-        utilities.Single(utility => utility.UtilityId == BuiltInLauncherIds.Workshop).AllowedAreas
-            .Should().Equal(WorkspaceArea.Main);
+        utilities.Single(utility => utility.UtilityId == BuiltInLauncherIds.Workshop).DockArea
+            .Should().Be(WorkspaceArea.Main);
+
+        utilities.Single(utility => utility.UtilityId == BuiltInUtilityIds.Explorer).DockArea
+            .Should().BeNull();
     }
 
     [Test]
@@ -127,13 +132,13 @@ public class GetUtilitiesStateCommandTests
     {
         _utilityPanel.ActiveUtilityId.Returns(NotepadId);
 
-        var command = new GetUtilitiesStateCommand(_workspaceWrapper);
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 
         await command.ExecuteAsync();
 
         var utilities = command.ResultValue.Utilities;
-        utilities.Single(utility => utility.UtilityId == NotepadId).IsShown.Should().BeTrue();
-        utilities.Single(utility => utility.UtilityId == BuiltInUtilityIds.Explorer).IsShown.Should().BeFalse();
+        utilities.Single(utility => utility.UtilityId == NotepadId).IsVisible.Should().BeTrue();
+        utilities.Single(utility => utility.UtilityId == BuiltInUtilityIds.Explorer).IsVisible.Should().BeFalse();
     }
 
     [Test]
@@ -141,20 +146,20 @@ public class GetUtilitiesStateCommandTests
     {
         // The utility has been docked, so its area comes from the register rather than its descriptor, and it
         // is shown by being the active document rather than by the rail selection.
-        _utilityService.GetItemArea(NotepadId).Returns(WorkspaceArea.Main);
+        _utilityService.GetCurrentArea(NotepadId).Returns(WorkspaceArea.Main);
         _documentsService.ActiveDocument.Returns(NotepadResource);
 
-        var command = new GetUtilitiesStateCommand(_workspaceWrapper);
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 
         await command.ExecuteAsync();
 
         var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == NotepadId);
-        notepad.Area.Should().Be(WorkspaceArea.Main);
-        notepad.IsShown.Should().BeTrue();
+        notepad.CurrentArea.Should().Be(WorkspaceArea.Main);
+        notepad.IsVisible.Should().BeTrue();
 
         // The Workshop is in a document area too, but its document is not the active one.
         var workshop = command.ResultValue.Utilities.Single(utility => utility.UtilityId == BuiltInLauncherIds.Workshop);
-        workshop.IsShown.Should().BeFalse();
+        workshop.IsVisible.Should().BeFalse();
     }
 
     [Test]
@@ -162,11 +167,30 @@ public class GetUtilitiesStateCommandTests
     {
         _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
-        var command = new GetUtilitiesStateCommand(_workspaceWrapper);
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.Utilities.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task Execute_SelectedInACollapsedArea_IsNotShown()
+    {
+        // The rail keeps its selection through a collapse, so the selected utility is still the active one.
+        _utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
+        _layoutService.IsAreaVisible(WorkspaceArea.Utility).Returns(false);
+
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
+
+        await command.ExecuteAsync();
+
+        // Selected, but the panel showing it is collapsed, so the user cannot see it.
+        var explorer = command.ResultValue.Utilities.Single(
+            utility => utility.UtilityId == BuiltInUtilityIds.Explorer);
+
+        explorer.CurrentArea.Should().Be(WorkspaceArea.Utility);
+        explorer.IsVisible.Should().BeFalse();
     }
 }

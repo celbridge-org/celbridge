@@ -18,6 +18,9 @@ public static class WorkspaceAreaTokens
     {
         switch (area)
         {
+            case WorkspaceArea.Utility:
+                return Utility;
+
             case WorkspaceArea.Main:
                 return Main;
 
@@ -28,7 +31,9 @@ public static class WorkspaceAreaTokens
                 return Side;
 
             default:
-                return Utility;
+                // These tokens are a wire format, so an unmapped area would be persisted as a real area
+                // that means something else.
+                throw new NotSupportedException($"No token is defined for the '{area}' workspace area.");
         }
     }
 

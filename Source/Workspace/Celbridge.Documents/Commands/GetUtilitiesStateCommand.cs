@@ -8,13 +8,17 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILayoutService _layoutService;
 
     public UtilitiesStateSnapshot ResultValue { get; private set; }
         = new UtilitiesStateSnapshot(Array.Empty<UtilityInfo>());
 
-    public GetUtilitiesStateCommand(IWorkspaceWrapper workspaceWrapper)
+    public GetUtilitiesStateCommand(
+        IWorkspaceWrapper workspaceWrapper,
+        ILayoutService layoutService)
     {
         _workspaceWrapper = workspaceWrapper;
+        _layoutService = layoutService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -39,33 +43,39 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 
         foreach (var railItem in utilityService.GetRailItems())
         {
-            var resource = ResourceKey.Empty;
-            if (railItem.Resource is not null)
+            var resource = railItem.FileResource;
+
+            var currentArea = utilityService.GetCurrentArea(railItem.ItemId);
+
+            // An item in the panel is selected when the rail has selected it. In a document area it is a
+            // tab, selected when it is the active document. Occupying no area at all, it is neither.
+            bool isSelected;
+            if (currentArea is null)
             {
-                resource = railItem.Resource.Resource;
+                isSelected = false;
             }
-
-            var area = utilityService.GetItemArea(railItem.ItemId);
-
-            // An item in the panel is shown when the rail has selected it. Anywhere else it is a document
-            // tab, shown when it is the active document.
-            bool isShown;
-            if (area == WorkspaceArea.Utility)
+            else if (currentArea == WorkspaceArea.Utility)
             {
-                isShown = activeUtilityId == railItem.ItemId;
+                isSelected = activeUtilityId == railItem.ItemId;
             }
             else
             {
-                isShown = !resource.IsEmpty
+                isSelected = !resource.IsEmpty
                     && activeDocument == resource;
             }
+
+            // Being selected is not the same as being on screen: a collapsed area shows nothing, and the
+            // rail keeps its selection through a collapse so a reveal returns to it.
+            bool isVisible = isSelected
+                && currentArea is not null
+                && _layoutService.IsAreaVisible(currentArea.Value);
 
             utilities.Add(new UtilityInfo(
                 railItem.ItemId,
                 railItem.DisplayName,
-                area,
-                railItem.AllowedAreas,
-                isShown,
+                currentArea,
+                railItem.DockArea,
+                isVisible,
                 resource));
         }
 

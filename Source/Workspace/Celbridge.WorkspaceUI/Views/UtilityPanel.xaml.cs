@@ -35,12 +35,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
 
-    // Explorer and Search work in a portrait column and nowhere else.
-    private static readonly IReadOnlyList<WorkspaceArea> PanelOnlyAreas =
-    [
-        WorkspaceArea.Utility
-    ];
-
     // Rail buttons, content hosts, and focus callbacks for every utility (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
     // and focus state, which the buttons bind to.
@@ -155,38 +149,43 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // panel builds them rather than the utility service, which does not exist yet when the panel is constructed.
     private void BuildBuiltInUtilityItems()
     {
-        string explorerName = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
-        string searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
+        // Build Explorer utility
 
-        var explorerItem = new UtilityRailItem
-        {
-            ItemId = BuiltInUtilityIds.Explorer,
-            LandmarkId = ExplorerLandmarkId,
-            IconName = _iconService.GetIconName(IconSymbol.Folder),
-            DisplayName = explorerName,
-            Tooltip = explorerName,
-            AllowedAreas = PanelOnlyAreas,
-            PanelView = new UtilityRailPanelView(
+        var explorerName = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
+
+        var explorerView = new UtilityRailPanelView(
                 ExplorerPanel,
                 ExplorerPanel.FocusPanel,
                 FocusPanelId.Explorer,
-                PreservePanelFocus: true)
-        };
+                PreservePanelFocus: true);
 
-        var searchItem = new UtilityRailItem
-        {
-            ItemId = BuiltInUtilityIds.Search,
-            LandmarkId = SearchLandmarkId,
-            IconName = _iconService.GetIconName(IconSymbol.Search),
-            DisplayName = searchName,
-            Tooltip = searchName,
-            AllowedAreas = PanelOnlyAreas,
-            PanelView = new UtilityRailPanelView(
+        var explorerItem = UtilityRailItem.CreatePanelUtility(
+            BuiltInUtilityIds.Explorer,
+            ExplorerLandmarkId,
+            _iconService.GetIconName(IconSymbol.Folder),
+            explorerName,
+            explorerName,
+            explorerView);
+
+        // Build Search utility
+
+        var searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
+
+        var searchView = new UtilityRailPanelView(
                 SearchPanel,
                 SearchPanel.FocusSearchInput,
                 FocusPanelId.Search,
-                PreservePanelFocus: true)
-        };
+                PreservePanelFocus: true);
+
+        var searchItem = UtilityRailItem.CreatePanelUtility(
+            BuiltInUtilityIds.Search,
+            SearchLandmarkId,
+            _iconService.GetIconName(IconSymbol.Search),
+            searchName,
+            searchName,
+            searchView);
+
+        // Register the new utilities
 
         _builtInUtilityItems.Add(explorerItem);
         _builtInUtilityItems.Add(searchItem);
@@ -206,23 +205,34 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         railButton.SetTooltip(item.Tooltip);
 
         var itemId = item.ItemId;
-        var panelView = item.PanelView;
-        var resource = item.Resource;
 
-        if (panelView is not null)
+        switch (item.Kind)
         {
-            var viewModelItem = ViewModel.AddItem(itemId, panelView.FocusIdentity);
-            BindButton(railButton, viewModelItem);
-            railButton.Click += (sender, e) => ShowUtility(itemId);
+            case RailItemKind.PanelUtility:
+            case RailItemKind.DockableUtility:
+                Guard.IsNotNull(item.PanelView);
+                var panelView = item.PanelView;
 
-            _contentControls[itemId] = CreateContentHost(panelView);
-            _focusActions[itemId] = panelView.FocusPanel;
+                var viewModelItem = ViewModel.AddItem(itemId, panelView.FocusIdentity);
+                BindButton(railButton, viewModelItem);
+                railButton.Click += (sender, e) => ShowUtility(itemId);
+
+                _contentControls[itemId] = CreateContentHost(panelView);
+                _focusActions[itemId] = panelView.FocusPanel;
+                break;
+
+            case RailItemKind.DocumentLauncher:
+                _launcherItems[itemId] = item;
+                railButton.Click += (sender, e) => ShowLauncherDocument(item);
+                break;
+
+            default:
+                throw new NotSupportedException($"Unhandled rail item kind '{item.Kind}'");
         }
-        else if (resource is not null)
-        {
-            _launcherItems[itemId] = item;
-            railButton.Click += (sender, e) => ShowLauncherDocument(item);
-        }
+
+        // Every rail item's landmark belongs to the rail: the button exists only while a workspace is
+        // loaded, so the landmark is registered here and dropped when the rail is cleared.
+        _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(item.LandmarkId, null));
 
         _buttons[itemId] = railButton;
 
@@ -259,24 +269,22 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Opens a launcher's document in the area it declares. Already open, the command activates its tab.
     private void ShowLauncherDocument(UtilityRailItem item)
     {
-        Guard.IsNotNull(item.Resource);
-
         FlashRailButton(item.ItemId);
 
-        var area = item.DefaultArea;
-        var resource = item.Resource;
+        // A launcher always names the area its document opens in.
+        var area = item.DockArea!.Value;
 
         // Opening into a section does not reveal its area, so a collapsed one is presented first.
         PresentArea(area);
 
         // The declared area decides where the document lands when it opens. A tab that is already open keeps
         // the section the user put it in, which is what an unnamed section means to the open command.
-        var targetSection = ResolveLauncherSection(resource.Resource, area);
+        var targetSection = ResolveLauncherSection(item.FileResource, area);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
-            command.FileResource = resource.Resource;
-            command.EditorId = resource.Editor;
+            command.FileResource = item.FileResource;
+            command.EditorId = item.EditorId;
             command.TargetSection = targetSection;
         });
     }
@@ -284,13 +292,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Null once the document is open, so the open command leaves the tab where the user put it.
     private DocumentSection? ResolveLauncherSection(ResourceKey resource, WorkspaceArea area)
     {
-        var openDocuments = _workspaceWrapper.WorkspaceService.DocumentsService.GetOpenDocuments();
-        foreach (var openDocument in openDocuments)
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+        if (documentsService.FindOpenDocument(resource) is not null)
         {
-            if (openDocument.FileResource == resource)
-            {
-                return null;
-            }
+            return null;
         }
 
         return area.GetPrimaryDocumentSection();
@@ -401,6 +406,14 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // shows or the rail highlight. A utility in the panel is selected on the rail.
         if (_dockedUtilityResources.TryGetValue(utilityId, out var documentResource))
         {
+            // Reveal the area holding the tab before activating it, so a utility docked in a collapsed area
+            // is actually presented rather than activated out of sight.
+            var dockedArea = _workspaceWrapper.WorkspaceService.UtilityService.GetCurrentArea(utilityId);
+            if (dockedArea is not null)
+            {
+                PresentArea(dockedArea.Value);
+            }
+
             // Activate the docked utility's tab, then request an attention flash so the reveal gives visible
             // feedback even when the tab was already the active document.
             FlashRailButton(utilityId);
@@ -612,14 +625,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             // An item with no panel view has nowhere to park a live view, so it is a launcher: it opens a
             // document, and joins the group the rail draws after the gap. A contribution's landmark is
             // registered here because it exists only while its package is loaded.
-            if (railItem.PanelView is null)
+            if (railItem.Kind == RailItemKind.DocumentLauncher)
             {
                 _launcherButtons.Add(railButton);
             }
             else
             {
                 _customUtilityButtons.Add(railButton);
-                _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(railItem.LandmarkId, null));
             }
         }
 
@@ -673,12 +685,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             ViewModel.RemoveItem(utilityId);
         }
 
-        // The launchers host no live view and no content, so they are simply dropped and rebuilt. Only a
-        // contributed launcher's landmark was registered with the rail. The built-in ones are seeded at
-        // startup and outlive the workspace.
+        // The launchers host no live view and no content, so they are simply dropped and rebuilt.
         foreach (var launcherItem in _launcherItems.Values)
         {
             _buttons.Remove(launcherItem.ItemId);
+            _spotlightRegistry.UnregisterLandmark(launcherItem.LandmarkId);
         }
 
         _launcherItems.Clear();

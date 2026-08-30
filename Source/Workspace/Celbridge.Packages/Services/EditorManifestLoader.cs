@@ -45,14 +45,14 @@ internal static class EditorManifestLoader
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
-    private const string AreasKey = "areas";
-    private const string DefaultAreaKey = "default-area";
+    private const string DockAreaKey = "dock-area";
+    private const string NoDockAreaValue = "none";
 
     private const string CatalogLanguagesValue = "languages";
 
-    // The area tokens, spelled out for the error messages the area keys produce.
-    private const string ValidAreaTokens =
-        $"{WorkspaceAreaTokens.Utility}, {WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}";
+    // The values dock-area accepts, spelled out for the error message it produces.
+    private const string ValidDockAreaTokens =
+        $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}, {NoDockAreaValue}";
 
     private const string DocumentTypeValue = "document";
     private const string UtilityTypeValue = "utility";
@@ -454,26 +454,10 @@ internal static class EditorManifestLoader
 
         var template = TomlTableReader.GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
 
-        var areasResult = ParseAllowedAreas(utilityTable, editorTomlPath);
-        if (areasResult.IsFailure)
+        var dockAreaResult = ParseDockArea(utilityTable, editorTomlPath, out var dockArea);
+        if (dockAreaResult.IsFailure)
         {
-            return Result<UtilityDescriptor>.Fail(areasResult.FirstErrorMessage).WithErrors(areasResult);
-        }
-        var allowedAreas = areasResult.Value;
-
-        var defaultAreaResult = ResolveDefaultArea(utilityTable, allowedAreas, editorTomlPath);
-        if (defaultAreaResult.IsFailure)
-        {
-            return Result<UtilityDescriptor>.Fail(defaultAreaResult.FirstErrorMessage).WithErrors(defaultAreaResult);
-        }
-        var defaultArea = defaultAreaResult.Value;
-
-        // A utility always occupies the Utility Panel, which is where its live view parks when its tab
-        // closes.
-        if (!allowedAreas.Contains(WorkspaceArea.Utility))
-        {
-            return Result.Fail(
-                $"[{UtilitySection}] '{AreasKey}' must include '{WorkspaceAreaTokens.Utility}': {editorTomlPath}.");
+            return Result<UtilityDescriptor>.Fail(dockAreaResult.FirstErrorMessage).WithErrors(dockAreaResult);
         }
 
         var descriptor = new UtilityDescriptor
@@ -481,95 +465,50 @@ internal static class EditorManifestLoader
             ResourceExtension = resourceExtension.ToLowerInvariant(),
             Template = template,
             Icon = icon,
-            AllowedAreas = allowedAreas,
-            DefaultArea = defaultArea
+            DockArea = dockArea
         };
 
         return descriptor;
     }
 
-    // Reads the areas key, which is a non-empty set of area tokens. An absent key leaves the descriptor's
-    // own default in place.
-    private static Result<IReadOnlyList<WorkspaceArea>> ParseAllowedAreas(TomlTable utilityTable, string editorTomlPath)
+    // The parsed dock-area key. DockArea is null for a utility that stays in the Utility Panel, which a
+    // Result cannot carry as its own payload.
+    // Reads the dock-area key: the document area the utility's "Open as document" control sends it to, or
+    // null for a utility that stays in the Utility Panel, which the manifest spells "none". The area is an
+    // out parameter because a success Result cannot carry a null payload.
+    private static Result ParseDockArea(TomlTable utilityTable, string editorTomlPath, out WorkspaceArea? dockArea)
     {
-        if (!utilityTable.TryGetValue(AreasKey, out var areasObject))
+        dockArea = WorkspaceArea.Main;
+
+        var dockAreaValue = TomlTableReader.GetStringOrNull(utilityTable, DockAreaKey);
+        if (dockAreaValue is null)
         {
-            return Result<IReadOnlyList<WorkspaceArea>>.Ok(UtilityDescriptor.DefaultAllowedAreas);
+            return Result.Ok();
         }
 
-        if (areasObject is not TomlArray areasArray)
+        if (dockAreaValue == NoDockAreaValue)
         {
-            return Result.Fail($"[{UtilitySection}] '{AreasKey}' must be an array of area names: {editorTomlPath}");
+            dockArea = null;
+            return Result.Ok();
         }
 
-        if (areasArray.Count == 0)
+        if (!WorkspaceAreaTokens.TryParse(dockAreaValue, out var declaredArea))
         {
-            return Result.Fail($"[{UtilitySection}] '{AreasKey}' must name at least one area: {editorTomlPath}");
+            return Result.Fail(
+                $"[{UtilitySection}] '{DockAreaKey}' value '{dockAreaValue}' is not a recognized area " +
+                $"({ValidDockAreaTokens}): {editorTomlPath}");
         }
 
-        var allowedAreas = new List<WorkspaceArea>();
-        foreach (var element in areasArray)
+        if (declaredArea == WorkspaceArea.Utility)
         {
-            var token = element as string;
-            if (!WorkspaceAreaTokens.TryParse(token, out var area))
-            {
-                return Result.Fail(
-                    $"[{UtilitySection}] '{AreasKey}' value '{element}' is not a recognized area " +
-                    $"({ValidAreaTokens}): {editorTomlPath}");
-            }
-
-            if (allowedAreas.Contains(area))
-            {
-                return Result.Fail($"[{UtilitySection}] '{AreasKey}' names '{token}' more than once: {editorTomlPath}");
-            }
-
-            allowedAreas.Add(area);
+            return Result.Fail(
+                $"[{UtilitySection}] '{DockAreaKey}' names the Utility Panel, which holds no document tabs. " +
+                $"Use '{NoDockAreaValue}' for a utility that stays in the panel: {editorTomlPath}");
         }
 
-        return allowedAreas.AsReadOnly();
-    }
+        dockArea = declaredArea;
 
-    // Reads the default-area key, or infers it: the Utility Panel when the declaration allows it, and
-    // otherwise the one document area it allows. A declaration allowing several document areas and no
-    // panel has to name its default.
-    private static Result<WorkspaceArea> ResolveDefaultArea(
-        TomlTable utilityTable,
-        IReadOnlyList<WorkspaceArea> allowedAreas,
-        string editorTomlPath)
-    {
-        var defaultAreaValue = TomlTableReader.GetStringOrNull(utilityTable, DefaultAreaKey);
-        if (defaultAreaValue is not null)
-        {
-            if (!WorkspaceAreaTokens.TryParse(defaultAreaValue, out var declaredArea))
-            {
-                return Result.Fail(
-                    $"[{UtilitySection}] '{DefaultAreaKey}' value '{defaultAreaValue}' is not a recognized area " +
-                    $"({ValidAreaTokens}): {editorTomlPath}");
-            }
-
-            if (!allowedAreas.Contains(declaredArea))
-            {
-                return Result.Fail(
-                    $"[{UtilitySection}] '{DefaultAreaKey}' value '{defaultAreaValue}' is not one of the areas " +
-                    $"'{AreasKey}' declares: {editorTomlPath}");
-            }
-
-            return declaredArea;
-        }
-
-        if (allowedAreas.Contains(WorkspaceArea.Utility))
-        {
-            return WorkspaceArea.Utility;
-        }
-
-        if (allowedAreas.Count == 1)
-        {
-            return allowedAreas[0];
-        }
-
-        return Result.Fail(
-            $"[{UtilitySection}] requires '{DefaultAreaKey}' when '{AreasKey}' declares several areas and none " +
-            $"of them is '{WorkspaceAreaTokens.Utility}': {editorTomlPath}");
+        return Result.Ok();
     }
 
     private static Result<List<ConfigDescriptor>> ParseConfigDescriptors(TomlTable root, string editorTomlPath)

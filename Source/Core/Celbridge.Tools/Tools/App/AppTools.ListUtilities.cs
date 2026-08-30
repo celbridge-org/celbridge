@@ -6,18 +6,18 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// A single utility in the app_list_utilities result. Area is "utility" (a Utility Panel rail surface) or a
-/// document area token (presented as a document tab in that area), and AllowedAreas are the area tokens it
-/// may be moved to. IsShown reports whether the utility is currently surfaced to the user: the active rail
-/// surface when in the panel, or the active document when it is a document. Resource is the file the utility
-/// presents, empty when it has none.
+/// A single utility in the app_list_utilities result. CurrentArea is "utility" (shown in the Utility Panel),
+/// a document area token (presented as a document tab in that area), or empty when nothing presents it.
+/// DockArea is the area token this entry opens as a document in, and is empty for a utility that stays in the
+/// panel. IsVisible reports whether the user can see it, which needs both that it is selected and that its
+/// area is not collapsed. Resource is the file the utility presents, empty when it has none.
 /// </summary>
 public record class UtilityListEntry(
     string UtilityId,
     string DisplayName,
-    string Area,
-    IReadOnlyList<string> AllowedAreas,
-    bool IsShown,
+    string CurrentArea,
+    string DockArea,
+    bool IsVisible,
     string Resource);
 
 /// <summary>
@@ -44,13 +44,16 @@ public partial class AppTools
         var entries = new List<UtilityListEntry>(snapshot.Utilities.Count);
         foreach (var utility in snapshot.Utilities)
         {
-            var area = utility.Area.ToToken();
+            // An entry nothing presents reports no area, which is a launcher whose document is closed.
+            var currentArea = utility.CurrentArea is null
+                ? string.Empty
+                : utility.CurrentArea.Value.ToToken();
 
-            var allowedAreas = new List<string>(utility.AllowedAreas.Count);
-            foreach (var allowedArea in utility.AllowedAreas)
-            {
-                allowedAreas.Add(allowedArea.ToToken());
-            }
+            // A utility that stays in the panel reports no document area rather than a token that would
+            // read as somewhere it can be sent.
+            var dockArea = utility.DockArea is null
+                ? string.Empty
+                : utility.DockArea.Value.ToToken();
 
             // A utility with no file behind it reports an empty resource rather than the empty key's own
             // "project:" spelling, which would read as a resource that exists.
@@ -59,9 +62,9 @@ public partial class AppTools
             entries.Add(new UtilityListEntry(
                 utility.UtilityId.ToString(),
                 utility.DisplayName,
-                area,
-                allowedAreas,
-                utility.IsShown,
+                currentArea,
+                dockArea,
+                utility.IsVisible,
                 resource));
         }
 

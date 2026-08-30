@@ -28,12 +28,6 @@ public class UtilityService : IUtilityService, IDisposable
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
     private const string WorkshopLandmarkId = "workshop-utility-button";
 
-    // A launcher opens a document and never occupies the panel.
-    private static readonly IReadOnlyList<WorkspaceArea> MainOnlyAreas =
-    [
-        WorkspaceArea.Main
-    ];
-
     // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
     // their descriptors wrap live views. The rest are built here. The contributed items hold both kinds of
     // declaration, and each one's panel view says which kind it is.
@@ -82,10 +76,9 @@ public class UtilityService : IUtilityService, IDisposable
         return railItems;
     }
 
-    public WorkspaceArea GetItemArea(EditorId itemId)
+    public WorkspaceArea? GetCurrentArea(EditorId itemId)
     {
-        // A utility carries its own area because it moves. Everything else on the rail has one place it
-        // lives, which its descriptor already states.
+        // A utility carries its own area because it moves.
         var utility = _utilities.FirstOrDefault(candidate => candidate.UtilityId == itemId);
         if (utility is not null)
         {
@@ -94,13 +87,44 @@ public class UtilityService : IUtilityService, IDisposable
 
         foreach (var railItem in GetRailItems())
         {
-            if (railItem.ItemId == itemId)
+            if (railItem.ItemId != itemId)
             {
-                return railItem.DefaultArea;
+                continue;
+            }
+
+            switch (railItem.Kind)
+            {
+                case RailItemKind.PanelUtility:
+                case RailItemKind.DockableUtility:
+                    // A utility the register holds but that has no live view was never created. Its place
+                    // is still the panel.
+                    return WorkspaceArea.Utility;
+
+                case RailItemKind.DocumentLauncher:
+                    // A launcher's document sits wherever the user last moved its tab. Closed, it occupies
+                    // no area at all, and DockArea is what says where it would open.
+                    return FindOpenDocumentArea(railItem.FileResource);
+
+                default:
+                    throw new NotSupportedException($"Unhandled rail item kind '{railItem.Kind}'");
             }
         }
 
-        return WorkspaceArea.Utility;
+        return null;
+    }
+
+    // The area holding the open document for a utilityResource, or null when no document is open for it.
+    private WorkspaceArea? FindOpenDocumentArea(ResourceKey resource)
+    {
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+        var openDocument = documentsService.FindOpenDocument(resource);
+        if (openDocument is null)
+        {
+            return null;
+        }
+
+        return openDocument.Address.Section.GetArea().GetWorkspaceArea();
     }
 
     public async Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors)
@@ -147,18 +171,22 @@ public class UtilityService : IUtilityService, IDisposable
 
             _utilities.Add(panelView);
 
-            var railItem = new UtilityRailItem
+            var landmarkId = $"{utilityId}-utility-button";
+            var railPanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility);
+
+            UtilityRailItem railItem;
+            if (descriptor.DockArea is null)
             {
-                ItemId = utilityId,
-                LandmarkId = $"{utilityId}-utility-button",
-                IconName = descriptor.Icon,
-                DisplayName = displayName,
-                Tooltip = tooltip,
-                AllowedAreas = descriptor.AllowedAreas,
-                DefaultArea = descriptor.DefaultArea,
-                Resource = new UtilityRailResource(resource, resolvedEditor.EditorId),
-                PanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility)
-            };
+                railItem = UtilityRailItem.CreatePanelUtility(
+                    utilityId, landmarkId, descriptor.Icon, displayName, tooltip, railPanelView,
+                    resource, resolvedEditor.EditorId);
+            }
+            else
+            {
+                railItem = UtilityRailItem.CreateDockableUtility(
+                    utilityId, landmarkId, descriptor.Icon, displayName, tooltip,
+                    resource, resolvedEditor.EditorId, railPanelView, descriptor.DockArea.Value);
+            }
 
             _contributedItems.Add(railItem);
         }
@@ -197,7 +225,7 @@ public class UtilityService : IUtilityService, IDisposable
 
         var launcherItems = new List<UtilityRailItem>();
 
-        // The project file sits at the project root, so its resource key is just the file name. The editor is
+        // The project file sits at the project root, so its utilityResource key is just the file name. The editor is
         // named so the choice does not depend on extension resolution.
         var project = projectService.CurrentProject;
         if (project is not null)
@@ -207,17 +235,15 @@ public class UtilityService : IUtilityService, IDisposable
             {
                 string projectSettingsName = stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
 
-                var projectSettingsItem = new UtilityRailItem
-                {
-                    ItemId = BuiltInLauncherIds.ProjectSettings,
-                    LandmarkId = ProjectSettingsLandmarkId,
-                    IconName = iconService.GetIconName(IconSymbol.Sliders),
-                    DisplayName = projectSettingsName,
-                    Tooltip = projectSettingsName,
-                    AllowedAreas = MainOnlyAreas,
-                    DefaultArea = WorkspaceArea.Main,
-                    Resource = new UtilityRailResource(projectFileResource, BuiltInEditors.ProjectSettingsEditorId)
-                };
+                var projectSettingsItem = UtilityRailItem.CreateDocumentLauncher(
+                    BuiltInLauncherIds.ProjectSettings,
+                    ProjectSettingsLandmarkId,
+                    iconService.GetIconName(IconSymbol.Sliders),
+                    projectSettingsName,
+                    projectSettingsName,
+                    projectFileResource,
+                    BuiltInEditors.ProjectSettingsEditorId,
+                    WorkspaceArea.Main);
 
                 launcherItems.Add(projectSettingsItem);
             }
@@ -225,17 +251,15 @@ public class UtilityService : IUtilityService, IDisposable
 
         string workshopName = stringLocalizer.GetString("UtilityPanel_WorkshopTooltip");
 
-        var workshopItem = new UtilityRailItem
-        {
-            ItemId = BuiltInLauncherIds.Workshop,
-            LandmarkId = WorkshopLandmarkId,
-            IconName = iconService.GetIconName(IconSymbol.People),
-            DisplayName = workshopName,
-            Tooltip = workshopName,
-            AllowedAreas = MainOnlyAreas,
-            DefaultArea = WorkspaceArea.Main,
-            Resource = new UtilityRailResource(workshopService.DocumentResource, BuiltInEditors.WebViewEditorId)
-        };
+        var workshopItem = UtilityRailItem.CreateDocumentLauncher(
+            BuiltInLauncherIds.Workshop,
+            WorkshopLandmarkId,
+            iconService.GetIconName(IconSymbol.People),
+            workshopName,
+            workshopName,
+            workshopService.DocumentResource,
+            BuiltInEditors.WebViewEditorId,
+            WorkspaceArea.Main);
 
         launcherItems.Add(workshopItem);
 
@@ -254,19 +278,11 @@ public class UtilityService : IUtilityService, IDisposable
 
         if (panelView.Area != WorkspaceArea.Utility)
         {
-            // Defensive: a resource should appear at most once in the stored layout.
+            // Defensive: a utilityResource should appear at most once in the stored layout.
             return Result.Ok();
         }
 
-        var utilityId = panelView.UtilityId;
-
-        var placementResult = ResolveRestorePlacement(utilityId, address);
-        if (placementResult.IsFailure)
-        {
-            return Result.Fail($"Cannot restore docked utility for resource '{resource}'")
-                .WithErrors(placementResult);
-        }
-        var placement = placementResult.Value;
+        var placement = new DockUtilityPlacement(address.Section, address.TabOrder, Activate: false);
 
         // A restore never activates, because the active document is restored separately, and never flashes
         // or navigates the rail, both of which belong to the interactive dock.
@@ -287,46 +303,6 @@ public class UtilityService : IUtilityService, IDisposable
         return Result.Ok();
     }
 
-    // Where a stored tab position lands on restore. The saved section and tab order are reproduced while the
-    // declaration still allows that area, and a declaration that has since narrowed puts the utility at its
-    // default area instead, appended, because the stored tab order belongs to another section.
-    private Result<DockUtilityPlacement> ResolveRestorePlacement(EditorId utilityId, DocumentAddress address)
-    {
-        var allowedAreas = GetAllowedAreas(utilityId);
-
-        var storedArea = address.Section.GetArea().GetWorkspaceArea();
-        if (allowedAreas.Contains(storedArea))
-        {
-            return new DockUtilityPlacement(address.Section, address.TabOrder, Activate: false);
-        }
-
-        var defaultArea = GetDefaultArea(utilityId);
-        var documentArea = defaultArea.GetDocumentArea();
-        if (documentArea is null)
-        {
-            return Result.Fail(
-                $"Utility '{utilityId}' no longer allows the '{storedArea.ToToken()}' area, and its default " +
-                $"area is the Utility Panel.");
-        }
-
-        _logger.LogWarning(
-            $"Utility '{utilityId}' no longer allows the '{storedArea.ToToken()}' area it was stored in. " +
-            $"Restoring it in the '{defaultArea.ToToken()}' area instead.");
-
-        return new DockUtilityPlacement(documentArea.Value.GetPrimarySection(), TabOrder: null, Activate: false);
-    }
-
-    private WorkspaceArea GetDefaultArea(EditorId utilityId)
-    {
-        var railItem = FindUtilityItem(utilityId);
-        if (railItem is null)
-        {
-            return WorkspaceArea.Utility;
-        }
-
-        return railItem.DefaultArea;
-    }
-
     public bool HasUtility(EditorId utilityId)
     {
         return _utilities.Any(utility => utility.UtilityId == utilityId);
@@ -340,33 +316,23 @@ public class UtilityService : IUtilityService, IDisposable
             return Result.Fail($"Cannot dock utility: no utility found for '{utilityId}'");
         }
 
-        var allowedAreas = GetAllowedAreas(utilityId);
-        if (!allowedAreas.Contains(area))
-        {
-            return Result.Fail(
-                $"Cannot dock utility '{utilityId}' in the '{area.ToToken()}' area: " +
-                $"it allows {DescribeAreas(allowedAreas)}.");
-        }
-
         // The Utility Panel is the one area that holds no document area.
-        var documentArea = area.GetDocumentArea();
-        if (documentArea is null)
+        var dockArea = area.GetDocumentArea();
+        if (dockArea is null)
         {
             return DockUtilityInPanel(panelView);
         }
 
-        return DockUtilityAsDocument(panelView, documentArea.Value);
-    }
-
-    private IReadOnlyList<WorkspaceArea> GetAllowedAreas(EditorId utilityId)
-    {
         var railItem = FindUtilityItem(utilityId);
-        if (railItem is null)
+        if (railItem is not null
+            && railItem.Kind == RailItemKind.PanelUtility)
         {
-            return UtilityDescriptor.DefaultAllowedAreas;
+            return Result.Fail(
+                $"Cannot dock utility '{utilityId}' in the '{area.ToToken()}' area: " +
+                $"it stays in the Utility Panel.");
         }
 
-        return railItem.AllowedAreas;
+        return DockUtilityAsDocument(panelView, dockArea.Value);
     }
 
     // The rail item holding a utility's declaration. Null for an id the register does not hold, which
@@ -376,27 +342,12 @@ public class UtilityService : IUtilityService, IDisposable
         return _contributedItems.FirstOrDefault(item => item.ItemId == utilityId);
     }
 
-    // Names a set of areas by their tokens, in the order the areas read on screen, for an error message.
-    private static string DescribeAreas(IReadOnlyList<WorkspaceArea> areas)
-    {
-        var tokens = new List<string>();
-        foreach (var area in WorkspaceAreaHelper.AllAreas)
-        {
-            if (areas.Contains(area))
-            {
-                tokens.Add($"'{area.ToToken()}'");
-            }
-        }
-
-        return string.Join(", ", tokens);
-    }
-
     // Docks a utility into a document tab in the area's primary section, reusing its live WebView. A utility
     // already docked in another document area moves. One already in this area is activated in place.
-    private Result DockUtilityAsDocument(CustomUtilityView panelView, DocumentArea documentArea)
+    private Result DockUtilityAsDocument(CustomUtilityView panelView, DocumentArea dockArea)
     {
         var documentsPanel = (WorkspacePanel)DocumentsPanel;
-        var area = documentArea.GetWorkspaceArea();
+        var area = dockArea.GetWorkspaceArea();
 
         if (panelView.Area == area)
         {
@@ -413,7 +364,7 @@ public class UtilityService : IUtilityService, IDisposable
             ReturnUtilityToPanel(panelView);
         }
 
-        var section = documentArea.GetPrimarySection();
+        var section = dockArea.GetPrimarySection();
         var placement = new DockUtilityPlacement(section, TabOrder: null, Activate: true);
         var dockResult = documentsPanel.DockUtility(panelView, placement);
         if (dockResult.IsFailure)
@@ -454,8 +405,11 @@ public class UtilityService : IUtilityService, IDisposable
     // Docks a utility back into the Utility Panel and shows it there. The utility itself is never torn down.
     private Result DockUtilityInPanel(CustomUtilityView panelView)
     {
+        // Already in the panel, docking is only a reveal. The panel still has to be presented, because a
+        // caller that docks without going on to show gets no other chance to.
         if (panelView.Area == WorkspaceArea.Utility)
         {
+            PresentArea(WorkspaceArea.Utility);
             return Result.Ok();
         }
 

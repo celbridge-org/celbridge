@@ -12,7 +12,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
 
     public EditorId UtilityId { get; set; } = EditorId.Empty;
 
-    public ShowUtilityArea? Area { get; set; }
+    public WorkspaceArea? Area { get; set; }
 
     public ShowUtilityCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -36,13 +36,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         {
             if (Area is not null)
             {
-                var resolveResult = ResolveArea(utilityService, Area);
-                if (resolveResult.IsFailure)
-                {
-                    return Result.Fail($"Cannot show utility '{UtilityId}'")
-                        .WithErrors(resolveResult);
-                }
-                var targetArea = resolveResult.Value;
+                var targetArea = Area.Value;
 
                 var dockResult = await utilityService.DockUtilityAsync(UtilityId, targetArea);
                 if (dockResult.IsFailure)
@@ -62,31 +56,5 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         utilityPanel.ShowUtility(UtilityId);
 
         return Result.Ok();
-    }
-
-    // A named area is taken as it stands, and DockUtilityAsync rejects one the utility does not allow. A
-    // request for the utility's own document area is answered from its declaration.
-    private Result<WorkspaceArea> ResolveArea(IUtilityService utilityService, ShowUtilityArea area)
-    {
-        var namedArea = area.NamedArea;
-        if (namedArea is not null)
-        {
-            return namedArea.Value;
-        }
-
-        var railItem = utilityService.GetRailItems().FirstOrDefault(item => item.ItemId == UtilityId);
-        if (railItem is null)
-        {
-            return Result.Fail($"No rail item found with id '{UtilityId}'");
-        }
-
-        if (!WorkspaceAreaHelper.TryGetDocumentArea(railItem.AllowedAreas, railItem.DefaultArea, out var documentArea))
-        {
-            return Result.Fail(
-                $"Utility '{UtilityId}' does not name one document area to open in. " +
-                $"Ask for one of its areas by name instead.");
-        }
-
-        return documentArea;
     }
 }

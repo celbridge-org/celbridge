@@ -98,6 +98,11 @@ public interface IDocumentsService
     IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
 
     /// <summary>
+    /// The open document for a resource, or null when no document is open for it.
+    /// </summary>
+    OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource);
+
+    /// <summary>
     /// Creates a document view for the given file resource. When editorId is
     /// non-empty, uses that specific editor instead of the default resolution
     /// chain. Fails if the resource does not exist.

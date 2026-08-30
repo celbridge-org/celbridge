@@ -31,10 +31,10 @@ public interface IUtilityService
     IReadOnlyList<UtilityRailItem> GetRailItems();
 
     /// <summary>
-    /// The area a rail item currently occupies, which is its descriptor's default area until it moves.
-    /// Reports the Utility Panel for an id the register does not hold.
+    /// The area a rail item currently occupies, or null when nothing presents it: a launcher whose document
+    /// is closed, or an id the register does not hold. A utility always occupies an area.
     /// </summary>
-    WorkspaceArea GetItemArea(EditorId itemId);
+    WorkspaceArea? GetCurrentArea(EditorId itemId);
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given

@@ -27,6 +27,7 @@ public class UtilityServiceRegisterTests
 
     private IServiceProvider _serviceProvider = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
+    private IDocumentsService _documentsService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -77,9 +78,14 @@ public class UtilityServiceRegisterTests
         var resourceService = Substitute.For<IResourceService>();
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
+        // GetCurrentArea asks the documents service where a launcher's tab actually is. Nothing is open by
+        // default, so each test that cares opens one.
+        _documentsService = Substitute.For<IDocumentsService>();
+
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
         workspaceService.PackageService.Returns(Substitute.For<IPackageService>());
+        workspaceService.DocumentsService.Returns(_documentsService);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
     }
 
@@ -95,12 +101,13 @@ public class UtilityServiceRegisterTests
 
     private static UtilityRailItem CreateBuiltInUtilityItem(EditorId itemId, string displayName)
     {
-        return new UtilityRailItem
-        {
-            ItemId = itemId,
-            DisplayName = displayName,
-            PanelView = new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer)
-        };
+        return UtilityRailItem.CreatePanelUtility(
+            itemId,
+            $"{itemId}-utility-button",
+            "folder",
+            displayName,
+            displayName,
+            new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer));
     }
 
     [Test]
@@ -144,16 +151,16 @@ public class UtilityServiceRegisterTests
         var railItems = service.GetRailItems();
 
         var projectSettings = railItems.Single(railItem => railItem.ItemId == BuiltInLauncherIds.ProjectSettings);
-        projectSettings.Resource!.Resource.Should().Be(ProjectFileResource);
+        projectSettings.FileResource.Should().Be(ProjectFileResource);
         projectSettings.DisplayName.Should().Be("localized:UtilityPanel_ProjectSettingsTooltip");
 
         var workshop = railItems.Single(railItem => railItem.ItemId == BuiltInLauncherIds.Workshop);
-        workshop.Resource!.Resource.Should().Be(WorkshopResource);
+        workshop.FileResource.Should().Be(WorkshopResource);
         workshop.DisplayName.Should().Be("localized:UtilityPanel_WorkshopTooltip");
 
         // A launcher opens a document and never occupies the panel, which is what makes it a launcher.
         workshop.PanelView.Should().BeNull();
-        workshop.DefaultArea.Should().Be(WorkspaceArea.Main);
+        workshop.DockArea.Should().Be(WorkspaceArea.Main);
     }
 
     [Test]
@@ -172,7 +179,7 @@ public class UtilityServiceRegisterTests
     }
 
     [Test]
-    public async Task GetItemArea_ReturnsTheDescriptorDefaultForAnItemThatHasNotMoved()
+    public async Task GetCurrentArea_ReportsThePanelForAUtilityAndNothingForAClosedLauncher()
     {
         var service = CreateService();
 
@@ -183,10 +190,31 @@ public class UtilityServiceRegisterTests
 
         await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
 
-        service.GetItemArea(BuiltInUtilityIds.Explorer).Should().Be(WorkspaceArea.Utility);
-        service.GetItemArea(BuiltInLauncherIds.Workshop).Should().Be(WorkspaceArea.Main);
+        // A utility always occupies an area, whether or not it has a live view yet.
+        service.GetCurrentArea(BuiltInUtilityIds.Explorer).Should().Be(WorkspaceArea.Utility);
 
-        // An id the register does not hold falls back to the panel rather than claiming a document area.
-        service.GetItemArea(EditorId.Create("acme", "absent")).Should().Be(WorkspaceArea.Utility);
+        // No document is open for the Workshop, so it occupies nothing. Its declared area says where it
+        // would open, which is a different question.
+        service.GetCurrentArea(BuiltInLauncherIds.Workshop).Should().BeNull();
+
+        // An id the register does not hold occupies nothing either, rather than claiming the panel.
+        service.GetCurrentArea(EditorId.Create("acme", "absent")).Should().BeNull();
+    }
+
+    [Test]
+    public async Task GetCurrentArea_ReportsWhereALauncherDocumentActuallyIs()
+    {
+        var service = CreateService();
+
+        // The user moved the Workshop tab out of the area its declaration names.
+        var openDocument = new OpenDocumentInfo(
+            WorkshopResource,
+            new DocumentAddress(0, DocumentSection.BottomLeft, 0),
+            BuiltInEditors.WebViewEditorId);
+        _documentsService.FindOpenDocument(WorkshopResource).Returns(openDocument);
+
+        await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
+
+        service.GetCurrentArea(BuiltInLauncherIds.Workshop).Should().Be(WorkspaceArea.Bottom);
     }
 }

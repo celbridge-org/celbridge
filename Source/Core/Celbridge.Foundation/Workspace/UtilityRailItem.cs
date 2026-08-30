@@ -3,11 +3,29 @@ using Celbridge.Documents;
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// The resource a rail item opens as a document, and the editor that presents it.
+/// The kinds of entry the Utility Panel rail presents. An item's kind fixes what it carries and what its
+/// button does, so the payload follows from the kind rather than being set alongside it.
 /// </summary>
-public sealed record UtilityRailResource(
-    ResourceKey Resource,
-    EditorId Editor);
+public enum RailItemKind
+{
+    /// <summary>
+    /// A utility that lives in the Utility Panel and cannot become a document. Explorer and Search are
+    /// these, and so is a contribution that declares no dock area.
+    /// </summary>
+    PanelUtility,
+
+    /// <summary>
+    /// A WebView editor over its own state file that lives in the Utility Panel and can be docked into a
+    /// document tab. Closing that tab returns it to the panel rather than destroying it.
+    /// </summary>
+    DockableUtility,
+
+    /// <summary>
+    /// A button that opens a document. It never occupies the panel, and the document it opens closes like
+    /// any other.
+    /// </summary>
+    DocumentLauncher
+}
 
 /// <summary>
 /// The view a rail item shows while it occupies the Utility Panel. Content is the view itself, FocusPanel
@@ -22,62 +40,146 @@ public sealed record UtilityRailPanelView(
     bool PreservePanelFocus = false);
 
 /// <summary>
-/// One button on the Utility Panel rail and what it shows. At least one of Resource and PanelView is always
-/// set, and a dockable utility carries both.
+/// One button on the Utility Panel rail and what it shows. Build one through the factory for its kind, which
+/// is what keeps the payload and the kind in agreement.
 /// </summary>
 public sealed record UtilityRailItem
 {
-    // Where an item that names no areas may go.
-    private static readonly IReadOnlyList<WorkspaceArea> PanelOnlyAreas =
-    [
-        WorkspaceArea.Utility
-    ];
+    /// <summary>
+    /// Which kind of entry this is. Every other member is constrained by it.
+    /// </summary>
+    public required RailItemKind Kind { get; init; }
 
     /// <summary>
     /// The id that addresses this item.
     /// </summary>
-    public EditorId ItemId { get; init; }
+    public required EditorId ItemId { get; init; }
 
     /// <summary>
     /// Automation id of the rail button, which is also its Spotlight landmark id.
     /// </summary>
-    public string LandmarkId { get; init; } = string.Empty;
+    public required string LandmarkId { get; init; }
 
     /// <summary>
     /// Prefixed icon name for the rail button, and for the document tab when the item is a document.
     /// </summary>
-    public string IconName { get; init; } = string.Empty;
+    public required string IconName { get; init; }
 
     /// <summary>
     /// The item's human-readable, localized name.
     /// </summary>
-    public string DisplayName { get; init; } = string.Empty;
+    public required string DisplayName { get; init; }
 
     /// <summary>
     /// The tooltip shown on the rail button.
     /// </summary>
-    public string Tooltip { get; init; } = string.Empty;
+    public required string Tooltip { get; init; }
 
     /// <summary>
-    /// The areas this item is allowed to occupy. Never empty and never holds a duplicate.
+    /// The document area this item targets: where a dockable utility docks to, and where a launcher's
+    /// document opens. Null for a panel utility, which never becomes a document. Where the item sits after
+    /// it opens is the user's to change, like any other tab.
     /// </summary>
-    public IReadOnlyList<WorkspaceArea> AllowedAreas { get; init; } = PanelOnlyAreas;
+    public WorkspaceArea? DockArea { get; init; }
 
     /// <summary>
-    /// The area the item falls back to when no other one is named: where a launcher opens its document, and
-    /// where a utility is restored when its stored area is no longer allowed. Always a member of AllowedAreas.
+    /// The file this item presents, or empty for a rail item with no file behind it, which is what Explorer
+    /// and Search are.
     /// </summary>
-    public WorkspaceArea DefaultArea { get; init; } = WorkspaceArea.Utility;
+    public ResourceKey FileResource { get; init; } = ResourceKey.Empty;
 
     /// <summary>
-    /// The resource this item opens and the editor that presents it, or null when the item cannot be a
-    /// document. Set whenever AllowedAreas holds a document area.
+    /// The editor that presents FileResource, or empty when there is no file. Named rather than resolved
+    /// from the file, because a utils: file has no sidecar and no editor claims its extension.
     /// </summary>
-    public UtilityRailResource? Resource { get; init; }
+    public EditorId EditorId { get; init; } = EditorId.Empty;
 
     /// <summary>
-    /// The view this item shows in the Utility Panel, or null when the item cannot occupy the panel. Set
-    /// whenever AllowedAreas holds the utility area.
+    /// The view this item shows in the Utility Panel. Null only for a launcher.
     /// </summary>
     public UtilityRailPanelView? PanelView { get; init; }
+
+    /// <summary>
+    /// A utility that lives in the Utility Panel and cannot be docked into a document tab. The file is empty
+    /// for a built-in view with nothing behind it.
+    /// </summary>
+    public static UtilityRailItem CreatePanelUtility(
+        EditorId itemId,
+        string landmarkId,
+        string iconName,
+        string displayName,
+        string tooltip,
+        UtilityRailPanelView panelView,
+        ResourceKey fileResource = default,
+        EditorId editorId = default)
+    {
+        return new UtilityRailItem
+        {
+            Kind = RailItemKind.PanelUtility,
+            ItemId = itemId,
+            LandmarkId = landmarkId,
+            IconName = iconName,
+            DisplayName = displayName,
+            Tooltip = tooltip,
+            FileResource = fileResource,
+            EditorId = editorId,
+            PanelView = panelView
+        };
+    }
+
+    /// <summary>
+    /// A utility that lives in the Utility Panel and can be docked into a tab in the given document area.
+    /// </summary>
+    public static UtilityRailItem CreateDockableUtility(
+        EditorId itemId,
+        string landmarkId,
+        string iconName,
+        string displayName,
+        string tooltip,
+        ResourceKey fileResource,
+        EditorId editorId,
+        UtilityRailPanelView panelView,
+        WorkspaceArea dockArea)
+    {
+        return new UtilityRailItem
+        {
+            Kind = RailItemKind.DockableUtility,
+            ItemId = itemId,
+            LandmarkId = landmarkId,
+            IconName = iconName,
+            DisplayName = displayName,
+            Tooltip = tooltip,
+            DockArea = dockArea,
+            FileResource = fileResource,
+            EditorId = editorId,
+            PanelView = panelView
+        };
+    }
+
+    /// <summary>
+    /// A button that opens a document in the given area.
+    /// </summary>
+    public static UtilityRailItem CreateDocumentLauncher(
+        EditorId itemId,
+        string landmarkId,
+        string iconName,
+        string displayName,
+        string tooltip,
+        ResourceKey fileResource,
+        EditorId editorId,
+        WorkspaceArea dockArea)
+    {
+        return new UtilityRailItem
+        {
+            Kind = RailItemKind.DocumentLauncher,
+            ItemId = itemId,
+            LandmarkId = landmarkId,
+            IconName = iconName,
+            DisplayName = displayName,
+            Tooltip = tooltip,
+            DockArea = dockArea,
+            FileResource = fileResource,
+            EditorId = editorId
+        };
+    }
 }

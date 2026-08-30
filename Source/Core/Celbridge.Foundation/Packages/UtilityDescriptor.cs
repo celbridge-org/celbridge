@@ -10,15 +10,6 @@ namespace Celbridge.Packages;
 public record UtilityDescriptor
 {
     /// <summary>
-    /// The areas a utility occupies when its manifest declares none.
-    /// </summary>
-    public static readonly IReadOnlyList<WorkspaceArea> DefaultAllowedAreas =
-    [
-        WorkspaceArea.Utility,
-        WorkspaceArea.Main
-    ];
-
-    /// <summary>
     /// File extension of the backing state file (e.g. "._utildemo"). The host derives the full path
     /// from the editor id, as "utils:{editorId}{ResourceExtension}".
     /// </summary>
@@ -36,14 +27,8 @@ public record UtilityDescriptor
     public string Icon { get; init; } = string.Empty;
 
     /// <summary>
-    /// The areas this utility is allowed to occupy, from the manifest's areas key. Never empty and never
-    /// holds a duplicate.
+    /// The document area the utility docks into, from the manifest's dock-area key. Null when it declares
+    /// dock-area = "none", which keeps it in the Utility Panel and hides its "Open as document" control.
     /// </summary>
-    public IReadOnlyList<WorkspaceArea> AllowedAreas { get; init; } = DefaultAllowedAreas;
-
-    /// <summary>
-    /// The area the utility falls back to when no other one is named, from the manifest's default-area key.
-    /// Always a member of AllowedAreas.
-    /// </summary>
-    public WorkspaceArea DefaultArea { get; init; } = WorkspaceArea.Utility;
+    public WorkspaceArea? DockArea { get; init; } = WorkspaceArea.Main;
 }

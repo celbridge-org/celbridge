@@ -64,9 +64,10 @@ public interface IUtilityPanel
     bool HasRailItem(EditorId itemId);
 
     /// <summary>
-    /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
-    /// otherwise selects its rail item in the Utility Panel, presenting the panel when it is collapsed. A
-    /// no-op when no utility has that id.
+    /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a
+    /// document, otherwise selects its rail item in the Utility Panel. Presenting a rail item always reveals
+    /// the area it lands in, so a collapsed area is brought back first and the caller never has to. A no-op
+    /// when no utility has that id.
     /// </summary>
     void ShowUtility(EditorId utilityId);
 

@@ -34,6 +34,9 @@ public static class DocumentSectionTokens
     {
         switch (section)
         {
+            case DocumentSection.MainLeft:
+                return MainLeft;
+
             case DocumentSection.MainRight:
                 return MainRight;
 
@@ -50,7 +53,9 @@ public static class DocumentSectionTokens
                 return SideBottom;
 
             default:
-                return MainLeft;
+                // These tokens are a wire format, so an unmapped section would be persisted as a real
+                // section that means something else.
+                throw new NotSupportedException($"No token is defined for the '{section}' document section.");
         }
     }
 

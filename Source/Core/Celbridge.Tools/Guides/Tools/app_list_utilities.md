@@ -19,9 +19,9 @@ A JSON object with one field:
 - `utilities` (array) — every available utility. Each entry has:
   - `utilityId` (string) — the id to pass to `app_show_utility` (e.g. `celbridge.explorer`, or the editor id of a contributed utility).
   - `displayName` (string) — the human-readable, localized name.
-  - `area` (string) — the workspace area the utility occupies: `"utility"` when the Utility Panel shows it, or a document area token (`"main"`, `"bottom"`, `"side"`) when it is a document tab. A custom utility can move between the areas it allows at runtime; Explorer and Search are always `"utility"`, and the launchers are always `"main"`.
-  - `allowedAreas` (array of string) — the areas this utility may be moved to, which `area` is always one of. Pass one of these to `app_show_utility`; any other area is refused. Explorer and Search report `["utility"]` and the launchers report `["main"]`, so a single-entry list means the utility cannot be moved.
-  - `isShown` (bool) — whether the utility is currently shown to the user: in the `utility` area, whether it is the selected rail item; in a document area, whether its tab is the active document.
+  - `currentArea` (string) — the workspace area the utility occupies right now: `"utility"` when the Utility Panel shows it, or a document area token (`"main"`, `"bottom"`, `"side"`) when it is a document tab. Empty when nothing presents it, which is a launcher whose document is closed. A custom utility moves between areas at runtime; Explorer and Search are always `"utility"`.
+  - `dockArea` (string) — the area token this utility opens in as a document, which is where `app_show_utility` sends it when asked for `"document"`. This is what the utility declares, not where it is now: read `currentArea` for that. Empty for a utility that stays in the Utility Panel and cannot become a document, which is what Explorer and Search are.
+  - `isVisible` (bool) — whether the user can currently see the utility. That means it is the selected rail item (in the `utility` area) or the active document (in a document area), **and** that its area is not collapsed. A utility can be the selected rail item while the Utility Panel is collapsed, and that reports `false`, because nothing is on screen. Trust this rather than inferring visibility from `currentArea`.
   - `resource` (string) — the file the utility presents, or empty when it has none. Explorer and Search have no file behind them, so they report an empty string.
 
 Returns an empty `utilities` array when no project is loaded.

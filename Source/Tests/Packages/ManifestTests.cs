@@ -1049,13 +1049,12 @@ public class ManifestTests
         var descriptor = result.Value.Editors[0].UtilityDescriptor!;
         descriptor.Template.Should().BeEmpty();
 
-        // A manifest declaring no areas gets the default placement: the Utility Panel, dockable into Main.
-        descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Main);
-        descriptor.DefaultArea.Should().Be(WorkspaceArea.Utility);
+        // A manifest declaring no dock area keeps the default: dockable into Main.
+        descriptor.DockArea.Should().Be(WorkspaceArea.Main);
     }
 
     [Test]
-    public void LoadPackage_UtilityAreas_ParsesTheDeclaredAreasAndDefault()
+    public void LoadPackage_UtilityDockArea_ParsesTheDeclaredArea()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -1066,20 +1065,17 @@ public class ManifestTests
             [utility]
             resource-extension = "._widget"
             icon = "star"
-            areas = ["utility", "bottom"]
-            default-area = "bottom"
+            dock-area = "bottom"
             """);
 
         var result = LoadPackage();
 
         result.IsSuccess.Should().BeTrue();
-        var descriptor = result.Value.Editors[0].UtilityDescriptor!;
-        descriptor.AllowedAreas.Should().Equal(WorkspaceArea.Utility, WorkspaceArea.Bottom);
-        descriptor.DefaultArea.Should().Be(WorkspaceArea.Bottom);
+        result.Value.Editors[0].UtilityDescriptor!.DockArea.Should().Be(WorkspaceArea.Bottom);
     }
 
     [Test]
-    public void LoadPackage_UtilityAreasWithoutDefault_DefaultsToTheUtilityPanel()
+    public void LoadPackage_UtilityDockAreaNone_ParsesAsPanelOnly()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -1090,43 +1086,20 @@ public class ManifestTests
             [utility]
             resource-extension = "._widget"
             icon = "star"
-            areas = ["utility", "side"]
+            dock-area = "none"
             """);
 
         var result = LoadPackage();
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Editors[0].UtilityDescriptor!.DefaultArea.Should().Be(WorkspaceArea.Utility);
+
+        // Nothing to dock into, so the utility stays in the Utility Panel.
+        result.Value.Editors[0].UtilityDescriptor!.DockArea.Should().BeNull();
     }
 
-    [TestCase("[]", Description = "no area named")]
-    [TestCase("[\"utility\", \"utility\"]", Description = "duplicate area")]
-    [TestCase("[\"utility\", \"panel\"]", Description = "unrecognized area")]
-    [TestCase("\"utility\"", Description = "not an array")]
-    [TestCase("[\"main\", \"bottom\"]", Description = "no utility area and no default to infer")]
-    [TestCase("[\"bottom\"]", Description = "no utility area")]
-    public void LoadPackage_UtilityInvalidAreas_ReturnsFailure(string areasValue)
-    {
-        WriteSingleEditorPackage($"""
-            [editor]
-            id = "widget-renderer"
-            type = "utility"
-            display-name = "Widget_Utility_DisplayName"
-
-            [utility]
-            resource-extension = "._widget"
-            icon = "star"
-            areas = {areasValue}
-            """);
-
-        var result = LoadPackage();
-
-        result.IsFailure.Should().BeTrue();
-    }
-
-    [TestCase("main", Description = "outside the declared areas")]
     [TestCase("panel", Description = "unrecognized area")]
-    public void LoadPackage_UtilityInvalidDefaultArea_ReturnsFailure(string defaultArea)
+    [TestCase("utility", Description = "the Utility Panel holds no document tabs")]
+    public void LoadPackage_UtilityInvalidDockArea_ReturnsFailure(string dockArea)
     {
         WriteSingleEditorPackage($"""
             [editor]
@@ -1137,8 +1110,7 @@ public class ManifestTests
             [utility]
             resource-extension = "._widget"
             icon = "star"
-            areas = ["utility"]
-            default-area = "{defaultArea}"
+            dock-area = "{dockArea}"
             """);
 
         var result = LoadPackage();

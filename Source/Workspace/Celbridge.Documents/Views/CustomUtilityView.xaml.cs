@@ -96,22 +96,15 @@ public sealed partial class CustomUtilityView : UserControl
         });
     }
 
-    // Reads the document area the utility docks into from its declaration. A utility that declares no
-    // document area, or several without defaulting to one of them, has nowhere for the control to send it,
-    // so the control is hidden.
+    // Reads the document area the utility docks into from its declaration. A utility that declares none
+    // has nowhere for the control to send it, so the control is hidden.
     private void ApplyDeclaredAreas(UtilityDescriptor? descriptor)
     {
         _openAsDocumentArea = null;
 
         if (descriptor is not null)
         {
-            var allowedAreas = descriptor.AllowedAreas;
-            var defaultArea = descriptor.DefaultArea;
-
-            if (WorkspaceAreaHelper.TryGetDocumentArea(allowedAreas, defaultArea, out var documentArea))
-            {
-                _openAsDocumentArea = documentArea;
-            }
+            _openAsDocumentArea = descriptor.DockArea;
         }
 
         OpenAsDocumentButton.Visibility = _openAsDocumentArea is null

@@ -39,6 +39,19 @@ public class DocumentsService : IDocumentsService, IDisposable
     // Reads TabView-backed state, so callers must be on the UI thread.
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
+    public OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource)
+    {
+        foreach (var openDocument in GetOpenDocuments())
+        {
+            if (openDocument.FileResource == fileResource)
+            {
+                return openDocument;
+            }
+        }
+
+        return null;
+    }
+
     // Builds a fresh list from the panel's split and visibility state on each read, so callers must be
     // on the UI thread.
     public IReadOnlyList<DocumentSection> VisibleSections => DocumentsPanel.VisibleSections;

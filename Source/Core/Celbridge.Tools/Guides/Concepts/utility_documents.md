@@ -24,9 +24,9 @@ Every utility is **workspace-scoped**: it is created when the project loads and 
 - **`utility`** — the utility is shown in the Utility Panel (the left sidebar), selected by clicking its rail button, one at a time alongside Explorer and Search.
 - **`main`**, **`bottom`**, **`side`** — the utility is a tab in that documents area, sitting among the open documents.
 
-All four are areas inside the app; none is free-floating. The user moves a utility between the areas it allows at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group.
+All four are areas inside the app; none is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group.
 
-The manifest's `areas` key says which of them a utility may occupy, and `default-area` names the one it falls back to. A manifest declaring neither allows `utility` and `main`, which is what every utility did before the keys existed.
+The manifest's `dock-area` key names the document area a utility docks into. A manifest declaring none docks into `main`, and one declaring `dock-area = "none"` stays in the Utility Panel.
 
 ## Moving between areas
 
@@ -65,8 +65,7 @@ description = "Scratchpad_Description"      # localization key; the rail-button 
 resource-extension = "._scratchpad"        # file format of the utility state file (required)
 template = "templates/default._scratchpad" # seeds the file when absent (optional)
 icon     = "bs-sticky"                     # prefixed icon name (required)
-areas    = ["utility", "main"]             # optional; the areas this utility may occupy
-default-area = "utility"                   # optional; where it starts
+dock-area = "main"                         # optional; where "Open as document" sends it, or "none"
 ```
 
 | Field | Required | Default | Meaning |
@@ -74,8 +73,7 @@ default-area = "utility"                   # optional; where it starts
 | `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
 | `icon` | yes | — | Prefixed icon name (`<font>-<name>`, e.g. `bs-sticky`) for the rail button and the docked tab icon. Resolved by name, not limited to the curated symbol set. |
 | `template` | no | empty file | Package-relative path to a file that seeds a utility's backing resource when it is absent. |
-| `areas` | no | `["utility", "main"]` | The areas this utility may occupy. A non-empty set drawn from `utility`, `main`, `bottom` and `side`, with no duplicates. It must include `utility`: a utility always occupies the Utility Panel, which is where its live view parks when its tab closes. |
-| `default-area` | no | `utility` | The area the utility falls back to when no other one is named: what the "Open as document" control and the `"document"` tool alias resolve to, and where a utility is restored when its stored area is no longer allowed. Must be one of the areas `areas` declares. |
+| `dock-area` | no | `main` | The document area the "Open as document" control and the `"document"` tool alias send the utility to: `main`, `bottom` or `side`. Declare `none` for a utility that stays in the Utility Panel, which hides that control. A utility always occupies the Utility Panel, so `utility` is not a dock area. |
 
 `display-name` in `[editor]` is required (as for any editor) and labels the rail button and the docked tab. The tooltip comes from `[editor].description` — the same field a document editor uses — so a utility's rail-button and docked-tab tooltip are authored once there, not in `[utility]`.
 
@@ -83,7 +81,7 @@ default-area = "utility"                   # optional; where it starts
 
 Where a utility actually is comes from workspace state, which the user writes by moving it: a utility opens each workspace in the Utility Panel and is restored wherever it was left. The manifest declares what is allowed, not where the utility sits.
 
-The constraint is enforced on restore as well as on a move. A utility whose stored area is no longer in `areas` — which is what a package update narrowing its own declaration produces — is restored at `default-area` rather than in an area it has stopped claiming it can live in.
+Once a utility is a tab the user moves it like any other tab, to any section they like, and it is restored wherever they left it. `dock-area` names where it lands the first time, not where it is allowed to be.
 
 ## Never an ordinary project file
 
@@ -105,7 +103,7 @@ A utility persists through the standard editable-save path: the WebView calls `c
 
 ## Agent interaction
 
-- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus the active utility contributions — with each one's id, display name, `area` (`"utility"` or a document area token, where it currently is), `allowedAreas` (the areas it may be moved to), and whether it is currently shown.
+- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus the active utility contributions — with each one's id, display name, `currentArea` (`"utility"` or a document area token, where it is now, empty when nothing presents it), `dockArea` (where it opens as a document, empty when it stays in the panel), and whether it is currently shown.
 - `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `area` (an area token, or `"document"` for whichever document area the utility declares) to move it there first, which fails when the utility does not allow that area. A utility's id is `package.contribution` (for example `scratchpad.scratchpad`).
 - `app_get_state` reports `activeUtility`, the id of the item the Utility Panel rail is currently showing.
 - `app_spotlight` can point at a utility's button: `{utilityId}-utility-button` for its rail item in the Utility Panel.
