@@ -21,18 +21,18 @@ public static class BuiltInUtilityIds
 }
 
 /// <summary>
-/// Ids for the built-in rail launchers, in the same "{scope}.{name}" form as custom utility ids. A launcher
-/// opens a document and never occupies the panel, so it is not a utility.
+/// Ids for the built-in document shortcuts, in the same "{scope}.{name}" form as custom utility ids. A
+/// shortcut opens a document and never occupies the panel, so it is not a utility.
 /// </summary>
-public static class BuiltInLauncherIds
+public static class BuiltInShortcutIds
 {
     /// <summary>
-    /// The Project Settings launcher's rail id.
+    /// The Project Settings shortcut's rail id.
     /// </summary>
     public static readonly EditorId ProjectSettings = EditorId.Create("celbridge", "project-settings");
 
     /// <summary>
-    /// The Community Workshop launcher's rail id.
+    /// The Community Workshop shortcut's rail id.
     /// </summary>
     public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
 }

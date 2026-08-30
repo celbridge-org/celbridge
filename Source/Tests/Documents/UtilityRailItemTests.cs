@@ -73,10 +73,10 @@ public class UtilityRailItemTests
     }
 
     [Test]
-    public void DocumentLauncher_CarriesNoPanelView()
+    public void DocumentShortcut_CarriesNoPanelView()
     {
-        var railItem = UtilityRailItem.CreateDocumentLauncher(
-            BuiltInLauncherIds.Workshop,
+        var railItem = UtilityRailItem.CreateDocumentShortcut(
+            BuiltInShortcutIds.Workshop,
             "workshop-utility-button",
             "people",
             "Community Workshop",
@@ -85,10 +85,10 @@ public class UtilityRailItemTests
             EditorId.Create("celbridge", "webview"),
             WorkspaceArea.Main);
 
-        railItem.Kind.Should().Be(RailItemKind.DocumentLauncher);
+        railItem.Kind.Should().Be(RailItemKind.DocumentShortcut);
         railItem.DockArea.Should().Be(WorkspaceArea.Main);
 
-        // A launcher never occupies the panel, so it parks no live view there.
+        // A document shortcut never occupies the panel, so it parks no live view there.
         railItem.PanelView.Should().BeNull();
     }
 }

@@ -46,9 +46,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // click activates its document tab instead of showing it in the panel.
     private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
 
-    // The launchers, by rail id. A launcher never occupies the panel, so its descriptor is what its button
-    // click and its reveal both go through.
-    private readonly Dictionary<EditorId, UtilityRailItem> _launcherItems = new();
+    // The document shortcuts, by rail id. A shortcut never occupies the panel, so its descriptor is what
+    // its button click and its reveal both go through.
+    private readonly Dictionary<EditorId, UtilityRailItem> _shortcutItems = new();
 
     // The Spotlight landmark each rail button owns, by rail id. Unregistering reads the id that was
     // registered rather than rebuilding it, so the two cannot drift apart.
@@ -59,11 +59,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
 
     // The rail's buttons in the three ordered groups the panel presents: the built-in utilities, then the
-    // contribution utilities, then the launchers. The rail draws them as one stack, so the panel rebuilds it
-    // from these whenever the middle group changes.
+    // contribution utilities, then the document shortcuts. The rail draws them as one stack, so the panel
+    // rebuilds it from these whenever the middle group changes.
     private readonly List<UtilityButton> _builtInUtilityButtons = new();
     private readonly List<UtilityButton> _customUtilityButtons = new();
-    private readonly List<UtilityButton> _launcherButtons = new();
+    private readonly List<UtilityButton> _shortcutButtons = new();
 
     private Storyboard? _perimeterStoryboard;
 
@@ -219,9 +219,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
                 _focusActions[itemId] = panelView.FocusPanel;
                 break;
 
-            case RailItemKind.DocumentLauncher:
-                _launcherItems[itemId] = item;
-                railButton.Click += (sender, e) => ShowLauncherDocument(item);
+            case RailItemKind.DocumentShortcut:
+                _shortcutItems[itemId] = item;
+                railButton.Click += (sender, e) => ShowShortcutDocument(item);
                 break;
 
             default:
@@ -267,12 +267,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         return contentControl;
     }
 
-    // Opens a launcher's document in the area it declares. Already open, the command activates its tab.
-    private void ShowLauncherDocument(UtilityRailItem item)
+    // Opens a shortcut's document in the area it declares. Already open, the command activates its tab.
+    private void ShowShortcutDocument(UtilityRailItem item)
     {
         FlashRailButton(item.ItemId);
 
-        // A launcher always names the area its document opens in.
+        // A document shortcut always names the area its document opens in.
         var area = item.DockArea!.Value;
 
         // Opening into a section does not reveal its area, so a collapsed one is presented first.
@@ -280,7 +280,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         // The declared area decides where the document lands when it opens. A tab that is already open keeps
         // the section the user put it in, which is what an unnamed section means to the open command.
-        var targetSection = ResolveLauncherSection(item.FileResource, area);
+        var targetSection = ResolveShortcutSection(item.FileResource, area);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
@@ -291,7 +291,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     // Null once the document is open, so the open command leaves the tab where the user put it.
-    private DocumentSection? ResolveLauncherSection(ResourceKey resource, WorkspaceArea area)
+    private DocumentSection? ResolveShortcutSection(ResourceKey resource, WorkspaceArea area)
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
         if (documentsService.FindOpenDocument(resource) is not null)
@@ -371,7 +371,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Flags the Project Settings rail button when any contribution has dropped configuration.
     private void UpdateProjectSettingsIssuePip()
     {
-        if (!_buttons.TryGetValue(BuiltInLauncherIds.ProjectSettings, out var projectSettingsButton))
+        if (!_buttons.TryGetValue(BuiltInShortcutIds.ProjectSettings, out var projectSettingsButton))
         {
             return;
         }
@@ -395,11 +395,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public void ShowUtility(EditorId utilityId)
     {
-        // A launcher never occupies the panel, so revealing it is opening its document, the same as clicking
-        // it.
-        if (_launcherItems.TryGetValue(utilityId, out var launcherItem))
+        // A document shortcut never occupies the panel, so revealing it is opening its document, the same
+        // as clicking it.
+        if (_shortcutItems.TryGetValue(utilityId, out var shortcutItem))
         {
-            ShowLauncherDocument(launcherItem);
+            ShowShortcutDocument(shortcutItem);
             return;
         }
 
@@ -623,10 +623,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
             var railButton = AddRailItem(railItem);
 
-            // A launcher joins the group the rail draws after the gap.
-            if (railItem.Kind == RailItemKind.DocumentLauncher)
+            // A document shortcut joins the group the rail draws after the gap.
+            if (railItem.Kind == RailItemKind.DocumentShortcut)
             {
-                _launcherButtons.Add(railButton);
+                _shortcutButtons.Add(railButton);
             }
             else
             {
@@ -640,8 +640,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         UpdateProjectSettingsIssuePip();
     }
 
-    // Rebuilds the rail as two visual groups: the built-in utilities with the contribution utilities, then the
-    // launchers. The rail draws the gap at the group boundary, so no button carries layout of its own.
+    // Rebuilds the rail as two visual groups: the built-in utilities with the contribution utilities, then
+    // the document shortcuts. The rail draws the gap at the group boundary, so no button carries layout of
+    // its own.
     private void RefreshRailButtons()
     {
         _rail.ClearButtons();
@@ -651,7 +652,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         utilityGroup.AddRange(_customUtilityButtons);
 
         _rail.AddButtonGroup(utilityGroup);
-        _rail.AddButtonGroup(_launcherButtons);
+        _rail.AddButtonGroup(_shortcutButtons);
     }
 
     public void ClearRailItems()
@@ -692,15 +693,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             ViewModel.RemoveItem(utilityId);
         }
 
-        // The launchers host no live view and no content, so they are simply dropped and rebuilt.
-        foreach (var launcherItem in _launcherItems.Values)
+        // The document shortcuts host no live view and no content, so they are simply dropped and rebuilt.
+        foreach (var shortcutItem in _shortcutItems.Values)
         {
-            _buttons.Remove(launcherItem.ItemId);
-            UnregisterRailLandmark(launcherItem.ItemId);
+            _buttons.Remove(shortcutItem.ItemId);
+            UnregisterRailLandmark(shortcutItem.ItemId);
         }
 
-        _launcherItems.Clear();
-        _launcherButtons.Clear();
+        _shortcutItems.Clear();
+        _shortcutButtons.Clear();
     }
 
     public void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource)

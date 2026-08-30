@@ -124,37 +124,37 @@ public class ShowUtilityCommandTests
     }
 
     [Test]
-    public async Task Execute_Launcher_RevealsItsDocument()
+    public async Task Execute_DocumentShortcut_RevealsItsDocument()
     {
-        // A launcher opens a document rather than occupying the panel, so it is not a live utility either.
-        // An agent asked for a button the user can see has to be able to reveal it.
-        _utilityPanel.HasRailItem(BuiltInLauncherIds.Workshop).Returns(true);
+        // A document shortcut opens a document rather than occupying the panel, so it is not a live utility
+        // either. An agent asked for a button the user can see has to be able to reveal it.
+        _utilityPanel.HasRailItem(BuiltInShortcutIds.Workshop).Returns(true);
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
-            UtilityId = BuiltInLauncherIds.Workshop
+            UtilityId = BuiltInShortcutIds.Workshop
         };
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        _utilityPanel.Received(1).ShowUtility(BuiltInLauncherIds.Workshop);
+        _utilityPanel.Received(1).ShowUtility(BuiltInShortcutIds.Workshop);
 
-        // Only a live utility can be moved between areas, so a launcher never reaches the dock path.
+        // Only a live utility can be moved between areas, so a shortcut never reaches the dock path.
         await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<WorkspaceArea>());
     }
 
     [Test]
-    public async Task Execute_LauncherWithAnAreaItCannotReach_FailsRatherThanIgnoringIt()
+    public async Task Execute_ShortcutWithAnAreaItCannotReach_FailsRatherThanIgnoringIt()
     {
-        // A launcher's document opens in the area it declares. Reporting success while quietly dropping the
-        // requested area would leave a caller believing the move happened.
-        _utilityPanel.HasRailItem(BuiltInLauncherIds.Workshop).Returns(true);
-        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopLauncher() });
+        // A document shortcut's document opens in the area it declares. Reporting success while quietly
+        // dropping the requested area would leave a caller believing the move happened.
+        _utilityPanel.HasRailItem(BuiltInShortcutIds.Workshop).Returns(true);
+        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopShortcut() });
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
-            UtilityId = BuiltInLauncherIds.Workshop,
+            UtilityId = BuiltInShortcutIds.Workshop,
             TargetArea = WorkspaceArea.Side
         };
 
@@ -165,22 +165,22 @@ public class ShowUtilityCommandTests
     }
 
     [Test]
-    public async Task Execute_LauncherWithTheAreaItOpensIn_RevealsIt()
+    public async Task Execute_ShortcutWithTheAreaItOpensIn_RevealsIt()
     {
         // Naming where the item already opens is a reveal, not a move, so it succeeds.
-        _utilityPanel.HasRailItem(BuiltInLauncherIds.Workshop).Returns(true);
-        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopLauncher() });
+        _utilityPanel.HasRailItem(BuiltInShortcutIds.Workshop).Returns(true);
+        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopShortcut() });
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
-            UtilityId = BuiltInLauncherIds.Workshop,
+            UtilityId = BuiltInShortcutIds.Workshop,
             TargetArea = WorkspaceArea.Main
         };
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        _utilityPanel.Received(1).ShowUtility(BuiltInLauncherIds.Workshop);
+        _utilityPanel.Received(1).ShowUtility(BuiltInShortcutIds.Workshop);
     }
 
     [Test]
@@ -193,10 +193,10 @@ public class ShowUtilityCommandTests
         result.IsFailure.Should().BeTrue();
     }
 
-    private static UtilityRailItem CreateWorkshopLauncher()
+    private static UtilityRailItem CreateWorkshopShortcut()
     {
-        return UtilityRailItem.CreateDocumentLauncher(
-            BuiltInLauncherIds.Workshop,
+        return UtilityRailItem.CreateDocumentShortcut(
+            BuiltInShortcutIds.Workshop,
             "workshop-utility-button",
             "people",
             "Community Workshop",
