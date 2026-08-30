@@ -12,7 +12,7 @@ public sealed class SpotlightService : ISpotlightService
     private readonly ISpotlightRegistry _landmarkRegistry;
 
     // Reveal providers keyed by landmark id. Only landmarks that need preparation beyond the
-    // default surface reveal (for example the ephemeral Explorer toolbar) register one.
+    // default area reveal (for example the ephemeral Explorer toolbar) register one.
     private readonly Dictionary<string, ISpotlightLandmark> _landmarks = new();
 
     // The single active presenter, or null when none is registered.

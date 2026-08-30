@@ -12,7 +12,7 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class WorkspaceMinimumSizeTests
 {
-    // The channel between two surfaces, mirroring the GutterSize resource in Styles.xaml, which a test cannot
+    // The channel between two areas, mirroring the GutterSize resource in Styles.xaml, which a test cannot
     // resolve without an application.
     private const double GutterSize = 7;
 
@@ -67,7 +67,7 @@ public class WorkspaceMinimumSizeTests
     }
 
     [Test]
-    public void ComposeAdjacent_DropsTheChannelBesideASurfaceThatIsNotPresented()
+    public void ComposeAdjacent_DropsTheChannelBesideAnAreaThatIsNotPresented()
     {
         WorkspaceMinimumSize.ComposeAdjacent(100, 50, GutterSize).Should().Be(157);
         WorkspaceMinimumSize.ComposeAdjacent(0, 50, GutterSize).Should().Be(50);
@@ -75,14 +75,14 @@ public class WorkspaceMinimumSizeTests
     }
 
     [Test]
-    public void SpaceForSurface_OffersTheSurfaceWhateverTheContainerHasBeyondItsMinimum()
+    public void SpaceForArea_OffersTheAreaWhateverTheContainerHasBeyondItsMinimum()
     {
-        WorkspaceMinimumSize.SpaceForSurface(containerExtent: 1000, containerMinimum: 800, surfaceMinimum: 200)
+        WorkspaceMinimumSize.SpaceForArea(containerExtent: 1000, containerMinimum: 800, areaMinimum: 200)
             .Should().Be(400);
 
-        // Below the container's own minimum the space has run out for every surface at once, so the surface
-        // comes back to its floor and the excess is clipped instead.
-        WorkspaceMinimumSize.SpaceForSurface(containerExtent: 700, containerMinimum: 800, surfaceMinimum: 200)
+        // Below the container's own minimum the space has run out for every area at once, so the area comes
+        // back to its floor and the excess is clipped instead.
+        WorkspaceMinimumSize.SpaceForArea(containerExtent: 700, containerMinimum: 800, areaMinimum: 200)
             .Should().Be(200);
     }
 

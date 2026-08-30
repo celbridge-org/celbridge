@@ -65,7 +65,7 @@ public class UtilityPanelViewModelTests
         _viewModel.SelectUtility(BuiltInUtilityIds.Explorer);
 
         // The switch collapses the outgoing panel, so focus briefly relocates to another panel before the new
-        // surface receives it. That transient report must not drop the accent.
+        // utility receives it. That transient report must not drop the accent.
         _viewModel.ReconcileFocus(FocusPanelId.Documents);
 
         _explorer.IsFocused.Should().BeTrue();

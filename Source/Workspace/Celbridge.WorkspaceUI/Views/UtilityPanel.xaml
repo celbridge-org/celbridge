@@ -5,7 +5,7 @@
     xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <!-- The surface the rail selects into. Carved out of the field like a document section, so a custom utility
+    <!-- The area the rail selects into. Carved out of the field like a document section, so a custom utility
          looks the same docked into a document tab. The edges and corners here are a starting point: code-behind
          rewrites them for where the layout has put the panel. -->
     <Grid x:Name="ContentArea"
@@ -16,8 +16,8 @@
              panel each host reports focus as. -->
 
         <!-- Attention flash outline, tracing the same edges and corners as the panel's own chrome. Its
-             z-index clears the one the active surface is raised to, so the outline draws over that
-             surface's opaque rows. -->
+             z-index clears the one the active item is raised to, so the outline draws over that
+             item's opaque rows. -->
         <Border x:Name="PerimeterOverlay"
                 Canvas.ZIndex="2"
                 BorderBrush="{ThemeResource AccentBrush}"

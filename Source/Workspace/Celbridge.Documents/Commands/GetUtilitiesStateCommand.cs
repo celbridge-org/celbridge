@@ -37,50 +37,60 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 
         // Which rail button is selected is the panel's own state. Where each item lives is the register's.
         var activeUtilityId = workspaceService.UtilityPanel.ActiveUtilityId;
-        var activeDocument = documentsService.ActiveDocument;
 
         var utilities = new List<UtilityInfo>();
 
         foreach (var railItem in utilityService.GetRailItems())
         {
-            var resource = railItem.FileResource;
-
             var currentArea = utilityService.GetCurrentArea(railItem.ItemId);
-
-            // An item in the panel is selected when the rail has selected it. In a document area it is a
-            // tab, selected when it is the active document. Occupying no area at all, it is neither.
-            bool isSelected;
-            if (currentArea is null)
-            {
-                isSelected = false;
-            }
-            else if (currentArea == WorkspaceArea.Utility)
-            {
-                isSelected = activeUtilityId == railItem.ItemId;
-            }
-            else
-            {
-                isSelected = !resource.IsEmpty
-                    && activeDocument == resource;
-            }
-
-            // Being selected is not the same as being on screen: a collapsed area shows nothing, and the
-            // rail keeps its selection through a collapse so a reveal returns to it.
-            bool isVisible = isSelected
-                && currentArea is not null
-                && _layoutService.IsAreaVisible(currentArea.Value);
 
             utilities.Add(new UtilityInfo(
                 railItem.ItemId,
                 railItem.DisplayName,
                 currentArea,
                 railItem.DockArea,
-                isVisible,
-                resource));
+                IsItemVisible(railItem, currentArea, activeUtilityId, documentsService),
+                railItem.FileResource));
         }
 
         ResultValue = new UtilitiesStateSnapshot(utilities);
 
         return Result.Ok();
+    }
+
+    // Whether the user can see the item: something has to be presenting it, in an area that is not
+    // collapsed. The rail keeps its selection through a collapse so a reveal returns to it, which is why
+    // being selected is not on its own enough.
+    private bool IsItemVisible(
+        UtilityRailItem railItem,
+        WorkspaceArea? currentArea,
+        EditorId activeUtilityId,
+        IDocumentsService documentsService)
+    {
+        if (currentArea is null)
+        {
+            return false;
+        }
+
+        if (!_layoutService.IsAreaVisible(currentArea.Value))
+        {
+            return false;
+        }
+
+        if (currentArea == WorkspaceArea.Utility)
+        {
+            return activeUtilityId == railItem.ItemId;
+        }
+
+        // Each section shows its own selected tab, so a document is on screen whenever it is the one its
+        // section is showing. The active document is a single workspace-wide choice and says nothing about
+        // what the other areas are drawing.
+        var openDocument = documentsService.FindOpenDocument(railItem.FileResource);
+        if (openDocument is null)
+        {
+            return false;
+        }
+
+        return documentsService.GetSelectedDocument(openDocument.Address.Section) == railItem.FileResource;
     }
 }

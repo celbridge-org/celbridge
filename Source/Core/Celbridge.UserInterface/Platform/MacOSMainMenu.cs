@@ -141,7 +141,7 @@ internal static class MacOSMainMenu
                 MacMenuItem.Command(Text("Menu_SideArea"), TagSideArea),
                 MacMenuItem.Separator(),
                 // Full Screen and Reset Layout act on the window as a whole rather than on one
-                // surface, so they group together as they do in the layout flyout. macOS owns fullscreen,
+                // area, so they group together as they do in the layout flyout. macOS owns fullscreen,
                 // so it is a responder-chain Selector reaching the window rather than a command of ours.
                 MacMenuItem.Selector(Text("Menu_EnterFullScreen"), "toggleFullScreen:", "f", MacKeyModifier.Command | MacKeyModifier.Control),
                 MacMenuItem.Command(Text("LayoutToolbar_ResetLayoutButton"), TagResetLayout),

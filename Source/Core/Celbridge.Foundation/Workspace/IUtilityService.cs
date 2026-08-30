@@ -17,10 +17,9 @@ public interface IUtilityService
     void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems);
 
     /// <summary>
-    /// Seeds each declared workspace item's backing file and records it in the rail register, along with the
-    /// launchers, in declaration order, which is the rail order. A workspace-scoped declaration also gets a
-    /// persistent view owned by this service until the workspace unloads. A document-scoped one gets no view
-    /// until its rail button opens its document.
+    /// Seeds each declared utility's backing file and records it in the rail register, along with the
+    /// launchers, in declaration order, which is the rail order. Each utility also gets a persistent view,
+    /// owned by this service until the workspace unloads.
     /// </summary>
     Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
 
@@ -41,7 +40,7 @@ public interface IUtilityService
     /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
     /// or change which item the panel shows. Fails if no utility owns the resource.
     /// </summary>
-    Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
+    Task<Result> RestoreDockedUtilityAsync(ResourceKey resource, DocumentAddress address);
 
     /// <summary>
     /// Returns true when a live utility with this id exists, meaning one that was created at workspace load and

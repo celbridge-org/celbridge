@@ -1,4 +1,5 @@
 using Celbridge.Documents.Commands;
+using Celbridge.Packages;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -105,9 +106,9 @@ public class ShowUtilityCommandTests
     }
 
     [Test]
-    public async Task Execute_BuiltInSurface_RevealsEvenThoughItIsNotALiveUtility()
+    public async Task Execute_BuiltInUtility_RevealsEvenThoughItIsNotALiveUtility()
     {
-        // The built-in surfaces are not contributions and are never created by the utility service, so the
+        // The built-in utilities are not contributions and are never created by the utility service, so the
         // rail is what says they exist.
         _utilityPanel.HasRailItem(BuiltInUtilityIds.Explorer).Returns(true);
 
@@ -144,6 +145,45 @@ public class ShowUtilityCommandTests
     }
 
     [Test]
+    public async Task Execute_LauncherWithAnAreaItCannotReach_FailsRatherThanIgnoringIt()
+    {
+        // A launcher's document opens in the area it declares. Reporting success while quietly dropping the
+        // requested area would leave a caller believing the move happened.
+        _utilityPanel.HasRailItem(BuiltInLauncherIds.Workshop).Returns(true);
+        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopLauncher() });
+
+        var command = new ShowUtilityCommand(_workspaceWrapper)
+        {
+            UtilityId = BuiltInLauncherIds.Workshop,
+            Area = WorkspaceArea.Side
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        _utilityPanel.DidNotReceive().ShowUtility(Arg.Any<EditorId>());
+    }
+
+    [Test]
+    public async Task Execute_LauncherWithTheAreaItOpensIn_RevealsIt()
+    {
+        // Naming where the item already opens is a reveal, not a move, so it succeeds.
+        _utilityPanel.HasRailItem(BuiltInLauncherIds.Workshop).Returns(true);
+        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopLauncher() });
+
+        var command = new ShowUtilityCommand(_workspaceWrapper)
+        {
+            UtilityId = BuiltInLauncherIds.Workshop,
+            Area = WorkspaceArea.Main
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        _utilityPanel.Received(1).ShowUtility(BuiltInLauncherIds.Workshop);
+    }
+
+    [Test]
     public async Task Execute_EmptyUtilityId_Fails()
     {
         var command = new ShowUtilityCommand(_workspaceWrapper);
@@ -151,5 +191,18 @@ public class ShowUtilityCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    private static UtilityRailItem CreateWorkshopLauncher()
+    {
+        return UtilityRailItem.CreateDocumentLauncher(
+            BuiltInLauncherIds.Workshop,
+            "workshop-utility-button",
+            "people",
+            "Community Workshop",
+            "Community Workshop",
+            new ResourceKey("temp:workshop.webview"),
+            BuiltInEditors.WebViewEditorId,
+            WorkspaceArea.Main);
     }
 }

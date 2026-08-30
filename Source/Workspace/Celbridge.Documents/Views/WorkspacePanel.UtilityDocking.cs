@@ -126,12 +126,15 @@ public sealed partial class WorkspacePanel
         var utilityInfo = ViewModel.ResolveUtilityTabInfo(editorId);
         if (utilityInfo is not null)
         {
+            documentTab.ViewModel.IsUtilityEditor = true;
             documentTab.ViewModel.HasFixedTitle = true;
             documentTab.ViewModel.UtilityIconName = utilityInfo.IconName;
             documentTab.ViewModel.DocumentName = utilityInfo.Title;
             documentTab.ViewModel.UtilityTooltip = utilityInfo.Tooltip;
             return;
         }
+
+        documentTab.ViewModel.IsUtilityEditor = false;
 
         var editorTabTitle = ViewModel.ResolveEditorTabTitle(editorId);
         documentTab.ViewModel.HasFixedTitle = !string.IsNullOrEmpty(editorTabTitle);

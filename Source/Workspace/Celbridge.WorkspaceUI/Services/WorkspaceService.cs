@@ -119,7 +119,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.DiagnosticReport}");
         }
 
-        // Tick the utilities' save timers alongside the documents (their surfaces persist the same way).
+        // Tick the utilities' save timers alongside the documents (their views persist the same way).
         await UtilityService.SaveModifiedUtilities(deltaTime);
 
         // Flush any pending Workspace-scope setting writes (panel sizes, search

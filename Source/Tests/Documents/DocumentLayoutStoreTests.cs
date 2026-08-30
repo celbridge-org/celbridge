@@ -64,7 +64,7 @@ public class DocumentLayoutStoreTests
 
         // A stored utils: entry drives the dock mechanism through the utility service. Default it to success.
         _utilityService = Substitute.For<IUtilityService>();
-        _utilityService.RestoreDockedUtility(Arg.Any<ResourceKey>(), Arg.Any<DocumentAddress>())
+        _utilityService.RestoreDockedUtilityAsync(Arg.Any<ResourceKey>(), Arg.Any<DocumentAddress>())
             .Returns(Result.Ok());
         workspaceService.UtilityService.Returns(_utilityService);
 
@@ -211,7 +211,7 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_UtilityResource_DocksViaDocumentsService()
     {
-        // A utils: resource is a utility, a permanent Utility Panel surface instantiated eagerly at load. A
+        // A utils: resource is a utility, a permanent Utility Panel item instantiated eagerly at load. A
         // stored utils: entry means it was docked last session, so the restore drives the dock mechanism to
         // reparent the already-live utility into its saved position rather than opening a second document.
         var utilityResource = new ResourceKey("utils:settings._notepad");
@@ -224,7 +224,7 @@ public class DocumentLayoutStoreTests
 
         await _store.RestorePanelStateAsync();
 
-        await _utilityService.Received(1).RestoreDockedUtility(
+        await _utilityService.Received(1).RestoreDockedUtilityAsync(
             utilityResource,
             Arg.Is<DocumentAddress>(address => address.Section == DocumentSection.MainLeft && address.TabOrder == 3));
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());

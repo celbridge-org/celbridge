@@ -48,7 +48,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     /// <summary>
     /// Moves the borrowed controller's WebView into this tab's container (the dock reparent). Synchronous so
-    /// the reparent completes before the documents panel collapses the utility's panel surface. The controller
+    /// the reparent completes before the documents panel collapses the utility's panel view. The controller
     /// is already live, so there is no init here.
     /// </summary>
     public void Dock()

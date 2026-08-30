@@ -30,8 +30,8 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // This panel still owns it: every button, its state and its click belong here.
     private readonly UtilityRail _rail;
 
-    // Spotlight landmark ids for the built-in rail buttons. These must match the descriptors seeded in
-    // SpotlightLandmarks exactly.
+    // Spotlight landmark ids for the built-in rail buttons. Each is set as its button's AutomationId,
+    // which is what a landmark has to match.
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
 
@@ -192,9 +192,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _builtInUtilityButtons.Add(AddRailItem(searchItem));
     }
 
-    // Builds a rail button from a descriptor and registers everything the panel tracks for it. An item that
-    // can occupy the panel gets a rail item, a content host and a focus action. An item that only opens a
-    // document gets none of those, and its click opens that document instead.
+    // Builds a rail button and registers everything the panel tracks for it. An item that can occupy the
+    // panel gets a view model item, a content host and a focus action. An item that only opens a document
+    // gets none of those, and its click opens that document instead.
     private UtilityButton AddRailItem(UtilityRailItem item)
     {
         var railButton = new UtilityButton();
@@ -608,7 +608,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems)
     {
-        ClearRailItems();
+        RemoveBuiltRailItems();
 
         foreach (var railItem in railItems)
         {
@@ -621,9 +621,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
             var railButton = AddRailItem(railItem);
 
-            // An item with no panel view has nowhere to park a live view, so it is a launcher: it opens a
-            // document, and joins the group the rail draws after the gap. A contribution's landmark is
-            // registered here because it exists only while its package is loaded.
+            // A launcher joins the group the rail draws after the gap.
             if (railItem.Kind == RailItemKind.DocumentLauncher)
             {
                 _launcherButtons.Add(railButton);
@@ -655,6 +653,14 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     public void ClearRailItems()
+    {
+        RemoveBuiltRailItems();
+        RefreshRailButtons();
+    }
+
+    // Drops every rail item the panel built, leaving the rail itself untouched, so a rebuild redraws it once
+    // rather than once per phase.
+    private void RemoveBuiltRailItems()
     {
         // This runs on unload and on rebuild, so the revert-to-Explorer below must not persist over the user's
         // saved selection. RestoreSelectedUtility re-enables persistence once the rebuilt rail is restored.
@@ -693,8 +699,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         _launcherItems.Clear();
         _launcherButtons.Clear();
-
-        RefreshRailButtons();
     }
 
     public void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource)
@@ -769,8 +773,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             && utilityId != BuiltInUtilityIds.Search;
     }
 
-    // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".
-    // This must match the AutomationId set on the button.
     // Drops the landmark registered for a rail button, by the id the button was registered under.
     private void UnregisterRailLandmark(EditorId itemId)
     {

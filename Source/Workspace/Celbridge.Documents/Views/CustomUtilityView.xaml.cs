@@ -98,14 +98,9 @@ public sealed partial class CustomUtilityView : UserControl
 
     // Reads the document area the utility docks into from its declaration. A utility that declares none
     // has nowhere for the control to send it, so the control is hidden.
-    private void ApplyDeclaredAreas(UtilityDescriptor? descriptor)
+    private void ApplyDockArea(UtilityDescriptor? descriptor)
     {
-        _openAsDocumentArea = null;
-
-        if (descriptor is not null)
-        {
-            _openAsDocumentArea = descriptor.DockArea;
-        }
+        _openAsDocumentArea = descriptor?.DockArea;
 
         OpenAsDocumentButton.Visibility = _openAsDocumentArea is null
             ? Visibility.Collapsed
@@ -120,7 +115,7 @@ public sealed partial class CustomUtilityView : UserControl
     {
         _utilityId = resolvedEditor.EditorId;
 
-        ApplyDeclaredAreas(resolvedEditor.Contribution.UtilityDescriptor);
+        ApplyDockArea(resolvedEditor.Contribution.UtilityDescriptor);
 
         PanelHeaderControl.Title = displayName;
 

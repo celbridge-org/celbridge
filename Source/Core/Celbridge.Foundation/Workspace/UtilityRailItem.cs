@@ -157,6 +157,31 @@ public sealed record UtilityRailItem
     }
 
     /// <summary>
+    /// A utility a package contributes, whose declared dock area decides its kind: an area makes it
+    /// dockable into a tab there, and null keeps it in the Utility Panel.
+    /// </summary>
+    public static UtilityRailItem CreateContributedUtility(
+        EditorId itemId,
+        string landmarkId,
+        string iconName,
+        string displayName,
+        string tooltip,
+        ResourceKey fileResource,
+        EditorId editorId,
+        UtilityRailPanelView panelView,
+        WorkspaceArea? dockArea)
+    {
+        if (dockArea is null)
+        {
+            return CreatePanelUtility(
+                itemId, landmarkId, iconName, displayName, tooltip, panelView, fileResource, editorId);
+        }
+
+        return CreateDockableUtility(
+            itemId, landmarkId, iconName, displayName, tooltip, fileResource, editorId, panelView, dockArea.Value);
+    }
+
+    /// <summary>
     /// A button that opens a document in the given area.
     /// </summary>
     public static UtilityRailItem CreateDocumentLauncher(

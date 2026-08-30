@@ -333,7 +333,7 @@ public sealed class DocumentAreaLayout
     // is always mounted, measures the chrome on behalf of all of them.
     private Size SectionMinimumSize => _sectionLookup(DocumentArea.Main.GetPrimarySection()).MinimumSize;
 
-    // The channel between two surfaces. The splitter in it takes this size, which is what holds the gap open.
+    // The channel between two areas. The splitter in it takes this size, which is what holds the gap open.
     private static double GutterSize => (double)Application.Current.Resources["GutterSize"];
 
     // The floor a split area's sections are held at, along the axis its split splitter moves.

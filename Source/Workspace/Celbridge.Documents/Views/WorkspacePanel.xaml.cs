@@ -684,6 +684,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         return documents;
     }
 
+    public ResourceKey GetSelectedDocument(DocumentSection section)
+    {
+        return SectionContainer.GetSection(section).GetSelectedDocument();
+    }
+
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
         var effectiveOptions = options ?? new OpenDocumentOptions();

@@ -48,7 +48,7 @@ internal sealed class AppStateProvider : IAppStateProvider
     private readonly ILayoutService _layoutService;
     private readonly ISpotlightRegistry _spotlightRegistry;
 
-    // The most recently broadcast active Utility Panel surface, cached from ActiveUtilityChangedMessage so
+    // The most recently broadcast active Utility Panel item, cached from ActiveUtilityChangedMessage so
     // app_get_state can report it without reading the UI panel off the tool thread. Reference assignment is
     // atomic, so the cross-thread read needs no lock.
     private string _activeUtilityId = string.Empty;

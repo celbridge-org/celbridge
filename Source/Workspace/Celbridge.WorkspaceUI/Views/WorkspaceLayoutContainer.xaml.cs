@@ -7,13 +7,13 @@ using Windows.Foundation;
 namespace Celbridge.WorkspaceUI.Views;
 
 /// <summary>
-/// Lays out the workspace surfaces: the Utility Rail and Utility Panel it hosts, the three document-area
-/// grids, and the splitters that size them. This control owns surface geometry only, with the presentation
+/// Lays out the workspace areas: the Utility Rail and Utility Panel it hosts, the three document-area
+/// grids, and the splitters that size them. This control owns area geometry only, with the presentation
 /// pushed in as a snapshot.
 /// </summary>
 public sealed partial class WorkspaceLayoutContainer : UserControl
 {
-    // Positions in the workspace grid: the tracks each surface sits in. A surface beside the document areas
+    // Positions in the workspace grid: the tracks each area sits in. An area beside the document areas
     // runs the full height of the grid, and shortens to the Main area row alone once the Bottom area runs
     // underneath it.
     private const int UtilityPanelColumnIndex = 1;
@@ -39,19 +39,19 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
         BottomAreaSpansSideArea: false);
 
     /// <summary>
-    /// Raised when a resizable surface is dragged to a new size, carrying its new height (Bottom area)
+    /// Raised when a resizable area is dragged to a new size, carrying its new height (Bottom area)
     /// or width (Utility Panel, Side area).
     /// </summary>
     public event Action<WorkspaceArea, double>? AreaSizeChanged;
 
     /// <summary>
-    /// Raised when a surface splitter is double-clicked, asking for that surface's default size.
+    /// Raised when an area splitter is double-clicked, asking for that area's default size.
     /// </summary>
     public event Action<WorkspaceArea>? AreaSizeResetRequested;
 
     /// <summary>
-    /// Raised when the space the workspace has to divide changes, asking for the stored surface sizes to be
-    /// applied again. The stored size is the one the user set, so a surface held narrower to fit a smaller
+    /// Raised when the space the workspace has to divide changes, asking for the stored area sizes to be
+    /// applied again. The stored size is the one the user set, so an area held narrower to fit a smaller
     /// window comes back to it when the space returns.
     /// </summary>
     public event Action? StoredAreaSizesNeeded;
@@ -85,7 +85,7 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
     {
         InitializeComponent();
 
-        // The stored sizes arrive with the workspace settings, so the resizable surfaces open at their
+        // The stored sizes arrive with the workspace settings, so the resizable areas open at their
         // defaults until then.
         UtilityPanelColumn.Width = new GridLength(WorkspaceConstants.UtilityPanelWidth);
         SideAreaColumn.Width = new GridLength(WorkspaceConstants.SideAreaWidth);
@@ -100,14 +100,14 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
 
         InitializeAreaSplitters();
 
-        // A pixel-sized surface holds its width as the window shrinks, so the star tracks take the whole
-        // shortfall and the surfaces past them are pushed off the window once those reach their floors. The
-        // sizes are applied again against the new extent instead, which holds each surface to what still fits.
+        // A pixel-sized area holds its width as the window shrinks, so the star tracks take the whole
+        // shortfall and the areas past them are pushed off the window once those reach their floors. The
+        // sizes are applied again against the new extent instead, which holds each area to what still fits.
         SizeChanged += (s, e) => StoredAreaSizesNeeded?.Invoke();
     }
 
     /// <summary>
-    /// The smallest size the workspace can be laid out at: every surface it is presenting at its own
+    /// The smallest size the workspace can be laid out at: every area it is presenting at its own
     /// minimum, with the channels between them, and the channel above the document areas.
     /// </summary>
     public Size MinimumSize => CreateComposer().MinimumSize;
@@ -131,7 +131,7 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
     }
 
     /// <summary>
-    /// Applies a presentation snapshot: which surfaces are visible, and which neighbours the Bottom
+    /// Applies a presentation snapshot: which areas are visible, and which neighbours the Bottom
     /// area spans across. Main shares its column with Bottom, so an area only takes a fixed size while
     /// it sits alongside another one; the sole presented area takes the whole panel.
     /// </summary>
@@ -153,7 +153,7 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
         UtilityPanelHost.Visibility = isUtilityPanelPresented ? Visibility.Visible : Visibility.Collapsed;
         UtilityRailHost.Visibility = presentation.IsUtilityRailPresented ? Visibility.Visible : Visibility.Collapsed;
 
-        // A splitter only earns its place between two presented surfaces.
+        // A splitter only earns its place between two presented areas.
         bool showBottomSplitter = isMainPresented && isBottomPresented;
         bool showSideSplitter = isSidePresented && isMainColumnPresented;
         BottomAreaSplitter.Visibility = showBottomSplitter ? Visibility.Visible : Visibility.Collapsed;
@@ -198,20 +198,20 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
         }
 
         // Every track holds the floor composed for what it is presenting, including the star tracks the Main
-        // area sits in: they take whatever the pixel-sized surfaces leave, so a track without a floor of its
-        // own is the one that absorbs every shortfall. A surface that is not presented composes to zero, which
+        // area sits in: they take whatever the pixel-sized areas leave, so a track without a floor of its
+        // own is the one that absorbs every shortfall. An area that is not presented composes to zero, which
         // is what lets the zero track sizes above hold.
         MainAreaRow.MinHeight = composer.MainRowMinimumHeight;
         MainAreaColumn.MinWidth = composer.MainColumnMinimumWidth;
         BottomAreaRow.MinHeight = composer.BottomAreaMinimumHeight;
         SideAreaColumn.MinWidth = composer.SideAreaMinimumWidth;
 
-        ClampPresentedSurfaceSizes();
+        ClampPresentedAreaSizes();
     }
 
     /// <summary>
     /// Sets the width of the Utility Panel, the height of the Bottom area or the width of the Side area,
-    /// clamped to what the current layout leaves for it. Ignored while the surface is hidden, and for an
+    /// clamped to what the current layout leaves for it. Ignored while the area is hidden, and for an
     /// area that is the only one presented, because a sole presented area fills the panel.
     /// </summary>
     public void SetAreaSize(WorkspaceArea area, double size)
@@ -250,12 +250,12 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
         }
     }
 
-    // A surface holds the size it was given while its peers were different ones, so revealing a surface, or
+    // An area holds the size it was given while its peers were different ones, so revealing an area, or
     // spanning the Bottom area across one, can leave a size the arrangement no longer has room for. Only the
     // pixel-sized tracks are re-clamped: a star-sized track is a sole presented area filling the panel. Each
     // clamp composes against the sizes the ones before it settled at, so the Side area is offered what the
     // Utility Panel has already taken and the two add up to the extent rather than overshooting it.
-    private void ClampPresentedSurfaceSizes()
+    private void ClampPresentedAreaSizes()
     {
         if (_presentation.IsUtilityPanelPresented &&
             UtilityPanelColumn.Width.IsAbsolute)
@@ -312,7 +312,7 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
         return AreaMinimumSizes(area);
     }
 
-    // A star-sized track is a sole presented surface filling the workspace rather than a width the composition
+    // A star-sized track is a sole presented area filling the workspace rather than a width the composition
     // has to work around, so it reports no width of its own.
     private static double? ResolveTrackWidth(GridLength trackSize)
     {
@@ -324,11 +324,11 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
         return trackSize.Value;
     }
 
-    // The channel between two surfaces. The splitter in it takes this size, which is what holds the gap open.
+    // The channel between two areas. The splitter in it takes this size, which is what holds the gap open.
     private static double GutterSize => (double)Application.Current.Resources["GutterSize"];
 
-    // Spans the Bottom area, and the splitter that sizes it, across the surfaces the presentation says
-    // it covers, and stops those surfaces above it. The columns of a hidden surface are already zero
+    // Spans the Bottom area, and the splitter that sizes it, across the areas the presentation says
+    // it covers, and stops those areas above it. The columns of a hidden area are already zero
     // wide, so the spans need no visibility conditions of their own.
     private void ApplyBottomAreaSpans(WorkspaceLayoutPresentation presentation)
     {
@@ -368,8 +368,8 @@ public sealed partial class WorkspaceLayoutContainer : UserControl
     // measured from the near edge.
     private void InitializeAreaSplitters()
     {
-        // Each splitter is held between its surface's own floor and the space the arrangement leaves it, the
-        // same pair of values every other site that sizes a surface asks for. Both ends are composed on every
+        // Each splitter is held between its area's own floor and the space the arrangement leaves it, the
+        // same pair of values every other site that sizes an area asks for. Both ends are composed on every
         // delta rather than captured here, so a floor that moves with the layout is honoured.
         _utilityPanelSplitterHelper = new SplitterHelper(
             RootGrid,

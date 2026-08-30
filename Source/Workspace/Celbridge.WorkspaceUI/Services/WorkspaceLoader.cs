@@ -158,7 +158,7 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Create a persistent surface for every utility and build their rail. This runs before the documents are
+        // Create a persistent view for every utility and build their rail. This runs before the documents are
         // restored so a utility that was docked as a document last session is reparented into its saved tab
         // rather than opened as a second instance.
         await BuildUtilities();
@@ -168,7 +168,7 @@ public class WorkspaceLoader
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
-        // Restore the previously selected Utility Panel tab, after documents are restored so a persisted surface
+        // Restore the previously selected Utility Panel tab, after documents are restored so a persisted utility
         // that ended up docked falls back to Explorer rather than showing an empty panel.
         _workspaceWrapper.WorkspaceService.UtilityPanel.RestoreSelectedUtility();
 

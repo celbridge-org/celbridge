@@ -33,7 +33,7 @@ public class GetUtilitiesStateCommandTests
         // Nothing has moved, so every item is where its descriptor puts it.
         _utilityService.GetCurrentArea(Arg.Any<EditorId>()).Returns(WorkspaceArea.Utility);
 
-        // Nothing is collapsed unless a test says so, so isShown follows the selection.
+        // Nothing is collapsed unless a test says so, so isVisible follows what is presenting the item.
         _layoutService = Substitute.For<ILayoutService>();
         _layoutService.IsAreaVisible(Arg.Any<WorkspaceArea>()).Returns(true);
         _utilityService.GetCurrentArea(BuiltInLauncherIds.Workshop).Returns(WorkspaceArea.Main);
@@ -142,12 +142,12 @@ public class GetUtilitiesStateCommandTests
     }
 
     [Test]
-    public async Task Execute_ItemInADocumentArea_IsShownWhenItIsTheActiveDocument()
+    public async Task Execute_ItemInADocumentArea_IsVisibleWhenItsSectionIsShowingIt()
     {
-        // The utility has been docked, so its area comes from the register rather than its descriptor, and it
-        // is shown by being the active document rather than by the rail selection.
+        // The utility has been docked, so its area comes from the register rather than its descriptor, and
+        // its section showing it is what puts it on screen rather than the rail selection.
         _utilityService.GetCurrentArea(NotepadId).Returns(WorkspaceArea.Main);
-        _documentsService.ActiveDocument.Returns(NotepadResource);
+        OpenDocumentInSection(NotepadResource, DocumentSection.MainLeft, isSelected: true);
 
         var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 
@@ -157,9 +157,57 @@ public class GetUtilitiesStateCommandTests
         notepad.CurrentArea.Should().Be(WorkspaceArea.Main);
         notepad.IsVisible.Should().BeTrue();
 
-        // The Workshop is in a document area too, but its document is not the active one.
+        // The Workshop is in a document area too, but no section is showing its document.
         var workshop = command.ResultValue.Utilities.Single(utility => utility.UtilityId == BuiltInLauncherIds.Workshop);
         workshop.IsVisible.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Execute_ItemInAnotherAreaThanTheActiveDocument_IsStillVisible()
+    {
+        // Each section shows its own selected tab, so a utility docked in the Bottom area is on screen even
+        // while the user is working in a document in Main.
+        _utilityService.GetCurrentArea(NotepadId).Returns(WorkspaceArea.Bottom);
+        OpenDocumentInSection(NotepadResource, DocumentSection.BottomLeft, isSelected: true);
+
+        var otherDocument = new ResourceKey("notes/readme.md");
+        _documentsService.ActiveDocument.Returns(otherDocument);
+        OpenDocumentInSection(otherDocument, DocumentSection.MainLeft, isSelected: true);
+
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
+
+        await command.ExecuteAsync();
+
+        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == NotepadId);
+        notepad.IsVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Execute_ItemBehindAnotherTabInItsSection_IsNotVisible()
+    {
+        // Open in the Bottom area, but another tab in that section is the one drawn.
+        _utilityService.GetCurrentArea(NotepadId).Returns(WorkspaceArea.Bottom);
+        OpenDocumentInSection(NotepadResource, DocumentSection.BottomLeft, isSelected: false);
+
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
+
+        await command.ExecuteAsync();
+
+        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == NotepadId);
+        notepad.IsVisible.Should().BeFalse();
+    }
+
+    // Reports a document as open in a section, and optionally as the tab that section is showing.
+    private void OpenDocumentInSection(ResourceKey resource, DocumentSection section, bool isSelected)
+    {
+        var address = new DocumentAddress(WindowIndex: 0, Section: section, TabOrder: 0);
+        _documentsService.FindOpenDocument(resource)
+            .Returns(new OpenDocumentInfo(resource, address, EditorId.Empty));
+
+        if (isSelected)
+        {
+            _documentsService.GetSelectedDocument(section).Returns(resource);
+        }
     }
 
     [Test]

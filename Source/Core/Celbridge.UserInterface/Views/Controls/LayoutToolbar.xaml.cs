@@ -96,7 +96,7 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdateWorkspaceControlsVisibility()
     {
-        // Everything this toolbar offers acts on the workspace surfaces, so the whole toolbar goes away
+        // Everything this toolbar offers acts on the workspace areas, so the whole toolbar goes away
         // while no workspace is loaded rather than leaving a layout button whose flyout has nothing to show.
         bool isWorkspaceLoaded = _workspaceWrapper.IsWorkspaceLoaded;
 

@@ -226,7 +226,7 @@ public class MainMenu
 
     private MenuFlyoutSubItem CreateViewSubItem()
     {
-        // Everything here except the theme acts on the workspace surfaces.
+        // Everything here except the theme acts on the workspace areas.
         var isWorkspaceLoaded = _viewMenuViewModel.IsWorkspaceLoaded;
 
         // Unlike the File submenu, the items here carry no icons: a check mark and an icon share the same
@@ -274,7 +274,7 @@ public class MainMenu
 
         viewSubItem.Items.Add(new MenuFlyoutSeparator());
 
-        // Full Screen and Reset Layout act on the window as a whole rather than on one surface, so they
+        // Full Screen and Reset Layout act on the window as a whole rather than on one area, so they
         // group together as they do in the layout flyout. Where the platform supplies fullscreen through
         // the window chrome the app offers no toggle of its own (see LayoutToolbar, which hides the same
         // control).

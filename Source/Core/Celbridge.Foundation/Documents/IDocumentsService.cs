@@ -103,6 +103,12 @@ public interface IDocumentsService
     OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource);
 
     /// <summary>
+    /// The document a section is currently showing, or empty when the section holds none. Each section
+    /// keeps its own selection, so this is not the same as the active document.
+    /// </summary>
+    ResourceKey GetSelectedDocument(DocumentSection section);
+
+    /// <summary>
     /// Creates a document view for the given file resource. When editorId is
     /// non-empty, uses that specific editor instead of the default resolution
     /// chain. Fails if the resource does not exist.

@@ -534,7 +534,7 @@ public class LayoutManagerTests
     [Test]
     public void SetBottomAreaAlignment_InPresentationMode_StillPersists()
     {
-        // Alignment is a layout preference rather than a mode, so unlike surface visibility it is not
+        // Alignment is a layout preference rather than a mode, so unlike area visibility it is not
         // treated as transient presentation state.
         _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
 

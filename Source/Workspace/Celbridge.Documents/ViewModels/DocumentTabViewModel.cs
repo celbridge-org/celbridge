@@ -60,6 +60,14 @@ public partial class DocumentTabViewModel : ObservableObject
     private bool _hasFixedTitle;
 
     /// <summary>
+    /// True when the tab's editor is a utility editor, so the tab presents that editor's identity: the
+    /// manifest icon, title and tooltip in place of the ones its file would give it. A docked utility is
+    /// always one of these, and so is any tab a utility editor opens.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isUtilityEditor;
+
+    /// <summary>
     /// The Bootstrap glyph name for a utility tab's icon, sourced from the manifest. Empty for
     /// ordinary document tabs.
     /// </summary>
@@ -92,7 +100,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         get
         {
-            if (IsDockedUtility)
+            if (IsUtilityEditor)
             {
                 return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
             }
@@ -112,6 +120,11 @@ public partial class DocumentTabViewModel : ObservableObject
     }
 
     partial void OnUtilityTooltipChanged(string value)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnIsUtilityEditorChanged(bool value)
     {
         OnPropertyChanged(nameof(TabTooltip));
     }

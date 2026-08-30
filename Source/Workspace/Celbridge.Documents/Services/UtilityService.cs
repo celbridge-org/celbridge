@@ -23,8 +23,8 @@ public class UtilityService : IUtilityService, IDisposable
 
     private readonly List<CustomUtilityView> _utilities = new();
 
-    // Spotlight landmark ids for the launcher rail buttons. These must match the descriptors seeded in
-    // SpotlightLandmarks exactly.
+    // Spotlight landmark ids for the launcher rail buttons. The Utility Panel sets each one as the button's
+    // AutomationId, which is what a landmark has to match.
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
     private const string WorkshopLandmarkId = "workshop-utility-button";
 
@@ -33,6 +33,11 @@ public class UtilityService : IUtilityService, IDisposable
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
     private readonly List<UtilityRailItem> _contributedItems = new();
     private readonly List<UtilityRailItem> _builtInLauncherItems = new();
+
+    // The three groups above as one ordered list, and the same items by id. Rebuilt whenever a group
+    // changes, so a reader never pays to assemble them.
+    private readonly List<UtilityRailItem> _railItems = new();
+    private readonly Dictionary<EditorId, UtilityRailItem> _railItemsById = new();
 
     private bool _disposed;
 
@@ -63,16 +68,27 @@ public class UtilityService : IUtilityService, IDisposable
     {
         _builtInUtilityItems.Clear();
         _builtInUtilityItems.AddRange(builtInUtilityItems);
+
+        RebuildRailRegister();
     }
 
     public IReadOnlyList<UtilityRailItem> GetRailItems()
     {
-        var railItems = new List<UtilityRailItem>();
-        railItems.AddRange(_builtInUtilityItems);
-        railItems.AddRange(_contributedItems);
-        railItems.AddRange(_builtInLauncherItems);
+        return _railItems;
+    }
 
-        return railItems;
+    private void RebuildRailRegister()
+    {
+        _railItems.Clear();
+        _railItems.AddRange(_builtInUtilityItems);
+        _railItems.AddRange(_contributedItems);
+        _railItems.AddRange(_builtInLauncherItems);
+
+        _railItemsById.Clear();
+        foreach (var railItem in _railItems)
+        {
+            _railItemsById[railItem.ItemId] = railItem;
+        }
     }
 
     public WorkspaceArea? GetCurrentArea(EditorId itemId)
@@ -84,32 +100,27 @@ public class UtilityService : IUtilityService, IDisposable
             return utility.Area;
         }
 
-        foreach (var railItem in GetRailItems())
+        if (!_railItemsById.TryGetValue(itemId, out var railItem))
         {
-            if (railItem.ItemId != itemId)
-            {
-                continue;
-            }
-
-            switch (railItem.Kind)
-            {
-                case RailItemKind.PanelUtility:
-                case RailItemKind.DockableUtility:
-                    // Explorer and Search are registered without ever entering _utilities, because the
-                    // panel owns their views. The panel is where they are.
-                    return WorkspaceArea.Utility;
-
-                case RailItemKind.DocumentLauncher:
-                    // A launcher's document sits wherever the user last moved its tab. Closed, it occupies
-                    // no area at all, and DockArea is what says where it would open.
-                    return FindOpenDocumentArea(railItem.FileResource);
-
-                default:
-                    throw new NotSupportedException($"Unhandled rail item kind '{railItem.Kind}'");
-            }
+            return null;
         }
 
-        return null;
+        switch (railItem.Kind)
+        {
+            case RailItemKind.PanelUtility:
+            case RailItemKind.DockableUtility:
+                // Explorer and Search are registered without ever entering _utilities, because the panel
+                // owns their views. The panel is where they are.
+                return WorkspaceArea.Utility;
+
+            case RailItemKind.DocumentLauncher:
+                // A launcher's document sits wherever the user last moved its tab. Closed, it occupies no
+                // area at all, and DockArea is what says where it would open.
+                return FindOpenDocumentArea(railItem.FileResource);
+
+            default:
+                throw new NotSupportedException($"Unhandled rail item kind '{railItem.Kind}'");
+        }
     }
 
     // The area holding the open document for a resource, or null when no document is open for it.
@@ -173,25 +184,17 @@ public class UtilityService : IUtilityService, IDisposable
             var landmarkId = $"{utilityId}-utility-button";
             var railPanelView = new UtilityRailPanelView(panelView, panelView.FocusPanel, FocusPanelId.CustomUtility);
 
-            UtilityRailItem railItem;
-            if (descriptor.DockArea is null)
-            {
-                railItem = UtilityRailItem.CreatePanelUtility(
-                    utilityId, landmarkId, descriptor.Icon, displayName, tooltip, railPanelView,
-                    resource, resolvedEditor.EditorId);
-            }
-            else
-            {
-                railItem = UtilityRailItem.CreateDockableUtility(
-                    utilityId, landmarkId, descriptor.Icon, displayName, tooltip,
-                    resource, resolvedEditor.EditorId, railPanelView, descriptor.DockArea.Value);
-            }
+            var railItem = UtilityRailItem.CreateContributedUtility(
+                utilityId, landmarkId, descriptor.Icon, displayName, tooltip,
+                resource, resolvedEditor.EditorId, railPanelView, descriptor.DockArea);
 
             _contributedItems.Add(railItem);
         }
 
         _builtInLauncherItems.Clear();
         _builtInLauncherItems.AddRange(BuildBuiltInLauncherItems());
+
+        RebuildRailRegister();
     }
 
     // Builds a workspace-scoped utility's persistent view: the one the Utility Panel hosts and the dock
@@ -265,8 +268,10 @@ public class UtilityService : IUtilityService, IDisposable
         return launcherItems;
     }
 
-    public async Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address)
+    public async Task<Result> RestoreDockedUtilityAsync(ResourceKey resource, DocumentAddress address)
     {
+        await Task.CompletedTask;
+
         var panelView = _utilities.FirstOrDefault(utility => utility.FileResource == resource);
         if (panelView is null)
         {
@@ -322,8 +327,8 @@ public class UtilityService : IUtilityService, IDisposable
             return DockUtilityInPanel(panelView);
         }
 
-        var railItem = FindUtilityItem(utilityId);
-        if (railItem is not null
+        // A live utility is always in the register, so a missing entry cannot happen here.
+        if (_railItemsById.TryGetValue(utilityId, out var railItem)
             && railItem.Kind == RailItemKind.PanelUtility)
         {
             return Result.Fail(
@@ -332,13 +337,6 @@ public class UtilityService : IUtilityService, IDisposable
         }
 
         return DockUtilityAsDocument(panelView, dockArea.Value);
-    }
-
-    // The rail item holding a utility's declaration. Null for an id the register does not hold, which
-    // cannot happen for a live utility.
-    private UtilityRailItem? FindUtilityItem(EditorId utilityId)
-    {
-        return _contributedItems.FirstOrDefault(item => item.ItemId == utilityId);
     }
 
     // Docks a utility into a document tab in the area's primary section, reusing its live WebView. A utility
