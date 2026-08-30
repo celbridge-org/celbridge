@@ -55,22 +55,23 @@
 
             <!-- Tab content -->
             <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                <!-- Ordinary document tabs show a file-type icon; utility tabs show their manifest glyph in
-                     the tab's own text colour. Every file-type icon is held inside a luminance band that
-                     excludes that colour, so an untinted glyph is what marks the tab as a docked utility. -->
+                <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens shows that
+                     editor's manifest glyph in the tab's own text colour. Every file-type icon is held
+                     inside a luminance band that excludes that colour, so an untinted glyph is what marks
+                     the tab as a utility. -->
                 <controls:FileIcon x:Name="ResourceIcon"
                                    Source="{x:Bind ViewModel.FileName, Mode=OneWay}"
                                    Size="18"
                                    MinWidth="22"
                                    Margin="0"
-                                   Visibility="{x:Bind ViewModel.IsUtility, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}" />
+                                   Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}" />
 
                 <controls:Icon x:Name="UtilityIcon"
                                IconName="{x:Bind ViewModel.UtilityIconName, Mode=OneWay}"
                                FontSize="16"
                                MinWidth="20"
                                Margin="0"
-                               Visibility="{x:Bind ViewModel.IsUtility, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                               Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                 <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
                            Margin="4,0,0,0"

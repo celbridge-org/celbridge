@@ -10,12 +10,12 @@ The editor is divided into three areas. Main is always visible; Bottom and Side 
 
 | Section | Area | Present when |
 | --- | --- | --- |
-| `MainLeft` | Main | always |
-| `MainRight` | Main | Main is split |
-| `BottomLeft` | Bottom | Bottom is visible |
-| `BottomRight` | Bottom | Bottom is visible and split |
-| `SideTop` | Side | Side is visible |
-| `SideBottom` | Side | Side is visible and split |
+| `main_left` | Main | always |
+| `main_right` | Main | Main is split |
+| `bottom_left` | Bottom | Bottom is visible |
+| `bottom_right` | Bottom | Bottom is visible and split |
+| `side_top` | Side | Side is visible |
+| `side_bottom` | Side | Side is visible and split |
 
 Main and Bottom split into left and right; Side splits into top and bottom.
 

@@ -3,6 +3,7 @@ using Celbridge.Messaging.Services;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -34,9 +35,9 @@ public class LayoutManagerTests
         // workspace settings facade reached through the workspace wrapper.
         _workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
 
-        // Default to all panels visible. Set the value (rather than stubbing the
+        // Default to every area visible. Set the value (rather than stubbing the
         // getter) so writes by the layout manager are reflected on subsequent reads.
-        _workspaceSettings.PreferredSurfaceVisibility = WorkspaceSurface.All;
+        _workspaceSettings.PreferredVisibleAreas = WorkspaceAreaHelper.AllAreasVisible;
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -68,45 +69,45 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void InitialState_SurfaceVisibilityIsAllByDefault()
+    public void InitialState_EveryAreaIsVisibleByDefault()
     {
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
     }
 
     [Test]
-    public void InitialState_AllPanelsAreVisible()
+    public void InitialState_EachAreaReportsVisible()
     {
-        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
-        _layoutManager.IsSideAreaVisible.Should().BeTrue();
-        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Side).Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
     }
 
     [Test]
-    public void TransitionToFocus_FromDefault_HidesSidePanels()
+    public void TransitionToFocus_FromDefault_HidesEveryCollapsibleArea()
     {
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.None);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
 
         // Fullscreen is independent of the layout mode.
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]
-    public void TransitionToPresentation_FromDefault_HidesSidePanels()
+    public void TransitionToPresentation_FromDefault_HidesEveryCollapsibleArea()
     {
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Presentation);
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.None);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]
-    public void TransitionToDefault_FromFocus_RestoresPreferredSurfaceVisibility()
+    public void TransitionToDefault_FromFocus_RestoresThePreferredAreas()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
@@ -114,7 +115,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
     }
 
     [Test]
@@ -135,7 +136,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.None);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
     }
 
     [Test]
@@ -206,102 +207,113 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SetSurfaceVisibility_HideSinglePanel_UpdatesVisibility()
+    public void SetAreaVisibility_HideOneArea_UpdatesVisibility()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
 
-        _layoutManager.IsUtilityPanelVisible.Should().BeFalse();
-        _layoutManager.IsSideAreaVisible.Should().BeTrue();
-        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeFalse();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Side).Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
     }
 
     [Test]
-    public void SetSurfaceVisibility_ShowHiddenPanel_UpdatesVisibility()
+    public void SetAreaVisibility_ShowHiddenArea_UpdatesVisibility()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, false);
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, true);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Bottom, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Bottom, true);
 
-        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
     }
 
     [Test]
-    public void ToggleSurfaceVisibility_TogglesPanel()
+    public void ToggleAreaVisibility_TogglesTheArea()
     {
-        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeTrue();
 
-        _layoutManager.ToggleSurfaceVisibility(WorkspaceSurface.UtilityPanel);
+        _layoutManager.ToggleAreaVisibility(WorkspaceArea.Utility);
 
-        _layoutManager.IsUtilityPanelVisible.Should().BeFalse();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeFalse();
 
-        _layoutManager.ToggleSurfaceVisibility(WorkspaceSurface.UtilityPanel);
+        _layoutManager.ToggleAreaVisibility(WorkspaceArea.Utility);
 
-        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeTrue();
     }
 
     [Test]
-    public void SetSurfaceVisibility_InFocusMode_ReturnsToDefault()
+    public void SetAreaVisibility_InFocusMode_ReturnsToDefault()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        // Manually showing a panel means the user is customizing the layout, so the mode returns to
-        // Default rather than staying in Focus with a panel visible.
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+        // Manually showing an area means the user is customizing the layout, so the mode returns to
+        // Default rather than staying in Focus with an area visible.
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, true);
 
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
-        _layoutManager.IsUtilityPanelVisible.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeTrue();
     }
 
     [Test]
-    public void SetSurfaceVisibility_InFocusMode_KeepsThePanelsTheModeHid()
+    public void SetAreaVisibility_InFocusMode_KeepsTheAreasTheModeHid()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        // Focus hides every surface transiently, so showing one from there returns to the layout the user
-        // prefers with that surface shown.
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+        // Focus hides every collapsible area transiently, so showing one from there returns to the layout
+        // the user prefers with that area shown.
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, true);
 
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);
-        _workspaceSettings.PreferredSurfaceVisibility.Should()
-            .Be(WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea);
+        _layoutManager.VisibleAreas.Should()
+            .BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom));
+        _workspaceSettings.PreferredVisibleAreas.Should()
+            .BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom));
     }
 
     [Test]
-    public void SetSurfaceVisibility_InPresentationMode_PersistsTheComposedLayout()
+    public void SetAreaVisibility_InPresentationMode_PersistsTheComposedLayout()
     {
-        // Preferred is now UtilityPanel and BottomArea, with SideArea hidden.
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        // The Side area is now the only one the user has hidden.
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
         _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
 
-        // Showing SideArea from Presentation composes a visibility the stored preference does not hold.
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, true);
+        // Showing the Side area from Presentation composes a layout the stored preference does not hold.
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, true);
 
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
-        _workspaceSettings.PreferredSurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
+        _workspaceSettings.PreferredVisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
     }
 
     [Test]
-    public void SetSurfaceVisibility_SameState_NoChange()
+    public void SetAreaVisibility_Main_FailsAndLeavesTheLayoutAlone()
+    {
+        var result = _layoutManager.SetAreaVisibility(WorkspaceArea.Main, false);
+
+        result.IsFailure.Should().BeTrue();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Main).Should().BeTrue();
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
+    }
+
+    [Test]
+    public void SetAreaVisibility_SameState_NoChange()
     {
         bool messageReceived = false;
         var recipient = new object();
-        _messengerService.Register<SurfaceVisibilityChangedMessage>(recipient, (r, m) => messageReceived = true);
+        _messengerService.Register<AreaVisibilityChangedMessage>(recipient, (r, m) => messageReceived = true);
 
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, true);
 
         messageReceived.Should().BeFalse();
     }
 
     [Test]
-    public void ResetLayout_RestoresAllPanelsVisible()
+    public void ResetLayout_RestoresEveryAreaVisible()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
 
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
     }
 
     [Test]
@@ -338,11 +350,11 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ResetLayout_ResetsPreferredSurfaceVisibilityInWorkspaceSettings()
+    public void ResetLayout_ClearsTheHiddenAreasInWorkspaceSettings()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
-        _workspaceSettings.Received().PreferredSurfaceVisibility = WorkspaceSurface.All;
+        AssertPersistedPreferredAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom, WorkspaceArea.Side);
     }
 
     [Test]
@@ -372,112 +384,111 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SurfaceVisibilityChange_SendsSurfaceVisibilityChangedMessage()
+    public void AreaVisibilityChange_SendsAreaVisibilityChangedMessage()
     {
-        SurfaceVisibilityChangedMessage? receivedMessage = null;
+        AreaVisibilityChangedMessage? receivedMessage = null;
         var recipient = new object();
-        _messengerService.Register<SurfaceVisibilityChangedMessage>(recipient, (r, m) => receivedMessage = m);
+        _messengerService.Register<AreaVisibilityChangedMessage>(recipient, (r, m) => receivedMessage = m);
 
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
 
         receivedMessage.Should().NotBeNull();
-        receivedMessage!.SurfaceVisibility.Should().Be(WorkspaceSurface.SideArea | WorkspaceSurface.BottomArea);
+        receivedMessage!.VisibleAreas.Should()
+            .BeEquivalentTo(VisibleAreas(WorkspaceArea.Side, WorkspaceArea.Bottom));
     }
 
     [Test]
-    public void RevealingASurface_SendsFlashSurfaceMessage()
+    public void RevealingAnArea_SendsFlashAreaMessage()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
 
-        FlashSurfaceMessage? receivedMessage = null;
+        FlashAreaMessage? receivedMessage = null;
         var recipient = new object();
-        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => receivedMessage = m);
+        _messengerService.Register<FlashAreaMessage>(recipient, (r, m) => receivedMessage = m);
 
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, true);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, true);
 
         receivedMessage.Should().NotBeNull();
-        receivedMessage!.Surface.Should().Be(WorkspaceSurface.UtilityPanel);
+        receivedMessage!.Area.Should().Be(WorkspaceArea.Utility);
     }
 
     [Test]
-    public void HidingASurface_SendsNoFlashSurfaceMessage()
+    public void HidingAnArea_SendsNoFlashAreaMessage()
     {
         bool messageReceived = false;
         var recipient = new object();
-        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => messageReceived = true);
+        _messengerService.Register<FlashAreaMessage>(recipient, (r, m) => messageReceived = true);
 
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
 
         messageReceived.Should().BeFalse();
     }
 
     [Test]
-    public void RevealingASurfaceFromFocus_FlashesOnlyTheRequestedSurface()
+    public void RevealingAnAreaFromFocus_FlashesOnlyTheRequestedArea()
     {
-        // Focus hides every surface, so asking for one back brings its neighbours with it.
+        // Focus hides every collapsible area, so asking for one back brings its neighbours with it.
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
-        var flashedSurfaces = new List<WorkspaceSurface>();
+        var flashedAreas = new List<WorkspaceArea>();
         var recipient = new object();
-        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => flashedSurfaces.Add(m.Surface));
+        _messengerService.Register<FlashAreaMessage>(recipient, (r, m) => flashedAreas.Add(m.Area));
 
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, true);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Bottom, true);
 
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
-        flashedSurfaces.Should().Equal(WorkspaceSurface.BottomArea);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
+        flashedAreas.Should().Equal(WorkspaceArea.Bottom);
     }
 
     [Test]
-    public void LayoutModeTransition_SendsNoFlashSurfaceMessage()
+    public void LayoutModeTransition_SendsNoFlashAreaMessage()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
 
         bool messageReceived = false;
         var recipient = new object();
-        _messengerService.Register<FlashSurfaceMessage>(recipient, (r, m) => messageReceived = true);
+        _messengerService.Register<FlashAreaMessage>(recipient, (r, m) => messageReceived = true);
 
-        // Returning to Default brings back every surface.
+        // Returning to Default brings back every area.
         _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
 
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
         messageReceived.Should().BeFalse();
     }
 
     [Test]
-    public void SetSurfaceVisibility_InDefaultMode_UpdatesPreferredSurfaceVisibility()
+    public void SetAreaVisibility_InDefaultMode_PersistsTheHiddenArea()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
 
-        var expectedVisibility = WorkspaceSurface.SideArea | WorkspaceSurface.BottomArea;
-        _workspaceSettings.Received().PreferredSurfaceVisibility = expectedVisibility;
+        AssertPersistedPreferredAreas(WorkspaceArea.Bottom, WorkspaceArea.Side);
     }
 
     [Test]
-    public void SetSurfaceVisibility_WhileFullScreen_UpdatesPreferredSurfaceVisibility()
+    public void SetAreaVisibility_WhileFullScreen_PersistsTheHiddenArea()
     {
-        // Fullscreen does not change the layout mode, so panel changes still persist as preferred.
+        // Fullscreen does not change the layout mode, so area changes still persist as preferred.
         _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
         _workspaceSettings.ClearReceivedCalls();
 
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
 
-        var expectedVisibility = WorkspaceSurface.UtilityPanel | WorkspaceSurface.BottomArea;
-        _workspaceSettings.Received().PreferredSurfaceVisibility = expectedVisibility;
+        AssertPersistedPreferredAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom);
     }
 
     [Test]
-    public void SetSurfaceVisibility_ToNone_UpdatesPreferredSurfaceVisibility()
+    public void SetAreaVisibility_HidingEveryArea_PersistsMainAsTheOnlyVisibleOne()
     {
-        // Hide all panels one by one in the Default layout.
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        // Hide every collapsible area one by one in the Default layout.
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
         _workspaceSettings.ClearReceivedCalls();
 
-        // The last panel being hidden persists None as the preference, because the user explicitly
-        // chose to hide all panels.
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.BottomArea, false);
+        // Hiding the last one persists Main alone, because the user explicitly chose to hide every area
+        // that can be hidden.
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Bottom, false);
 
-        _workspaceSettings.Received().PreferredSurfaceVisibility = WorkspaceSurface.None;
+        AssertPersistedPreferredAreas();
     }
 
     [Test]
@@ -523,7 +534,7 @@ public class LayoutManagerTests
     [Test]
     public void SetBottomAreaAlignment_InPresentationMode_StillPersists()
     {
-        // Alignment is a layout preference rather than a mode, so unlike surface visibility it is not
+        // Alignment is a layout preference rather than a mode, so unlike area visibility it is not
         // treated as transient presentation state.
         _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
 
@@ -561,18 +572,39 @@ public class LayoutManagerTests
         _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
 
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
     }
 
     [Test]
-    public void WorkspaceSurface_CombinationsWorkCorrectly()
+    public void VisibleAreas_CombinationsWorkCorrectly()
     {
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.UtilityPanel, false);
-        _layoutManager.SetSurfaceVisibility(WorkspaceSurface.SideArea, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
 
-        _layoutManager.SurfaceVisibility.Should().Be(WorkspaceSurface.BottomArea);
-        _layoutManager.IsUtilityPanelVisible.Should().BeFalse();
-        _layoutManager.IsSideAreaVisible.Should().BeFalse();
-        _layoutManager.IsBottomAreaVisible.Should().BeTrue();
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas(WorkspaceArea.Bottom));
+        _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeFalse();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Side).Should().BeFalse();
+        _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
+    }
+
+    // A visible set always holds Main, which cannot be hidden.
+    private static IReadOnlySet<WorkspaceArea> VisibleAreas(params WorkspaceArea[] collapsibleAreas)
+    {
+        var visibleAreas = new HashSet<WorkspaceArea>(collapsibleAreas)
+        {
+            WorkspaceArea.Main
+        };
+
+        return visibleAreas;
+    }
+
+    // The setter is handed a fresh set each time, so the assertion matches on what the set holds rather than
+    // on the instance the substitute captured. Main is always among them.
+    private void AssertPersistedPreferredAreas(params WorkspaceArea[] collapsibleAreas)
+    {
+        var expectedAreas = VisibleAreas(collapsibleAreas);
+
+        _workspaceSettings.Received().PreferredVisibleAreas =
+            Arg.Is<IReadOnlySet<WorkspaceArea>>(visibleAreas => visibleAreas.SetEquals(expectedAreas));
     }
 }

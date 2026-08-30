@@ -19,20 +19,22 @@ A utility's display name, icon, and description (shown as its tooltip) come from
 
 ## A utility is a permanent fixture
 
-Every utility is **workspace-scoped**: it is created when the project loads and lives until the project closes. It is never destroyed by the user — like Explorer and Search, it is always there. What the user controls is only *where* it is docked. A utility always occupies exactly one **dock location**:
+Every utility is **workspace-scoped**: it is created when the project loads and lives until the project closes. It is never destroyed by the user — like Explorer and Search, it is always there. What the user controls is only *where* it is docked. A utility always occupies exactly one **workspace area**:
 
-- **Utility Panel** — the utility is a rail surface in the Utility Panel (the left sidebar), selected by clicking its rail button, shown one at a time alongside Explorer and Search.
-- **Document** — the utility is a tab in the documents area, sitting among the open documents.
+- **`utility`** — the utility is shown in the Utility Panel (the left sidebar), selected by clicking its rail button, one at a time alongside Explorer and Search.
+- **`main`**, **`bottom`**, **`side`** — the utility is a tab in that documents area, sitting among the open documents.
 
-Both are docked locations inside the app; neither is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group. Every utility has both a permanent rail button and a document tab it can occupy; the manifest does not pre-decide the location.
+All four are areas inside the app; none is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group.
 
-## Moving between dock locations
+The manifest's `dock-area` key names the document area a utility docks into. A manifest declaring none docks into `main`, and one declaring `dock-area = "none"` stays in the Utility Panel.
 
-- **Dock as a document** ("Open as document"): a control in the utility's Utility Panel header moves it into the documents area, in the section of the active document, and makes it the active document. Its rail button stays but dims to show it now lives as a document, and the panel falls back to Explorer.
+## Moving between areas
+
+- **Dock as a document** ("Open as document"): a control in the utility's Utility Panel header moves it into its document area, in that area's primary section, and makes it the active document. Its rail button stays but dims to show it now lives as a document, and the panel falls back to Explorer. Docking into `bottom` or `side` reveals that area first when it is collapsed. The control is absent for a utility that declares no document area, because there is nowhere for it to send the utility.
 - **Dock back into the panel** (close the tab): the close button on a utility's document tab does not destroy it — it reparents the WebView back to the Utility Panel. The utility returns to the panel, reachable from its rail button as before. A utility therefore can never be truly closed; the close control means "send it back to the panel".
-- Clicking the rail button of a utility that is docked as a document activates its document tab (with a brief highlight) rather than showing a panel surface, since its surface has moved out of the panel.
+- Clicking the rail button of a utility that is docked as a document activates its document tab (with a brief highlight) rather than showing anything in the panel, since its view has moved out of the panel.
 
-The dock location survives a reload: a utility that was docked as a document when the project closed reopens in the same tab position.
+The area survives a reload: a utility that was docked as a document when the project closed reopens in the same tab position.
 
 ## The `[utility]` manifest section
 
@@ -63,7 +65,7 @@ description = "Scratchpad_Description"      # localization key; the rail-button 
 resource-extension = "._scratchpad"        # file format of the utility state file (required)
 template = "templates/default._scratchpad" # seeds the file when absent (optional)
 icon     = "bs-sticky"                     # prefixed icon name (required)
-lazy-load = false                          # optional; true defers the WebView to first show
+dock-area = "main"                         # optional; where "Open as document" sends it, or "none"
 ```
 
 | Field | Required | Default | Meaning |
@@ -71,11 +73,15 @@ lazy-load = false                          # optional; true defers the WebView t
 | `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
 | `icon` | yes | — | Prefixed icon name (`<font>-<name>`, e.g. `bs-sticky`) for the rail button and the docked tab icon. Resolved by name, not limited to the curated symbol set. |
 | `template` | no | empty file | Package-relative path to a file that seeds a utility's backing resource when it is absent. |
-| `lazy-load` | no | `false` | When true, the utility's WebView is created on its first show rather than at project load. Declared by the editor, not by the project. A lazy utility restored into the tab layout as a docked document initializes at restore. |
+| `dock-area` | no | `main` | The document area the "Open as document" control and the `"document"` tool alias send the utility to: `main`, `bottom` or `side`. Declare `none` for a utility that stays in the Utility Panel, which hides that control. A utility always occupies the Utility Panel, so `utility` is not a dock area. |
 
 `display-name` in `[editor]` is required (as for any editor) and labels the rail button and the docked tab. The tooltip comes from `[editor].description` — the same field a document editor uses — so a utility's rail-button and docked-tab tooltip are authored once there, not in `[utility]`.
 
-The manifest declares no dock location: it is a runtime, user-controlled property (the user moves the utility between the Utility Panel and a document tab), never a manifest choice.
+### The manifest declares the constraint, not the position
+
+Where a utility actually is comes from workspace state, which the user writes by moving it: a utility opens each workspace in the Utility Panel and is restored wherever it was left. The manifest declares what is allowed, not where the utility sits.
+
+Once a utility is a tab the user moves it like any other tab, to any section they like, and it is restored wherever they left it. `dock-area` names where it lands the first time, not where it is allowed to be.
 
 ## Never an ordinary project file
 
@@ -97,9 +103,9 @@ A utility persists through the standard editable-save path: the WebView calls `c
 
 ## Agent interaction
 
-- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus the active utility contributions — with each one's id, display name, `location` (`"panel"` or `"document"`, its current dock location), and whether it is currently shown.
-- `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass an optional `location` (`"panel"` or `"document"`) to move it there first. A utility's id is `package.contribution` (for example `scratchpad.scratchpad`).
-- `app_get_state` reports `activeUtility`, the id of the surface currently shown in the Utility Panel rail.
+- `app_list_utilities` lists every available utility — the built-in Explorer and Search plus the active utility contributions — with each one's id, display name, `currentArea` (`"utility"` or a document area token, where it is now, empty when nothing presents it), `dockArea` (where it opens as a document, empty when it stays in the panel), and `isVisible` (whether the user can actually see it, which needs its area to be expanded as well as the item to be selected).
+- `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass `area` (an area token, or `"document"` for whichever document area the utility declares) to move it there first, or an empty string to reveal it where it is. The parameter is required, and a move the item cannot make is an error. A utility's id is `package.contribution` (for example `scratchpad.scratchpad`).
+- `app_get_state` reports `activeUtility`, the id of the item the Utility Panel rail is currently showing.
 - `app_spotlight` can point at a utility's button: `{utilityId}-utility-button` for its rail item in the Utility Panel.
 - `utils:` is a registered root, so `file.*` tools can read and write a utility's backing file when the package declares `file.*` under `[permissions] tools`. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract needs no permission — it is framework-level, distinct from the `cel.*` tool proxies.
 

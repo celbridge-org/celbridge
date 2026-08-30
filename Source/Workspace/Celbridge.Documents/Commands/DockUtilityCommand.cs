@@ -11,7 +11,7 @@ public class DockUtilityCommand : CommandBase, IDockUtilityCommand
 
     public EditorId UtilityId { get; set; } = EditorId.Empty;
 
-    public DockLocation Location { get; set; } = DockLocation.Document;
+    public WorkspaceArea Area { get; set; } = WorkspaceArea.Main;
 
     public DockUtilityCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -26,6 +26,6 @@ public class DockUtilityCommand : CommandBase, IDockUtilityCommand
         }
 
         var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-        return await utilityService.DockUtilityAsync(UtilityId, Location);
+        return await utilityService.DockUtilityAsync(UtilityId, Area);
     }
 }

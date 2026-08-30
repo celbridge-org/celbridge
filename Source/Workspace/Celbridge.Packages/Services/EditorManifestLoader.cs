@@ -1,6 +1,7 @@
 using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -44,9 +45,14 @@ internal static class EditorManifestLoader
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
-    private const string LazyLoadKey = "lazy-load";
+    private const string DockAreaKey = "dock-area";
+    private const string NoDockAreaValue = "none";
 
     private const string CatalogLanguagesValue = "languages";
+
+    // The values dock-area accepts, spelled out for the error message it produces.
+    private const string ValidDockAreaTokens =
+        $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}, {NoDockAreaValue}";
 
     private const string DocumentTypeValue = "document";
     private const string UtilityTypeValue = "utility";
@@ -447,17 +453,60 @@ internal static class EditorManifestLoader
         }
 
         var template = TomlTableReader.GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
-        var lazyLoad = TomlTableReader.GetBoolOrNull(utilityTable, LazyLoadKey) ?? false;
+
+        var dockAreaResult = ParseDockArea(utilityTable, editorTomlPath, out var dockArea);
+        if (dockAreaResult.IsFailure)
+        {
+            return Result<UtilityDescriptor>.Fail(dockAreaResult.FirstErrorMessage).WithErrors(dockAreaResult);
+        }
 
         var descriptor = new UtilityDescriptor
         {
             ResourceExtension = resourceExtension.ToLowerInvariant(),
             Template = template,
             Icon = icon,
-            LazyLoad = lazyLoad
+            DockArea = dockArea
         };
 
         return descriptor;
+    }
+
+    // Reads the dock-area key: the document area the utility's "Open as document" control sends it to, or
+    // null for a utility that stays in the Utility Panel, which the manifest spells "none". The area is an
+    // out parameter because a success Result cannot carry a null payload.
+    private static Result ParseDockArea(TomlTable utilityTable, string editorTomlPath, out WorkspaceArea? dockArea)
+    {
+        dockArea = WorkspaceArea.Main;
+
+        var dockAreaValue = TomlTableReader.GetStringOrNull(utilityTable, DockAreaKey);
+        if (dockAreaValue is null)
+        {
+            return Result.Ok();
+        }
+
+        if (dockAreaValue == NoDockAreaValue)
+        {
+            dockArea = null;
+            return Result.Ok();
+        }
+
+        if (!WorkspaceAreaTokens.TryParse(dockAreaValue, out var declaredArea))
+        {
+            return Result.Fail(
+                $"[{UtilitySection}] '{DockAreaKey}' value '{dockAreaValue}' is not a recognized area " +
+                $"({ValidDockAreaTokens}): {editorTomlPath}");
+        }
+
+        if (declaredArea == WorkspaceArea.Utility)
+        {
+            return Result.Fail(
+                $"[{UtilitySection}] '{DockAreaKey}' names the Utility Panel, which holds no document tabs. " +
+                $"Use '{NoDockAreaValue}' for a utility that stays in the panel: {editorTomlPath}");
+        }
+
+        dockArea = declaredArea;
+
+        return Result.Ok();
     }
 
     private static Result<List<ConfigDescriptor>> ParseConfigDescriptors(TomlTable root, string editorTomlPath)

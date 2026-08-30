@@ -25,7 +25,7 @@ namespace Celbridge.Documents.Views;
 /// The hosting surface a consumer supplies to a CustomEditorController: the workspace panel the
 /// editor's web surface reports focus through, and the side effect to run when it gains focus.
 /// </summary>
-public sealed record CustomEditorFocusContext(WorkspacePanelId Panel, Action OnFocusGained);
+public sealed record CustomEditorFocusContext(FocusPanelId Panel, Action OnFocusGained);
 
 /// <summary>
 /// Drives a custom (WebView-based) editor: it acquires and tears down the WebView, owns the JSON-RPC
@@ -60,7 +60,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly CustomDocumentViewModel _viewModel;
 
     // The container the WebView currently lives in, and the focus identity it reports through. Both are
-    // reassigned by Redock when a utility moves between dock locations. The WebView is moved, never rebuilt.
+    // reassigned by Redock when a utility moves between areas. The WebView is moved, never rebuilt.
     private Panel _webViewContainer;
     private CustomEditorFocusContext _focusContext;
 
@@ -566,7 +566,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     /// <summary>
     /// Moves the live WebView into a new container and re-points its focus registration at it, without tearing
     /// it down or reloading it. This is the dock primitive: a utility keeps one WebView (and all its live state)
-    /// while it moves between dock locations (the Utility Panel and a document tab). Called before the WebView
+    /// while it moves between areas (the Utility Panel and a document tab). Called before the WebView
     /// is acquired, it just records the target container so the pending init lands there.
     /// </summary>
     public void Redock(Panel newContainer, CustomEditorFocusContext focusContext)

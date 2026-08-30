@@ -11,9 +11,9 @@ namespace Celbridge.Documents.Services;
 /// </summary>
 public class DocumentLayoutStore
 {
-    private const string DocumentLayoutKey = "DocumentLayout";
+    private const string OpenDocumentAddressesKey = "OpenDocumentAddresses";
     private const string ActiveDocumentKey = "ActiveDocument";
-    private const string AreaLayoutKey = "AreaLayout";
+    private const string AreaSplitRatiosKey = "AreaSplitRatios";
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -42,108 +42,143 @@ public class DocumentLayoutStore
     /// the area is split is not stored, because it follows from whether any document restores into its
     /// secondary section.
     /// </summary>
-    public record StoredAreaLayout(double SplitRatio);
+    public record StoredAreaSplitRatio(double SplitRatio);
 
-    public async Task StoreDocumentLayoutAsync()
+    public async Task StoreOpenDocumentAddressesAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
+        try
+        {
+            var propertyBag = GetPropertyBag();
 
-        var storedAddresses = DocumentsPanel.GetOpenDocuments()
-            .Select(document => new StoredDocumentAddress(
-                document.FileResource.ToString(),
-                document.Address.WindowIndex,
-                document.Address.Section.ToString(),
-                document.Address.TabOrder))
-            .OrderBy(address => address.WindowIndex)
-            .ThenBy(address => address.Section)
-            .ThenBy(address => address.TabOrder)
-            .ToList();
+            var openDocumentAddresses = DocumentsPanel.GetOpenDocuments()
+                .Select(document => new StoredDocumentAddress(
+                    document.FileResource.ToString(),
+                    document.Address.WindowIndex,
+                    document.Address.Section.ToToken(),
+                    document.Address.TabOrder))
+                .OrderBy(address => address.WindowIndex)
+                .ThenBy(address => address.Section)
+                .ThenBy(address => address.TabOrder)
+                .ToList();
 
-        await propertyBag.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
+            await propertyBag.SetPropertyAsync(OpenDocumentAddressesKey, openDocumentAddresses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store the open document addresses");
+        }
     }
 
     public async Task StoreActiveDocumentAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
+        try
+        {
+            var propertyBag = GetPropertyBag();
 
-        // Read the panel's active document directly. The gated IDocumentsService.ActiveDocument
-        // reports Empty until the workspace page finishes loading, and this runs before that.
-        var activeDocument = DocumentsPanel.ActiveDocument;
-        await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
+            // Read the panel's active document directly. The gated IDocumentsService.ActiveDocument
+            // reports Empty until the workspace page finishes loading, and this runs before that.
+            var activeDocument = DocumentsPanel.ActiveDocument;
+            await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store the active document");
+        }
     }
 
-    public async Task StoreAreaLayoutAsync()
+    public async Task StoreAreaSplitRatiosAsync()
+    {
+        try
+        {
+            var propertyBag = GetPropertyBag();
+
+            var areaSplitRatios = new Dictionary<string, StoredAreaSplitRatio>();
+            foreach (var area in DocumentLayoutHelper.AllAreas)
+            {
+                areaSplitRatios[area.GetWorkspaceArea().ToToken()] = new StoredAreaSplitRatio(DocumentsPanel.GetAreaSplitRatio(area));
+            }
+
+            await propertyBag.SetPropertyAsync(AreaSplitRatiosKey, areaSplitRatios);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store the area split ratios");
+        }
+    }
+
+    // Throws once the workspace settings are gone, which the store paths catch: they run on the update
+    // loop and on teardown, where a late write is dropped rather than reported.
+    private IWorkspacePropertyBag GetPropertyBag()
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        var areaLayout = new Dictionary<string, StoredAreaLayout>();
-        foreach (var area in DocumentLayoutHelper.AllAreas)
-        {
-            areaLayout[area.ToString()] = new StoredAreaLayout(DocumentsPanel.GetAreaSplitRatio(area));
-        }
-
-        await propertyBag.SetPropertyAsync(AreaLayoutKey, areaLayout);
+        return propertyBag;
     }
 
     public async Task StoreDocumentEditorStatesAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
-
-        // Start with existing saved states so that editors that aren't ready yet
-        // (e.g., WebView still loading) preserve their previously saved state.
-        var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
-            ?? new Dictionary<string, string>();
-
-        var openDocumentKeys = new HashSet<string>();
-
-        foreach (var document in DocumentsPanel.GetOpenDocuments())
+        try
         {
-            var resourceKey = document.FileResource.ToString();
-            openDocumentKeys.Add(resourceKey);
+            var propertyBag = GetPropertyBag();
 
-            var documentView = DocumentsPanel.GetDocumentView(document.FileResource);
-            if (documentView is null)
-            {
-                continue;
-            }
+            // Start with existing saved states so that editors that aren't ready yet
+            // (e.g., WebView still loading) preserve their previously saved state.
+            var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+                ?? new Dictionary<string, string>();
 
-            try
+            var openDocumentKeys = new HashSet<string>();
+
+            foreach (var document in DocumentsPanel.GetOpenDocuments())
             {
-                // A null or empty return means the editor is still initialising or has no state to
-                // contribute. Keep the previously saved state rather than overwriting it.
-                var state = await documentView.TrySaveEditorStateAsync();
-                if (!string.IsNullOrEmpty(state))
+                var resourceKey = document.FileResource.ToString();
+                openDocumentKeys.Add(resourceKey);
+
+                var documentView = DocumentsPanel.GetDocumentView(document.FileResource);
+                if (documentView is null)
                 {
-                    editorStates[resourceKey] = state;
+                    continue;
+                }
+
+                try
+                {
+                    // A null or empty return means the editor is still initialising or has no state to
+                    // contribute. Keep the previously saved state rather than overwriting it.
+                    var state = await documentView.TrySaveEditorStateAsync();
+                    if (!string.IsNullOrEmpty(state))
+                    {
+                        editorStates[resourceKey] = state;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // One editor failing leaves the rest of the sweep intact.
+                    _logger.LogWarning(ex, $"Could not save editor state for '{resourceKey}'");
                 }
             }
-            catch (Exception ex)
+
+            // Remove entries for documents that are no longer open
+            var staleKeys = editorStates.Keys.Where(key => !openDocumentKeys.Contains(key)).ToList();
+            foreach (var staleKey in staleKeys)
             {
-                _logger.LogDebug(ex, $"Could not save editor state for '{resourceKey}'");
+                editorStates.Remove(staleKey);
             }
-        }
 
-        // Remove entries for documents that are no longer open
-        var staleKeys = editorStates.Keys.Where(key => !openDocumentKeys.Contains(key)).ToList();
-        foreach (var staleKey in staleKeys)
+            await propertyBag.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
+        }
+        catch (Exception ex)
         {
-            editorStates.Remove(staleKey);
+            // Best-effort persistence: losing editor state is a user convenience, not data loss.
+            _logger.LogWarning(ex, "Failed to store editor states for the open documents");
         }
-
-        await propertyBag.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
     }
 
     public async Task StoreDocumentEditorStateAsync(ResourceKey fileResource, string? state)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
-
         try
         {
+            var propertyBag = GetPropertyBag();
+
             var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
                 ?? new Dictionary<string, string>();
 
@@ -162,7 +197,7 @@ public class DocumentLayoutStore
         catch (Exception ex)
         {
             // Best-effort persistence: losing editor state is a user convenience, not data loss.
-            _logger.LogDebug(ex, $"Failed to store editor state for '{fileResource}'");
+            _logger.LogWarning(ex, $"Failed to store editor state for '{fileResource}'");
         }
     }
 
@@ -172,27 +207,27 @@ public class DocumentLayoutStore
 
         // The split position is applied before any tabs are opened, so an area that splits while restoring
         // opens at the position the user left it at.
-        if (storedLayout.AreaLayout is not null)
+        if (storedLayout.AreaSplitRatios is not null)
         {
             foreach (var area in DocumentLayoutHelper.AllAreas)
             {
-                if (!storedLayout.AreaLayout.TryGetValue(area.ToString(), out var areaLayout))
+                if (!storedLayout.AreaSplitRatios.TryGetValue(area.GetWorkspaceArea().ToToken(), out var areaSplitRatio))
                 {
                     continue;
                 }
 
-                DocumentsPanel.SetAreaSplitRatio(area, areaLayout.SplitRatio);
+                DocumentsPanel.SetAreaSplitRatio(area, areaSplitRatio.SplitRatio);
             }
         }
 
-        if (storedLayout.Addresses is null
-            || storedLayout.Addresses.Count == 0)
+        if (storedLayout.OpenDocumentAddresses is null
+            || storedLayout.OpenDocumentAddresses.Count == 0)
         {
             await OpenDefaultReadmeAsync();
             return;
         }
 
-        await RestoreDocumentsAsync(storedLayout.Addresses, storedLayout.EditorStates);
+        await RestoreDocumentsAsync(storedLayout.OpenDocumentAddresses, storedLayout.EditorStates);
 
         // A document whose file has gone since the last session leaves the section it was restoring into
         // empty, so fold away any split that ended up with nothing in it.
@@ -201,53 +236,48 @@ public class DocumentLayoutStore
             DocumentsPanel.ReconcileAreaSplit(area);
         }
 
-        await RestoreActiveDocumentAsync();
+        RestoreActiveDocument(storedLayout.ActiveDocument);
     }
 
     private record StoredLayout(
-        Dictionary<string, StoredAreaLayout>? AreaLayout,
-        List<StoredDocumentAddress>? Addresses,
-        Dictionary<string, string>? EditorStates);
+        Dictionary<string, StoredAreaSplitRatio>? AreaSplitRatios,
+        List<StoredDocumentAddress>? OpenDocumentAddresses,
+        Dictionary<string, string>? EditorStates,
+        string? ActiveDocument);
 
     private async Task<StoredLayout> LoadStoredLayoutAsync()
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
+        var propertyBag = GetPropertyBag();
 
-        Dictionary<string, StoredAreaLayout>? areaLayout = null;
+        var areaSplitRatios = await TryLoadPropertyAsync<Dictionary<string, StoredAreaSplitRatio>>(
+            propertyBag, AreaSplitRatiosKey);
+
+        var openDocumentAddresses = await TryLoadPropertyAsync<List<StoredDocumentAddress>>(
+            propertyBag, OpenDocumentAddressesKey);
+
+        var editorStates = await TryLoadPropertyAsync<Dictionary<string, string>>(
+            propertyBag, DocumentEditorStatesKey);
+
+        var activeDocument = await TryLoadPropertyAsync<string>(
+            propertyBag, ActiveDocumentKey);
+
+        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument);
+    }
+
+    // Reads one stored value, treating one that cannot be read as absent. Layout written by an
+    // incompatible version therefore opens the workspace at its defaults rather than failing the load.
+    private async Task<T?> TryLoadPropertyAsync<T>(IWorkspacePropertyBag propertyBag, string key)
+        where T : class
+    {
         try
         {
-            areaLayout = await propertyBag.GetPropertyAsync<Dictionary<string, StoredAreaLayout>>(AreaLayoutKey);
+            return await propertyBag.GetPropertyAsync<T>(key);
         }
-        catch
+        catch (Exception ex)
         {
-            _logger.LogDebug("Could not load the area layout - starting fresh");
+            _logger.LogWarning(ex, $"Could not load stored layout value '{key}'. Starting fresh.");
+            return null;
         }
-
-        // Try to load document addresses - if format is incompatible, just start fresh
-        List<StoredDocumentAddress>? storedAddresses = null;
-        try
-        {
-            storedAddresses = await propertyBag.GetPropertyAsync<List<StoredDocumentAddress>>(DocumentLayoutKey);
-        }
-        catch
-        {
-            // Old format or corrupted data - ignore and start fresh
-            _logger.LogDebug("Could not load document addresses - starting fresh");
-        }
-
-        // Load saved editor states for restoration after documents are opened
-        Dictionary<string, string>? editorStates = null;
-        try
-        {
-            editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey);
-        }
-        catch
-        {
-            _logger.LogDebug("Could not load editor states - starting fresh");
-        }
-
-        return new StoredLayout(areaLayout, storedAddresses, editorStates);
     }
 
     private async Task RestoreDocumentsAsync(
@@ -266,12 +296,12 @@ public class DocumentLayoutStore
 
             // An unrecognised section name comes from layout data written by a different section set.
             // MainLeft always exists, so it is the safe landing place.
-            if (!DocumentLayoutHelper.TryParseSection(stored.Section, out var storedSection))
+            if (!DocumentSectionTokens.TryParse(stored.Section, out var storedSection))
             {
                 storedSection = DocumentSection.MainLeft;
             }
 
-            var targetSection = ResolveRestoreSection(storedSection);
+            EnsureAreaSplitForSection(storedSection);
 
             // Project resources use the registry fast path. Virtual-root keys (utils:, temp:, logs:) are
             // never in the registry, so the ResolveResourcePath and GetInfoAsync checks below validate
@@ -294,14 +324,14 @@ public class DocumentLayoutStore
             }
 
             // A stored utils: entry means the utility was docked last session. Utilities are created eagerly
-            // at workspace load, before this runs, so reparent the live utility into its saved tab position
-            // instead of creating a second view.
+            // at workspace load, before this runs, so the live utility is reparented into its saved tab
+            // position rather than a second view being created.
             if (fileResource.Root == ProjectConstants.UtilsFolder)
             {
-                var utilityAddress = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
+                var utilityAddress = new DocumentAddress(stored.WindowIndex, storedSection, stored.TabOrder);
 
                 var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-                var restoreResult = await utilityService.RestoreDockedUtility(fileResource, utilityAddress);
+                var restoreResult = await utilityService.RestoreDockedUtilityAsync(fileResource, utilityAddress);
                 if (restoreResult.IsFailure)
                 {
                     _logger.LogWarning(restoreResult, $"Failed to restore docked utility '{fileResource}'");
@@ -318,7 +348,7 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
+            var address = new DocumentAddress(stored.WindowIndex, storedSection, stored.TabOrder);
 
             // An empty editor id makes the factory resolve the editor from the sidecar (or the
             // per-extension default) rather than from persisted layout state.
@@ -340,12 +370,10 @@ public class DocumentLayoutStore
         }
     }
 
-    // Folds a stored section into one that currently holds tabs. A secondary section whose area restored
-    // unsplit folds into that area's primary section. A section in a collapsed area is kept: the area
-    // holds its documents while hidden, and they reappear in place when it is shown again.
-    // Splits an area when a document restores into its secondary section, so the split follows the
-    // restored documents rather than a separately stored flag that could disagree with them.
-    private DocumentSection ResolveRestoreSection(DocumentSection storedSection)
+    // A secondary section only exists while its area is split, so restoring a document into one splits that
+    // area. The split therefore follows the restored documents rather than a stored flag that could disagree
+    // with them.
+    private void EnsureAreaSplitForSection(DocumentSection storedSection)
     {
         var area = storedSection.GetArea();
         if (storedSection.IsSecondarySection()
@@ -353,17 +381,10 @@ public class DocumentLayoutStore
         {
             DocumentsPanel.SetAreaSplit(area, true);
         }
-
-        return storedSection;
     }
 
-    private async Task RestoreActiveDocumentAsync()
+    private void RestoreActiveDocument(string? storedActiveDocument)
     {
-        var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
-        Guard.IsNotNull(propertyBag);
-
-        var storedActiveDocument = await propertyBag.GetPropertyAsync<string>(ActiveDocumentKey);
-
         var activeDocument = ResourceKey.Empty;
         if (!string.IsNullOrEmpty(storedActiveDocument))
         {

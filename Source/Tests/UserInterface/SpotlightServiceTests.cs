@@ -85,13 +85,13 @@ public class SpotlightServiceTests
     [Test]
     public async Task ShowSpotlightAsync_InPresentationMode_IsRefused()
     {
-        // A landmark that gates on a surface, so without the Presentation guard the reveal below would
+        // A landmark that gates on an area, so without the Presentation guard the reveal below would
         // fire and take the user out of the mode.
         _landmarkRegistry
             .TryGetLandmark("search-input", out Arg.Any<LandmarkDescriptor?>())
             .Returns(call =>
             {
-                call[1] = new LandmarkDescriptor("search-input", WorkspaceSurface.UtilityPanel);
+                call[1] = new LandmarkDescriptor("search-input", WorkspaceArea.Utility);
                 return true;
             });
         _windowModeService.LayoutMode.Returns(LayoutMode.Presentation);
@@ -101,10 +101,10 @@ public class SpotlightServiceTests
 
         var result = await service.ShowSpotlightAsync("search-input", "Search", 0);
 
-        // Revealing the landmark's surface would drop the user out of their presentation, which is theirs
+        // Revealing the landmark's area would drop the user out of their presentation, which is theirs
         // to leave.
         result.IsFailure.Should().BeTrue();
-        _layoutService.DidNotReceiveWithAnyArgs().SetSurfaceVisibility(default, default);
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
     }
 
     private sealed class StubSpotlightPresenter : ISpotlightPresenter

@@ -11,7 +11,7 @@ namespace Celbridge.Tests.Settings;
 /// <summary>
 /// Covers the Workspace-scoped panel, search, and editor settings: first-open
 /// defaults, per-project independence, the typed WorkspaceSettings facade
-/// round-trip through the JSON store, and that ResetSurfaceSizeCommand resets the
+/// round-trip through the JSON store, and that ResetAreaSizeCommand resets the
 /// current project rather than a global setting.
 /// </summary>
 [TestFixture]
@@ -83,7 +83,7 @@ public class WorkspaceSettingsFacadeTests
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
         var settings = fixture.Settings;
 
-        settings.PreferredSurfaceVisibility.Should().Be(WorkspaceSurface.All);
+        settings.PreferredVisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
         settings.UtilityPanelWidth.Should().Be(WorkspaceConstants.UtilityPanelWidth);
         settings.SideAreaWidth.Should().Be(WorkspaceConstants.SideAreaWidth);
         settings.BottomAreaHeight.Should().Be(WorkspaceConstants.BottomAreaHeight);
@@ -111,6 +111,26 @@ public class WorkspaceSettingsFacadeTests
         reloaded.Settings.UtilityPanelWidth.Should().Be(480f);
         reloaded.Settings.SearchMatchCase.Should().BeTrue();
         reloaded.Settings.PreviousNewFileExtension.Should().Be(".md");
+    }
+
+    [Test]
+    public async Task PreferredVisibleAreas_SurviveReloadAsAreaTokens()
+    {
+        var folderPath = Path.Combine(_rootFolderPath, "projectA");
+        var visibleAreas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Main,
+            WorkspaceArea.Bottom
+        };
+
+        var fixture = await LoadWorkspaceAsync(folderPath);
+        fixture.Settings.PreferredVisibleAreas = visibleAreas;
+
+        await fixture.WorkspaceSettingsService.WorkspaceSettingsStore!.FlushAsync();
+        fixture.WorkspaceSettingsService.UnloadWorkspaceSettings();
+
+        var reloaded = await LoadWorkspaceAsync(folderPath);
+        reloaded.Settings.PreferredVisibleAreas.Should().BeEquivalentTo(visibleAreas);
     }
 
     [Test]
@@ -147,14 +167,14 @@ public class WorkspaceSettingsFacadeTests
     }
 
     [Test]
-    public async Task ResetSurfaceSizeCommand_ResetsLayoutForCurrentWorkspace()
+    public async Task ResetAreaSizeCommand_ResetsLayoutForCurrentWorkspace()
     {
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
         fixture.Settings.UtilityPanelWidth = 500f;
 
-        var command = new ResetSurfaceSizeCommand(fixture.WorkspaceWrapper)
+        var command = new ResetAreaSizeCommand(fixture.WorkspaceWrapper)
         {
-            Surface = WorkspaceSurface.UtilityPanel,
+            Area = WorkspaceArea.Utility,
         };
 
         var result = await command.ExecuteAsync();

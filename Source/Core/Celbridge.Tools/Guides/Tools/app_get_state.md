@@ -15,6 +15,6 @@ A JSON object with these fields:
 - `featureFlags` (object) — maps each public flag name to its enabled state. Consult before calling a feature-gated tool. Currently includes `webview-dev-tools` and `webview-dev-tools-eval`.
 - `agentDocs` (object) — `{entry, via}`. The entry is the orientation guide name (`agent_instructions`). `via` names the tool to read it through (`guides_read`).
 - `focusedPanel` (string) — the currently focused workspace panel (`Documents`, `Explorer`, `Inspector`, `Console`, etc., or `None`).
-- `layoutMode` (object) — `{utilityPanelVisible, bottomAreaVisible, sideAreaVisible}`. Panel layout is stored per project, so a project that has not customised its layout reports the workspace defaults rather than any global preference.
+- `layoutMode` (object) — `{areaVisibility}`, which maps each workspace area token (`utility`, `main`, `bottom`, `side`) to whether that area is on screen. `main` is always `true`. Area visibility is stored per project, so a project that has not customised its layout reports the workspace defaults rather than any global preference.
 
 Python dependencies are declared per console: read a `.console` file directly with `file_read` — the `[session.options].dependencies` array carries that console's list.

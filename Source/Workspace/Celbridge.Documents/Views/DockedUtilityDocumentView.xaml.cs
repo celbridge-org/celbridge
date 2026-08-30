@@ -8,8 +8,8 @@ namespace Celbridge.Documents.Views;
 /// Document view for a utility docked as a document: a utility whose presentation has moved from the Utility
 /// Panel into a document tab. It borrows the utility's persistent CustomEditorController (owned by its
 /// CustomUtilityView) rather than creating one, so the utility keeps a single WebView as it moves between
-/// dock locations. The view is inert on saves (the owning panel drives the save tick) and never tears the
-/// controller down on close; the documents panel reparents the WebView back to the panel instead.
+/// areas. The view is inert on saves (the owning panel drives the save tick) and never tears the
+/// controller down on close. The documents panel reparents the WebView back to the panel instead.
 /// </summary>
 public sealed partial class DockedUtilityDocumentView : DocumentView
 {
@@ -32,7 +32,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         // A docked utility reports the Documents panel and marks itself the active document on focus, matching
         // any other document tab. Docking back into the panel re-points the controller at its Utility context.
         _focusContext = new CustomEditorFocusContext(
-            WorkspacePanelId.Documents,
+            FocusPanelId.Documents,
             () => messengerService.Send(new DocumentViewFocusedMessage(_viewModel.FileResource)));
     }
 
@@ -48,7 +48,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     /// <summary>
     /// Moves the borrowed controller's WebView into this tab's container (the dock reparent). Synchronous so
-    /// the reparent completes before the documents panel collapses the utility's panel surface. The controller
+    /// the reparent completes before the documents panel collapses the utility's panel view. The controller
     /// is already live, so there is no init here.
     /// </summary>
     public void Dock()

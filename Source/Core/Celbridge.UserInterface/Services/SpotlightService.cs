@@ -12,7 +12,7 @@ public sealed class SpotlightService : ISpotlightService
     private readonly ISpotlightRegistry _landmarkRegistry;
 
     // Reveal providers keyed by landmark id. Only landmarks that need preparation beyond the
-    // default surface reveal (for example the ephemeral Explorer toolbar) register one.
+    // default area reveal (for example the ephemeral Explorer toolbar) register one.
     private readonly Dictionary<string, ISpotlightLandmark> _landmarks = new();
 
     // The single active presenter, or null when none is registered.
@@ -94,9 +94,8 @@ public sealed class SpotlightService : ISpotlightService
             return Result.Fail($"Cannot show spotlight on '{target}': the workspace UI is not available.");
         }
 
-        // A spotlight reveals whatever surface its landmark sits on, which would take the user out of the
-        // presentation they are giving. Leaving Presentation mode is theirs to decide, and a spotlight is
-        // cosmetic, so the request is refused instead.
+        // A spotlight reveals whatever area its landmark sits in, which would take the user out of the
+        // presentation they are giving.
         if (_windowModeService.LayoutMode == LayoutMode.Presentation)
         {
             return Result.Fail($"Cannot show spotlight on '{target}': the application is in Presentation mode.");
@@ -105,12 +104,11 @@ public sealed class SpotlightService : ISpotlightService
         // Clear the previous spotlight (undoing its transient reveal) before preparing the new one.
         ClearSpotlightState();
 
-        // Reveal the landmark's layout surface, so spotlighting a landmark in a collapsed panel
-        // opens that panel first. The reveal is sticky: the panel stays open afterwards.
+        // Reveal the landmark's workspace area. The reveal is sticky: the area stays visible afterwards.
         if (_landmarkRegistry.TryGetLandmark(target, out var descriptor) &&
-            descriptor!.Surface is not null)
+            descriptor!.Area is not null)
         {
-            _layoutService.SetSurfaceVisibility(descriptor.Surface.Value, true);
+            _layoutService.SetAreaVisibility(descriptor.Area.Value, true);
         }
 
         // Run the landmark's own reveal, if it has a provider (for example switching to the

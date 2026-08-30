@@ -1070,7 +1070,7 @@ Open with default application instead?</value>
   <data name="ResourceTree_CopyPath" xml:space="preserve">
     <value>Copy Path</value>
   </data>
-  <data name="LayoutToolbar_ToggleUtilityPanelTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleUtilityAreaTooltip" xml:space="preserve">
     <value>Toggle Left Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleBottomAreaTooltip" xml:space="preserve">
@@ -1187,7 +1187,7 @@ Open with default application instead?</value>
   <data name="Menu_View" xml:space="preserve">
     <value>View</value>
   </data>
-  <data name="Menu_UtilityPanel" xml:space="preserve">
+  <data name="Menu_UtilityArea" xml:space="preserve">
     <value>Left Panel</value>
   </data>
   <data name="Menu_BottomArea" xml:space="preserve">
@@ -1364,11 +1364,17 @@ Open with default application instead?</value>
   <data name="UtilityPanel_ProjectSettingsTooltip" xml:space="preserve">
     <value>Project Settings</value>
   </data>
-  <data name="UtilityPanel_LearnTooltip" xml:space="preserve">
+  <data name="UtilityPanel_WorkshopTooltip" xml:space="preserve">
+    <value>Community Workshop</value>
+  </data>
+  <data name="Workshop_Section_Celbridge" xml:space="preserve">
+    <value>Celbridge</value>
+  </data>
+  <data name="Workshop_Section_Learn" xml:space="preserve">
     <value>Learn</value>
   </data>
-  <data name="UtilityPanel_ForumTooltip" xml:space="preserve">
-    <value>Community Forum</value>
+  <data name="Workshop_Section_Forum" xml:space="preserve">
+    <value>Forum</value>
   </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
     <value>Open as document</value>

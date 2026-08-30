@@ -1,29 +1,14 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Manages workspace layout surface visibility.
+/// Tracks which workspace areas are on screen and how far the Bottom area spans. Main is always visible.
 /// </summary>
 public interface ILayoutService
 {
     /// <summary>
-    /// Current surface visibility state.
+    /// The areas currently on screen, always including Main.
     /// </summary>
-    WorkspaceSurface SurfaceVisibility { get; }
-
-    /// <summary>
-    /// Whether the Utility Panel (left sidebar) is currently visible.
-    /// </summary>
-    bool IsUtilityPanelVisible { get; }
-
-    /// <summary>
-    /// Whether the Bottom document area is currently visible.
-    /// </summary>
-    bool IsBottomAreaVisible { get; }
-
-    /// <summary>
-    /// Whether the Side document area is currently visible.
-    /// </summary>
-    bool IsSideAreaVisible { get; }
+    IReadOnlySet<WorkspaceArea> VisibleAreas { get; }
 
     /// <summary>
     /// How far the Bottom document area spans across the workspace.
@@ -31,17 +16,22 @@ public interface ILayoutService
     BottomAreaAlignment BottomAreaAlignment { get; }
 
     /// <summary>
-    /// Sets the visibility of a specific surface.
+    /// Whether the area is currently on screen. Always true for Main.
     /// </summary>
-    void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible);
+    bool IsAreaVisible(WorkspaceArea area);
+
+    /// <summary>
+    /// Shows or hides an area. Fails for Main, which is always visible.
+    /// </summary>
+    Result SetAreaVisibility(WorkspaceArea area, bool isVisible);
+
+    /// <summary>
+    /// Hides the area when it is showing and shows it when it is hidden. Fails for Main.
+    /// </summary>
+    Result ToggleAreaVisibility(WorkspaceArea area);
 
     /// <summary>
     /// Sets how far the Bottom document area spans across the workspace.
     /// </summary>
     void SetBottomAreaAlignment(BottomAreaAlignment alignment);
-
-    /// <summary>
-    /// Toggles the visibility of a specific surface.
-    /// </summary>
-    void ToggleSurfaceVisibility(WorkspaceSurface surface);
 }

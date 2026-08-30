@@ -26,10 +26,10 @@ public partial class DocumentTools
         DocumentSection? targetSection = null;
         if (!string.IsNullOrEmpty(section))
         {
-            if (!DocumentLayoutHelper.TryParseSection(section, out var parsedSection))
+            if (!DocumentSectionTokens.TryParse(section, out var parsedSection))
             {
-                var sectionNames = string.Join(", ", DocumentLayoutHelper.AllSections);
-                return ToolResponse.Error($"Invalid section '{section}': must be one of {sectionNames}, or empty to open in {DocumentLayoutHelper.DefaultOpenSection}.");
+                var sectionNames = string.Join(", ", DocumentSectionTokens.AllTokens);
+                return ToolResponse.Error($"Invalid section '{section}': must be one of {sectionNames}, or empty to open in {DocumentLayoutHelper.DefaultOpenSection.ToToken()}.");
             }
 
             targetSection = parsedSection;

@@ -57,14 +57,14 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
         {
             documents.Add(new OpenDocumentEntry(
                 document.FileResource.ToString(),
-                document.Address.Section.ToString(),
+                document.Address.Section.ToToken(),
                 document.Address.TabOrder,
                 document.FileResource == activeDocument,
                 document.EditorId.ToString()));
         }
 
         var visibleSections = snapshot.VisibleSections
-            .Select(section => section.ToString())
+            .Select(section => section.ToToken())
             .ToList();
 
         // An empty active document key (no document open) serialises as the

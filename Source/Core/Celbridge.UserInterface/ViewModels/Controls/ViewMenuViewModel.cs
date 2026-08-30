@@ -31,7 +31,7 @@ public class ViewMenuViewModel
     }
 
     /// <summary>
-    /// Whether a workspace is loaded. The layout commands all act on the workspace surfaces, so they are
+    /// Whether a workspace is loaded. The layout commands all act on the workspace areas, so they are
     /// unavailable on the other pages.
     /// </summary>
     public bool IsWorkspaceLoaded => _workspaceWrapper.IsWorkspaceLoaded;
@@ -45,9 +45,9 @@ public class ViewMenuViewModel
     /// </summary>
     public ApplicationColorTheme Theme => _settingsService.Get(SettingCatalog.Application.Theme);
 
-    public bool IsSurfaceVisible(WorkspaceSurface surface)
+    public bool IsAreaVisible(WorkspaceArea area)
     {
-        return _layoutService.SurfaceVisibility.HasFlag(surface);
+        return _layoutService.IsAreaVisible(area);
     }
 
     public void SetLayoutMode(LayoutMode layoutMode)
@@ -70,11 +70,11 @@ public class ViewMenuViewModel
         });
     }
 
-    public void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible)
+    public void SetAreaVisibility(WorkspaceArea area, bool isVisible)
     {
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Surfaces = surface;
+            command.Area = area;
             command.IsVisible = isVisible;
         });
     }

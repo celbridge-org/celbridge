@@ -37,7 +37,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     public WorkspacePanelViewModel ViewModel { get; }
 
-    // Manages the document sections inside the surface container's area grids.
+    // Manages the document sections inside the layout container's area grids.
     private DocumentSectionContainer SectionContainer { get; }
 
     public IReadOnlyList<DocumentSection> VisibleSections => SectionContainer.Areas.VisibleSections;
@@ -48,9 +48,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         set => SectionContainer.SetActiveDocument(value);
     }
 
-    public double MinimumWidth => SurfaceContainer.MinimumSize.Width;
+    public double MinimumWidth => LayoutContainer.MinimumSize.Width;
 
-    public double MinimumHeight => SurfaceContainer.MinimumSize.Height;
+    public double MinimumHeight => LayoutContainer.MinimumSize.Height;
 
     public WorkspacePanel(
         IServiceProvider serviceProvider,
@@ -77,7 +77,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         this.DataContext = ViewModel;
 
-        SectionContainer = new DocumentSectionContainer(SurfaceContainer);
+        SectionContainer = new DocumentSectionContainer(LayoutContainer);
 
         // Wire up section container events
         SectionContainer.ActiveDocumentChanged += OnActiveDocumentChanged;
@@ -87,20 +87,20 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         SectionContainer.Areas.AreaLayoutChanged += OnAreaLayoutChanged;
         SectionContainer.FilesDropped += OnSectionFilesDropped;
 
-        // Surface sizes are dragged on the surface container's splitters and persisted here.
-        SurfaceContainer.SurfaceSizeChanged += OnSurfaceSizeChanged;
-        SurfaceContainer.SurfaceSizeResetRequested += OnSurfaceSizeResetRequested;
-        SurfaceContainer.StoredSurfaceSizesNeeded += OnStoredSurfaceSizesNeeded;
+        // Area sizes are dragged on the layout container's splitters and persisted here.
+        LayoutContainer.AreaSizeChanged += OnAreaSizeChanged;
+        LayoutContainer.AreaSizeResetRequested += OnAreaSizeResetRequested;
+        LayoutContainer.StoredAreaSizesNeeded += OnStoredAreaSizesNeeded;
 
         SectionContainer.InitializeTabDrag(TabDragOverlay, this);
         ConfigureResourceDropTarget();
 
         CreateAreaToolbars();
 
-        // This panel composes every workspace surface, so it is the only place both panel references are
-        // in hand. Registering here keeps the Utility Panel instance out of the documents interface.
+        // This panel composes every workspace area, so it is the only place both panel references are
+        // in hand.
         var workspaceWrapper = serviceProvider.AcquireService<IWorkspaceWrapper>();
-        workspaceWrapper.WorkspaceService.SetPanels(SurfaceContainer.UtilityPanel, this);
+        workspaceWrapper.WorkspaceService.SetPanels(LayoutContainer.UtilityPanel, this);
 
         Loaded += WorkspacePanel_Loaded;
         Unloaded += WorkspacePanel_Unloaded;
@@ -145,7 +145,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     // Opens the collapsed area holding the document that just became active, returning the area being
     // revealed, or null when nothing needed revealing. A restore is left alone: the workspace restores its
-    // own surface visibility.
+    // own area visibility.
     private DocumentArea? RevealActivatedDocumentArea(ResourceKey documentResource, ActiveDocumentChangeReason reason)
     {
         if (documentResource.IsEmpty
@@ -215,19 +215,19 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         ViewModel.OnAreaLayoutChanged(area, isSplit, splitRatio);
     }
 
-    private void OnSurfaceSizeChanged(WorkspaceSurface surface, double size)
+    private void OnAreaSizeChanged(WorkspaceArea area, double size)
     {
         if (_isShuttingDown)
         {
             return;
         }
 
-        ViewModel.StoreSurfaceSize(surface, (float)size);
+        ViewModel.StoreAreaSize(area, (float)size);
     }
 
-    private void OnSurfaceSizeResetRequested(WorkspaceSurface surface)
+    private void OnAreaSizeResetRequested(WorkspaceArea area)
     {
-        ViewModel.ResetSurfaceSize(surface);
+        ViewModel.ResetAreaSize(area);
     }
 
     private void OnToolbarCollapseAreaRequested(DocumentArea area)
@@ -357,16 +357,16 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // Listen for layout mode changes to show/hide the tab strip in Presentation mode
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
 
-        // The collapsible areas follow the workspace surface visibility.
-        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
+        // The collapsible areas follow the workspace area visibility.
+        _messengerService.Register<AreaVisibilityChangedMessage>(this, OnAreaVisibilityChanged);
 
-        // The Bottom area's alignment decides which surfaces it spans across.
+        // The Bottom area's alignment decides which areas it spans across.
         _messengerService.Register<BottomAreaAlignmentChangedMessage>(this, OnBottomAreaAlignmentChanged);
 
-        // Surface sizes are restored and reset through the workspace settings facade.
-        ViewModel.SurfaceSizeChanged += OnStoredSurfaceSizeChanged;
+        // Area sizes are restored and reset through the workspace settings facade.
+        ViewModel.AreaSizeChanged += OnStoredAreaSizeChanged;
         SectionContainer.Areas.SetBottomAreaAlignment(ViewModel.BottomAreaAlignment);
-        ApplyStoredSurfaceSizes();
+        ApplyStoredAreaSizes();
         ApplyAreaVisibility();
 
         // Listen for document view focus to update active document
@@ -382,13 +382,13 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // Listen for requests to flash a document tab (e.g. when a utility is surfaced or a document reopened)
         _messengerService.Register<FlashDocumentMessage>(this, OnFlashDocumentRequested);
 
-        // Listen for requests to flash the perimeter of a surface the user has just revealed.
-        _messengerService.Register<FlashSurfaceMessage>(this, OnFlashSurfaceRequested);
+        // Listen for requests to flash the perimeter of an area the user has just revealed.
+        _messengerService.Register<FlashAreaMessage>(this, OnFlashAreaRequested);
 
         // Register how this panel takes keyboard focus, so the focus service can hand it back after an
         // interaction moves it away transiently. Without it a modal dialog raised over a document leaves the
         // keyboard nowhere when it closes.
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.Documents, FocusActiveDocument);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Documents, FocusActiveDocument);
 
         // Apply the current layout mode. It survives a project switch, so a workspace can load straight
         // into Focus or Presentation.
@@ -430,7 +430,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return null;
         }
 
-        if (_focusService.FocusedPanel != WorkspacePanelId.Documents)
+        if (_focusService.FocusedPanel != FocusPanelId.Documents)
         {
             return null;
         }
@@ -480,9 +480,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private void WorkspacePanel_Unloaded(object sender, RoutedEventArgs e)
     {
         UnregisterAsResourceDropTarget();
-        ViewModel.SurfaceSizeChanged -= OnStoredSurfaceSizeChanged;
+        ViewModel.AreaSizeChanged -= OnStoredAreaSizeChanged;
         ViewModel.OnViewUnloaded();
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.Documents, null);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Documents, null);
         _messengerService.UnregisterAll(this);
     }
 
@@ -518,7 +518,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         SectionContainer.Areas.SetIsolatedArea(null);
-        ApplyStoredSurfaceSizes();
+        ApplyStoredAreaSizes();
     }
 
     private void UpdateTabStripVisibility(LayoutMode layoutMode)
@@ -546,7 +546,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         SectionContainer.Areas.SetUtilityRailPresented(layoutMode != LayoutMode.Presentation);
     }
 
-    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
+    private void OnAreaVisibilityChanged(object recipient, AreaVisibilityChangedMessage message)
     {
         if (_isShuttingDown)
         {
@@ -555,7 +555,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         ApplyAreaVisibility();
 
-        // Every surface reports through this message, so one about another area says nothing about a claim
+        // Every area reports through this message, so one about another area says nothing about a claim
         // still waiting on this one.
         var pendingFocus = _pendingRevealFocus;
         if (pendingFocus is not null
@@ -566,7 +566,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
-    // Shows or hides the collapsible areas to match the workspace surface visibility. Hiding an area
+    // Shows or hides the collapsible areas to match the workspace area visibility. Hiding an area
     // leaves its tabs in place, so the documents reappear where they were when it is shown again.
     private void ApplyAreaVisibility()
     {
@@ -577,31 +577,31 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         // the toolbar or by entering Focus, leaves that edge on the application border instead.
         SectionContainer.Areas.SetUtilityPanelPresented(ViewModel.IsUtilityPanelVisible);
 
-        ApplyStoredSurfaceSizes();
+        ApplyStoredAreaSizes();
     }
 
-    private void ApplyStoredSurfaceSizes()
+    private void ApplyStoredAreaSizes()
     {
-        SurfaceContainer.SetSurfaceSize(WorkspaceSurface.UtilityPanel, ViewModel.GetSurfaceSize(WorkspaceSurface.UtilityPanel));
-        SurfaceContainer.SetSurfaceSize(WorkspaceSurface.BottomArea, ViewModel.GetSurfaceSize(WorkspaceSurface.BottomArea));
-        SurfaceContainer.SetSurfaceSize(WorkspaceSurface.SideArea, ViewModel.GetSurfaceSize(WorkspaceSurface.SideArea));
+        LayoutContainer.SetAreaSize(WorkspaceArea.Utility, ViewModel.GetAreaSize(WorkspaceArea.Utility));
+        LayoutContainer.SetAreaSize(WorkspaceArea.Bottom, ViewModel.GetAreaSize(WorkspaceArea.Bottom));
+        LayoutContainer.SetAreaSize(WorkspaceArea.Side, ViewModel.GetAreaSize(WorkspaceArea.Side));
     }
 
-    private void OnStoredSurfaceSizeChanged(WorkspaceSurface surface)
+    private void OnStoredAreaSizeChanged(WorkspaceArea area)
     {
-        SurfaceContainer.SetSurfaceSize(surface, ViewModel.GetSurfaceSize(surface));
+        LayoutContainer.SetAreaSize(area, ViewModel.GetAreaSize(area));
     }
 
-    // The stored sizes are re-applied rather than the current ones held down, so a surface narrowed to fit a
+    // The stored sizes are re-applied rather than the current ones held down, so an area narrowed to fit a
     // smaller window returns to the size the user set once the window gives the space back.
-    private void OnStoredSurfaceSizesNeeded()
+    private void OnStoredAreaSizesNeeded()
     {
         if (_isShuttingDown)
         {
             return;
         }
 
-        ApplyStoredSurfaceSizes();
+        ApplyStoredAreaSizes();
     }
 
     private void OnBottomAreaAlignmentChanged(object recipient, BottomAreaAlignmentChangedMessage message)
@@ -682,6 +682,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         return documents;
+    }
+
+    public ResourceKey GetSelectedDocument(DocumentSection section)
+    {
+        return SectionContainer.GetSection(section).GetSelectedDocument();
     }
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
@@ -922,7 +927,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         return Result.Ok();
     }
 
-    private void OnFlashSurfaceRequested(object recipient, FlashSurfaceMessage message)
+    private void OnFlashAreaRequested(object recipient, FlashAreaMessage message)
     {
         if (_isShuttingDown)
         {
@@ -930,22 +935,22 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         // Deferred until the layout has settled, so the outline is at the size it will pulse at.
-        var surface = message.Surface;
+        var revealedArea = message.Area;
         _ = DispatcherQueue.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => FlashSurface(surface));
+            () => FlashArea(revealedArea));
     }
 
-    private void FlashSurface(WorkspaceSurface surface)
+    private void FlashArea(WorkspaceArea area)
     {
-        if (surface == WorkspaceSurface.UtilityPanel)
+        if (area == WorkspaceArea.Utility)
         {
-            SurfaceContainer.FlashUtilityPanelPerimeter();
+            LayoutContainer.FlashUtilityPanelPerimeter();
             return;
         }
 
-        var area = surface.GetArea();
-        if (area is DocumentArea revealedArea)
+        var documentArea = area.GetDocumentArea();
+        if (documentArea is DocumentArea revealedArea)
         {
             SectionContainer.Areas.FlashAreaPerimeter(revealedArea);
         }

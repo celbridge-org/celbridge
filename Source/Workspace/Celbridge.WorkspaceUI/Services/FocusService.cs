@@ -10,8 +10,8 @@ public class FocusService : IFocusService
 {
     private readonly IMessengerService _messengerService;
     private readonly ILogger<FocusService> _logger;
-    private readonly Dictionary<WorkspacePanelId, Action> _panelFocusHandlers = new();
-    private WorkspacePanelId _focusedPanel = WorkspacePanelId.None;
+    private readonly Dictionary<FocusPanelId, Action> _panelFocusHandlers = new();
+    private FocusPanelId _focusedPanel = FocusPanelId.None;
     private IEditTarget? _editTarget;
 
     // The release callback matters on the Skia heads, where WebView and host focus are not integrated: a
@@ -34,7 +34,7 @@ public class FocusService : IFocusService
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
-    public WorkspacePanelId FocusedPanel => _focusedPanel;
+    public FocusPanelId FocusedPanel => _focusedPanel;
 
     public IEditTarget? EditTarget => _editTarget;
 
@@ -110,7 +110,7 @@ public class FocusService : IFocusService
         _logger.LogDebug("Edit target cleared on teardown: {EditTarget}", target.GetType().Name);
     }
 
-    public void SetPanelFocusHandler(WorkspacePanelId panel, Action? focusHandler)
+    public void SetPanelFocusHandler(FocusPanelId panel, Action? focusHandler)
     {
         if (focusHandler is null)
         {
@@ -134,7 +134,7 @@ public class FocusService : IFocusService
     {
         if (claim.Kind == FocusClaimKind.ManagedControl)
         {
-            return claim.Panel == WorkspacePanelId.None ? "nothing" : "managed control";
+            return claim.Panel == FocusPanelId.None ? "nothing" : "managed control";
         }
 
         return $"web surface {claim.Surface?.SurfaceName ?? "unnamed"}";

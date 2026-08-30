@@ -226,7 +226,7 @@ public class MainMenu
 
     private MenuFlyoutSubItem CreateViewSubItem()
     {
-        // Everything here except the theme acts on the workspace surfaces.
+        // Everything here except the theme acts on the workspace areas.
         var isWorkspaceLoaded = _viewMenuViewModel.IsWorkspaceLoaded;
 
         // Unlike the File submenu, the items here carry no icons: a check mark and an icon share the same
@@ -255,26 +255,26 @@ public class MainMenu
 
         viewSubItem.Items.Add(new MenuFlyoutSeparator());
 
-        void AddSurfaceItem(string labelKey, WorkspaceSurface surface)
+        void AddAreaItem(string labelKey, WorkspaceArea area)
         {
-            var isVisible = _viewMenuViewModel.IsSurfaceVisible(surface);
+            var isVisible = _viewMenuViewModel.IsAreaVisible(area);
 
-            var surfaceItem = CreateToggleMenuItem(
+            var areaItem = CreateToggleMenuItem(
                 label: _stringLocalizer.GetString(labelKey),
                 isChecked: isVisible,
                 isEnabled: isWorkspaceLoaded,
-                onClick: (sender, e) => _viewMenuViewModel.SetSurfaceVisibility(surface, !isVisible));
+                onClick: (sender, e) => _viewMenuViewModel.SetAreaVisibility(area, !isVisible));
 
-            viewSubItem.Items.Add(surfaceItem);
+            viewSubItem.Items.Add(areaItem);
         }
 
-        AddSurfaceItem("Menu_UtilityPanel", WorkspaceSurface.UtilityPanel);
-        AddSurfaceItem("Menu_BottomArea", WorkspaceSurface.BottomArea);
-        AddSurfaceItem("Menu_SideArea", WorkspaceSurface.SideArea);
+        AddAreaItem("Menu_UtilityArea", WorkspaceArea.Utility);
+        AddAreaItem("Menu_BottomArea", WorkspaceArea.Bottom);
+        AddAreaItem("Menu_SideArea", WorkspaceArea.Side);
 
         viewSubItem.Items.Add(new MenuFlyoutSeparator());
 
-        // Full Screen and Reset Layout act on the window as a whole rather than on one surface, so they
+        // Full Screen and Reset Layout act on the window as a whole rather than on one area, so they
         // group together as they do in the layout flyout. Where the platform supplies fullscreen through
         // the window chrome the app offers no toggle of its own (see LayoutToolbar, which hides the same
         // control).

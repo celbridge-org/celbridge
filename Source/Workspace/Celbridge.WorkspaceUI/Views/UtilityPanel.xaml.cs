@@ -1,24 +1,18 @@
 using Celbridge.Commands;
-using Celbridge.Community;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Packages;
-using Celbridge.Projects;
 using Celbridge.Search;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Utilities;
 using Celbridge.WorkspaceUI.ViewModels;
 using Celbridge.WorkspaceUI.Views.Controls;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.WorkspaceUI.Views;
-
-/// <summary>
-/// Pairs a community link with the rail button that opens it.
-/// </summary>
-internal sealed record CommunityRailButton(CommunityLink Link, UtilityButton Button);
 
 public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 {
@@ -28,25 +22,20 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly IMessengerService _messengerService;
     private readonly ISpotlightRegistry _spotlightRegistry;
     private readonly ICommandService _commandService;
-    private readonly IProjectService _projectService;
     private readonly ILayoutService _layoutService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IIconService _iconService;
 
     // The rail is hosted in a workspace column of its own, so it stays on screen while the panel is collapsed.
     // This panel still owns it: every button, its state and its click belong here.
     private readonly UtilityRail _rail;
 
-    private readonly UtilityButton _explorerButton;
-    private readonly UtilityButton _searchButton;
-    private readonly UtilityButton _projectSettingsButton;
-
-    // Spotlight landmark ids for the built-in rail buttons. These must match the descriptors seeded in
-    // SpotlightLandmarks exactly.
+    // Spotlight landmark ids for the built-in rail buttons. Each is set as its button's AutomationId,
+    // which is what a landmark has to match.
     private const string ExplorerLandmarkId = "explorer-utility-button";
     private const string SearchLandmarkId = "search-utility-button";
-    private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
 
-    // Rail buttons, content hosts, and focus callbacks for every surface (built-in and custom), keyed by
+    // Rail buttons, content hosts, and focus callbacks for every utility (built-in and custom), keyed by
     // utility id. The view owns content hosting and focus acquisition. The view model owns the rail selection
     // and focus state, which the buttons bind to.
     private readonly Dictionary<EditorId, UtilityButton> _buttons = new();
@@ -54,12 +43,27 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly Dictionary<EditorId, Action> _focusActions = new();
 
     // Docked utilities (utility id -> the document resource its WebView is docked into). A docked utility's rail
-    // click activates its document tab instead of showing the panel surface.
+    // click activates its document tab instead of showing it in the panel.
     private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
 
-    // The community link buttons, kept so their tooltips can be applied once the panel loads. They are not rail
-    // items: they never select a surface, so they carry no selection, focus, or docked state.
-    private readonly List<CommunityRailButton> _communityButtons = new();
+    // The launchers, by rail id. A launcher never occupies the panel, so its descriptor is what its button
+    // click and its reveal both go through.
+    private readonly Dictionary<EditorId, UtilityRailItem> _launcherItems = new();
+
+    // The Spotlight landmark each rail button owns, by rail id. Unregistering reads the id that was
+    // registered rather than rebuilding it, so the two cannot drift apart.
+    private readonly Dictionary<EditorId, string> _landmarkIds = new();
+
+    // The built-in utility descriptors this panel builds for itself, published to the utility service so the
+    // rail register holds every item.
+    private readonly List<UtilityRailItem> _builtInUtilityItems = new();
+
+    // The rail's buttons in the three ordered groups the panel presents: the built-in utilities, then the
+    // contribution utilities, then the launchers. The rail draws them as one stack, so the panel rebuilds it
+    // from these whenever the middle group changes.
+    private readonly List<UtilityButton> _builtInUtilityButtons = new();
+    private readonly List<UtilityButton> _customUtilityButtons = new();
+    private readonly List<UtilityButton> _launcherButtons = new();
 
     private Storyboard? _perimeterStoryboard;
 
@@ -67,7 +71,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // the restore itself do not overwrite the saved selection before it is read.
     private bool _selectionPersistenceEnabled;
 
-    // The utility a reveal selected while the panel was collapsed. A surface off screen cannot take the
+    // The utility a reveal selected while the panel was collapsed. A utility off screen cannot take the
     // keyboard, so the focus claim waits for the reveal to be laid out.
     private EditorId _pendingRevealUtilityId = EditorId.Empty;
 
@@ -79,12 +83,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     public EditorId ActiveUtilityId => ViewModel.SelectedUtilityId;
 
     /// <summary>
-    /// The rail that selects this panel's surfaces, hosted beside the panel in the workspace layout.
+    /// The rail that selects the utility this panel shows, hosted beside the panel in the workspace layout.
     /// </summary>
     internal UtilityRail Rail => _rail;
 
     // Whether the panel draws a bottom edge and rounded bottom corners: it does when the Bottom document
-    // area runs underneath it, and meets the application border flush otherwise. Driven by the surface
+    // area runs underneath it, and meets the application border flush otherwise. Driven by the layout
     // container, which owns the panel's placement.
     internal void SetBottomEdgePresented(bool isPresented)
     {
@@ -121,119 +125,181 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _projectService = ServiceLocator.AcquireService<IProjectService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
         _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         _rail = new UtilityRail();
-        _explorerButton = new UtilityButton();
-        _searchButton = new UtilityButton();
-        _projectSettingsButton = new UtilityButton();
+        _iconService = ServiceLocator.AcquireService<IIconService>();
 
-        // Acquire panel views via DI and host them in ContentControls
+        // Acquire panel views via DI. Their content hosts are created by the rail item build below.
         ExplorerPanel = ServiceLocator.AcquireService<IExplorerPanel>();
         SearchPanel = ServiceLocator.AcquireService<ISearchPanel>();
-        ExplorerPanelControl.Content = ExplorerPanel as UIElement;
-        SearchPanelControl.Content = SearchPanel as UIElement;
 
         ViewModel = ServiceLocator.AcquireService<UtilityPanelViewModel>();
-        ViewModel.SetPanelVisible(_layoutService.IsUtilityPanelVisible);
+        ViewModel.SetPanelVisible(_layoutService.IsAreaVisible(WorkspaceArea.Utility));
         DataContext = ViewModel;
 
-        InitializeBuiltInButtons();
-        InitializeCommunityButtons();
+        BuildBuiltInUtilityItems();
+        RefreshRailButtons();
 
-        // Show the Explorer surface by default
-        ShowSurface(BuiltInUtilityIds.Explorer);
+        // Show the Explorer by default
+        ShowUtilityInPanel(BuiltInUtilityIds.Explorer);
 
         Loaded += UtilityPanel_Loaded;
         Unloaded += UtilityPanel_Unloaded;
     }
 
-    // Tooltips are applied later in ApplyTooltips, once the localizer strings are read.
-    private void InitializeBuiltInButtons()
+    // The panel's own built-in utilities, Explorer and Search. These wrap live views acquired from DI, so the
+    // panel builds them rather than the utility service, which does not exist yet when the panel is constructed.
+    private void BuildBuiltInUtilityItems()
     {
-        var explorerItem = ViewModel.AddItem(BuiltInUtilityIds.Explorer, WorkspacePanelId.Explorer);
-        var searchItem = ViewModel.AddItem(BuiltInUtilityIds.Search, WorkspacePanelId.Search);
+        var explorerName = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
 
-        _explorerButton.SetIcon(IconSymbol.Folder);
-        _explorerButton.SetAutomationId(ExplorerLandmarkId);
-        BindButton(_explorerButton, explorerItem);
-        _explorerButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Explorer);
-        _rail.AddUtilityButton(_explorerButton);
+        var explorerView = new UtilityRailPanelView(
+            ExplorerPanel,
+            ExplorerPanel.FocusPanel,
+            FocusPanelId.Explorer,
+            PreservePanelFocus: true);
 
-        _searchButton.SetIcon(IconSymbol.Search);
-        _searchButton.SetAutomationId(SearchLandmarkId);
-        BindButton(_searchButton, searchItem);
-        _searchButton.Click += (sender, e) => ShowUtility(BuiltInUtilityIds.Search);
-        _rail.AddUtilityButton(_searchButton);
+        var explorerItem = UtilityRailItem.CreatePanelUtility(
+            BuiltInUtilityIds.Explorer,
+            ExplorerLandmarkId,
+            _iconService.GetIconName(IconSymbol.Folder),
+            explorerName,
+            explorerName,
+            explorerView);
 
-        // Project Settings opens a document rather than selecting a surface, so the button is a launcher
-        // like the community links: no rail item, no content host, no focus action.
-        _projectSettingsButton.SetIcon(IconSymbol.Sliders);
-        _projectSettingsButton.SetAutomationId(ProjectSettingsLandmarkId);
-        _projectSettingsButton.Click += (sender, e) =>
-        {
-            _projectSettingsButton.FlashAttention();
-            OpenProjectSettings();
-        };
-        _rail.AddLauncherButton(_projectSettingsButton);
+        var searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
 
-        _buttons[BuiltInUtilityIds.Explorer] = _explorerButton;
-        _buttons[BuiltInUtilityIds.Search] = _searchButton;
-        _contentControls[BuiltInUtilityIds.Explorer] = ExplorerPanelControl;
-        _contentControls[BuiltInUtilityIds.Search] = SearchPanelControl;
-        _focusActions[BuiltInUtilityIds.Explorer] = ExplorerPanel.FocusPanel;
-        _focusActions[BuiltInUtilityIds.Search] = SearchPanel.FocusSearchInput;
+        var searchView = new UtilityRailPanelView(
+            SearchPanel,
+            SearchPanel.FocusSearchInput,
+            FocusPanelId.Search,
+            PreservePanelFocus: true);
+
+        var searchItem = UtilityRailItem.CreatePanelUtility(
+            BuiltInUtilityIds.Search,
+            SearchLandmarkId,
+            _iconService.GetIconName(IconSymbol.Search),
+            searchName,
+            searchName,
+            searchView);
+
+        _builtInUtilityItems.Add(explorerItem);
+        _builtInUtilityItems.Add(searchItem);
+
+        _builtInUtilityButtons.Add(AddRailItem(explorerItem));
+        _builtInUtilityButtons.Add(AddRailItem(searchItem));
     }
 
-    // Opens the Project Settings editor on the project file, naming the editor so the choice does not
-    // depend on extension resolution. Already open, the command activates its tab.
-    private void OpenProjectSettings()
+    // Builds a rail button and registers everything the panel tracks for it. An item that can occupy the
+    // panel gets a view model item, a content host and a focus action. An item that only opens a document
+    // gets none of those, and its click opens that document instead.
+    private UtilityButton AddRailItem(UtilityRailItem item)
     {
-        var project = _projectService.CurrentProject;
-        if (project is null)
+        var railButton = new UtilityButton();
+        railButton.SetIcon(item.IconName);
+        railButton.SetAutomationId(item.LandmarkId);
+        railButton.SetTooltip(item.Tooltip);
+
+        var itemId = item.ItemId;
+
+        switch (item.Kind)
         {
-            return;
+            case RailItemKind.PanelUtility:
+            case RailItemKind.DockableUtility:
+                Guard.IsNotNull(item.PanelView);
+                var panelView = item.PanelView;
+
+                var viewModelItem = ViewModel.AddItem(itemId, panelView.FocusIdentity);
+                BindButton(railButton, viewModelItem);
+                railButton.Click += (sender, e) => ShowUtility(itemId);
+
+                _contentControls[itemId] = CreateContentHost(panelView);
+                _focusActions[itemId] = panelView.FocusPanel;
+                break;
+
+            case RailItemKind.DocumentLauncher:
+                _launcherItems[itemId] = item;
+                railButton.Click += (sender, e) => ShowLauncherDocument(item);
+                break;
+
+            default:
+                throw new NotSupportedException($"Unhandled rail item kind '{item.Kind}'");
         }
 
-        // The project file sits at the project root, so its resource key is just the file name.
-        var projectFileName = Path.GetFileName(project.ProjectFilePath);
-        if (!ResourceKey.TryCreate(projectFileName, out var projectFileResource))
+        // A landmark lives exactly as long as the button it points at. The built-in utility buttons last
+        // for the life of the panel, and the rest are dropped when the rail is cleared.
+        _landmarkIds[itemId] = item.LandmarkId;
+
+        var landmark = new LandmarkDescriptor(item.LandmarkId, null);
+        _spotlightRegistry.RegisterLandmark(landmark);
+
+        _buttons[itemId] = railButton;
+
+        return railButton;
+    }
+
+    // Hosts a rail item's panel view. The host sits above the hosted view's own FocusTracking.Panel
+    // declaration: focusing the view lands managed focus here, and the focus tracker classifies by walking
+    // towards the root, so without a declaration here the walk would pass the view's own and report None.
+    private ContentControl CreateContentHost(UtilityRailPanelView panelView)
+    {
+        var contentControl = new ContentControl
         {
-            return;
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
+            Visibility = Visibility.Collapsed,
+            Content = panelView.Content as UIElement
+        };
+
+        FocusTracking.SetPanel(contentControl, panelView.FocusIdentity);
+
+        // A tree rebuild destroys the focused row and the platform bounces focus up onto the host, which has
+        // no panel ancestor and would otherwise clear panel focus to None.
+        if (panelView.PreservePanelFocus)
+        {
+            FocusTracking.SetPreservePanelFocus(contentControl, true);
         }
+
+        ContentArea.Children.Add(contentControl);
+
+        return contentControl;
+    }
+
+    // Opens a launcher's document in the area it declares. Already open, the command activates its tab.
+    private void ShowLauncherDocument(UtilityRailItem item)
+    {
+        FlashRailButton(item.ItemId);
+
+        // A launcher always names the area its document opens in.
+        var area = item.DockArea!.Value;
+
+        // Opening into a section does not reveal its area, so a collapsed one is presented first.
+        PresentArea(area);
+
+        // The declared area decides where the document lands when it opens. A tab that is already open keeps
+        // the section the user put it in, which is what an unnamed section means to the open command.
+        var targetSection = ResolveLauncherSection(item.FileResource, area);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
-            command.FileResource = projectFileResource;
-            command.EditorId = BuiltInEditors.ProjectSettingsEditorId;
+            command.FileResource = item.FileResource;
+            command.EditorId = item.EditorId;
+            command.TargetSection = targetSection;
         });
     }
 
-    private void InitializeCommunityButtons()
+    // Null once the document is open, so the open command leaves the tab where the user put it.
+    private DocumentSection? ResolveLauncherSection(ResourceKey resource, WorkspaceArea area)
     {
-        foreach (var link in CommunityLinks.All)
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+        if (documentsService.FindOpenDocument(resource) is not null)
         {
-            var railButton = new UtilityButton();
-            railButton.SetIcon(link.Icon);
-            railButton.SetAutomationId(link.LandmarkId);
-
-            railButton.Click += (sender, e) =>
-            {
-                railButton.FlashAttention();
-                OpenCommunityLink(link);
-            };
-
-            _rail.AddCommunityButton(railButton);
-
-            _communityButtons.Add(new CommunityRailButton(link, railButton));
+            return null;
         }
-    }
 
-    private void OpenCommunityLink(CommunityLink link)
-    {
-        _commandService.Execute<IOpenCommunityLinkCommand>(command => command.LinkId = link.LinkId);
+        return area.GetPrimaryDocumentSection();
     }
 
     // Binds a rail button's visual state to its item view model.
@@ -255,13 +321,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     private void UtilityPanel_Loaded(object sender, RoutedEventArgs e)
     {
-        ApplyTooltips();
-
         // Register how the hosted panels take keyboard focus, so the focus service can return focus to
         // whichever is focused after a modal dialog closes or the resource tree rebuilds.
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, ExplorerPanel.FocusPanel);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, SearchPanel.FocusSearchInput);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, FocusActiveCustomUtility);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Explorer, ExplorerPanel.FocusPanel);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Search, SearchPanel.FocusSearchInput);
+        _focusService.SetPanelFocusHandler(FocusPanelId.CustomUtility, FocusActiveCustomUtility);
 
         // The utility panels drop their own header focus indicator and show focus on the selected rail button
         // instead, so feed panel focus changes into the view model to colour the indicator accordingly.
@@ -275,18 +339,18 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         // The rail marks follow the panel's visibility. The workspace restores that visibility around this
         // point, so it is read again here.
-        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
-        ViewModel.SetPanelVisible(_layoutService.IsUtilityPanelVisible);
+        _messengerService.Register<AreaVisibilityChangedMessage>(this, OnAreaVisibilityChanged);
+        ViewModel.SetPanelVisible(_layoutService.IsAreaVisible(WorkspaceArea.Utility));
     }
 
     private void UtilityPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         _messengerService.Unregister<PanelFocusChangedMessage>(this);
         _messengerService.Unregister<PackagesInitializedMessage>(this);
-        _messengerService.Unregister<SurfaceVisibilityChangedMessage>(this);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.Explorer, null);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.Search, null);
-        _focusService.SetPanelFocusHandler(WorkspacePanelId.CustomUtility, null);
+        _messengerService.Unregister<AreaVisibilityChangedMessage>(this);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Explorer, null);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Search, null);
+        _focusService.SetPanelFocusHandler(FocusPanelId.CustomUtility, null);
     }
 
     // The CustomUtility panel is whichever contributed utility the rail has selected, so the handler resolves
@@ -307,29 +371,16 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // Flags the Project Settings rail button when any contribution has dropped configuration.
     private void UpdateProjectSettingsIssuePip()
     {
+        if (!_buttons.TryGetValue(BuiltInLauncherIds.ProjectSettings, out var projectSettingsButton))
+        {
+            return;
+        }
+
         var packageService = _workspaceWrapper.WorkspaceService?.PackageService;
         var hasIssues = packageService is not null
             && packageService.GetContributionIssues().Count > 0;
 
-        _projectSettingsButton.SetIssuePipVisible(hasIssues);
-    }
-
-    private void ApplyTooltips()
-    {
-        var explorerTooltip = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
-        _explorerButton.SetTooltip(explorerTooltip);
-
-        var searchTooltip = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
-        _searchButton.SetTooltip(searchTooltip);
-
-        var projectSettingsTooltip = _stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
-        _projectSettingsButton.SetTooltip(projectSettingsTooltip);
-
-        foreach (var communityButton in _communityButtons)
-        {
-            var communityTooltip = _stringLocalizer.GetString(communityButton.Link.TooltipKey);
-            communityButton.Button.SetTooltip(communityTooltip);
-        }
+        projectSettingsButton.SetIssuePipVisible(hasIssues);
     }
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
@@ -337,12 +388,33 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ViewModel.ReconcileFocus(message.FocusedPanel);
     }
 
+    public bool HasRailItem(EditorId itemId)
+    {
+        return _buttons.ContainsKey(itemId);
+    }
+
     public void ShowUtility(EditorId utilityId)
     {
-        // A utility docked as a document activates its document tab, without changing the shown panel surface or
-        // the rail highlight. A utility in the panel selects its rail surface.
+        // A launcher never occupies the panel, so revealing it is opening its document, the same as clicking
+        // it.
+        if (_launcherItems.TryGetValue(utilityId, out var launcherItem))
+        {
+            ShowLauncherDocument(launcherItem);
+            return;
+        }
+
+        // A utility docked as a document activates its document tab, without changing which utility the panel
+        // shows or the rail highlight. A utility in the panel is selected on the rail.
         if (_dockedUtilityResources.TryGetValue(utilityId, out var documentResource))
         {
+            // Reveal the area holding the tab before activating it, so a utility docked in a collapsed area
+            // is actually presented rather than activated out of sight.
+            var dockedArea = _workspaceWrapper.WorkspaceService.UtilityService.GetCurrentArea(utilityId);
+            if (dockedArea is not null)
+            {
+                PresentArea(dockedArea.Value);
+            }
+
             // Activate the docked utility's tab, then request an attention flash so the reveal gives visible
             // feedback even when the tab was already the active document.
             FlashRailButton(utilityId);
@@ -356,20 +428,16 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             return;
         }
 
-        // A lazy-load utility creates its WebView on first show. The surface is shown
-        // immediately; the WebView attaches to it when initialization completes.
-        _ = _workspaceWrapper.WorkspaceService.UtilityService.EnsureUtilityInitializedAsync(utilityId);
-
         // Showing a utility presents it, so a collapsed panel is brought back first. Its focus claim waits
         // for the reveal to be laid out.
-        bool isPanelVisible = _layoutService.IsUtilityPanelVisible;
+        bool isPanelVisible = _layoutService.IsAreaVisible(WorkspaceArea.Utility);
         if (!isPanelVisible)
         {
             _pendingRevealUtilityId = utilityId;
             ShowUtilityPanel();
         }
 
-        ShowSurface(utilityId, takeFocus: isPanelVisible);
+        ShowUtilityInPanel(utilityId, takeFocus: isPanelVisible);
         PersistSelectedUtility(utilityId.ToString());
     }
 
@@ -383,22 +451,34 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     private void ShowUtilityPanel()
     {
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        PresentArea(WorkspaceArea.Utility);
+    }
+
+    // Reveals a collapsed area, so presenting something in it puts it on screen. Main is never collapsed,
+    // which is the no-op case.
+    private void PresentArea(WorkspaceArea area)
+    {
+        if (!area.IsCollapsible())
         {
-            command.Surfaces = WorkspaceSurface.UtilityPanel;
+            return;
+        }
+
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
+        {
+            command.Area = area;
             command.IsVisible = true;
         });
     }
 
-    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
+    private void OnAreaVisibilityChanged(object recipient, AreaVisibilityChangedMessage message)
     {
-        bool isPanelVisible = message.SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
+        bool isPanelVisible = message.VisibleAreas.Contains(WorkspaceArea.Utility);
 
         // A collapsed panel is showing nothing, so no rail item is marked. The selection is kept, so a reveal
         // returns to it.
         ViewModel.SetPanelVisible(isPanelVisible);
 
-        // Every surface reports through this message, so one about the Bottom or Side area says nothing about
+        // Every area reports through this message, so one about the Bottom or Side area says nothing about
         // a reveal still waiting on the panel.
         if (!isPanelVisible)
         {
@@ -413,7 +493,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             return;
         }
 
-        // Deferred to a low dispatcher tick so the reveal has been laid out before the surface claims the
+        // Deferred to a low dispatcher tick so the reveal has been laid out before the utility claims the
         // keyboard. A later selection supersedes this one, so the id is checked again on the tick.
         _ = DispatcherQueue.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
@@ -421,14 +501,14 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             {
                 if (ViewModel.SelectedUtilityId == revealedUtilityId)
                 {
-                    ShowSurface(revealedUtilityId);
+                    ShowUtilityInPanel(revealedUtilityId);
                 }
             });
     }
 
     // Makes the utility the one the panel shows and shows its content. takeFocus carries the keyboard to it,
     // and with it the optimistic accent that holds until focus settles.
-    private void ShowSurface(EditorId utilityId, bool takeFocus = true)
+    private void ShowUtilityInPanel(EditorId utilityId, bool takeFocus = true)
     {
         if (!_contentControls.TryGetValue(utilityId, out var content))
         {
@@ -441,12 +521,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     }
 
     // Shows the incoming content on top and, once it has been laid out, focuses it and then collapses the other
-    // content hosts. Keeping the outgoing content visible until focus has moved onto the incoming surface stops
+    // content hosts. Keeping the outgoing content visible until focus has moved onto the incoming one stops
     // WinUI from relocating focus to another panel when the previously focused element would otherwise be
     // collapsed. Focusing after layout (rather than this tick) lands on a control that is actually focusable.
     private void ShowContent(EditorId utilityId, ContentControl content, bool takeFocus)
     {
-        // A surface that is already visible (re-selected while another panel holds focus, e.g. after a
+        // Content that is already visible (re-selected while another panel holds focus, e.g. after a
         // docked utility moved focus to a document) is already laid out and setting it visible again may
         // raise no LayoutUpdated, so focus it now. Otherwise re-selecting it would never move focus back
         // onto it, leaving its rail button unfocused.
@@ -488,7 +568,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             }
 
             // A web-view utility's focusContent moves only native focus, so managed focus stays on the
-            // outgoing surface. Collapsing that surface below would then relocate managed focus onto
+            // outgoing content. Collapsing it below would then relocate managed focus onto
             // unrelated chrome (a document tab), clobbering the web view's just-reported CustomUtility panel.
             // Yield managed focus to this utility's host - it carries the CustomUtility panel declaration - so
             // the collapse has nothing to relocate. Pointer state matches the focus the host receives
@@ -516,81 +596,94 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
     }
 
-    // Broadcasts the now-active rail surface, so app-level state (e.g. app_get_state) can report it without
-    // touching this UI object off the UI thread.
+    // Broadcasts the now-active utility, so app-level state can report it without touching this UI object
+    // off the UI thread.
     private void NotifyActiveUtilityChanged()
     {
         _messengerService.Send(new ActiveUtilityChangedMessage(ActiveUtilityId.ToString()));
     }
 
-    public void BuildCustomUtilities(IReadOnlyList<CustomUtility> utilities)
+    public IReadOnlyList<UtilityRailItem> GetBuiltInUtilityItems()
     {
-        ClearCustomUtilities();
-
-        foreach (var utility in utilities)
-        {
-            var item = ViewModel.AddItem(utility.UtilityId, WorkspacePanelId.CustomUtility);
-
-            var railButton = new UtilityButton();
-            railButton.SetIcon(utility.IconName);
-            railButton.SetTooltip(utility.Tooltip);
-
-            var landmarkId = CustomLandmarkId(utility.UtilityId);
-            railButton.SetAutomationId(landmarkId);
-
-            BindButton(railButton, item);
-
-            var utilityId = utility.UtilityId;
-            railButton.Click += (sender, e) => ShowUtility(utilityId);
-
-            _rail.AddUtilityButton(railButton);
-
-            _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(landmarkId, null));
-
-            var contentControl = new ContentControl
-            {
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                VerticalContentAlignment = VerticalAlignment.Stretch,
-                Visibility = Visibility.Collapsed,
-                Content = utility.Content as UIElement
-            };
-
-            // Declare the panel on the host wrapper, not just the custom utility view inside it. Focusing
-            // the hosted web view lands managed focus on this ContentControl, and the focus tracker
-            // classifies by walking towards the root, so without a declaration here the walk passes the
-            // view's own declaration and reports None - clearing the rail button's focus highlight.
-            FocusTracking.SetPanel(contentControl, WorkspacePanelId.CustomUtility);
-
-            ContentArea.Children.Add(contentControl);
-
-            _buttons[utility.UtilityId] = railButton;
-            _contentControls[utility.UtilityId] = contentControl;
-            _focusActions[utility.UtilityId] = utility.FocusPanel;
-        }
+        return _builtInUtilityItems;
     }
 
-    public void ClearCustomUtilities()
+    public void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems)
+    {
+        RemoveBuiltRailItems();
+
+        foreach (var railItem in railItems)
+        {
+            // The built-in utilities are built in the constructor because they wrap live views, so they are already
+            // on the rail. Rebuilding one would reparent the view it hosts.
+            if (_buttons.ContainsKey(railItem.ItemId))
+            {
+                continue;
+            }
+
+            var railButton = AddRailItem(railItem);
+
+            // A launcher joins the group the rail draws after the gap.
+            if (railItem.Kind == RailItemKind.DocumentLauncher)
+            {
+                _launcherButtons.Add(railButton);
+            }
+            else
+            {
+                _customUtilityButtons.Add(railButton);
+            }
+        }
+
+        RefreshRailButtons();
+
+        // The Project Settings button is rebuilt above, so its issue pip is re-applied to the new button.
+        UpdateProjectSettingsIssuePip();
+    }
+
+    // Rebuilds the rail as two visual groups: the built-in utilities with the contribution utilities, then the
+    // launchers. The rail draws the gap at the group boundary, so no button carries layout of its own.
+    private void RefreshRailButtons()
+    {
+        _rail.ClearButtons();
+
+        var utilityGroup = new List<UtilityButton>();
+        utilityGroup.AddRange(_builtInUtilityButtons);
+        utilityGroup.AddRange(_customUtilityButtons);
+
+        _rail.AddButtonGroup(utilityGroup);
+        _rail.AddButtonGroup(_launcherButtons);
+    }
+
+    public void ClearRailItems()
+    {
+        RemoveBuiltRailItems();
+        RefreshRailButtons();
+    }
+
+    // Drops every rail item the panel built, leaving the rail itself untouched, so a rebuild redraws it once
+    // rather than once per phase.
+    private void RemoveBuiltRailItems()
     {
         // This runs on unload and on rebuild, so the revert-to-Explorer below must not persist over the user's
         // saved selection. RestoreSelectedUtility re-enables persistence once the rebuilt rail is restored.
         _selectionPersistenceEnabled = false;
 
         // Revert to Explorer before removing items so a removed utility is never left showing or highlighted.
-        if (IsCustomSurfaceSelected())
+        if (IsCustomUtilitySelected())
         {
-            ShowSurface(BuiltInUtilityIds.Explorer);
+            ShowUtilityInPanel(BuiltInUtilityIds.Explorer);
         }
 
         foreach (var utilityId in GetCustomUtilityIds())
         {
             var railButton = _buttons[utilityId];
-            _rail.RemoveUtilityButton(railButton);
+            _customUtilityButtons.Remove(railButton);
 
             var contentControl = _contentControls[utilityId];
             contentControl.Content = null;
             ContentArea.Children.Remove(contentControl);
 
-            _spotlightRegistry.UnregisterLandmark(CustomLandmarkId(utilityId));
+            UnregisterRailLandmark(utilityId);
 
             _buttons.Remove(utilityId);
             _contentControls.Remove(utilityId);
@@ -598,11 +691,21 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             _dockedUtilityResources.Remove(utilityId);
             ViewModel.RemoveItem(utilityId);
         }
+
+        // The launchers host no live view and no content, so they are simply dropped and rebuilt.
+        foreach (var launcherItem in _launcherItems.Values)
+        {
+            _buttons.Remove(launcherItem.ItemId);
+            UnregisterRailLandmark(launcherItem.ItemId);
+        }
+
+        _launcherItems.Clear();
+        _launcherButtons.Clear();
     }
 
-    public void SetUtilityDockLocation(EditorId utilityId, DockLocation location, ResourceKey documentResource)
+    public void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource)
     {
-        bool isDocument = location == DockLocation.Document;
+        bool isDocument = area != WorkspaceArea.Utility;
         if (isDocument)
         {
             _dockedUtilityResources[utilityId] = documentResource;
@@ -614,12 +717,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         ViewModel.SetDocked(utilityId, isDocument);
 
-        // A utility that has left for a document tab can no longer be the panel's surface, so the panel falls
+        // A utility that has left for a document tab can no longer be what the panel shows, so the panel falls
         // back to Explorer. The keyboard belongs to the tab the utility just moved into.
         if (isDocument
             && ViewModel.SelectedUtilityId == utilityId)
         {
-            ShowSurface(BuiltInUtilityIds.Explorer, takeFocus: false);
+            ShowUtilityInPanel(BuiltInUtilityIds.Explorer, takeFocus: false);
             PersistSelectedUtility(BuiltInUtilityIds.Explorer.ToString());
         }
     }
@@ -628,23 +731,23 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     {
         var tag = _settings.Get(SettingCatalog.Layout.UtilityPanelSelectedUtility);
 
-        // Restoring the previously selected utility shows its surface; it is not the user choosing to work
+        // Restoring the previously selected utility shows it. It is not the user choosing to work
         // in that panel, so it claims the keyboard only as a fallback. The restored active document takes
         // focus first and keeps it, and a workspace with no open document leaves this the sole claimant.
-        var takeFocus = _focusService.FocusedPanel == WorkspacePanelId.None;
+        var takeFocus = _focusService.FocusedPanel == FocusPanelId.None;
 
         if (EditorId.TryParse(tag, out var utilityId)
             && _contentControls.ContainsKey(utilityId)
             && !_dockedUtilityResources.ContainsKey(utilityId))
         {
-            ShowSurface(utilityId, takeFocus);
+            ShowUtilityInPanel(utilityId, takeFocus);
         }
         else
         {
             // The persisted id no longer resolves: an uninstalled or disabled utility, an unexpected value, or a
             // utility that was docked during document restore (its WebView now lives in a document tab, so it
-            // cannot be shown as a panel surface). Fall back to Explorer.
-            ShowSurface(BuiltInUtilityIds.Explorer, takeFocus);
+            // cannot be shown in the panel). Fall back to Explorer.
+            ShowUtilityInPanel(BuiltInUtilityIds.Explorer, takeFocus);
         }
 
         _selectionPersistenceEnabled = true;
@@ -660,7 +763,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _settings.Set(SettingCatalog.Layout.UtilityPanelSelectedUtility, tag);
     }
 
-    private bool IsCustomSurfaceSelected()
+    private bool IsCustomUtilitySelected()
     {
         return IsCustomUtility(ViewModel.SelectedUtilityId);
     }
@@ -672,11 +775,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             && utilityId != BuiltInUtilityIds.Search;
     }
 
-    // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".
-    // This must match the AutomationId set on the button.
-    private static string CustomLandmarkId(EditorId utilityId)
+    // Drops the landmark registered for a rail button, by the id the button was registered under.
+    private void UnregisterRailLandmark(EditorId itemId)
     {
-        return $"{utilityId}-utility-button";
+        if (!_landmarkIds.Remove(itemId, out var landmarkId))
+        {
+            return;
+        }
+
+        _spotlightRegistry.UnregisterLandmark(landmarkId);
     }
 
     private List<EditorId> GetCustomUtilityIds()

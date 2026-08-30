@@ -5,30 +5,42 @@ namespace Celbridge.Workspace;
 /// <summary>
 /// Owns the workspace's utilities: their lifecycle (created at project load, torn down at unload), their save
 /// tick, and the dock orchestration that moves each utility's single WebView between the Utility Panel and a
-/// document tab.
+/// document tab. Also holds the register of every workspace item the Utility Panel rail presents, and the
+/// area each one occupies.
 /// </summary>
 public interface IUtilityService
 {
     /// <summary>
-    /// Creates each utility as a persistent workspace surface and returns the rail tabs describing
-    /// them. Each utility is owned by this service until the workspace unloads. Utilities are given in
-    /// declaration order, which is the rail order. A lazy-load utility is bound but its WebView is
-    /// deferred to the first show.
+    /// Records the built-in utility items the Utility Panel builds for itself. Called once per workspace
+    /// load.
     /// </summary>
-    Task<IReadOnlyList<CustomUtility>> CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
+    void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems);
 
     /// <summary>
-    /// Initializes a lazy-load utility's WebView if it has not been created yet. A no-op for
-    /// already-initialized utilities, built-in utilities, and unknown ids.
+    /// Seeds each declared utility's backing file and records it in the rail register, along with the
+    /// launchers, in declaration order, which is the rail order. Each utility also gets a persistent view,
+    /// owned by this service until the workspace unloads.
     /// </summary>
-    Task<Result> EnsureUtilityInitializedAsync(EditorId utilityId);
+    Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
+
+    /// <summary>
+    /// Every workspace item the rail presents, in rail order: the registered built-in utilities, then the
+    /// contribution utilities, then the launchers. Empty until the utilities have been created.
+    /// </summary>
+    IReadOnlyList<UtilityRailItem> GetRailItems();
+
+    /// <summary>
+    /// The area a rail item currently occupies, or null when nothing presents it: a launcher whose document
+    /// is closed, or an id the register does not hold. A utility always occupies an area.
+    /// </summary>
+    WorkspaceArea? GetCurrentArea(EditorId itemId);
 
     /// <summary>
     /// Restores a utility that was docked as a document in the previous session into a document tab at the given
     /// address, reparenting its already-instantiated WebView out of the Utility Panel. Does not activate, flash,
-    /// or change the shown panel surface. Fails if no utility owns the resource.
+    /// or change which item the panel shows. Fails if no utility owns the resource.
     /// </summary>
-    Task<Result> RestoreDockedUtility(ResourceKey resource, DocumentAddress address);
+    Task<Result> RestoreDockedUtilityAsync(ResourceKey resource, DocumentAddress address);
 
     /// <summary>
     /// Returns true when a live utility with this id exists, meaning one that was created at workspace load and
@@ -38,11 +50,11 @@ public interface IUtilityService
     bool HasUtility(EditorId utilityId);
 
     /// <summary>
-    /// Docks a utility at the given location, reparenting its single persistent WebView to that location's
-    /// container (the Utility Panel rail or a document tab in Main's primary section). Reveals or
+    /// Docks a utility in the given area, reparenting its single persistent WebView to that area's
+    /// container (the Utility Panel rail or a document tab in the area's primary section). Reveals or
     /// activates the utility at the destination. A no-op when it is already there.
     /// </summary>
-    Task<Result> DockUtilityAsync(EditorId utilityId, DockLocation location);
+    Task<Result> DockUtilityAsync(EditorId utilityId, WorkspaceArea area);
 
     /// <summary>
     /// Returns the id of the utility currently docked as the given document resource, or null when the resource

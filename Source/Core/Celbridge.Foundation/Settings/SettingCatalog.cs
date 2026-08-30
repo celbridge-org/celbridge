@@ -53,15 +53,15 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Panel and surface layout state. Workspace-scoped, so each project
-    /// remembers its own panel layout.
+    /// Workspace area layout state.
     /// </summary>
     public static class Layout
     {
-        // The settings store serializes an enum by its integer value, so a change to the WorkspaceSurface
-        // flags needs a new key name. Reusing one reads stale data into the wrong surfaces.
-        public static readonly SettingDescriptor<WorkspaceSurface> PreferredSurfaceVisibility =
-            new("Layout.VisibleSurfaces", SettingScope.Workspace, WorkspaceSurface.All);
+        // The areas the user prefers to see, as a comma separated list of area tokens. This is the layout
+        // Focus and Presentation restore on the way out, not what is on screen while one of them is hiding
+        // everything. The empty default means the layout has never been customised, which shows every area.
+        public static readonly SettingDescriptor<string> PreferredVisibleAreas =
+            new("Layout.PreferredVisibleAreas", SettingScope.Workspace, "");
 
         public static readonly SettingDescriptor<float> UtilityPanelWidth =
             new("Layout.UtilityPanelWidth", SettingScope.Workspace, WorkspaceConstants.UtilityPanelWidth);
@@ -75,7 +75,7 @@ public static class SettingCatalog
         public static readonly SettingDescriptor<BottomAreaAlignment> BottomAreaAlignment =
             new("Layout.BottomAreaAlignment", SettingScope.Workspace, WorkspaceConstants.BottomAreaAlignment);
 
-        // The utility id of the active rail surface (e.g. "celbridge.explorer" or a custom id). Restored on
+        // The utility id of the active rail item (e.g. "celbridge.explorer" or a custom id). Restored on
         // load, falling back to Explorer when the persisted id no longer resolves to a rail item.
         public static readonly SettingDescriptor<string> UtilityPanelSelectedUtility =
             new("Layout.UtilityPanelSelectedUtility", SettingScope.Workspace, "");

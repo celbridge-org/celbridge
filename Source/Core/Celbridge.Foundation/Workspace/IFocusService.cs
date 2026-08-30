@@ -1,6 +1,39 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
+/// Identifies the parts of the workspace that can hold focus. The grain is what the user perceives as a
+/// focused panel rather than a container in the layout.
+/// </summary>
+public enum FocusPanelId
+{
+    /// <summary>
+    /// Nothing in the workspace holds focus.
+    /// </summary>
+    None,
+
+    /// <summary>
+    /// The Explorer, shown in the Utility Panel rail.
+    /// </summary>
+    Explorer,
+
+    /// <summary>
+    /// Search, shown in the Utility Panel rail.
+    /// </summary>
+    Search,
+
+    /// <summary>
+    /// The document areas, which focus does not distinguish between. A utility docked as a document reports
+    /// this rather than CustomUtility.
+    /// </summary>
+    Documents,
+
+    /// <summary>
+    /// Whichever contributed utility the Utility Panel rail is showing.
+    /// </summary>
+    CustomUtility
+}
+
+/// <summary>
 /// The identity of a surface that can hold the keyboard. Compared by reference only, so the focus service can
 /// tell one surface from another without knowing what a surface is.
 /// </summary>
@@ -38,7 +71,7 @@ public sealed record FocusClaim
 {
     private FocusClaim(
         FocusClaimKind kind,
-        WorkspacePanelId panel,
+        FocusPanelId panel,
         IEditTarget? editTarget,
         IFocusSurface? surface,
         Action? releaseFocus)
@@ -58,7 +91,7 @@ public sealed record FocusClaim
     /// <summary>
     /// The panel the claiming element belongs to, or None when it belongs to no panel.
     /// </summary>
-    public WorkspacePanelId Panel { get; }
+    public FocusPanelId Panel { get; }
 
     /// <summary>
     /// The surface Edit commands should route to, or null when the claim offers none.
@@ -80,7 +113,7 @@ public sealed record FocusClaim
     /// <summary>
     /// A claim by a managed control in the visual tree.
     /// </summary>
-    public static FocusClaim FromManagedControl(WorkspacePanelId panel, IEditTarget? editTarget = null)
+    public static FocusClaim FromManagedControl(FocusPanelId panel, IEditTarget? editTarget = null)
     {
         return new FocusClaim(FocusClaimKind.ManagedControl, panel, editTarget, surface: null, releaseFocus: null);
     }
@@ -91,7 +124,7 @@ public sealed record FocusClaim
     /// off it.
     /// </summary>
     public static FocusClaim FromWebSurface(
-        WorkspacePanelId panel,
+        FocusPanelId panel,
         IEditTarget? editTarget,
         IFocusSurface surface,
         Action releaseFocus)
@@ -106,7 +139,7 @@ public sealed record FocusClaim
     {
         return new FocusClaim(
             FocusClaimKind.ManagedControl,
-            WorkspacePanelId.None,
+            FocusPanelId.None,
             editTarget: null,
             surface: null,
             releaseFocus: null);
@@ -125,7 +158,7 @@ public interface IFocusService
     /// The panel that currently holds focus, or None when focus has left the workspace panels (for example
     /// onto a toolbar or another chrome element).
     /// </summary>
-    WorkspacePanelId FocusedPanel { get; }
+    FocusPanelId FocusedPanel { get; }
 
     /// <summary>
     /// The surface that Edit commands route to, or null before any surface has claimed one. Preserved when
@@ -159,7 +192,7 @@ public interface IFocusService
     /// focus to the focused panel after an interaction moves it away transiently (a modal dialog closing,
     /// a resource-tree rebuild).
     /// </summary>
-    void SetPanelFocusHandler(WorkspacePanelId panel, Action? focusHandler);
+    void SetPanelFocusHandler(FocusPanelId panel, Action? focusHandler);
 
     /// <summary>
     /// Re-asserts keyboard focus on the currently focused panel by invoking its registered focus handler,

@@ -9,9 +9,11 @@ namespace Celbridge.Workspace;
 public interface IBindableWorkspaceSettings : INotifyPropertyChanged
 {
     /// <summary>
-    /// Preferred visibility of the workspace panel surfaces.
+    /// The workspace areas the user prefers to see, always including Main. This is the layout a project
+    /// opens at and returns to when it leaves Focus or Presentation, rather than what is on screen while one
+    /// of those is hiding everything. Reports every area for a project whose layout has never been customised.
     /// </summary>
-    WorkspaceSurface PreferredSurfaceVisibility { get; set; }
+    IReadOnlySet<WorkspaceArea> PreferredVisibleAreas { get; set; }
 
     /// <summary>
     /// Width of the Utility Panel.

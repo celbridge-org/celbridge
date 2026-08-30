@@ -5,7 +5,7 @@ using Celbridge.Search;
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Ids for the built-in Utility Panel surfaces, in the same "{scope}.{name}" form as custom utility ids.
+/// Ids for the built-in Utility Panel utilities, in the same "{scope}.{name}" form as custom utility ids.
 /// </summary>
 public static class BuiltInUtilityIds
 {
@@ -21,19 +21,24 @@ public static class BuiltInUtilityIds
 }
 
 /// <summary>
-/// A custom utility surface hosted as a rail item in the Utility Panel. Content is the utility's panel
-/// view (a UIElement) and FocusPanel gives that view keyboard focus.
+/// Ids for the built-in rail launchers, in the same "{scope}.{name}" form as custom utility ids. A launcher
+/// opens a document and never occupies the panel, so it is not a utility.
 /// </summary>
-public sealed record CustomUtility(
-    EditorId UtilityId,
-    string IconName,
-    string Tooltip,
-    string DisplayName,
-    object Content,
-    Action FocusPanel);
+public static class BuiltInLauncherIds
+{
+    /// <summary>
+    /// The Project Settings launcher's rail id.
+    /// </summary>
+    public static readonly EditorId ProjectSettings = EditorId.Create("celbridge", "project-settings");
+
+    /// <summary>
+    /// The Community Workshop launcher's rail id.
+    /// </summary>
+    public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
+}
 
 /// <summary>
-/// Interface for the Utility Panel, which hosts the Explorer and Search surfaces plus any custom utilities.
+/// Interface for the Utility Panel, which hosts the built-in Explorer and Search plus any custom utilities.
 /// </summary>
 public interface IUtilityPanel
 {
@@ -48,39 +53,52 @@ public interface IUtilityPanel
     ISearchPanel SearchPanel { get; }
 
     /// <summary>
-    /// The utility id of the surface currently active in the rail. Empty when no rail surface is active.
+    /// The utility id of the utility currently active in the rail. Empty when none is active.
     /// </summary>
     EditorId ActiveUtilityId { get; }
 
     /// <summary>
-    /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a document,
-    /// otherwise selects its rail surface in the Utility Panel, presenting the panel when it is collapsed. A
-    /// no-op when no utility has that id.
+    /// Whether the rail carries a button with this id, whatever the item's scope. False for a utility that
+    /// was declared but skipped at load.
+    /// </summary>
+    bool HasRailItem(EditorId itemId);
+
+    /// <summary>
+    /// Reveals a utility wherever it currently lives: activates its document tab when it is docked as a
+    /// document, otherwise selects its rail item in the Utility Panel. Presenting a rail item always reveals
+    /// the area it lands in, so a collapsed area is brought back first and the caller never has to. A no-op
+    /// when no utility has that id.
     /// </summary>
     void ShowUtility(EditorId utilityId);
 
     /// <summary>
-    /// Appends custom utility rail items and their content hosts after the built-in items. Replaces any
-    /// previously built items. Called on project load once the utility panels have been created.
+    /// The built-in utility items this panel builds for itself.
     /// </summary>
-    void BuildCustomUtilities(IReadOnlyList<CustomUtility> utilities);
+    IReadOnlyList<UtilityRailItem> GetBuiltInUtilityItems();
 
     /// <summary>
-    /// Removes all custom utility rail items and their content hosts. Called on project unload. Reverts
-    /// the selection to Explorer if a custom utility was showing.
+    /// Renders the rail register: builds a button, and where the item has a panel view a content host, for
+    /// every item the panel does not already carry. Replaces any previously built items. Called on project
+    /// load.
     /// </summary>
-    void ClearCustomUtilities();
+    void BuildRailItems(IReadOnlyList<UtilityRailItem> railItems);
 
     /// <summary>
-    /// Tells the panel where a custom utility now lives, so the rail and the panel's surface follow it.
-    /// documentResource is the document hosting the utility while the location is Document, and is otherwise
-    /// ignored.
+    /// Removes every rail item the panel built from the register, along with their content hosts. Called on
+    /// project unload. Reverts the selection to Explorer if a contributed utility was showing.
     /// </summary>
-    void SetUtilityDockLocation(EditorId utilityId, DockLocation location, ResourceKey documentResource);
+    void ClearRailItems();
 
     /// <summary>
-    /// Restores the previously active rail surface from workspace settings, falling back to Explorer when the
-    /// persisted id no longer resolves. Called on project load after the utility items have been built.
+    /// Tells the panel where a custom utility now lives, so the rail and the panel's content follow it.
+    /// documentResource is the document hosting the utility while the area is a document area, and is
+    /// otherwise ignored.
+    /// </summary>
+    void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource);
+
+    /// <summary>
+    /// Restores the previously active rail item from workspace settings, falling back to Explorer when the
+    /// persisted id no longer resolves. Called on project load.
     /// </summary>
     void RestoreSelectedUtility();
 }

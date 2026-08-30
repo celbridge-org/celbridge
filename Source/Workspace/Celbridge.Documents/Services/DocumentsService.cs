@@ -39,6 +39,22 @@ public class DocumentsService : IDocumentsService, IDisposable
     // Reads TabView-backed state, so callers must be on the UI thread.
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
+    public OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource)
+    {
+        foreach (var openDocument in GetOpenDocuments())
+        {
+            if (openDocument.FileResource == fileResource)
+            {
+                return openDocument;
+            }
+        }
+
+        return null;
+    }
+
+    public ResourceKey GetSelectedDocument(DocumentSection section) =>
+        DocumentsPanel.GetSelectedDocument(section);
+
     // Builds a fresh list from the panel's split and visibility state on each read, so callers must be
     // on the UI thread.
     public IReadOnlyList<DocumentSection> VisibleSections => DocumentsPanel.VisibleSections;
@@ -272,12 +288,12 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
-        _ = StoreDocumentLayout();
+        _ = StoreOpenDocumentAddresses();
     }
 
     private void OnAreaLayoutChangedMessage(object recipient, AreaLayoutChangedMessage message)
     {
-        _ = _layoutStore.StoreAreaLayoutAsync();
+        _ = _layoutStore.StoreAreaSplitRatiosAsync();
     }
 
     public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default)
@@ -563,7 +579,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Task StoreDocumentLayout() => _layoutStore.StoreDocumentLayoutAsync();
+    public Task StoreOpenDocumentAddresses() => _layoutStore.StoreOpenDocumentAddressesAsync();
 
     public Task StoreActiveDocument() => _layoutStore.StoreActiveDocumentAsync();
 

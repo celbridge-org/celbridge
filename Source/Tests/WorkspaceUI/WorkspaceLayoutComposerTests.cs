@@ -5,17 +5,17 @@ using Windows.Foundation;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Tests the workspace-level composition: the floor each surface track is held at, the workspace floor
-/// composed from them, and the clamps every entry point that sizes a surface goes through.
+/// Tests the workspace-level composition: the floor each area track is held at, the workspace floor
+/// composed from them, and the clamps every entry point that sizes an area goes through.
 /// </summary>
 [TestFixture]
-public class WorkspaceSurfaceComposerTests
+public class WorkspaceLayoutComposerTests
 {
-    // The channel between two surfaces, mirroring the GutterSize resource in Styles.xaml, which a test cannot
+    // The channel between two areas, mirroring the GutterSize resource in Styles.xaml, which a test cannot
     // resolve without an application.
     private const double GutterSize = 7;
 
-    // Stand-ins for the minimums the surfaces report. The Bottom area is as wide as a split one and the Side
+    // Stand-ins for the minimums the areas report. The Bottom area is as wide as a split one and the Side
     // area as tall, so each Bottom area alignment composes a different result.
     private static readonly Size MainAreaMinimum = new(240, 210);
     private static readonly Size BottomAreaMinimum = new(487, 200);
@@ -32,7 +32,7 @@ public class WorkspaceSurfaceComposerTests
     private const double StoredOversizedSize = 900;
 
     [Test]
-    public void MinimumSize_ComposesEverySurfaceItPresents()
+    public void MinimumSize_ComposesEveryAreaItPresents()
     {
         var composer = CreateComposer(CreatePresentation());
 
@@ -163,7 +163,7 @@ public class WorkspaceSurfaceComposerTests
         composer.MainColumnMinimumWidth.Should().Be(MainAreaMinimum.Width);
         composer.MainRowMinimumHeight.Should().Be(SideAreaMinimum.Height);
 
-        // Nothing sits beside the Bottom area, so the surfaces above it set the width and its own extent only
+        // Nothing sits beside the Bottom area, so the areas above it set the width and its own extent only
         // takes over once it is the wider of the two.
         double expectedWidth = UtilityRailWidth +
             UtilityPanelMinimum +
@@ -175,7 +175,7 @@ public class WorkspaceSurfaceComposerTests
     }
 
     [TestCaseSource(nameof(LayoutConfigurations))]
-    public void ComposedFloors_FitInsideTheWorkspaceMinimum(WorkspaceSurfacePresentation presentation)
+    public void ComposedFloors_FitInsideTheWorkspaceMinimum(WorkspaceLayoutPresentation presentation)
     {
         var composer = CreateComposer(presentation);
 
@@ -211,7 +211,7 @@ public class WorkspaceSurfaceComposerTests
             utilityPanelWidth: 300,
             sideAreaWidth: 300);
 
-        // A drag is refused below the surface's own floor and clamped at the space the arrangement leaves it,
+        // A drag is refused below the area's own floor and clamped at the space the arrangement leaves it,
         // so the widest the Utility Panel can be dragged is what the maximum reports.
         double draggedWidth = composer.AvailableUtilityPanelWidth;
 
@@ -224,7 +224,7 @@ public class WorkspaceSurfaceComposerTests
     {
         var presentation = CreatePresentation();
 
-        // The stored sizes are applied one surface at a time, so the Side area is offered what the Utility
+        // The stored sizes are applied one area at a time, so the Side area is offered what the Utility
         // Panel settled at rather than what it was holding before the restore.
         var utilityPanelComposer = CreateComposer(
             presentation,
@@ -256,7 +256,7 @@ public class WorkspaceSurfaceComposerTests
 
         double restoredHeight = composer.ClampBottomAreaHeight(StoredOversizedSize);
 
-        // The Bottom area is the only resizable surface down the workspace, so nothing is held back from it
+        // The Bottom area is the only resizable area down the workspace, so nothing is held back from it
         // and the Main area's row keeps exactly its floor.
         double mainRowHeight = WorkspaceHeight - restoredHeight - GutterSize - GutterSize;
         mainRowHeight.Should().BeGreaterThanOrEqualTo(composer.MainRowMinimumHeight);
@@ -275,7 +275,7 @@ public class WorkspaceSurfaceComposerTests
             sideAreaWidth: 0);
         double widenedUtilityPanelWidth = hiddenSideAreaComposer.AvailableUtilityPanelWidth;
 
-        // Revealing the Side area re-clamps the pixel-sized surfaces against the arrangement the reveal
+        // Revealing the Side area re-clamps the pixel-sized areas against the arrangement the reveal
         // produced, which is what the panel's width no longer fits.
         var revealed = CreatePresentation();
         var utilityPanelComposer = CreateComposer(
@@ -334,7 +334,7 @@ public class WorkspaceSurfaceComposerTests
     }
 
     [Test]
-    public void BelowTheWorkspaceFloor_EverySurfaceHoldsItsOwnFloor()
+    public void BelowTheWorkspaceFloor_EveryAreaHoldsItsOwnFloor()
     {
         var presentation = CreatePresentation();
         double clippedWidth = CreateComposer(presentation).MinimumSize.Width - 100;
@@ -346,7 +346,7 @@ public class WorkspaceSurfaceComposerTests
             utilityPanelWidth: 500,
             sideAreaWidth: 400);
 
-        // There is no arrangement that holds every surface, so the resizable ones come back to their floors
+        // There is no arrangement that holds every area, so the resizable ones come back to their floors
         // and the shortfall is clipped rather than shared out.
         composer.ClampUtilityPanelWidth(500).Should().Be(composer.UtilityPanelMinimumWidth);
         composer.ClampSideAreaWidth(400).Should().Be(composer.SideAreaMinimumWidth);
@@ -361,8 +361,8 @@ public class WorkspaceSurfaceComposerTests
         composer.ClampUtilityPanelWidth(100).Should().Be(composer.UtilityPanelMinimumWidth);
     }
 
-    // Every arrangement the workspace can be in: each Bottom area alignment, and each surface hidden.
-    private static IEnumerable<WorkspaceSurfacePresentation> LayoutConfigurations()
+    // Every arrangement the workspace can be in: each Bottom area alignment, and each area hidden.
+    private static IEnumerable<WorkspaceLayoutPresentation> LayoutConfigurations()
     {
         yield return CreatePresentation();
         yield return CreatePresentation(bottomAreaSpansUtilityPanel: true);
@@ -378,7 +378,7 @@ public class WorkspaceSurfaceComposerTests
             isUtilityPanelPresented: false);
     }
 
-    // What the Main area's column is left with once the rail and the pixel-sized surfaces either side of it
+    // What the Main area's column is left with once the rail and the pixel-sized areas either side of it
     // have taken their share of the workspace.
     private static double ResolveMainColumnWidth(
         double workspaceWidth,
@@ -388,7 +388,7 @@ public class WorkspaceSurfaceComposerTests
         return workspaceWidth - UtilityRailWidth - utilityPanelWidth - GutterSize - sideAreaWidth - GutterSize;
     }
 
-    private static WorkspaceSurfacePresentation CreatePresentation(
+    private static WorkspaceLayoutPresentation CreatePresentation(
         bool isBottomAreaPresented = true,
         bool isSideAreaPresented = true,
         bool isUtilityPanelPresented = true,
@@ -396,7 +396,7 @@ public class WorkspaceSurfaceComposerTests
         bool bottomAreaSpansUtilityPanel = false,
         bool bottomAreaSpansSideArea = false)
     {
-        return new WorkspaceSurfacePresentation(
+        return new WorkspaceLayoutPresentation(
             IsMainAreaPresented: true,
             IsBottomAreaPresented: isBottomAreaPresented,
             IsSideAreaPresented: isSideAreaPresented,
@@ -407,15 +407,15 @@ public class WorkspaceSurfaceComposerTests
     }
 
     // A workspace extent of zero stands for one that has not been laid out yet, where only the floors apply.
-    private static WorkspaceSurfaceComposer CreateComposer(
-        WorkspaceSurfacePresentation presentation,
+    private static WorkspaceLayoutComposer CreateComposer(
+        WorkspaceLayoutPresentation presentation,
         double workspaceWidth = 0,
         double workspaceHeight = 0,
         double? utilityPanelWidth = null,
         double? sideAreaWidth = null,
         Size? mainAreaMinimumSize = null)
     {
-        var metrics = new WorkspaceSurfaceMetrics(
+        var metrics = new WorkspaceLayoutMetrics(
             MainAreaMinimumSize: mainAreaMinimumSize ?? MainAreaMinimum,
             BottomAreaMinimumSize: BottomAreaMinimum,
             SideAreaMinimumSize: SideAreaMinimum,
@@ -426,6 +426,6 @@ public class WorkspaceSurfaceComposerTests
             UtilityPanelWidth: utilityPanelWidth,
             SideAreaWidth: sideAreaWidth);
 
-        return new WorkspaceSurfaceComposer(presentation, metrics);
+        return new WorkspaceLayoutComposer(presentation, metrics);
     }
 }

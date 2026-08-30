@@ -44,11 +44,13 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _editorDisplayName = string.Empty;
 
     /// <summary>
-    /// True when this tab holds a utility document. Utility tabs source their title and icon from the
-    /// manifest rather than the filename and the file-type icon set.
+    /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
+    /// tab takes its title and icon from the manifest, offers no menu actions on the backing file, and
+    /// announces neither an open nor a close because it was never opened as a document and is never
+    /// really closed.
     /// </summary>
     [ObservableProperty]
-    private bool _isUtility;
+    private bool _isDockedUtility;
 
     /// <summary>
     /// True when the tab's title comes from its editor rather than its file, so filename disambiguation
@@ -56,6 +58,14 @@ public partial class DocumentTabViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _hasFixedTitle;
+
+    /// <summary>
+    /// True when the tab's editor is a utility editor, so the tab presents that editor's identity: the
+    /// manifest icon, title and tooltip in place of the ones its file would give it. A docked utility is
+    /// always one of these, and so is any tab a utility editor opens.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isUtilityEditor;
 
     /// <summary>
     /// The Bootstrap glyph name for a utility tab's icon, sourced from the manifest. Empty for
@@ -90,7 +100,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         get
         {
-            if (IsUtility)
+            if (IsUtilityEditor)
             {
                 return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
             }
@@ -110,6 +120,11 @@ public partial class DocumentTabViewModel : ObservableObject
     }
 
     partial void OnUtilityTooltipChanged(string value)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnIsUtilityEditorChanged(bool value)
     {
         OnPropertyChanged(nameof(TabTooltip));
     }
@@ -311,7 +326,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// </summary>
     public void NotifyDocumentOpened()
     {
-        if (IsUtility)
+        if (IsDockedUtility)
         {
             return;
         }
@@ -325,7 +340,7 @@ public partial class DocumentTabViewModel : ObservableObject
     // directly. A docked utility never announced an open, so it announces no close either.
     private void NotifyDocumentClosed()
     {
-        if (IsUtility)
+        if (IsDockedUtility)
         {
             return;
         }

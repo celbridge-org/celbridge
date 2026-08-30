@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Settings;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
@@ -43,27 +44,29 @@ public class LayoutManager : IWindowModeService, ILayoutService
             ? _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings
             : null;
 
-    // The project's preferred surface visibility, falling back to all surfaces
-    // when no workspace is loaded.
-    private WorkspaceSurface PreferredSurfaceVisibility =>
-        WorkspaceSettings?.PreferredSurfaceVisibility ?? WorkspaceSurface.All;
+    // The areas the project prefers to show, falling back to every area when no workspace is loaded.
+    private IReadOnlySet<WorkspaceArea> PreferredVisibleAreas =>
+        WorkspaceSettings?.PreferredVisibleAreas ?? WorkspaceAreaHelper.AllAreasVisible;
 
-    // Persists the preferred surface visibility for the current project. A no-op
-    // when no workspace is loaded.
-    private void PersistPreferredSurfaceVisibility(WorkspaceSurface visibility)
+    // Persists the preferred visible areas for the current project. A no-op when no workspace is loaded.
+    private void PersistPreferredVisibleAreas(IReadOnlySet<WorkspaceArea> visibleAreas)
     {
         var workspaceSettings = WorkspaceSettings;
         if (workspaceSettings is not null)
         {
-            workspaceSettings.PreferredSurfaceVisibility = visibility;
+            workspaceSettings.PreferredVisibleAreas = visibleAreas;
         }
     }
 
+    private static readonly IReadOnlySet<WorkspaceArea> OnlyMainVisible = new HashSet<WorkspaceArea>
+    {
+        WorkspaceArea.Main
+    };
+
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
-        // The workspace settings are now loaded, so apply this project's preferred
-        // surface visibility. No need to persist, we are restoring the saved state.
-        UpdateSurfaceVisibility(PreferredSurfaceVisibility, shouldPersist: false);
+        // No need to persist, we are restoring the saved state.
+        UpdateVisibleAreas(PreferredVisibleAreas, shouldPersist: false);
 
         var storedAlignment = WorkspaceSettings?.BottomAreaAlignment ?? WorkspaceConstants.BottomAreaAlignment;
         UpdateBottomAreaAlignment(storedAlignment, shouldPersist: false);
@@ -102,62 +105,75 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
-    public WorkspaceSurface SurfaceVisibility { get; private set; } = WorkspaceSurface.All;
+    public IReadOnlySet<WorkspaceArea> VisibleAreas { get; private set; } = WorkspaceAreaHelper.AllAreasVisible;
 
-    public bool IsUtilityPanelVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.UtilityPanel);
-
-    public bool IsBottomAreaVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.BottomArea);
-
-    public bool IsSideAreaVisible => SurfaceVisibility.HasFlag(WorkspaceSurface.SideArea);
-
-    public void SetSurfaceVisibility(WorkspaceSurface surface, bool isVisible)
+    public bool IsAreaVisible(WorkspaceArea area)
     {
-        // Manually changing panel visibility means the user is customizing the layout, so leave any
+        return VisibleAreas.Contains(area);
+    }
+
+    public Result SetAreaVisibility(WorkspaceArea area, bool isVisible)
+    {
+        if (!area.IsCollapsible())
+        {
+            return Result.Fail($"The {area} area is always visible.");
+        }
+
+        // Manually changing area visibility means the user is customizing the layout, so leave any
         // Focus/Presentation mode and return to the Default layout.
         bool isLeavingLayoutMode = _layoutMode != LayoutMode.Default;
 
-        // Read against what is on screen, so a surface hidden by a layout mode counts as revealed when the
+        // Read against what is on screen, so an area hidden by a layout mode counts as revealed when the
         // user asks for it back.
-        bool wasVisible = SurfaceVisibility.HasFlag(surface);
+        bool wasVisible = IsAreaVisible(area);
 
-        // Those modes hide every surface transiently, so the change is composed against the visibility the
-        // user prefers.
-        var currentVisibility = SurfaceVisibility;
+        // Those modes hide every collapsible area transiently, so the change is composed against the areas
+        // the user prefers.
+        var currentAreas = VisibleAreas;
         if (isLeavingLayoutMode)
         {
-            currentVisibility = PreferredSurfaceVisibility;
+            currentAreas = PreferredVisibleAreas;
         }
 
-        var newVisibility = isVisible
-            ? currentVisibility | surface
-            : currentVisibility & ~surface;
+        var newAreas = new HashSet<WorkspaceArea>(currentAreas);
+        if (isVisible)
+        {
+            newAreas.Add(area);
+        }
+        else
+        {
+            newAreas.Remove(area);
+        }
 
-        if (newVisibility == SurfaceVisibility
+        if (newAreas.SetEquals(VisibleAreas)
             && !isLeavingLayoutMode)
         {
-            return;
+            return Result.Ok();
         }
 
         // This is a user-initiated change, so it should persist
-        UpdateSurfaceVisibility(newVisibility, shouldPersist: true);
+        UpdateVisibleAreas(newAreas, shouldPersist: true);
 
         if (isLeavingLayoutMode)
         {
             SetLayoutModeInternal(LayoutMode.Default);
         }
 
-        // Sent last, once the whole layout has settled, and only for the surface the user asked for.
+        // Sent last, once the whole layout has settled.
         if (isVisible
             && !wasVisible)
         {
-            _messengerService.Send(new FlashSurfaceMessage(surface));
+            _messengerService.Send(new FlashAreaMessage(area));
         }
+
+        return Result.Ok();
     }
 
-    public void ToggleSurfaceVisibility(WorkspaceSurface surface)
+    public Result ToggleAreaVisibility(WorkspaceArea area)
     {
-        var isCurrentlyVisible = SurfaceVisibility.HasFlag(surface);
-        SetSurfaceVisibility(surface, !isCurrentlyVisible);
+        var isCurrentlyVisible = IsAreaVisible(area);
+
+        return SetAreaVisibility(area, !isCurrentlyVisible);
     }
 
     public BottomAreaAlignment BottomAreaAlignment => _bottomAreaAlignment;
@@ -187,21 +203,20 @@ public class LayoutManager : IWindowModeService, ILayoutService
             return Result.Ok();
         }
 
-        // Default restores the user's preferred panels. Focus and Presentation both hide every side
-        // panel. They differ only in the toolbar and document tabs, which the views hide based on the
-        // layout mode.
-        WorkspaceSurface targetVisibility;
+        // Focus and Presentation differ only in the toolbar and document tabs, which the views hide based
+        // on the layout mode.
+        IReadOnlySet<WorkspaceArea> targetAreas;
         if (mode == LayoutMode.Default)
         {
-            targetVisibility = PreferredSurfaceVisibility;
+            targetAreas = PreferredVisibleAreas;
         }
         else
         {
-            targetVisibility = WorkspaceSurface.None;
+            targetAreas = OnlyMainVisible;
         }
 
         // Mode-driven visibility is transient, so it is not persisted as the preferred configuration.
-        UpdateSurfaceVisibility(targetVisibility, shouldPersist: false);
+        UpdateVisibleAreas(targetAreas, shouldPersist: false);
         SetLayoutModeInternal(mode);
 
         return Result.Ok();
@@ -243,8 +258,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _settingsService.Set(SettingCatalog.Window.PreferredHeight, 0);
         _settingsService.Set(SettingCatalog.Window.IsMaximized, false);
 
-        UpdateSurfaceVisibility(WorkspaceSurface.All, shouldPersist: true);
-        PersistPreferredSurfaceVisibility(WorkspaceSurface.All);
+        UpdateVisibleAreas(WorkspaceAreaHelper.AllAreasVisible, shouldPersist: true);
+        PersistPreferredVisibleAreas(WorkspaceAreaHelper.AllAreasVisible);
 
         // Return to the Default layout and exit fullscreen.
         if (_layoutMode != LayoutMode.Default)
@@ -267,27 +282,35 @@ public class LayoutManager : IWindowModeService, ILayoutService
         return Result.Ok();
     }
 
-    private void UpdateSurfaceVisibility(WorkspaceSurface newVisibility, bool shouldPersist)
+    private void UpdateVisibleAreas(IReadOnlySet<WorkspaceArea> newAreas, bool shouldPersist)
     {
-        if (SurfaceVisibility == newVisibility)
+        if (VisibleAreas.SetEquals(newAreas))
         {
             return;
         }
 
-        var oldVisibility = SurfaceVisibility;
-        SurfaceVisibility = newVisibility;
+        var oldAreas = VisibleAreas;
+        VisibleAreas = newAreas;
 
         // Mode-driven visibility is transient, and its callers say so by not asking for a persist.
         if (shouldPersist)
         {
-            PersistPreferredSurfaceVisibility(newVisibility);
+            PersistPreferredVisibleAreas(newAreas);
         }
 
         // Broadcast the change
-        var message = new SurfaceVisibilityChangedMessage(newVisibility);
+        var message = new AreaVisibilityChangedMessage(newAreas);
         _messengerService.Send(message);
 
-        _logger.LogDebug($"Panel visibility changed: {oldVisibility} -> {newVisibility} (persist: {shouldPersist})");
+        _logger.LogDebug($"Visible areas changed: {DescribeAreas(oldAreas)} -> {DescribeAreas(newAreas)} (persist: {shouldPersist})");
+    }
+
+    // The areas in a stable order, so a log line reads the same for the same set.
+    private static string DescribeAreas(IReadOnlySet<WorkspaceArea> areas)
+    {
+        var tokens = areas.Select(area => area.ToToken()).Order(StringComparer.Ordinal);
+
+        return string.Join(',', tokens);
     }
 
     private void UpdateBottomAreaAlignment(BottomAreaAlignment newAlignment, bool shouldPersist)

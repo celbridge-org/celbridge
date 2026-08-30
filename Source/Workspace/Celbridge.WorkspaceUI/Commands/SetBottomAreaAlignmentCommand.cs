@@ -18,7 +18,7 @@ public class SetBottomAreaAlignmentCommand : CommandBase, ISetBottomAreaAlignmen
         // The alignment is applied before the reveal so a hidden area appears at its new span rather than
         // laying out twice.
         _layoutService.SetBottomAreaAlignment(Alignment);
-        _layoutService.SetSurfaceVisibility(WorkspaceSurface.BottomArea, true);
+        _layoutService.SetAreaVisibility(WorkspaceArea.Bottom, true);
 
         await Task.CompletedTask;
         return Result.Ok();

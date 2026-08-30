@@ -32,7 +32,7 @@ public sealed partial class DocumentToolbar : UserControl
 
         ToolTipService.SetToolTip(CollapseAreaButton, _stringLocalizer.GetString("DocumentToolbar_CollapseAreaTooltip"));
 
-        CollapseAreaIcon.Symbol = area.GetSurface().GetCollapseSymbol();
+        CollapseAreaIcon.Symbol = area.GetWorkspaceArea().GetCollapseSymbol();
 
         // The trailing slot is a stretched column, so the toolbar has to hold itself against the end of the
         // strip it belongs to rather than floating in the middle of that column.

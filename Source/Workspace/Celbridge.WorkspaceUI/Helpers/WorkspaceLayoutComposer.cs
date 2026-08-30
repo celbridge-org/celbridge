@@ -4,11 +4,11 @@ using Windows.Foundation;
 namespace Celbridge.WorkspaceUI.Helpers;
 
 /// <summary>
-/// The set of workspace surfaces currently presented, whether the Utility Rail is on screen beside them, and
-/// how far the Bottom area spans across its neighbours. A surface the Bottom area spans across stops above it
+/// The set of workspace areas currently presented, whether the Utility Rail is on screen beside them, and
+/// how far the Bottom area spans across its neighbours. An area the Bottom area spans across stops above it
 /// instead of running full height.
 /// </summary>
-public record WorkspaceSurfacePresentation(
+public record WorkspaceLayoutPresentation(
     bool IsMainAreaPresented,
     bool IsBottomAreaPresented,
     bool IsSideAreaPresented,
@@ -18,12 +18,12 @@ public record WorkspaceSurfacePresentation(
     bool BottomAreaSpansSideArea);
 
 /// <summary>
-/// The sizes the workspace composition reads off the live layout: the minimum each surface reports, the
-/// channel between two surfaces, the space the workspace has to divide, and the widths the resizable
-/// columns are holding. A column passes null while it is star sized, because a surface filling the
-/// workspace is holding nothing back from its peer.
+/// The sizes the workspace composition reads off the live layout: the minimum each area reports, the
+/// channel between two areas, the space the workspace has to divide, and the widths the resizable columns
+/// are holding. A column passes null while it is star sized, because an area filling the workspace is
+/// holding nothing back from its peer.
 /// </summary>
-public record WorkspaceSurfaceMetrics(
+public record WorkspaceLayoutMetrics(
     Size MainAreaMinimumSize,
     Size BottomAreaMinimumSize,
     Size SideAreaMinimumSize,
@@ -35,27 +35,27 @@ public record WorkspaceSurfaceMetrics(
     double? SideAreaWidth);
 
 /// <summary>
-/// Composes the floor every workspace surface is held at, and the largest each resizable surface can be
-/// laid out at, from the minimums those surfaces report and the space the workspace has to divide. Holds no
-/// layout of its own: the surface container reads the live sizes into the metrics, asks for a value, and
-/// writes the answer onto its grid.
+/// Composes the floor every workspace area is held at, and the largest each resizable area can be laid out
+/// at, from the minimums those areas report and the space the workspace has to divide. Holds no layout of
+/// its own: the layout container reads the live sizes into the metrics, asks for a value, and writes the
+/// answer onto its grid.
 /// </summary>
-public sealed class WorkspaceSurfaceComposer
+public sealed class WorkspaceLayoutComposer
 {
-    private readonly WorkspaceSurfacePresentation _presentation;
-    private readonly WorkspaceSurfaceMetrics _metrics;
+    private readonly WorkspaceLayoutPresentation _presentation;
+    private readonly WorkspaceLayoutMetrics _metrics;
     private readonly Size _mainAreaMinimumSize;
     private readonly Size _bottomAreaMinimumSize;
     private readonly Size _sideAreaMinimumSize;
     private readonly double _utilityPanelMinimumWidth;
     private readonly double _utilityRailWidth;
 
-    public WorkspaceSurfaceComposer(WorkspaceSurfacePresentation presentation, WorkspaceSurfaceMetrics metrics)
+    public WorkspaceLayoutComposer(WorkspaceLayoutPresentation presentation, WorkspaceLayoutMetrics metrics)
     {
         _presentation = presentation;
         _metrics = metrics;
 
-        // A surface that is not presented composes to zero, and takes the channel beside it with it, so the
+        // An area that is not presented composes to zero, and takes the channel beside it with it, so the
         // zeroed track sizes that hand its space to its neighbours are not fighting a floor.
         _mainAreaMinimumSize = ResolvePresentedMinimum(metrics.MainAreaMinimumSize, presentation.IsMainAreaPresented);
         _bottomAreaMinimumSize = ResolvePresentedMinimum(metrics.BottomAreaMinimumSize, presentation.IsBottomAreaPresented);
@@ -75,21 +75,21 @@ public sealed class WorkspaceSurfaceComposer
     }
 
     /// <summary>
-    /// The smallest size the workspace can be laid out at: every surface it is presenting at its own
-    /// minimum, with the channels between them, and the channel above the document areas.
+    /// The smallest size the workspace can be laid out at: every area it is presenting at its own minimum,
+    /// with the channels between them, and the channel above the document areas.
     /// </summary>
     public Size MinimumSize
     {
         get
         {
-            double surfacesBesideUtilityPanel = WorkspaceMinimumSize.ComposeAdjacent(
+            double areasBesideUtilityPanel = WorkspaceMinimumSize.ComposeAdjacent(
                 _utilityPanelMinimumWidth,
                 DocumentAreasMinimumWidth,
                 _metrics.GutterSize);
 
             // The rail runs down the whole workspace beside every row, and meets what sits next to it directly,
             // so it adds its width without a channel of its own.
-            double width = _utilityRailWidth + Math.Max(surfacesBesideUtilityPanel, BottomRowMinimumWidth);
+            double width = _utilityRailWidth + Math.Max(areasBesideUtilityPanel, BottomRowMinimumWidth);
 
             return new Size(width, DocumentAreasMinimumHeight + _metrics.GutterSize);
         }
@@ -153,7 +153,7 @@ public sealed class WorkspaceSurfaceComposer
     /// <summary>
     /// The largest the Bottom area can be laid out at without pushing a peer below its floor.
     /// </summary>
-    public double AvailableBottomAreaHeight => WorkspaceMinimumSize.SpaceForSurface(
+    public double AvailableBottomAreaHeight => WorkspaceMinimumSize.SpaceForArea(
         _metrics.WorkspaceExtent.Height,
         MinimumSize.Height,
         BottomAreaMinimumHeight);
@@ -223,7 +223,7 @@ public sealed class WorkspaceSurfaceComposer
         }
     }
 
-    // The width of the row the Bottom area sits in: its own extent, plus the surfaces its alignment has not
+    // The width of the row the Bottom area sits in: its own extent, plus the areas its alignment has not
     // spanned across, which stay beside it in that row.
     private double BottomRowMinimumWidth
     {
@@ -266,26 +266,26 @@ public sealed class WorkspaceSurfaceComposer
         }
     }
 
-    // What the other resizable surface across the workspace is holding above its own floor. A surface sized
+    // What the other resizable area across the workspace is holding above its own floor. An area sized
     // against its peers' floors alone would be offered space a peer is using and will not give up, which the
     // Main area absorbs until it reaches its own floor and the layout clips. The Bottom area is the only
-    // resizable surface down the workspace, so nothing is held from it.
-    private double UtilityPanelExcessWidth => ResolveSurfaceExcess(_metrics.UtilityPanelWidth, _utilityPanelMinimumWidth);
+    // resizable area down the workspace, so nothing is held from it.
+    private double UtilityPanelExcessWidth => ResolveAreaExcess(_metrics.UtilityPanelWidth, _utilityPanelMinimumWidth);
 
-    private double SideAreaExcessWidth => ResolveSurfaceExcess(_metrics.SideAreaWidth, SideAreaMinimumWidth);
+    private double SideAreaExcessWidth => ResolveAreaExcess(_metrics.SideAreaWidth, SideAreaMinimumWidth);
 
-    // The largest a surface can be laid out at: its own floor, plus what the workspace has beyond the minimum
-    // every presented surface needs, less what its peer is holding above its own floor.
-    private double ComposeAvailableWidth(double surfaceMinimumWidth, double peerExcessWidth)
+    // The largest an area can be laid out at: its own floor, plus what the workspace has beyond the minimum
+    // every presented area needs, less what its peer is holding above its own floor.
+    private double ComposeAvailableWidth(double areaMinimumWidth, double peerExcessWidth)
     {
         double workspaceMinimumWidth = MinimumSize.Width + peerExcessWidth;
 
-        return WorkspaceMinimumSize.SpaceForSurface(_metrics.WorkspaceExtent.Width, workspaceMinimumWidth, surfaceMinimumWidth);
+        return WorkspaceMinimumSize.SpaceForArea(_metrics.WorkspaceExtent.Width, workspaceMinimumWidth, areaMinimumWidth);
     }
 
-    private double ClampWidth(double width, double surfaceMinimumWidth, double availableWidth)
+    private double ClampWidth(double width, double areaMinimumWidth, double availableWidth)
     {
-        double clampedWidth = Math.Max(width, surfaceMinimumWidth);
+        double clampedWidth = Math.Max(width, areaMinimumWidth);
 
         // The workspace has no extent to divide until it has been laid out, which is where the stored sizes
         // arrive, so only the floor applies until then.
@@ -307,13 +307,13 @@ public sealed class WorkspaceSurfaceComposer
         return minimumSize;
     }
 
-    private static double ResolveSurfaceExcess(double? surfaceWidth, double surfaceMinimumWidth)
+    private static double ResolveAreaExcess(double? areaWidth, double areaMinimumWidth)
     {
-        if (surfaceWidth is not double width)
+        if (areaWidth is not double width)
         {
             return 0;
         }
 
-        return Math.Max(0, width - surfaceMinimumWidth);
+        return Math.Max(0, width - areaMinimumWidth);
     }
 }

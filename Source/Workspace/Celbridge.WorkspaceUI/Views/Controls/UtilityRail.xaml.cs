@@ -1,11 +1,13 @@
 namespace Celbridge.WorkspaceUI.Views.Controls;
 
 /// <summary>
-/// The icon strip down the left of the workspace, holding the utility surface buttons, the launcher buttons
-/// below them, and the community links pinned to the bottom.
+/// The icon strip down the left of the workspace, holding every rail button in one top-aligned stack.
 /// </summary>
 public sealed partial class UtilityRail : UserControl
 {
+    // The gap that sets one group of rail buttons apart from the group above it.
+    private const double SpacerHeight = 16;
+
     public UtilityRail()
     {
         this.InitializeComponent();
@@ -15,34 +17,29 @@ public sealed partial class UtilityRail : UserControl
     }
 
     /// <summary>
-    /// Appends a button that selects a utility surface in the Utility Panel.
+    /// Removes every button from the rail, ahead of a rebuild.
     /// </summary>
-    public void AddUtilityButton(UtilityButton button)
+    internal void ClearButtons()
     {
-        UtilityItems.Children.Add(button);
+        RailItems.Children.Clear();
     }
 
     /// <summary>
-    /// Removes a utility surface button. A no-op when the button is not on the rail.
+    /// Appends one visual group of buttons, drawing a gap between it and the buttons already on the rail.
+    /// An empty group adds nothing, so a gap can never lead the rail or double up.
     /// </summary>
-    public void RemoveUtilityButton(UtilityButton button)
+    internal void AddButtonGroup(IReadOnlyList<UtilityButton> buttons)
     {
-        UtilityItems.Children.Remove(button);
-    }
+        bool drawSpacer = RailItems.Children.Count > 0;
 
-    /// <summary>
-    /// Appends a button that opens a document rather than selecting a utility surface.
-    /// </summary>
-    public void AddLauncherButton(UtilityButton button)
-    {
-        LauncherItems.Children.Add(button);
-    }
+        foreach (var button in buttons)
+        {
+            // Buttons survive rebuilds, so the margin is reset on every add rather than only set when a
+            // gap is drawn.
+            button.Margin = new Thickness(0, drawSpacer ? SpacerHeight : 0, 0, 0);
+            drawSpacer = false;
 
-    /// <summary>
-    /// Appends a community link button to the group pinned at the bottom of the rail.
-    /// </summary>
-    public void AddCommunityButton(UtilityButton button)
-    {
-        CommunityItems.Children.Add(button);
+            RailItems.Children.Add(button);
+        }
     }
 }

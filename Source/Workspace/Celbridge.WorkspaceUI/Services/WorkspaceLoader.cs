@@ -1,5 +1,5 @@
 using System.Text;
-using Celbridge.Community;
+using Celbridge.Workshop;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
@@ -20,7 +20,7 @@ public class WorkspaceLoader
     private readonly IProjectLoadReporter _loadReporter;
     private readonly IProjectHealthService _projectHealthService;
     private readonly IAppEnvironment _appEnvironment;
-    private readonly ICommunityService _communityService;
+    private readonly IWorkshopService _workshopService;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -31,7 +31,7 @@ public class WorkspaceLoader
         IProjectLoadReporter loadReporter,
         IProjectHealthService projectHealthService,
         IAppEnvironment appEnvironment,
-        ICommunityService communityService)
+        IWorkshopService workshopService)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -41,7 +41,7 @@ public class WorkspaceLoader
         _loadReporter = loadReporter;
         _projectHealthService = projectHealthService;
         _appEnvironment = appEnvironment;
-        _communityService = communityService;
+        _workshopService = workshopService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -121,10 +121,10 @@ public class WorkspaceLoader
                 _logger.LogWarning(initMonitorResult, "Failed to initialize resource monitor");
             }
 
-            // Write the community link documents before the first resource scan. The temp: root that holds
-            // them is wiped on every load, and an open document checks the disk whenever the registry
-            // updates, so a link left docked last session has to find its file already back in place.
-            await _communityService.SeedLinkDocumentsAsync();
+            // Write the Workshop document before the first resource scan. The temp: root that holds it is
+            // wiped on every load, and an open document checks the disk whenever the registry updates, so a
+            // Workshop tab left open last session has to find its file already back in place.
+            await _workshopService.SeedDocumentAsync();
 
             // Register packages before the first resource scan so the sidecar
             // pairing pass sees package-contributed document-editor factories.
@@ -158,7 +158,7 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Create a persistent surface for every utility and build their rail. This runs before the documents are
+        // Create a persistent view for every utility and build their rail. This runs before the documents are
         // restored so a utility that was docked as a document last session is reparented into its saved tab
         // rather than opened as a second instance.
         await BuildUtilities();
@@ -168,7 +168,7 @@ public class WorkspaceLoader
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
-        // Restore the previously selected Utility Panel tab, after documents are restored so a persisted surface
+        // Restore the previously selected Utility Panel tab, after documents are restored so a persisted utility
         // that ended up docked falls back to Explorer rather than showing an empty panel.
         _workspaceWrapper.WorkspaceService.UtilityPanel.RestoreSelectedUtility();
 
@@ -176,7 +176,7 @@ public class WorkspaceLoader
         // dock restore so the re-persisted layout still records the docked utilities.
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
-        await documentsService.StoreDocumentLayout();
+        await documentsService.StoreOpenDocumentAddresses();
 
         // Notify that the workspace has loaded.
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
@@ -288,24 +288,19 @@ public class WorkspaceLoader
         }
     }
 
-    // Creates the persistent surface for every utility instance and builds the rail. The utilities are owned by
-    // the utility service for the workspace lifetime.
+    // Assembles the rail register and has the panel render it. The utilities are owned by the utility service
+    // for the workspace lifetime. The panel's own built-in items join the register first, so the register
+    // holds the rail in the order the panel draws it.
     private async Task BuildUtilities()
     {
-        var utilityInstances = GetUtilityInstances();
-        if (utilityInstances.Count == 0)
-        {
-            return;
-        }
-
+        var utilityPanel = _workspaceWrapper.WorkspaceService.UtilityPanel;
         var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-        var tabs = await utilityService.CreateUtilitiesAsync(utilityInstances);
-        if (tabs.Count == 0)
-        {
-            return;
-        }
 
-        _workspaceWrapper.WorkspaceService.UtilityPanel.BuildCustomUtilities(tabs);
+        utilityService.RegisterBuiltInUtilityItems(utilityPanel.GetBuiltInUtilityItems());
+
+        await utilityService.CreateUtilitiesAsync(GetUtilityInstances());
+
+        utilityPanel.BuildRailItems(utilityService.GetRailItems());
     }
 
     // Enumerates the declared utility instances. Declaration order in the project config is the

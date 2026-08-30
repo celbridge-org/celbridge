@@ -56,7 +56,7 @@ public sealed partial class LayoutToolbar : UserControl
         // Register for layout manager state change messages
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
         _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
-        _messengerService.Register<SurfaceVisibilityChangedMessage>(this, OnSurfaceVisibilityChanged);
+        _messengerService.Register<AreaVisibilityChangedMessage>(this, OnAreaVisibilityChanged);
         _messengerService.Register<BottomAreaAlignmentChangedMessage>(this, OnBottomAreaAlignmentChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
@@ -96,7 +96,7 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdateWorkspaceControlsVisibility()
     {
-        // Everything this toolbar offers acts on the workspace surfaces, so the whole toolbar goes away
+        // Everything this toolbar offers acts on the workspace areas, so the whole toolbar goes away
         // while no workspace is loaded rather than leaving a layout button whose flyout has nothing to show.
         bool isWorkspaceLoaded = _workspaceWrapper.IsWorkspaceLoaded;
 
@@ -118,7 +118,7 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(PanelLayoutButton, layoutTooltip);
         ToolTipService.SetPlacement(PanelLayoutButton, PlacementMode.Bottom);
 
-        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleUtilityPanelTooltip");
+        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleUtilityAreaTooltip");
         ToolTipService.SetToolTip(ToggleUtilityPanelButton, primaryTooltip);
         ToolTipService.SetPlacement(ToggleUtilityPanelButton, PlacementMode.Bottom);
 
@@ -196,7 +196,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdateFullScreenToggle();
     }
 
-    private void OnSurfaceVisibilityChanged(object recipient, SurfaceVisibilityChangedMessage message)
+    private void OnAreaVisibilityChanged(object recipient, AreaVisibilityChangedMessage message)
     {
         UpdatePanelIcons();
     }
@@ -257,18 +257,18 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdatePanelIcons()
     {
-        UtilityPanelIcon.IsActivePanel = _layoutService.IsUtilityPanelVisible;
-        BottomAreaIcon.IsActivePanel = _layoutService.IsBottomAreaVisible;
-        SideAreaIcon.IsActivePanel = _layoutService.IsSideAreaVisible;
+        UtilityPanelIcon.IsActivePanel = _layoutService.IsAreaVisible(WorkspaceArea.Utility);
+        BottomAreaIcon.IsActivePanel = _layoutService.IsAreaVisible(WorkspaceArea.Bottom);
+        SideAreaIcon.IsActivePanel = _layoutService.IsAreaVisible(WorkspaceArea.Side);
     }
 
     private void ToggleUtilityPanelButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
-        var isVisible = !_layoutService.IsUtilityPanelVisible;
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsAreaVisible(WorkspaceArea.Utility);
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Surfaces = WorkspaceSurface.UtilityPanel;
+            command.Area = WorkspaceArea.Utility;
             command.IsVisible = isVisible;
         });
     }
@@ -276,10 +276,10 @@ public sealed partial class LayoutToolbar : UserControl
     private void ToggleBottomAreaButton_Click(object sender, RoutedEventArgs e)
     {
         // Toggle the Bottom document area's visibility.
-        var isVisible = !_layoutService.IsBottomAreaVisible;
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsAreaVisible(WorkspaceArea.Bottom);
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Surfaces = WorkspaceSurface.BottomArea;
+            command.Area = WorkspaceArea.Bottom;
             command.IsVisible = isVisible;
         });
     }
@@ -287,10 +287,10 @@ public sealed partial class LayoutToolbar : UserControl
     private void ToggleSideAreaButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
-        var isVisible = !_layoutService.IsSideAreaVisible;
-        _commandService.Execute<ISetSurfaceVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsAreaVisible(WorkspaceArea.Side);
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
-            command.Surfaces = WorkspaceSurface.SideArea;
+            command.Area = WorkspaceArea.Side;
             command.IsVisible = isVisible;
         });
     }
@@ -380,7 +380,7 @@ public sealed partial class LayoutToolbar : UserControl
             // message comes back to put the button right.
             UpdateBottomAreaAlignmentButtons();
 
-            if (_layoutService.IsBottomAreaVisible)
+            if (_layoutService.IsAreaVisible(WorkspaceArea.Bottom))
             {
                 return;
             }

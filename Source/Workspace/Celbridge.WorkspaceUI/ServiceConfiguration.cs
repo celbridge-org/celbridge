@@ -1,6 +1,6 @@
-using Celbridge.Community;
 using Celbridge.DataTransfer;
 using Celbridge.UserInterface;
+using Celbridge.Workshop;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Commands;
 using Celbridge.WorkspaceUI.Platform;
@@ -20,7 +20,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IFocusService, FocusService>();
         services.AddSingleton<PanelFocusTracker>();
-        services.AddSingleton<ICommunityService, CommunityService>();
+        services.AddSingleton<IWorkshopService, WorkshopService>();
 
         PlatformServiceConfiguration.ConfigureServices(services);
 
@@ -55,11 +55,10 @@ public static class ServiceConfiguration
         services.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         services.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
-        services.AddTransient<ISetSurfaceVisibilityCommand, SetSurfaceVisibilityCommand>();
-        services.AddTransient<IResetSurfaceSizeCommand, ResetSurfaceSizeCommand>();
+        services.AddTransient<ISetAreaVisibilityCommand, SetAreaVisibilityCommand>();
+        services.AddTransient<IResetAreaSizeCommand, ResetAreaSizeCommand>();
         services.AddTransient<ISetBottomAreaAlignmentCommand, SetBottomAreaAlignmentCommand>();
         services.AddTransient<IPerformEditCommand, PerformEditCommand>();
-        services.AddTransient<IOpenCommunityLinkCommand, OpenCommunityLinkCommand>();
     }
 
     public static void Initialize()

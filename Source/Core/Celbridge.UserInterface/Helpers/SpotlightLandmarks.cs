@@ -1,4 +1,3 @@
-using Celbridge.Community;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -12,30 +11,27 @@ internal static class SpotlightLandmarks
     private static readonly IReadOnlyList<LandmarkDescriptor> BuiltInLandmarks =
         new List<LandmarkDescriptor>
         {
-            new("explorer-panel", WorkspaceSurface.UtilityPanel),
+            new("explorer-panel", WorkspaceArea.Utility),
             new("documents-panel", null),
             new("main-area", null),
-            new("bottom-area", WorkspaceSurface.BottomArea),
-            new("side-area", WorkspaceSurface.SideArea),
-            new("new-file-button", WorkspaceSurface.UtilityPanel),
-            new("new-folder-button", WorkspaceSurface.UtilityPanel),
-            new("collapse-folders-button", WorkspaceSurface.UtilityPanel),
-            new("explorer-utility-button", null),
-            new("search-utility-button", null),
-            new("project-settings-utility-button", null),
-            new("search-input", WorkspaceSurface.UtilityPanel),
-            new("search-run-button", WorkspaceSurface.UtilityPanel),
-            new("search-history-button", WorkspaceSurface.UtilityPanel),
-            new("search-match-case-button", WorkspaceSurface.UtilityPanel),
-            new("search-whole-word-button", WorkspaceSurface.UtilityPanel),
-            new("search-collapse-results-button", WorkspaceSurface.UtilityPanel),
-            new("search-replace-toggle-button", WorkspaceSurface.UtilityPanel),
-            new("search-replace-input", WorkspaceSurface.UtilityPanel),
-            new("search-replace-history-button", WorkspaceSurface.UtilityPanel),
-            new("search-replace-all-button", WorkspaceSurface.UtilityPanel),
+            new("bottom-area", WorkspaceArea.Bottom),
+            new("side-area", WorkspaceArea.Side),
+            new("new-file-button", WorkspaceArea.Utility),
+            new("new-folder-button", WorkspaceArea.Utility),
+            new("collapse-folders-button", WorkspaceArea.Utility),
+            new("search-input", WorkspaceArea.Utility),
+            new("search-run-button", WorkspaceArea.Utility),
+            new("search-history-button", WorkspaceArea.Utility),
+            new("search-match-case-button", WorkspaceArea.Utility),
+            new("search-whole-word-button", WorkspaceArea.Utility),
+            new("search-collapse-results-button", WorkspaceArea.Utility),
+            new("search-replace-toggle-button", WorkspaceArea.Utility),
+            new("search-replace-input", WorkspaceArea.Utility),
+            new("search-replace-history-button", WorkspaceArea.Utility),
+            new("search-replace-all-button", WorkspaceArea.Utility),
             new("document-tab-strip", null),
-            new("bottom-area-close-button", WorkspaceSurface.BottomArea),
-            new("side-area-close-button", WorkspaceSurface.SideArea),
+            new("bottom-area-close-button", WorkspaceArea.Bottom),
+            new("side-area-close-button", WorkspaceArea.Side),
             new("workspace-button", null),
             new("panel-layout-button", null),
             new("explorer-toggle-button", null),
@@ -48,13 +44,6 @@ internal static class SpotlightLandmarks
         foreach (var landmark in BuiltInLandmarks)
         {
             registry.RegisterLandmark(landmark);
-        }
-
-        // The community rail buttons are built from the link catalog, so their landmarks are derived from it
-        // rather than listed above.
-        foreach (var link in CommunityLinks.All)
-        {
-            registry.RegisterLandmark(new LandmarkDescriptor(link.LandmarkId, null));
         }
     }
 }

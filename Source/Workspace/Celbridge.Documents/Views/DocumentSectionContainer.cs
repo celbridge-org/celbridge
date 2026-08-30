@@ -86,7 +86,7 @@ public sealed partial class DocumentSectionContainer
     /// </summary>
     public DocumentSection ActiveSection => _activeSection;
 
-    public DocumentSectionContainer(WorkspaceSurfaceContainer surfaceContainer)
+    public DocumentSectionContainer(WorkspaceLayoutContainer layoutContainer)
     {
         // Every section exists for the lifetime of the container: a collapsed area keeps its tabs while
         // its sections are unmounted from the visual tree. They are created before the area layout so it
@@ -96,7 +96,7 @@ public sealed partial class DocumentSectionContainer
             CreateSection(section);
         }
 
-        _areaLayout = new DocumentAreaLayout(surfaceContainer, GetSection, MigrateSecondarySection);
+        _areaLayout = new DocumentAreaLayout(layoutContainer, GetSection, MigrateSecondarySection);
     }
 
     /// <summary>

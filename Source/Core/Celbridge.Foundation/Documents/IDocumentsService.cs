@@ -74,7 +74,8 @@ public interface IDocumentsService
     IDocumentEditorRegistry DocumentEditorRegistry { get; }
 
     /// <summary>
-    /// Restores the state of the documents panel from the previous session.
+    /// Restores the state of the documents panel from the previous session. A document that cannot be
+    /// reopened is logged and skipped, so the restore always completes.
     /// </summary>
     Task RestorePanelState();
 
@@ -95,6 +96,17 @@ public interface IDocumentsService
     /// This is a cached snapshot that is safe to read from any thread.
     /// </summary>
     IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
+
+    /// <summary>
+    /// The open document for a resource, or null when no document is open for it.
+    /// </summary>
+    OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource);
+
+    /// <summary>
+    /// The document a section is currently showing, or empty when the section holds none. Each section
+    /// keeps its own selection, so this is not the same as the active document.
+    /// </summary>
+    ResourceKey GetSelectedDocument(DocumentSection section);
 
     /// <summary>
     /// Creates a document view for the given file resource. When editorId is
@@ -183,25 +195,29 @@ public interface IDocumentsService
     Task<Result> SaveModifiedDocuments(double deltaTime);
 
     /// <summary>
-    /// Stores the current document layout (open documents and their addresses) in persistent storage.
-    /// This layout will be restored at the start of the next editing session.
+    /// Stores the open documents and their addresses in persistent storage. These documents are
+    /// reopened at the start of the next editing session. Persistence is best effort: a failure is
+    /// logged rather than reported.
     /// </summary>
-    Task StoreDocumentLayout();
+    Task StoreOpenDocumentAddresses();
 
     /// <summary>
     /// Stores the currently active document in persistent storage.
-    /// This document will be activated at the start of the next editing session.
+    /// This document will be activated at the start of the next editing session. Persistence is best
+    /// effort: a failure is logged rather than reported.
     /// </summary>
     Task StoreActiveDocument();
 
     /// <summary>
-    /// Saves editor state (scroll position, view mode, etc.) for all open documents.
+    /// Saves editor state (scroll position, view mode, etc.) for all open documents. Persistence is
+    /// best effort: a failure is logged rather than reported.
     /// </summary>
     Task StoreDocumentEditorStates();
 
     /// <summary>
     /// Saves editor state for a single document. Pass a non-empty state string to persist,
-    /// or null/empty to clear any existing entry for the resource.
+    /// or null/empty to clear any existing entry for the resource. Persistence is best effort: a
+    /// failure is logged rather than reported.
     /// </summary>
     Task StoreDocumentEditorState(ResourceKey fileResource, string? state);
 

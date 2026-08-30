@@ -90,7 +90,7 @@ public class AppToolTests
     public void GetState_IncludesFocusedPanelAndLayoutMode()
     {
         WireAppStateDependencies(
-            focusedPanel: WorkspacePanelId.Documents,
+            focusedPanel: FocusPanelId.Documents,
             contextVisible: true,
             inspectorVisible: false,
             consoleVisible: true);
@@ -103,10 +103,12 @@ public class AppToolTests
 
         root.GetProperty("focusedPanel").GetString().Should().Be("Documents");
 
-        var layoutMode = root.GetProperty("layoutMode");
-        layoutMode.GetProperty("utilityPanelVisible").GetBoolean().Should().BeTrue();
-        layoutMode.GetProperty("sideAreaVisible").GetBoolean().Should().BeFalse();
-        layoutMode.GetProperty("bottomAreaVisible").GetBoolean().Should().BeTrue();
+        // Every area is reported by its token, including Main, which is always visible.
+        var areaVisibility = root.GetProperty("layoutMode").GetProperty("areaVisibility");
+        areaVisibility.GetProperty("utility").GetBoolean().Should().BeTrue();
+        areaVisibility.GetProperty("main").GetBoolean().Should().BeTrue();
+        areaVisibility.GetProperty("side").GetBoolean().Should().BeFalse();
+        areaVisibility.GetProperty("bottom").GetBoolean().Should().BeTrue();
     }
 
     [Test]
@@ -137,7 +139,7 @@ public class AppToolTests
     }
 
     private IFeatureFlags WireAppStateDependencies(
-        WorkspacePanelId focusedPanel = WorkspacePanelId.None,
+        FocusPanelId focusedPanel = FocusPanelId.None,
         bool contextVisible = false,
         bool inspectorVisible = false,
         bool consoleVisible = false,
@@ -154,9 +156,12 @@ public class AppToolTests
         focusService.FocusedPanel.Returns(focusedPanel);
 
         var layoutService = Substitute.For<ILayoutService>();
-        layoutService.IsUtilityPanelVisible.Returns(contextVisible);
-        layoutService.IsSideAreaVisible.Returns(inspectorVisible);
-        layoutService.IsBottomAreaVisible.Returns(consoleVisible);
+
+        // The live service always reports Main visible, so the substitute has to say so too.
+        layoutService.IsAreaVisible(WorkspaceArea.Main).Returns(true);
+        layoutService.IsAreaVisible(WorkspaceArea.Utility).Returns(contextVisible);
+        layoutService.IsAreaVisible(WorkspaceArea.Side).Returns(inspectorVisible);
+        layoutService.IsAreaVisible(WorkspaceArea.Bottom).Returns(consoleVisible);
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
         _services.GetRequiredService<IAppEnvironment>().Returns(environmentService);

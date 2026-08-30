@@ -146,35 +146,20 @@ public static class DocumentLayoutHelper
     }
 
     /// <summary>
-    /// The workspace surface the area occupies, or None for Main, which is always visible and has no
-    /// surface of its own.
+    /// The document area an item occupies in the given workspace area, or null when the area is the
+    /// Utility Panel, which holds no document area.
     /// </summary>
-    public static WorkspaceSurface GetSurface(this DocumentArea area)
+    public static DocumentArea? GetDocumentArea(this WorkspaceArea area)
     {
         switch (area)
         {
-            case DocumentArea.Bottom:
-                return WorkspaceSurface.BottomArea;
+            case WorkspaceArea.Main:
+                return DocumentArea.Main;
 
-            case DocumentArea.Side:
-                return WorkspaceSurface.SideArea;
-
-            default:
-                return WorkspaceSurface.None;
-        }
-    }
-
-    /// <summary>
-    /// The document area occupying the surface, or null for a surface that holds no area.
-    /// </summary>
-    public static DocumentArea? GetArea(this WorkspaceSurface surface)
-    {
-        switch (surface)
-        {
-            case WorkspaceSurface.BottomArea:
+            case WorkspaceArea.Bottom:
                 return DocumentArea.Bottom;
 
-            case WorkspaceSurface.SideArea:
+            case WorkspaceArea.Side:
                 return DocumentArea.Side;
 
             default:
@@ -183,12 +168,35 @@ public static class DocumentLayoutHelper
     }
 
     /// <summary>
-    /// Parses a section name, returning false when the name does not match a section. Used for stored
-    /// addresses and for agent tool arguments, both of which carry the name rather than a number.
+    /// The always-present section of the document area an item occupies in the given workspace area, or null
+    /// when the area is the Utility Panel, which holds no document tabs.
     /// </summary>
-    public static bool TryParseSection(string? name, out DocumentSection section)
+    public static DocumentSection? GetPrimaryDocumentSection(this WorkspaceArea area)
     {
-        return Enum.TryParse(name, ignoreCase: true, out section)
-            && Enum.IsDefined(section);
+        var documentArea = area.GetDocumentArea();
+        if (documentArea is null)
+        {
+            return null;
+        }
+
+        return documentArea.Value.GetPrimarySection();
+    }
+
+    /// <summary>
+    /// The workspace area holding the given document area.
+    /// </summary>
+    public static WorkspaceArea GetWorkspaceArea(this DocumentArea area)
+    {
+        switch (area)
+        {
+            case DocumentArea.Bottom:
+                return WorkspaceArea.Bottom;
+
+            case DocumentArea.Side:
+                return WorkspaceArea.Side;
+
+            default:
+                return WorkspaceArea.Main;
+        }
     }
 }

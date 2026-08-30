@@ -68,6 +68,12 @@ public interface IIconService
     IconGlyph GetGlyph(IconSymbol icon);
 
     /// <summary>
+    /// Returns the prefixed icon name for a known IconSymbol, or an empty string when the symbol has no
+    /// name mapped to it.
+    /// </summary>
+    string GetIconName(IconSymbol icon);
+
+    /// <summary>
     /// Returns the glyph for a prefixed icon name (for example "bs-folder-fill"), or a fallback glyph if
     /// the name is unknown.
     /// </summary>

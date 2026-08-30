@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -23,8 +24,9 @@ public sealed partial class CustomUtilityView : UserControl
     // The utility's id, set on Bind. Used by the dock orchestration to address this panel.
     private EditorId _utilityId = EditorId.Empty;
 
-    // The bound resolved editor, held so a lazy utility can initialize its WebView on first show.
-    private ResolvedEditor? _resolvedEditor;
+    // The document area the "Open as document" control docks into, resolved from the utility's declaration
+    // on Bind. Null when the utility declares no document area, in which case the control is hidden.
+    private WorkspaceArea? _openAsDocumentArea;
 
     public CustomUtilityView(IServiceProvider serviceProvider)
     {
@@ -42,7 +44,7 @@ public sealed partial class CustomUtilityView : UserControl
         // A utility in the panel is not a document, so it does not mark itself the active document on focus.
         // The registry still reports its Utility focus identity from the registration.
         _panelFocusContext = new CustomEditorFocusContext(
-            WorkspacePanelId.CustomUtility,
+            FocusPanelId.CustomUtility,
             () => { });
 
         _controller = new CustomEditorController(
@@ -73,32 +75,47 @@ public sealed partial class CustomUtilityView : UserControl
     public EditorId UtilityId => _utilityId;
 
     /// <summary>
-    /// This utility's current dock location (the Utility Panel rail or a document tab).
+    /// The area this utility currently occupies: the Utility Panel, or a document area holding its tab.
     /// </summary>
-    public DockLocation Location { get; set; } = DockLocation.UtilityPanel;
+    public WorkspaceArea Area { get; set; } = WorkspaceArea.Utility;
 
     private void OpenAsDocumentButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_utilityId.IsEmpty)
+        if (_utilityId.IsEmpty
+            || _openAsDocumentArea is null)
         {
             return;
         }
 
+        var documentArea = _openAsDocumentArea.Value;
+
         _commandService.Execute<IDockUtilityCommand>(command =>
         {
             command.UtilityId = _utilityId;
-            command.Location = DockLocation.Document;
+            command.Area = documentArea;
         });
     }
 
+    // Reads the document area the utility docks into from its declaration. A utility that declares none
+    // has nowhere for the control to send it, so the control is hidden.
+    private void ApplyDockArea(UtilityDescriptor? descriptor)
+    {
+        _openAsDocumentArea = descriptor?.DockArea;
+
+        OpenAsDocumentButton.Visibility = _openAsDocumentArea is null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
     /// <summary>
-    /// Binds the panel to its resolved editor and backing resource without creating the WebView.
-    /// The backing file is expected to already exist, seeded before this call.
+    /// Binds the panel to its resolved editor and backing resource, and creates its WebView. The backing
+    /// file is expected to already exist, seeded before this call.
     /// </summary>
     public async Task<Result> BindAsync(ResolvedEditor resolvedEditor, ResourceKey resource, string displayName)
     {
-        _resolvedEditor = resolvedEditor;
         _utilityId = resolvedEditor.EditorId;
+
+        ApplyDockArea(resolvedEditor.Contribution.UtilityDescriptor);
 
         PanelHeaderControl.Title = displayName;
 
@@ -118,24 +135,10 @@ public sealed partial class CustomUtilityView : UserControl
         var writableState = await operations.GetWritableStateAsync(resource);
         _controller.SetWritableState(writableState);
 
-        return Result.Ok();
-    }
-
-    /// <summary>
-    /// Initializes the WebView for the bound resolved editor. The controller runs the initialization
-    /// once; later calls await the same result, so this is safe to call on every show.
-    /// </summary>
-    public async Task<Result> EnsureInitializedAsync()
-    {
-        if (_resolvedEditor is null)
-        {
-            return Result.Fail("Cannot initialize utility: the view is not bound to a resolved editor");
-        }
-
-        var initResult = await _controller.InitializeAsync(_resolvedEditor);
+        var initResult = await _controller.InitializeAsync(resolvedEditor);
         if (initResult.IsFailure)
         {
-            return Result.Fail($"Failed to initialize utility: '{_viewModel.FileResource}'")
+            return Result.Fail($"Failed to initialize utility: '{resource}'")
                 .WithErrors(initResult);
         }
 

@@ -1,9 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Packages;
-using Celbridge.Projects;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Commands;
 
@@ -12,20 +8,17 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IStringLocalizer _stringLocalizer;
-    private readonly IPackageLocalizationService _packageLocalizationService;
+    private readonly ILayoutService _layoutService;
 
     public UtilitiesStateSnapshot ResultValue { get; private set; }
         = new UtilitiesStateSnapshot(Array.Empty<UtilityInfo>());
 
     public GetUtilitiesStateCommand(
         IWorkspaceWrapper workspaceWrapper,
-        IStringLocalizer stringLocalizer,
-        IPackageLocalizationService packageLocalizationService)
+        ILayoutService layoutService)
     {
         _workspaceWrapper = workspaceWrapper;
-        _stringLocalizer = stringLocalizer;
-        _packageLocalizationService = packageLocalizationService;
+        _layoutService = layoutService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -39,80 +32,67 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var utilityPanel = workspaceService.UtilityPanel;
-        var packageService = workspaceService.PackageService;
-        var documentsService = workspaceService.DocumentsService;
         var utilityService = workspaceService.UtilityService;
 
-        var activeUtilityId = utilityPanel.ActiveUtilityId;
-
-        // A utility is docked when its backing resource is open as a document.
-        var openResources = new HashSet<ResourceKey>();
-        foreach (var openDocument in documentsService.GetOpenDocuments())
-        {
-            openResources.Add(openDocument.FileResource);
-        }
-        var activeDocument = documentsService.ActiveDocument;
+        // Which rail button is selected is the panel's own state. Where each item lives is the register's.
+        var activeUtilityId = workspaceService.UtilityPanel.ActiveUtilityId;
 
         var utilities = new List<UtilityInfo>();
 
-        // Built-in Utility Panel surfaces are non-dockable, so they are always in the Utility Panel.
-        string explorerName = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
-        utilities.Add(new UtilityInfo(
-            BuiltInUtilityIds.Explorer,
-            explorerName,
-            Location: DockLocation.UtilityPanel,
-            IsShown: activeUtilityId == BuiltInUtilityIds.Explorer));
-
-        string searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
-        utilities.Add(new UtilityInfo(
-            BuiltInUtilityIds.Search,
-            searchName,
-            Location: DockLocation.UtilityPanel,
-            IsShown: activeUtilityId == BuiltInUtilityIds.Search));
-
-        // Package-custom utilities. Each is a persistent surface, in the rail or docked as a document tab.
-        foreach (var resolvedEditor in packageService.GetResolvedEditors())
+        foreach (var railItem in utilityService.GetRailItems())
         {
-            var utility = resolvedEditor.Contribution;
-            if (!utility.IsUtility)
-            {
-                continue;
-            }
+            var currentArea = utilityService.GetCurrentArea(railItem.ItemId);
 
-            var utilityId = resolvedEditor.EditorId;
+            var utilityInfo = new UtilityInfo(
+                railItem.ItemId,
+                railItem.DisplayName,
+                currentArea,
+                railItem.DockArea,
+                IsRailItemVisible(railItem, currentArea, activeUtilityId),
+                railItem.FileResource);
 
-            // Only report utilities that were actually created. A utility whose seed/bind/init
-            // failed is skipped here, so this list matches what app_show_utility will accept.
-            if (!utilityService.HasUtility(utilityId))
-            {
-                continue;
-            }
-
-            var displayName = PackageDisplayText.Resolve(_packageLocalizationService, utility.Package, utility.DisplayName);
-
-            var isDocumentDocked = false;
-            var utilityResource = ResourceKey.Empty;
-            if (utility.UtilityDescriptor is not null)
-            {
-                var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{utility.UtilityDescriptor.ResourceExtension}";
-                if (ResourceKey.TryCreate(resourceValue, out utilityResource))
-                {
-                    isDocumentDocked = openResources.Contains(utilityResource);
-                }
-            }
-
-            var location = isDocumentDocked ? DockLocation.Document : DockLocation.UtilityPanel;
-
-            var isShown = isDocumentDocked
-                ? activeDocument == utilityResource
-                : activeUtilityId == utilityId;
-
-            utilities.Add(new UtilityInfo(utilityId, displayName, location, isShown));
+            utilities.Add(utilityInfo);
         }
 
         ResultValue = new UtilitiesStateSnapshot(utilities);
 
         return Result.Ok();
+    }
+
+    // Whether the user can see the item: something has to be presenting it, in an area that is not
+    // collapsed. The rail keeps its selection through a collapse so a reveal returns to it, which is why
+    // being selected is not on its own enough.
+    private bool IsRailItemVisible(
+        UtilityRailItem railItem,
+        WorkspaceArea? currentArea,
+        EditorId activeUtilityId)
+    {
+        if (currentArea is null)
+        {
+            return false;
+        }
+
+        if (!_layoutService.IsAreaVisible(currentArea.Value))
+        {
+            return false;
+        }
+
+        if (currentArea == WorkspaceArea.Utility)
+        {
+            return activeUtilityId == railItem.ItemId;
+        }
+
+        // Each section shows its own selected tab, so a document is on screen whenever it is the one its
+        // section is showing. The active document is a single workspace-wide choice and says nothing about
+        // what the other areas are drawing.
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+        var openDocument = documentsService.FindOpenDocument(railItem.FileResource);
+        if (openDocument is null)
+        {
+            return false;
+        }
+
+        return documentsService.GetSelectedDocument(openDocument.Address.Section) == railItem.FileResource;
     }
 }

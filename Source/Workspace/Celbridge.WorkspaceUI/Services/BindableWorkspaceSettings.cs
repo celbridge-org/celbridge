@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Celbridge.Settings;
+using Celbridge.Utilities;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -19,10 +20,20 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         _settings = settings;
     }
 
-    public WorkspaceSurface PreferredSurfaceVisibility
+    public IReadOnlySet<WorkspaceArea> PreferredVisibleAreas
     {
-        get => Get(SettingCatalog.Layout.PreferredSurfaceVisibility);
-        set => Set(SettingCatalog.Layout.PreferredSurfaceVisibility, value);
+        get
+        {
+            // A project that has never customised its layout shows every area. That is not the same as a
+            // stored value naming no collapsible area, which is the user having hidden them all.
+            if (!_settings.IsConfigured(SettingCatalog.Layout.PreferredVisibleAreas))
+            {
+                return WorkspaceAreaHelper.AllAreasVisible;
+            }
+
+            return ParseAreas(Get(SettingCatalog.Layout.PreferredVisibleAreas));
+        }
+        set => Set(SettingCatalog.Layout.PreferredVisibleAreas, FormatAreas(value));
     }
 
     public float UtilityPanelWidth
@@ -71,6 +82,34 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
     {
         get => Get(SettingCatalog.Editor.PreviousNewFileExtension);
         set => Set(SettingCatalog.Editor.PreviousNewFileExtension, value);
+    }
+
+    // The area set is stored as tokens rather than as enum values, so reordering the enum cannot silently
+    // reinterpret stored data. A token that names no area is dropped, and Main is added whatever the stored
+    // value holds, because it is always on screen.
+    private static IReadOnlySet<WorkspaceArea> ParseAreas(string storedValue)
+    {
+        var areas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Main
+        };
+
+        foreach (var token in storedValue.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (WorkspaceAreaTokens.TryParse(token, out var area))
+            {
+                areas.Add(area);
+            }
+        }
+
+        return areas;
+    }
+
+    private static string FormatAreas(IReadOnlySet<WorkspaceArea> areas)
+    {
+        var tokens = areas.Select(area => area.ToToken());
+
+        return string.Join(',', tokens);
     }
 
     private T Get<T>(SettingDescriptor<T> descriptor) where T : notnull

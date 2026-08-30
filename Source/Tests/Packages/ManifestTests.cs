@@ -1,5 +1,6 @@
 using Celbridge.Packages;
 using Celbridge.Tests.Architecture;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
 
@@ -1007,7 +1008,6 @@ public class ManifestTests
             resource-extension = "._widget"
             template = "templates/default._widget"
             icon = "star"
-            lazy-load = true
             """);
 
         var result = LoadPackage();
@@ -1027,11 +1027,10 @@ public class ManifestTests
         descriptor.ResourceExtension.Should().Be("._widget");
         descriptor.Template.Should().Be("templates/default._widget");
         descriptor.Icon.Should().Be("star");
-        descriptor.LazyLoad.Should().BeTrue();
     }
 
     [Test]
-    public void LoadPackage_UtilityDefaults_TemplateEmptyAndLazyLoadFalse()
+    public void LoadPackage_UtilityDefaults_TemplateEmptyAndPlacementUnchanged()
     {
         WriteSingleEditorPackage("""
             [editor]
@@ -1049,7 +1048,74 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         var descriptor = result.Value.Editors[0].UtilityDescriptor!;
         descriptor.Template.Should().BeEmpty();
-        descriptor.LazyLoad.Should().BeFalse();
+
+        // A manifest declaring no dock area keeps the default: dockable into Main.
+        descriptor.DockArea.Should().Be(WorkspaceArea.Main);
+    }
+
+    [Test]
+    public void LoadPackage_UtilityDockArea_ParsesTheDeclaredArea()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-renderer"
+            type = "utility"
+            display-name = "Widget_Utility_DisplayName"
+
+            [utility]
+            resource-extension = "._widget"
+            icon = "star"
+            dock-area = "bottom"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].UtilityDescriptor!.DockArea.Should().Be(WorkspaceArea.Bottom);
+    }
+
+    [Test]
+    public void LoadPackage_UtilityDockAreaNone_ParsesAsPanelOnly()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "widget-renderer"
+            type = "utility"
+            display-name = "Widget_Utility_DisplayName"
+
+            [utility]
+            resource-extension = "._widget"
+            icon = "star"
+            dock-area = "none"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+
+        // Nothing to dock into, so the utility stays in the Utility Panel.
+        result.Value.Editors[0].UtilityDescriptor!.DockArea.Should().BeNull();
+    }
+
+    [TestCase("panel", Description = "unrecognized area")]
+    [TestCase("utility", Description = "the Utility Panel holds no document tabs")]
+    public void LoadPackage_UtilityInvalidDockArea_ReturnsFailure(string dockArea)
+    {
+        WriteSingleEditorPackage($"""
+            [editor]
+            id = "widget-renderer"
+            type = "utility"
+            display-name = "Widget_Utility_DisplayName"
+
+            [utility]
+            resource-extension = "._widget"
+            icon = "star"
+            dock-area = "{dockArea}"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
     }
 
     [Test]

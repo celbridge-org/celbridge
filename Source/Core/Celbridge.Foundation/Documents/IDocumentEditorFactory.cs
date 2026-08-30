@@ -50,8 +50,8 @@ public interface IDocumentEditorFactory
     bool ReservesFileType { get; }
 
     /// <summary>
-    /// True for factories that produce utility documents: Utility Panel surfaces backed by a fixed utils:
-    /// resource rather than an extension claimed across the project.
+    /// True for factories that produce a workspace item the Utility Panel rail presents: one backed by a
+    /// fixed utils: resource rather than an extension claimed across the project.
     /// </summary>
     bool IsUtility { get; }
 

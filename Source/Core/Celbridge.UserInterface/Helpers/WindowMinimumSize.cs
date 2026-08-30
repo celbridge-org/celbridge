@@ -44,9 +44,9 @@ public static class WindowMinimumSize
     /// application toolbar above it, and the window's own chrome around both. A layout the user has widened
     /// or split needs more, and is clamped or clipped rather than holding the window open.
     /// </summary>
-    public static Size ComposeDefaultLayoutWindow(WorkspaceSurface visibleSurfaces, double gutterSize)
+    public static Size ComposeDefaultLayoutWindow(IReadOnlySet<WorkspaceArea> visibleAreas, double gutterSize)
     {
-        var workspaceMinimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(visibleSurfaces, gutterSize);
+        var workspaceMinimumSize = WorkspaceMinimumSize.ComposeDefaultLayout(visibleAreas, gutterSize);
 
         double width = workspaceMinimumSize.Width + WindowFrameWidth;
         double height = workspaceMinimumSize.Height +
@@ -61,9 +61,9 @@ public static class WindowMinimumSize
     /// held to at least what the default layout needs, then scaled: the composition is in device-independent
     /// pixels, which is not what every head measures its window in.
     /// </summary>
-    public static SizeInt32 Compose(WorkspaceSurface visibleSurfaces, double gutterSize, double windowSizeScale)
+    public static SizeInt32 Compose(IReadOnlySet<WorkspaceArea> visibleAreas, double gutterSize, double windowSizeScale)
     {
-        var defaultLayoutWindow = ComposeDefaultLayoutWindow(visibleSurfaces, gutterSize);
+        var defaultLayoutWindow = ComposeDefaultLayoutWindow(visibleAreas, gutterSize);
 
         double width = Math.Max(AuthoredWidth, defaultLayoutWindow.Width);
         double height = Math.Max(AuthoredHeight, defaultLayoutWindow.Height);

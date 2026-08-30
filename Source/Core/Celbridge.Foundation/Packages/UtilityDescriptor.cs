@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Packages;
 
 /// <summary>
@@ -25,7 +27,8 @@ public record UtilityDescriptor
     public string Icon { get; init; } = string.Empty;
 
     /// <summary>
-    /// When true, view creation is deferred to the first show of the utility.
+    /// The document area the utility docks into, from the manifest's dock-area key. Null when it declares
+    /// dock-area = "none", which keeps it in the Utility Panel and hides its "Open as document" control.
     /// </summary>
-    public bool LazyLoad { get; init; }
+    public WorkspaceArea? DockArea { get; init; } = WorkspaceArea.Main;
 }

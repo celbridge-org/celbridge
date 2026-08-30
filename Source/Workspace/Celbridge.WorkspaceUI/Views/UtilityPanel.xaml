@@ -5,30 +5,19 @@
     xmlns:ui="using:Celbridge.UserInterface"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <!-- The surface the rail selects into. Carved out of the field like a document section, so a custom utility
+    <!-- The area the rail selects into. Carved out of the field like a document section, so a custom utility
          looks the same docked into a document tab. The edges and corners here are a starting point: code-behind
          rewrites them for where the layout has put the panel. -->
     <Grid x:Name="ContentArea"
           Background="{ThemeResource ContentBackgroundBrush}"
           BorderBrush="{ThemeResource PanelEdgeBrush}"
           BorderThickness="1,1,1,0">
-        <!-- The panel host controls sit above the hosted panel's FocusTracking.Panel declaration. A tree
-             rebuild destroys the focused row and the platform bounces focus up onto the host, which has no
-             panel ancestor and would otherwise clear panel focus to None. PreservePanelFocus keeps the
-             current panel during that bounce. -->
-        <ContentControl x:Name="ExplorerPanelControl"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch"
-                        ui:FocusTracking.PreservePanelFocus="True" />
-        <ContentControl x:Name="SearchPanelControl"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch"
-                        Visibility="Collapsed"
-                        ui:FocusTracking.PreservePanelFocus="True" />
+        <!-- Every rail item's content host is created by the panel's rail item build, which declares the
+             panel each host reports focus as. -->
 
         <!-- Attention flash outline, tracing the same edges and corners as the panel's own chrome. Its
-             z-index clears the one the active surface is raised to, so the outline draws over that
-             surface's opaque rows. -->
+             z-index clears the one the active item is raised to, so the outline draws over that
+             item's opaque rows. -->
         <Border x:Name="PerimeterOverlay"
                 Canvas.ZIndex="2"
                 BorderBrush="{ThemeResource AccentBrush}"
