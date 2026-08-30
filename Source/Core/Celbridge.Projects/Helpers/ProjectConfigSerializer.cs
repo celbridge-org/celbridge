@@ -17,6 +17,7 @@ public static class ProjectConfigSerializer
         WriteCelbridgeTable(builder, config);
         WriteResourcesTable(builder, config.Resources);
         WriteContributions(builder, config.ContributionOverrides);
+        WriteDocumentShortcuts(builder, config.DocumentShortcuts);
 
         return builder.ToString();
     }
@@ -97,6 +98,25 @@ public static class ProjectConfigSerializer
             foreach (var key in contribution.Config.Keys.OrderBy(key => key, StringComparer.Ordinal))
             {
                 WriteKeyValue(builder, key, RenderConfigValue(contribution.Config[key]));
+            }
+        }
+    }
+
+    // Emits the [[shortcut]] entries in list order. Unlike the contribution entries these are not sorted:
+    // the order is the rail order the user arranged, so it is part of the value rather than an artifact of
+    // how the entries were collected.
+    private static void WriteDocumentShortcuts(StringBuilder builder, IReadOnlyList<DocumentShortcut> documentShortcuts)
+    {
+        foreach (var documentShortcut in documentShortcuts)
+        {
+            builder.Append('\n');
+            builder.Append("[[shortcut]]\n");
+
+            WriteKeyValue(builder, "resource", TomlStringEncoder.EncodeBasicString(documentShortcut.Resource));
+
+            if (!string.IsNullOrEmpty(documentShortcut.Icon))
+            {
+                WriteKeyValue(builder, "icon", TomlStringEncoder.EncodeBasicString(documentShortcut.Icon));
             }
         }
     }

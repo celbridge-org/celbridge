@@ -9,6 +9,7 @@ using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Utilities;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -89,6 +90,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     public PackagesSectionViewModel PackagesSection { get; }
     public FileEditorsSectionViewModel FileEditorsSection { get; }
     public PagesSectionViewModel PagesSection { get; }
+    public DocumentShortcutsSectionViewModel DocumentShortcutsSection { get; }
     public FeatureFlagsSectionViewModel FeatureFlagsSection { get; }
 
     public IRelayCommand ReloadProjectCommand { get; }
@@ -103,7 +105,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         IStringLocalizer stringLocalizer,
         ISettingsService settingsService,
         IPackageLocalizationService packageLocalization,
-        IFileTypeCatalog fileTypeCatalog)
+        IFileTypeCatalog fileTypeCatalog,
+        IIconService iconService)
     {
         _logger = logger;
         _projectService = projectService;
@@ -124,6 +127,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
         PagesSection = new PagesSectionViewModel(_context);
+        DocumentShortcutsSection = new DocumentShortcutsSectionViewModel(_context, iconService);
         FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
 
         _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
@@ -225,6 +229,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         PackagesSection.Load();
         FileEditorsSection.Load();
         PagesSection.Load();
+        DocumentShortcutsSection.Load();
         FeatureFlagsSection.Load();
 
         _loaded = true;
@@ -247,6 +252,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         PackagesSection.Load();
         FileEditorsSection.Load();
         PagesSection.Load();
+        DocumentShortcutsSection.Load();
         FeatureFlagsSection.Load();
 
         UpdatePackagesSectionIssue();

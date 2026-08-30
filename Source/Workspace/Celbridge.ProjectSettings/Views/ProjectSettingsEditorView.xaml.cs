@@ -61,6 +61,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
             ViewModel = ViewModel.PagesSection
         };
 
+        var documentShortcutsView = new DocumentShortcutsSectionView
+        {
+            ViewModel = ViewModel.DocumentShortcutsSection
+        };
+
         var fileEditorsView = new FileEditorsSectionView
         {
             ViewModel = ViewModel.FileEditorsSection
@@ -92,6 +97,12 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
                 _stringLocalizer.GetString("ProjectSettings_PagesHeader"),
                 _stringLocalizer.GetString("ProjectSettings_PagesDescription"),
                 pagesView),
+            new(
+                "Shortcuts",
+                "bs-pin-angle",
+                _stringLocalizer.GetString("ProjectSettings_ShortcutsHeader"),
+                _stringLocalizer.GetString("ProjectSettings_ShortcutsDescription"),
+                documentShortcutsView),
             new(
                 "FileEditors",
                 "bs-file-earmark",

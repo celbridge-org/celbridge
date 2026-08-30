@@ -28,11 +28,15 @@ public class UtilityService : IUtilityService, IDisposable
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
     private const string WorkshopLandmarkId = "workshop-utility-button";
 
+    // The id scope the project's own document shortcuts are addressed under, matching the built-in ones.
+    private const string ProjectShortcutScope = "celbridge";
+
     // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
-    // their descriptors wrap live views. The rest are built here.
+    // their descriptors wrap live views. The rest are built here. The shortcut group holds the ones the
+    // project declares first, so the built-in shortcuts stay pinned at the end of the rail.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
     private readonly List<UtilityRailItem> _contributedItems = new();
-    private readonly List<UtilityRailItem> _builtInShortcutItems = new();
+    private readonly List<UtilityRailItem> _shortcutItems = new();
 
     // The three groups above as one ordered list, and the same items by id. Rebuilt whenever a group
     // changes, so a reader never pays to assemble them.
@@ -82,7 +86,7 @@ public class UtilityService : IUtilityService, IDisposable
         _railItems.Clear();
         _railItems.AddRange(_builtInUtilityItems);
         _railItems.AddRange(_contributedItems);
-        _railItems.AddRange(_builtInShortcutItems);
+        _railItems.AddRange(_shortcutItems);
 
         _railItemsById.Clear();
         foreach (var railItem in _railItems)
@@ -191,8 +195,9 @@ public class UtilityService : IUtilityService, IDisposable
             _contributedItems.Add(railItem);
         }
 
-        _builtInShortcutItems.Clear();
-        _builtInShortcutItems.AddRange(BuildBuiltInShortcutItems());
+        _shortcutItems.Clear();
+        _shortcutItems.AddRange(BuildProjectShortcutItems());
+        _shortcutItems.AddRange(BuildBuiltInShortcutItems());
 
         RebuildRailRegister();
     }
@@ -214,6 +219,62 @@ public class UtilityService : IUtilityService, IDisposable
         }
 
         return panelView;
+    }
+
+    // The document shortcuts the project config declares, in the order it lists them. An entry naming
+    // something that is not a resource key contributes no button.
+    private List<UtilityRailItem> BuildProjectShortcutItems()
+    {
+        var projectService = _serviceProvider.GetRequiredService<IProjectService>();
+        var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+        var iconService = _serviceProvider.GetRequiredService<IIconService>();
+
+        var shortcutItems = new List<UtilityRailItem>();
+
+        var config = projectService.CurrentProject?.Config;
+        if (config is null)
+        {
+            return shortcutItems;
+        }
+
+        var documentShortcuts = config.DocumentShortcuts;
+        for (int i = 0; i < documentShortcuts.Count; i++)
+        {
+            var documentShortcut = documentShortcuts[i];
+
+            if (!ResourceKey.TryCreate(documentShortcut.Resource, out var fileResource))
+            {
+                _logger.LogWarning(
+                    $"Document shortcut #{i + 1} names an invalid resource: '{documentShortcut.Resource}'");
+                continue;
+            }
+
+            // Identified by position rather than by resource: two shortcuts may open the same file, and a
+            // rename must not merge them or collide their landmark ids.
+            var shortcutNumber = i + 1;
+            var itemId = EditorId.Create(ProjectShortcutScope, $"shortcut-{shortcutNumber}");
+            var landmarkId = $"document-shortcut-{shortcutNumber}-utility-button";
+
+            var displayName = fileResource.ResourceName;
+            var tooltip = stringLocalizer.GetString("UtilityPanel_DocumentShortcutTooltip", displayName);
+            var iconName = DocumentShortcutIcon.Resolve(iconService, documentShortcut.Icon);
+
+            // The editor is left unnamed so the shortcut opens the file in whichever editor its extension
+            // resolves to, including any the project associates with it.
+            var shortcutItem = UtilityRailItem.CreateDocumentShortcut(
+                itemId,
+                landmarkId,
+                iconName,
+                displayName,
+                tooltip,
+                fileResource,
+                EditorId.Empty,
+                WorkspaceArea.Main);
+
+            shortcutItems.Add(shortcutItem);
+        }
+
+        return shortcutItems;
     }
 
     // The built-in document shortcuts: rail items that open a document and never occupy the panel, so they

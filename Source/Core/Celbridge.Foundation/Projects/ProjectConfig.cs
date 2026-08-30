@@ -47,6 +47,23 @@ public sealed record ContributionOverride
 }
 
 /// <summary>
+/// A Utility Rail button parsed from a [[shortcut]] entry in the .celbridge project config: the resource
+/// the button opens as a document, and the icon it carries. Entry order is rail order.
+/// </summary>
+public sealed record DocumentShortcut
+{
+    /// <summary>
+    /// Resource key of the file the shortcut opens.
+    /// </summary>
+    public required string Resource { get; init; }
+
+    /// <summary>
+    /// Prefixed icon name for the rail button. Empty takes the default document icon.
+    /// </summary>
+    public string Icon { get; init; } = string.Empty;
+}
+
+/// <summary>
 /// Models the [celbridge] table from the .celbridge project config: every host-level declaration
 /// as flat keys, plus the [celbridge.resources] sub-table modeled separately on ProjectConfig.
 /// </summary>
@@ -151,6 +168,11 @@ public sealed record class ProjectConfig
     /// A contribution running at its manifest default with default config has no entry.
     /// </summary>
     public IReadOnlyList<ContributionOverride> ContributionOverrides { get; init; } = Array.Empty<ContributionOverride>();
+
+    /// <summary>
+    /// Utility Rail document shortcuts, from the [[shortcut]] entries, in the order the rail shows them.
+    /// </summary>
+    public IReadOnlyList<DocumentShortcut> DocumentShortcuts { get; init; } = Array.Empty<DocumentShortcut>();
 
     /// <summary>
     /// Entries that were skipped or degraded during parsing.

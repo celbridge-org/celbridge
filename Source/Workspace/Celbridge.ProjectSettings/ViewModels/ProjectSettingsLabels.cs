@@ -35,6 +35,18 @@ internal static class ProjectSettingsLabels
     public static string PageManifestIssue => Localizer.GetString("ProjectSettings_PageManifestIssue");
     public static string PagesEmpty => Localizer.GetString("ProjectSettings_PagesEmpty");
     public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
+    public static string ShortcutsEmpty => Localizer.GetString("ProjectSettings_ShortcutsEmpty");
+    public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");
+    public static string ShortcutUntitled => Localizer.GetString("ProjectSettings_ShortcutUntitled");
+    public static string ShortcutResourceLabel => Localizer.GetString("ProjectSettings_ShortcutResourceLabel");
+    public static string ShortcutResourcePlaceholder => Localizer.GetString("ProjectSettings_ShortcutResourcePlaceholder");
+    public static string ShortcutResourceHint => Localizer.GetString("ProjectSettings_ShortcutResourceHint");
+    public static string ShortcutInvalidResource => Localizer.GetString("ProjectSettings_ShortcutInvalidResource");
+    public static string ShortcutMissingResource => Localizer.GetString("ProjectSettings_ShortcutMissingResource");
+    public static string ShortcutIconLabel => Localizer.GetString("ProjectSettings_ShortcutIconLabel");
+    public static string ShortcutIconPlaceholder => Localizer.GetString("ProjectSettings_ShortcutIconPlaceholder");
+    public static string ShortcutIconHint => Localizer.GetString("ProjectSettings_ShortcutIconHint");
+    public static string ShortcutUnknownIcon => Localizer.GetString("ProjectSettings_ShortcutUnknownIcon");
     public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
     public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");
 

@@ -15,6 +15,7 @@ public static class ProjectConfigParser
 {
     private const string CelbridgeSectionName = "celbridge";
     private const string ContributionSectionName = "contribution";
+    private const string DocumentShortcutSectionName = "shortcut";
 
     private const string CelbridgeVersionKey = "celbridge-version";
     private const string ProjectVersionKey = "project-version";
@@ -24,6 +25,9 @@ public static class ProjectConfigParser
     private const string EditorAssociationsKey = "editor-associations";
     private const string FeaturesKey = "features";
     private const string ResourcesKey = "resources";
+
+    private const string DocumentShortcutResourceKey = "resource";
+    private const string DocumentShortcutIconKey = "icon";
 
     private static readonly string[] KnownCelbridgeKeys =
     [
@@ -43,6 +47,12 @@ public static class ProjectConfigParser
         "add",
         "remove",
         "lock",
+    ];
+
+    private static readonly string[] KnownDocumentShortcutKeys =
+    [
+        DocumentShortcutResourceKey,
+        DocumentShortcutIconKey,
     ];
 
     /// <summary>
@@ -151,11 +161,36 @@ public static class ProjectConfigParser
             }
         }
 
+        // Utility Rail document shortcuts are declared as [[shortcut]] entries. Entry order is rail
+        // order, so the entries are kept in the order the file lists them.
+        var documentShortcuts = new List<DocumentShortcut>();
+        if (root.TryGetValue(DocumentShortcutSectionName, out var documentShortcutObject))
+        {
+            if (documentShortcutObject is TomlTableArray documentShortcutArray)
+            {
+                for (int i = 0; i < documentShortcutArray.Count; i++)
+                {
+                    var documentShortcut = ParseDocumentShortcutEntry(documentShortcutArray[i], i + 1, entryErrors);
+                    if (documentShortcut is not null)
+                    {
+                        documentShortcuts.Add(documentShortcut);
+                    }
+                }
+            }
+            else
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    DocumentShortcutSectionName,
+                    $"'{DocumentShortcutSectionName}' must be declared as [[{DocumentShortcutSectionName}]] entries. The section was ignored."));
+            }
+        }
+
         // Any other top-level key is not part of the schema.
         foreach (var (key, _) in root)
         {
             if (key == CelbridgeSectionName ||
-                key == ContributionSectionName)
+                key == ContributionSectionName ||
+                key == DocumentShortcutSectionName)
             {
                 continue;
             }
@@ -179,6 +214,7 @@ public static class ProjectConfigParser
             Resources = resourcesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
+            DocumentShortcuts = documentShortcuts,
             EntryErrors = entryErrors
         };
     }
@@ -417,6 +453,46 @@ public static class ProjectConfigParser
             Disabled = disabled,
             Enabled = enabled,
             Config = config
+        };
+    }
+
+    private static DocumentShortcut? ParseDocumentShortcutEntry(
+        TomlTable entryTable,
+        int entryIndex,
+        List<ProjectConfigEntryError> entryErrors)
+    {
+        var entryName = $"[[{DocumentShortcutSectionName}]] #{entryIndex}";
+
+        foreach (var key in entryTable.Keys)
+        {
+            if (!KnownDocumentShortcutKeys.Contains(key, StringComparer.Ordinal))
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    entryName, $"Unknown key '{key}'. The key was ignored."));
+            }
+        }
+
+        var resource = ReadString(entryTable, DocumentShortcutResourceKey);
+        if (string.IsNullOrWhiteSpace(resource))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName, $"Missing required '{DocumentShortcutResourceKey}' key. The entry was skipped."));
+            return null;
+        }
+
+        if (!ResourceKey.IsValidKey(resource))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName, $"'{DocumentShortcutResourceKey}' value '{resource}' is not a valid resource key. The entry was skipped."));
+            return null;
+        }
+
+        var icon = ReadString(entryTable, DocumentShortcutIconKey);
+
+        return new DocumentShortcut
+        {
+            Resource = resource,
+            Icon = icon ?? string.Empty
         };
     }
 
