@@ -66,7 +66,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         }
 
         // Reveal the utility wherever it now lives: ShowUtility shows it in the panel when it is there,
-        // activates its document tab when it is docked as a document, and opens a launcher's document.
+        // activates its document tab when it is docked as a document, and opens a document shortcut's file.
         utilityPanel.ShowUtility(UtilityId);
 
         return Result.Ok();
@@ -84,14 +84,15 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
             return Result.Ok();
         }
 
-        // A launcher declares where its document opens, and a panel utility only ever occupies the panel.
+        // A document shortcut declares where its document opens, and a panel utility only ever occupies
+        // the panel.
         var openArea = railItem.DockArea ?? WorkspaceArea.Utility;
         if (requestedArea == openArea)
         {
             return Result.Ok();
         }
 
-        // The user can move a launcher's tab after it opens, so where it is now counts too.
+        // The user can move a shortcut's tab after it opens, so where it is now counts too.
         var currentArea = utilityService.GetCurrentArea(UtilityId);
         if (requestedArea == currentArea)
         {

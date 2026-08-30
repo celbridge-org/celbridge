@@ -18,20 +18,20 @@ public interface IUtilityService
 
     /// <summary>
     /// Seeds each declared utility's backing file and records it in the rail register, along with the
-    /// launchers, in declaration order, which is the rail order. Each utility also gets a persistent view,
-    /// owned by this service until the workspace unloads.
+    /// document shortcuts, in declaration order, which is the rail order. Each utility also gets a
+    /// persistent view, owned by this service until the workspace unloads.
     /// </summary>
     Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors);
 
     /// <summary>
     /// Every workspace item the rail presents, in rail order: the registered built-in utilities, then the
-    /// contribution utilities, then the launchers. Empty until the utilities have been created.
+    /// contribution utilities, then the document shortcuts. Empty until the utilities have been created.
     /// </summary>
     IReadOnlyList<UtilityRailItem> GetRailItems();
 
     /// <summary>
-    /// The area a rail item currently occupies, or null when nothing presents it: a launcher whose document
-    /// is closed, or an id the register does not hold. A utility always occupies an area.
+    /// The area a rail item currently occupies, or null when nothing presents it: a document shortcut whose
+    /// document is closed, or an id the register does not hold. A utility always occupies an area.
     /// </summary>
     WorkspaceArea? GetCurrentArea(EditorId itemId);
 

@@ -23,8 +23,8 @@ public class UtilityService : IUtilityService, IDisposable
 
     private readonly List<CustomUtilityView> _utilities = new();
 
-    // Spotlight landmark ids for the launcher rail buttons. The Utility Panel sets each one as the button's
-    // AutomationId, which is what a landmark has to match.
+    // Spotlight landmark ids for the document shortcut rail buttons. The Utility Panel sets each one as
+    // the button's AutomationId, which is what a landmark has to match.
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
     private const string WorkshopLandmarkId = "workshop-utility-button";
 
@@ -32,7 +32,7 @@ public class UtilityService : IUtilityService, IDisposable
     // their descriptors wrap live views. The rest are built here.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
     private readonly List<UtilityRailItem> _contributedItems = new();
-    private readonly List<UtilityRailItem> _builtInLauncherItems = new();
+    private readonly List<UtilityRailItem> _builtInShortcutItems = new();
 
     // The three groups above as one ordered list, and the same items by id. Rebuilt whenever a group
     // changes, so a reader never pays to assemble them.
@@ -82,7 +82,7 @@ public class UtilityService : IUtilityService, IDisposable
         _railItems.Clear();
         _railItems.AddRange(_builtInUtilityItems);
         _railItems.AddRange(_contributedItems);
-        _railItems.AddRange(_builtInLauncherItems);
+        _railItems.AddRange(_builtInShortcutItems);
 
         _railItemsById.Clear();
         foreach (var railItem in _railItems)
@@ -113,8 +113,8 @@ public class UtilityService : IUtilityService, IDisposable
                 // panel is where it is.
                 return WorkspaceArea.Utility;
 
-            case RailItemKind.DocumentLauncher:
-                // A launcher's document sits wherever the user last moved its tab. Closed, it occupies no
+            case RailItemKind.DocumentShortcut:
+                // A shortcut's document sits wherever the user last moved its tab. Closed, it occupies no
                 // area at all, and DockArea is what says where it would open.
                 return FindOpenDocumentArea(railItem.FileResource);
 
@@ -191,8 +191,8 @@ public class UtilityService : IUtilityService, IDisposable
             _contributedItems.Add(railItem);
         }
 
-        _builtInLauncherItems.Clear();
-        _builtInLauncherItems.AddRange(BuildBuiltInLauncherItems());
+        _builtInShortcutItems.Clear();
+        _builtInShortcutItems.AddRange(BuildBuiltInShortcutItems());
 
         RebuildRailRegister();
     }
@@ -216,16 +216,16 @@ public class UtilityService : IUtilityService, IDisposable
         return panelView;
     }
 
-    // The built-in launchers: rail items that open a document and never occupy the panel, so they carry no
-    // panel view. A contribution declaring no utility area builds the same shape from its manifest.
-    private List<UtilityRailItem> BuildBuiltInLauncherItems()
+    // The built-in document shortcuts: rail items that open a document and never occupy the panel, so they
+    // carry no panel view. A contribution declaring no utility area builds the same shape from its manifest.
+    private List<UtilityRailItem> BuildBuiltInShortcutItems()
     {
         var projectService = _serviceProvider.GetRequiredService<IProjectService>();
         var workshopService = _serviceProvider.GetRequiredService<IWorkshopService>();
         var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
         var iconService = _serviceProvider.GetRequiredService<IIconService>();
 
-        var launcherItems = new List<UtilityRailItem>();
+        var shortcutItems = new List<UtilityRailItem>();
 
         // The project file sits at the project root, so its resource key is just the file name. The editor is
         // named so the choice does not depend on extension resolution.
@@ -237,8 +237,8 @@ public class UtilityService : IUtilityService, IDisposable
             {
                 string projectSettingsName = stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
 
-                var projectSettingsItem = UtilityRailItem.CreateDocumentLauncher(
-                    BuiltInLauncherIds.ProjectSettings,
+                var projectSettingsItem = UtilityRailItem.CreateDocumentShortcut(
+                    BuiltInShortcutIds.ProjectSettings,
                     ProjectSettingsLandmarkId,
                     iconService.GetIconName(IconSymbol.Sliders),
                     projectSettingsName,
@@ -247,14 +247,14 @@ public class UtilityService : IUtilityService, IDisposable
                     BuiltInEditors.ProjectSettingsEditorId,
                     WorkspaceArea.Main);
 
-                launcherItems.Add(projectSettingsItem);
+                shortcutItems.Add(projectSettingsItem);
             }
         }
 
         string workshopName = stringLocalizer.GetString("UtilityPanel_WorkshopTooltip");
 
-        var workshopItem = UtilityRailItem.CreateDocumentLauncher(
-            BuiltInLauncherIds.Workshop,
+        var workshopItem = UtilityRailItem.CreateDocumentShortcut(
+            BuiltInShortcutIds.Workshop,
             WorkshopLandmarkId,
             iconService.GetIconName(IconSymbol.People),
             workshopName,
@@ -263,9 +263,9 @@ public class UtilityService : IUtilityService, IDisposable
             BuiltInEditors.WebViewEditorId,
             WorkspaceArea.Main);
 
-        launcherItems.Add(workshopItem);
+        shortcutItems.Add(workshopItem);
 
-        return launcherItems;
+        return shortcutItems;
     }
 
     public async Task<Result> RestoreDockedUtilityAsync(ResourceKey resource, DocumentAddress address)

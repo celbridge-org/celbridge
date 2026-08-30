@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Covers the rail register UtilityService assembles: the order it holds, the launchers it builds, and the
+/// Covers the rail register UtilityService assembles: the order it holds, the shortcuts it builds, and the
 /// area it reports for an item that has never moved. Creating a contribution utility instantiates a WebView,
 /// so these exercise a workspace that declares none.
 /// </summary>
@@ -78,7 +78,7 @@ public class UtilityServiceRegisterTests
         var resourceService = Substitute.For<IResourceService>();
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
-        // GetCurrentArea asks the documents service where a launcher's tab actually is. Nothing is open by
+        // GetCurrentArea asks the documents service where a shortcut's tab actually is. Nothing is open by
         // default, so each test that cares opens one.
         _documentsService = Substitute.For<IDocumentsService>();
 
@@ -119,7 +119,7 @@ public class UtilityServiceRegisterTests
     }
 
     [Test]
-    public async Task GetRailItems_HoldsTheRegisteredBuiltInsAheadOfTheLaunchers()
+    public async Task GetRailItems_HoldsTheRegisteredBuiltInsAheadOfTheShortcuts()
     {
         var service = CreateService();
 
@@ -137,12 +137,12 @@ public class UtilityServiceRegisterTests
         itemIds.Should().Equal(
             BuiltInUtilityIds.Explorer,
             BuiltInUtilityIds.Search,
-            BuiltInLauncherIds.ProjectSettings,
-            BuiltInLauncherIds.Workshop);
+            BuiltInShortcutIds.ProjectSettings,
+            BuiltInShortcutIds.Workshop);
     }
 
     [Test]
-    public async Task CreateUtilitiesAsync_BuildsTheLaunchersWithTheirResources()
+    public async Task CreateUtilitiesAsync_BuildsTheShortcutsWithTheirResources()
     {
         var service = CreateService();
 
@@ -150,21 +150,21 @@ public class UtilityServiceRegisterTests
 
         var railItems = service.GetRailItems();
 
-        var projectSettings = railItems.Single(railItem => railItem.ItemId == BuiltInLauncherIds.ProjectSettings);
+        var projectSettings = railItems.Single(railItem => railItem.ItemId == BuiltInShortcutIds.ProjectSettings);
         projectSettings.FileResource.Should().Be(ProjectFileResource);
         projectSettings.DisplayName.Should().Be("localized:UtilityPanel_ProjectSettingsTooltip");
 
-        var workshop = railItems.Single(railItem => railItem.ItemId == BuiltInLauncherIds.Workshop);
+        var workshop = railItems.Single(railItem => railItem.ItemId == BuiltInShortcutIds.Workshop);
         workshop.FileResource.Should().Be(WorkshopResource);
         workshop.DisplayName.Should().Be("localized:UtilityPanel_WorkshopTooltip");
 
-        // A launcher opens a document and never occupies the panel, which is what makes it a launcher.
+        // A document shortcut opens a document and never occupies the panel, which is what makes it one.
         workshop.PanelView.Should().BeNull();
         workshop.DockArea.Should().Be(WorkspaceArea.Main);
     }
 
     [Test]
-    public async Task CreateUtilitiesAsync_NoProjectLoaded_OmitsTheProjectSettingsLauncher()
+    public async Task CreateUtilitiesAsync_NoProjectLoaded_OmitsTheProjectSettingsShortcut()
     {
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
@@ -175,11 +175,11 @@ public class UtilityServiceRegisterTests
         await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
 
         var itemIds = service.GetRailItems().Select(railItem => railItem.ItemId);
-        itemIds.Should().NotContain(BuiltInLauncherIds.ProjectSettings);
+        itemIds.Should().NotContain(BuiltInShortcutIds.ProjectSettings);
     }
 
     [Test]
-    public async Task GetCurrentArea_ReportsThePanelForAUtilityAndNothingForAClosedLauncher()
+    public async Task GetCurrentArea_ReportsThePanelForAUtilityAndNothingForAClosedShortcut()
     {
         var service = CreateService();
 
@@ -195,14 +195,14 @@ public class UtilityServiceRegisterTests
 
         // No document is open for the Workshop, so it occupies nothing. Its declared area says where it
         // would open, which is a different question.
-        service.GetCurrentArea(BuiltInLauncherIds.Workshop).Should().BeNull();
+        service.GetCurrentArea(BuiltInShortcutIds.Workshop).Should().BeNull();
 
         // An id the register does not hold occupies nothing either, rather than claiming the panel.
         service.GetCurrentArea(EditorId.Create("acme", "absent")).Should().BeNull();
     }
 
     [Test]
-    public async Task GetCurrentArea_ReportsWhereALauncherDocumentActuallyIs()
+    public async Task GetCurrentArea_ReportsWhereAShortcutDocumentActuallyIs()
     {
         var service = CreateService();
 
@@ -215,6 +215,6 @@ public class UtilityServiceRegisterTests
 
         await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
 
-        service.GetCurrentArea(BuiltInLauncherIds.Workshop).Should().Be(WorkspaceArea.Bottom);
+        service.GetCurrentArea(BuiltInShortcutIds.Workshop).Should().Be(WorkspaceArea.Bottom);
     }
 }

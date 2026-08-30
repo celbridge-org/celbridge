@@ -24,7 +24,7 @@ public enum RailItemKind
     /// A button that opens a document. It never occupies the panel, and the document it opens closes like
     /// any other.
     /// </summary>
-    DocumentLauncher
+    DocumentShortcut
 }
 
 /// <summary>
@@ -76,9 +76,9 @@ public sealed record UtilityRailItem
     public required string Tooltip { get; init; }
 
     /// <summary>
-    /// The document area this item targets: where a dockable utility docks to, and where a launcher's
-    /// document opens. Null for a panel utility, which never becomes a document. Where the item sits after
-    /// it opens is the user's to change, like any other tab.
+    /// The document area this item targets: where a dockable utility docks to, and where a document
+    /// shortcut opens its document. Null for a panel utility, which never becomes a document. Where the item
+    /// sits after it opens is the user's to change, like any other tab.
     /// </summary>
     public WorkspaceArea? DockArea { get; init; }
 
@@ -95,7 +95,7 @@ public sealed record UtilityRailItem
     public EditorId EditorId { get; init; } = EditorId.Empty;
 
     /// <summary>
-    /// The view this item shows in the Utility Panel. Null only for a launcher.
+    /// The view this item shows in the Utility Panel. Null only for a document shortcut.
     /// </summary>
     public UtilityRailPanelView? PanelView { get; init; }
 
@@ -184,7 +184,7 @@ public sealed record UtilityRailItem
     /// <summary>
     /// A button that opens a document in the given area.
     /// </summary>
-    public static UtilityRailItem CreateDocumentLauncher(
+    public static UtilityRailItem CreateDocumentShortcut(
         EditorId itemId,
         string landmarkId,
         string iconName,
@@ -196,7 +196,7 @@ public sealed record UtilityRailItem
     {
         return new UtilityRailItem
         {
-            Kind = RailItemKind.DocumentLauncher,
+            Kind = RailItemKind.DocumentShortcut,
             ItemId = itemId,
             LandmarkId = landmarkId,
             IconName = iconName,
