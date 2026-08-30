@@ -109,8 +109,8 @@ public class UtilityService : IUtilityService, IDisposable
         {
             case RailItemKind.PanelUtility:
             case RailItemKind.DockableUtility:
-                // Explorer and Search are registered without ever entering _utilities, because the panel
-                // owns their views. The panel is where they are.
+                // Reaching here means the panel owns the item's view rather than this service, so the
+                // panel is where it is.
                 return WorkspaceArea.Utility;
 
             case RailItemKind.DocumentLauncher:

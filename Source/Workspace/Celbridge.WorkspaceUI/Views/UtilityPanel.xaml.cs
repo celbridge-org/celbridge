@@ -231,7 +231,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // A landmark lives exactly as long as the button it points at. The built-in utility buttons last
         // for the life of the panel, and the rest are dropped when the rail is cleared.
         _landmarkIds[itemId] = item.LandmarkId;
-        _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(item.LandmarkId, null));
+
+        var landmark = new LandmarkDescriptor(item.LandmarkId, null);
+        _spotlightRegistry.RegisterLandmark(landmark);
 
         _buttons[itemId] = railButton;
 

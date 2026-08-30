@@ -33,7 +33,7 @@ public partial class AppTools
         var showResult = await ExecuteCommandAsync<IShowUtilityCommand>(command =>
         {
             command.UtilityId = parsedUtilityId;
-            command.Area = targetArea;
+            command.TargetArea = targetArea;
         });
         if (showResult.IsFailure)
         {

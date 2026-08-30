@@ -56,7 +56,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = NotepadUtilityId,
-            Area = WorkspaceArea.Main
+            TargetArea = WorkspaceArea.Main
         };
 
         var result = await command.ExecuteAsync();
@@ -78,7 +78,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = NotepadUtilityId,
-            Area = WorkspaceArea.Side
+            TargetArea = WorkspaceArea.Side
         };
 
         var result = await command.ExecuteAsync();
@@ -155,7 +155,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = BuiltInLauncherIds.Workshop,
-            Area = WorkspaceArea.Side
+            TargetArea = WorkspaceArea.Side
         };
 
         var result = await command.ExecuteAsync();
@@ -174,7 +174,7 @@ public class ShowUtilityCommandTests
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
             UtilityId = BuiltInLauncherIds.Workshop,
-            Area = WorkspaceArea.Main
+            TargetArea = WorkspaceArea.Main
         };
 
         var result = await command.ExecuteAsync();

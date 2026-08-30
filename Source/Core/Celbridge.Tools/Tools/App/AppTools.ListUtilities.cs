@@ -44,7 +44,8 @@ public partial class AppTools
         var entries = new List<UtilityListEntry>(snapshot.Utilities.Count);
         foreach (var utility in snapshot.Utilities)
         {
-            // An entry nothing presents reports no area, which is a launcher whose document is closed.
+            // A launcher whose document is closed occupies no area, so it reports an empty string rather
+            // than a token that would read as somewhere it currently is.
             var currentArea = utility.CurrentArea is null
                 ? string.Empty
                 : utility.CurrentArea.Value.ToToken();

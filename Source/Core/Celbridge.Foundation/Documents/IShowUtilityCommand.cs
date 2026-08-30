@@ -4,8 +4,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Reveals a utility by its fully-qualified id, optionally moving it to a workspace area first.
-/// A built-in id selects its Utility Panel rail tab, while a custom utility is revealed wherever it lives.
+/// Reveals a rail item by its fully-qualified id, optionally moving it to a workspace area first. Explorer
+/// and Search select their rail item, a contributed utility is revealed wherever it lives, and a launcher
+/// opens its document.
 /// </summary>
 public interface IShowUtilityCommand : IExecutableCommand
 {
@@ -15,8 +16,9 @@ public interface IShowUtilityCommand : IExecutableCommand
     EditorId UtilityId { get; set; }
 
     /// <summary>
-    /// Optional area to move the utility to before revealing it. Null reveals the utility wherever it
-    /// currently is without moving it. Ignored for built-in utilities, which are always in the Utility Panel.
+    /// The area to move the utility to before revealing it. Null reveals it wherever it currently is.
+    /// Only a contributed utility moves between areas: for a built-in utility or a launcher, naming an
+    /// area it cannot reach fails rather than being ignored.
     /// </summary>
-    WorkspaceArea? Area { get; set; }
+    WorkspaceArea? TargetArea { get; set; }
 }

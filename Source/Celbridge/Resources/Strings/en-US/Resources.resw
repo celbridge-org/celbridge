@@ -1070,7 +1070,7 @@ Open with default application instead?</value>
   <data name="ResourceTree_CopyPath" xml:space="preserve">
     <value>Copy Path</value>
   </data>
-  <data name="LayoutToolbar_ToggleUtilityPanelTooltip" xml:space="preserve">
+  <data name="LayoutToolbar_ToggleUtilityAreaTooltip" xml:space="preserve">
     <value>Toggle Left Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleBottomAreaTooltip" xml:space="preserve">
@@ -1187,7 +1187,7 @@ Open with default application instead?</value>
   <data name="Menu_View" xml:space="preserve">
     <value>View</value>
   </data>
-  <data name="Menu_UtilityPanel" xml:space="preserve">
+  <data name="Menu_UtilityArea" xml:space="preserve">
     <value>Left Panel</value>
   </data>
   <data name="Menu_BottomArea" xml:space="preserve">

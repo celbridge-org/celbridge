@@ -118,7 +118,7 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(PanelLayoutButton, layoutTooltip);
         ToolTipService.SetPlacement(PanelLayoutButton, PlacementMode.Bottom);
 
-        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleUtilityPanelTooltip");
+        var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleUtilityAreaTooltip");
         ToolTipService.SetToolTip(ToggleUtilityPanelButton, primaryTooltip);
         ToolTipService.SetPlacement(ToggleUtilityPanelButton, PlacementMode.Bottom);
 

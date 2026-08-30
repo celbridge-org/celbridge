@@ -12,7 +12,7 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
 
     public EditorId UtilityId { get; set; } = EditorId.Empty;
 
-    public WorkspaceArea? Area { get; set; }
+    public WorkspaceArea? TargetArea { get; set; }
 
     public ShowUtilityCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -34,9 +34,9 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         var utilityService = workspaceService.UtilityService;
         if (utilityService.HasUtility(UtilityId))
         {
-            if (Area is not null)
+            if (TargetArea is not null)
             {
-                var targetArea = Area.Value;
+                var targetArea = TargetArea.Value;
 
                 var dockResult = await utilityService.DockUtilityAsync(UtilityId, targetArea);
                 if (dockResult.IsFailure)
@@ -53,9 +53,11 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
                 return Result.Fail($"No utility found with id '{UtilityId}'");
             }
 
-            if (Area is not null)
+            if (TargetArea is not null)
             {
-                var areaResult = CheckRequestedArea(utilityService, Area.Value);
+                var targetArea = TargetArea.Value;
+
+                var areaResult = CheckRequestedArea(utilityService, targetArea);
                 if (areaResult.IsFailure)
                 {
                     return areaResult;
@@ -70,9 +72,9 @@ public class ShowUtilityCommand : CommandBase, IShowUtilityCommand
         return Result.Ok();
     }
 
-    // A rail item that is not a live utility cannot be moved: Explorer and Search are always in the Utility
-    // Panel, and a launcher's document opens in the area the item declares. Naming the area it is already in
-    // is a reveal, and naming any other one fails rather than being quietly dropped.
+    // A rail item that is not a live utility cannot be moved between areas: it opens in the area it
+    // declares, or in the Utility Panel when it declares none. Naming that area is a reveal, and naming any
+    // other one fails rather than being quietly dropped.
     private Result CheckRequestedArea(IUtilityService utilityService, WorkspaceArea requestedArea)
     {
         var railItem = utilityService.GetRailItems()

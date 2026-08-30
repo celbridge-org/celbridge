@@ -136,7 +136,7 @@ internal static class MacOSMainMenu
                 MacMenuItem.Command(Text("LayoutToolbar_FocusLabel"), TagLayoutFocus),
                 MacMenuItem.Command(Text("LayoutToolbar_PresentationLabel"), TagLayoutPresentation),
                 MacMenuItem.Separator(),
-                MacMenuItem.Command(Text("Menu_UtilityPanel"), TagUtilityPanel),
+                MacMenuItem.Command(Text("Menu_UtilityArea"), TagUtilityPanel),
                 MacMenuItem.Command(Text("Menu_BottomArea"), TagBottomArea),
                 MacMenuItem.Command(Text("Menu_SideArea"), TagSideArea),
                 MacMenuItem.Separator(),

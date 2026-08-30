@@ -268,7 +268,7 @@ public class MainMenu
             viewSubItem.Items.Add(areaItem);
         }
 
-        AddAreaItem("Menu_UtilityPanel", WorkspaceArea.Utility);
+        AddAreaItem("Menu_UtilityArea", WorkspaceArea.Utility);
         AddAreaItem("Menu_BottomArea", WorkspaceArea.Bottom);
         AddAreaItem("Menu_SideArea", WorkspaceArea.Side);
 

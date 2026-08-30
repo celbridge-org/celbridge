@@ -33,7 +33,6 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var utilityService = workspaceService.UtilityService;
-        var documentsService = workspaceService.DocumentsService;
 
         // Which rail button is selected is the panel's own state. Where each item lives is the register's.
         var activeUtilityId = workspaceService.UtilityPanel.ActiveUtilityId;
@@ -44,13 +43,15 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         {
             var currentArea = utilityService.GetCurrentArea(railItem.ItemId);
 
-            utilities.Add(new UtilityInfo(
+            var utilityInfo = new UtilityInfo(
                 railItem.ItemId,
                 railItem.DisplayName,
                 currentArea,
                 railItem.DockArea,
-                IsItemVisible(railItem, currentArea, activeUtilityId, documentsService),
-                railItem.FileResource));
+                IsRailItemVisible(railItem, currentArea, activeUtilityId),
+                railItem.FileResource);
+
+            utilities.Add(utilityInfo);
         }
 
         ResultValue = new UtilitiesStateSnapshot(utilities);
@@ -61,11 +62,10 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
     // Whether the user can see the item: something has to be presenting it, in an area that is not
     // collapsed. The rail keeps its selection through a collapse so a reveal returns to it, which is why
     // being selected is not on its own enough.
-    private bool IsItemVisible(
+    private bool IsRailItemVisible(
         UtilityRailItem railItem,
         WorkspaceArea? currentArea,
-        EditorId activeUtilityId,
-        IDocumentsService documentsService)
+        EditorId activeUtilityId)
     {
         if (currentArea is null)
         {
@@ -85,6 +85,8 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         // Each section shows its own selected tab, so a document is on screen whenever it is the one its
         // section is showing. The active document is a single workspace-wide choice and says nothing about
         // what the other areas are drawing.
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
         var openDocument = documentsService.FindOpenDocument(railItem.FileResource);
         if (openDocument is null)
         {
