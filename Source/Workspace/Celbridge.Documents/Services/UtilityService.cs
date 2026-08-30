@@ -29,8 +29,7 @@ public class UtilityService : IUtilityService, IDisposable
     private const string WorkshopLandmarkId = "workshop-utility-button";
 
     // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
-    // their descriptors wrap live views. The rest are built here. The contributed items hold both kinds of
-    // declaration, and each one's panel view says which kind it is.
+    // their descriptors wrap live views. The rest are built here.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
     private readonly List<UtilityRailItem> _contributedItems = new();
     private readonly List<UtilityRailItem> _builtInLauncherItems = new();
@@ -96,8 +95,8 @@ public class UtilityService : IUtilityService, IDisposable
             {
                 case RailItemKind.PanelUtility:
                 case RailItemKind.DockableUtility:
-                    // A utility the register holds but that has no live view was never created. Its place
-                    // is still the panel.
+                    // Explorer and Search are registered without ever entering _utilities, because the
+                    // panel owns their views. The panel is where they are.
                     return WorkspaceArea.Utility;
 
                 case RailItemKind.DocumentLauncher:
@@ -113,7 +112,7 @@ public class UtilityService : IUtilityService, IDisposable
         return null;
     }
 
-    // The area holding the open document for a utilityResource, or null when no document is open for it.
+    // The area holding the open document for a resource, or null when no document is open for it.
     private WorkspaceArea? FindOpenDocumentArea(ResourceKey resource)
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
@@ -225,7 +224,7 @@ public class UtilityService : IUtilityService, IDisposable
 
         var launcherItems = new List<UtilityRailItem>();
 
-        // The project file sits at the project root, so its utilityResource key is just the file name. The editor is
+        // The project file sits at the project root, so its resource key is just the file name. The editor is
         // named so the choice does not depend on extension resolution.
         var project = projectService.CurrentProject;
         if (project is not null)
@@ -278,7 +277,7 @@ public class UtilityService : IUtilityService, IDisposable
 
         if (panelView.Area != WorkspaceArea.Utility)
         {
-            // Defensive: a utilityResource should appear at most once in the stored layout.
+            // Defensive: a resource should appear at most once in the stored layout.
             return Result.Ok();
         }
 

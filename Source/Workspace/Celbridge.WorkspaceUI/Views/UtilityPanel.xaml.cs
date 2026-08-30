@@ -50,6 +50,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // click and its reveal both go through.
     private readonly Dictionary<EditorId, UtilityRailItem> _launcherItems = new();
 
+    // The Spotlight landmark each rail button owns, by rail id. Unregistering reads the id that was
+    // registered rather than rebuilding it, so the two cannot drift apart.
+    private readonly Dictionary<EditorId, string> _landmarkIds = new();
+
     // The built-in utility descriptors this panel builds for itself, published to the utility service so the
     // rail register holds every item.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
@@ -149,15 +153,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // panel builds them rather than the utility service, which does not exist yet when the panel is constructed.
     private void BuildBuiltInUtilityItems()
     {
-        // Build Explorer utility
-
         var explorerName = _stringLocalizer.GetString("UtilityPanel_ExplorerTooltip");
 
         var explorerView = new UtilityRailPanelView(
-                ExplorerPanel,
-                ExplorerPanel.FocusPanel,
-                FocusPanelId.Explorer,
-                PreservePanelFocus: true);
+            ExplorerPanel,
+            ExplorerPanel.FocusPanel,
+            FocusPanelId.Explorer,
+            PreservePanelFocus: true);
 
         var explorerItem = UtilityRailItem.CreatePanelUtility(
             BuiltInUtilityIds.Explorer,
@@ -167,15 +169,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             explorerName,
             explorerView);
 
-        // Build Search utility
-
         var searchName = _stringLocalizer.GetString("UtilityPanel_SearchTooltip");
 
         var searchView = new UtilityRailPanelView(
-                SearchPanel,
-                SearchPanel.FocusSearchInput,
-                FocusPanelId.Search,
-                PreservePanelFocus: true);
+            SearchPanel,
+            SearchPanel.FocusSearchInput,
+            FocusPanelId.Search,
+            PreservePanelFocus: true);
 
         var searchItem = UtilityRailItem.CreatePanelUtility(
             BuiltInUtilityIds.Search,
@@ -184,8 +184,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             searchName,
             searchName,
             searchView);
-
-        // Register the new utilities
 
         _builtInUtilityItems.Add(explorerItem);
         _builtInUtilityItems.Add(searchItem);
@@ -230,8 +228,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
                 throw new NotSupportedException($"Unhandled rail item kind '{item.Kind}'");
         }
 
-        // Every rail item's landmark belongs to the rail: the button exists only while a workspace is
-        // loaded, so the landmark is registered here and dropped when the rail is cleared.
+        // A landmark lives exactly as long as the button it points at. The built-in utility buttons last
+        // for the life of the panel, and the rest are dropped when the rail is cleared.
+        _landmarkIds[itemId] = item.LandmarkId;
         _spotlightRegistry.RegisterLandmark(new LandmarkDescriptor(item.LandmarkId, null));
 
         _buttons[itemId] = railButton;
@@ -676,7 +675,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             contentControl.Content = null;
             ContentArea.Children.Remove(contentControl);
 
-            _spotlightRegistry.UnregisterLandmark(CustomLandmarkId(utilityId));
+            UnregisterRailLandmark(utilityId);
 
             _buttons.Remove(utilityId);
             _contentControls.Remove(utilityId);
@@ -689,7 +688,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         foreach (var launcherItem in _launcherItems.Values)
         {
             _buttons.Remove(launcherItem.ItemId);
-            _spotlightRegistry.UnregisterLandmark(launcherItem.LandmarkId);
+            UnregisterRailLandmark(launcherItem.ItemId);
         }
 
         _launcherItems.Clear();
@@ -772,9 +771,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     // Spotlight landmark id for a custom utility's rail button: its utility id followed by "-utility-button".
     // This must match the AutomationId set on the button.
-    private static string CustomLandmarkId(EditorId utilityId)
+    // Drops the landmark registered for a rail button, by the id the button was registered under.
+    private void UnregisterRailLandmark(EditorId itemId)
     {
-        return $"{utilityId}-utility-button";
+        if (!_landmarkIds.Remove(itemId, out var landmarkId))
+        {
+            return;
+        }
+
+        _spotlightRegistry.UnregisterLandmark(landmarkId);
     }
 
     private List<EditorId> GetCustomUtilityIds()
