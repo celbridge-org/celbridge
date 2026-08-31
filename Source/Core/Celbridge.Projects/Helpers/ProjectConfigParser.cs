@@ -1,4 +1,5 @@
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -15,6 +16,7 @@ public static class ProjectConfigParser
 {
     private const string CelbridgeSectionName = "celbridge";
     private const string ContributionSectionName = "contribution";
+    private const string DocumentShortcutSectionName = "shortcut";
 
     private const string CelbridgeVersionKey = "celbridge-version";
     private const string ProjectVersionKey = "project-version";
@@ -24,6 +26,15 @@ public static class ProjectConfigParser
     private const string EditorAssociationsKey = "editor-associations";
     private const string FeaturesKey = "features";
     private const string ResourcesKey = "resources";
+
+    private const string DocumentShortcutResourceKey = "resource";
+    private const string DocumentShortcutIconKey = "icon";
+    private const string DocumentShortcutAreaKey = "area";
+
+    // The areas a shortcut can open into, spelled out for the error message it produces. The
+    // Utility Panel is absent because it holds no document tabs.
+    private const string ValidDocumentShortcutAreaTokens =
+        $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}";
 
     private static readonly string[] KnownCelbridgeKeys =
     [
@@ -43,6 +54,13 @@ public static class ProjectConfigParser
         "add",
         "remove",
         "lock",
+    ];
+
+    private static readonly string[] KnownDocumentShortcutKeys =
+    [
+        DocumentShortcutResourceKey,
+        DocumentShortcutIconKey,
+        DocumentShortcutAreaKey,
     ];
 
     /// <summary>
@@ -151,11 +169,36 @@ public static class ProjectConfigParser
             }
         }
 
+        // Utility Rail document shortcuts are declared as [[shortcut]] entries. Entry order is rail
+        // order, so the entries are kept in the order the file lists them.
+        var documentShortcuts = new List<DocumentShortcut>();
+        if (root.TryGetValue(DocumentShortcutSectionName, out var documentShortcutObject))
+        {
+            if (documentShortcutObject is TomlTableArray documentShortcutArray)
+            {
+                for (int i = 0; i < documentShortcutArray.Count; i++)
+                {
+                    var documentShortcut = ParseDocumentShortcutEntry(documentShortcutArray[i], i + 1, entryErrors);
+                    if (documentShortcut is not null)
+                    {
+                        documentShortcuts.Add(documentShortcut);
+                    }
+                }
+            }
+            else
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    DocumentShortcutSectionName,
+                    $"'{DocumentShortcutSectionName}' must be declared as [[{DocumentShortcutSectionName}]] entries. The section was ignored."));
+            }
+        }
+
         // Any other top-level key is not part of the schema.
         foreach (var (key, _) in root)
         {
             if (key == CelbridgeSectionName ||
-                key == ContributionSectionName)
+                key == ContributionSectionName ||
+                key == DocumentShortcutSectionName)
             {
                 continue;
             }
@@ -179,6 +222,7 @@ public static class ProjectConfigParser
             Resources = resourcesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
+            DocumentShortcuts = documentShortcuts,
             EntryErrors = entryErrors
         };
     }
@@ -418,6 +462,84 @@ public static class ProjectConfigParser
             Enabled = enabled,
             Config = config
         };
+    }
+
+    private static DocumentShortcut? ParseDocumentShortcutEntry(
+        TomlTable entryTable,
+        int entryIndex,
+        List<ProjectConfigEntryError> entryErrors)
+    {
+        var entryName = $"[[{DocumentShortcutSectionName}]] #{entryIndex}";
+
+        foreach (var key in entryTable.Keys)
+        {
+            if (!KnownDocumentShortcutKeys.Contains(key, StringComparer.Ordinal))
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    entryName, $"Unknown key '{key}'. The key was ignored."));
+            }
+        }
+
+        var resource = ReadString(entryTable, DocumentShortcutResourceKey);
+        if (string.IsNullOrWhiteSpace(resource))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName, $"Missing required '{DocumentShortcutResourceKey}' key. The entry was skipped."));
+            return null;
+        }
+
+        if (!ResourceKey.IsValidKey(resource))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName, $"'{DocumentShortcutResourceKey}' value '{resource}' is not a valid resource key. The entry was skipped."));
+            return null;
+        }
+
+        var icon = ReadString(entryTable, DocumentShortcutIconKey);
+        var area = ReadDocumentShortcutArea(entryTable, entryName, entryErrors);
+
+        return new DocumentShortcut
+        {
+            Resource = resource,
+            Icon = icon ?? string.Empty,
+            Area = area
+        };
+    }
+
+    // The document area the shortcut opens into. An unusable value is reported and the shortcut falls back
+    // to the main area, which still leaves a working button.
+    private static WorkspaceArea ReadDocumentShortcutArea(
+        TomlTable entryTable,
+        string entryName,
+        List<ProjectConfigEntryError> entryErrors)
+    {
+        var areaValue = ReadString(entryTable, DocumentShortcutAreaKey);
+        if (string.IsNullOrEmpty(areaValue))
+        {
+            return WorkspaceArea.Main;
+        }
+
+        if (!WorkspaceAreaTokens.TryParse(areaValue, out var area))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName,
+                $"'{DocumentShortcutAreaKey}' value '{areaValue}' is not a recognized document area " +
+                $"({ValidDocumentShortcutAreaTokens}). The main area was used."));
+
+            return WorkspaceArea.Main;
+        }
+
+        if (area == WorkspaceArea.Utility)
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName,
+                $"'{DocumentShortcutAreaKey}' names the Utility Panel, which holds no document tabs. " +
+                $"The main area was used."));
+
+            return WorkspaceArea.Main;
+        }
+
+        return area;
     }
 
     // Reads an optional boolean activation flag, reporting and ignoring a value of any other type.

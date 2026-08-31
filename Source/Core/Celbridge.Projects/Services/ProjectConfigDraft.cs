@@ -16,6 +16,7 @@ public sealed class ProjectConfigDraft
     private readonly List<string> _disabledPackages;
     private readonly Dictionary<string, string> _editorAssociations;
     private readonly Dictionary<string, bool> _features;
+    private readonly List<DocumentShortcut> _documentShortcuts;
 
     private string _projectVersion;
     private string _description;
@@ -29,6 +30,7 @@ public sealed class ProjectConfigDraft
         _disabledPackages = source.Celbridge.DisabledPackages.ToList();
         _editorAssociations = new Dictionary<string, string>(source.Celbridge.EditorAssociations, StringComparer.Ordinal);
         _features = new Dictionary<string, bool>(source.Features, StringComparer.Ordinal);
+        _documentShortcuts = source.DocumentShortcuts.ToList();
 
         // Coerced to empty because an unset key parses as null while the editor binds a text box to it.
         // The serializer skips an empty value, so a field left alone still writes no key.
@@ -173,6 +175,16 @@ public sealed class ProjectConfigDraft
     }
 
     /// <summary>
+    /// Replaces the Utility Rail document shortcuts. The section edits the whole list, because deleting
+    /// and reordering cards both rewrite it, so the list is set rather than patched entry by entry.
+    /// </summary>
+    public void SetDocumentShortcuts(IReadOnlyList<DocumentShortcut> documentShortcuts)
+    {
+        _documentShortcuts.Clear();
+        _documentShortcuts.AddRange(documentShortcuts);
+    }
+
+    /// <summary>
     /// The config this draft now describes.
     /// </summary>
     public ProjectConfig ToConfig()
@@ -184,6 +196,12 @@ public sealed class ProjectConfigDraft
                 contributionOverride.Disabled
                 || contributionOverride.Enabled
                 || contributionOverride.Config.Count > 0)
+            .ToList();
+
+        // A shortcut naming no resource opens nothing, so it is dropped rather than written as a blank
+        // entry. The card the user is still filling in stays on screen either way.
+        var populatedShortcuts = _documentShortcuts
+            .Where(documentShortcut => !string.IsNullOrWhiteSpace(documentShortcut.Resource))
             .ToList();
 
         return _source with
@@ -198,6 +216,7 @@ public sealed class ProjectConfigDraft
             Resources = _source.Resources with { IgnoreFile = _ignoreFile },
             Features = new Dictionary<string, bool>(_features, StringComparer.Ordinal),
             ContributionOverrides = populatedOverrides,
+            DocumentShortcuts = populatedShortcuts,
         };
     }
 

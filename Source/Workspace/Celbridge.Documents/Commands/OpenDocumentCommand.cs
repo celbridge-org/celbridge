@@ -80,8 +80,12 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return Result.Fail($"This file format is not supported: '{FileResource}'");
         }
 
+        // A caller naming a section but no index is asking for the section, not for a position, so the
+        // document joins the end of that section's tab row rather than displacing the tab at index 0.
+        var tabOrder = TargetTabIndex ?? DocumentAddress.AppendTabOrder;
+
         DocumentAddress? address = TargetSection.HasValue
-            ? new DocumentAddress(WindowIndex: 0, Section: TargetSection.Value, TabOrder: TargetTabIndex ?? 0)
+            ? new DocumentAddress(WindowIndex: 0, Section: TargetSection.Value, TabOrder: tabOrder)
             : null;
 
         var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorStateJson);

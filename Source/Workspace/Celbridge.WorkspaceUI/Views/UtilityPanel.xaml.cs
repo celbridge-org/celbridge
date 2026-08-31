@@ -275,9 +275,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // A document shortcut always names the area its document opens in.
         var area = item.DockArea!.Value;
 
-        // Opening into a section does not reveal its area, so a collapsed one is presented first.
-        PresentArea(area);
-
         // The declared area decides where the document lands when it opens. A tab that is already open keeps
         // the section the user put it in, which is what an unnamed section means to the open command.
         var targetSection = ResolveShortcutSection(item.FileResource, area);

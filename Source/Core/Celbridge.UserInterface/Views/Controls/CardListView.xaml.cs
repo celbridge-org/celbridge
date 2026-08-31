@@ -1,8 +1,11 @@
 using System.Collections;
 using System.Collections.Specialized;
+using Celbridge.UserInterface.Helpers;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using Windows.System;
 
 namespace Celbridge.UserInterface.Views.Controls;
 
@@ -40,6 +43,8 @@ internal sealed class CardDragState
 /// drag-to-reorder controls. The cards are the source of truth for the setting they edit, the way form
 /// inputs are for a setting that is a single value. The consumer supplies the collapsed header, the
 /// expanded body and any extra header actions as templates, and the list it edits as ItemsSource.
+/// A reorder never takes a card out of the visual tree, so a body template may hold controls whose state
+/// would not survive that, such as a picker.
 /// </summary>
 public sealed partial class CardListView : UserControl
 {
@@ -48,9 +53,16 @@ public sealed partial class CardListView : UserControl
 
     private CardDragState? _dragState;
 
+    // The card the keyboard is on, which the reorder keys move.
+    private CardEntry? _focusedEntry;
+
     // Set while the drop writes the new order back, so the collection change it raises does not rebuild
     // the cards out from under the drag that just placed them.
     private bool _isCommittingOrder;
+
+    // Set while the add button's request is being handled, so the entry the consumer adds in response opens
+    // ready to fill in. Populating a list raises the same collection change and must leave every card shut.
+    private bool _isHandlingAddRequest;
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource),
@@ -232,8 +244,9 @@ public sealed partial class CardListView : UserControl
         RebuildCards();
 
         // An entry the user just asked for opens ready to fill in, which the rebuild would otherwise leave
-        // closed like the rest.
-        if (e.Action == NotifyCollectionChangedAction.Add
+        // closed like the rest. A list being populated adds entries the same way and stays shut.
+        if (_isHandlingAddRequest
+            && e.Action == NotifyCollectionChangedAction.Add
             && e.NewStartingIndex >= 0
             && e.NewStartingIndex < _cards.Count)
         {
@@ -245,8 +258,11 @@ public sealed partial class CardListView : UserControl
     {
         CancelDrag();
 
+        _focusedEntry = null;
+
         _cards.Clear();
         CardsPanel.Children.Clear();
+        CardsPanel.RowDefinitions.Clear();
 
         var items = ItemsSource;
         if (items is not null)
@@ -260,8 +276,12 @@ public sealed partial class CardListView : UserControl
 
                 var entry = CreateCard(item, items.Count);
                 _cards.Add(entry);
+
+                CardsPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 CardsPanel.Children.Add(entry.Container);
             }
+
+            ApplyCardRows();
         }
 
         EmptyTextBlock.Visibility = _cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -291,6 +311,10 @@ public sealed partial class CardListView : UserControl
             }
         };
 
+        card.KeyDown += Card_KeyDown;
+        card.GotFocus += Card_GotFocus;
+        card.LostFocus += Card_LostFocus;
+
         // A single card has nothing to reorder against, so it carries no grip.
         Icon? gripIcon = null;
         if (itemCount > 1)
@@ -315,7 +339,7 @@ public sealed partial class CardListView : UserControl
         Grid.SetColumn(headerContent, 1);
         headerGrid.Children.Add(headerContent);
 
-        var actions = CreateHeaderActions(item);
+        var actions = CreateHeaderActions(item, card);
         Grid.SetColumn(actions, 2);
         headerGrid.Children.Add(actions);
 
@@ -348,14 +372,16 @@ public sealed partial class CardListView : UserControl
             Child = gripIcon
         };
 
-        ToolTipService.SetToolTip(grip, _stringLocalizer.GetString("CardList_Reorder").Value);
+        var reorderText = _stringLocalizer.GetString("CardList_Reorder").Value;
+        ToolTipService.SetToolTip(grip, reorderText);
+        AutomationProperties.SetName(grip, reorderText);
 
         grip.PointerPressed += Grip_PointerPressed;
 
         return grip;
     }
 
-    private StackPanel CreateHeaderActions(object item)
+    private StackPanel CreateHeaderActions(object item, Expander card)
     {
         var actions = new StackPanel
         {
@@ -374,19 +400,29 @@ public sealed partial class CardListView : UserControl
             });
         }
 
+        // Delete shows only while the card is open, so a collapsed list carries no destructive control and
+        // an entry cannot be removed without its contents having been on screen first.
         var deleteButton = new IconButton
         {
             VerticalAlignment = VerticalAlignment.Center,
             Tag = item,
+            Visibility = card.IsExpanded ? Visibility.Visible : Visibility.Collapsed,
             Content = new Icon
             {
                 Symbol = IconSymbol.Delete,
                 FontSize = IconSize
             }
         };
-        ToolTipService.SetToolTip(deleteButton, _stringLocalizer.GetString("CardList_Delete").Value);
+
+        var deleteText = _stringLocalizer.GetString("CardList_Delete").Value;
+        ToolTipService.SetToolTip(deleteButton, deleteText);
+        AutomationProperties.SetName(deleteButton, deleteText);
+
         deleteButton.Click += DeleteButton_Click;
         actions.Children.Add(deleteButton);
+
+        card.Expanding += (sender, args) => deleteButton.Visibility = Visibility.Visible;
+        card.Collapsed += (sender, args) => deleteButton.Visibility = Visibility.Collapsed;
 
         // The header sits inside the expander's own toggle, which would otherwise treat a press on one of
         // these controls as a request to open the card.
@@ -403,7 +439,30 @@ public sealed partial class CardListView : UserControl
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
-        AddRequested?.Invoke(this, EventArgs.Empty);
+        _isHandlingAddRequest = true;
+        try
+        {
+            AddRequested?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _isHandlingAddRequest = false;
+        }
+    }
+
+    /// <summary>
+    /// Opens the card for an entry, so one the consumer added by its own gesture is ready to fill in the
+    /// way the add button's is. Does nothing when the entry has no card.
+    /// </summary>
+    public void ExpandCard(object item)
+    {
+        var entry = _cards.FirstOrDefault(candidate => ReferenceEquals(candidate.Item, item));
+        if (entry is null)
+        {
+            return;
+        }
+
+        entry.Card.IsExpanded = true;
     }
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
@@ -437,20 +496,23 @@ public sealed partial class CardListView : UserControl
             return;
         }
 
-        // A drag runs against a collapsed list, because uniform rows are what the placement arithmetic
-        // needs. Collapsing as part of the grab would shorten everything above the grabbed row and slide it
-        // out from under the pointer, so the first press on a grip while anything is open only tidies the
-        // list; the user presses again to drag.
-        if (CollapseExpandedCards())
-        {
-            return;
-        }
-
         var grip = (FrameworkElement)sender;
         var card = (Expander)grip.Tag;
 
         var entry = _cards.FirstOrDefault(candidate => candidate.Card == card);
         if (entry is null)
+        {
+            return;
+        }
+
+        // A press marks its card, so one that only collapses the list still shows which card it found.
+        card.Focus(FocusState.Pointer);
+
+        // A drag runs against a collapsed list, because uniform rows are what the placement arithmetic
+        // needs. Collapsing as part of the grab would shorten everything above the grabbed row and slide it
+        // out from under the pointer, so the first press on a grip while anything is open only tidies the
+        // list; the user presses again to drag.
+        if (CollapseExpandedCards())
         {
             return;
         }
@@ -478,22 +540,28 @@ public sealed partial class CardListView : UserControl
             SlotIndex = originalIndex
         };
 
-        SetHeldAppearance(entry, isHeld: true);
+        UpdateCardAppearance(entry);
     }
 
-    // Marks the card the pointer is carrying: an accent outline and grip, and a lift over its neighbours,
-    // since it follows the pointer and so spends most of a drag straddling two rows. The web card list
-    // marks a held card the same way.
-    private void SetHeldAppearance(CardEntry entry, bool isHeld)
+    // Derives a card's marking from the state it is in, so a card that stops being held falls back to the
+    // selection marking rather than to none.
+    private void UpdateCardAppearance(CardEntry entry)
     {
+        var isHeld = _dragState is not null
+            && ReferenceEquals(_dragState.Entry, entry);
+
+        var isFocused = ReferenceEquals(_focusedEntry, entry);
+
         Canvas.SetZIndex(entry.Container, isHeld ? 1 : 0);
 
-        if (isHeld)
+        if (isHeld
+            || isFocused)
         {
             // Read now rather than at build time, the expander taking its corners from a style that is
             // resolved once the card is in the tree.
             entry.Outline.CornerRadius = entry.Card.CornerRadius;
-            entry.Outline.BorderBrush = (Brush)Resources["CardDragOutlineBrush"];
+
+            entry.Outline.BorderBrush = (Brush)Resources["CardOutlineBrush"];
         }
         else
         {
@@ -512,6 +580,46 @@ public sealed partial class CardListView : UserControl
         }
 
         entry.GripIcon.ClearValue(IconElement.ForegroundProperty);
+    }
+
+    // Tracks which card the keyboard is on. Focus reaching a card body raises this too, which is what marks
+    // the card an expanded list's reorder keys act on.
+    private void Card_GotFocus(object sender, RoutedEventArgs e)
+    {
+        var card = (Expander)sender;
+
+        var entry = _cards.FirstOrDefault(candidate => candidate.Card == card);
+        if (entry is null
+            || ReferenceEquals(_focusedEntry, entry))
+        {
+            return;
+        }
+
+        var previousEntry = _focusedEntry;
+        _focusedEntry = entry;
+
+        if (previousEntry is not null)
+        {
+            UpdateCardAppearance(previousEntry);
+        }
+
+        UpdateCardAppearance(entry);
+    }
+
+    private void Card_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var card = (Expander)sender;
+
+        if (_focusedEntry is null
+            || _focusedEntry.Card != card)
+        {
+            return;
+        }
+
+        var entry = _focusedEntry;
+        _focusedEntry = null;
+
+        UpdateCardAppearance(entry);
     }
 
     // Collapses every open card, reporting whether any was open.
@@ -609,8 +717,17 @@ public sealed partial class CardListView : UserControl
         _cards.Remove(entry);
         _cards.Insert(slotIndex, entry);
 
-        CardsPanel.Children.Remove(entry.Container);
-        CardsPanel.Children.Insert(slotIndex, entry.Container);
+        ApplyCardRows();
+    }
+
+    // Positions each card by its place in the list. Assigning rows keeps every card in the tree: one taken
+    // out and put back loses the state its controls hold, such as a picker's selection.
+    private void ApplyCardRows()
+    {
+        for (var index = 0; index < _cards.Count; index++)
+        {
+            Grid.SetRow(_cards[index].Container, index);
+        }
     }
 
     private void CompleteDrag()
@@ -624,20 +741,78 @@ public sealed partial class CardListView : UserControl
         _dragState = null;
 
         dragState.Entry.Transform.Y = 0;
-        SetHeldAppearance(dragState.Entry, isHeld: false);
+        UpdateCardAppearance(dragState.Entry);
 
         if (dragState.SlotIndex == dragState.OriginalIndex)
         {
             return;
         }
 
+        CommitCardOrder(dragState.Entry.Item, dragState.SlotIndex);
+    }
+
+    // Moves a card one slot with the keyboard, which is how the list reorders without a pointer. The card
+    // keeps focus because nothing leaves the tree, so a run of presses walks it through the list.
+    private void Card_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Up
+            && e.Key != VirtualKey.Down)
+        {
+            return;
+        }
+
+        if (!EditKeyboard.IsAltDown())
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        var card = (Expander)sender;
+
+        var entry = _cards.FirstOrDefault(candidate => candidate.Card == card);
+        if (entry is null)
+        {
+            return;
+        }
+
+        // A reorder runs against a collapsed list, the way a drag does, so the first press only tidies the
+        // list and the user presses again to move the card. Collapsing and moving at once would shift the
+        // list under the card the user is watching.
+        if (CollapseExpandedCards())
+        {
+            // Collapsing takes a card body out of the tree, and the keyboard with it when focus was in
+            // there, so the card takes focus back and the second press reaches the same one.
+            card.Focus(FocusState.Keyboard);
+            return;
+        }
+
+        var currentIndex = _cards.IndexOf(entry);
+        var targetIndex = e.Key == VirtualKey.Up ? currentIndex - 1 : currentIndex + 1;
+
+        if (targetIndex < 0
+            || targetIndex >= _cards.Count)
+        {
+            return;
+        }
+
+        _cards.Remove(entry);
+        _cards.Insert(targetIndex, entry);
+
+        ApplyCardRows();
+
+        CommitCardOrder(entry.Item, targetIndex);
+    }
+
+    // Brings the edited list into line with the cards, which already sit in the new order. The collection
+    // change it raises is suppressed, so the cards are not rebuilt out from under the move that placed them.
+    private void CommitCardOrder(object item, int slotIndex)
+    {
         var items = ItemsSource;
         if (items is null)
         {
             return;
         }
-
-        var item = dragState.Entry.Item;
 
         var index = IndexOfItem(items, item);
         if (index < 0)
@@ -645,13 +820,11 @@ public sealed partial class CardListView : UserControl
             return;
         }
 
-        // The cards already sit in the new order, so the list is brought into line with them rather than
-        // the other way round.
         _isCommittingOrder = true;
         try
         {
             items.RemoveAt(index);
-            items.Insert(dragState.SlotIndex, item);
+            items.Insert(slotIndex, item);
         }
         finally
         {
@@ -673,7 +846,7 @@ public sealed partial class CardListView : UserControl
         // record rather than committing the one being abandoned.
         _dragState = null;
         dragState.Entry.Transform.Y = 0;
-        SetHeldAppearance(dragState.Entry, isHeld: false);
+        UpdateCardAppearance(dragState.Entry);
 
         LayoutRoot.ReleasePointerCapture(dragState.Pointer);
     }

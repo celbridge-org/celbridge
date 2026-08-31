@@ -1,5 +1,6 @@
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Projects;
 
@@ -198,6 +199,59 @@ public class ProjectConfigDraftTests
     {
         var config = ApplyAndParse(BaseConfig, draft => draft.IgnoreFile = ".customignore");
         config.Resources.IgnoreFile.Should().Be(".customignore");
+    }
+
+    [Test]
+    public void Draft_SetDocumentShortcuts_RoundTripsInTheOrderGiven()
+    {
+        // The rail draws the shortcuts in list order, so a reorder is only recorded if the serialized
+        // entries keep the order the section set.
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "docs/guide.md", Icon = "bs-book", Area = WorkspaceArea.Bottom },
+            new() { Resource = "readme.md" },
+        };
+
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetDocumentShortcuts(documentShortcuts));
+
+        config.DocumentShortcuts.Should().HaveCount(2);
+        config.DocumentShortcuts[0].Resource.Should().Be("docs/guide.md");
+        config.DocumentShortcuts[0].Icon.Should().Be("bs-book");
+        config.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Bottom);
+        config.DocumentShortcuts[1].Resource.Should().Be("readme.md");
+        config.DocumentShortcuts[1].Icon.Should().BeEmpty();
+        config.DocumentShortcuts[1].Area.Should().Be(WorkspaceArea.Main);
+    }
+
+    [Test]
+    public void Draft_SetDocumentShortcuts_DropsAnEntryWithNoResource()
+    {
+        // A card the user has not filled in yet opens nothing, so it writes no entry.
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "readme.md" },
+            new() { Resource = string.Empty, Icon = "bs-book" },
+        };
+
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetDocumentShortcuts(documentShortcuts));
+
+        config.DocumentShortcuts.Should().ContainSingle();
+        config.DocumentShortcuts[0].Resource.Should().Be("readme.md");
+    }
+
+    [Test]
+    public void Draft_PreservesDocumentShortcuts_AcrossAnUnrelatedEdit()
+    {
+        var sourceConfig =
+            BaseConfig +
+            "\n" +
+            "[[shortcut]]\n" +
+            "resource = \"readme.md\"\n";
+
+        var config = ApplyAndParse(sourceConfig, draft => draft.IgnoreFile = ".customignore");
+
+        config.DocumentShortcuts.Should().ContainSingle();
+        config.DocumentShortcuts[0].Resource.Should().Be("readme.md");
     }
 
     [Test]

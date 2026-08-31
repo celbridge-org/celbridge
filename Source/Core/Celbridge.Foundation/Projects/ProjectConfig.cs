@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Projects;
 
 /// <summary>
@@ -44,6 +46,29 @@ public sealed record ContributionOverride
 
     private static readonly IReadOnlyDictionary<string, object?> EmptyConfig =
         new Dictionary<string, object?>();
+}
+
+/// <summary>
+/// A Utility Rail button parsed from a [[shortcut]] entry in the .celbridge project config: the resource
+/// the button opens as a document, and the icon it carries. Entry order is rail order.
+/// </summary>
+public sealed record DocumentShortcut
+{
+    /// <summary>
+    /// Resource key of the file the shortcut opens.
+    /// </summary>
+    public required string Resource { get; init; }
+
+    /// <summary>
+    /// Prefixed icon name for the rail button. Empty takes the default document icon.
+    /// </summary>
+    public string Icon { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The document area the shortcut opens its document in, which applies only while that document is
+    /// not already open. Never the Utility Panel, which holds no document tabs.
+    /// </summary>
+    public WorkspaceArea Area { get; init; } = WorkspaceArea.Main;
 }
 
 /// <summary>
@@ -151,6 +176,11 @@ public sealed record class ProjectConfig
     /// A contribution running at its manifest default with default config has no entry.
     /// </summary>
     public IReadOnlyList<ContributionOverride> ContributionOverrides { get; init; } = Array.Empty<ContributionOverride>();
+
+    /// <summary>
+    /// Utility Rail document shortcuts, from the [[shortcut]] entries, in the order the rail shows them.
+    /// </summary>
+    public IReadOnlyList<DocumentShortcut> DocumentShortcuts { get; init; } = Array.Empty<DocumentShortcut>();
 
     /// <summary>
     /// Entries that were skipped or degraded during parsing.

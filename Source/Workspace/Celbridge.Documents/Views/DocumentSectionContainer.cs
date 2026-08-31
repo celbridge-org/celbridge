@@ -269,7 +269,17 @@ public sealed partial class DocumentSectionContainer
                 continue;
             }
 
-            var firstTab = _sections[section].GetAllTabs().FirstOrDefault();
+            var sectionView = _sections[section];
+
+            // The section's own selected tab, so taking over lands on the document that section was already
+            // showing rather than on whichever tab happens to sit first in its row.
+            var selectedResource = sectionView.GetSelectedDocument();
+            if (!selectedResource.IsEmpty)
+            {
+                return new NextDocument(selectedResource, section);
+            }
+
+            var firstTab = sectionView.GetAllTabs().FirstOrDefault();
             if (firstTab is not null)
             {
                 return new NextDocument(firstTab.ViewModel.FileResource, section);

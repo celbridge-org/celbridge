@@ -1173,6 +1173,7 @@ public sealed partial class DocumentSectionView : UserControl
         tab.DragStarted += OnDocumentTabDragStarted;
         AddTabPointerPressedHandler(tab);
 
+        // An index outside the row appends, which is what DocumentAddress.AppendTabOrder relies on.
         if (index < 0 || index >= TabView.TabItems.Count)
         {
             TabView.TabItems.Add(tab);

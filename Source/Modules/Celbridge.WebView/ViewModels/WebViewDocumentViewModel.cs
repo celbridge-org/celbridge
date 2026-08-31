@@ -585,11 +585,11 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// Adds a bookmark for the page currently on screen, named after its host so the button reads as
     /// something before the user renames it.
     /// </summary>
-    public void AddBookmarkFromCurrentPage()
+    public WebViewBookmarkViewModel? AddBookmarkFromCurrentPage()
     {
         if (!TryNormalizeUserUrl(CurrentUrl, out var pageUrl))
         {
-            return;
+            return null;
         }
 
         var name = string.Empty;
@@ -600,6 +600,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
         var bookmark = CreateBookmark(new WebViewBookmark(pageUrl, name));
         Bookmarks.Add(bookmark);
+
+        return bookmark;
     }
 
     /// <summary>

@@ -87,7 +87,7 @@ public class OpenDocumentCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_WithTargetSectionButNoTab_DefaultsTabOrderToZero()
+    public async Task ExecuteAsync_WithTargetSectionButNoTab_AppendsToTheTabRow()
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
@@ -101,7 +101,7 @@ public class OpenDocumentCommandTests
             Arg.Is<OpenDocumentOptions>(options =>
                 options.Address != null &&
                 options.Address.Section == DocumentSection.MainRight &&
-                options.Address.TabOrder == 0));
+                options.Address.TabOrder == DocumentAddress.AppendTabOrder));
     }
 
     [Test]

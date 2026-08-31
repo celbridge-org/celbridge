@@ -617,6 +617,24 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     // Mounts the section a document is about to open into. Naming an unsplit area's secondary section
     // splits it, so the request can be satisfied where it asked for. A section in a collapsed area is left
     // alone: the area keeps its tabs while hidden.
+    // Reveals the area a section sits in, so a document is never made active out of sight. Main is never
+    // collapsed, which is the no-op case. A restore opens without activating and so leaves the saved
+    // visibility alone.
+    private void PresentSectionArea(DocumentSection section)
+    {
+        var area = section.GetArea().GetWorkspaceArea();
+        if (!area.IsCollapsible())
+        {
+            return;
+        }
+
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
+        {
+            command.Area = area;
+            command.IsVisible = true;
+        });
+    }
+
     private DocumentSection EnsureSectionMounted(DocumentSection section)
     {
         var area = section.GetArea();
@@ -734,12 +752,16 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                     return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Cancelled);
                 }
 
+                // Read before the tab is removed, so a reopen that requests no position returns the
+                // document to the slot it already held rather than to the start of the row.
+                var existingTabOrder = existingSectionView.GetTabIndex(existingTab);
+
                 existingSectionView.RemoveTab(existingTab);
                 NotifyLayoutChanged();
 
                 // Without an explicit address the document reopens in the section it was already in.
                 var reopenSection = address is not null ? section : existingSectionView.Section;
-                var tabOrder = effectiveOptions.Address?.TabOrder ?? 0;
+                var tabOrder = effectiveOptions.Address?.TabOrder ?? existingTabOrder;
                 var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: reopenSection, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
                 return await OpenDocument(fileResource, reopenOptions);
@@ -761,6 +783,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
             if (effectiveOptions.Activate)
             {
+                PresentSectionArea(section);
+
                 var targetSection = SectionContainer.GetSection(section);
                 targetSection.SelectTab(existingTab);
                 SectionContainer.ActivateDocument(fileResource, section, ActiveDocumentChangeReason.Activated);
@@ -815,6 +839,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         if (effectiveOptions.Activate)
         {
+            PresentSectionArea(section);
+
             targetSectionForNew.SelectTab(documentTab);
         }
 

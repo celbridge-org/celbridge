@@ -8,20 +8,21 @@
     <!-- Held here rather than looked up from the application resources, so the accent resolves against the
          theme this control is drawn under. The palette is generated once per theme, and an application-level
          lookup answers to the operating system's theme rather than the one the window is showing. -->
-    <SolidColorBrush x:Key="CardDragOutlineBrush" Color="{ThemeResource AccentColor}" />
+    <SolidColorBrush x:Key="CardOutlineBrush" Color="{ThemeResource AccentColor}" />
     <SolidColorBrush x:Key="CardDragGripBrush" Color="{ThemeResource AccentContrastColor}" />
   </UserControl.Resources>
 
-  <!-- The reorder drag captures the pointer on this root rather than on the grip that started it: the
-       dragged card moves between slots while the drag runs, and a captured element that is reparented
-       loses its capture. The background makes the root hit-testable so the pointer can reach it. -->
+  <!-- The reorder drag captures the pointer on this root rather than on the grip that started it, so the
+       drag keeps following a pointer that travels off the card it grabbed. The background makes the root
+       hit-testable so the pointer can reach it. -->
   <Grid x:Name="LayoutRoot"
         Background="Transparent">
 
     <StackPanel Spacing="8">
 
-      <StackPanel x:Name="CardsPanel"
-                  Spacing="8" />
+      <!-- Holds one row per card, assigned as the cards are built. -->
+      <Grid x:Name="CardsPanel"
+            RowSpacing="8" />
 
       <TextBlock x:Name="EmptyTextBlock"
                  Style="{StaticResource SupportingTextStyle}"

@@ -1,0 +1,102 @@
+<UserControl
+  x:Class="Celbridge.ProjectSettings.Views.DocumentShortcutsSectionView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
+
+  <UserControl.Resources>
+
+    <!-- The collapsed card identifies the shortcut the way its rail button does, so what the header shows
+         is a preview of what the rail will show. -->
+    <DataTemplate x:Key="ShortcutHeaderTemplate" x:DataType="vm:DocumentShortcutViewModel">
+      <StackPanel Orientation="Horizontal"
+                  Spacing="8"
+                  VerticalAlignment="Center">
+        <controls:Icon IconName="{x:Bind IconName, Mode=OneWay}"
+                       FontSize="{StaticResource IconSizeMedium}"
+                       VerticalAlignment="Center" />
+        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}"
+                   Style="{StaticResource ListItemTitleTextStyle}"
+                   TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ShortcutActionsTemplate" x:DataType="vm:DocumentShortcutViewModel">
+      <controls:IconButton VerticalAlignment="Center"
+                           IsEnabled="{x:Bind CanOpen, Mode=OneWay}"
+                           ToolTipService.ToolTip="{x:Bind OpenTooltip}"
+                           Click="OpenShortcutButton_Click">
+        <controls:Icon IconName="bs-arrow-up-right" FontSize="{StaticResource IconSizeMedium}" />
+      </controls:IconButton>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ShortcutBodyTemplate" x:DataType="vm:DocumentShortcutViewModel">
+      <StackPanel Spacing="12">
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind ResourceLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <TextBox IsSpellCheckEnabled="False"
+                   PlaceholderText="{x:Bind ResourcePlaceholder}"
+                   Text="{x:Bind Resource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                   KeyDown="CommitField_KeyDown" />
+          <TextBlock Text="{x:Bind ResourceHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind InvalidResourceText}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                     TextWrapping="Wrap"
+                     Visibility="{x:Bind IsResourceInvalid, Mode=OneWay}" />
+          <TextBlock Text="{x:Bind MissingResourceText}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                     TextWrapping="Wrap"
+                     Visibility="{x:Bind IsResourceMissing, Mode=OneWay}" />
+        </StackPanel>
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind AreaLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <ComboBox HorizontalAlignment="Left"
+                    MinWidth="128"
+                    ItemsSource="{x:Bind AreaOptions}"
+                    SelectedIndex="{x:Bind SelectedAreaIndex, Mode=TwoWay}" />
+          <TextBlock Text="{x:Bind AreaHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind IconLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <TextBox IsSpellCheckEnabled="False"
+                   PlaceholderText="{x:Bind IconPlaceholder}"
+                   Text="{x:Bind Icon, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                   KeyDown="CommitField_KeyDown" />
+          <TextBlock Text="{x:Bind IconHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{x:Bind UnknownIconText}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                     TextWrapping="Wrap"
+                     Visibility="{x:Bind IsIconUnknown, Mode=OneWay}" />
+        </StackPanel>
+
+      </StackPanel>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <ScrollViewer Padding="12">
+    <controls:CardListView x:Name="ShortcutCards"
+                           HeaderTemplate="{StaticResource ShortcutHeaderTemplate}"
+                           HeaderActionsTemplate="{StaticResource ShortcutActionsTemplate}"
+                           BodyTemplate="{StaticResource ShortcutBodyTemplate}"
+                           AddButtonText="{x:Bind ViewModel.AddShortcutText, Mode=OneWay}"
+                           EmptyText="{x:Bind ViewModel.EmptyText, Mode=OneWay}" />
+  </ScrollViewer>
+</UserControl>

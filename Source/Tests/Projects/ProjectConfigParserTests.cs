@@ -1,4 +1,5 @@
 using Celbridge.Projects;
+using Celbridge.Workspace;
 using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Projects;
@@ -174,25 +175,6 @@ public class ProjectConfigParserTests
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
         config.EntryErrors.Should().ContainSingle(error => error.EntryName == "project");
-    }
-
-    [Test]
-    public void ParseFromFile_LegacyShortcutArray_IsRejectedWithEntryError()
-    {
-        // Shortcuts moved into per-console .console config, so a legacy [[shortcut]] entry is now an
-        // unrecognized top-level key surfaced as a config-entry advisory.
-        var content = """
-            [[shortcut]]
-            name = "Run Examples"
-            icon = "bs-play-fill"
-            """;
-        var configFilePath = WriteConfigFile(content);
-
-        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
-
-        result.IsSuccess.Should().BeTrue();
-        var config = result.Value;
-        config.EntryErrors.Should().ContainSingle(error => error.EntryName == "shortcut");
     }
 
     [Test]
@@ -382,6 +364,114 @@ public class ProjectConfigParserTests
         config.Celbridge.CelbridgeVersion.Should().BeNull();
         config.ContributionOverrides.Should().BeEmpty();
         config.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutEntries_AreReadInFileOrder()
+    {
+        // Entry order is the Utility Rail order the user arranged, so the parse must not reorder it.
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "docs/guide.md"
+            icon = "bs-book"
+
+            [[shortcut]]
+            resource = "readme.md"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        var documentShortcuts = result.Value.DocumentShortcuts;
+        documentShortcuts.Should().HaveCount(2);
+        documentShortcuts[0].Resource.Should().Be("docs/guide.md");
+        documentShortcuts[0].Icon.Should().Be("bs-book");
+        documentShortcuts[1].Resource.Should().Be("readme.md");
+        documentShortcuts[1].Icon.Should().BeEmpty();
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutArea_SelectsTheDocumentArea()
+    {
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "notes.md"
+            area = "bottom"
+
+            [[shortcut]]
+            resource = "readme.md"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Bottom);
+        result.Value.DocumentShortcuts[1].Area.Should().Be(WorkspaceArea.Main);
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutNamingTheUtilityPanel_FallsBackToTheMainArea()
+    {
+        // The Utility Panel holds no document tabs, and a bad area still leaves a working shortcut, so it
+        // is reported and defaulted rather than skipping the entry.
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "readme.md"
+            area = "utility"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts.Should().ContainSingle();
+        result.Value.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Main);
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("Utility Panel");
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutWithNoResource_IsSkippedWithAnEntryError()
+    {
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            icon = "bs-book"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts.Should().BeEmpty();
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("resource");
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutWithAnUnknownKey_ReportsTheKeyAndKeepsTheEntry()
+    {
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "readme.md"
+            name = "Read Me"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts.Should().ContainSingle();
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("name");
     }
 
     private string WriteConfigFile(string content)

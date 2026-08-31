@@ -872,6 +872,66 @@ Open with default application instead?</value>
   <data name="ProjectSettings_PageManifestIssue" xml:space="preserve">
     <value>The manifest is invalid or does not declare a published path. Open it to fix.</value>
   </data>
+  <data name="ProjectSettings_ShortcutsHeader" xml:space="preserve">
+    <value>Shortcuts</value>
+  </data>
+  <data name="ProjectSettings_ShortcutsDescription" xml:space="preserve">
+    <value>Buttons on the Utility Rail that open a file in this project.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutsEmpty" xml:space="preserve">
+    <value>No shortcuts yet.</value>
+  </data>
+  <data name="ProjectSettings_AddShortcut" xml:space="preserve">
+    <value>Add Shortcut</value>
+  </data>
+  <data name="ProjectSettings_ShortcutUntitled" xml:space="preserve">
+    <value>Untitled shortcut</value>
+  </data>
+  <data name="ProjectSettings_ShortcutResourceLabel" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="ProjectSettings_ShortcutResourcePlaceholder" xml:space="preserve">
+    <value>readme.md</value>
+  </data>
+  <data name="ProjectSettings_ShortcutResourceHint" xml:space="preserve">
+    <value>The file the button opens, as a path from the project root.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutInvalidResource" xml:space="preserve">
+    <value>This is not a valid file path, so no button is shown for it.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutMissingResource" xml:space="preserve">
+    <value>This project has no file at this path yet.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutOpenTooltip" xml:space="preserve">
+    <value>Open this document</value>
+  </data>
+  <data name="ProjectSettings_ShortcutAreaLabel" xml:space="preserve">
+    <value>Opens in</value>
+  </data>
+  <data name="ProjectSettings_ShortcutAreaHint" xml:space="preserve">
+    <value>Only applies when the file is not already open.</value>
+  </data>
+  <data name="ProjectSettings_WorkspaceArea_Main" xml:space="preserve">
+    <value>Main area</value>
+  </data>
+  <data name="ProjectSettings_WorkspaceArea_Bottom" xml:space="preserve">
+    <value>Bottom area</value>
+  </data>
+  <data name="ProjectSettings_WorkspaceArea_Side" xml:space="preserve">
+    <value>Side area</value>
+  </data>
+  <data name="ProjectSettings_ShortcutIconLabel" xml:space="preserve">
+    <value>Icon</value>
+  </data>
+  <data name="ProjectSettings_ShortcutIconPlaceholder" xml:space="preserve">
+    <value>bs-file-earmark</value>
+  </data>
+  <data name="ProjectSettings_ShortcutIconHint" xml:space="preserve">
+    <value>An icon name such as bs-book or bs-github. Leave blank for the default icon.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutUnknownIcon" xml:space="preserve">
+    <value>There is no icon with this name, so a default one is shown.</value>
+  </data>
   <data name="ProjectSettings_FeatureFlagsHeader" xml:space="preserve">
     <value>Feature Flags</value>
   </data>
@@ -1363,6 +1423,9 @@ Open with default application instead?</value>
   </data>
   <data name="UtilityPanel_ProjectSettingsTooltip" xml:space="preserve">
     <value>Project Settings</value>
+  </data>
+  <data name="UtilityPanel_DocumentShortcutTooltip" xml:space="preserve">
+    <value>Open '{0}'</value>
   </data>
   <data name="UtilityPanel_WorkshopTooltip" xml:space="preserve">
     <value>Community Workshop</value>
