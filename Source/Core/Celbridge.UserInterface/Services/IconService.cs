@@ -5,9 +5,16 @@ using System.Text.Json.Nodes;
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// An icon font addressable by prefixed name, and the bundled asset holding its name to codepoint map.
+/// An icon font addressable by prefixed name, the bundled asset holding its name to codepoint map, and
+/// the bundled asset holding the search keywords for its icons. A font the user is not offered as a
+/// choice is absent from the supported set and carries no keywords.
 /// </summary>
-internal sealed record IconFontSet(string Prefix, string FontFamilyKey, string GlyphMapResource);
+internal sealed record IconFontSet(
+    string Prefix,
+    string FontFamilyKey,
+    string GlyphMapResource,
+    string KeywordMapResource,
+    bool IsUserFacing);
 
 /// <summary>
 /// The glyphs loaded from one icon font, keyed by their unprefixed name.
@@ -28,8 +35,22 @@ public class IconService : IIconService
     // is looked up in that font's glyph map.
     private static readonly IReadOnlyList<IconFontSet> _iconFontSets = new List<IconFontSet>
     {
-        new IconFontSet("bs", "BootstrapIconsFontFamily", "Assets.Fonts.BootstrapIcons.icon-glyphs.json"),
-        new IconFontSet("nf", "NerdFontsFontFamily", "Assets.Fonts.NerdFonts.glyphnames.json")
+        new IconFontSet(
+            "bs",
+            "BootstrapIconsFontFamily",
+            "Assets.Fonts.BootstrapIcons.icon-glyphs.json",
+            "Assets.Fonts.BootstrapIcons.icon-keywords.json",
+            IsUserFacing: true),
+
+        // Bundled as the host's own file type icon theme rather than as a vocabulary users choose from:
+        // web content is not served this font, so a name picked from it would draw natively and fail in
+        // an HTML editor.
+        new IconFontSet(
+            "nf",
+            "NerdFontsFontFamily",
+            "Assets.Fonts.NerdFonts.glyphnames.json",
+            string.Empty,
+            IsUserFacing: false)
     };
 
     // Maps each IconSymbol to a prefixed icon name. Add new common icons here. Anything not listed is
@@ -91,6 +112,7 @@ public class IconService : IIconService
     };
 
     private Dictionary<string, IconFontGlyphs> _glyphsByPrefix = new();
+    private Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<string>>> _keywordsByPrefix = new();
     private IReadOnlyDictionary<string, IconDefinition> _fileIconOverrides =
         new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, IconDefinition> _fileNameIconOverrides =
@@ -129,6 +151,13 @@ public class IconService : IIconService
         {
             return Result.Fail("Failed to load the icon font glyph maps")
                 .WithErrors(loadGlyphsResult);
+        }
+
+        var loadKeywordsResult = LoadKeywordMaps();
+        if (loadKeywordsResult.IsFailure)
+        {
+            return Result.Fail("Failed to load the icon font keyword maps")
+                .WithErrors(loadKeywordsResult);
         }
 
         return Result.Ok();
@@ -301,6 +330,45 @@ public class IconService : IIconService
         return true;
     }
 
+    public IReadOnlyList<IconCatalogEntry> GetSupportedIcons()
+    {
+        var supportedIcons = new List<IconCatalogEntry>();
+
+        foreach (var iconFontSet in _iconFontSets)
+        {
+            if (!iconFontSet.IsUserFacing)
+            {
+                continue;
+            }
+
+            if (!_glyphsByPrefix.TryGetValue(iconFontSet.Prefix, out IconFontGlyphs? fontGlyphs))
+            {
+                continue;
+            }
+
+            _keywordsByPrefix.TryGetValue(iconFontSet.Prefix, out var keywordsByName);
+
+            foreach (var glyphName in fontGlyphs.GlyphsByName.Keys)
+            {
+                IReadOnlyList<string> keywords = Array.Empty<string>();
+                if (keywordsByName is not null
+                    && keywordsByName.TryGetValue(glyphName, out var namedKeywords))
+                {
+                    keywords = namedKeywords;
+                }
+
+                var iconName = $"{iconFontSet.Prefix}-{glyphName}";
+
+                supportedIcons.Add(new IconCatalogEntry(iconName, keywords));
+            }
+        }
+
+        supportedIcons.Sort((first, second) =>
+            string.Compare(first.IconName, second.IconName, StringComparison.OrdinalIgnoreCase));
+
+        return supportedIcons;
+    }
+
     private IconGlyph FallbackGlyph()
     {
         if (TryGetGlyph(FallbackIconName, out IconGlyph fallback))
@@ -387,6 +455,74 @@ public class IconService : IIconService
         }
 
         _glyphsByPrefix = glyphsByPrefix;
+
+        return Result.Ok();
+    }
+
+    private Result LoadKeywordMaps()
+    {
+        var keywordsByPrefix = new Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<string>>>();
+
+        foreach (var iconFontSet in _iconFontSets)
+        {
+            if (string.IsNullOrEmpty(iconFontSet.KeywordMapResource))
+            {
+                continue;
+            }
+
+            var loadResult = LoadIconDataResource(iconFontSet.KeywordMapResource);
+            if (loadResult.IsFailure)
+            {
+                return Result.Fail($"Failed to load the keyword map for icon font '{iconFontSet.Prefix}'.")
+                    .WithErrors(loadResult);
+            }
+            var stream = loadResult.Value;
+
+            var keywordsByName = new Dictionary<string, IReadOnlyList<string>>();
+
+            try
+            {
+                using (var reader = new StreamReader(stream))
+                {
+                    var json = reader.ReadToEnd();
+                    var keywordData = JsonNode.Parse(json) as JsonObject;
+                    if (keywordData is null)
+                    {
+                        return Result.Fail($"Failed to parse the keyword map for icon font '{iconFontSet.Prefix}' as a JSON object.");
+                    }
+
+                    foreach (var kv in keywordData)
+                    {
+                        if (kv.Value is not JsonArray keywordArray)
+                        {
+                            return Result.Fail($"Icon '{kv.Key}' in the keyword map for icon font '{iconFontSet.Prefix}' is not a list of keywords.");
+                        }
+
+                        var keywords = new List<string>();
+                        foreach (var keyword in keywordArray)
+                        {
+                            if (keyword is null)
+                            {
+                                continue;
+                            }
+
+                            keywords.Add(keyword.ToString());
+                        }
+
+                        keywordsByName[kv.Key] = keywords;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"An exception occurred when loading the keyword map for icon font '{iconFontSet.Prefix}'.")
+                    .WithException(ex);
+            }
+
+            keywordsByPrefix[iconFontSet.Prefix] = keywordsByName;
+        }
+
+        _keywordsByPrefix = keywordsByPrefix;
 
         return Result.Ok();
     }

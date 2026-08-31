@@ -5,9 +5,10 @@ using Celbridge.UserInterface.Services;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Holds the bundled Nerd Fonts glyph set and the file type catalog together. The catalog names glyphs by
+/// Holds the bundled icon fonts together with the data written against them: the file type catalog over
+/// the Nerd Fonts glyph set, and the search keywords over the Bootstrap glyph set. Both name glyphs by
 /// string, so a font upgrade that renames or drops one would otherwise show up as a wrong icon in the tree
-/// rather than as a failure here.
+/// or a missing icon in the picker rather than as a failure here.
 /// </summary>
 [TestFixture]
 public class IconCatalogCoverageTests
@@ -16,6 +17,10 @@ public class IconCatalogCoverageTests
     // cheat sheet at nerdfonts.com, which renders the current release, so this records which release the
     // application actually draws. Bump it with the font, never on its own.
     private const string BundledNerdFontsVersion = "3.5.0";
+
+    // The Bootstrap Icons release the bundled font, glyph map and keyword map all come from. The keywords
+    // describe the icons that release carries, so they are refreshed with the font rather than separately.
+    private const string BundledBootstrapIconsVersion = "1.12.1";
 
     [Test]
     public void EveryCatalogIconResolvesInTheBundledFont()
@@ -48,6 +53,84 @@ public class IconCatalogCoverageTests
             BundledNerdFontsVersion,
             "the glyph map and the font ship as a pair from one release, and the release decides what each "
             + "glyph looks like");
+    }
+
+    /// <summary>
+    /// The keyword map is generated against the bundled glyph map, so a keyword file left behind by an
+    /// earlier font would offer the picker a name the bundled font cannot draw.
+    /// </summary>
+    [Test]
+    public void EveryKeywordedIconIsInTheBundledFont()
+    {
+        using var glyphs = ReadBootstrapDocument("icon-glyphs.json");
+        using var keywords = ReadBootstrapDocument("icon-keywords.json");
+
+        var glyphNames = glyphs.RootElement
+            .EnumerateObject()
+            .Select(glyph => glyph.Name)
+            .ToHashSet();
+
+        var unknownNames = keywords.RootElement
+            .EnumerateObject()
+            .Select(keyword => keyword.Name)
+            .Where(iconName => !glyphNames.Contains(iconName))
+            .ToList();
+
+        unknownNames.Should().BeEmpty(
+            "the keyword map is generated from the bundled glyph map, so it cannot name an icon the font "
+            + "does not carry");
+    }
+
+    /// <summary>
+    /// The keyword the search matches has to be the lowercase form the generator writes, because the
+    /// search term is lowercased before the comparison rather than compared case-insensitively.
+    /// </summary>
+    [Test]
+    public void EveryKeywordIsLowercaseAndNonEmpty()
+    {
+        using var keywords = ReadBootstrapDocument("icon-keywords.json");
+
+        foreach (var icon in keywords.RootElement.EnumerateObject())
+        {
+            icon.Value.ValueKind.Should().Be(JsonValueKind.Array, $"'{icon.Name}' should hold a list of keywords");
+            icon.Value.GetArrayLength().Should().BeGreaterThan(0, $"'{icon.Name}' should be absent rather than empty");
+
+            foreach (var keyword in icon.Value.EnumerateArray())
+            {
+                var keywordText = keyword.GetString();
+                keywordText.Should().NotBeNullOrWhiteSpace();
+                keywordText.Should().Be(keywordText!.ToLowerInvariant(), $"'{icon.Name}' carries a keyword that is not lowercase");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The font, the glyph map and the keyword map ship as one release. The vendored stylesheet is where
+    /// that release records itself, so it is what the pinned version is checked against.
+    /// </summary>
+    [Test]
+    public void TheVendoredStylesheetReportsTheBundledRelease()
+    {
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var stylesheetPath = Path.Combine(
+            sourceFolder, "Core", "Celbridge.WebHost", "Web", "bootstrap-icons", "bootstrap-icons.css");
+        File.Exists(stylesheetPath).Should().BeTrue($"the vendored stylesheet should be at {stylesheetPath}");
+
+        var header = File.ReadAllText(stylesheetPath);
+
+        header.Should().Contain(
+            $"Bootstrap Icons v{BundledBootstrapIconsVersion}",
+            "the keyword map is generated for the bundled release, so the two are upgraded together");
+    }
+
+    private static JsonDocument ReadBootstrapDocument(string fileName)
+    {
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var documentPath = Path.Combine(
+            sourceFolder, "Core", "Celbridge.UserInterface", "Assets", "Fonts", "BootstrapIcons", fileName);
+        File.Exists(documentPath).Should().BeTrue($"the bundled icon data should be at {documentPath}");
+
+        return JsonDocument.Parse(File.ReadAllText(documentPath));
     }
 
     private static IReadOnlyList<(string FileType, string IconName)> ReadCatalogIcons()

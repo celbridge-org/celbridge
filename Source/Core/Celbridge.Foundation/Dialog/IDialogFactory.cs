@@ -55,6 +55,12 @@ public interface IDialogFactory
     IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 
     /// <summary>
+    /// Create an Icon Picker Dialog over the supported icon set, opening on the named icon when it is one
+    /// of them.
+    /// </summary>
+    IIconPickerDialog CreateIconPickerDialog(string selectedIconName = "");
+
+    /// <summary>
     /// Create a Choice Dialog that lets the user pick from a list of named options.
     /// When checkbox is provided, shows a checkbox below the options.
     /// Optional primaryButtonText and secondaryButtonText override the default OK/Cancel labels.

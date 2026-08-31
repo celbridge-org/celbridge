@@ -1,0 +1,78 @@
+<ContentDialog
+  x:Class="Celbridge.UserInterface.Views.IconPickerDialog"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Celbridge.UserInterface.Views"
+  xmlns:vm="using:Celbridge.UserInterface.ViewModels"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  Title="{x:Bind TitleString}"
+  PrimaryButtonText="{x:Bind OkString}"
+  SecondaryButtonText="{x:Bind CancelString}"
+  IsPrimaryButtonEnabled="{x:Bind ViewModel.IsSubmitEnabled, Mode=OneWay}"
+  Opened="Dialog_Opened">
+
+  <Grid Width="480">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="400"/>
+    </Grid.RowDefinitions>
+
+    <!-- Search box -->
+    <TextBox x:Name="SearchTextBox"
+             Grid.Row="0"
+             PlaceholderText="{x:Bind SearchPlaceholderString}"
+             Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+             IsSpellCheckEnabled="False"
+             AcceptsReturn="False"
+             KeyDown="SearchTextBox_KeyDown"/>
+
+    <Grid Grid.Row="1"
+          Margin="0,4,0,0">
+
+      <!-- Icon list -->
+      <ListView x:Name="IconListView"
+                ItemsSource="{x:Bind ViewModel.FilteredItems, Mode=OneWay}"
+                SelectedItem="{x:Bind ViewModel.SelectedItem, Mode=TwoWay}"
+                SelectionMode="Single"
+                IsDoubleTapEnabled="True"
+                DoubleTapped="IconListView_DoubleTapped"
+                KeyDown="IconListView_KeyDown">
+        <ListView.ItemContainerStyle>
+          <Style TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="MinHeight" Value="32"/>
+          </Style>
+        </ListView.ItemContainerStyle>
+        <ListView.ItemTemplate>
+          <DataTemplate x:DataType="vm:IconPickerItem">
+            <Grid MinHeight="32">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="24"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+
+              <controls:Icon Grid.Column="0"
+                             IconName="{x:Bind IconName}"
+                             FontSize="{StaticResource IconSizeMedium}"
+                             VerticalAlignment="Center"/>
+
+              <TextBlock Grid.Column="1"
+                         Text="{x:Bind IconName}"
+                         VerticalAlignment="Center"
+                         Margin="8,0,0,0"
+                         TextTrimming="CharacterEllipsis"/>
+            </Grid>
+          </DataTemplate>
+        </ListView.ItemTemplate>
+      </ListView>
+
+      <TextBlock Text="{x:Bind NoResultsString}"
+                 Style="{StaticResource SupportingTextStyle}"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 TextWrapping="Wrap"
+                 Visibility="{x:Bind ViewModel.IsEmptyMessageVisible, Mode=OneWay}"/>
+    </Grid>
+  </Grid>
+
+</ContentDialog>

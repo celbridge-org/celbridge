@@ -120,6 +120,14 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
+    public IIconPickerDialog CreateIconPickerDialog(string selectedIconName = "")
+    {
+        var dialog = new IconPickerDialog();
+        dialog.ViewModel.Initialize(selectedIconName);
+
+        return WithFocusGuard(dialog);
+    }
+
     public IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
         var dialog = new ChoiceDialog();

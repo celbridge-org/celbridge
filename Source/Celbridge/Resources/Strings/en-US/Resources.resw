@@ -1352,6 +1352,15 @@ Open with default application instead?</value>
   <data name="ResourcePickerDialog_SearchPlaceholder" xml:space="preserve">
     <value>Enter file name...</value>
   </data>
+  <data name="IconPicker_DialogTitle" xml:space="preserve">
+    <value>Select Icon</value>
+  </data>
+  <data name="IconPicker_SearchPlaceholder" xml:space="preserve">
+    <value>Search by name or keyword...</value>
+  </data>
+  <data name="IconPicker_NoResults" xml:space="preserve">
+    <value>No icons match this search.</value>
+  </data>
   <data name="Validation_FileNameRequired" xml:space="preserve">
     <value>A file name is required</value>
   </data>
