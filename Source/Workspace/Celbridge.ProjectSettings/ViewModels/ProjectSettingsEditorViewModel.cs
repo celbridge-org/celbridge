@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -106,7 +107,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         ISettingsService settingsService,
         IPackageLocalizationService packageLocalization,
         IFileTypeCatalog fileTypeCatalog,
-        IIconService iconService)
+        IIconService iconService,
+        IDialogService dialogService)
     {
         _logger = logger;
         _projectService = projectService;
@@ -127,7 +129,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
         PagesSection = new PagesSectionViewModel(_context);
-        DocumentShortcutsSection = new DocumentShortcutsSectionViewModel(_context, iconService);
+        DocumentShortcutsSection = new DocumentShortcutsSectionViewModel(_context, iconService, dialogService);
         FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
 
         _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);

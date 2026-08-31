@@ -197,6 +197,7 @@ public partial class DocumentShortcutViewModel : ObservableObject
     }
 
     public string OpenTooltip => ProjectSettingsLabels.ShortcutOpenTooltip;
+    public string BrowseTooltip => ProjectSettingsLabels.ShortcutBrowseTooltip;
     public string AreaLabel => ProjectSettingsLabels.ShortcutAreaLabel;
     public string AreaHint => ProjectSettingsLabels.ShortcutAreaHint;
     public string ResourceLabel => ProjectSettingsLabels.ShortcutResourceLabel;

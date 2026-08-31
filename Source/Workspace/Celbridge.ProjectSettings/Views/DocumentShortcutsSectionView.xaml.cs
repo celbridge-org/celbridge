@@ -37,6 +37,18 @@ public sealed partial class DocumentShortcutsSectionView : UserControl
         ViewModel?.AddShortcut();
     }
 
+    private void BrowseResourceButton_Click(object sender, RoutedEventArgs e)
+    {
+        var browseButton = (FrameworkElement)sender;
+        if (browseButton.DataContext is not DocumentShortcutViewModel shortcut
+            || ViewModel is null)
+        {
+            return;
+        }
+
+        _ = ViewModel.PickResourceAsync(shortcut);
+    }
+
     private void OpenShortcutButton_Click(object sender, RoutedEventArgs e)
     {
         var openButton = (FrameworkElement)sender;
