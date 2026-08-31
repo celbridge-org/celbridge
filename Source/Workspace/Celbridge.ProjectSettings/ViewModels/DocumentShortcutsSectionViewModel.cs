@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Documents;
 using Celbridge.UserInterface;
@@ -16,6 +17,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
 {
     private readonly IIconService _iconService;
+    private readonly IDialogService _dialogService;
 
     // Set while the section rebuilds itself from the config, so populating the collection does not write
     // what it just read back into the draft.
@@ -27,10 +29,14 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
 
     public string AddShortcutText => ProjectSettingsLabels.AddShortcut;
 
-    public DocumentShortcutsSectionViewModel(ProjectSettingsContext context, IIconService iconService)
+    public DocumentShortcutsSectionViewModel(
+        ProjectSettingsContext context,
+        IIconService iconService,
+        IDialogService dialogService)
         : base(context)
     {
         _iconService = iconService;
+        _dialogService = dialogService;
 
         Shortcuts.CollectionChanged += Shortcuts_CollectionChanged;
     }
@@ -75,6 +81,28 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         };
 
         Shortcuts.Add(CreateShortcut(documentShortcut));
+    }
+
+    /// <summary>
+    /// Replaces a shortcut's resource with one chosen from the project.
+    /// </summary>
+    public async Task PickResourceAsync(DocumentShortcutViewModel shortcut)
+    {
+        // No extension filter: a shortcut opens whatever editor the file resolves to, so every file is a
+        // candidate.
+        var extensions = Array.Empty<string>();
+
+        var pickResult = await _dialogService.ShowResourcePickerDialogAsync(
+            extensions, ProjectSettingsLabels.ShortcutPickerTitle);
+
+        // The dialog reports a dismissal as a failure, so the shortcut keeps the resource it had.
+        if (pickResult.IsFailure)
+        {
+            return;
+        }
+
+        // The bare path, so a picked resource reads the same as a typed one.
+        shortcut.Resource = pickResult.Value.Path;
     }
 
     /// <summary>

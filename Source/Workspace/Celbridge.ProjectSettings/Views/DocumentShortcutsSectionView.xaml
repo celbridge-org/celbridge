@@ -26,6 +26,7 @@
     <DataTemplate x:Key="ShortcutActionsTemplate" x:DataType="vm:DocumentShortcutViewModel">
       <controls:IconButton VerticalAlignment="Center"
                            IsEnabled="{x:Bind CanOpen, Mode=OneWay}"
+                           AutomationProperties.Name="{x:Bind OpenTooltip}"
                            ToolTipService.ToolTip="{x:Bind OpenTooltip}"
                            Click="OpenShortcutButton_Click">
         <controls:Icon IconName="bs-arrow-up-right" FontSize="{StaticResource IconSizeMedium}" />
@@ -38,10 +39,26 @@
         <StackPanel Spacing="2">
           <TextBlock Text="{x:Bind ResourceLabel}"
                      Style="{StaticResource FieldLabelTextStyle}" />
-          <TextBox IsSpellCheckEnabled="False"
-                   PlaceholderText="{x:Bind ResourcePlaceholder}"
-                   Text="{x:Bind Resource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                   KeyDown="CommitField_KeyDown" />
+          <Grid ColumnSpacing="4">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     IsSpellCheckEnabled="False"
+                     PlaceholderText="{x:Bind ResourcePlaceholder}"
+                     Text="{x:Bind Resource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     KeyDown="CommitField_KeyDown" />
+
+            <controls:IconButton Grid.Column="1"
+                                 VerticalAlignment="Center"
+                                 AutomationProperties.Name="{x:Bind BrowseTooltip}"
+                                 ToolTipService.ToolTip="{x:Bind BrowseTooltip}"
+                                 Click="BrowseResourceButton_Click">
+              <controls:Icon IconName="bs-three-dots" FontSize="{StaticResource IconSizeMedium}" />
+            </controls:IconButton>
+          </Grid>
           <TextBlock Text="{x:Bind ResourceHint}"
                      Style="{StaticResource SupportingTextStyle}"
                      TextWrapping="Wrap" />
