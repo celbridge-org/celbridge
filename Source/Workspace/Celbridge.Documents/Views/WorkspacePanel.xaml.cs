@@ -379,6 +379,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         _messengerService.Register<CloseActiveDocumentRequestedMessage>(this, OnCloseActiveDocumentRequested);
         _messengerService.Register<CloseAllDocumentsRequestedMessage>(this, OnCloseAllDocumentsRequested);
 
+        // The document shortcuts act only while this panel holds the keyboard, so the active document's tab
+        // follows panel focus and shows its accent only while they are live.
+        _messengerService.Register<PanelFocusChangedMessage>(this, OnPanelFocusChanged);
+        SectionContainer.SetPanelFocused(_focusService.FocusedPanel == FocusPanelId.Documents);
+
         // Listen for requests to flash a document tab (e.g. when a utility is surfaced or a document reopened)
         _messengerService.Register<FlashDocumentMessage>(this, OnFlashDocumentRequested);
 
@@ -397,6 +402,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         UpdateUtilityRailVisibility(_windowModeService.LayoutMode);
 
         RegisterAsResourceDropTarget();
+    }
+
+    private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
+    {
+        SectionContainer.SetPanelFocused(message.FocusedPanel == FocusPanelId.Documents);
     }
 
     private void OnCloseActiveDocumentRequested(object recipient, CloseActiveDocumentRequestedMessage message)
@@ -453,17 +463,25 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
+        if (!ActiveDocumentFocusPolicy.ShouldActivate(message.DocumentResource, SectionContainer.ActiveDocument))
+        {
+            return;
+        }
+
         // Find the section containing this document and update the active document. Reported as focus
         // driven: the surface that sent this already holds the keyboard, so the activation must not turn
         // round and grant it again.
         var location = SectionContainer.FindDocumentTab(message.DocumentResource);
-        if (location is not null)
+        if (location is null)
         {
-            SectionContainer.ActivateDocument(
-                message.DocumentResource,
-                location.SectionView.Section,
-                ActiveDocumentChangeReason.Focused);
+            _logger.LogDebug("A focus report named {Document}, which has no open tab", message.DocumentResource);
+            return;
         }
+
+        SectionContainer.ActivateDocument(
+            message.DocumentResource,
+            location.SectionView.Section,
+            ActiveDocumentChangeReason.Focused);
     }
 
     private void OnResetLayoutRequested(object recipient, ResetLayoutRequestedMessage message)

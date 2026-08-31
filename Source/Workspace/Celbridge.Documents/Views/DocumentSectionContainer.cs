@@ -42,6 +42,7 @@ public sealed partial class DocumentSectionContainer
 
     private DocumentSection _activeSection = DocumentSection.MainLeft;
     private ResourceKey _activeDocument = ResourceKey.Empty;
+    private bool _isPanelFocused;
 
     /// <summary>
     /// Event raised when the active document changes. This is the document that should be inspected, and
@@ -290,6 +291,21 @@ public sealed partial class DocumentSectionContainer
     }
 
     /// <summary>
+    /// Sets whether the documents panel holds the keyboard, which the active document's tab shows.
+    /// </summary>
+    public void SetPanelFocused(bool isPanelFocused)
+    {
+        if (_isPanelFocused == isPanelFocused)
+        {
+            return;
+        }
+
+        _isPanelFocused = isPanelFocused;
+
+        UpdateTabSelectionIndicators();
+    }
+
+    /// <summary>
     /// Restores the given document as the active document, falling back to the selected tab of the
     /// first populated section when it is empty or no longer open. Guarantees that while any
     /// documents are open, exactly one is the active document - the invariant restore depends on.
@@ -532,7 +548,7 @@ public sealed partial class DocumentSectionContainer
             {
                 bool isActiveDocument = isActiveSection &&
                     tab.ViewModel.FileResource == _activeDocument;
-                tab.UpdateActiveDocumentState(isActiveDocument);
+                tab.UpdateActiveDocumentState(isActiveDocument, _isPanelFocused);
             }
         }
     }
