@@ -902,6 +902,21 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ShortcutMissingResource" xml:space="preserve">
     <value>This project has no file at this path yet.</value>
   </data>
+  <data name="ProjectSettings_ShortcutAreaLabel" xml:space="preserve">
+    <value>Opens in</value>
+  </data>
+  <data name="ProjectSettings_ShortcutAreaHint" xml:space="preserve">
+    <value>Only applies when the file is not already open.</value>
+  </data>
+  <data name="ProjectSettings_WorkspaceArea_Main" xml:space="preserve">
+    <value>Main area</value>
+  </data>
+  <data name="ProjectSettings_WorkspaceArea_Bottom" xml:space="preserve">
+    <value>Bottom area</value>
+  </data>
+  <data name="ProjectSettings_WorkspaceArea_Side" xml:space="preserve">
+    <value>Side area</value>
+  </data>
   <data name="ProjectSettings_ShortcutIconLabel" xml:space="preserve">
     <value>Icon</value>
   </data>

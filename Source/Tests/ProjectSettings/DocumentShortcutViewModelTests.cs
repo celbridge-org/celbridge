@@ -1,5 +1,6 @@
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.ProjectSettings;
 
@@ -9,12 +10,14 @@ public class DocumentShortcutViewModelTests
     private static DocumentShortcutViewModel CreateShortcut(
         string resource,
         string icon = "",
-        bool resourceExists = true)
+        bool resourceExists = true,
+        WorkspaceArea area = WorkspaceArea.Main)
     {
         return new DocumentShortcutViewModel(new IconService(), fileResource => resourceExists)
         {
             Resource = resource,
-            Icon = icon
+            Icon = icon,
+            Area = area
         };
     }
 
@@ -66,6 +69,32 @@ public class DocumentShortcutViewModelTests
 
         var present = CreateShortcut("readme.md");
         present.IsResourceMissing.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// A picker with no selection reports -1. The area must survive that rather than reading out of range
+    /// or resetting to the default.
+    /// </summary>
+    [Test]
+    public void SelectedAreaIndex_SetToNoSelection_LeavesTheAreaUnchanged()
+    {
+        var shortcut = CreateShortcut("readme.md", area: WorkspaceArea.Bottom);
+
+        shortcut.SelectedAreaIndex = -1;
+
+        shortcut.Area.Should().Be(WorkspaceArea.Bottom);
+        shortcut.SelectedAreaIndex.Should().Be(1);
+        shortcut.ToDocumentShortcut().Area.Should().Be(WorkspaceArea.Bottom);
+    }
+
+    [Test]
+    public void SelectedAreaIndex_SelectsTheMatchingArea()
+    {
+        var shortcut = CreateShortcut("readme.md");
+
+        shortcut.SelectedAreaIndex = 2;
+
+        shortcut.Area.Should().Be(WorkspaceArea.Side);
     }
 
     [Test]

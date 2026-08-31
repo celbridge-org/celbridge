@@ -80,7 +80,8 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         var shortcut = new DocumentShortcutViewModel(_iconService, ResourceExists)
         {
             Resource = documentShortcut.Resource,
-            Icon = documentShortcut.Icon
+            Icon = documentShortcut.Icon,
+            Area = documentShortcut.Area
         };
 
         return shortcut;
@@ -125,7 +126,8 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         // The stored properties only. A card also reports the display properties derived from these,
         // which carry no edit of their own.
         if (e.PropertyName != nameof(DocumentShortcutViewModel.Resource)
-            && e.PropertyName != nameof(DocumentShortcutViewModel.Icon))
+            && e.PropertyName != nameof(DocumentShortcutViewModel.Icon)
+            && e.PropertyName != nameof(DocumentShortcutViewModel.Area))
         {
             return;
         }

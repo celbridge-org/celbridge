@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Projects;
 
 /// <summary>
@@ -61,6 +63,12 @@ public sealed record DocumentShortcut
     /// Prefixed icon name for the rail button. Empty takes the default document icon.
     /// </summary>
     public string Icon { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The document area the shortcut opens its document in, which applies only while that document is
+    /// not already open. Never the Utility Panel, which holds no document tabs.
+    /// </summary>
+    public WorkspaceArea Area { get; init; } = WorkspaceArea.Main;
 }
 
 /// <summary>

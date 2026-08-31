@@ -1,5 +1,6 @@
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Projects;
 
@@ -207,7 +208,7 @@ public class ProjectConfigDraftTests
         // entries keep the order the section set.
         var documentShortcuts = new List<DocumentShortcut>
         {
-            new() { Resource = "docs/guide.md", Icon = "bs-book" },
+            new() { Resource = "docs/guide.md", Icon = "bs-book", Area = WorkspaceArea.Bottom },
             new() { Resource = "readme.md" },
         };
 
@@ -216,8 +217,10 @@ public class ProjectConfigDraftTests
         config.DocumentShortcuts.Should().HaveCount(2);
         config.DocumentShortcuts[0].Resource.Should().Be("docs/guide.md");
         config.DocumentShortcuts[0].Icon.Should().Be("bs-book");
+        config.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Bottom);
         config.DocumentShortcuts[1].Resource.Should().Be("readme.md");
         config.DocumentShortcuts[1].Icon.Should().BeEmpty();
+        config.DocumentShortcuts[1].Area.Should().Be(WorkspaceArea.Main);
     }
 
     [Test]

@@ -734,12 +734,16 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                     return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Cancelled);
                 }
 
+                // Read before the tab is removed, so a reopen that requests no position returns the
+                // document to the slot it already held rather than to the start of the row.
+                var existingTabOrder = existingSectionView.GetTabIndex(existingTab);
+
                 existingSectionView.RemoveTab(existingTab);
                 NotifyLayoutChanged();
 
                 // Without an explicit address the document reopens in the section it was already in.
                 var reopenSection = address is not null ? section : existingSectionView.Section;
-                var tabOrder = effectiveOptions.Address?.TabOrder ?? 0;
+                var tabOrder = effectiveOptions.Address?.TabOrder ?? existingTabOrder;
                 var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: reopenSection, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
                 return await OpenDocument(fileResource, reopenOptions);

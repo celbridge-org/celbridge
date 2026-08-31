@@ -49,6 +49,18 @@
         </StackPanel>
 
         <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind AreaLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <ComboBox HorizontalAlignment="Left"
+                    MinWidth="128"
+                    ItemsSource="{x:Bind AreaOptions}"
+                    SelectedIndex="{x:Bind SelectedAreaIndex, Mode=TwoWay}" />
+          <TextBlock Text="{x:Bind AreaHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Spacing="2">
           <TextBlock Text="{x:Bind IconLabel}"
                      Style="{StaticResource FieldLabelTextStyle}" />
           <TextBox IsSpellCheckEnabled="False"

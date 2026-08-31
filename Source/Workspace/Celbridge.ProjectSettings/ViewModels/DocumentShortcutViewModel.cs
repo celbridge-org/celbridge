@@ -1,6 +1,7 @@
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.ProjectSettings.ViewModels;
@@ -11,8 +12,19 @@ namespace Celbridge.ProjectSettings.ViewModels;
 /// </summary>
 public partial class DocumentShortcutViewModel : ObservableObject
 {
+    // The areas a shortcut can open into, in the order the picker lists them. The Utility Panel is absent
+    // because it holds no document tabs.
+    private static readonly List<WorkspaceArea> SelectableAreas =
+    [
+        WorkspaceArea.Main,
+        WorkspaceArea.Bottom,
+        WorkspaceArea.Side,
+    ];
+
     private readonly IIconService _iconService;
     private readonly Func<ResourceKey, bool> _resourceExists;
+
+    private IReadOnlyList<string>? _areaOptions;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayName))]
@@ -24,6 +36,10 @@ public partial class DocumentShortcutViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IconName))]
     [NotifyPropertyChangedFor(nameof(IsIconUnknown))]
     private string _icon = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedAreaIndex))]
+    private WorkspaceArea _area = WorkspaceArea.Main;
 
     /// <summary>
     /// The text the collapsed card shows. A shortcut is identified by the file it opens, so that is its
@@ -108,6 +124,41 @@ public partial class DocumentShortcutViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// The areas the picker offers, in SelectableAreas order. Built on first read, because the labels are
+    /// localized and the view models are also built outside the running application.
+    /// </summary>
+    public IReadOnlyList<string> AreaOptions =>
+        _areaOptions ??= SelectableAreas.Select(ProjectSettingsLabels.WorkspaceAreaName).ToList();
+
+    /// <summary>
+    /// The picker's selected row, over the area the shortcut holds.
+    /// </summary>
+    public int SelectedAreaIndex
+    {
+        get
+        {
+            var index = SelectableAreas.IndexOf(Area);
+
+            // An area the picker does not offer shows as the main area.
+            return index < 0 ? 0 : index;
+        }
+        set
+        {
+            // A picker with no selection reports -1. Ignoring that leaves the area the shortcut holds
+            // rather than clearing it to the default.
+            if (value < 0
+                || value >= SelectableAreas.Count)
+            {
+                return;
+            }
+
+            Area = SelectableAreas[value];
+        }
+    }
+
+    public string AreaLabel => ProjectSettingsLabels.ShortcutAreaLabel;
+    public string AreaHint => ProjectSettingsLabels.ShortcutAreaHint;
     public string ResourceLabel => ProjectSettingsLabels.ShortcutResourceLabel;
     public string ResourcePlaceholder => ProjectSettingsLabels.ShortcutResourcePlaceholder;
     public string ResourceHint => ProjectSettingsLabels.ShortcutResourceHint;
@@ -132,7 +183,8 @@ public partial class DocumentShortcutViewModel : ObservableObject
         return new DocumentShortcut
         {
             Resource = Resource.Trim(),
-            Icon = Icon.Trim()
+            Icon = Icon.Trim(),
+            Area = Area
         };
     }
 }

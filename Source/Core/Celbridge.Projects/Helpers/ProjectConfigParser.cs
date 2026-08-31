@@ -1,4 +1,5 @@
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -28,6 +29,12 @@ public static class ProjectConfigParser
 
     private const string DocumentShortcutResourceKey = "resource";
     private const string DocumentShortcutIconKey = "icon";
+    private const string DocumentShortcutAreaKey = "area";
+
+    // The areas a shortcut can open into, spelled out for the error message it produces. The
+    // Utility Panel is absent because it holds no document tabs.
+    private const string ValidDocumentShortcutAreaTokens =
+        $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}";
 
     private static readonly string[] KnownCelbridgeKeys =
     [
@@ -53,6 +60,7 @@ public static class ProjectConfigParser
     [
         DocumentShortcutResourceKey,
         DocumentShortcutIconKey,
+        DocumentShortcutAreaKey,
     ];
 
     /// <summary>
@@ -488,12 +496,50 @@ public static class ProjectConfigParser
         }
 
         var icon = ReadString(entryTable, DocumentShortcutIconKey);
+        var area = ReadDocumentShortcutArea(entryTable, entryName, entryErrors);
 
         return new DocumentShortcut
         {
             Resource = resource,
-            Icon = icon ?? string.Empty
+            Icon = icon ?? string.Empty,
+            Area = area
         };
+    }
+
+    // The document area the shortcut opens into. An unusable value is reported and the shortcut falls back
+    // to the main area, which still leaves a working button.
+    private static WorkspaceArea ReadDocumentShortcutArea(
+        TomlTable entryTable,
+        string entryName,
+        List<ProjectConfigEntryError> entryErrors)
+    {
+        var areaValue = ReadString(entryTable, DocumentShortcutAreaKey);
+        if (string.IsNullOrEmpty(areaValue))
+        {
+            return WorkspaceArea.Main;
+        }
+
+        if (!WorkspaceAreaTokens.TryParse(areaValue, out var area))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName,
+                $"'{DocumentShortcutAreaKey}' value '{areaValue}' is not a recognized document area " +
+                $"({ValidDocumentShortcutAreaTokens}). The main area was used."));
+
+            return WorkspaceArea.Main;
+        }
+
+        if (area == WorkspaceArea.Utility)
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName,
+                $"'{DocumentShortcutAreaKey}' names the Utility Panel, which holds no document tabs. " +
+                $"The main area was used."));
+
+            return WorkspaceArea.Main;
+        }
+
+        return area;
     }
 
     // Reads an optional boolean activation flag, reporting and ignoring a value of any other type.

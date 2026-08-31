@@ -1,4 +1,5 @@
 using Celbridge.Projects;
+using Celbridge.Workspace;
 using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Projects;
@@ -390,6 +391,50 @@ public class ProjectConfigParserTests
         documentShortcuts[1].Resource.Should().Be("readme.md");
         documentShortcuts[1].Icon.Should().BeEmpty();
         result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutArea_SelectsTheDocumentArea()
+    {
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "notes.md"
+            area = "bottom"
+
+            [[shortcut]]
+            resource = "readme.md"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Bottom);
+        result.Value.DocumentShortcuts[1].Area.Should().Be(WorkspaceArea.Main);
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutNamingTheUtilityPanel_FallsBackToTheMainArea()
+    {
+        // The Utility Panel holds no document tabs, and a bad area still leaves a working shortcut, so it
+        // is reported and defaulted rather than skipping the entry.
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "readme.md"
+            area = "utility"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts.Should().ContainSingle();
+        result.Value.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Main);
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("Utility Panel");
     }
 
     [Test]

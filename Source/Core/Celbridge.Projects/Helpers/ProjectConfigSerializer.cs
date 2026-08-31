@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Celbridge.Workspace;
 
 namespace Celbridge.Projects;
 
@@ -117,6 +118,11 @@ public static class ProjectConfigSerializer
             if (!string.IsNullOrEmpty(documentShortcut.Icon))
             {
                 WriteKeyValue(builder, "icon", TomlStringEncoder.EncodeBasicString(documentShortcut.Icon));
+            }
+
+            if (documentShortcut.Area != WorkspaceArea.Main)
+            {
+                WriteKeyValue(builder, "area", TomlStringEncoder.EncodeBasicString(documentShortcut.Area.ToToken()));
             }
         }
     }

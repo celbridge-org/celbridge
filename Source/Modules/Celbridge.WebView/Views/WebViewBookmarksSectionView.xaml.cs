@@ -62,7 +62,14 @@ public sealed partial class WebViewBookmarksSectionView : UserControl
 
     private void AddCurrentPageButton_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel?.AddBookmarkFromCurrentPage();
+        var bookmark = ViewModel?.AddBookmarkFromCurrentPage();
+        if (bookmark is null)
+        {
+            return;
+        }
+
+        // The card list only opens what its own add button asked for, so an entry added from here says so.
+        BookmarkCards.ExpandCard(bookmark);
     }
 
     private void OpenBookmarkButton_Click(object sender, RoutedEventArgs e)

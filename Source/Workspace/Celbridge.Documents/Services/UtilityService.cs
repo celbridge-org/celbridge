@@ -269,7 +269,7 @@ public class UtilityService : IUtilityService, IDisposable
                 tooltip,
                 fileResource,
                 EditorId.Empty,
-                WorkspaceArea.Main);
+                documentShortcut.Area);
 
             shortcutItems.Add(shortcutItem);
         }
