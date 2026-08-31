@@ -96,4 +96,11 @@ public interface IIconService
     /// resolves: a font bundled for the host's own use is not offered as a choice.
     /// </summary>
     IReadOnlyList<IconCatalogEntry> GetSupportedIcons();
+
+    /// <summary>
+    /// True when the prefixed icon name is one of the supported icons. This is what a user-facing icon
+    /// field accepts without comment, so a name from a font bundled for the host's own use reports false
+    /// here even though it resolves to a glyph.
+    /// </summary>
+    bool IsSupportedIcon(string iconName);
 }

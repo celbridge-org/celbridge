@@ -41,6 +41,39 @@ public class IconPickerDialogViewModelTests
     }
 
     /// <summary>
+    /// The field's text is carried into the search box as the field held it, so a name that was part typed
+    /// does not have to be typed again.
+    /// </summary>
+    [TestCase("bs-journal-text", Description = "a supported name")]
+    [TestCase("journal", Description = "part of a name")]
+    public void Initialize_WithTextThatMatches_SeedsTheSearchWithIt(string iconName)
+    {
+        var viewModel = CreateViewModel(iconName);
+
+        viewModel.SearchText.Should().Be(iconName);
+        viewModel.FilteredItems.Should().NotBeEmpty();
+        viewModel.FilteredItems.Should().Contain(item => item.IconName == "bs-journal-text");
+        viewModel.IsEmptyMessageVisible.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// A seed the supported set cannot match would open the picker on an empty list, which is less use
+    /// than browsing, so it is dropped.
+    /// </summary>
+    [TestCase("bs-not-a-real-icon", Description = "a typo")]
+    [TestCase("nf-seti-json", Description = "a name from the font the host keeps to itself")]
+    public void Initialize_WithASeedThatMatchesNothing_ListsEverySupportedIcon(string iconName)
+    {
+        var supportedIcons = new IconService().GetSupportedIcons();
+
+        var viewModel = CreateViewModel(iconName);
+
+        viewModel.SearchText.Should().BeEmpty();
+        viewModel.FilteredItems.Should().HaveCount(supportedIcons.Count);
+        viewModel.IsEmptyMessageVisible.Should().BeFalse();
+    }
+
+    /// <summary>
     /// A field can hold a name the picker does not offer, either a typing mistake or a Nerd Fonts name
     /// that resolves natively. The dialog opens on the full list rather than on nothing.
     /// </summary>

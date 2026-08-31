@@ -74,6 +74,11 @@
                      Visibility="{x:Bind IsResourceMissing, Mode=OneWay}" />
         </StackPanel>
 
+        <!-- A shortcut with no icon draws the default document icon, so that is what the field previews
+             while it is empty. -->
+        <controls:IconPickerField IconName="{x:Bind Icon, Mode=TwoWay}"
+                                  DefaultSymbol="File" />
+
         <StackPanel Spacing="2">
           <TextBlock Text="{x:Bind AreaLabel}"
                      Style="{StaticResource FieldLabelTextStyle}" />
@@ -84,23 +89,6 @@
           <TextBlock Text="{x:Bind AreaHint}"
                      Style="{StaticResource SupportingTextStyle}"
                      TextWrapping="Wrap" />
-        </StackPanel>
-
-        <StackPanel Spacing="2">
-          <TextBlock Text="{x:Bind IconLabel}"
-                     Style="{StaticResource FieldLabelTextStyle}" />
-          <TextBox IsSpellCheckEnabled="False"
-                   PlaceholderText="{x:Bind IconPlaceholder}"
-                   Text="{x:Bind Icon, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                   KeyDown="CommitField_KeyDown" />
-          <TextBlock Text="{x:Bind IconHint}"
-                     Style="{StaticResource SupportingTextStyle}"
-                     TextWrapping="Wrap" />
-          <TextBlock Text="{x:Bind UnknownIconText}"
-                     Style="{StaticResource SupportingTextStyle}"
-                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                     TextWrapping="Wrap"
-                     Visibility="{x:Bind IsIconUnknown, Mode=OneWay}" />
         </StackPanel>
 
       </StackPanel>

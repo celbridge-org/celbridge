@@ -369,6 +369,26 @@ public class IconService : IIconService
         return supportedIcons;
     }
 
+    public bool IsSupportedIcon(string iconName)
+    {
+        var separatorIndex = iconName.IndexOf('-');
+        if (separatorIndex <= 0)
+        {
+            return false;
+        }
+
+        var prefix = iconName.Substring(0, separatorIndex);
+
+        var iconFontSet = _iconFontSets.FirstOrDefault(fontSet => fontSet.Prefix == prefix);
+        if (iconFontSet is null
+            || !iconFontSet.IsUserFacing)
+        {
+            return false;
+        }
+
+        return TryGetGlyph(iconName, out _);
+    }
+
     private IconGlyph FallbackGlyph()
     {
         if (TryGetGlyph(FallbackIconName, out IconGlyph fallback))

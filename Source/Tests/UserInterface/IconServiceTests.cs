@@ -237,6 +237,22 @@ public class IconServiceTests
     }
 
     /// <summary>
+    /// What a user-facing icon field accepts without comment. A Nerd Fonts name still draws, so it is
+    /// reported as unsupported rather than as unresolvable.
+    /// </summary>
+    [TestCase("bs-journal-text", true, Description = "a supported icon")]
+    [TestCase("nf-seti-json", false, Description = "resolvable, but from the font the host keeps to itself")]
+    [TestCase("bs-no-such-icon", false, Description = "unknown name in the supported font")]
+    [TestCase("journal-text", false, Description = "unprefixed name")]
+    [TestCase("", false, Description = "no name")]
+    public void IsSupportedIcon_AnswersForTheUserFacingFontOnly(string iconName, bool isSupported)
+    {
+        var iconService = new IconService();
+
+        iconService.IsSupportedIcon(iconName).Should().Be(isSupported);
+    }
+
+    /// <summary>
     /// The picker lists the icons in the order they arrive, so the order is the service's to decide.
     /// </summary>
     [Test]

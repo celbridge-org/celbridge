@@ -35,10 +35,20 @@ public partial class IconPickerDialogViewModel : ObservableObject
             .Select(catalogEntry => new IconPickerItem(catalogEntry))
             .ToList();
 
+        // The field's text opens the dialog as a search, so a name already part typed does not have to be
+        // typed again.
+        SearchText = selectedIconName.Trim();
         UpdateFilteredItems();
 
+        // A seed matching nothing, such as a typo or a name from the font the host keeps to itself, is
+        // dropped: the whole set is more use than an empty list.
+        if (FilteredItems.Count == 0)
+        {
+            SearchText = string.Empty;
+        }
+
         // A name the supported set does not carry leaves the list unselected, so the dialog opens on the
-        // full list rather than on nothing.
+        // list rather than on nothing.
         SelectedItem = _allItems.FirstOrDefault(item => item.IconName == selectedIconName);
     }
 

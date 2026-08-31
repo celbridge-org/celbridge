@@ -44,6 +44,10 @@ public sealed partial class IconPickerDialog : ContentDialog, IIconPickerDialog
         }
 
         SearchTextBox.Focus(FocusState.Programmatic);
+
+        // The seeded search is a suggestion, so it is selected: one keystroke replaces it, and one more
+        // clears it to browse the whole set.
+        SearchTextBox.SelectAll();
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
