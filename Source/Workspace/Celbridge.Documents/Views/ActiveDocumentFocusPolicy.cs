@@ -1,12 +1,30 @@
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Decides whether a change of active document carries the keyboard to that document. A pure function
-/// because the rule keeps focus and activation from driving each other, which a live web surface would
-/// otherwise be needed to exercise.
+/// Decides what a focus report does to the active document: whether the report makes its document active,
+/// and whether a change of active document carries the keyboard to it. Pure functions because the rules keep
+/// focus and activation from driving each other, which a live web surface would otherwise be needed to
+/// exercise.
 /// </summary>
 public static class ActiveDocumentFocusPolicy
 {
+    /// <summary>
+    /// Whether a focus report naming a document should make that document the active one.
+    /// </summary>
+    public static bool ShouldActivate(ResourceKey documentResource, ResourceKey activeDocument)
+    {
+        // A report that names no document cannot activate one.
+        if (documentResource.IsEmpty)
+        {
+            return false;
+        }
+
+        // Focus moving between the controls inside one document reports that document on every step.
+        // Activating each time would reselect its tab and re-broadcast the active document for a move that
+        // changed nothing.
+        return documentResource != activeDocument;
+    }
+
     /// <summary>
     /// Whether the document that just became active should be given keyboard focus.
     /// </summary>

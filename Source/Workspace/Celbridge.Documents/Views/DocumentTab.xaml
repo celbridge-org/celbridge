@@ -14,6 +14,18 @@
 
     <muxc:TabViewItem.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+        <!-- The two selection indicator bars sit one over the other and have to line up exactly, so their
+             geometry is declared once here. The bottom margin stops short of the strip's bottom edge so the
+             scroll indicator can sit below it rather than across it while the strip overflows. -->
+        <Style x:Key="SelectionIndicatorStyle" TargetType="Border">
+            <Setter Property="Height" Value="3" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="0,0,-36,-1" />
+            <Setter Property="Visibility" Value="Collapsed" />
+        </Style>
     </muxc:TabViewItem.Resources>
 
     <muxc:TabViewItem.ContextFlyout>
@@ -79,16 +91,16 @@
                            ToolTipService.Placement="Bottom" />
             </StackPanel>
             
-            <!-- Selection indicator. The bottom margin stops short of the strip's bottom edge so the scroll
-                 indicator can sit below it rather than across it while the strip overflows. -->
+            <!-- Selection indicator. The neutral bar marks the active document. The accent bar over it marks
+                 the documents panel holding the keyboard, so the bar reads as accent only while the document
+                 shortcuts are live. -->
             <Border x:Name="SelectionIndicator"
-                    Height="3"
-                    CornerRadius="1.5"
-                    Background="{ThemeResource AccentContrastBrush}"
-                    Visibility="Collapsed"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Bottom"
-                    Margin="0,0,-36,-1" />
+                    Style="{StaticResource SelectionIndicatorStyle}"
+                    Background="{ThemeResource ButtonActiveBackgroundBrush}" />
+
+            <Border x:Name="FocusedSelectionIndicator"
+                    Style="{StaticResource SelectionIndicatorStyle}"
+                    Background="{ThemeResource AccentContrastBrush}" />
         </Grid>
     </muxc:TabViewItem.Header>
 

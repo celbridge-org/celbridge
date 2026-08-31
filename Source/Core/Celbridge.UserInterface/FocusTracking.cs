@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface;
@@ -43,6 +44,24 @@ public static class FocusTracking
         }
 
         return FocusPanelId.None;
+    }
+
+    /// <summary>
+    /// Walks from the element towards the visual root and returns the nearest document view it sits inside,
+    /// or null when it sits inside none. A document view is the root of its tab's content, so this is the
+    /// rule that names the document an element belongs to.
+    /// </summary>
+    public static IDocumentView? FindDocumentView(DependencyObject element)
+    {
+        foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
+        {
+            if (ancestor is IDocumentView documentView)
+            {
+                return documentView;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

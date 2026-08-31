@@ -53,6 +53,9 @@ public partial class DocumentTab : TabViewItem
     // When the last double tap was handled, used to discard the duplicate that follows it.
     private DateTime _lastDoubleTapTime;
 
+    // Whether the documents panel holds the keyboard, which the selection indicator's tone shows.
+    private bool _isPanelFocused;
+
     public DocumentTabViewModel ViewModel { get; }
 
     /// <summary>
@@ -208,17 +211,24 @@ public partial class DocumentTab : TabViewItem
     }
 
     /// <summary>
-    /// Updates the visual state to indicate whether this tab is the active document.
+    /// Updates the visual state to indicate whether this tab is the active document, and whether the
+    /// documents panel holds the keyboard.
     /// </summary>
-    public void UpdateActiveDocumentState(bool isActiveDocument)
+    public void UpdateActiveDocumentState(bool isActiveDocument, bool isPanelFocused)
     {
-        if (IsActiveDocument == isActiveDocument)
+        if (IsActiveDocument == isActiveDocument
+            && _isPanelFocused == isPanelFocused)
         {
             return;
         }
 
         IsActiveDocument = isActiveDocument;
+        _isPanelFocused = isPanelFocused;
+
         SelectionIndicator.Visibility = isActiveDocument ? Visibility.Visible : Visibility.Collapsed;
+
+        bool isFocusedActiveDocument = isActiveDocument && isPanelFocused;
+        FocusedSelectionIndicator.Visibility = isFocusedActiveDocument ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ContextMenu_Close(object sender, RoutedEventArgs e)

@@ -1,4 +1,5 @@
 using Celbridge.Documents;
+using Celbridge.Logging;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Resources;
 using Celbridge.UserInterface;
@@ -18,6 +19,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     private const double SaveDelay = 1.0;
 
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly ILogger<ProjectSettingsEditorView> _logger;
 
     private double _saveTimer = SaveDelay;
 
@@ -32,6 +34,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     public ProjectSettingsEditorView()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _logger = ServiceLocator.AcquireService<ILogger<ProjectSettingsEditorView>>();
 
         ViewModel = ServiceLocator.AcquireService<ProjectSettingsEditorViewModel>();
         ViewModel.InitializeSections(BuildSections());
@@ -209,7 +212,13 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 
     public void FocusDocument()
     {
-        Focus(FocusState.Programmatic);
+        // The rail is this document's own navigation, so it is what holds the keyboard. Focusing the view
+        // itself does nothing: a UserControl is not a tab stop, so the call fails and leaves focus where it
+        // was, which is why the failure is reported rather than discarded.
+        if (!SectionSwitcher.FocusRail())
+        {
+            _logger.LogDebug("The Project Settings rail did not take focus");
+        }
     }
 
     public async Task<bool> CanClose()

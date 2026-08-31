@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
@@ -9,23 +10,27 @@ using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Observes every managed focus change in the window and reports the focused panel to the focus
-/// service, classifying each focused element by its nearest ancestor declaring FocusTracking.Panel.
+/// Observes every managed focus change in the window and reports what the focused element belongs to: the
+/// panel, taken from its nearest ancestor declaring FocusTracking.Panel, and the document it sits in, taken
+/// from its nearest IDocumentView ancestor.
 /// </summary>
 public class PanelFocusTracker
 {
     private readonly IFocusService _focusService;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
+    private readonly IMessengerService _messengerService;
     private readonly ILogger<PanelFocusTracker> _logger;
     private bool _isStarted;
 
     public PanelFocusTracker(
         IFocusService focusService,
         IWebViewFocusRegistry webViewFocusRegistry,
+        IMessengerService messengerService,
         ILogger<PanelFocusTracker> logger)
     {
         _focusService = focusService;
         _webViewFocusRegistry = webViewFocusRegistry;
+        _messengerService = messengerService;
         _logger = logger;
     }
 
@@ -77,6 +82,12 @@ public class PanelFocusTracker
             return;
         }
 
+        // The document the focused element sits in, which the report below makes the active document. A
+        // press that lands on nothing focusable raises no focus change at all, so the section view reports
+        // that case from the pointer instead.
+        var documentView = FocusTracking.FindDocumentView(element);
+        var documentResource = documentView?.FileResource ?? ResourceKey.Empty;
+
         // Walk towards the visual root, taking the nearest Panel declaration. No declaration
         // classifies as None, which clears panel focus but preserves the edit context.
         var panel = FocusPanelId.None;
@@ -123,13 +134,21 @@ public class PanelFocusTracker
         }
 
         _logger.LogTrace(
-            "Managed focus moved to {Element}, classified as {Panel}",
+            "Managed focus moved to {Element}, classified as {Panel}, document {Document}",
             element.GetType().Name,
-            panel);
+            panel,
+            documentResource.IsEmpty ? "none" : documentResource.ToString());
 
         // The focus service treats a repeated report for the current panel and target as a no-op,
         // so intra-panel focus moves do not spam it.
         var claim = FocusClaim.FromManagedControl(panel, editTarget);
         _focusService.OnFocusReceived(claim);
+
+        // Reported after the claim so the activation it drives sees the panel the document belongs to.
+        if (!documentResource.IsEmpty)
+        {
+            var message = new DocumentViewFocusedMessage(documentResource);
+            _messengerService.Send(message);
+        }
     }
 }

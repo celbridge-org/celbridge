@@ -120,6 +120,14 @@ public sealed partial class SettingsSectionSwitcher : UserControl
         SectionArea.CornerRadius = new CornerRadius(panelCornerRadius);
     }
 
+    /// <summary>
+    /// Gives the keyboard to the rail, the switcher's own navigation, and reports whether it took it.
+    /// </summary>
+    public bool FocusRail()
+    {
+        return RailItems.Focus(FocusState.Programmatic);
+    }
+
     private static void OnSectionsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var switcher = (SettingsSectionSwitcher)d;

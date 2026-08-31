@@ -1,7 +1,10 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Platform;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -22,7 +25,10 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly IDocumentSectionViewLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
+    private readonly IMessengerService _messengerService;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly PointerEventHandler _tabStripWheelHandler;
+    private readonly PointerEventHandler _documentPointerPressedHandler;
     private bool _isShuttingDown = false;
     private bool _scrollButtonsHidden;
     private bool _scrollIndicatorAttached;
@@ -92,9 +98,17 @@ public sealed partial class DocumentSectionView : UserControl
         _logger = ServiceLocator.AcquireService<IDocumentSectionViewLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _tabPointerPressedHandler = OnTabPointerPressed;
         _tabStripWheelHandler = OnTabStripPointerWheelChanged;
+        _documentPointerPressedHandler = OnDocumentPointerPressed;
         DisableBuiltInTabDrag();
+
+        // A press inside a document makes it the active document. Subscribed for handled events too, and on
+        // the section root rather than on each document view, because the controls a document is built from
+        // mark their own presses handled and a view is adopted into the tab long after this runs.
+        RootGrid.AddHandler(PointerPressedEvent, _documentPointerPressedHandler, handledEventsToo: true);
 
         TabView.Loaded += OnTabViewLoaded;
 
@@ -110,6 +124,91 @@ public sealed partial class DocumentSectionView : UserControl
         {
             TabView.AddHandler(PointerWheelChangedEvent, _tabStripWheelHandler, handledEventsToo: true);
         }
+    }
+
+    // The web surfaces report a click anywhere over them, while managed focus only moves for a press that
+    // lands on a focusable control. Reporting from the pointer gives a document built from managed controls
+    // the same region: press its empty space and it becomes the active document, as pressing a control does.
+    private void OnDocumentPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        if (e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var documentView = FocusTracking.FindDocumentView(source);
+        if (documentView is null)
+        {
+            // The tab strip and the empty-section placeholder sit outside every document view. A press on a
+            // tab header reports through the tab's own tap handler instead.
+            return;
+        }
+
+        var message = new DocumentViewFocusedMessage(documentView.FileResource);
+        _messengerService.Send(message);
+
+        // A press over a web surface belongs to the page: it takes the keyboard natively and reports that
+        // itself, so handing focus to the document as well would take the caret off whatever was clicked.
+        if (IsPressOverWebSurface(source))
+        {
+            return;
+        }
+
+        // Focus settles after the press, so whether it reached anything is only known once it has. Deferred
+        // rather than resolved here so a press that did reach a control leaves that control focused.
+        _ = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => FocusDocumentIfUnclaimed(documentView));
+    }
+
+    // Whether the press landed inside a web surface. Read from where the press landed rather than from which
+    // surface holds focus, because a page reports gaining and losing the keyboard over its own message
+    // channel, which has not necessarily arrived by the time focus is handed over.
+    private bool IsPressOverWebSurface(DependencyObject source)
+    {
+        foreach (var ancestor in VisualTree.GetAncestors(source, includeSelf: true))
+        {
+            if (_webViewFocusRegistry.IsRegisteredWebSurface(ancestor))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Hands the keyboard to a document whose press landed on nothing that could take it, so pressing its
+    // empty space leaves the document holding focus rather than nothing at all.
+    private void FocusDocumentIfUnclaimed(IDocumentView documentView)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // The section left the visual tree between the press and this callback, so there is no focus to read
+        // and nothing to give it to.
+        var xamlRoot = XamlRoot;
+        if (xamlRoot is null)
+        {
+            return;
+        }
+
+        var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
+        if (focusedElement is not null
+            && ReferenceEquals(FocusTracking.FindDocumentView(focusedElement), documentView))
+        {
+            return;
+        }
+
+        _logger.LogTrace("Giving focus to {Document}, whose press reached nothing focusable", documentView.FileResource);
+
+        documentView.FocusDocument();
     }
 
     private void OnTabViewLoaded(object sender, RoutedEventArgs e)
