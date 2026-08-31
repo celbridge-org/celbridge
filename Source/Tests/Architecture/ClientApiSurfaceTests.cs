@@ -21,6 +21,7 @@ public class ClientApiSurfaceTests
         {
             "alert",
             "pickFile",
+            "pickIcon",
             "pickImage",
             "toast"
         },

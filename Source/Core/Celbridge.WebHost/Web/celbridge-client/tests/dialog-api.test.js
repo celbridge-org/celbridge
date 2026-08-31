@@ -13,6 +13,33 @@ function createTransport() {
     };
 }
 
+describe('DialogAPI.pickIcon', () => {
+    it('sends the icon the field holds, and returns the chosen name', async () => {
+        const transport = createTransport();
+        transport.request = async (method, params) => {
+            transport.requests.push({ method, params });
+            return { iconName: 'bs-gear' };
+        };
+        const dialog = new DialogAPI(transport);
+
+        const iconName = await dialog.pickIcon('bs-floppy');
+
+        expect(iconName).toBe('bs-gear');
+        expect(transport.requests).toEqual([{
+            method: 'dialog/pickIcon',
+            params: { iconName: 'bs-floppy' }
+        }]);
+    });
+
+    it('returns null when the picker is dismissed', async () => {
+        const transport = createTransport();
+        transport.request = async () => ({ iconName: null });
+        const dialog = new DialogAPI(transport);
+
+        await expect(dialog.pickIcon('')).resolves.toBeNull();
+    });
+});
+
 describe('DialogAPI.toast', () => {
     it('sends the severity and message over the bridge', async () => {
         const transport = createTransport();

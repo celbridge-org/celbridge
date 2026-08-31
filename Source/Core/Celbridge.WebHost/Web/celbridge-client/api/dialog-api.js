@@ -35,6 +35,16 @@ export class DialogAPI {
     }
 
     /**
+     * Opens the icon picker over the icons the host supports.
+     * @param {string} [iconName] - The icon the picker opens on, and the search it opens with.
+     * @returns {Promise<string|null>} - The chosen icon name, or null if cancelled.
+     */
+    async pickIcon(iconName) {
+        const result = await this.#transport.request('dialog/pickIcon', { iconName });
+        return result.iconName;
+    }
+
+    /**
      * Shows an alert dialog.
      * @param {string} title - The alert title.
      * @param {string} message - The alert message.

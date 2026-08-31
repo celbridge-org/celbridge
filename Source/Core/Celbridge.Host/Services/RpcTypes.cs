@@ -42,6 +42,11 @@ public record PickImageResult(string? Path);
 public record PickFileResult(string? Path);
 
 /// <summary>
+/// Result of the dialog/pickIcon request.
+/// </summary>
+public record PickIconResult(string? IconName);
+
+/// <summary>
 /// Result of the dialog/alert request.
 /// </summary>
 public record AlertResult();

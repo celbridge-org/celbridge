@@ -635,6 +635,31 @@ hr {
     resize: vertical;
 }
 
+/* Icon field: the name, a preview of the glyph it draws, and the button onto the host's icon picker, on one
+   row. Built by ui/icon-field.js, which owns the classes below. */
+.cel-icon-field-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cel-icon-field-row .cel-icon-field-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.cel-icon-field-preview {
+    flex: none;
+    width: 20px;
+    text-align: center;
+    font-size: var(--cel-icon-size-medium);
+    color: var(--cel-text-primary);
+}
+
+.cel-icon-field-browse {
+    flex: none;
+}
+
 /* The browser default placeholder is dim enough that an empty field reads as disabled. Lift it to the
    secondary text colour (matching the labels and hints) and cancel the UA opacity so it stays legible. */
 .field input::placeholder,
