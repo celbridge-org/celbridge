@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Celbridge.Projects;
+using Celbridge.Documents;
 using Celbridge.UserInterface;
+using Celbridge.Utilities;
 
 namespace Celbridge.ProjectSettings.ViewModels;
 
@@ -73,6 +75,25 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         };
 
         Shortcuts.Add(CreateShortcut(documentShortcut));
+    }
+
+    /// <summary>
+    /// Opens a shortcut's document where its rail button would, so the shortcut can be checked before the
+    /// project is reloaded and the rail gains its button.
+    /// </summary>
+    public void OpenShortcut(DocumentShortcutViewModel shortcut)
+    {
+        var fileResource = shortcut.TryGetFileResource();
+        if (fileResource is null)
+        {
+            return;
+        }
+
+        CommandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource.Value;
+            command.TargetSection = shortcut.Area.GetPrimaryDocumentSection();
+        });
     }
 
     private DocumentShortcutViewModel CreateShortcut(DocumentShortcut documentShortcut)

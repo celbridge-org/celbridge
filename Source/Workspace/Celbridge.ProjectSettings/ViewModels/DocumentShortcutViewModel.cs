@@ -30,6 +30,7 @@ public partial class DocumentShortcutViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DisplayName))]
     [NotifyPropertyChangedFor(nameof(IsResourceInvalid))]
     [NotifyPropertyChangedFor(nameof(IsResourceMissing))]
+    [NotifyPropertyChangedFor(nameof(CanOpen))]
     private string _resource = string.Empty;
 
     [ObservableProperty]
@@ -96,13 +97,13 @@ public partial class DocumentShortcutViewModel : ObservableObject
     {
         get
         {
-            var resourceText = Resource.Trim();
-            if (!ResourceKey.TryCreate(resourceText, out var fileResource))
+            var fileResource = TryGetFileResource();
+            if (fileResource is null)
             {
                 return false;
             }
 
-            return !_resourceExists(fileResource);
+            return !_resourceExists(fileResource.Value);
         }
     }
 
@@ -157,6 +158,45 @@ public partial class DocumentShortcutViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// True when the shortcut names a resource the project holds, so it can be opened to check it is the
+    /// intended file. A shortcut may name a file the project has yet to gain, which cannot be opened yet.
+    /// </summary>
+    public bool CanOpen
+    {
+        get
+        {
+            var fileResource = TryGetFileResource();
+            if (fileResource is null)
+            {
+                return false;
+            }
+
+            return _resourceExists(fileResource.Value);
+        }
+    }
+
+    /// <summary>
+    /// The resource the shortcut names, or null when it names none, or names something that is not a
+    /// resource key. An empty key parses, so a card that has not been filled in yet reports null here.
+    /// </summary>
+    public ResourceKey? TryGetFileResource()
+    {
+        var resourceText = Resource.Trim();
+        if (string.IsNullOrEmpty(resourceText))
+        {
+            return null;
+        }
+
+        if (!ResourceKey.TryCreate(resourceText, out var fileResource))
+        {
+            return null;
+        }
+
+        return fileResource;
+    }
+
+    public string OpenTooltip => ProjectSettingsLabels.ShortcutOpenTooltip;
     public string AreaLabel => ProjectSettingsLabels.ShortcutAreaLabel;
     public string AreaHint => ProjectSettingsLabels.ShortcutAreaHint;
     public string ResourceLabel => ProjectSettingsLabels.ShortcutResourceLabel;

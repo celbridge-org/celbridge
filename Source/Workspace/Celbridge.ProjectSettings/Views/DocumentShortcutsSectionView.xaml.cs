@@ -37,6 +37,17 @@ public sealed partial class DocumentShortcutsSectionView : UserControl
         ViewModel?.AddShortcut();
     }
 
+    private void OpenShortcutButton_Click(object sender, RoutedEventArgs e)
+    {
+        var openButton = (FrameworkElement)sender;
+        if (openButton.DataContext is not DocumentShortcutViewModel shortcut)
+        {
+            return;
+        }
+
+        ViewModel?.OpenShortcut(shortcut);
+    }
+
     private void CommitField_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         FocusNavigationHelper.CommitFieldOnEnter(sender, e);

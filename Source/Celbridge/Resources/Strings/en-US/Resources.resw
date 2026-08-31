@@ -902,6 +902,9 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ShortcutMissingResource" xml:space="preserve">
     <value>This project has no file at this path yet.</value>
   </data>
+  <data name="ProjectSettings_ShortcutOpenTooltip" xml:space="preserve">
+    <value>Open this document</value>
+  </data>
   <data name="ProjectSettings_ShortcutAreaLabel" xml:space="preserve">
     <value>Opens in</value>
   </data>

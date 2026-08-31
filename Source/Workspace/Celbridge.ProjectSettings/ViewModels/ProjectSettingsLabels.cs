@@ -45,6 +45,7 @@ internal static class ProjectSettingsLabels
     public static string ShortcutResourceHint => Localizer.GetString("ProjectSettings_ShortcutResourceHint");
     public static string ShortcutInvalidResource => Localizer.GetString("ProjectSettings_ShortcutInvalidResource");
     public static string ShortcutMissingResource => Localizer.GetString("ProjectSettings_ShortcutMissingResource");
+    public static string ShortcutOpenTooltip => Localizer.GetString("ProjectSettings_ShortcutOpenTooltip");
     public static string ShortcutAreaLabel => Localizer.GetString("ProjectSettings_ShortcutAreaLabel");
     public static string ShortcutAreaHint => Localizer.GetString("ProjectSettings_ShortcutAreaHint");
     public static string ShortcutIconLabel => Localizer.GetString("ProjectSettings_ShortcutIconLabel");

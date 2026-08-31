@@ -23,6 +23,15 @@
       </StackPanel>
     </DataTemplate>
 
+    <DataTemplate x:Key="ShortcutActionsTemplate" x:DataType="vm:DocumentShortcutViewModel">
+      <controls:IconButton VerticalAlignment="Center"
+                           IsEnabled="{x:Bind CanOpen, Mode=OneWay}"
+                           ToolTipService.ToolTip="{x:Bind OpenTooltip}"
+                           Click="OpenShortcutButton_Click">
+        <controls:Icon IconName="bs-arrow-up-right" FontSize="{StaticResource IconSizeMedium}" />
+      </controls:IconButton>
+    </DataTemplate>
+
     <DataTemplate x:Key="ShortcutBodyTemplate" x:DataType="vm:DocumentShortcutViewModel">
       <StackPanel Spacing="12">
 
@@ -85,6 +94,7 @@
   <ScrollViewer Padding="12">
     <controls:CardListView x:Name="ShortcutCards"
                            HeaderTemplate="{StaticResource ShortcutHeaderTemplate}"
+                           HeaderActionsTemplate="{StaticResource ShortcutActionsTemplate}"
                            BodyTemplate="{StaticResource ShortcutBodyTemplate}"
                            AddButtonText="{x:Bind ViewModel.AddShortcutText, Mode=OneWay}"
                            EmptyText="{x:Bind ViewModel.EmptyText, Mode=OneWay}" />

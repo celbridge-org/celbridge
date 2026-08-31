@@ -72,6 +72,18 @@ public class DocumentShortcutViewModelTests
     }
 
     /// <summary>
+    /// An empty resource key parses, so a card the user has not filled in yet has to be recognized as
+    /// unconfigured rather than reported as naming a file the project is missing.
+    /// </summary>
+    [Test]
+    public void IsResourceMissing_ForABlankResource_IsFalse()
+    {
+        var shortcut = CreateShortcut(string.Empty, resourceExists: false);
+
+        shortcut.IsResourceMissing.Should().BeFalse();
+    }
+
+    /// <summary>
     /// A picker with no selection reports -1. The area must survive that rather than reading out of range
     /// or resetting to the default.
     /// </summary>
@@ -95,6 +107,20 @@ public class DocumentShortcutViewModelTests
         shortcut.SelectedAreaIndex = 2;
 
         shortcut.Area.Should().Be(WorkspaceArea.Side);
+    }
+
+    /// <summary>
+    /// The open button checks a shortcut before the project is reloaded, so it is offered only for a
+    /// resource that can be opened now.
+    /// </summary>
+    [Test]
+    public void CanOpen_IsTrueOnlyForAResourceTheProjectHolds()
+    {
+        CreateShortcut("readme.md").CanOpen.Should().BeTrue();
+
+        CreateShortcut("readme.md", resourceExists: false).CanOpen.Should().BeFalse();
+        CreateShortcut("docs//guide.md").CanOpen.Should().BeFalse();
+        CreateShortcut(string.Empty).CanOpen.Should().BeFalse();
     }
 
     [Test]
