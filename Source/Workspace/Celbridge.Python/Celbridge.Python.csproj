@@ -27,7 +27,7 @@
     <!-- The wheel is generated during the build and re-included by IncludeGeneratedPythonWheel.
          Excluding it from the default Assets glob avoids a duplicate MSIX payload (APPX1101) on the
          packaged Windows head. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Python\*.whl</DefaultItemExcludes>
+    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Python\*.whl</CelbridgeDefaultItemExcludes>
 
   </PropertyGroup>
 
