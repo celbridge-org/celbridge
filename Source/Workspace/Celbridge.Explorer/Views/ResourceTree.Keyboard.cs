@@ -43,6 +43,9 @@ public sealed partial class ResourceTree : IEditTarget
         };
     }
 
+    // The tree copies and pastes resources through the application's own file clipboard.
+    public bool HostMediatedClipboard => true;
+
     public bool CanPerformEdit(EditIntent intent)
     {
         var selectedItem = ViewModel.SelectedItem;

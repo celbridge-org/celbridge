@@ -40,6 +40,12 @@ public interface IEditTarget
     /// focus navigation proceed. May be fire-and-forget.
     /// </summary>
     bool TryHandleTabKey(bool shift);
+
+    /// <summary>
+    /// Whether the surface's Cut, Copy and Paste run through the host rather than the platform. When true, a
+    /// clipboard verb the surface reports unavailable is genuinely unavailable.
+    /// </summary>
+    bool HostMediatedClipboard { get; }
 }
 
 /// <summary>
@@ -53,7 +59,8 @@ public record EditAvailability(
     bool CanSelectAll,
     bool CanUndo,
     bool CanRedo,
-    bool CanIndent)
+    bool CanIndent,
+    bool HostMediatedClipboard = false)
 {
     /// <summary>
     /// The default for an editor that has reported nothing yet: nothing is allowed.

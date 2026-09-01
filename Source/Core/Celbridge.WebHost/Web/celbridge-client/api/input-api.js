@@ -55,6 +55,10 @@ export class InputAPI {
      * @param {boolean} [availability.canRedo]
      * @param {boolean} [availability.canIndent] - Whether the editor indents on Tab, so the host keeps Tab
      *   inside the editor instead of letting it move focus.
+     * @param {boolean} [availability.hostMediatedClipboard] - Whether the host performs this editor's cut,
+     *   copy, and paste, exchanging plain text over `editor/getSelectedText` and `editor/insertText`. Leave
+     *   this false to keep the platform's own clipboard, which a rich text editor needs to preserve its
+     *   formatting; the host then stands aside for those three verbs.
      */
     notifyEditAvailability(availability = {}) {
         this.#transport.notify('input/editAvailabilityChanged', {
@@ -64,7 +68,20 @@ export class InputAPI {
             canSelectAll: availability.canSelectAll === true,
             canUndo: availability.canUndo === true,
             canRedo: availability.canRedo === true,
-            canIndent: availability.canIndent === true
+            canIndent: availability.canIndent === true,
+            hostMediatedClipboard: availability.hostMediatedClipboard === true
         });
+    }
+
+    /**
+     * Asks the host to perform an edit verb on this editor. A WebView cannot reach the clipboard on every
+     * head, so an editor that draws its own menu calls this for the verbs it cannot run itself instead of
+     * going to the clipboard directly. The host performs the same verb the menu bar and the keyboard
+     * shortcut do.
+     * @param {string} command - The editor command name: cut, copy, paste, selectAll, undo, or redo.
+     * @returns {Promise<void>} Resolves once the verb has been applied.
+     */
+    requestEdit(command) {
+        return this.#transport.request('input/requestEdit', { command });
     }
 }

@@ -1095,6 +1095,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         return _editAvailability.Allows(intent);
     }
 
+    public bool HostMediatedClipboard => _editAvailability.HostMediatedClipboard;
+
     public void PerformEdit(EditIntent intent)
     {
         // The WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView,
@@ -1176,6 +1178,31 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
     }
 
+    public Task RequestEditAsync(string command)
+    {
+        // Acts on this editor, which is the surface whose own menu raised the request.
+        var intent = command switch
+        {
+            "cut" => EditIntent.Cut,
+            "copy" => EditIntent.Copy,
+            "paste" => EditIntent.Paste,
+            "selectAll" => EditIntent.SelectAll,
+            "undo" => EditIntent.Undo,
+            "redo" => EditIntent.Redo,
+            _ => (EditIntent?)null
+        };
+
+        if (intent is null)
+        {
+            _logger.LogWarning("Ignored an edit request naming the unknown command '{Command}'", command);
+            return Task.CompletedTask;
+        }
+
+        PerformEdit(intent.Value);
+
+        return Task.CompletedTask;
+    }
+
     private async Task PasteIntoEditorAsync()
     {
         var host = Host;
@@ -1193,6 +1220,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             }
 
             var text = await dataPackageView.GetTextAsync();
+            if (string.IsNullOrEmpty(text))
+            {
+                // Editors read an empty insert as a cut's clear step.
+                return;
+            }
+
             await host.Rpc.NotifyWithParameterObjectAsync(EditorRpcMethods.InsertText, new { text });
         }
         catch (Exception ex)
@@ -1208,7 +1241,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         bool canSelectAll,
         bool canUndo,
         bool canRedo,
-        bool canIndent = false)
+        bool canIndent = false,
+        bool hostMediatedClipboard = false)
     {
         _editAvailability = new EditAvailability(
             canCopy,
@@ -1217,7 +1251,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             canSelectAll,
             canUndo,
             canRedo,
-            canIndent);
+            canIndent,
+            hostMediatedClipboard);
     }
 
     private void OnHostChannelRebound(object? sender, EventArgs e)

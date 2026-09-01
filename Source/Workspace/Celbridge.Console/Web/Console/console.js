@@ -187,6 +187,7 @@ function reportEditAvailability() {
         canCopy: term.hasSelection(),
         canPaste: true,
         canSelectAll: true,
+        hostMediatedClipboard: true,
     });
 }
 

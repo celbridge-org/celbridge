@@ -34,6 +34,7 @@ function createMockEditor(model) {
         onDidChangeCursorSelection: vi.fn(),
         onDidFocusEditorText: vi.fn(),
         onDidBlurEditorText: vi.fn(),
+        executeEdits: vi.fn(),
         hasTextFocus: vi.fn(() => true),
         getSelection: vi.fn(() => ({ isEmpty: () => true })),
         setSelection: vi.fn(),
@@ -183,5 +184,99 @@ describe('EditorController.performEdit', () => {
 
         expect(editor.trigger).not.toHaveBeenCalled();
         expect(editor.setSelection).not.toHaveBeenCalled();
+    });
+});
+
+describe('EditorController clipboard text', () => {
+    const EOL = '\n';
+
+    function createDocumentModel(lines) {
+        const model = createMockModel();
+
+        model.getEOL = vi.fn(() => EOL);
+        model.getLineCount = vi.fn(() => lines.length);
+        model.getLineMaxColumn = vi.fn((lineNumber) => lines[lineNumber - 1].length + 1);
+        model.getValueInRange = vi.fn((range) => {
+            const parts = [];
+            for (let lineNumber = range.startLineNumber; lineNumber <= range.endLineNumber; lineNumber++) {
+                const line = lines[lineNumber - 1];
+                const start = lineNumber === range.startLineNumber ? range.startColumn - 1 : 0;
+                const end = lineNumber === range.endLineNumber ? range.endColumn - 1 : line.length;
+                parts.push(line.slice(start, end));
+            }
+
+            return parts.join(EOL);
+        });
+
+        return model;
+    }
+
+    function at(startLineNumber, startColumn, endLineNumber = startLineNumber, endColumn = startColumn) {
+        return {
+            startLineNumber,
+            startColumn,
+            endLineNumber,
+            endColumn,
+            isEmpty: () => startLineNumber === endLineNumber && startColumn === endColumn
+        };
+    }
+
+    let model;
+    let editor;
+    let controller;
+
+    beforeEach(() => {
+        model = createDocumentModel(['alpha', 'beta', 'gamma']);
+        editor = createMockEditor(model);
+        installMonacoStub(editor);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('takes the cursor line and its terminator when nothing is selected', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        expect(controller.getSelectedText()).toBe('beta\n');
+    });
+
+    it('terminates the last line, which carries no terminator of its own', () => {
+        editor.getSelections.mockReturnValue([at(3, 1)]);
+
+        expect(controller.getSelectedText()).toBe('gamma\n');
+    });
+
+    it('takes a line once however many cursors sit on it, in document order', () => {
+        editor.getSelections.mockReturnValue([at(3, 2), at(1, 1), at(3, 4)]);
+
+        expect(controller.getSelectedText()).toBe('alpha\ngamma\n');
+    });
+
+    it('takes the selection, not the line, once anything is selected', () => {
+        editor.getSelections.mockReturnValue([at(1, 2, 1, 4)]);
+
+        expect(controller.getSelectedText()).toBe('lp');
+    });
+
+    it('removes the whole line when the host clears an empty selection', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        controller.insertText('');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
+            range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
+            text: ''
+        }]);
+    });
+
+    it('inserts at the cursor rather than replacing its line', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        controller.insertText('x');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
+            range: { startLineNumber: 2, startColumn: 3, endLineNumber: 2, endColumn: 3 },
+            text: 'x'
+        }]);
     });
 });

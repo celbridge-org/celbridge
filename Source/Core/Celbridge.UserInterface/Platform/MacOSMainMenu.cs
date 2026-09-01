@@ -98,30 +98,10 @@ internal static class MacOSMainMenu
             }
         };
 
-        // The Edit items are responder-chain Selector items (cut:/copy:/paste:/selectAll:/undo:/redo:).
-        // AppKit auto-enables each only when a responder in the chain handles it and routes the action
-        // there, so they target whatever native view holds focus: a hosted WKWebView editor or the project
-        // HTML viewer's form fields. Managed Uno panels (Explorer, Search) are painted on the Skia
-        // canvas and are not AppKit responders, so the items disable there and the key equivalents fall
-        // through to Uno's managed keyboard handling (the same path app-global undo/redo already uses).
         var editMenu = new MacMenu
         {
             Title = Text("Menu_Edit"),
-            Items = new List<MacMenuItem>
-            {
-                MacMenuItem.Selector(Text("Menu_Undo"), "undo:", "z"),
-                MacMenuItem.Selector(Text("Menu_Redo"), "redo:", "z", MacKeyModifier.Command | MacKeyModifier.Shift),
-                MacMenuItem.Separator(),
-                MacMenuItem.Selector(Text("Menu_Cut"), "cut:", "x"),
-                MacMenuItem.Selector(Text("Menu_Copy"), "copy:", "c"),
-                MacMenuItem.Selector(Text("Menu_Paste"), "paste:", "v"),
-                MacMenuItem.Selector(Text("Menu_SelectAll"), "selectAll:", "a"),
-                MacMenuItem.Separator(),
-                // Find is a Command item (not a responder-chain Selector): it targets the active document's
-                // host find bar. It disables when the active document has none (e.g. the Monaco code editor),
-                // so Cmd+F falls through the responder chain and Monaco keeps its own find widget.
-                MacMenuItem.Command(Text("Menu_Find"), TagFind, "f")
-            }
+            Items = BuildEditMenuItems(Text)
         };
 
         // The layout modes carry check marks rather than being separate enter and exit commands, so
@@ -185,6 +165,42 @@ internal static class MacOSMainMenu
         return MacOSMenuInterop.Install(menus, OnCommand, QueryState);
     }
 
+    // The Uno panels are painted on the Skia canvas and are not AppKit responders, so these items are
+    // disabled while one of them holds focus.
+    private static IReadOnlyList<MacMenuItem> BuildEditMenuItems(Func<string, string> text)
+    {
+        var items = new List<MacMenuItem>();
+
+        int? previousGroup = null;
+        foreach (var shortcut in MacOSEditShortcuts.All)
+        {
+            if (previousGroup is not null
+                && shortcut.Group != previousGroup)
+            {
+                items.Add(MacMenuItem.Separator());
+            }
+            previousGroup = shortcut.Group;
+
+            var modifiers = shortcut.Shift
+                ? MacKeyModifier.Command | MacKeyModifier.Shift
+                : MacKeyModifier.Command;
+
+            items.Add(MacMenuItem.Selector(
+                text(shortcut.LabelKey),
+                shortcut.SelectorName,
+                shortcut.Character.ToString(),
+                modifiers));
+        }
+
+        items.Add(MacMenuItem.Separator());
+
+        // Find targets the active document's host find bar, and disables when the document has none so
+        // Cmd+F falls through to the editor's own find.
+        items.Add(MacMenuItem.Command(text("Menu_Find"), TagFind, "f"));
+
+        return items;
+    }
+
     private static IReadOnlyList<MacMenuItem> BuildRecentProjectItems()
     {
         var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
@@ -237,9 +253,6 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState QueryState(long tag)
     {
-        // The standard Edit verbs and Full Screen are responder-chain Selector items (see Install), so
-        // AppKit handles their state. This only covers the Command items below.
-
         // An in-window dialog covers the hamburger menu but leaves the menu bar live, so every command
         // here stays pickable while one is open. Grey the whole bar out for the dialog's lifetime,
         // leaving Quit alone. AppKit re-asks on each open, so this needs no invalidation.
@@ -347,9 +360,6 @@ internal static class MacOSMainMenu
 
     private static void OnCommand(long tag)
     {
-        // The standard Edit verbs are responder-chain Selector items handled by AppKit, so they never
-        // reach this callback. Only the Command items (project, help, about) below are dispatched here.
-
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
         // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
         var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();

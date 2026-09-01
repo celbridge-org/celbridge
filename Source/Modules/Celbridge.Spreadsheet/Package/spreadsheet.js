@@ -218,6 +218,7 @@ function bindSheetEvents() {
 function applyWritableState(state) {
     frameworkReadOnly = state !== 'Writable';
     showReadOnlyOverlay(frameworkReadOnly);
+    reportEditAvailability();
 }
 
 // Visual cue and pointer-event sink. Not the durable read-only block — the
@@ -250,7 +251,8 @@ function initializeSpreadsheet() {
 
     // Fast-fail when either key is missing so SpreadJS never runs on empty strings.
     if (!licenseKey || !designerLicenseKey) {
-        console.error('[Spreadsheet] SpreadJS license keys missing from injected secrets. ' +
+        // Reported to the host log: DevTools are blocked for this package, so console output is unreachable.
+        client.log.error('[Spreadsheet] SpreadJS license keys missing from injected secrets. ' +
             'Expected `spreadjs_license_key` and `spreadjs_designer_license_key`. ' +
             'Got: license=' + (licenseKey ? 'present' : 'missing') +
             ', designer=' + (designerLicenseKey ? 'present' : 'missing') + '.');
@@ -273,39 +275,168 @@ function initializeSpreadsheet() {
         listenForChanges();
         return true;
     } catch (e) {
-        console.error('[Spreadsheet] Designer construction failed:', e);
+        const container = document.getElementById('gc-designer-container');
+        // The container size is logged because a WebView that loads while unarranged reports a zero viewport.
+        client.log.error('[Spreadsheet] Designer construction failed'
+            + ' (container ' + (container ? container.clientWidth + 'x' + container.clientHeight : 'missing')
+            + ', viewport ' + window.innerWidth + 'x' + window.innerHeight + ')', e);
         return false;
     }
 }
 
-// Applies Tab (or Shift+Tab) to the workbook. The host swallows the native key so focus stays in the
-// document, then forwards it here.
-function handleTabKey(shift) {
+// The workbook and its active sheet, or null while the editor is unavailable (SpreadJS throws from
+// getWorkbook when it rejected the license).
+function getActiveSheet() {
     if (!designer) {
-        return;
+        return null;
     }
 
     let spread;
     try {
         spread = designer.getWorkbook();
     } catch {
-        return;
+        return null;
     }
 
     const sheet = spread?.getActiveSheet();
     if (!sheet) {
+        return null;
+    }
+
+    return { spread, sheet };
+}
+
+// Applies Tab (or Shift+Tab) to the workbook, which the host forwards after swallowing the native key.
+function handleTabKey(shift) {
+    const context = getActiveSheet();
+    if (!context) {
         return;
     }
 
     // SpreadJS binds Tab to these commands itself, so running them gives the key the behaviour it has on the
     // packaged Windows head, where it reaches the WebView: an open cell editor is committed before the
     // selection moves, the move stays inside a selected range, and it wraps to the next row at the end of one.
-    const commandManager = spread.commandManager();
     const command = shift ? 'moveToPreviousCell' : 'moveToNextCell';
 
-    commandManager.execute({
+    context.spread.commandManager().execute({
         cmd: command,
-        sheetName: sheet.name()
+        sheetName: context.sheet.name()
+    });
+}
+
+// The selection as tab separated columns and newline separated rows, which the host fetches for copy and
+// cut.
+function getSelectedText() {
+    const context = getActiveSheet();
+    if (!context) {
+        return '';
+    }
+
+    const sheet = context.sheet;
+    const selection = (sheet.getSelections() ?? [])[0];
+    if (!selection) {
+        return '';
+    }
+
+    // A whole row or column selection carries -1 for the open axis, so the range is trimmed to the cells in
+    // use rather than the sheet's whole empty extent. The trim never pulls the end below the start.
+    const used = sheet.getUsedRange(GC.Spread.Sheets.UsedRangeType.all);
+    const usedEndRow = used ? used.row + used.rowCount - 1 : -1;
+    const usedEndColumn = used ? used.col + used.colCount - 1 : -1;
+
+    const firstRow = Math.max(selection.row, 0);
+    const firstColumn = Math.max(selection.col, 0);
+
+    let endRow = selection.row < 0 ? usedEndRow : selection.row + selection.rowCount - 1;
+    let endColumn = selection.col < 0 ? usedEndColumn : selection.col + selection.colCount - 1;
+
+    if (usedEndRow >= firstRow) {
+        endRow = Math.min(endRow, usedEndRow);
+    }
+    if (usedEndColumn >= firstColumn) {
+        endColumn = Math.min(endColumn, usedEndColumn);
+    }
+
+    const rows = [];
+    for (let row = firstRow; row <= endRow; row++) {
+        const cells = [];
+        for (let column = firstColumn; column <= endColumn; column++) {
+            cells.push(sheet.getText(row, column) ?? '');
+        }
+        rows.push(cells.join('\t'));
+    }
+
+    return rows.join('\n');
+}
+
+// Applies clipboard text from the host. Empty text is the delete half of a cut, so it clears the selection.
+function insertText(text) {
+    const context = getActiveSheet();
+    if (!context || frameworkReadOnly) {
+        return;
+    }
+
+    const { spread, sheet } = context;
+    const commandManager = spread.commandManager();
+
+    if (!text) {
+        // clearValues acts only on the ranges it is given, not on the sheet's own selection.
+        commandManager.execute({
+            cmd: 'clearValues',
+            sheetName: sheet.name(),
+            ranges: sheet.getSelections()
+        });
+        return;
+    }
+
+    const row = sheet.getActiveRowIndex();
+    const column = sheet.getActiveColumnIndex();
+
+    commandManager.execute({
+        cmd: 'clipboardPaste',
+        sheetName: sheet.name(),
+        clipboardText: text,
+        pasteOption: GC.Spread.Sheets.ClipboardPasteOptions.all,
+        pastedRanges: [new GC.Spread.Sheets.Range(row, column, 1, 1)]
+    });
+}
+
+// Runs SpreadJS's own commands for the verbs that touch no clipboard.
+function performEdit(command) {
+    const context = getActiveSheet();
+    if (!context) {
+        return;
+    }
+
+    const { spread, sheet } = context;
+
+    if (command === 'selectAll') {
+        // SpreadJS's selectAll acts on the cell editor's text, not the grid, so select every cell as a range.
+        sheet.setSelection(0, 0, sheet.getRowCount(), sheet.getColumnCount());
+        return;
+    }
+
+    if (command === 'undo' || command === 'redo') {
+        spread.commandManager().execute({
+            cmd: command,
+            sheetName: sheet.name()
+        });
+    }
+}
+
+// Reports which verbs the host Edit menu should offer. A grid always has an active cell, so copy has
+// something to take even with no range selected.
+function reportEditAvailability() {
+    const available = getActiveSheet() !== null;
+
+    client.input.notifyEditAvailability({
+        canCopy: available,
+        canCut: available && !frameworkReadOnly,
+        canPaste: available && !frameworkReadOnly,
+        canSelectAll: available,
+        canUndo: available && !frameworkReadOnly,
+        canRedo: available && !frameworkReadOnly,
+        hostMediatedClipboard: true
     });
 }
 
@@ -344,6 +475,19 @@ async function initializeEditor() {
         client.onNotification('input/tabKey', (params) => {
             handleTabKey(params?.shift === true);
         });
+
+        // The host mediates the clipboard: SpreadJS reaches it through the browser, which the macOS WebView
+        // refuses.
+        client.onRequest('editor/getSelectedText', () => getSelectedText());
+        client.onNotification('editor/insertText', (params) => {
+            insertText(params?.text ?? '');
+        });
+        client.onNotification('input/performEdit', (params) => {
+            performEdit(params?.command);
+        });
+
+        document.addEventListener('focusin', reportEditAvailability);
+        reportEditAvailability();
 
         client.viewState.onChanged((viewState) => {
             if (viewState.writable) {
@@ -412,7 +556,8 @@ async function initializeEditor() {
             }
         });
     } catch (e) {
-        console.error('[Spreadsheet] Failed to initialize:', e);
+        // Reported to the host log: DevTools are blocked for this package, so console output is unreachable.
+        client.log.error('[Spreadsheet] Failed to initialize', e);
     }
 }
 
