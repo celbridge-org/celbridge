@@ -70,6 +70,12 @@ jobs:
         working-directory: ./Source
         run: npm install
 
+      # Checks the lockfile against the npm advisory database, so this can start failing
+      # without a code change when a new advisory is published against a pinned version.
+      - name: Audit dependencies
+        working-directory: ./Source
+        run: npm audit --audit-level=moderate
+
       - name: Run JS tests
         working-directory: ./Source
         run: npm test
