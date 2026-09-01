@@ -138,12 +138,16 @@ If you encounter build errors, try restarting Visual Studio. If this fails, do a
 
 Note that enabling the spreadsheet editing feature in Celbridge requires a valid license for MESCIUS SpreadJS.
 
+For command-line builds, building on macOS, and running the test suites, see the [development documentation](docs/development/).
+
 ## Documentation
 
 Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
 
 There is now a separate website for the growing documentation about the Celbridge workbench application:
 - [Celbridge-docs](https://celbridge-org.github.io/celbridge-docs/)
+
+If you are working on Celbridge itself, the build instructions, coding conventions and architecture rules are in the [development documentation](docs/development/).
 
 *Mysterious note:* The first 🥚 is like the second. The second belongs to the third. The third is shorter than itself, and sits in the middle.
 

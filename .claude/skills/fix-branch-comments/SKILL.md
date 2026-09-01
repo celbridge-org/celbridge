@@ -5,7 +5,7 @@ description: Review and fix the code comments this branch added or rewrote, enfo
 
 # Fix branch comments
 
-Comments drift from the conventions in CLAUDE.md as a branch is built. This skill makes one pass before the PR: it reviews the comments the branch wrote and rewrites or removes the ones that break the rules, keeping any genuinely useful information by moving it to the right place.
+Comments drift from the conventions in `docs/development/coding_conventions.md` as a branch is built. This skill makes one pass before the PR: it reviews the comments the branch wrote and rewrites or removes the ones that break the rules, keeping any genuinely useful information by moving it to the right place.
 
 ## Scope
 
