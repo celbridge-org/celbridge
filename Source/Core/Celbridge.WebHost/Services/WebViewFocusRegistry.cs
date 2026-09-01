@@ -508,17 +508,23 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             });
     }
 
-    // Whether the platform still routes the keyboard to the surface. Focus reconciliation resigns and
-    // re-asserts native focus in one gesture, because Uno resigns the first responder on every managed focus
-    // change, and the page reports that pair as a blur like any other. Only the platform can tell the two
-    // apart. False off macOS, where the managed focus the other heads move is itself the signal.
+    // Whether the keyboard still belongs to this surface. A page reports a blur every time it loses focus,
+    // including when the host moved focus around and handed it straight back, so the page's own report cannot
+    // tell that apart from the user clicking away. The platform can, so it is asked here.
     private bool HoldsPlatformKeyboardFocus(WebViewFocusRegistration registration)
     {
         if (!OperatingSystem.IsMacOS())
         {
-            return false;
+            // Off macOS the WebView control itself holds keyboard focus, so focus still being on it means the
+            // page has not really lost the keyboard, whatever it reported along the way. Anything that does
+            // take the keyboard away moves focus off the control, clicking the window caption included.
+            return HoldsManagedFocus(registration);
         }
 
+        // On macOS the keyboard goes to the native view inside the control rather than to the control, so the
+        // question has to be put to macOS itself: is that view the window's first responder? It has to be
+        // asked because the host gives that up and takes it straight back whenever it moves focus anywhere,
+        // and the page reports the gap in between as an ordinary blur.
         var coreWebView = registration.WebView.CoreWebView2;
         if (coreWebView is null)
         {
@@ -565,6 +571,23 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
         // (the page's caret is exactly where the user put it and must not move).
         _webViewAdapter.FocusWebView(registration.WebView);
+    }
+
+    // Whether keyboard focus is currently on this surface's WebView control. The focus manager is asked for
+    // the answer, which is only right once a focus change has finished: called from inside a focus event it
+    // still names the element being moved away from. Always false on macOS, where the keyboard goes to the
+    // native view inside the control instead.
+    private static bool HoldsManagedFocus(WebViewFocusRegistration registration)
+    {
+        var xamlRoot = registration.WebView.XamlRoot;
+        if (xamlRoot is null)
+        {
+            return false;
+        }
+
+        var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot);
+
+        return ReferenceEquals(focusedElement, registration.WebView);
     }
 
     public bool TryForwardKeyEvent(IntPtr nativeKeyEvent)

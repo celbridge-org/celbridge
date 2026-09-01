@@ -1,4 +1,5 @@
 using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.UserInterface;
 
@@ -14,15 +15,15 @@ public class FocusIntentTests
     }
 
     [Test]
-    public void PanelClaimSuppression_HoldsUntilEnded()
+    public void PanelHold_NamesTheHeldPanelUntilEnded()
     {
-        FocusIntent.IsPanelClaimSuppressed.Should().BeFalse();
+        FocusIntent.HeldPanel.Should().Be(FocusPanelId.None);
 
-        FocusIntent.SuppressPanelClaimsUntilNextInput();
-        FocusIntent.IsPanelClaimSuppressed.Should().BeTrue();
+        FocusIntent.HoldPanelUntilNextInput(FocusPanelId.Documents);
+        FocusIntent.HeldPanel.Should().Be(FocusPanelId.Documents);
 
-        FocusIntent.EndPanelClaimSuppression();
-        FocusIntent.IsPanelClaimSuppressed.Should().BeFalse();
+        FocusIntent.EndPanelHold();
+        FocusIntent.HeldPanel.Should().Be(FocusPanelId.None);
     }
 
     [Test]
@@ -30,11 +31,11 @@ public class FocusIntentTests
     {
         // The hold waits on the next user input, which a workspace teardown can pre-empt, so it must not
         // carry into the next workspace.
-        FocusIntent.SuppressPanelClaimsUntilNextInput();
+        FocusIntent.HoldPanelUntilNextInput(FocusPanelId.Documents);
 
         FocusIntent.Reset();
 
-        FocusIntent.IsPanelClaimSuppressed.Should().BeFalse();
+        FocusIntent.HeldPanel.Should().Be(FocusPanelId.None);
     }
 
     [Test]

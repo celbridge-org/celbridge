@@ -154,12 +154,12 @@ public partial class MainPage : Page
 
     private void OnRootContentPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        FocusIntent.EndPanelClaimSuppression();
+        FocusIntent.EndPanelHold();
     }
 
     private void OnRootContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        FocusIntent.EndPanelClaimSuppression();
+        FocusIntent.EndPanelHold();
 
         // Uno dispatches Backspace and Enter as managed KeyDown events while a web surface holds focus,
         // unlike the other editing keys, so the router delivers them to the surface from here. A key a

@@ -200,4 +200,11 @@ public interface IFocusService
     /// panel has no registered handler.
     /// </summary>
     void RefocusFocusedPanel();
+
+    /// <summary>
+    /// Gives the keyboard back to the given panel by invoking its registered focus handler. Used when the
+    /// caller knows which panel should hold the keyboard but the focus service does not name it yet, because
+    /// that panel's own focus report has not arrived. A no-op when the panel has no registered handler.
+    /// </summary>
+    void RefocusPanel(FocusPanelId panel);
 }

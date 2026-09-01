@@ -123,7 +123,12 @@ public class FocusService : IFocusService
 
     public void RefocusFocusedPanel()
     {
-        if (_panelFocusHandlers.TryGetValue(_focusedPanel, out var focusHandler))
+        RefocusPanel(_focusedPanel);
+    }
+
+    public void RefocusPanel(FocusPanelId panel)
+    {
+        if (_panelFocusHandlers.TryGetValue(panel, out var focusHandler))
         {
             focusHandler.Invoke();
         }

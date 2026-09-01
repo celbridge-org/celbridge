@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.UserInterface;
 
 /// <summary>
@@ -8,33 +10,38 @@ namespace Celbridge.UserInterface;
 public static class FocusIntent
 {
     private static int _restorationDepth;
-    private static bool _panelClaimSuppressed;
+    private static FocusPanelId _heldPanel = FocusPanelId.None;
 
     /// <summary>
-    /// True while a deliberate focus grant is holding the focused panel against focus events still being
-    /// dispatched from the gesture that triggered it. The focus tracker reports no panel while this holds.
+    /// The panel that has just been given the keyboard and is being protected from stray focus events, or
+    /// None when nothing is being protected. The focus tracker reports focus landing on this panel as usual,
+    /// and moves the keyboard back when anything else takes it.
     /// </summary>
-    public static bool IsPanelClaimSuppressed => _panelClaimSuppressed;
+    public static FocusPanelId HeldPanel => _heldPanel;
 
     /// <summary>
-    /// Holds the focused panel until the next user input. A gesture's focus events can be dispatched after
-    /// the work it triggered has completed, so a double-click that opens a document can finish claiming the
-    /// tree it was issued from milliseconds after the document has taken focus, leaving keys going to the
-    /// tree while the document looks focused. There is no event marking the end of a gesture's focus
-    /// dispatch, so the hold ends at the next thing the user does.
+    /// Protects the given panel until the next thing the user does. A click keeps producing focus events for
+    /// a few milliseconds after the work it triggered has finished, so double-clicking a file in the Explorer
+    /// can put the keyboard back on the tree just after the document has opened and taken it, leaving the
+    /// user typing into the tree while the document looks focused. Nothing tells us a click has finished
+    /// producing focus events, so the protection lasts until the user's next click or key press.
+    ///
+    /// The panel is passed in rather than read back from the focus service, because the document's own focus
+    /// can arrive after this call: a document built from ordinary controls reports its focus a step later, so
+    /// the focus service does not name it yet.
     /// </summary>
-    public static void SuppressPanelClaimsUntilNextInput()
+    public static void HoldPanelUntilNextInput(FocusPanelId panel)
     {
-        _panelClaimSuppressed = true;
+        _heldPanel = panel;
     }
 
     /// <summary>
     /// Ends the hold, so the next focus change reports its panel again. Called from the window's input
     /// handlers: any real user input means what follows is no longer the previous gesture's tail.
     /// </summary>
-    public static void EndPanelClaimSuppression()
+    public static void EndPanelHold()
     {
-        _panelClaimSuppressed = false;
+        _heldPanel = FocusPanelId.None;
     }
 
     /// <summary>
@@ -45,7 +52,7 @@ public static class FocusIntent
     /// </summary>
     public static void Reset()
     {
-        EndPanelClaimSuppression();
+        EndPanelHold();
     }
 
     /// <summary>
