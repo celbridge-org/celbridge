@@ -116,8 +116,8 @@ public sealed partial class DocumentSectionView : UserControl
         TabView.Loaded += OnTabViewLoaded;
 
         // A narrower strip moves the scroll indicator and can change whether it is needed at all. It also
-        // leaves the active tab clipped off-screen on macOS, where the strip does not re-reveal the selection
-        // on its own, so a window resize or a change in the number of sections has to re-scroll it into view.
+        // leaves the selected tab clipped off-screen, so a window resize or a change in the number of
+        // sections has to re-scroll it into view.
         TabView.SizeChanged += OnTabViewSizeChanged;
     }
 
@@ -237,11 +237,7 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
-        if (TabView.SelectedItem is DocumentTab selectedTab)
-        {
-            // No-ops on the heads whose strip reveals the selection itself.
-            ScrollTabIntoView(selectedTab);
-        }
+        RevealSelectedTab();
 
         // The strip is still mid-arrange while its size change is raised, so its leading edge only settles on
         // the following cycle.
@@ -543,18 +539,24 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Scrolls the tab strip so the given tab is visible when it lies outside the visible area. macOS only:
-    /// the Uno TabView does not bring the selected tab into view on its own, so the strip's scroll offset is
-    /// driven directly once its layout has settled.
+    /// Restores the invariant that the selected tab is visible. Called after anything that changes the
+    /// strip's geometry, and a no-op while the selected tab is already fully in view.
+    /// </summary>
+    private void RevealSelectedTab()
+    {
+        if (TabView.SelectedItem is DocumentTab selectedTab)
+        {
+            ScrollTabIntoView(selectedTab);
+        }
+    }
+
+    /// <summary>
+    /// Scrolls the tab strip so the given tab is visible when it lies outside the visible area. The strip's
+    /// scroll offset is driven directly, because neither head reveals a tab that is selected in the same pass
+    /// that adds it, and the strip's own overflow arrows are hidden.
     /// </summary>
     private void ScrollTabIntoView(DocumentTab tab)
     {
-        if (!_platformInfo.RequiresMacOSTabScrollIntoView)
-        {
-            // The packaged Windows TabView brings the selected tab into view on its own.
-            return;
-        }
-
         // Defer to the next dispatcher cycle so the tab strip has completed layout. A tab that was just
         // added, or a selection that changes the strip's extent, has no scroll geometry to act on until
         // the layout pass runs, so measuring synchronously here would read stale bounds.
@@ -572,12 +574,23 @@ public sealed partial class DocumentSectionView : UserControl
                 return;
             }
 
+            // Measure before disturbing the strip. A tab the user clicked is arranged already and is
+            // usually in view, and the realization pass below moves the offset whether or not there was
+            // anything to reveal, which lands the strip back near its first tab.
+            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
+            if (container is not null &&
+                container.ActualWidth > 0 &&
+                GetRevealOffset(container, scrollViewer) is null)
+            {
+                return;
+            }
+
             // Realize the container for an off-screen (virtualized) tab and force the strip to lay out, so
             // the measurements below reflect the settled geometry rather than a transient resize state.
             tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
             tabListView.UpdateLayout();
 
-            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
+            container = tabListView.ContainerFromItem(tab) as FrameworkElement;
             if (container is null ||
                 container.ActualWidth == 0)
             {
@@ -587,32 +600,40 @@ public sealed partial class DocumentSectionView : UserControl
                 return;
             }
 
-            // Position of the tab relative to the visible viewport. A negative value means the tab is clipped
-            // off the leading edge; a right edge past the viewport width means it is clipped off the trailing
-            // edge. The minimum scroll that clears the offending edge keeps the rest of the strip stable.
-            double tabViewportX = TabViewportLeft(container, scrollViewer);
-            double tabWidth = container.ActualWidth;
-            double viewportWidth = scrollViewer.ViewportWidth;
-            double currentOffset = scrollViewer.HorizontalOffset;
-
-            double? targetOffset = null;
-            if (tabViewportX < 0)
-            {
-                targetOffset = currentOffset + tabViewportX;
-            }
-            else if (tabViewportX + tabWidth > viewportWidth)
-            {
-                targetOffset = currentOffset + (tabViewportX + tabWidth - viewportWidth);
-            }
-
-            if (targetOffset is null)
+            if (GetRevealOffset(container, scrollViewer) is not double targetOffset)
             {
                 return;
             }
 
-            double clampedOffset = Math.Clamp(targetOffset.Value, 0, scrollViewer.ScrollableWidth);
+            double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
             scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
         });
+    }
+
+    /// <summary>
+    /// The scroll offset that brings a tab container fully into the strip's viewport, or null when the tab is
+    /// already fully visible. A tab whose left edge sits before the viewport is clipped off the leading edge,
+    /// and one whose right edge sits past the viewport width is clipped off the trailing edge. Revealing by
+    /// the minimum that clears the offending edge keeps the rest of the strip where the user left it.
+    /// </summary>
+    private static double? GetRevealOffset(FrameworkElement container, ScrollViewer scrollViewer)
+    {
+        double tabViewportX = TabViewportLeft(container, scrollViewer);
+        double tabWidth = container.ActualWidth;
+        double viewportWidth = scrollViewer.ViewportWidth;
+        double currentOffset = scrollViewer.HorizontalOffset;
+
+        if (tabViewportX < 0)
+        {
+            return currentOffset + tabViewportX;
+        }
+
+        if (tabViewportX + tabWidth > viewportWidth)
+        {
+            return currentOffset + (tabViewportX + tabWidth - viewportWidth);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -752,6 +773,10 @@ public sealed partial class DocumentSectionView : UserControl
         // tabs at the leading edge while showing a blank gap at the trailing edge. Re-clamp once
         // layout has settled.
         _ = DispatcherQueue.TryEnqueue(ClampTabStripScrollOffset);
+
+        // Adding or removing a tab changes the width the strip lays its tabs out in, which can leave the
+        // selected tab clipped. Enqueued after the clamp so the clamp cannot undo the reveal.
+        _ = DispatcherQueue.TryEnqueue(RevealSelectedTab);
 
         // Opening or closing a tab changes how much there is to scroll, and the indicator is attached late
         // enough that a section's first tabs can arrive before it exists.

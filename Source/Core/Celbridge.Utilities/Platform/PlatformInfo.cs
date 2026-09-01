@@ -66,8 +66,6 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool RequiresMacOSLayoutRetry => OperatingSystem.IsMacOS();
 
-    public bool RequiresMacOSTabScrollIntoView => OperatingSystem.IsMacOS();
-
     public bool RequiresMacOSTabWheelScroll => OperatingSystem.IsMacOS();
 
     public bool RequiresMacOSKeyCommandRouting => OperatingSystem.IsMacOS();
