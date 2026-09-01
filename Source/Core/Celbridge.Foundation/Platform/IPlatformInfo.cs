@@ -95,12 +95,6 @@ public interface IPlatformInfo
     bool RequiresMacOSLayoutRetry { get; }
 
     /// <summary>
-    /// Whether the tab strip must be scrolled manually to reveal the selected tab because the platform does
-    /// not bring it into view automatically. True on macOS.
-    /// </summary>
-    bool RequiresMacOSTabScrollIntoView { get; }
-
-    /// <summary>
     /// Whether wheel input must be translated into horizontal tab-strip scrolling manually because the
     /// platform does not scroll the overflowing strip for a vertical wheel and scrolls it backwards for a
     /// horizontal one. True on macOS.
