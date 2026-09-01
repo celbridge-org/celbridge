@@ -32,6 +32,8 @@ public sealed partial class DocumentSectionView : UserControl
     private bool _isShuttingDown = false;
     private bool _scrollButtonsHidden;
     private bool _scrollIndicatorAttached;
+    private bool _tabStripWheelHandlerAttached;
+    private readonly WheelGestureAxisTracker _wheelGestureAxisTracker;
     private Storyboard? _perimeterStoryboard;
 
     // The tab list template's two overflow arrows, named by their containers because that is what carries
@@ -102,6 +104,7 @@ public sealed partial class DocumentSectionView : UserControl
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _tabPointerPressedHandler = OnTabPointerPressed;
         _tabStripWheelHandler = OnTabStripPointerWheelChanged;
+        _wheelGestureAxisTracker = new WheelGestureAxisTracker();
         _documentPointerPressedHandler = OnDocumentPointerPressed;
         DisableBuiltInTabDrag();
 
@@ -116,14 +119,6 @@ public sealed partial class DocumentSectionView : UserControl
         // leaves the active tab clipped off-screen on macOS, where the strip does not re-reveal the selection
         // on its own, so a window resize or a change in the number of sections has to re-scroll it into view.
         TabView.SizeChanged += OnTabViewSizeChanged;
-
-        // On macOS the overflowing strip does not scroll in response to the mouse wheel, so translate the
-        // wheel into horizontal scrolling ourselves. Subscribe for handled events too because the strip's
-        // internal ScrollViewer can mark the wheel handled without scrolling.
-        if (_platformInfo.RequiresMacOSTabWheelScroll)
-        {
-            TabView.AddHandler(PointerWheelChangedEvent, _tabStripWheelHandler, handledEventsToo: true);
-        }
     }
 
     // The web surfaces report a click anywhere over them, while managed focus only moves for a press that
@@ -224,14 +219,14 @@ public sealed partial class DocumentSectionView : UserControl
         UpdateTabStripBorderLines();
         FixTabStripBandHeight();
         HideTabStripScrollButtons();
-        AttachTabStripScrollIndicator();
+        AttachTabStripScrollHandlers();
 
         _ = DispatcherQueue.TryEnqueue(() =>
         {
             UpdateTabStripBorderLines();
             FixTabStripBandHeight();
             HideTabStripScrollButtons();
-            AttachTabStripScrollIndicator();
+            AttachTabStripScrollHandlers();
         });
     }
 
@@ -762,7 +757,7 @@ public sealed partial class DocumentSectionView : UserControl
         // enough that a section's first tabs can arrive before it exists.
         _ = DispatcherQueue.TryEnqueue(() =>
         {
-            AttachTabStripScrollIndicator();
+            AttachTabStripScrollHandlers();
             UpdateTabStripScrollIndicator();
         });
     }
@@ -829,17 +824,23 @@ public sealed partial class DocumentSectionView : UserControl
         _scrollButtonsHidden = true;
     }
 
-    // Wires the scroll indicator to the strip's own ScrollViewer, which only exists once the tab list's
-    // template has been applied.
-    private void AttachTabStripScrollIndicator()
+    // Wires the parts that need the strip's own ScrollViewer, which only exists once the tab list's template
+    // has been applied.
+    private void AttachTabStripScrollHandlers()
     {
-        if (_scrollIndicatorAttached)
+        var scrollViewer = GetTabStripScrollViewer();
+        if (scrollViewer is null)
         {
             return;
         }
 
-        var scrollViewer = GetTabStripScrollViewer();
-        if (scrollViewer is null)
+        AttachTabStripScrollIndicator(scrollViewer);
+        AttachTabStripWheelHandler(scrollViewer);
+    }
+
+    private void AttachTabStripScrollIndicator(ScrollViewer scrollViewer)
+    {
+        if (_scrollIndicatorAttached)
         {
             return;
         }
@@ -849,6 +850,31 @@ public sealed partial class DocumentSectionView : UserControl
         _scrollIndicatorAttached = true;
 
         UpdateTabStripScrollIndicator();
+    }
+
+    // UNO-BUG: the tab strip's ScrollViewer scrolls horizontal wheel input the wrong way on macOS.
+    /// <summary>
+    /// Takes over wheel scrolling of the tab strip on macOS. Registered inside the strip's ScrollViewer, on
+    /// the presenter the wheel passes through first, so the event is handled before the ScrollViewer's own
+    /// wheel handling sees it.
+    /// </summary>
+    private void AttachTabStripWheelHandler(ScrollViewer scrollViewer)
+    {
+        if (!_platformInfo.RequiresMacOSTabWheelScroll ||
+            _tabStripWheelHandlerAttached)
+        {
+            return;
+        }
+
+        // The presenter fills the strip's viewport, so every wheel event over the strip bubbles through it.
+        var scrollPresenter = VisualTree.FindDescendant<ScrollContentPresenter>(scrollViewer);
+        if (scrollPresenter is null)
+        {
+            return;
+        }
+
+        scrollPresenter.AddHandler(PointerWheelChangedEvent, _tabStripWheelHandler, handledEventsToo: true);
+        _tabStripWheelHandlerAttached = true;
     }
 
     private void OnTabStripViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
@@ -973,9 +999,10 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Scrolls the overflowing tab strip horizontally in response to the mouse wheel. macOS only: the Uno
-    /// TabView does not translate vertical wheel input into horizontal strip scrolling the way the packaged
-    /// Windows TabView does, so the strip's scroll offset is driven directly.
+    /// Scrolls the overflowing tab strip horizontally in response to the wheel, covering both the vertical
+    /// wheel of a mouse and the horizontal scrolling of a trackpad. macOS only: the Uno TabView does not
+    /// translate vertical wheel input into horizontal strip scrolling the way the packaged Windows TabView
+    /// does, and it scrolls horizontal input backwards, so the strip's scroll offset is driven directly.
     /// </summary>
     private void OnTabStripPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
@@ -991,27 +1018,28 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
-        // Only the tab strip should react. A wheel over the document content below it falls outside the
-        // strip's ScrollViewer, so leave it unhandled to scroll that content.
         var pointerPoint = e.GetCurrentPoint(scrollViewer);
-        var position = pointerPoint.Position;
-        bool isOverTabStrip = position.X >= 0 &&
-            position.X <= scrollViewer.ViewportWidth &&
-            position.Y >= 0 &&
-            position.Y <= scrollViewer.ActualHeight;
-        if (!isOverTabStrip)
-        {
-            return;
-        }
-
         int wheelDelta = pointerPoint.Properties.MouseWheelDelta;
         if (wheelDelta == 0)
         {
             return;
         }
 
-        // A forward wheel notch (positive delta) reveals earlier tabs, matching the packaged Windows TabView.
-        ScrollTabStripBy(-wheelDelta);
+        bool isHorizontalWheel = pointerPoint.Properties.IsHorizontalMouseWheel;
+        bool isOnGestureAxis = _wheelGestureAxisTracker.IsOnGestureAxis(
+            pointerPoint.Timestamp,
+            isHorizontalWheel,
+            wheelDelta);
+        if (isOnGestureAxis)
+        {
+            // A forward wheel notch (positive delta) reveals earlier tabs, matching the packaged Windows
+            // TabView. macOS reports a trackpad swipe towards the earlier tabs with that same sign, so one
+            // rule serves the horizontal wheel as well as the vertical one.
+            ScrollTabStripBy(-wheelDelta);
+        }
+
+        // Handled even for an event left off the gesture's axis, so that it stops short of the ScrollViewer,
+        // which would otherwise scroll horizontal input the other way and undo this.
         e.Handled = true;
     }
 
