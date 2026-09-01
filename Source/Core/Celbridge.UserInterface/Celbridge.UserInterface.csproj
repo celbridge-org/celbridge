@@ -38,7 +38,7 @@
     <!-- ColorTokens.xaml is generated during the build, so it does not exist when the SDK evaluates its
          default XAML glob on a clean checkout. Exclude it from that glob and declare it explicitly below,
          which holds the item from evaluation onwards whether or not the file is there yet. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);Resources\ColorTokens.xaml</DefaultItemExcludes>
+    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Resources\ColorTokens.xaml</CelbridgeDefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -50,7 +50,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Fonts\**\*.json;Assets\Fonts\**\build\**</DefaultItemExcludes>
+    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Fonts\**\*.json;Assets\Fonts\**\build\**</CelbridgeDefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
