@@ -7,18 +7,15 @@ namespace Celbridge.UserInterface.Helpers;
 public static class DocumentShortcutIcon
 {
     /// <summary>
+    /// The icon a shortcut naming none is drawn with.
+    /// </summary>
+    public const IconSymbol DefaultSymbol = IconSymbol.File;
+
+    /// <summary>
     /// The icon name for a shortcut: the one it names, or the default document icon when it names none.
-    /// A name the icon set does not carry is returned as it is, the icon service resolving it to a
-    /// fallback glyph.
     /// </summary>
     public static string Resolve(IIconService iconService, string iconName)
     {
-        var trimmedName = iconName.Trim();
-        if (string.IsNullOrEmpty(trimmedName))
-        {
-            return iconService.GetIconName(IconSymbol.File);
-        }
-
-        return trimmedName;
+        return IconNameResolver.Resolve(iconService, iconName, DefaultSymbol);
     }
 }

@@ -17,7 +17,7 @@ in `lib/` ship with the app. `node_modules/` is gitignored.
 
 ## Architecture
 
-`vendor.mjs` is a thin copy script. xterm.js ships pre-built dist files on
+`vendor.js` is a thin copy script. xterm.js ships pre-built dist files on
 npm so no bundling is required — the script just copies `xterm.js`,
 `xterm.css`, the addon JS files, and the `LICENSE` from `node_modules/@xterm/*/`
 into the parent `lib/`. Source maps are copied alongside so DevTools can resolve

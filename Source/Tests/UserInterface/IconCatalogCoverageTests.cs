@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Celbridge.Tests.Architecture;
 using Celbridge.UserInterface.Services;
 
@@ -21,6 +22,9 @@ public class IconCatalogCoverageTests
     // The Bootstrap Icons release the bundled font, glyph map and keyword map all come from. The keywords
     // describe the icons that release carries, so they are refreshed with the font rather than separately.
     private const string BundledBootstrapIconsVersion = "1.12.1";
+
+    // The keyword map nests its data under this property, alongside the release it was generated from.
+    private const string KeywordsProperty = "keywords";
 
     [Test]
     public void EveryCatalogIconResolvesInTheBundledFont()
@@ -71,6 +75,7 @@ public class IconCatalogCoverageTests
             .ToHashSet();
 
         var unknownNames = keywords.RootElement
+            .GetProperty(KeywordsProperty)
             .EnumerateObject()
             .Select(keyword => keyword.Name)
             .Where(iconName => !glyphNames.Contains(iconName))
@@ -90,7 +95,7 @@ public class IconCatalogCoverageTests
     {
         using var keywords = ReadBootstrapDocument("icon-keywords.json");
 
-        foreach (var icon in keywords.RootElement.EnumerateObject())
+        foreach (var icon in keywords.RootElement.GetProperty(KeywordsProperty).EnumerateObject())
         {
             icon.Value.ValueKind.Should().Be(JsonValueKind.Array, $"'{icon.Name}' should hold a list of keywords");
             icon.Value.GetArrayLength().Should().BeGreaterThan(0, $"'{icon.Name}' should be absent rather than empty");
@@ -111,16 +116,62 @@ public class IconCatalogCoverageTests
     [Test]
     public void TheVendoredStylesheetReportsTheBundledRelease()
     {
+        var header = File.ReadAllText(BootstrapStylesheetPath());
+
+        header.Should().Contain(
+            $"Bootstrap Icons v{BundledBootstrapIconsVersion}",
+            "the keyword map is generated for the bundled release, so the two are upgraded together");
+    }
+
+    /// <summary>
+    /// The keyword map records the release it was generated from, so a map left behind by a font upgrade
+    /// fails here rather than shipping keywords that describe a different set of icons.
+    /// </summary>
+    [Test]
+    public void TheKeywordMapRecordsTheBundledRelease()
+    {
+        using var keywords = ReadBootstrapDocument("icon-keywords.json");
+
+        var release = keywords.RootElement.GetProperty("release").GetString();
+
+        release.Should().Be(
+            $"v{BundledBootstrapIconsVersion}",
+            "regenerating the keyword map is part of a font upgrade, not a separate decision");
+    }
+
+    /// <summary>
+    /// The picker offers the icons the glyph map carries, and a WebView draws them from the vendored
+    /// stylesheet rather than from that map. An icon the stylesheet has no rule for would be offered on
+    /// both surfaces and draw on only one.
+    /// </summary>
+    [Test]
+    public void TheVendoredStylesheetDrawsEveryBundledIcon()
+    {
+        using var glyphs = ReadBootstrapDocument("icon-glyphs.json");
+
+        var stylesheet = File.ReadAllText(BootstrapStylesheetPath());
+        var styledNames = Regex.Matches(stylesheet, @"\.bi-([a-z0-9-]+)::before")
+            .Select(match => match.Groups[1].Value)
+            .ToHashSet();
+
+        var unstyledNames = glyphs.RootElement
+            .EnumerateObject()
+            .Select(glyph => glyph.Name)
+            .Where(iconName => !styledNames.Contains(iconName))
+            .ToList();
+
+        unstyledNames.Should().BeEmpty(
+            "every icon the picker offers has to draw in a WebView as well as natively");
+    }
+
+    private static string BootstrapStylesheetPath()
+    {
         var sourceFolder = ArchitectureHelpers.FindSourceFolder();
         var stylesheetPath = Path.Combine(
             sourceFolder, "Core", "Celbridge.WebHost", "Web", "bootstrap-icons", "bootstrap-icons.css");
         File.Exists(stylesheetPath).Should().BeTrue($"the vendored stylesheet should be at {stylesheetPath}");
 
-        var header = File.ReadAllText(stylesheetPath);
-
-        header.Should().Contain(
-            $"Bootstrap Icons v{BundledBootstrapIconsVersion}",
-            "the keyword map is generated for the bundled release, so the two are upgraded together");
+        return stylesheetPath;
     }
 
     private static JsonDocument ReadBootstrapDocument(string fileName)

@@ -31,7 +31,7 @@ public sealed partial class IconPickerField : UserControl
     /// </summary>
     public string IconName
     {
-        get => (string)GetValue(IconNameProperty);
+        get => (string?)GetValue(IconNameProperty) ?? string.Empty;
         set => SetValue(IconNameProperty, value);
     }
 
@@ -76,12 +76,8 @@ public sealed partial class IconPickerField : UserControl
     {
         var iconName = IconName.Trim();
 
-        var previewIconName = iconName;
-        if (previewIconName.Length == 0
-            && DefaultSymbol is not null)
-        {
-            previewIconName = _iconService.GetIconName(DefaultSymbol.Value);
-        }
+        // Resolved the way the surface resolves it, so the preview shows the glyph the surface will draw.
+        var previewIconName = IconNameResolver.Resolve(_iconService, iconName, DefaultSymbol);
 
         PreviewIcon.IconName = previewIconName;
         PreviewIcon.Visibility = previewIconName.Length > 0 ? Visibility.Visible : Visibility.Collapsed;

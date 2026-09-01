@@ -94,7 +94,7 @@ export function createIconField(options) {
 
     // The mount element becomes the field itself rather than holding one, so it sits in its consumer's form
     // as the hand written fields beside it do, and the spacing rules keyed on a field's position reach it.
-    container.classList.add('field', 'cel-icon-field');
+    container.classList.add('field');
     container.replaceChildren(label, row, hint, warning);
 
     function updateIconState() {
@@ -113,7 +113,13 @@ export function createIconField(options) {
     input.addEventListener('input', updateIconState);
 
     browseButton.addEventListener('click', async () => {
-        const pickedIconName = await pickIcon(input.value.trim());
+        let pickedIconName;
+        try {
+            pickedIconName = await pickIcon(input.value.trim());
+        } catch (error) {
+            console.error('[IconField] Failed to open the icon picker:', error);
+            return;
+        }
 
         // The picker reports a dismissal as no icon, so the field keeps the name it had.
         if (!pickedIconName) {
@@ -121,9 +127,9 @@ export function createIconField(options) {
         }
 
         input.value = pickedIconName;
-        updateIconState();
 
-        // Reported as though it had been typed, so a consumer listening for input records the change.
+        // Reported as though it had been typed, so a consumer listening for input records the change. The
+        // field's own listener refreshes the preview off the same event.
         input.dispatchEvent(new Event('input', { bubbles: true }));
     });
 

@@ -35,9 +35,12 @@ public partial class IconPickerDialogViewModel : ObservableObject
             .Select(catalogEntry => new IconPickerItem(catalogEntry))
             .ToList();
 
+        var iconName = selectedIconName.Trim();
+
         // The field's text opens the dialog as a search, so a name already part typed does not have to be
-        // typed again.
-        SearchText = selectedIconName.Trim();
+        // typed again. Setting an unchanged search raises no notification, so the first filter is run here
+        // rather than left to the property change.
+        SearchText = iconName;
         UpdateFilteredItems();
 
         // A seed matching nothing, such as a typo or a name from the font the host keeps to itself, is
@@ -49,7 +52,7 @@ public partial class IconPickerDialogViewModel : ObservableObject
 
         // A name the supported set does not carry leaves the list unselected, so the dialog opens on the
         // list rather than on nothing.
-        SelectedItem = _allItems.FirstOrDefault(item => item.IconName == selectedIconName);
+        SelectedItem = _allItems.FirstOrDefault(item => item.IconName == iconName);
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)

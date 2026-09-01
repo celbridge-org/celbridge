@@ -4,6 +4,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createIconField, toIconClass } from '../ui/icon-field.js';
 import { setStrings } from '../localization.js';
 
+// The field carries its own strings from the client's localization folder, so the real file is loaded here
+// rather than a stub. A key the field asks for that the file does not carry then fails a test instead of
+// rendering as its own name in the UI.
+import clientStrings from '../localization/en.json';
+
 // jsdom resolves no stylesheets, so the glyph probe is stubbed: the icon font is treated as carrying the
 // names listed here and nothing else, which is what the bundled stylesheet decides in the browser.
 function stubIconFont(iconNames) {
@@ -39,13 +44,7 @@ function previewOf(container) {
 
 beforeEach(() => {
     document.body.innerHTML = '';
-    setStrings({
-        IconPicker_FieldLabel: 'Icon',
-        IconPicker_FieldPlaceholder: 'bs-book',
-        IconPicker_FieldHint: 'Browse to pick an icon, or type its name.',
-        IconPicker_UnknownIcon: 'There is no supported icon with this name.',
-        IconPicker_BrowseTooltip: 'Choose an icon',
-    });
+    setStrings(clientStrings);
     stubIconFont(['bs-gear', 'bs-lightning-charge']);
 });
 
@@ -61,6 +60,18 @@ describe('createIconField', () => {
 
         expect(container.classList.contains('field')).toBe(true);
         expect(container.querySelector('.field')).toBeNull();
+    });
+
+    it('asks only for strings the client localization file carries', () => {
+        const { container } = createField({ value: 'bs-gear' });
+
+        const localizedElements = [...container.querySelectorAll('[data-loc-key]')];
+        expect(localizedElements.length).toBeGreaterThan(0);
+
+        for (const element of localizedElements) {
+            const key = element.dataset.locKey;
+            expect(clientStrings, `${key} is missing from localization/en.json`).toHaveProperty(key);
+        }
     });
 
     it('previews the named icon and reports nothing', () => {

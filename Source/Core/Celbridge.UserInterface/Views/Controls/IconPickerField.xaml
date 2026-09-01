@@ -10,7 +10,7 @@
 
     <Grid ColumnSpacing="4">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="20" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
@@ -19,8 +19,8 @@
            while the field is empty. -->
       <controls:Icon x:Name="PreviewIcon"
                      Grid.Column="0"
-                     Width="20"
                      FontSize="{StaticResource IconSizeMedium}"
+                     HorizontalAlignment="Center"
                      VerticalAlignment="Center" />
 
       <TextBox x:Name="IconTextBox"
