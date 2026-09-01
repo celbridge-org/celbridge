@@ -50,10 +50,6 @@ internal static class ProjectSettingsLabels
     public static string ShortcutOpenTooltip => Localizer.GetString("ProjectSettings_ShortcutOpenTooltip");
     public static string ShortcutAreaLabel => Localizer.GetString("ProjectSettings_ShortcutAreaLabel");
     public static string ShortcutAreaHint => Localizer.GetString("ProjectSettings_ShortcutAreaHint");
-    public static string ShortcutIconLabel => Localizer.GetString("ProjectSettings_ShortcutIconLabel");
-    public static string ShortcutIconPlaceholder => Localizer.GetString("ProjectSettings_ShortcutIconPlaceholder");
-    public static string ShortcutIconHint => Localizer.GetString("ProjectSettings_ShortcutIconHint");
-    public static string ShortcutUnknownIcon => Localizer.GetString("ProjectSettings_ShortcutUnknownIcon");
     public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
     public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");
 

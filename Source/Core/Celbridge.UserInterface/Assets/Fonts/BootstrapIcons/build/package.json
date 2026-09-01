@@ -1,0 +1,13 @@
+{
+  "name": "celbridge-bootstrap-icons-vendor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generates the vendored Bootstrap Icons font and search keywords for the Celbridge icon picker",
+  "type": "module",
+  "scripts": {
+    "vendor": "node vendor.js"
+  },
+  "dependencies": {
+    "wawoff2": "2.0.1"
+  }
+}

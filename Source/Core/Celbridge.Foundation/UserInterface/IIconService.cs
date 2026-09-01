@@ -13,6 +13,12 @@ public record IconGlyph(string FontCharacter, string FontFamily);
 public record IconDefinition(string FontCharacter, string FontColor, string FontFamily, string FontSize);
 
 /// <summary>
+/// An icon offered to the user, and the keywords it can be searched by. A keyword is a word the icon is
+/// known by elsewhere, so a search for "save" reaches the icon named "floppy".
+/// </summary>
+public record IconCatalogEntry(string IconName, IReadOnlyList<string> Keywords);
+
+/// <summary>
 /// Resolves the icons used across the Celbridge UI. Icons are named, never addressed by codepoint, and
 /// every name carries a prefix identifying the font it comes from (for example "bs-gear"). File icons
 /// are additionally resolvable by file name and by extension through the registered overrides.
@@ -83,4 +89,18 @@ public interface IIconService
     /// Looks up the glyph for a prefixed icon name, returning false if the name is not defined.
     /// </summary>
     bool TryGetGlyph(string iconName, out IconGlyph glyph);
+
+    /// <summary>
+    /// The icons offered to the user, in alphabetical order by name, each with the keywords it can be
+    /// searched by. This is the set the icon picker browses, and it is narrower than the set TryGetGlyph
+    /// resolves: a font bundled for the host's own use is not offered as a choice.
+    /// </summary>
+    IReadOnlyList<IconCatalogEntry> GetSupportedIcons();
+
+    /// <summary>
+    /// True when the prefixed icon name is one of the supported icons. This is what a user-facing icon
+    /// field accepts without comment, so a name from a font bundled for the host's own use reports false
+    /// here even though it resolves to a glyph.
+    /// </summary>
+    bool IsSupportedIcon(string iconName);
 }

@@ -205,6 +205,80 @@ public class IconServiceTests
         iconService.GetFileIconForFileName(".gitignore").Value.Should().Be(ignoreIcon);
     }
 
+    /// <summary>
+    /// The supported set is narrower than what TryGetGlyph resolves: the Nerd Fonts glyphs stay resolvable
+    /// as the host's own file type theme without being offered to the user as a choice.
+    /// </summary>
+    [Test]
+    public void GetSupportedIcons_OffersTheUserFacingFontOnly()
+    {
+        var iconService = new IconService();
+
+        var supportedIcons = iconService.GetSupportedIcons();
+
+        supportedIcons.Should().NotBeEmpty();
+        supportedIcons.Should().OnlyContain(icon => icon.IconName.StartsWith("bs-"));
+
+        iconService.TryGetGlyph("nf-seti-json", out _).Should().BeTrue();
+        supportedIcons.Should().NotContain(icon => icon.IconName == "nf-seti-json");
+    }
+
+    [Test]
+    public void GetSupportedIcons_EveryNameResolvesToAGlyph()
+    {
+        var iconService = new IconService();
+
+        foreach (var supportedIcon in iconService.GetSupportedIcons())
+        {
+            iconService.TryGetGlyph(supportedIcon.IconName, out var glyph).Should().BeTrue(
+                $"'{supportedIcon.IconName}' is offered to the user, so it has to draw");
+            glyph.FontCharacter.Should().NotBeEmpty();
+        }
+    }
+
+    /// <summary>
+    /// What a user-facing icon field accepts without comment. A Nerd Fonts name still draws, so it is
+    /// reported as unsupported rather than as unresolvable.
+    /// </summary>
+    [TestCase("bs-journal-text", true, Description = "a supported icon")]
+    [TestCase("nf-seti-json", false, Description = "resolvable, but from the font the host keeps to itself")]
+    [TestCase("bs-no-such-icon", false, Description = "unknown name in the supported font")]
+    [TestCase("journal-text", false, Description = "unprefixed name")]
+    [TestCase("", false, Description = "no name")]
+    public void IsSupportedIcon_AnswersForTheUserFacingFontOnly(string iconName, bool isSupported)
+    {
+        var iconService = new IconService();
+
+        iconService.IsSupportedIcon(iconName).Should().Be(isSupported);
+    }
+
+    /// <summary>
+    /// The picker lists the icons in the order they arrive, so the order is the service's to decide.
+    /// </summary>
+    [Test]
+    public void GetSupportedIcons_AreSortedByName()
+    {
+        var supportedIcons = new IconService().GetSupportedIcons();
+
+        supportedIcons.Select(icon => icon.IconName).Should().BeInAscendingOrder(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The keywords are what makes an icon findable by the word the user would reach for, Bootstrap naming
+    /// the save icon "floppy". An icon the keyword data does not cover is still offered, findable by name.
+    /// </summary>
+    [Test]
+    public void GetSupportedIcons_CarryTheirSearchKeywords()
+    {
+        var supportedIcons = new IconService().GetSupportedIcons();
+
+        var floppy = supportedIcons.Single(icon => icon.IconName == "bs-floppy");
+        floppy.Keywords.Should().Contain("save");
+
+        var bootstrap = supportedIcons.Single(icon => icon.IconName == "bs-bootstrap");
+        bootstrap.Keywords.Should().BeEmpty();
+    }
+
     [Test]
     public void GetFileIconForExtension_OverrideWins_AndEachSetReplacesTheLast()
     {

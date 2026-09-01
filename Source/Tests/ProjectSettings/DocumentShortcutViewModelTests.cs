@@ -48,17 +48,16 @@ public class DocumentShortcutViewModelTests
         var shortcut = CreateShortcut("readme.md");
 
         shortcut.IconName.Should().Be("bs-file-earmark");
-        shortcut.IsIconUnknown.Should().BeFalse();
     }
 
     [Test]
-    public void IconName_WithAnUnknownIconNamed_KeepsTheNameAndReportsIt()
+    public void IconName_WithAnUnknownIconNamed_KeepsTheName()
     {
-        // The rail still draws the button, the icon service resolving the name to a fallback glyph.
+        // The rail still draws the button, the icon service resolving the name to a fallback glyph. That
+        // the name is unsupported is the field's business, and is reported by IconPickerField.
         var shortcut = CreateShortcut("readme.md", "bs-not-a-real-icon");
 
         shortcut.IconName.Should().Be("bs-not-a-real-icon");
-        shortcut.IsIconUnknown.Should().BeTrue();
     }
 
     [Test]

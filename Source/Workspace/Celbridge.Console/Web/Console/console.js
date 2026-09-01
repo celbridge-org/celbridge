@@ -9,6 +9,7 @@ import { t, applyLocalization } from '/assets/celbridge-client/localization.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
 import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
 import { createCardList } from '/assets/celbridge-client/ui/card-list.js';
+import { createIconField, resolveIconClass } from '/assets/celbridge-client/ui/icon-field.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
 import {
     splitLines,
@@ -430,38 +431,7 @@ function readForm() {
 
 // A shortcut with no icon, or one the bundled icon set does not carry, still needs a glyph to be clickable,
 // so it falls back to the icon the Automation settings tab uses.
-const SHORTCUT_FALLBACK_ICON = 'bi-lightning-charge';
-
-// Config stores icons under the host's bs- prefix (matching IconService's symbol names); the bundled icon
-// font addresses them as bi-.
-function toBootstrapIconClass(iconName) {
-    if (iconName && iconName.startsWith('bs-')) {
-        return 'bi-' + iconName.slice('bs-'.length);
-    }
-
-    return SHORTCUT_FALLBACK_ICON;
-}
-
-// The icon font defines a ::before glyph per icon class, so a name the bundled set does not carry resolves
-// to no content at all.
-function hasIconGlyph(element) {
-    const content = getComputedStyle(element, '::before').content;
-
-    return content !== '' && content !== 'none' && content !== 'normal';
-}
-
-// Resolves a shortcut's icon to the class that will actually render, so the rail button and the card preview
-// agree on what an unrecognized name falls back to. probeElement must already be in the document: the check
-// resolves the candidate class against the loaded icon font.
-function resolveShortcutIconClass(iconName, probeElement) {
-    const candidate = toBootstrapIconClass(iconName);
-    probeElement.className = 'bi ' + candidate;
-    if (hasIconGlyph(probeElement)) {
-        return candidate;
-    }
-
-    return SHORTCUT_FALLBACK_ICON;
-}
+const SHORTCUT_FALLBACK_ICON = 'bs-lightning-charge';
 
 // The Automation lists. Each runner and shortcut is edited through its own card, so the cards are the source
 // of truth for those two settings, the way the inputs above are for the rest of the form.
@@ -546,13 +516,19 @@ const shortcutCards = createCardList({
 
     fillCard(card, shortcut) {
         card.querySelector('.shortcut-label').value = shortcut.label || '';
-        card.querySelector('.shortcut-icon').value = shortcut.icon || '';
         card.querySelector('.shortcut-text').value = shortcut.text || '';
+
+        createIconField({
+            container: card.querySelector('.shortcut-icon-field'),
+            value: shortcut.icon || '',
+            defaultIconName: SHORTCUT_FALLBACK_ICON,
+            pickIcon: (searchText) => client.dialog.pickIcon(searchText),
+        });
     },
 
     readCard(card) {
         const label = card.querySelector('.shortcut-label').value.trim();
-        const icon = card.querySelector('.shortcut-icon').value.trim();
+        const icon = card.querySelector('.cel-icon-field-input').value.trim();
         const text = card.querySelector('.shortcut-text').value.trim();
         if (label === '' && text === '') {
             return null;
@@ -566,13 +542,9 @@ const shortcutCards = createCardList({
         const label = card.querySelector('.shortcut-label').value.trim();
         card.querySelector('.cel-card-title').textContent = label || t('Console_Shortcut_Untitled');
 
-        const iconName = card.querySelector('.shortcut-icon').value.trim();
+        const iconName = card.querySelector('.cel-icon-field-input').value.trim();
         const iconElement = card.querySelector('.cel-card-icon');
-        const resolved = resolveShortcutIconClass(iconName, iconElement);
-        iconElement.className = 'cel-card-icon bi ' + resolved;
-
-        const isKnownIcon = resolved === toBootstrapIconClass(iconName);
-        card.querySelector('.shortcut-icon-unknown').classList.toggle('hidden', iconName === '' || isKnownIcon);
+        iconElement.className = 'cel-card-icon bi ' + resolveIconClass(iconName, SHORTCUT_FALLBACK_ICON, iconElement);
     },
 });
 
@@ -598,7 +570,7 @@ function renderShortcutRail() {
         shortcutRail.appendChild(button);
 
         // Resolved once the button is in the rail: the glyph check reads the loaded icon font.
-        iconElement.className = 'bi ' + resolveShortcutIconClass(shortcut.icon, iconElement);
+        iconElement.className = 'bi ' + resolveIconClass(shortcut.icon, SHORTCUT_FALLBACK_ICON, iconElement);
     }
 }
 

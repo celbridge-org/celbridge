@@ -1,0 +1,107 @@
+using System.ComponentModel;
+
+namespace Celbridge.UserInterface.ViewModels;
+
+public partial class IconPickerDialogViewModel : ObservableObject
+{
+    private readonly IIconService _iconService;
+
+    private List<IconPickerItem> _allItems = [];
+
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    [ObservableProperty]
+    private List<IconPickerItem> _filteredItems = [];
+
+    [ObservableProperty]
+    private IconPickerItem? _selectedItem;
+
+    [ObservableProperty]
+    private bool _isSubmitEnabled = false;
+
+    [ObservableProperty]
+    private bool _isEmptyMessageVisible = false;
+
+    public IconPickerDialogViewModel(IIconService iconService)
+    {
+        _iconService = iconService;
+        PropertyChanged += OnPropertyChanged;
+    }
+
+    public void Initialize(string searchText)
+    {
+        _allItems = _iconService.GetSupportedIcons()
+            .Select(catalogEntry => new IconPickerItem(catalogEntry))
+            .ToList();
+
+        var trimmedSearchText = searchText.Trim();
+
+        // The field's text opens the dialog as a search, so a name already part typed does not have to be
+        // typed again. Setting an unchanged search raises no notification, so the first filter is run here
+        // rather than left to the property change.
+        SearchText = trimmedSearchText;
+        UpdateFilteredItems();
+
+        // A seed matching nothing, such as a typo or a name from the font the host keeps to itself, is
+        // dropped: the whole set is more use than an empty list.
+        if (FilteredItems.Count == 0)
+        {
+            SearchText = string.Empty;
+        }
+
+        // Text that names no supported icon leaves the list unselected, so the dialog opens on the list
+        // rather than on nothing.
+        SelectedItem = _allItems.FirstOrDefault(item => item.IconName == trimmedSearchText);
+    }
+
+    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SearchText))
+        {
+            UpdateFilteredItems();
+        }
+        else if (e.PropertyName == nameof(SelectedItem))
+        {
+            IsSubmitEnabled = SelectedItem is not null;
+        }
+    }
+
+    private void UpdateFilteredItems()
+    {
+        var search = SearchText.Trim();
+
+        if (string.IsNullOrEmpty(search))
+        {
+            FilteredItems = [.. _allItems];
+            IsEmptyMessageVisible = false;
+            return;
+        }
+
+        var searchLower = search.ToLowerInvariant();
+
+        // An icon named for the search term is more likely the one the user wants than an icon that
+        // merely carries the term as a keyword, so the two groups are listed in that order. The icons
+        // arrive sorted by name, so each group keeps that order.
+        var nameMatches = new List<IconPickerItem>();
+        var keywordMatches = new List<IconPickerItem>();
+
+        foreach (var item in _allItems)
+        {
+            if (item.IconNameLower.Contains(searchLower))
+            {
+                nameMatches.Add(item);
+            }
+            else if (item.KeywordTextLower.Contains(searchLower))
+            {
+                keywordMatches.Add(item);
+            }
+        }
+
+        var filteredItems = new List<IconPickerItem>(nameMatches);
+        filteredItems.AddRange(keywordMatches);
+
+        FilteredItems = filteredItems;
+        IsEmptyMessageVisible = filteredItems.Count == 0;
+    }
+}

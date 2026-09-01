@@ -40,7 +40,6 @@
     "Console_Field_TriggerPattern": "Pattern",
     "Console_Field_TriggerCommand": "Command",
     "Console_Field_ShortcutLabel": "Label",
-    "Console_Field_ShortcutIcon": "Icon",
     "Console_Field_ShortcutText": "Command",
 
     "Console_Add_Runner": "Add Runner",
@@ -56,7 +55,6 @@
     "Console_Shortcut_Untitled": "New shortcut",
     "Console_Card_Delete": "Delete",
     "Console_Card_Reorder": "Drag to reorder, or press Alt+Up and Alt+Down on the header.",
-    "Console_Warning_UnknownIcon": "Unknown icon. The button will use the default glyph.",
 
     "Console_Type_Shell": "Shell",
     "Console_Type_Python": "Python",
@@ -73,7 +71,6 @@
     "Console_Placeholder_TriggerPattern": "Path pattern to watch",
     "Console_Placeholder_TriggerCommand": "Command to run on a change",
     "Console_Placeholder_ShortcutLabel": "Shown as the button tooltip",
-    "Console_Placeholder_ShortcutIcon": "Bootstrap icon name",
     "Console_Placeholder_ShortcutText": "Text typed into the console",
 
     "Console_Hint_Executable": "Blank leaves just the shell. Example: node",
@@ -89,6 +86,5 @@
     "Console_Hint_RunnerExtensions": "Example: .py, .ipy",
     "Console_Hint_RunnerCommand": "{resource} is the path of the file being run. Example: %run \"{resource}\"",
     "Console_Hint_TriggerPattern": "Matched against project paths. Examples: data/**/*.xlsx, *.py",
-    "Console_Hint_TriggerCommand": "{resource} is the path of the file that changed. Example: %run clean_data.py",
-    "Console_Hint_ShortcutIcon": "Example: bs-play-fill"
+    "Console_Hint_TriggerCommand": "{resource} is the path of the file that changed. Example: %run clean_data.py"
 }

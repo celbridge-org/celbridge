@@ -30,7 +30,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IServerService _serverService;
-    private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
 
     // Set while the document's settings are being read off disk, so the bookmarks arriving in the
@@ -369,13 +368,11 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IServerService serverService,
-        IIconService iconService,
         IStringLocalizer stringLocalizer)
     {
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _serverService = serverService;
-        _iconService = iconService;
         _stringLocalizer = stringLocalizer;
 
         PropertyChanged += WebViewDocumentViewModel_PropertyChanged;
@@ -610,7 +607,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// </summary>
     public WebViewBookmarkViewModel CreateBookmark(WebViewBookmark bookmark)
     {
-        var bookmarkViewModel = new WebViewBookmarkViewModel(_iconService, _stringLocalizer)
+        var bookmarkViewModel = new WebViewBookmarkViewModel(_stringLocalizer)
         {
             Url = bookmark.Url,
             Name = bookmark.Name,

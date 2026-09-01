@@ -50,15 +50,21 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <!-- Excluded from the default Content glob because they are embedded below, not served as loose files. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Fonts\**\*.json</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Assets\Fonts\**\*.json;Assets\Fonts\**\build\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The .ttf fonts under Assets/Fonts ship automatically as loose Content via the Uno SDK's implicit
-         Assets glob and load through ms-appx, so they need no entry here. Only the JSON glyph maps are
-         embedded, because IconService reads them through GetManifestResourceStream. -->
-    <EmbeddedResource Include="Assets\Fonts\**\*.json" />
+    <!-- A font is loaded by URI, so a .ttf has to be a real file in the package: those ship via the Assets
+         glob. The JSON maps are read as data instead, so they are embedded, which resolves the same way on
+         every head and needs no app package. -->
+    <EmbeddedResource Include="Assets\Fonts\**\*.json" Exclude="Assets\Fonts\**\build\**" />
+
+    <!-- That Assets glob is declared in the WinAppSDK props, which are imported before this file is read,
+         so the exclusions above cannot reach it and the items are removed here instead. The JSON maps are
+         embedded rather than served loose, and the `build/` subfolder holds the npm tooling used to
+         refresh the vendored icon data, which is not an asset at all. -->
+    <Content Remove="Assets\Fonts\**\*.json" />
+    <Content Remove="Assets\Fonts\**\build\**" />
   </ItemGroup>
 
   <ItemGroup>

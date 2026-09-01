@@ -11,7 +11,9 @@
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "vendor:all": "npm run vendor --workspaces --if-present"
+    "vendor:icons": "npm run vendor --prefix Core/Celbridge.UserInterface/Assets/Fonts/BootstrapIcons/build",
+    "vendor:notes": "npm run vendor --prefix Modules/Celbridge.DocumentEditors/Editors/Notes/lib/build",
+    "vendor:console": "npm run vendor --prefix Workspace/Celbridge.Console/Web/Console/lib/build"
   },
   "devDependencies": {
     "vitest": "^4.0.0",

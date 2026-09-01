@@ -35,7 +35,6 @@ public partial class DocumentShortcutViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IconName))]
-    [NotifyPropertyChangedFor(nameof(IsIconUnknown))]
     private string _icon = string.Empty;
 
     [ObservableProperty]
@@ -104,24 +103,6 @@ public partial class DocumentShortcutViewModel : ObservableObject
             }
 
             return !_resourceExists(fileResource.Value);
-        }
-    }
-
-    /// <summary>
-    /// True when the named icon is not one the bundled set carries, so the card can say so. The button
-    /// still draws, the icon service resolving an unknown name to a fallback glyph.
-    /// </summary>
-    public bool IsIconUnknown
-    {
-        get
-        {
-            var iconText = Icon.Trim();
-            if (string.IsNullOrEmpty(iconText))
-            {
-                return false;
-            }
-
-            return !_iconService.TryGetGlyph(iconText, out _);
         }
     }
 
@@ -205,10 +186,6 @@ public partial class DocumentShortcutViewModel : ObservableObject
     public string ResourceHint => ProjectSettingsLabels.ShortcutResourceHint;
     public string InvalidResourceText => ProjectSettingsLabels.ShortcutInvalidResource;
     public string MissingResourceText => ProjectSettingsLabels.ShortcutMissingResource;
-    public string IconLabel => ProjectSettingsLabels.ShortcutIconLabel;
-    public string IconPlaceholder => ProjectSettingsLabels.ShortcutIconPlaceholder;
-    public string IconHint => ProjectSettingsLabels.ShortcutIconHint;
-    public string UnknownIconText => ProjectSettingsLabels.ShortcutUnknownIcon;
 
     public DocumentShortcutViewModel(IIconService iconService, Func<ResourceKey, bool> resourceExists)
     {

@@ -1,18 +1,4 @@
-using System.Globalization;
-using System.Reflection;
-using System.Text.Json.Nodes;
-
 namespace Celbridge.UserInterface.Services;
-
-/// <summary>
-/// An icon font addressable by prefixed name, and the bundled asset holding its name to codepoint map.
-/// </summary>
-internal sealed record IconFontSet(string Prefix, string FontFamilyKey, string GlyphMapResource);
-
-/// <summary>
-/// The glyphs loaded from one icon font, keyed by their unprefixed name.
-/// </summary>
-internal sealed record IconFontGlyphs(string FontFamilyKey, IReadOnlyDictionary<string, string> GlyphsByName);
 
 public class IconService : IIconService
 {
@@ -24,73 +10,8 @@ public class IconService : IIconService
     private const string DefaultFontSize = "100%";
     private const string FallbackIconName = "bs-question-circle";
 
-    // The icon fonts addressable by a prefixed name. The prefix selects the font; the rest of the name
-    // is looked up in that font's glyph map.
-    private static readonly IReadOnlyList<IconFontSet> _iconFontSets = new List<IconFontSet>
-    {
-        new IconFontSet("bs", "BootstrapIconsFontFamily", "Assets.Fonts.BootstrapIcons.icon-glyphs.json"),
-        new IconFontSet("nf", "NerdFontsFontFamily", "Assets.Fonts.NerdFonts.glyphnames.json")
-    };
-
-    // Maps each IconSymbol to a prefixed icon name. Add new common icons here. Anything not listed is
-    // still resolvable by name.
-    private static readonly Dictionary<IconSymbol, string> _symbolToIconName = new()
-    {
-        { IconSymbol.Close, "bs-x-lg" },
-        { IconSymbol.Search, "bs-search" },
-        { IconSymbol.Folder, "bs-folder" },
-        { IconSymbol.FolderOpen, "bs-folder2-open" },
-        { IconSymbol.FolderFilled, "bs-folder-fill" },
-        { IconSymbol.FolderAdd, "bs-folder-plus" },
-        { IconSymbol.FileAdd, "bs-file-earmark-plus" },
-        { IconSymbol.File, "bs-file-earmark" },
-        { IconSymbol.Bug, "bs-bug" },
-        { IconSymbol.Back, "bs-arrow-left" },
-        { IconSymbol.Forward, "bs-arrow-right" },
-        { IconSymbol.Home, "bs-house" },
-        { IconSymbol.Refresh, "bs-arrow-clockwise" },
-        { IconSymbol.Reveal, "bs-box-arrow-up-right" },
-        { IconSymbol.Dock, "bs-box-arrow-in-up-right" },
-        { IconSymbol.Delete, "bs-trash" },
-        { IconSymbol.Error, "bs-exclamation-circle-fill" },
-        { IconSymbol.Warning, "bs-exclamation-triangle-fill" },
-        { IconSymbol.Report, "bs-clipboard-data" },
-        { IconSymbol.More, "bs-three-dots" },
-        { IconSymbol.Collapse, "bs-arrows-collapse" },
-        { IconSymbol.Settings, "bs-gear" },
-        { IconSymbol.Sliders, "bs-sliders" },
-        { IconSymbol.Windowed, "bs-window" },
-        { IconSymbol.FullScreen, "bs-arrows-fullscreen" },
-        { IconSymbol.FocusMode, "bs-fullscreen" },
-        { IconSymbol.Presentation, "bs-easel" },
-        { IconSymbol.Save, "bs-floppy" },
-        { IconSymbol.ExitFullScreen, "bs-fullscreen-exit" },
-        { IconSymbol.People, "bs-people" },
-        { IconSymbol.Chat, "bs-chat-dots" },
-        { IconSymbol.Upload, "bs-upload" },
-        { IconSymbol.ChevronDown, "bs-chevron-down" },
-        { IconSymbol.ChevronLeft, "bs-chevron-left" },
-        { IconSymbol.ChevronRight, "bs-chevron-right" },
-        { IconSymbol.ChevronUp, "bs-chevron-up" },
-        { IconSymbol.MatchCase, "bs-type" },
-        { IconSymbol.Replace, "bs-arrow-left-right" },
-        { IconSymbol.Add, "bs-plus-lg" },
-        { IconSymbol.Copy, "bs-copy" },
-        { IconSymbol.Cut, "bs-scissors" },
-        { IconSymbol.Paste, "bs-clipboard" },
-        { IconSymbol.Rename, "bs-pencil" },
-        { IconSymbol.Archive, "bs-archive" },
-        { IconSymbol.Unarchive, "bs-box-arrow-up" },
-        { IconSymbol.Recent, "bs-clock-history" },
-        { IconSymbol.Menu, "bs-list" },
-        { IconSymbol.Play, "bs-play-fill" },
-        { IconSymbol.Examples, "bs-collection" },
-        { IconSymbol.Book, "bs-book" },
-        { IconSymbol.Link, "bs-link-45deg" },
-        { IconSymbol.Exit, "bs-box-arrow-right" }
-    };
-
-    private Dictionary<string, IconFontGlyphs> _glyphsByPrefix = new();
+    private IReadOnlyDictionary<string, IconFontData> _fontsByPrefix = new Dictionary<string, IconFontData>();
+    private IReadOnlyList<IconCatalogEntry> _supportedIcons = Array.Empty<IconCatalogEntry>();
     private IReadOnlyDictionary<string, IconDefinition> _fileIconOverrides =
         new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, IconDefinition> _fileNameIconOverrides =
@@ -124,12 +45,15 @@ public class IconService : IIconService
 
     public Result LoadDefinitions()
     {
-        var loadGlyphsResult = LoadGlyphMaps();
-        if (loadGlyphsResult.IsFailure)
+        var loadResult = IconFontLoader.Load();
+        if (loadResult.IsFailure)
         {
-            return Result.Fail("Failed to load the icon font glyph maps")
-                .WithErrors(loadGlyphsResult);
+            return Result.Fail("Failed to load the bundled icon fonts")
+                .WithErrors(loadResult);
         }
+
+        _fontsByPrefix = loadResult.Value;
+        _supportedIcons = BuildSupportedIcons();
 
         return Result.Ok();
     }
@@ -239,7 +163,7 @@ public class IconService : IIconService
 
     public IconGlyph GetGlyph(IconSymbol icon)
     {
-        if (_symbolToIconName.TryGetValue(icon, out string? iconName))
+        if (IconSymbolNames.TryGetIconName(icon, out var iconName))
         {
             return GetGlyph(iconName);
         }
@@ -249,7 +173,7 @@ public class IconService : IIconService
 
     public string GetIconName(IconSymbol icon)
     {
-        if (_symbolToIconName.TryGetValue(icon, out string? iconName))
+        if (IconSymbolNames.TryGetIconName(icon, out var iconName))
         {
             return iconName;
         }
@@ -286,19 +210,76 @@ public class IconService : IIconService
         var prefix = iconName.Substring(0, separatorIndex);
         var unprefixedName = iconName.Substring(separatorIndex + 1);
 
-        if (!_glyphsByPrefix.TryGetValue(prefix, out IconFontGlyphs? fontGlyphs))
+        if (!_fontsByPrefix.TryGetValue(prefix, out IconFontData? fontData))
         {
             return false;
         }
 
-        if (!fontGlyphs.GlyphsByName.TryGetValue(unprefixedName, out string? fontCharacter))
+        if (!fontData.GlyphsByName.TryGetValue(unprefixedName, out string? fontCharacter))
         {
             return false;
         }
 
-        glyph = new IconGlyph(fontCharacter, fontGlyphs.FontFamilyKey);
+        glyph = new IconGlyph(fontCharacter, fontData.FontFamilyKey);
 
         return true;
+    }
+
+    public IReadOnlyList<IconCatalogEntry> GetSupportedIcons()
+    {
+        return _supportedIcons;
+    }
+
+    // The offered set only changes when the glyph and keyword maps are loaded, so it is built there rather
+    // than rebuilt and re-sorted for every caller.
+    private IReadOnlyList<IconCatalogEntry> BuildSupportedIcons()
+    {
+        var supportedIcons = new List<IconCatalogEntry>();
+
+        foreach (var (prefix, fontData) in _fontsByPrefix)
+        {
+            if (!fontData.IsUserFacing)
+            {
+                continue;
+            }
+
+            foreach (var glyphName in fontData.GlyphsByName.Keys)
+            {
+                IReadOnlyList<string> keywords = Array.Empty<string>();
+                if (fontData.KeywordsByName.TryGetValue(glyphName, out var namedKeywords))
+                {
+                    keywords = namedKeywords;
+                }
+
+                var iconName = $"{prefix}-{glyphName}";
+
+                supportedIcons.Add(new IconCatalogEntry(iconName, keywords));
+            }
+        }
+
+        supportedIcons.Sort((first, second) =>
+            string.Compare(first.IconName, second.IconName, StringComparison.OrdinalIgnoreCase));
+
+        return supportedIcons;
+    }
+
+    public bool IsSupportedIcon(string iconName)
+    {
+        var separatorIndex = iconName.IndexOf('-');
+        if (separatorIndex <= 0)
+        {
+            return false;
+        }
+
+        var prefix = iconName.Substring(0, separatorIndex);
+
+        if (!_fontsByPrefix.TryGetValue(prefix, out IconFontData? fontData)
+            || !fontData.IsUserFacing)
+        {
+            return false;
+        }
+
+        return TryGetGlyph(iconName, out _);
     }
 
     private IconGlyph FallbackGlyph()
@@ -333,114 +314,5 @@ public class IconService : IIconService
         }
 
         return true;
-    }
-
-    private Result LoadGlyphMaps()
-    {
-        var glyphsByPrefix = new Dictionary<string, IconFontGlyphs>();
-
-        foreach (var iconFontSet in _iconFontSets)
-        {
-            var loadResult = LoadIconDataResource(iconFontSet.GlyphMapResource);
-            if (loadResult.IsFailure)
-            {
-                return Result.Fail($"Failed to load the glyph map for icon font '{iconFontSet.Prefix}'.")
-                    .WithErrors(loadResult);
-            }
-            var stream = loadResult.Value;
-
-            var glyphsByName = new Dictionary<string, string>();
-
-            try
-            {
-                using (var reader = new StreamReader(stream))
-                {
-                    var json = reader.ReadToEnd();
-                    var glyphData = JsonNode.Parse(json) as JsonObject;
-                    if (glyphData is null)
-                    {
-                        return Result.Fail($"Failed to parse the glyph map for icon font '{iconFontSet.Prefix}' as a JSON object.");
-                    }
-
-                    foreach (var kv in glyphData)
-                    {
-                        var code = ReadCodePoint(kv.Value);
-                        if (string.IsNullOrEmpty(code))
-                        {
-                            // A non-glyph entry, such as the metadata block the Nerd Fonts map carries.
-                            continue;
-                        }
-
-                        int codePoint = int.Parse(code, NumberStyles.HexNumber);
-
-                        glyphsByName[kv.Key] = char.ConvertFromUtf32(codePoint);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"An exception occurred when loading the glyph map for icon font '{iconFontSet.Prefix}'.")
-                    .WithException(ex);
-            }
-
-            glyphsByPrefix[iconFontSet.Prefix] = new IconFontGlyphs(iconFontSet.FontFamilyKey, glyphsByName);
-        }
-
-        _glyphsByPrefix = glyphsByPrefix;
-
-        return Result.Ok();
-    }
-
-    // Glyph maps are vendored byte-identical to their upstream projects, and the projects disagree on
-    // shape: Bootstrap maps a name straight to a codepoint string, Nerd Fonts maps it to an object with a
-    // "code" property. Returns empty for anything that is neither.
-    private static string ReadCodePoint(JsonNode? value)
-    {
-        if (value is JsonValue codeValue)
-        {
-            return codeValue.ToString();
-        }
-
-        if (value is JsonObject glyphObject &&
-            glyphObject.TryGetPropertyValue("code", out var codeProperty) &&
-            codeProperty is not null)
-        {
-            return codeProperty.ToString();
-        }
-
-        return string.Empty;
-    }
-
-    private Result<Stream> LoadIconDataResource(string searchResourceName)
-    {
-        var entryAssembly = Assembly.GetAssembly(this.GetType());
-        Guard.IsNotNull(entryAssembly);
-
-        // The name is prepended with the assembly name so look for a resource that
-        // ends with the requested resource name.
-
-        string resourceName = string.Empty;
-        string[] names = entryAssembly.GetManifestResourceNames();
-        foreach (var name in names)
-        {
-            if (name.EndsWith(searchResourceName))
-            {
-                resourceName = name;
-                break;
-            }
-        }
-
-        if (string.IsNullOrEmpty(resourceName))
-        {
-            return Result<Stream>.Fail($"Resource '{resourceName}' not found.");
-        }
-
-        var resourceStream = entryAssembly.GetManifestResourceStream(resourceName);
-        if (resourceStream == null)
-        {
-            return Result<Stream>.Fail($"Failed to load resource '{resourceName}'.");
-        }
-
-        return Result<Stream>.Ok(resourceStream);
     }
 }

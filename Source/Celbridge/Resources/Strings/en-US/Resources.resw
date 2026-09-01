@@ -654,20 +654,8 @@
   <data name="WebView_Settings_BookmarkNameLabel" xml:space="preserve">
     <value>Name</value>
   </data>
-  <data name="WebView_Settings_BookmarkIconLabel" xml:space="preserve">
-    <value>Icon</value>
-  </data>
   <data name="WebView_Settings_BookmarkNamePlaceholder" xml:space="preserve">
     <value>Name shown on the button</value>
-  </data>
-  <data name="WebView_Settings_BookmarkIconPlaceholder" xml:space="preserve">
-    <value>bs-book</value>
-  </data>
-  <data name="WebView_Settings_BookmarkIconHint" xml:space="preserve">
-    <value>An icon name such as bs-book or bs-github. Leave blank for no icon.</value>
-  </data>
-  <data name="WebView_Settings_BookmarkUnknownIcon" xml:space="preserve">
-    <value>There is no icon with this name, so a default one is shown.</value>
   </data>
   <data name="WebView_Settings_BookmarkOpenTooltip" xml:space="preserve">
     <value>Open this bookmark</value>
@@ -925,18 +913,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Side" xml:space="preserve">
     <value>Side area</value>
-  </data>
-  <data name="ProjectSettings_ShortcutIconLabel" xml:space="preserve">
-    <value>Icon</value>
-  </data>
-  <data name="ProjectSettings_ShortcutIconPlaceholder" xml:space="preserve">
-    <value>bs-file-earmark</value>
-  </data>
-  <data name="ProjectSettings_ShortcutIconHint" xml:space="preserve">
-    <value>An icon name such as bs-book or bs-github. Leave blank for the default icon.</value>
-  </data>
-  <data name="ProjectSettings_ShortcutUnknownIcon" xml:space="preserve">
-    <value>There is no icon with this name, so a default one is shown.</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsHeader" xml:space="preserve">
     <value>Feature Flags</value>
@@ -1351,6 +1327,30 @@ Open with default application instead?</value>
   </data>
   <data name="ResourcePickerDialog_SearchPlaceholder" xml:space="preserve">
     <value>Enter file name...</value>
+  </data>
+  <data name="IconPicker_FieldLabel" xml:space="preserve">
+    <value>Icon</value>
+  </data>
+  <data name="IconPicker_FieldPlaceholder" xml:space="preserve">
+    <value>bs-book</value>
+  </data>
+  <data name="IconPicker_FieldHint" xml:space="preserve">
+    <value>Browse to pick an icon, or type its name.</value>
+  </data>
+  <data name="IconPicker_UnknownIcon" xml:space="preserve">
+    <value>There is no supported icon with this name.</value>
+  </data>
+  <data name="IconPicker_BrowseTooltip" xml:space="preserve">
+    <value>Choose an icon</value>
+  </data>
+  <data name="IconPicker_DialogTitle" xml:space="preserve">
+    <value>Select Icon</value>
+  </data>
+  <data name="IconPicker_SearchPlaceholder" xml:space="preserve">
+    <value>Search by name or keyword...</value>
+  </data>
+  <data name="IconPicker_NoResults" xml:space="preserve">
+    <value>No icons match this search.</value>
   </data>
   <data name="Validation_FileNameRequired" xml:space="preserve">
     <value>A file name is required</value>

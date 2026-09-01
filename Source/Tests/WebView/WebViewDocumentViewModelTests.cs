@@ -19,7 +19,6 @@ public class WebViewDocumentViewModelTests
     private IResourceFileSystem _resourceFileSystem = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IServerService _serverService = null!;
-    private IIconService _iconService = null!;
     private IStringLocalizer _stringLocalizer = null!;
 
     [SetUp]
@@ -29,7 +28,6 @@ public class WebViewDocumentViewModelTests
         _serverService = Substitute.For<IServerService>();
         _serverService.Port.Returns(5000);
 
-        _iconService = Substitute.For<IIconService>();
         _stringLocalizer = Substitute.For<IStringLocalizer>();
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
@@ -169,7 +167,7 @@ public class WebViewDocumentViewModelTests
         // The HtmlViewer role serves the HTML file directly via the project virtual
         // host without consulting any .webview file. The resource file system is
         // never called for this role.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FilePath = "ignored.html",
             FileResource = new ResourceKey("page.html"),
@@ -186,7 +184,7 @@ public class WebViewDocumentViewModelTests
     public void IsUrlBarVisible_HtmlViewer_IsFalse()
     {
         // The URL bar is external-URL chrome; the HTML viewer never shows it.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FileResource = new ResourceKey("page.html"),
             Role = WebViewDocumentRole.HtmlViewer,
@@ -198,7 +196,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public void NavigateUrl_HtmlViewer_BuildsLoopbackProjectUrlFromResourceKey()
     {
-        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
+        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FileResource = new ResourceKey("Pages/welcome.html"),
             Role = WebViewDocumentRole.HtmlViewer,
@@ -509,7 +507,7 @@ public class WebViewDocumentViewModelTests
 
     private WebViewDocumentViewModel CreateViewModel()
     {
-        return new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _iconService, _stringLocalizer)
+        return new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FileResource = new ResourceKey("test.webview"),
         };

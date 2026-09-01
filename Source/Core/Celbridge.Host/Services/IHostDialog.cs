@@ -6,6 +6,7 @@ public static class DialogRpcMethods
 {
     public const string PickImage = "dialog/pickImage";
     public const string PickFile = "dialog/pickFile";
+    public const string PickIcon = "dialog/pickIcon";
     public const string Alert = "dialog/alert";
     public const string Toast = "dialog/toast";
 }
@@ -26,6 +27,13 @@ public interface IHostDialog
     /// </summary>
     [JsonRpcMethod(DialogRpcMethods.PickFile)]
     Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null);
+
+    /// <summary>
+    /// Opens the icon picker over the supported icon set, with its search on the given text, and returns
+    /// the chosen icon name.
+    /// </summary>
+    [JsonRpcMethod(DialogRpcMethods.PickIcon)]
+    Task<PickIconResult> PickIconAsync(string? searchText = null);
 
     /// <summary>
     /// Shows an alert dialog to the user.

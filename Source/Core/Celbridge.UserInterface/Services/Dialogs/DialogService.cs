@@ -272,6 +272,18 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 
+    public async Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "")
+    {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
+        var dialog = _dialogFactory.CreateIconPickerDialog(searchText);
+        _answerScheduler.OnDialogShown(DialogKind.IconPicker);
+        return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
+
     public async Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
         if (IsDialogOpen)

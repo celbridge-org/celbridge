@@ -5,7 +5,7 @@
   "description": "Vendored xterm.js dist files for the .console document editor",
   "type": "module",
   "scripts": {
-    "vendor": "node vendor.mjs"
+    "vendor": "node vendor.js"
   },
   "dependencies": {
     "@xterm/xterm": "6.0.0",

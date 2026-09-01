@@ -1,4 +1,3 @@
-using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebView.Helpers;
 using Microsoft.Extensions.Localization;
@@ -12,7 +11,6 @@ namespace Celbridge.WebView.ViewModels;
 /// </summary>
 public partial class WebViewBookmarkViewModel : ObservableObject
 {
-    private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
 
     [ObservableProperty]
@@ -27,7 +25,6 @@ public partial class WebViewBookmarkViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasIcon))]
-    [NotifyPropertyChangedFor(nameof(IsIconUnknown))]
     private string _icon = string.Empty;
 
     /// <summary>
@@ -54,12 +51,8 @@ public partial class WebViewBookmarkViewModel : ObservableObject
 
     public string UrlLabel => _stringLocalizer.GetString("WebView_Settings_BookmarkUrlLabel");
     public string NameLabel => _stringLocalizer.GetString("WebView_Settings_BookmarkNameLabel");
-    public string IconLabel => _stringLocalizer.GetString("WebView_Settings_BookmarkIconLabel");
     public string UrlPlaceholder => _stringLocalizer.GetString("WebView_UrlBar_AddressPlaceholder");
     public string NamePlaceholder => _stringLocalizer.GetString("WebView_Settings_BookmarkNamePlaceholder");
-    public string IconPlaceholder => _stringLocalizer.GetString("WebView_Settings_BookmarkIconPlaceholder");
-    public string IconHint => _stringLocalizer.GetString("WebView_Settings_BookmarkIconHint");
-    public string UnknownIconText => _stringLocalizer.GetString("WebView_Settings_BookmarkUnknownIcon");
     public string InvalidUrlText => _stringLocalizer.GetString("WebView_InvalidUrl");
     public string OpenTooltip => _stringLocalizer.GetString("WebView_Settings_BookmarkOpenTooltip");
 
@@ -67,23 +60,6 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     /// True when the bookmark names an icon, so the button and card show a glyph beside the name.
     /// </summary>
     public bool HasIcon => !string.IsNullOrWhiteSpace(Icon);
-
-    /// <summary>
-    /// True when the named icon is not one the bundled set carries, so the card can say so. The button
-    /// still draws, the icon service resolving an unknown name to a fallback glyph.
-    /// </summary>
-    public bool IsIconUnknown
-    {
-        get
-        {
-            if (!HasIcon)
-            {
-                return false;
-            }
-
-            return !_iconService.TryGetGlyph(Icon, out _);
-        }
-    }
 
     /// <summary>
     /// True when the bookmark holds an address the document can navigate to, which is what the bookmarks
@@ -97,9 +73,8 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     /// </summary>
     public bool IsUrlInvalid => !string.IsNullOrWhiteSpace(Url) && !IsNavigable;
 
-    public WebViewBookmarkViewModel(IIconService iconService, IStringLocalizer stringLocalizer)
+    public WebViewBookmarkViewModel(IStringLocalizer stringLocalizer)
     {
-        _iconService = iconService;
         _stringLocalizer = stringLocalizer;
     }
 

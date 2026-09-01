@@ -13,6 +13,7 @@ public enum DialogKind
     InputText,
     SecretInput,
     ResourcePicker,
+    IconPicker,
 }
 
 /// <summary>
@@ -78,6 +79,12 @@ public interface IDialogService
     /// Fails if no project is currently loaded.
     /// </summary>
     Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
+
+    /// <summary>
+    /// Display an Icon Picker Dialog over the supported icon set, opening its search on the given text.
+    /// Returns the prefixed name of the chosen icon, or fails if the dialog was cancelled.
+    /// </summary>
+    Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "");
 
     /// <summary>
     /// Display a Choice Dialog that lets the user pick from a list of named options.

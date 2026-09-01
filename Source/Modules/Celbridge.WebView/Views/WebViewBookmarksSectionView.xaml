@@ -59,22 +59,8 @@
                    KeyDown="CommitField_KeyDown" />
         </StackPanel>
 
-        <StackPanel Spacing="2">
-          <TextBlock Text="{x:Bind IconLabel}"
-                     Style="{StaticResource FieldLabelTextStyle}" />
-          <TextBox IsSpellCheckEnabled="False"
-                   PlaceholderText="{x:Bind IconPlaceholder}"
-                   Text="{x:Bind Icon, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                   KeyDown="CommitField_KeyDown" />
-          <TextBlock Text="{x:Bind IconHint}"
-                     Style="{StaticResource SupportingTextStyle}"
-                     TextWrapping="Wrap" />
-          <TextBlock Text="{x:Bind UnknownIconText}"
-                     Style="{StaticResource SupportingTextStyle}"
-                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                     TextWrapping="Wrap"
-                     Visibility="{x:Bind IsIconUnknown, Mode=OneWay}" />
-        </StackPanel>
+        <!-- A bookmark with no icon draws no glyph, so the field previews none while it is empty. -->
+        <controls:IconPickerField IconName="{x:Bind Icon, Mode=TwoWay}" />
 
       </StackPanel>
     </DataTemplate>
