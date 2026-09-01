@@ -574,12 +574,23 @@ public sealed partial class DocumentSectionView : UserControl
                 return;
             }
 
+            // Measure before disturbing the strip. A tab the user clicked is arranged already and is
+            // usually in view, and the realization pass below moves the offset whether or not there was
+            // anything to reveal, which lands the strip back near its first tab.
+            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
+            if (container is not null &&
+                container.ActualWidth > 0 &&
+                GetRevealOffset(container, scrollViewer) is null)
+            {
+                return;
+            }
+
             // Realize the container for an off-screen (virtualized) tab and force the strip to lay out, so
             // the measurements below reflect the settled geometry rather than a transient resize state.
             tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
             tabListView.UpdateLayout();
 
-            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
+            container = tabListView.ContainerFromItem(tab) as FrameworkElement;
             if (container is null ||
                 container.ActualWidth == 0)
             {
@@ -589,32 +600,40 @@ public sealed partial class DocumentSectionView : UserControl
                 return;
             }
 
-            // Position of the tab relative to the visible viewport. A negative value means the tab is clipped
-            // off the leading edge; a right edge past the viewport width means it is clipped off the trailing
-            // edge. The minimum scroll that clears the offending edge keeps the rest of the strip stable.
-            double tabViewportX = TabViewportLeft(container, scrollViewer);
-            double tabWidth = container.ActualWidth;
-            double viewportWidth = scrollViewer.ViewportWidth;
-            double currentOffset = scrollViewer.HorizontalOffset;
-
-            double? targetOffset = null;
-            if (tabViewportX < 0)
-            {
-                targetOffset = currentOffset + tabViewportX;
-            }
-            else if (tabViewportX + tabWidth > viewportWidth)
-            {
-                targetOffset = currentOffset + (tabViewportX + tabWidth - viewportWidth);
-            }
-
-            if (targetOffset is null)
+            if (GetRevealOffset(container, scrollViewer) is not double targetOffset)
             {
                 return;
             }
 
-            double clampedOffset = Math.Clamp(targetOffset.Value, 0, scrollViewer.ScrollableWidth);
+            double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
             scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
         });
+    }
+
+    /// <summary>
+    /// The scroll offset that brings a tab container fully into the strip's viewport, or null when the tab is
+    /// already fully visible. A tab whose left edge sits before the viewport is clipped off the leading edge,
+    /// and one whose right edge sits past the viewport width is clipped off the trailing edge. Revealing by
+    /// the minimum that clears the offending edge keeps the rest of the strip where the user left it.
+    /// </summary>
+    private static double? GetRevealOffset(FrameworkElement container, ScrollViewer scrollViewer)
+    {
+        double tabViewportX = TabViewportLeft(container, scrollViewer);
+        double tabWidth = container.ActualWidth;
+        double viewportWidth = scrollViewer.ViewportWidth;
+        double currentOffset = scrollViewer.HorizontalOffset;
+
+        if (tabViewportX < 0)
+        {
+            return currentOffset + tabViewportX;
+        }
+
+        if (tabViewportX + tabWidth > viewportWidth)
+        {
+            return currentOffset + (tabViewportX + tabWidth - viewportWidth);
+        }
+
+        return null;
     }
 
     /// <summary>
