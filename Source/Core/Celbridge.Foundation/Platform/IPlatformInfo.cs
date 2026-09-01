@@ -101,8 +101,9 @@ public interface IPlatformInfo
     bool RequiresMacOSTabScrollIntoView { get; }
 
     /// <summary>
-    /// Whether the mouse wheel must be translated into horizontal tab-strip scrolling manually because the
-    /// platform does not scroll the overflowing strip in response to the wheel. True on macOS.
+    /// Whether wheel input must be translated into horizontal tab-strip scrolling manually because the
+    /// platform does not scroll the overflowing strip for a vertical wheel and scrolls it backwards for a
+    /// horizontal one. True on macOS.
     /// </summary>
     bool RequiresMacOSTabWheelScroll { get; }
 
