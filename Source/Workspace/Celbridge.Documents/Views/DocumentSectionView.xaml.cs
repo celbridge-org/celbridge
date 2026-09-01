@@ -248,7 +248,9 @@ public sealed partial class DocumentSectionView : UserControl
             ScrollTabIntoView(selectedTab);
         }
 
-        UpdateTabStripScrollIndicator();
+        // The strip is still mid-arrange while its size change is raised, so its leading edge only settles on
+        // the following cycle.
+        _ = DispatcherQueue.TryEnqueue(UpdateTabStripScrollIndicator);
     }
 
     /// <summary>
@@ -870,8 +872,11 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
+        // A collapsed band means the section draws no strip, so there is nowhere for the indicator to sit.
+        double stripHeight = MeasureTabStripHeight();
         var scrollViewer = GetTabStripScrollViewer();
-        if (scrollViewer is null ||
+        if (stripHeight <= 0 ||
+            scrollViewer is null ||
             scrollViewer.ActualWidth <= 0)
         {
             ScrollIndicator.Visibility = Visibility.Collapsed;
@@ -879,41 +884,25 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
+        // The band is pinned to the authored strip height and starts at the top of the section's content, so
+        // the indicator's place down the band is the same in every section. The pixel it keeps below itself
+        // clears the document underneath: on macOS that is a native web view drawn over managed content,
+        // which clips a bar flush with the band's bottom edge.
+        double indicatorTop = stripHeight - ScrollIndicator.Height - 1;
+
+        // Where the tabs start across the band depends on the toolbar in the strip header, so the leading
+        // edge is the one part of the placement that has to be measured.
         var stripBounds = scrollViewer
             .TransformToVisual(RootGrid)
             .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
 
         ScrollIndicator.Width = stripBounds.Width;
-        ScrollIndicator.Margin = new Thickness(stripBounds.Left, MeasureScrollIndicatorTop(stripBounds), 0, 0);
+        ScrollIndicator.Margin = new Thickness(stripBounds.Left, indicatorTop, 0, 0);
 
         ScrollIndicator.Update(
             MeasureTabStripContentWidth(scrollViewer),
             scrollViewer.ViewportWidth,
             scrollViewer.HorizontalOffset);
-
-    }
-
-    // The indicator sits one pixel under the active tab's selection bar, so the pair reads as stacked bars
-    // whatever height the strip band happens to take. It also keeps a pixel of band below itself: the document
-    // below the strip is drawn by a native web view that sits over managed content, and a thumb flush with the
-    // band's bottom edge has its lower edge clipped by it.
-    private double MeasureScrollIndicatorTop(Rect stripBounds)
-    {
-        double lowestTop = stripBounds.Bottom - ScrollIndicator.Height - 1;
-
-        if (TabView.SelectedItem is not DocumentTab selectedTab ||
-            VisualTree.FindDescendantByName(selectedTab, "SelectionIndicator") is not FrameworkElement selectionBar ||
-            selectionBar.ActualHeight <= 0)
-        {
-            // Nothing is selected, so there is no bar to sit under.
-            return lowestTop;
-        }
-
-        var barBounds = selectionBar
-            .TransformToVisual(RootGrid)
-            .TransformBounds(new Rect(0, 0, selectionBar.ActualWidth, selectionBar.ActualHeight));
-
-        return Math.Min(barBounds.Bottom, lowestTop);
     }
 
     // The strip's ExtentWidth under-reports the width it actually arranges its tabs in, so a thumb sized from
