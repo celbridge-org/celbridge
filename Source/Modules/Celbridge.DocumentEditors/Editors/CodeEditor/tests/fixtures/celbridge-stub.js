@@ -5,8 +5,13 @@
 
 export const __capturedHandlers = {};
 
+// Every availability report the editor sends, newest last.
+export const __capturedEditAvailability = [];
+
 const celbridge = {
     options: {},
+    // Reports to the host are gated on this, so a test opts in before asserting on them.
+    isHosted: false,
     appState: {
         current: { theme: 'Light' },
         onChanged: (handler) => { __capturedHandlers.onAppStateChanged = handler; }
@@ -22,7 +27,8 @@ const celbridge = {
         load: async () => ({})
     },
     input: {
-        notifyLinkClicked: () => {}
+        notifyLinkClicked: () => {},
+        notifyEditAvailability: (availability) => { __capturedEditAvailability.push(availability); }
     },
     initializeDocument: async (handlers) => {
         Object.assign(__capturedHandlers, handlers);

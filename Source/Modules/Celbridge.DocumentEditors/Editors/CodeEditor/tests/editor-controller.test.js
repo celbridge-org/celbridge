@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import celbridge, { __capturedHandlers } from './fixtures/celbridge-stub.js';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import celbridge, { __capturedHandlers, __capturedEditAvailability } from './fixtures/celbridge-stub.js';
 
 import { EditorController } from '../js/editor-controller.js';
 
@@ -184,6 +184,85 @@ describe('EditorController.performEdit', () => {
 
         expect(editor.trigger).not.toHaveBeenCalled();
         expect(editor.setSelection).not.toHaveBeenCalled();
+    });
+});
+
+describe('EditorController edit availability', () => {
+    let model;
+    let editor;
+    let controller;
+
+    beforeEach(async () => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        __capturedEditAvailability.length = 0;
+        celbridge.isHosted = true;
+
+        model = createMockModel();
+        editor = createMockEditor(model);
+        installMonacoStub(editor);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+
+        await controller.initializeHost({});
+    });
+
+    afterEach(() => {
+        celbridge.isHosted = false;
+    });
+
+    function reportedAvailability() {
+        return __capturedEditAvailability.at(-1);
+    }
+
+    it('withholds the mutating verbs while the document is read-only', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+
+        expect(reportedAvailability()).toMatchObject({
+            canCut: false,
+            canPaste: false,
+            canUndo: false,
+            canRedo: false,
+            canIndent: false
+        });
+    });
+
+    it('still offers copy and select all while the document is read-only', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+
+        expect(reportedAvailability()).toMatchObject({
+            canCopy: true,
+            canSelectAll: true
+        });
+    });
+
+    it('restores the mutating verbs when the document becomes writable', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
+
+        expect(reportedAvailability()).toMatchObject({
+            canCut: true,
+            canPaste: true,
+            canUndo: true,
+            canRedo: true,
+            canIndent: true
+        });
+    });
+
+    it('reports on a writable state change, not only on a selection change', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+
+        expect(__capturedEditAvailability).toHaveLength(1);
+    });
+
+    it('offers cut with nothing selected, because it takes the cursor line', () => {
+        editor.getSelection.mockReturnValue({ isEmpty: () => true });
+
+        __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
+
+        expect(reportedAvailability()).toMatchObject({ canCopy: true, canCut: true });
     });
 });
 

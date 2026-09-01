@@ -15,6 +15,7 @@ export class EditorController {
     #containerElement = null;
     #isInitialized = false;
     #isReloadingExternally = false;
+    #readOnly = false;
     #pendingNavigation = null;
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
@@ -404,7 +405,9 @@ export class EditorController {
             // Logged so a user-reported "stuck read-only" can be diagnosed from the WebView2 console
             // without re-running with extra instrumentation.
             log('editor: writable state', { state, readOnly });
+            this.#readOnly = readOnly;
             this.#editor.updateOptions({ readOnly });
+            this.#notifyEditAvailability();
             if (onWritableStateChanged) {
                 onWritableStateChanged({ state, readOnly });
             }
@@ -609,7 +612,7 @@ export class EditorController {
 
     #setupSelectionListener() {
         // Report edit availability to the host whenever the selection or focus changes.
-        // Paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
+        // Paste/undo/redo are offered whenever the editor is writable and no-op when there is nothing to do.
         this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
         this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
         this.#editor.onDidBlurEditorText(() => this.#notifyEditAvailability());
@@ -625,17 +628,18 @@ export class EditorController {
 
         // With nothing selected the clipboard verbs take the cursor's line, so they stay available.
         const canUseClipboard = hasSelection || this.#editor.hasTextFocus();
+        const canMutate = !this.#readOnly;
 
         celbridge.input.notifyEditAvailability({
             canCopy: canUseClipboard,
-            canCut: canUseClipboard,
-            canPaste: true,
+            canCut: canUseClipboard && canMutate,
+            canPaste: canMutate,
             canSelectAll: true,
-            canUndo: true,
-            canRedo: true,
+            canUndo: canMutate,
+            canRedo: canMutate,
             // Only claim Tab while the editor text has focus, so Tab still moves between the fields of the
             // find widget or any other control hosted in the same WebView.
-            canIndent: this.#editor.hasTextFocus(),
+            canIndent: this.#editor.hasTextFocus() && canMutate,
             hostMediatedClipboard: true
         });
     }
