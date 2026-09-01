@@ -18,6 +18,7 @@ public partial class MainPage : Page
 
     private IUserInterfaceService _userInterfaceService;
     private IMessengerService _messengerService;
+    private IFocusService _focusService;
     private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
@@ -30,6 +31,7 @@ public partial class MainPage : Page
 
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
@@ -154,12 +156,12 @@ public partial class MainPage : Page
 
     private void OnRootContentPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        FocusIntent.EndPanelHold();
+        _focusService.EndPanelHold();
     }
 
     private void OnRootContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        FocusIntent.EndPanelHold();
+        _focusService.EndPanelHold();
 
         // Uno dispatches Backspace and Enter as managed KeyDown events while a web surface holds focus,
         // unlike the other editing keys, so the router delivers them to the surface from here. A key a
