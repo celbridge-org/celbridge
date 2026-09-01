@@ -19,6 +19,15 @@ public class KeyboardShortcutService : IKeyboardShortcutService
 
     public bool HandleShortcut(VirtualKey key, bool control, bool shift, bool alt)
     {
+        // Every shortcut here is a chord, so an unmodified key cannot match one. Characters typed into a
+        // hosted editor reach this method as managed key events.
+        if (!control
+            && !shift
+            && !alt)
+        {
+            return false;
+        }
+
         // All platforms redo shortcut: Ctrl+Shift+Z
         if (control && shift && key == VirtualKey.Z)
         {

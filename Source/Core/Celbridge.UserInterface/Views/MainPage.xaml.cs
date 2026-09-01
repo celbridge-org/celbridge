@@ -192,8 +192,7 @@ public partial class MainPage : Page
 
     private bool OnKeyDown(VirtualKey key)
     {
-        // The command modifier folds in Cmd on macOS (which the head reports as the left Windows key),
-        // so Cmd+Z / Cmd+Shift+Z drive undo/redo there.
+        // The command modifier folds in Cmd on macOS, so Cmd+Z / Cmd+Shift+Z drive undo/redo there.
         var control = EditKeyboard.IsCommandModifierDown();
         var shift = EditKeyboard.IsShiftDown();
         var alt = EditKeyboard.IsAltDown();
