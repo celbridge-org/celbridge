@@ -1,0 +1,43 @@
+# Files matched here are excluded from the Celbridge resource set (and from git).
+# Edit freely. Celbridge always hides the reserved .git/ and .celbridge/ folders from
+# its resource set; .celbridge/ is listed below so git ignores it too. Your project's
+# *.celbridge file is not matched by this pattern and stays tracked.
+
+# Celbridge project metadata
+.celbridge/
+
+# Build output
+bin/
+obj/
+.vs/
+node_modules/
+
+# Editor and tooling
+.vscode/
+.idea/
+.claude/
+.mcp.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment and secrets
+.env
+
+# OS cruft
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.swn
+*.crdownload
+*.part
+~$*

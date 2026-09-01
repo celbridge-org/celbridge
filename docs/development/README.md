@@ -1,0 +1,12 @@
+# Development Documentation
+
+Documentation for people working on Celbridge itself. For using the application, see
+[Getting Started](../getting_started.md).
+
+| Document | Covers |
+|---|---|
+| [Building and Testing](building.md) | Building on Windows and macOS, running the .NET, JavaScript and Python test suites, linting, and CI |
+| [Coding Conventions](coding_conventions.md) | Conventions for C#, JavaScript and Python, plus the general rules that apply to all three |
+| [Architecture](architecture.md) | Service lifetimes and dependency injection rules, the `Platform/` folder convention, and the document save model |
+| [Design Tokens](design_tokens.md) | The generated colour and dimension tokens shared by the XAML and web sides |
+| [MCP Tools](mcp_tools.md) | Authoring MCP tool classes in `Celbridge.Tools` |

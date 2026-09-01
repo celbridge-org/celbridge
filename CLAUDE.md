@@ -1,173 +1,24 @@
 # Celbridge - Claude Code Instructions
 
-## Project Overview
-
 Celbridge is a cross-platform desktop application built with Uno Platform and WinUI. The solution is at `Celbridge.slnx` in the repo root.
 
-## Building
+## Documentation
 
-We recommend building with the latest Visual Studio 2026. This is an Uno Platform project with XAML files targeting WinUI/WinAppSDK. The WinUI projects require MSBuild (not `dotnet build`) because Uno SDK raises error UNOB0008 when XAML files are present.
+The build instructions, coding conventions and architecture rules for this codebase are not
+Claude-specific, so they live in `docs/development/` where every contributor can find them. They are
+documented once there and referenced here.
 
-Use the MSBuild that ships with your Visual Studio installation:
+Read the document covering an area before working in it:
 
-```
-msbuild Celbridge.slnx -t:Build -p:Configuration=Debug -verbosity:minimal -nologo
-```
-
-If `msbuild` is not on your PATH (e.g. outside of a Developer PowerShell), it is typically located at:
-
-```
-C:/Program Files/Microsoft Visual Studio/<version>/<edition>/MSBuild/Current/Bin/MSBuild.exe
-```
-
-For example, with VS 2026 Community: `C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe`.
-
-### Building on macOS
-
-The projects target three frameworks: `net10.0` (plain library), `net10.0-windows10.0.22621` (the packaged WinAppSDK head) and `net10.0-desktop` (the Skia head). Only the Skia head ships on macOS, and the packaged Windows target framework cannot be built there at all, so build that framework explicitly rather than the whole project:
-
-```
-dotnet build Source/Celbridge/Celbridge.Application.csproj -f net10.0-desktop
-```
-
-The MSBuild requirement above is specific to the WinUI/WinAppSDK head, which is not in play on macOS.
-
-**A macOS build does not compile Windows-only code.** `WindowsWebViewAdapter.cs` and its DI registration in `PlatformServiceConfiguration.cs` sit inside `#if WINDOWS`, which is defined only for the packaged target framework. Changing a shared interface (`IWebViewAdapter` and the other platform seams) on macOS therefore compiles green while the Windows implementation silently no longer satisfies it. Build the packaged Windows head on a Windows machine before merging cross-platform interface changes.
-
-The Windows Skia head (`net10.0-desktop` on Windows) is a convenience for exercising the Skia code path without a Mac. It is not a deployment target; the deployment targets are the packaged Windows head and the macOS Skia head.
-
-## Running Tests
-
-The test project does not contain XAML and can be built and run with `dotnet`:
-
-```
-dotnet test Source/Tests/Celbridge.Tests.csproj
-```
-
-Pass `--no-restore` in the inner loop. `dotnet` re-walks the restore graph over all 24 referenced projects on every invocation, which costs several seconds and finds nothing new unless a package reference changed:
-
-```
-dotnet test Source/Tests/Celbridge.Tests.csproj --no-restore
-```
-
-Run JS tests from the `Source/` folder:
-
-```
-cd Source && npm test
-```
-
-Run Python tests using a virtual environment. Create it at the repo root, never inside `Source/`: the Uno SDK's item globs and the architecture tests both walk every folder under a project, and neither can be told to skip a venv sitting there.
-
-```
-python -m venv .venv
-.venv\Scripts\activate
-cd Source/Workspace/Celbridge.Python
-pip install -e "packages/celbridge[dev]"
-python run_tests.py
-```
-
-The venv is for running the tests only. The wheel build (`build.py`) resolves its own interpreter from PATH and never looks for a venv, so where the venv lives has no bearing on the build.
-
-## Design Tokens
-
-Colours and the shared UI dimensions are held once in `Source/Core/Celbridge.DesignTokens/DesignTokens.json` and generated at build time into two files, so the native and web sides cannot disagree about a value:
-
-- `Celbridge.UserInterface/Resources/ColorTokens.xaml` — the theme dictionaries, each holding its own colours and the brushes over them. A brush is emitted once per theme rather than once over the palette: a brush declared over the dictionaries is a single shared object whose colour resolves against the application theme, which follows the OS, so it ignores the `ElementTheme` the app applies to the window root and paints the wrong palette whenever the two disagree
-- `Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css` — the `--cel-*` custom properties served to WebView content
-
-Both are gitignored. Never edit them: change the token source and rebuild. `Celbridge.UserInterface` and `Celbridge.WebHost` each reference `Celbridge.DesignTokens` so the generator runs first, and each declares its generated file as an explicit build item so a clean checkout resolves.
-
-Redirecting a WinUI control key onto the palette is a token declaration, not hand written markup, and it takes one of two forms. `xamlAliases` emits a brush per theme under the WinUI key, and works when the control's own style references that key. `xamlColorAliases` emits a `Color` instead, and is what reaches a key WinUI declares as a `StaticResource` alias onto another brush: such an alias binds to the brush object rather than to the key, so overriding the brush it points at changes nothing, while overriding the colour underneath reaches every alias built over it. Which form a key needs is visible in `generic.xaml`, shipped in the `microsoft.windowsappsdk` package. Either form is emitted once per theme, because a brush declared over the theme dictionaries is one shared object whose colour answers to the application theme, which follows the OS, so it paints the wrong palette whenever that disagrees with the `ElementTheme` the app applies to the window root. `Colors.xaml` stays hand written and holds only the overrides that take no palette colour (`WindowCaption*`).
-
-The accent is the application's own, never the one the OS supplies: the `accent` token redirects the whole `SystemAccentColor` ramp, which every accent reference in `generic.xaml` resolves through. Nothing outside the generated dictionary may read `SystemAccentColor`; `DesignTokenCoverageTests` fails the build on it. A WinUI key the chrome reads directly has to be listed in `WinUiKeysReadDirectly` in the same tests, so reaching for a new one is a deliberate edit. `TextOnAccentFillColor*` is the one accent key not built over the ramp, and WinUI reaches it through a `StaticResource` alias, so the key itself cannot be redirected: the text WinUI draws over its own accent fills holds a fixed pair, black on dark and white on light, while `accent-text` is white on both. A control is still reachable when its own style resolves a per-control foreground key by `ThemeResource`, because that lookup answers to the generated dictionary: `AccentButtonStyle` resolves `AccentButtonForeground` and its hover and press variants that way, so those are aliased onto `accent-text`. What stays out of reach is a style binding `TextOnAccentFillColorPrimaryBrush` itself. Check which of the two a control does before concluding it cannot be reached.
-
-A token marked `published` is part of the contribution contract that packages outside this repository are written against, so renaming or removing one also means updating the snapshot in `DesignTokenCoverageTests`. Those tests also fail on a token nothing consumes, which is how a token stops outliving the tone it names: give it a consumer, redirect a control key onto it, drop the target that has none, or record the exception in `TokensWithoutHostConsumer` with the reason.
+| Document | Covers |
+|---|---|
+| [Building and Testing](docs/development/building.md) | Building on Windows and macOS, running the .NET, JavaScript and Python test suites, linting, and CI |
+| [Coding Conventions](docs/development/coding_conventions.md) | Conventions for C#, JavaScript and Python, plus the general rules that apply to all three |
+| [Architecture](docs/development/architecture.md) | Service lifetimes and dependency injection rules, the `Platform/` folder convention, and the document save model |
+| [Design Tokens](docs/development/design_tokens.md) | The generated colour and dimension tokens shared by the XAML and web sides |
+| [MCP Tools](docs/development/mcp_tools.md) | Authoring MCP tool classes in `Celbridge.Tools` |
 
 ## Git
 
 - Never commit automatically; the user reviews all changes in GitHub Desktop before committing
 - Do not add `Co-Authored-By` lines to commit messages
-
-## Code Conventions
-
-- Use full descriptive variable names, never abbreviate
-- Do not add section marker comments like `// -- Initialization --`
-- Never use `#region` / `#endregion`
-- Order interface methods by lifecycle stage; match that order in implementations
-- Use "folder" not "directory" in naming (exception: external APIs)
-- Use LF line endings. Enforced by `.gitattributes` at the repo root and `Source/.editorconfig`. Coding agents do not need to do anything special: write LF as normal. Contributors need no manual Git config; a `core.autocrlf=true` checkout is overridden by `.gitattributes`
-- Follow the patterns in `ProjectConfigParser.cs` as a reference for coding style
-- Prefer temporary variables over inline instances; break complex logic into simpler steps rather than chaining operations
-- Define collection initialization using multiple lines, never on a single line
-- Only use ternary expressions for trivial logic
-- Prefer explicit record classes with meaningful property names over anonymous types for message contracts
-- Code-behind files use `.xaml.cs` naming convention (e.g., `MyView.xaml.cs`)
-- Never use `/// <param>` XML documentation — it is verbose and hard to keep synchronized (exception: MCP tool methods in `Celbridge.Tools` where the MCP SDK source generator requires them for parameter descriptions)
-- Do not use special characters like arrows or emojis in code comments
-- Use full stops rather than semicolons in comment and documentation prose. This applies to English text only, not C# statement terminators
-- Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
-- Localized strings for the settings dialog follow `Settings_<Category>_<Element>`, where the category is the one the string appears under in the dialog rail (Appearance, Workshop, Web View), not the `SettingCatalog.cs` descriptor group. The two mostly coincide, but the categories are a presentation grouping: Appearance shows `SettingCatalog.Application.Theme`, and Web View has no catalog group at all. Strings shown elsewhere keep their existing `Section_Element` conventions
-- Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
-- Place `Dispose` implementation at the end of a class; declare all private fields at the top
-- Split multi-condition `if` statements so each clause is on its own line, with the logical operator (`&&`, `||`) at the end of the preceding line
-- Put a blank line between the final `return` of a method and the preceding code block (e.g., after a closing `}`)
-- Keep the `async` keyword on `*Async` methods even when the body is synchronous; suppress CS1998 by adding `await Task.CompletedTask;` at the top of the body (precedent: `DocumentView.SaveDocumentContentAsync`)
-- Use the Parameter Object pattern for methods with 4+ parameters: identity args (what/where) stay as direct arguments; behavioral/option args group into a record
-- Prefer small record types over named tuples for multi-value returns, especially when nullable-wrapping the record can replace field-level nullability
-- Colocate small helper types (under ~15 lines, single primary consumer) with their consumer rather than in dedicated files
-- Use the project's `ILogger<T>` for all diagnostics; never use `Debug.WriteLine`, `Console.Write*`, or `Trace.Write*`. For abstract base classes where constructor injection would cascade, use `ServiceLocator.AcquireService<ILogger<T>>()` (precedent: `DocumentView`)
-- When logging an exception, pass the exception object to the logger overload (e.g. `_logger.LogError(ex, "...")`); do not interpolate `ex.Message` or `ex.ToString()` into the message string
-- Keep XML doc comments concise but informative: one or two `<summary>` sentences describing *what* the member does, written so a reader who hasn't seen the class can understand it. If one line would just rephrase the member name (e.g. `"Typed counterpart of X"`), use two — conciseness is the constraint, not the goal. Do not embed implementation rationale, caller behavior, or detail already carried by types (enums, records, nullable returns). Avoid inline formatting tags (`<c>`, `<list>`, `<item>`) and multi-paragraph `<remarks>` blocks; plain type names read fine without `<see cref>` prose in summaries
-- Interface members and public types in `Celbridge.Foundation` must always carry a concise `<summary>` — the Foundation abstractions are how a reader understands the system, so every interface method, public record, and public enum there needs enough comment to stand alone. Conversely, skip xmldoc on concrete-class members by default: the interface they implement already documents them, and duplicated comments drift out of sync with the implementation. Exception: when the implementation has behavior that isn't obvious from the signature (unusual threading constraints, hidden side effects, non-obvious failure modes, subtle invariants), add a brief note. Treat the exception as rare — if the summary would just restate the name or repeat the interface comment, skip it
-- Keep inline body comments terse — write only what a first-time reader needs to know that they can't read off the code. Don't narrate what the current change is about, don't recap rationale visible in the surrounding code, don't enumerate edge cases the reader can infer. If a comment approaches paragraph length, the code probably needs restructuring instead
-- Model user or programmatic cancellation as a typed success outcome (e.g., `Result<OutcomeEnum>` with a `Cancelled` value), not as `Result.Fail`; `Result.Fail` stays reserved for genuine errors (precedent: `OpenDocumentOutcome`, `CloseDocumentOutcome`)
-- Minimize `Result<T>` boilerplate at return sites: use implicit conversions (`return value;` for concrete types; `return Result.Fail("message");` for failures). For interface return types, use the `OkResult<T>()` extension from `ResultExtensions`. Always unpack `result.Value` into a named temporary variable before using it
-
-## Architecture
-
-- Workspace-scoped services are transient and must NOT be injected via constructor DI. Access them through `_workspaceWrapper.WorkspaceService`:
-  - Directly on the workspace service: IWorkspaceSettingsService, IBindableWorkspaceSettings, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
-  - The resource-domain services live under `WorkspaceService.ResourceService`: Registry, RootHandlers, Monitor, Transfers, Operations, FileSystem, Policy, Trash, Scanner, Sidecars (e.g. `_workspaceWrapper.WorkspaceService.ResourceService.FileSystem`)
-- Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
-- The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
-- Filesystem access goes through the `ILocalFileSystem` gateway, never the `System.IO` static facades (`File`, `Directory`, `FileInfo`, `DirectoryInfo`, `FileSystemWatcher`) directly. The `DirectFileSystemAccessAnalyzer` (`CEL_FS_001`, in `Celbridge.FileSystem.Analyzers`) fails the build on any direct use outside the `Celbridge.FileSystem` assembly. Legitimate exceptions (pre-DI bootstrap, embedded-resource reads, setting the process working directory) carry `[AllowDirectFileSystemAccess]` on the type or member. `System.IO.Path` (pure string manipulation) and stream types (`Stream`, `IOException`) are not gated
-- Never bypass `ICommandService` to call methods directly. Every important operation goes through the command service for automation and auditing support. If a command-based flow has a bug, fix it within the command service pattern (e.g., add new command options or fix the command handling logic)
-- A document view becomes the active document when focus or a pointer press lands inside it. `PanelFocusTracker` and `DocumentSectionView` both resolve the nearest `IDocumentView` ancestor through `FocusTracking.FindDocumentView`, so a view built from managed controls needs no focus code of its own. A view that hosts its own `WebView2` must also register it with `IWebViewFocusRegistry`, through `DocumentView.RegisterWebSurfaceFocus` (contribution editors get this from `CustomEditorController`). Without that registration a click never makes the document active on macOS, where `WKWebView` raises no managed focus event and the native click monitor only hit-tests registered surfaces. The packaged Windows head hides the omission, because the `WebView2` takes managed focus there, so a new web-hosted editor has to be tried on macOS
-- Mark code that exists only to work around an upstream Uno defect with a `UNO-BUG:` comment line naming the defect, directly above the workaround (above the declaration where it carries xmldoc). `grep -rn "UNO-BUG:" Source/` then lists every one, so an Uno upgrade can be followed by a pass over the group to see what can be deleted. Reserve the marker for defects we expect Uno to fix; code that merely interoperates with Uno's design (native menu bar, focus reconciliation) is not tagged
-
-## Platform-specific code
-
-All native interop and operating-system branching is contained in `Platform/` folders so platform code is discoverable by a single `**/Platform/**` glob. The convention has a few patterns plus a small set of documented exceptions.
-
-- **The invariant.** No code outside a `Platform/` folder contains native interop (`DllImport`/P-Invoke, Objective-C runtime calls, WinRT interop, Uno-internals reflection). A layer that must vary by platform asks an injected capability rather than checking the OS inline. `PlatformContainmentTests` enforces the native-interop half (no `DllImport` outside `**/Platform/**`); the rest is convention plus the glob audit.
-- **Homes.** Each project with native code has a `Platform/` folder (namespace `Celbridge.<Domain>.Platform`) holding its platform implementations and its platform DI selection (`Platform/PlatformServiceConfiguration.cs`). The two cross-cutting pieces — the shared `ObjectiveCRuntime` marshaling helper and `PlatformInfo` (the `IPlatformInfo` oracle) — live in `Celbridge.Utilities/Platform/`. Seam interfaces stay in their owning project (internal ones stay internal); `IPlatformInfo` and `IAppEnvironment` are the cross-cutting abstractions and live in `Celbridge.Foundation`.
-- **Pattern A — native files move to `Platform/`.** A whole file of P-Invoke / Objective-C / WinRT interop, or a whole platform-only control (the Windows `TitleBar`), moves wholesale into the owning project's `Platform/` folder, keeping its existing framework types. Prefer unguarded native interop runtime-gated by `OperatingSystem.IsMacOS()` over an `#if !WINDOWS` file guard — DllImports are metadata until called, so they compile as harmless dead code on every head.
-- **Pattern A-prime — per-head managed API behind an adapter seam.** Where a shared managed control (the WebView2 `CoreWebView2`) forks between an SDK call and the Skia/native path, route it through a DI-selected adapter (`IWebViewAdapter`) in `Platform/`, not an inline `#if`.
-- **Pattern B — per-layer UI behaviour through `IPlatformInfo`.** A View, ViewModel, or helper that behaves differently per platform asks an injected `IPlatformInfo` capability (`UsesNativeMenuBar`, `CommandModifier`, `ReservesWindowCaptionButtons`, and so on), never `OperatingSystem.Is*`/`#if` inline. Use semantic capability names; a narrowly-named workaround capability (`RequiresMacOSSelectionRepaint`) is acceptable only where no semantic name exists, with a comment. Name such a workaround for the platform(s) it actually fires on (its `IsMacOS()`/`#if` value), not the rendering stack — `RequiresMacOS…`, not `RequiresSkia…`, since the Skia head also runs on Windows and Linux where the workaround does not apply. Each capability's `<summary>` ends with the platforms it holds on (e.g. "True on macOS.", "True on the packaged Windows head only.", "True on Windows (both the packaged and Skia heads)."). `IPlatformInfo` is the one Foundation interface that documents per-platform applicability — for this oracle that is part of the contract, and "packaged Windows head" means the WinAppSDK build, not the Skia head running on Windows.
-- **Packaging and environment through `IAppEnvironment`.** Packaged-versus-unpackaged forks (bundled-asset paths, app-data and temp folders, app version) go through `IAppEnvironment` (Foundation interface, `AppEnvironment` impl in `Utilities/Platform/`), never an inline `#if WINDOWS`.
-
-**Documented exceptions** — genuine OS branching outside `Platform/` that is neither native interop nor relocatable behind a capability. Keep these inline, with a comment explaining the platform difference:
-
-- **Genuine compile-time TFM forks** — where a managed type truly differs or is absent on the Skia head, so it cannot be a runtime capability — are extracted into a `Platform/` seam (Windows impl + Skia no-op/alternative, DI-selected): see `IWindowActivationMonitor` (activation tint) and `IApplicationToolbarHost` (title-bar host). **Always probe before assuming a fork is compile-time** — a WinAppSDK member that *compiles* on Skia but no-ops there (present-but-stubbed) is a plain Type-B capability, not a fork (e.g. `ThemeHelper`'s title-bar colors → `ReservesWindowCaptionButtons`, `FilePickerService`'s HWND association → `PickersRequireWindowHandle`). After this work the only `#if WINDOWS` left outside `Platform/` is `App.xaml.cs` (next bullet).
-- **Genuine runtime OS or backend selectors** where the behaviour depends on the actual running OS, not a UI head capability: the Python uv binary, archive, and shell (`PythonInstaller`, `PythonLaunchService`, `CommandLineBuilder`) and filesystem case-sensitivity (`PathComparison`).
-- **App bootstrap / composition root.** `App.xaml.cs` is the one file outside `Platform/` that still uses `#if WINDOWS` — for the pre-DI log-folder path, the window-icon resizetizer workaround, and WinAppSDK file-activation. It runs before DI exists and is the natural composition root, so these stay inline (the same bootstrap exception the filesystem analyzer allows).
-- **Tests** may assert platform-divergent behaviour directly; the convention governs production code.
-
-## Save Model
-
-Documents auto-save via `DocumentViewModel.OnDataChanged()` → per-view save timer (~1s). There is no user-facing Save command and no "unsaved changes" state; users recover via undo/redo.
-
-- Do not add save commands, shortcuts, or UI affordances. If on-demand flushing is needed, route through `IDocumentView.SaveDocument()` (used by file-close and panel-close paths).
-- Do not add "discard unsaved changes?" prompts on close — closing always saves.
-- Programmatic edit commands (`EditFileCommand`, `MultiEditFileCommand`, `ReplaceFileCommand`, `ApplyRangeEditsCommand`, `WriteFileCommand`, `WriteBinaryFileCommand`) write straight to disk; there is no editor-routed code path. When the target file is open, the on-disk write triggers a watcher event and the document buffer reloads from disk via `editor.setValue`, which clears Monaco's undo history. Preserve that contract when adding new edit code paths — do not route writes through the open editor, and do not try to preserve undo state across a programmatic write.
-- External edits always win: if a watcher event arrives while a save is queued or in flight, the save is discarded and the buffer reloads from disk. `DocumentViewModel.SaveTextToFileAsync` also raises `ReloadRequested` when the post-write disk hash differs from what we intended to write (i.e. an external write interleaved).
-- `ResourceChangedMessage` fires on every save; `DocumentViewModel` filters self-triggered events by hash. New consumers should expect high-frequency events.
-
-## MCP Tools
-
-MCP tool classes in `Celbridge.Tools` use the MCP SDK's `XmlToDescriptionGenerator` source generator, which converts XML doc comments into `[Description]` attributes at build time. This means:
-
-- Tool classes must be `partial class` and tool methods must be `partial`
-- Use `/// <summary>` for tool descriptions (not `[Description]` attributes)
-- The `<summary>` is a **discriminator**, not documentation: one short sentence (~100 chars) that helps an agent decide whether to **pick** this tool over other candidates. Do not add `<param>` or `<returns>` tags, do not write multi-paragraph blocks. Parameter semantics, return shape, gotchas, examples, and cross-references all go in the per-tool guide under `Source/Core/Celbridge.Tools/Guides/Tools/<tool_name>.md`
-- Do not add `using System.ComponentModel`

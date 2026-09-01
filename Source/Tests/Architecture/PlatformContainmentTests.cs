@@ -5,7 +5,7 @@ namespace Celbridge.Tests.Architecture;
 /// live only inside a Platform/ folder, so platform code stays discoverable by a single glob. This is
 /// the featherweight stand-in for the declined build-time analyzer. The genuine runtime OS-check
 /// exceptions (backend tool selection, filesystem case-sensitivity, packaged-WinUI TFM forks) are
-/// documented in CLAUDE.md and are deliberately not asserted here.
+/// documented in docs/development/architecture.md and are deliberately not asserted here.
 /// </summary>
 [TestFixture]
 public class PlatformContainmentTests
