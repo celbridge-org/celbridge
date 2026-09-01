@@ -31,12 +31,6 @@ internal static class MacOSKeyEventMonitor
     // kVK_Tab hardware key code.
     private const ulong TabKeyCode = 48;
 
-    // NSEventModifierFlag bit positions.
-    private const ulong ModifierFlagShift = 1UL << 17;
-    private const ulong ModifierFlagControl = 1UL << 18;
-    private const ulong ModifierFlagOption = 1UL << 19;
-    private const ulong ModifierFlagCommand = 1UL << 20;
-
     // objc_msgSend for +addLocalMonitorForEventsMatchingMask:handler: (an NSUInteger mask then a block).
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern IntPtr SendMessageAddMonitor(IntPtr receiver, IntPtr selector, nuint mask, IntPtr block);
@@ -132,7 +126,7 @@ internal static class MacOSKeyEventMonitor
             var modifierFlags = SendMessageReturnNuint(nsEvent, GetSelector("modifierFlags"));
 
             bool isTab = keyCode == TabKeyCode;
-            bool isCommand = (modifierFlags & ModifierFlagCommand) != 0;
+            bool isCommand = (modifierFlags & MacOSKeyboardModifiers.CommandFlag) != 0;
 
             // Pass through anything that is neither Tab nor a Command chord before touching focus.
             if (!isTab
@@ -149,7 +143,7 @@ internal static class MacOSKeyEventMonitor
                 return nsEvent;
             }
 
-            var shift = (modifierFlags & ModifierFlagShift) != 0;
+            var shift = (modifierFlags & MacOSKeyboardModifiers.ShiftFlag) != 0;
 
             if (isTab)
             {
@@ -220,7 +214,7 @@ internal static class MacOSKeyEventMonitor
     // True for Command+F. Command+Shift+F is not a find shortcut, so Shift is rejected.
     private static bool IsFindShortcut(char? shortcutCharacter, ulong modifierFlags)
     {
-        if ((modifierFlags & ModifierFlagShift) != 0)
+        if ((modifierFlags & MacOSKeyboardModifiers.ShiftFlag) != 0)
         {
             return false;
         }
@@ -233,9 +227,9 @@ internal static class MacOSKeyEventMonitor
     // chord built over the same letter.
     private static bool IsPlainCommandChord(ulong modifierFlags)
     {
-        bool command = (modifierFlags & ModifierFlagCommand) != 0;
-        bool control = (modifierFlags & ModifierFlagControl) != 0;
-        bool option = (modifierFlags & ModifierFlagOption) != 0;
+        bool command = (modifierFlags & MacOSKeyboardModifiers.CommandFlag) != 0;
+        bool control = (modifierFlags & MacOSKeyboardModifiers.ControlFlag) != 0;
+        bool option = (modifierFlags & MacOSKeyboardModifiers.OptionFlag) != 0;
 
         return command
             && !control
