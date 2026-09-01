@@ -106,7 +106,7 @@
         });
         try {
             Object.defineProperty(console, '__celWrapped', { value: true, enumerable: false });
-        } catch (_) {
+        } catch {
             console.__celWrapped = true;
         }
     }
@@ -131,7 +131,7 @@
                 && window.webkit.messageHandlers.unoWebView) {
                 window.webkit.messageHandlers.unoWebView.postMessage(envelope);
             }
-        } catch (_) {
+        } catch {
             // Reporting a crash must never cause one.
         }
     }
@@ -253,10 +253,10 @@
             try {
                 var label = document.querySelector('label[for="' + cssEscape(el.id) + '"]');
                 if (label) {
-                    var text = (label.textContent || '').trim();
-                    if (text) return text;
+                    var labelText = (label.textContent || '').trim();
+                    if (labelText) return labelText;
                 }
-            } catch (_) { /* fallthrough */ }
+            } catch { /* fallthrough */ }
         }
 
         var alt = el.getAttribute('alt');
@@ -318,7 +318,7 @@
                 if (document.querySelectorAll(idSelector).length === 1) {
                     return idSelector;
                 }
-            } catch (_) { /* fallthrough */ }
+            } catch { /* fallthrough */ }
         }
 
         var parts = [];
@@ -412,7 +412,7 @@
         for (var i = 0; i < keys.length; i++) {
             try {
                 result[keys[i]] = style.getPropertyValue(keys[i]);
-            } catch (_) { /* skip */ }
+            } catch { /* skip */ }
         }
         return result;
     }
@@ -521,7 +521,7 @@
                     }
                 }
             }
-        } catch (_) { /* swallow */ }
+        } catch { /* swallow */ }
         return result;
     }
 
@@ -534,7 +534,7 @@
             if (body instanceof Blob) return '[Blob ' + body.size + ' bytes]';
             if (body instanceof ArrayBuffer) return '[ArrayBuffer ' + body.byteLength + ' bytes]';
             return '[' + (body.constructor && body.constructor.name ? body.constructor.name : 'body') + ']';
-        } catch (_) {
+        } catch {
             return '[unreadable body]';
         }
     }
@@ -562,7 +562,7 @@
                 if (init && init.body !== undefined) {
                     requestBodyDescription = describeRequestBody(init.body);
                 }
-            } catch (_) {
+            } catch {
                 url = String(input);
                 method = 'GET';
                 requestHeaders = {};
@@ -571,7 +571,7 @@
             return originalFetch(input, init).then(function (response) {
                 var duration = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - perfStart;
                 var clone;
-                try { clone = response.clone(); } catch (_) { clone = null; }
+                try { clone = response.clone(); } catch { clone = null; }
                 var responseHeaders = headersToObject(response.headers);
                 var contentLengthHeader = responseHeaders['content-length'] || responseHeaders['Content-Length'];
                 var responseSize = contentLengthHeader ? Number(contentLengthHeader) || 0 : 0;
@@ -624,7 +624,7 @@
         };
         try {
             Object.defineProperty(wrappedFetch, '__celWrapped', { value: true, enumerable: false });
-        } catch (_) {
+        } catch {
             wrappedFetch.__celWrapped = true;
         }
         window.fetch = wrappedFetch;
@@ -692,7 +692,7 @@
                         } else {
                             entry.responseBody = { text: '[' + responseType + ']', truncatedBytes: 0 };
                         }
-                    } catch (_) { /* swallow */ }
+                    } catch { /* swallow */ }
                     pushNetworkEntry(entry);
                 };
 
@@ -721,7 +721,7 @@
 
         try {
             Object.defineProperty(XMLHttpRequest.prototype, '__celWrapped', { value: true, enumerable: false });
-        } catch (_) {
+        } catch {
             XMLHttpRequest.prototype.__celWrapped = true;
         }
     }
@@ -866,7 +866,7 @@
                     clientY: clientY,
                     button: 0
                 });
-            } catch (e) {
+            } catch {
                 ev = document.createEvent ? document.createEvent('MouseEvents') : null;
                 if (ev && typeof ev.initMouseEvent === 'function') {
                     ev.initMouseEvent(phases[i], true, true, window, 0, 0, 0, clientX, clientY, false, false, false, false, 0, null);
@@ -931,7 +931,7 @@
                 } else {
                     element.value = args.value;
                 }
-            } catch (_) {
+            } catch {
                 element.value = args.value;
             }
         } else {
@@ -942,13 +942,13 @@
         var changeEvent;
         try {
             inputEvent = new Event('input', { bubbles: true });
-        } catch (_) {
+        } catch {
             inputEvent = document.createEvent ? document.createEvent('Event') : null;
             if (inputEvent && typeof inputEvent.initEvent === 'function') inputEvent.initEvent('input', true, true);
         }
         try {
             changeEvent = new Event('change', { bubbles: true });
-        } catch (_) {
+        } catch {
             changeEvent = document.createEvent ? document.createEvent('Event') : null;
             if (changeEvent && typeof changeEvent.initEvent === 'function') changeEvent.initEvent('change', true, true);
         }

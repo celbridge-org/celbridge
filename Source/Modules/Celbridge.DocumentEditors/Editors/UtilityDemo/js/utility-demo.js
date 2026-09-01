@@ -71,7 +71,7 @@ function parseText(content) {
     try {
         const state = JSON.parse(content);
         return typeof state.text === 'string' ? state.text : '';
-    } catch (e) {
+    } catch {
         // Tolerate a file that is not the JSON envelope (e.g. hand-edited) by treating it as plain text.
         return content;
     }

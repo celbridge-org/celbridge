@@ -1,6 +1,7 @@
 {
   "name": "celbridge",
   "private": true,
+  "type": "module",
   "workspaces": [
     "Core/Celbridge.WebHost/Web/celbridge-client",
     "Modules/Celbridge.DocumentEditors/Editors/CodeEditor",
@@ -10,14 +11,16 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "eslint .",
     "vendor:icons": "npm run vendor --prefix Core/Celbridge.UserInterface/Assets/Fonts/BootstrapIcons/build",
     "vendor:notes": "npm run vendor --prefix Modules/Celbridge.DocumentEditors/Editors/Notes/lib/build",
     "vendor:console": "npm run vendor --prefix Workspace/Celbridge.Console/Web/Console/lib/build"
   },
   "devDependencies": {
-    "vitest": "^4.0.0",
+    "@eslint/js": "^10.0.1",
     "eslint": "^10.0.2",
-    "jsdom": "^29.0.0"
+    "globals": "^17.11.0",
+    "jsdom": "^29.0.0",
+    "vitest": "^4.0.0"
   }
 }

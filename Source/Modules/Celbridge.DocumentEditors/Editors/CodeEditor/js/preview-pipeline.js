@@ -13,7 +13,6 @@ import { attachDividerDrag } from './divider-drag.js';
 import { updateViewModeButtons, syncSnippetButtonForViewMode } from './toolbar.js';
 
 export class PreviewPipeline {
-    #editorController;
     #initialViewMode;
     #onLinkClicked;
     #viewModeController;
@@ -25,7 +24,6 @@ export class PreviewPipeline {
         panes,
         onLinkClicked
     }) {
-        this.#editorController = editorController;
         this.#initialViewMode = initialViewMode ?? ViewMode.Source;
         this.#onLinkClicked = onLinkClicked ?? (() => {});
 

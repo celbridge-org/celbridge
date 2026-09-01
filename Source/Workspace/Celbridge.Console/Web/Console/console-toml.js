@@ -71,7 +71,7 @@ export function parseConsoleToml(text) {
 
     for (let index = 0; index < lines.length; index++) {
         // A multi-line block is read before comment stripping, so a '#' inside a script survives.
-        const blockMatch = lines[index].match(/^\s*([^=\[]+?)\s*=\s*('''|\"\"\")(.*)$/);
+        const blockMatch = lines[index].match(/^\s*([^=[]+?)\s*=\s*('''|""")(.*)$/);
         if (blockMatch && !blockMatch[3].includes(blockMatch[2])) {
             const blockKey = parseKey(blockMatch[1].trim());
             const delimiter = blockMatch[2];

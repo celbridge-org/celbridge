@@ -1,7 +1,7 @@
 // Note editor entry point
 // TipTap-based rich text editor using native JSON storage format
 
-import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from '../lib/tiptap.js';
+import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection } from '../lib/tiptap.js';
 import { t } from '/assets/celbridge-client/localization.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
@@ -493,7 +493,7 @@ async function initializeEditor() {
                 if (content) {
                     try {
                         jsonContent = JSON.parse(content);
-                    } catch (e) {
+                    } catch {
                         console.warn('[Note] Failed to parse content as JSON, using empty document');
                     }
                 }

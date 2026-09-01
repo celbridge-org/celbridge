@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Celbridge } from './celbridge.js';
 
 /**
@@ -479,7 +479,7 @@ describe('Celbridge', () => {
 
     describe('edge cases', () => {
         it('should handle response with no matching request', async () => {
-            const { client, simulateResponse } = createTestClient();
+            const { simulateResponse } = createTestClient();
 
             // This should not throw, just log a warning
             expect(() => simulateResponse(999, { content: 'orphan' })).not.toThrow();
@@ -489,7 +489,7 @@ describe('Celbridge', () => {
             const sentMessages = [];
             let messageHandler = null;
 
-            const client = new Celbridge({
+            new Celbridge({
                 postMessage: (msg) => sentMessages.push(msg),
                 onMessage: (handler) => { messageHandler = handler; }
             });

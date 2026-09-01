@@ -179,7 +179,7 @@ function listenForChanges() {
     // in for a "doc modified" signal SpreadJS doesn't expose directly. Mouse-
     // driven selection changes bypass commandManager — SelectionChanged in
     // bindSheetEvents covers that gap.
-    commandManager.addListener('appListener', (args) => {
+    commandManager.addListener('appListener', () => {
         if (frameworkReadOnly) return;
         client.document.notifyChanged();
     });
@@ -288,7 +288,7 @@ function handleTabKey(shift) {
     let spread;
     try {
         spread = designer.getWorkbook();
-    } catch (err) {
+    } catch {
         return;
     }
 

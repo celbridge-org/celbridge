@@ -11,7 +11,6 @@ let editorWrapper = null;
 let deleteBtnEl = null;
 let openBtnEl = null;
 let currentLinkEl = null;
-let currentSelectionRange = null;
 let originalHref = '';
 let isExistingLink = false;
 let isPickerOpen = false;
@@ -115,7 +114,6 @@ function showPopoverForLink(linkEl) {
     hideAllPopovers();
 
     currentLinkEl = linkEl;
-    currentSelectionRange = null;
     createModeRange = null;
     isExistingLink = true;
 
@@ -164,7 +162,6 @@ export function showPopoverForSelection() {
     const trimmedTo = to - trailingSpaces;
     if (trimmedFrom >= trimmedTo) return false;
 
-    currentSelectionRange = { from: trimmedFrom, to: trimmedTo };
     createModeRange = { from: trimmedFrom, to: trimmedTo };
     currentLinkEl = null;
     isExistingLink = false;
@@ -232,7 +229,6 @@ function removeLink() {
 function hidePopover() {
     linkPopoverEl.classList.remove('visible');
     currentLinkEl = null;
-    currentSelectionRange = null;
     createModeRange = null;
     isExistingLink = false;
     originalHref = '';
@@ -298,7 +294,7 @@ function getActiveLinkInfo() {
     if (!linkMark) return null;
 
     const domAtPos = ctx.editor.view.domAtPos(from);
-    let linkEl = null;
+    let linkEl;
     if (domAtPos.node.nodeType === Node.TEXT_NODE) {
         linkEl = domAtPos.node.parentElement?.closest('a');
     } else {

@@ -31,7 +31,8 @@ export function createTableExtensions() {
     const AutoSizeTable = Table.extend({
         renderHTML({ HTMLAttributes }) {
             // Remove any width-related styles that TipTap adds by default
-            const { style, ...restAttributes } = HTMLAttributes;
+            const restAttributes = { ...HTMLAttributes };
+            delete restAttributes.style;
             return ['table', restAttributes, ['tbody', 0]];
         },
     });

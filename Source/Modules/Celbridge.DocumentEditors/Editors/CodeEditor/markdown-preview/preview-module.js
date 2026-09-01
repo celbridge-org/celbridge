@@ -18,7 +18,6 @@ let previewFind = null;
 // html[data-theme], which preview.css and highlight.css key off, and keeps it in sync on changes.
 let previewThemeListenerRegistered = false;
 let documentBasePath = '';
-let currentContent = '';
 let previewContentElement = null;
 let previewContainerElement = null;
 let suppressScrollSync = false;
@@ -70,7 +69,7 @@ function configureMarked() {
                 .toLowerCase()
                 .trim()
                 .replace(/\s+/g, '-')
-                .replace(/[^\w\-]/g, '');
+                .replace(/[^\w-]/g, '');
             return `<h${token.depth} id="${slug}"${sourceAttr(token)}>${text}</h${token.depth}>\n`;
         },
 
@@ -404,7 +403,6 @@ export function render(markdown) {
         return;
     }
 
-    currentContent = markdown ?? '';
     const savedScrollTop = previewContainerElement ? previewContainerElement.scrollTop : 0;
 
     if (!markdown || markdown.trim() === '') {
@@ -432,7 +430,7 @@ export function render(markdown) {
                 </div>
                 <pre style="white-space: pre-wrap; word-wrap: break-word;">${escaped}</pre>
             `;
-        } catch (fallbackError) {
+        } catch {
             previewContentElement.innerHTML = `<p style="color: var(--hl-keyword);">Error rendering markdown: ${error.message}</p>`;
         }
     }
