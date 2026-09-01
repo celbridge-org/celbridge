@@ -79,8 +79,23 @@ bundles under `lib/` and `min/vs/` are not ours: see Vendored code below.
 The Python package is `Source/Workspace/Celbridge.Python/packages/celbridge`, targeting Python 3.10
 and later.
 
-No linter or formatter is configured, so unlike C# and JavaScript nothing here is enforced by tooling.
-The conventions below describe the existing code, and new code should match it.
+### Linting
+
+- ruff runs from the `Source/Workspace/Celbridge.Python` folder (`ruff check packages/celbridge`),
+  configured by the `[tool.ruff]` section of the package's `pyproject.toml` and installed by the
+  package's `[dev]` extra
+- The rule set is [ruff's default](https://docs.astral.sh/ruff/default-rules/) and nothing else,
+  with no rules disabled. Alongside the correctness checks it enforces some mechanical conventions,
+  including sorted import blocks; `ruff check --fix` applies the auto-fixable ones
+- The ruff formatter is deliberately not adopted, because `.editorconfig` owns formatting. Do not
+  add stylistic or formatting rules to the ruff config
+- A deliberate one-off deviation is suppressed at the offending line with a `# noqa: <rule>` comment
+  explaining why (precedent: the blind `except Exception` in `cel_proxy._discover_tools`)
+
+### Conventions
+
+Ruff enforces the mechanical part; the conventions below are not tool-enforced, so new code should
+match the existing code.
 
 - PEP 8 naming: `snake_case` for modules, functions and variables, `PascalCase` for classes, a leading underscore for non-public names
 - Every module opens with a docstring: a one-sentence summary, then a blank line and a paragraph where the module needs more explanation

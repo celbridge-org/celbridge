@@ -9,17 +9,18 @@ create namespace objects so that `cel.app.version()` works naturally.
 import difflib
 import json
 import logging
+from typing import ClassVar
 
 from celbridge.agent_launcher import launch_claude
 from celbridge.rpc_client import RpcClient
 from celbridge.tool_types import (
-    snake_to_camel,
-    build_signature,
     build_docstring,
     build_inspect_signature,
-    partition_tools_by_namespace,
+    build_signature,
     format_namespace_doc,
     format_python_namespace_doc,
+    partition_tools_by_namespace,
+    snake_to_camel,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,6 @@ class CelError(Exception):
     IPython is configured to display these without a traceback,
     showing only the error type and message for a cleaner REPL experience.
     """
-    pass
 
 
 class ToolNamespace:
@@ -64,7 +64,9 @@ class CelProxy:
         """Query the broker for available tools and create proxy methods."""
         try:
             self._tools = self._client.call("tools/list") or []
-        except Exception as exception:
+        # Deliberately blind: any failure to reach the broker degrades to an empty tool list
+        # rather than crashing the REPL at startup.
+        except Exception as exception:  # noqa: BLE001
             logger.warning("Failed to discover tools from broker: %s", exception)
             self._tools = []
             return
@@ -125,7 +127,7 @@ class CelProxy:
 
         object.__setattr__(self, "test", run_test)
 
-    _namespace_descriptions = {
+    _namespace_descriptions: ClassVar[dict[str, str]] = {
         "app": "Application state, logging, and alerts",
         "data": "Sidecar fields, tags, content blocks, and project-health",
         "document": "Open, edit, and manage editor documents",
@@ -220,9 +222,9 @@ class CelProxy:
 
     def __getattr__(self, name: str):
         """Provide a helpful error when an unknown method is accessed."""
-        top_level_names = sorted(set(
+        top_level_names = sorted({
             alias.split(".", 1)[0] for alias in self._aliases
-        ))
+        })
 
         matches = difflib.get_close_matches(name, top_level_names, n=3, cutoff=0.5)
 

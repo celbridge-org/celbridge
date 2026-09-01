@@ -6,7 +6,6 @@ from celbridge.cel_proxy import CelError
 
 from .helpers import close_if_open, delete_if_exists
 
-
 WORKBOOK = "TestSpreadsheet/sheet.xlsx"
 
 

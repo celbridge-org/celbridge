@@ -14,9 +14,9 @@ import os
 import sys
 from typing import NamedTuple
 
-from celbridge.rpc_client import RpcClient
 from celbridge.cel_proxy import CelProxy
-from celbridge.repl_setup import setup_repl, POST_STARTUP_LINE
+from celbridge.repl_setup import POST_STARTUP_LINE, setup_repl
+from celbridge.rpc_client import RpcClient
 
 # Set on the re-exec'd process so the inner python -m celbridge never re-bootstraps, then cleared
 # once consumed so terminals spawned from the REPL can bootstrap again.
@@ -157,6 +157,7 @@ def _probe_offline_cache(resolved: ResolvedLaunch, environ):
             command,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            check=False,
         )
         exit_code = completed.returncode
     except OSError:

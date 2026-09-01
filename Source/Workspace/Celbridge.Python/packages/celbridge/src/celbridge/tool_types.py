@@ -7,7 +7,6 @@ and builds human-readable signatures for help() and error messages.
 import inspect
 import re
 
-
 # Map JSON Schema type names to Python type names for display
 _JSON_SCHEMA_TO_PYTHON = {
     "string": "str",

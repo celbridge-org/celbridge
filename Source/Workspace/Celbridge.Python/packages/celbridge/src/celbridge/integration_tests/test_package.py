@@ -4,7 +4,6 @@ from celbridge.cel_proxy import CelError
 
 from .helpers import delete_if_exists
 
-
 INTEGRATION_PACKAGE_NAME = "test-integration-pkg"
 INTEGRATION_PACKAGE_FOLDER = f"packages/{INTEGRATION_PACKAGE_NAME}"
 # The `author` line is a temporary workaround: the server-side migration

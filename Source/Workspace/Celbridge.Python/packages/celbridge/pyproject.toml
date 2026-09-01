@@ -43,10 +43,20 @@ celbridge-py = "celbridge.__main__:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    # Pinned because a ruff release can change the default rule set and turn CI red without a code
+    # change. Bump deliberately and fix whatever the new version reports.
+    "ruff==0.16.5",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Ruff's default rule set and nothing else, mirroring the ESLint setup for JavaScript. No rules are
+# disabled here. Deliberate one-off deviations are suppressed at the offending line with a noqa
+# comment explaining why. The formatter is deliberately not adopted: Source/.editorconfig owns
+# formatting, and adopting a second formatting authority for one language would fork that. The
+# Python target version is inferred from requires-python above.
+[tool.ruff]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

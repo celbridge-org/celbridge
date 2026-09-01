@@ -7,7 +7,6 @@ from celbridge.cel_proxy import CelError
 
 from .helpers import delete_if_exists
 
-
 # Minimal JPEG (SOI + JFIF header + EOI) used by file.read_image tests.
 _MINIMAL_JPEG_BYTES = bytes([
     0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00,

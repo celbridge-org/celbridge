@@ -5,7 +5,8 @@ import socket
 import threading
 
 import pytest
-from celbridge.rpc_client import RpcClient, RpcError, HEADER_DELIMITER
+
+from celbridge.rpc_client import HEADER_DELIMITER, RpcClient, RpcError
 
 
 @pytest.fixture
@@ -55,7 +56,7 @@ def _read_framed_message(connection: socket.socket) -> str:
 def _send_framed_message(connection: socket.socket, message: str) -> None:
     """Send a Content-Length framed message to a socket."""
     message_bytes = message.encode('utf-8')
-    header = f"Content-Length: {len(message_bytes)}".encode('utf-8') + HEADER_DELIMITER
+    header = f"Content-Length: {len(message_bytes)}".encode() + HEADER_DELIMITER
     connection.sendall(header + message_bytes)
 
 

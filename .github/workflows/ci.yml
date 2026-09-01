@@ -87,7 +87,7 @@ jobs:
         run: npm run lint
 
   python-test:
-    name: Run Python Tests
+    name: Run Python Tests and Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -108,3 +108,9 @@ jobs:
       - name: Run Python tests
         working-directory: ./Source/Workspace/Celbridge.Python
         run: python run_tests.py
+
+      # Runs even when the tests fail, so one run reports both.
+      - name: Run Python lint
+        if: always()
+        working-directory: ./Source/Workspace/Celbridge.Python
+        run: ruff check packages/celbridge

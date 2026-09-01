@@ -1,15 +1,14 @@
 """Minimal JSON-RPC 2.0 client over TCP using only the Python standard library."""
 
 import json
-import socket
 import logging
+import socket
 
 logger = logging.getLogger(__name__)
 
 
 class RpcError(Exception):
     """Exception raised when a JSON-RPC call fails."""
-    pass
 
 
 # StreamJsonRpc's HeaderDelimitedMessageHandler uses HTTP-style framing:
@@ -88,7 +87,7 @@ class RpcClient:
         """Send a Content-Length framed message."""
         message_bytes = message.encode('utf-8')
         content_length = len(message_bytes)
-        header = f"Content-Length: {content_length}".encode('utf-8') + HEADER_DELIMITER
+        header = f"Content-Length: {content_length}".encode() + HEADER_DELIMITER
         self._socket.sendall(header + message_bytes)
 
     def _receive(self) -> str:

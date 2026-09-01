@@ -1,11 +1,11 @@
 """Tests for tool_types module: type mapping, signatures, and namespace partitioning."""
 
 from celbridge.tool_types import (
-    to_python_type,
-    build_signature,
     build_inspect_signature,
-    partition_tools_by_namespace,
+    build_signature,
     format_namespace_doc,
+    partition_tools_by_namespace,
+    to_python_type,
 )
 
 

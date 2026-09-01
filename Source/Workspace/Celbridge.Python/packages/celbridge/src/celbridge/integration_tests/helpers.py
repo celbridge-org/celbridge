@@ -4,14 +4,13 @@ These take the celbridge module objects as parameters because the new layout
 has no module-level globals.
 """
 import base64
+import contextlib
 
 
 def delete_if_exists(explorer, resource):
     """Delete a resource, ignoring errors if it does not exist."""
-    try:
+    with contextlib.suppress(Exception):
         explorer.delete(resource)
-    except Exception:
-        pass
 
 
 def close_if_open(document, resource):
@@ -22,12 +21,10 @@ def close_if_open(document, resource):
     state will report.
     """
     canonical = resource if ":" in resource else f"project:{resource}"
-    try:
+    with contextlib.suppress(Exception):
         ctx = document.get_state()
         if any(d["resource"] == canonical for d in ctx.get("openDocuments", [])):
             document.close(resource, force_close=True)
-    except Exception:
-        pass
 
 
 def write_with_line_endings(file, resource, text_with_lf, line_ending):
