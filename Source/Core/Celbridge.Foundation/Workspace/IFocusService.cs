@@ -161,11 +161,37 @@ public interface IFocusService
     FocusPanelId FocusedPanel { get; }
 
     /// <summary>
+    /// The panel that has just been given the keyboard and is being held against stray focus events, or None
+    /// when nothing is held. A click keeps producing focus events for a few milliseconds after the work it
+    /// triggered has finished, and the focus tracker uses this to tell the document arriving from the
+    /// leftovers.
+    /// </summary>
+    FocusPanelId HeldPanel { get; }
+
+    /// <summary>
     /// The surface that Edit commands route to, or null before any surface has claimed one. Preserved when
     /// focus moves onto chrome or clears, so Edit commands still target the last editing surface; replaced
     /// when a new surface claims focus with a target; cleared when its surface is torn down.
     /// </summary>
     IEditTarget? EditTarget { get; }
+
+    /// <summary>
+    /// Holds the given panel until the next thing the user does. Double-clicking a file in the Explorer can
+    /// put the keyboard back on the tree just after the document has opened and taken it, leaving the user
+    /// typing into the tree while the document looks focused. Nothing tells us a click has finished producing
+    /// focus events, so the hold lasts until the user's next click or key press.
+    ///
+    /// The panel is passed in rather than read from FocusedPanel, because the document's own focus can arrive
+    /// after this call: a document built from ordinary controls reports its focus a step later, so the
+    /// focused panel does not name it yet.
+    /// </summary>
+    void HoldPanelUntilNextInput(FocusPanelId panel);
+
+    /// <summary>
+    /// Ends the hold, so the next focus change reports its panel again. Called from the window's input
+    /// handlers: any real user input means what follows is no longer the previous click's leftovers.
+    /// </summary>
+    void EndPanelHold();
 
     /// <summary>
     /// Handles a claim of the keyboard: records the claimed panel as the focused one and invokes the previous
@@ -195,9 +221,11 @@ public interface IFocusService
     void SetPanelFocusHandler(FocusPanelId panel, Action? focusHandler);
 
     /// <summary>
-    /// Re-asserts keyboard focus on the currently focused panel by invoking its registered focus handler,
-    /// so the panel the focus indicator shows becomes the keyboard target again. A no-op when the focused
-    /// panel has no registered handler.
+    /// Gives the keyboard back to the given panel by invoking its registered focus handler, so the panel the
+    /// focus indicator shows becomes the keyboard target again. The panel is named by the caller rather than
+    /// taken from FocusedPanel, because a caller can know which panel should hold the keyboard before the
+    /// focus service does: a panel's own focus report may not have arrived yet. A no-op when the panel has no
+    /// registered handler.
     /// </summary>
-    void RefocusFocusedPanel();
+    void RefocusPanel(FocusPanelId panel);
 }

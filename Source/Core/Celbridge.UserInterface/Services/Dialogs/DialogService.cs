@@ -165,7 +165,7 @@ public class DialogService : IDialogService
             // A modal dialog moves keyboard focus into itself; on the Skia heads closing it does not
             // reliably return focus to the panel it came from. Return keyboard focus to the focused panel
             // so the focus indicator's panel is the keyboard target again.
-            _focusService.RefocusFocusedPanel();
+            _focusService.RefocusPanel(_focusService.FocusedPanel);
         }
     }
 

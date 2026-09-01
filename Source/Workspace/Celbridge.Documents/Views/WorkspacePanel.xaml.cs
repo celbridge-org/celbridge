@@ -346,9 +346,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
                 documentView.FocusDocument();
 
-                // Hold the panel against the rest of the gesture's focus events, which can still arrive
-                // after the document has taken focus.
-                FocusIntent.SuppressPanelClaimsUntilNextInput();
+                // Protect this panel from the rest of the click's focus events, which can still arrive
+                // after the document has taken the keyboard.
+                _focusService.HoldPanelUntilNextInput(FocusPanelId.Documents);
             });
     }
 

@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.UserInterface;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -12,6 +11,7 @@ public class FocusService : IFocusService
     private readonly ILogger<FocusService> _logger;
     private readonly Dictionary<FocusPanelId, Action> _panelFocusHandlers = new();
     private FocusPanelId _focusedPanel = FocusPanelId.None;
+    private FocusPanelId _heldPanel = FocusPanelId.None;
     private IEditTarget? _editTarget;
 
     // The release callback matters on the Skia heads, where WebView and host focus are not integrated: a
@@ -36,7 +36,19 @@ public class FocusService : IFocusService
 
     public FocusPanelId FocusedPanel => _focusedPanel;
 
+    public FocusPanelId HeldPanel => _heldPanel;
+
     public IEditTarget? EditTarget => _editTarget;
+
+    public void HoldPanelUntilNextInput(FocusPanelId panel)
+    {
+        _heldPanel = panel;
+    }
+
+    public void EndPanelHold()
+    {
+        _heldPanel = FocusPanelId.None;
+    }
 
     public void OnFocusReceived(FocusClaim claim)
     {
@@ -121,9 +133,9 @@ public class FocusService : IFocusService
         _panelFocusHandlers[panel] = focusHandler;
     }
 
-    public void RefocusFocusedPanel()
+    public void RefocusPanel(FocusPanelId panel)
     {
-        if (_panelFocusHandlers.TryGetValue(_focusedPanel, out var focusHandler))
+        if (_panelFocusHandlers.TryGetValue(panel, out var focusHandler))
         {
             focusHandler.Invoke();
         }
@@ -154,8 +166,8 @@ public class FocusService : IFocusService
 
         ClearFocus();
 
-        // The interaction state the tracker consults is dropped on the same boundary, so a hold or an open
-        // popup left behind by the outgoing workspace cannot suppress focus reporting in the next one.
-        FocusIntent.Reset();
+        // A hold waits on the next user input, which a workspace teardown can pre-empt, so it is dropped on
+        // the same boundary rather than carrying into the next workspace.
+        EndPanelHold();
     }
 }

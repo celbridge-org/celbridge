@@ -228,6 +228,56 @@ public class FocusServiceTests
     }
 
     [Test]
+    public void HoldPanelUntilNextInput_NamesTheHeldPanelUntilTheHoldEnds()
+    {
+        _focusService.HeldPanel.Should().Be(FocusPanelId.None);
+
+        _focusService.HoldPanelUntilNextInput(FocusPanelId.Documents);
+        _focusService.HeldPanel.Should().Be(FocusPanelId.Documents);
+
+        _focusService.EndPanelHold();
+        _focusService.HeldPanel.Should().Be(FocusPanelId.None);
+    }
+
+    [Test]
+    public void RefocusPanel_InvokesThatPanelsFocusHandler()
+    {
+        var explorerHandler = Substitute.For<Action>();
+        var documentsHandler = Substitute.For<Action>();
+        _focusService.SetPanelFocusHandler(FocusPanelId.Explorer, explorerHandler);
+        _focusService.SetPanelFocusHandler(FocusPanelId.Documents, documentsHandler);
+
+        // The panel is named by the caller rather than taken from the focused one, which is the point of the
+        // method: a document whose focus report has not arrived yet is not the focused panel.
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Explorer));
+
+        _focusService.RefocusPanel(FocusPanelId.Documents);
+
+        documentsHandler.Received(1).Invoke();
+        explorerHandler.DidNotReceive().Invoke();
+    }
+
+    [Test]
+    public void RefocusPanel_PanelWithNoRegisteredHandler_DoesNothing()
+    {
+        var refocus = () => _focusService.RefocusPanel(FocusPanelId.Documents);
+
+        refocus.Should().NotThrow();
+    }
+
+    [Test]
+    public void WorkspaceUnloaded_EndsThePanelHold()
+    {
+        // A hold waits on the next user input, which a teardown can pre-empt, so it must not carry into the
+        // next workspace.
+        _focusService.HoldPanelUntilNextInput(FocusPanelId.Documents);
+
+        _workspaceUnloadedHandler.Invoke(this, new WorkspaceUnloadedMessage());
+
+        _focusService.HeldPanel.Should().Be(FocusPanelId.None);
+    }
+
+    [Test]
     public void WorkspaceUnloaded_ClearsPanelFocusAndTheEditTargetWithoutReleasingTheSurface()
     {
         var target = Substitute.For<IEditTarget>();
