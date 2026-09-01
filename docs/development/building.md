@@ -22,7 +22,7 @@ For example, with VS 2026 Community: `C:/Program Files/Microsoft Visual Studio/1
 
 ### Prerequisites
 
-- The .NET SDK version pinned in `global.json` at the repo root (currently `10.0.100`, rolling forward to the latest feature band). The same file pins the Uno SDK version the projects build against.
+- The .NET SDK version pinned in `global.json` at the repo root. The same file pins the Uno SDK version the projects build against.
 - The Uno Platform prerequisites, which `uno-check` installs. Follow the [Uno Platform setup instructions](https://platform.uno/docs/articles/get-started.html); that page covers macOS and links to the Rider and VS Code specific setup.
 - Visual Studio does not exist on macOS, so use JetBrains Rider or VS Code. The repo carries a Rider run configuration for the app bundle publish, described under Publishing below.
 
@@ -72,7 +72,7 @@ The test project does not contain XAML and can be built and run with `dotnet`. I
 dotnet test Source/Tests/Celbridge.Tests.csproj
 ```
 
-Pass `--no-restore` in the inner loop. `dotnet` re-walks the restore graph over all 24 referenced projects on every invocation, which costs several seconds and finds nothing new unless a package reference changed:
+Pass `--no-restore` in the inner loop. `dotnet` re-walks the restore graph over every referenced project on every invocation, which costs several seconds and finds nothing new unless a package reference changed:
 
 ```
 dotnet test Source/Tests/Celbridge.Tests.csproj --no-restore
@@ -88,7 +88,8 @@ Run Python tests using a virtual environment. Create it at the repo root, never 
 
 ```
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate     # macOS
 cd Source/Workspace/Celbridge.Python
 pip install -e "packages/celbridge[dev]"
 python run_tests.py

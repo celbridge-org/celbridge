@@ -30,7 +30,7 @@ Formatting (indent width, line endings, trailing whitespace, final newline) is o
 - Code-behind files use `.xaml.cs` naming convention (e.g., `MyView.xaml.cs`)
 - Never use `/// <param>` XML documentation — it is verbose and hard to keep synchronized (exception: MCP tool methods in `Celbridge.Tools` where the MCP SDK source generator requires them for parameter descriptions)
 - Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
-- Localized strings for the settings dialog follow `Settings_<Category>_<Element>`, where the category is the one the string appears under in the dialog rail (Appearance, Workshop, Web View), not the `SettingCatalog.cs` descriptor group. The two mostly coincide, but the categories are a presentation grouping: Appearance shows `SettingCatalog.Application.Theme`, and Web View has no catalog group at all. Strings shown elsewhere keep their existing `Section_Element` conventions
+- Localized strings for the settings dialog follow `Settings_<Category>_<Element>`, where the category is the rail group the string appears under in the dialog, not the `SettingCatalog.cs` descriptor group. Strings shown elsewhere keep their existing `Section_Element` conventions
 - Place `Dispose` implementation at the end of a class; declare all private fields at the top
 - Put a blank line between the final `return` of a method and the preceding code block (e.g., after a closing `}`)
 - Keep the `async` keyword on `*Async` methods even when the body is synchronous; suppress CS1998 by adding `await Task.CompletedTask;` at the top of the body (precedent: `DocumentView.SaveDocumentContentAsync`)

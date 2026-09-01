@@ -14,7 +14,7 @@ Read the document covering an area before working in it:
 |---|---|
 | [Building and Testing](docs/development/building.md) | Building on Windows and macOS, running the .NET, JavaScript and Python test suites, linting, and CI |
 | [Coding Conventions](docs/development/coding_conventions.md) | Conventions for C#, JavaScript and Python, plus the general rules that apply to all three |
-| [Architecture](docs/development/architecture.md) | Service lifetimes and dependency injection rules, the `Platform/` folder convention, and the document save model |
+| [Architecture](docs/development/architecture.md) | The solution layout, service lifetimes and dependency injection rules, the command system, the `Platform/` folder convention, and the document save model |
 | [Design Tokens](docs/development/design_tokens.md) | The generated colour and dimension tokens shared by the XAML and web sides |
 | [MCP Tools](docs/development/mcp_tools.md) | Authoring MCP tool classes in `Celbridge.Tools` |
 
