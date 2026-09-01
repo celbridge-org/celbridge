@@ -11,10 +11,10 @@ namespace Celbridge.Tests.UserInterface;
 [TestFixture]
 public class IconPickerDialogViewModelTests
 {
-    private static IconPickerDialogViewModel CreateViewModel(string selectedIconName = "")
+    private static IconPickerDialogViewModel CreateViewModel(string searchText = "")
     {
         var viewModel = new IconPickerDialogViewModel(new IconService());
-        viewModel.Initialize(selectedIconName);
+        viewModel.Initialize(searchText);
 
         return viewModel;
     }

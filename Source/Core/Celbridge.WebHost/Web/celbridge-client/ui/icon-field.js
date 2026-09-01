@@ -11,7 +11,7 @@
 //     container,                              // element the field is built into
 //     value: shortcut.icon,                   // the name it starts with
 //     defaultIconName: 'bs-lightning-charge', // previewed while empty; omit where empty means no glyph
-//     pickIcon: (iconName) => cel.dialog.pickIcon(iconName),
+//     pickIcon: (searchText) => cel.dialog.pickIcon(searchText),
 //   });
 
 import { t } from '../localization.js';

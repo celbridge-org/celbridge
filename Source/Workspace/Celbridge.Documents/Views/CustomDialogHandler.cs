@@ -79,9 +79,9 @@ internal sealed class CustomDialogHandler : IHostDialog
         return new PickFileResult(null);
     }
 
-    public async Task<PickIconResult> PickIconAsync(string? iconName = null)
+    public async Task<PickIconResult> PickIconAsync(string? searchText = null)
     {
-        var result = await _dialogService.ShowIconPickerDialogAsync(iconName ?? string.Empty);
+        var result = await _dialogService.ShowIconPickerDialogAsync(searchText ?? string.Empty);
 
         if (result.IsSuccess)
         {

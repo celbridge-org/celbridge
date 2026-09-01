@@ -54,9 +54,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The .ttf fonts under Assets/Fonts ship automatically as loose Content via the Assets glob and load
-         through ms-appx, so they need no entry here. Only the JSON glyph and keyword maps are embedded,
-         because IconService reads them through GetManifestResourceStream. -->
+    <!-- A font is loaded by URI, so a .ttf has to be a real file in the package: those ship via the Assets
+         glob. The JSON maps are read as data instead, so they are embedded, which resolves the same way on
+         every head and needs no app package. -->
     <EmbeddedResource Include="Assets\Fonts\**\*.json" Exclude="Assets\Fonts\**\build\**" />
 
     <!-- That Assets glob is declared in the WinAppSDK props, which are imported before this file is read,

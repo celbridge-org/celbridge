@@ -29,11 +29,11 @@ public interface IHostDialog
     Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null);
 
     /// <summary>
-    /// Opens the icon picker over the supported icon set and returns the chosen icon name, opening on the
-    /// named icon when it is one of them.
+    /// Opens the icon picker over the supported icon set, with its search on the given text, and returns
+    /// the chosen icon name.
     /// </summary>
     [JsonRpcMethod(DialogRpcMethods.PickIcon)]
-    Task<PickIconResult> PickIconAsync(string? iconName = null);
+    Task<PickIconResult> PickIconAsync(string? searchText = null);
 
     /// <summary>
     /// Shows an alert dialog to the user.

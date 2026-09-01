@@ -55,10 +55,10 @@ public interface IDialogFactory
     IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 
     /// <summary>
-    /// Create an Icon Picker Dialog over the supported icon set, opening on the named icon when it is one
-    /// of them.
+    /// Create an Icon Picker Dialog over the supported icon set, opening its search on the given text.
+    /// Text that names one of the supported icons also opens with that icon selected.
     /// </summary>
-    IIconPickerDialog CreateIconPickerDialog(string selectedIconName = "");
+    IIconPickerDialog CreateIconPickerDialog(string searchText = "");
 
     /// <summary>
     /// Create a Choice Dialog that lets the user pick from a list of named options.

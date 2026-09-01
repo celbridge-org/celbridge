@@ -14,7 +14,7 @@ function createTransport() {
 }
 
 describe('DialogAPI.pickIcon', () => {
-    it('sends the icon the field holds, and returns the chosen name', async () => {
+    it('sends the text the field holds, and returns the chosen name', async () => {
         const transport = createTransport();
         transport.request = async (method, params) => {
             transport.requests.push({ method, params });
@@ -27,7 +27,7 @@ describe('DialogAPI.pickIcon', () => {
         expect(iconName).toBe('bs-gear');
         expect(transport.requests).toEqual([{
             method: 'dialog/pickIcon',
-            params: { iconName: 'bs-floppy' }
+            params: { searchText: 'bs-floppy' }
         }]);
     });
 

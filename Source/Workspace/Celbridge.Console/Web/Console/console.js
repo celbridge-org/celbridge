@@ -522,7 +522,7 @@ const shortcutCards = createCardList({
             container: card.querySelector('.shortcut-icon-field'),
             value: shortcut.icon || '',
             defaultIconName: SHORTCUT_FALLBACK_ICON,
-            pickIcon: (iconName) => client.dialog.pickIcon(iconName),
+            pickIcon: (searchText) => client.dialog.pickIcon(searchText),
         });
     },
 

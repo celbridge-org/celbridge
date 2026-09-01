@@ -120,10 +120,10 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public IIconPickerDialog CreateIconPickerDialog(string selectedIconName = "")
+    public IIconPickerDialog CreateIconPickerDialog(string searchText = "")
     {
         var dialog = new IconPickerDialog();
-        dialog.ViewModel.Initialize(selectedIconName);
+        dialog.ViewModel.Initialize(searchText);
 
         return WithFocusGuard(dialog);
     }
