@@ -17,7 +17,6 @@ from celbridge.cel_proxy import CelError
 
 from .helpers import delete_if_exists
 
-
 # Dialog kind identifiers — match Celbridge.Dialog.DialogKind enum names.
 CONFIRMATION = "Confirmation"
 INPUT_TEXT = "InputText"

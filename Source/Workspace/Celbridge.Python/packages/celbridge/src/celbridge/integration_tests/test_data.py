@@ -8,7 +8,6 @@ import json
 
 import pytest
 
-import celbridge
 from celbridge.cel_proxy import CelError
 
 from .helpers import delete_if_exists

@@ -12,7 +12,6 @@ from celbridge.cel_proxy import CelError
 
 from .helpers import close_if_open, delete_if_exists
 
-
 TEST_RESOURCE = "TestWebView/page.html"
 UNOPENED_RESOURCE = "TestWebView/unopened.html"
 

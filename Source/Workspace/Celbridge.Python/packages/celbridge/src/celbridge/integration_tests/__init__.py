@@ -15,7 +15,6 @@ import pytest
 
 import celbridge
 
-
 GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
@@ -134,8 +133,7 @@ class CelbridgeReporter:
         # this is a test result.
         parts = nodeid.split("::")
         method = parts[-1]
-        if method.startswith("test_"):
-            method = method[len("test_"):]
+        method = method.removeprefix("test_")
         if len(parts) >= 3:
             return f"{parts[-2]}.{method}"
         if len(parts) == 2:

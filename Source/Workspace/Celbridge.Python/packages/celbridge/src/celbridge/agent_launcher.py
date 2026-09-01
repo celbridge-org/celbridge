@@ -35,7 +35,8 @@ def _write_mcp_config(project_folder: str) -> str:
     existing_config: dict = {}
     if os.path.exists(config_path):
         try:
-            existing_content = open(config_path, "r", encoding="utf-8").read()
+            with open(config_path, "r", encoding="utf-8") as config_file:
+                existing_content = config_file.read()
             existing_config = json.loads(existing_content)
         except (json.JSONDecodeError, OSError):
             existing_config = {}
@@ -114,4 +115,4 @@ def launch_claude() -> None:
         print("Launching restricted Claude Code CLI with Celbridge tools and web access tools.")
     else:
         print("Launching restricted Claude Code CLI with Celbridge tools.")
-    subprocess.run(launch_command, cwd=project_folder)
+    subprocess.run(launch_command, cwd=project_folder, check=False)

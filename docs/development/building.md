@@ -105,8 +105,16 @@ JavaScript is linted with ESLint from the `Source/` folder:
 cd Source && npm run lint
 ```
 
-There is no linter configured for C# or Python. See [Coding Conventions](coding_conventions.md).
+Python is linted with ruff, which the `[dev]` extra installs alongside the test dependencies. Run it
+from the same folder as the tests:
+
+```
+cd Source/Workspace/Celbridge.Python
+ruff check packages/celbridge
+```
+
+There is no linter configured for C#. See [Coding Conventions](coding_conventions.md).
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs three jobs on every push and on pull requests targeting `main`: the .NET tests, the JS tests and lint, and the Python tests.
+`.github/workflows/ci.yml` runs three jobs on every push and on pull requests targeting `main`: the .NET tests, the JS tests and lint, and the Python tests and lint.

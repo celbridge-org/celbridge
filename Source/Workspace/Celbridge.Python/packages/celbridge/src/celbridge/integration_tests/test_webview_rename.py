@@ -14,7 +14,6 @@ from celbridge.cel_proxy import CelError
 
 from .helpers import close_if_open, delete_if_exists
 
-
 FOLDER = "TestWebViewRename"
 
 HTML_RESOURCE = f"{FOLDER}/page.html"

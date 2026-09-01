@@ -57,7 +57,10 @@ def _setup_exception_handler(ip) -> None:
 def _setup_prompts(ip) -> None:
     """Replace IPython prompts with standard Python-style >>> prompts."""
     try:
-        from IPython.terminal.prompts import Prompts, Token  # type: ignore[import-not-found]
+        from IPython.terminal.prompts import (  # type: ignore[import-not-found]
+            Prompts,
+            Token,
+        )
 
         class PythonStylePrompts(Prompts):
             def in_prompt_tokens(self, *a, **k):

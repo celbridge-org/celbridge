@@ -1,14 +1,14 @@
 """Tests for CelProxy alias-based tool discovery, namespacing, and dispatch."""
 
 from unittest.mock import MagicMock
-from celbridge.cel_proxy import CelProxy, CelError, ToolNamespace
-from celbridge.tool_types import (
-    snake_to_camel,
-    camel_to_snake,
-    build_signature,
-    build_docstring,
-)
 
+from celbridge.cel_proxy import CelError, CelProxy, ToolNamespace
+from celbridge.tool_types import (
+    build_docstring,
+    build_signature,
+    camel_to_snake,
+    snake_to_camel,
+)
 
 # -- Name conversion helpers --
 

@@ -1,6 +1,7 @@
 """Tests for the __main__ entry point."""
 
 import pytest
+
 from celbridge.__main__ import (
     DIAGNOSTIC_OSC_CODE,
     ResolvedLaunch,
