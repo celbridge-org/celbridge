@@ -52,7 +52,7 @@ jobs:
           fail-on-error: true
 
   js-test:
-    name: Run JS Tests
+    name: Run JS Tests and Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -73,6 +73,12 @@ jobs:
       - name: Run JS tests
         working-directory: ./Source
         run: npm test
+
+      # Runs even when the tests fail, so one run reports both.
+      - name: Run JS lint
+        if: always()
+        working-directory: ./Source
+        run: npm run lint
 
   python-test:
     name: Run Python Tests

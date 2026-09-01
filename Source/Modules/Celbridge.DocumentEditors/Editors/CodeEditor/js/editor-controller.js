@@ -15,7 +15,6 @@ export class EditorController {
     #containerElement = null;
     #isInitialized = false;
     #isReloadingExternally = false;
-    #currentLanguage = 'plaintext';
     #pendingNavigation = null;
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
@@ -59,7 +58,6 @@ export class EditorController {
 
     setLanguage(language) {
         if (this.#editor && language) {
-            this.#currentLanguage = language;
             monaco.editor.setModelLanguage(this.#editor.getModel(), language);
         }
     }

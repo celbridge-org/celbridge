@@ -16,7 +16,6 @@ import {
     parseEnvironmentLines,
     parseExtensionList,
     configsEqual,
-    buildStartConfig,
 } from './console-config.js';
 
 const client = celbridge;
@@ -925,7 +924,7 @@ async function main() {
                         requestAnimationFrame(() => { settingsScroll.scrollTop = state.scrollTop; });
                     }
                 }
-            } catch (error) {
+            } catch {
                 // Ignore malformed state. Fall back to the defaults.
             }
         },
