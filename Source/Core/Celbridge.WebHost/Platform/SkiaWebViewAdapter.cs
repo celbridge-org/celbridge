@@ -19,6 +19,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private Panel? _initHost;
 
     private bool _checkedBackgroundActivity;
+    private bool _checkedInactiveSelection;
 
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
@@ -79,6 +80,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 {
                     MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
                     CheckBackgroundPageActivityOnce(nativeWebViewHandle);
+                    KeepSelectionWhileUnfocused(nativeWebViewHandle);
                     ApplyInitialViewportSize(nativeWebViewHandle);
                 }
                 else
@@ -169,6 +171,31 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         _logger.LogWarning(
             "WebKit no longer exposes every background page activity preference, so background documents may stop servicing host RPC. Applied: {Applied}",
             applied.Count == 0 ? "none" : string.Join(", ", applied));
+    }
+
+    // Managed focus moves resign the web view's first responder status, and WebKit discards the page's
+    // selection when that happens, so a selection the user just made in a hosted page disappears. Reported
+    // once per session because losing the SPI brings the disappearing selection back.
+    private void KeepSelectionWhileUnfocused(IntPtr nativeWebViewHandle)
+    {
+        var maintained = MacOSWebViewInterop.MaintainInactiveSelection(nativeWebViewHandle);
+        if (maintained)
+        {
+            if (!_checkedInactiveSelection)
+            {
+                _checkedInactiveSelection = true;
+                _logger.LogDebug("Hosted pages keep their selection while unfocused");
+            }
+
+            return;
+        }
+
+        if (!_checkedInactiveSelection)
+        {
+            _checkedInactiveSelection = true;
+            _logger.LogWarning(
+                "WebKit no longer exposes the inactive selection setting, so a selection in a hosted page is lost when focus moves");
+        }
     }
 
     public void CloseWebView(WebView2 webView, Panel? container)

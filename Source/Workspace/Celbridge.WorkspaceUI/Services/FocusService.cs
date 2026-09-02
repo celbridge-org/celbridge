@@ -67,11 +67,16 @@ public class FocusService : IFocusService
         _releaseFocusedSurface = claim.ReleaseFocus;
 
         // The edit context follows edit intent, not the caret. A claim carrying a target replaces it; a
-        // target-less claim (chrome focus, or None) preserves the last editing surface so Edit commands
-        // still route there.
+        // target-less claim from chrome preserves the last editing surface so Edit commands still route
+        // there. A target-less web surface edits itself, natively, so it clears the target: keeping the
+        // previous one would send Edit commands to a surface the user has left.
         if (claim.EditTarget is not null)
         {
             _editTarget = claim.EditTarget;
+        }
+        else if (claim.Kind == FocusClaimKind.WebSurface)
+        {
+            _editTarget = null;
         }
 
         // State is updated before the release so a re-entrant report triggered by it observes the new

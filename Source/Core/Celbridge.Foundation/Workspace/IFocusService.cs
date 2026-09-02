@@ -171,7 +171,8 @@ public interface IFocusService
     /// <summary>
     /// The surface that Edit commands route to, or null before any surface has claimed one. Preserved when
     /// focus moves onto chrome or clears, so Edit commands still target the last editing surface; replaced
-    /// when a new surface claims focus with a target; cleared when its surface is torn down.
+    /// when a new surface claims focus with a target; cleared when a web surface claims focus without one,
+    /// and when its surface is torn down.
     /// </summary>
     IEditTarget? EditTarget { get; }
 
@@ -195,9 +196,10 @@ public interface IFocusService
 
     /// <summary>
     /// Handles a claim of the keyboard: records the claimed panel as the focused one and invokes the previous
-    /// surface's release callback. A claim carrying an edit target replaces the current one; a claim without
-    /// leaves it in place. A managed control claiming the panel a web surface already holds is chrome
-    /// (a URL bar, a find bar) taking the keyboard off that surface, so the surface is released.
+    /// surface's release callback. A claim carrying an edit target replaces the current one; a managed
+    /// control claiming without one leaves it in place, while a web surface claiming without one clears it.
+    /// A managed control claiming the panel a web surface already holds is chrome (a URL bar, a find bar)
+    /// taking the keyboard off that surface, so the surface is released.
     /// </summary>
     void OnFocusReceived(FocusClaim claim);
 

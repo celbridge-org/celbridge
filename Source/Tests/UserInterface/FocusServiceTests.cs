@@ -83,6 +83,19 @@ public class FocusServiceTests
     }
 
     [Test]
+    public void OnFocusReceived_WebSurfaceWithNoTarget_ClearsTheEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Explorer, target));
+
+        // A .webview page edits itself natively, so Edit commands must stop routing to the tree the user left.
+        var pageClaim = FocusClaim.FromWebSurface(FocusPanelId.Documents, null, _surface, () => { });
+        _focusService.OnFocusReceived(pageClaim);
+
+        _focusService.EditTarget.Should().BeNull();
+    }
+
+    [Test]
     public void OnFocusReceived_SamePanelFromManagedChromeRepeatedly_ReleasesTheSurfaceOnce()
     {
         var releaseCount = 0;
