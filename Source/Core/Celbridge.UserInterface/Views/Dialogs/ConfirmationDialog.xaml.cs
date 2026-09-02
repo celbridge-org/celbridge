@@ -76,9 +76,9 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
     {
         if (IsDestructive)
         {
-            // The confirm button stays accented as the action, but keyboard focus starts on Cancel and
-            // no button is the Enter default, so pressing Enter cannot carry out the action by mistake.
-            DefaultButton = ContentDialogButton.None;
+            // Cancel is the accented default and takes initial focus, so the accent and the Enter key
+            // agree, and Enter cannot carry out an action that has no way back.
+            DefaultButton = ContentDialogButton.Secondary;
             Opened += OnDestructiveDialogOpened;
         }
         else
