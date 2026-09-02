@@ -12,6 +12,7 @@ using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
@@ -350,6 +351,22 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
     }
 
+    // Names the page the way the document tab labels it: a utility by its display name, a document by its
+    // file name. A utility's resource key carries its package and extension, which reads as machine text.
+    private string GetDevToolsTargetName()
+    {
+        Guard.IsNotNull(_contribution);
+
+        if (!_contribution.IsUtility)
+        {
+            return _viewModel.FileResource.ResourceName;
+        }
+
+        var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
+
+        return PackageDisplayText.Resolve(localizationService, _contribution.Package, _contribution.DisplayName);
+    }
+
     // Configures a live WebView (CoreWebView2 ready): host channel, RPC targets, tool bridge, navigation gate,
     // and the editor load.
     private async Task ConfigureWebViewHostAsync(ICustomEditorLoader editorLoader)
@@ -360,8 +377,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // DevTools is off when the hosting package blocks it (sensitive material)
         // or when the user has not enabled the WebViewDevTools feature flag.
         var devToolsBlocked = _contribution.Package.DevToolsBlocked;
-        WebView.CoreWebView2.Settings.AreDevToolsEnabled =
-            !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
+        var devToolsEnabled = !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
+        _webViewAdapter.SetDevToolsEnabled(WebView.CoreWebView2, devToolsEnabled, GetDevToolsTargetName());
 
         // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
         // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels.
