@@ -102,6 +102,7 @@ public class UtilityServiceRegisterTests
     private static UtilityRailItem CreateBuiltInUtilityItem(EditorId itemId, string displayName)
     {
         return UtilityRailItem.CreatePanelUtility(
+            RailItemGroup.BuiltInUtility,
             itemId,
             $"{itemId}-utility-button",
             "folder",
@@ -139,6 +140,45 @@ public class UtilityServiceRegisterTests
             BuiltInUtilityIds.Search,
             BuiltInShortcutIds.ProjectSettings,
             BuiltInShortcutIds.Community);
+    }
+
+    [Test]
+    public async Task GetRailItems_BandsTheItemsByWhereTheyCameFrom()
+    {
+        // A project that declares a shortcut of its own, which is the band the built-in shortcuts must
+        // stay out of.
+        var project = Substitute.For<IProject>();
+        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.Config.Returns(new ProjectConfig
+        {
+            DocumentShortcuts = new List<DocumentShortcut>
+            {
+                new() { Resource = "Notes.md" }
+            }
+        });
+
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+        _serviceProvider.GetService(typeof(IProjectService)).Returns(projectService);
+
+        var service = CreateService();
+
+        service.RegisterBuiltInUtilityItems(new List<UtilityRailItem>
+        {
+            CreateBuiltInUtilityItem(BuiltInUtilityIds.Explorer, "Explorer")
+        });
+
+        await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
+
+        // The rail draws a gap between bands, so a shortcut the project declares bands with the project's
+        // own utilities rather than with the built-in shortcuts pinned at the end.
+        var groups = service.GetRailItems().Select(railItem => railItem.Group);
+
+        groups.Should().Equal(
+            RailItemGroup.BuiltInUtility,
+            RailItemGroup.ProjectItem,
+            RailItemGroup.BuiltInShortcut,
+            RailItemGroup.BuiltInShortcut);
     }
 
     [Test]

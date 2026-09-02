@@ -196,6 +196,7 @@ public class ShowUtilityCommandTests
     private static UtilityRailItem CreateCommunityShortcut()
     {
         return UtilityRailItem.CreateDocumentShortcut(
+            RailItemGroup.BuiltInShortcut,
             BuiltInShortcutIds.Community,
             "community-utility-button",
             "people",
