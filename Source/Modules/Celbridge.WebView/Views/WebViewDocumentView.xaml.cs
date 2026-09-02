@@ -224,7 +224,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             RegisterWebSurfaceFocus(_webView, ReleaseFocus, GrantDomFocusAsync);
 
             var devToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
-            _webViewAdapter.SetDevToolsEnabled(_webView.CoreWebView2, devToolsEnabled, FileResource.ToString());
+            _webViewAdapter.SetDevToolsEnabled(_webView.CoreWebView2, devToolsEnabled, FileResource.ResourceName);
 
             // The .webview browser and HTML viewer render page content, so keep user zoom enabled.
             _webViewAdapter.SetZoomControlEnabled(_webView.CoreWebView2, true);
