@@ -1,5 +1,4 @@
 using Celbridge.Documents.Helpers;
-using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
@@ -14,7 +13,6 @@ public class DocumentViewFactory
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly DocumentEditorPreferenceStore _preferenceStore;
     private readonly FileTypeClassifier _fileTypeClassifier;
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DocumentViewFactory> _logger;
 
     public DocumentViewFactory(
@@ -22,14 +20,12 @@ public class DocumentViewFactory
         IWorkspaceWrapper workspaceWrapper,
         DocumentEditorPreferenceStore preferenceStore,
         FileTypeClassifier fileTypeClassifier,
-        IServiceProvider serviceProvider,
         ILogger<DocumentViewFactory> logger)
     {
         _documentEditorRegistry = documentEditorRegistry;
         _workspaceWrapper = workspaceWrapper;
         _preferenceStore = preferenceStore;
         _fileTypeClassifier = fileTypeClassifier;
-        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -234,23 +230,20 @@ public class DocumentViewFactory
         // by extension match, so the code editor opens any text file even when
         // its extension is not in the code editor's extension list.
         var codeEditorFactoryResult = _documentEditorRegistry.GetFactoryById(DocumentConstants.CodeEditorId);
-        if (codeEditorFactoryResult.IsSuccess)
+        if (codeEditorFactoryResult.IsFailure)
         {
-            var codeEditorResult = codeEditorFactoryResult.Value.CreateDocumentView(fileResource);
-            if (codeEditorResult.IsSuccess)
-            {
-                return codeEditorResult;
-            }
-
-            _logger.LogWarning(codeEditorResult,
-                $"Code editor '{DocumentConstants.CodeEditorId}' failed to create view for '{fileResource}'; using TextBoxDocumentView");
+            return Result<IDocumentView>.Fail($"Code editor '{DocumentConstants.CodeEditorId}' is not registered, so no text view could be created for: '{fileResource}'")
+                .WithErrors(codeEditorFactoryResult);
         }
 
-        // Last-resort fallback, used when the code editor is unavailable or fails. The TextBox is
-        // not produced by a factory, so its editor id is stamped here.
-        var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
-        textBoxView.EditorId = DocumentConstants.TextBoxFallbackEditorId;
-        return textBoxView.OkResult<IDocumentView>();
+        var codeEditorResult = codeEditorFactoryResult.Value.CreateDocumentView(fileResource);
+        if (codeEditorResult.IsFailure)
+        {
+            return Result<IDocumentView>.Fail($"Code editor '{DocumentConstants.CodeEditorId}' failed to create view for: '{fileResource}'")
+                .WithErrors(codeEditorResult);
+        }
+
+        return codeEditorResult;
     }
 
     private static bool IsCodeEditor(EditorId editorId)
